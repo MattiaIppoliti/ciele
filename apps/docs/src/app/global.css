@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Tailwind v4 only scans this app's own tree, so utilities used exclusively
+   inside the shared UI package would never be generated — the components would
+   render unstyled. Same declaration as apps/web's globals.css. */
+@source "../../../../packages/ui/src";
+
+/* Fully opaque, high-contrast selection colors: black on white in dark mode
+   and white on black in light mode. */
+::selection {
+  background: #000;
+  color: #fff;
+}
+::-moz-selection {
+  background: #000;
+  color: #fff;
+}
+.dark ::selection {
+  background: #fff;
+  color: #000;
+}
+.dark ::-moz-selection {
+  background: #fff;
+  color: #000;
+}
+
+/* Wiggle for the "Ask AI" launcher chat icon (hover / mount nudge). */
+@keyframes ciele-wiggle {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-7deg) scale(1.05);
+  }
+  60% {
+    transform: rotate(7deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.ciele-ask-ai:hover .ciele-ask-ai-icon {
+  animation: ciele-wiggle 0.5s ease-in-out;
+}
+
+/*
+ * When the Ask AI drawer is open, reserve space for it on the right so the
+ * documentation reflows instead of hiding behind the fixed panel. The width is
+ * published by the widget as --ciele-ai-width. Self-contained (only touches the
+ * root element + this variable) so a fumadocs upgrade never conflicts here.
+ * Desktop only — on small screens the drawer is a full-screen overlay.
+ */
+@media (min-width: 640px) {
+  html.ciele-ai-open {
+    padding-right: var(--ciele-ai-width, 0px);
+  }
+}

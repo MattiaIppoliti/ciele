@@ -1,0 +1,100 @@
+# Managed-container (Cloud Run) deployment of the Graph Knowledge worker.
+#
+# Same image, auth model, and API contract as local Docker — only the platform
+# differs. This is a TEMPLATE: replace every <PLACEHOLDER>, build+push the image
+# (this service is built from services/graph-worker/Dockerfile, not an
+# off-the-shelf image), and deploy as a documented action (see RUNBOOK.md),
+# never from application code:
+#
+#   gcloud run services replace cloudrun/service.yaml --region <REGION>
+#
+# Secrets come from Secret Manager at runtime (never in this file, never
+# rendered to clients). The worker's own token (GRAPH_WORKER_API_TOKEN) is the
+# access boundary: ingress is allowed but every route except /health demands it.
+#
+# The derived stores are STATEFUL, so this service mounts a persistent volume
+# (a Cloud Run volume backed by a filestore/GCS mount, or the equivalent on your
+# platform). Losing the volume loses the graph — but the graph is a DERIVED
+# index (ADR-0017): it can always be rebuilt by re-ingesting from OKF.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ciele-graph-worker
+  labels:
+    app: ciele-graph-worker
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Pilot: exactly one instance. The embedded graph/vector/relational
+        # stores are process-local, so a write on one instance is only visible
+        # there. Do NOT raise maxScale without moving to external Postgres-backed
+        # stores first (see RUNBOOK.md).
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+        # cognify/search keep working between requests; keep CPU allocated.
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/sessionAffinity: "true"
+    spec:
+      containerConcurrency: 4
+      # cognify/improve passes can run for minutes; allow the lifetime they need.
+      timeoutSeconds: 900
+      containers:
+        - image: <REGION>-docker.pkg.dev/<PROJECT>/ciele/graph-worker:<TAG>  # pin by digest in prod
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          env:
+            - name: TELEMETRY_DISABLED
+              value: "1"
+            - name: COGNEE_SKIP_CONNECTION_TEST
+              value: "true"
+            - name: LLM_PROVIDER
+              value: "<LLM_PROVIDER>"   # e.g. gemini / openai / azure
+            - name: LLM_MODEL
+              value: "<LLM_MODEL>"
+            # Runtime secrets from Secret Manager — never inlined.
+            - name: GRAPH_WORKER_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: graph-worker-api-token
+                  key: latest
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: graph-worker-llm-api-key
+                  key: latest
+          volumeMounts:
+            - name: graph-data
+              mountPath: /data
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 18
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 30
+            timeoutSeconds: 5
+      volumes:
+        # PERSISTENT volume for the derived stores — survives revisions and
+        # restarts. A Cloud Run NFS/Filestore mount; provision the instance
+        # (see RUNBOOK.md) and fill the <PLACEHOLDER>s. Do NOT swap this for an
+        # emptyDir: the stores are stateful (an emptyDir is wiped on restart,
+        # forcing a full rebuild-from-OKF every deploy).
+        - name: graph-data
+          nfs:
+            server: <FILESTORE_IP>          # Filestore instance IP
+            path: /<FILESTORE_SHARE>/graph  # export path on the instance
+            readOnly: false

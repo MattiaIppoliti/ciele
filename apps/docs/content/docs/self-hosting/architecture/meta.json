@@ -1,0 +1,12 @@
+{
+  "title": "Architecture",
+  "description": "How the codebase is put together",
+  "pages": [
+    "index",
+    "repository-map",
+    "request-flows",
+    "chat-runtime",
+    "knowledge-pipeline",
+    "data-model"
+  ]
+}

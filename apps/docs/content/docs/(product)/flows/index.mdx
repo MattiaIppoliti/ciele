@@ -1,0 +1,49 @@
+---
+title: Flows overview
+description: How Ciele decides what an assistant does with each message, using an ordered set of rules.
+---
+
+Flows are how you control an assistant's behavior. A flow is a rule that says
+"when a message looks like this, do these things." Flows are ordered, and the
+first one that matches a message wins. This makes an assistant predictable: you
+can look at the list and know how it will handle each kind of question.
+
+Open an assistant and select **Flows** to see the list.
+
+## How routing works
+
+For each incoming message, the assistant reads down the flow list and picks the
+first flow whose description matches the message. It then runs that flow's actions
+in order. Because matching is based on the meaning of the message, you describe
+each flow in plain language rather than writing keywords.
+
+## The Default behavior
+
+At the very bottom of the list is the **Default behavior**. It is a built in rule
+that always sits last and handles any message that no other flow matched. The
+Default behavior answers from your knowledge, which is why an assistant works as
+soon as it has knowledge, even with no custom flows.
+
+You cannot remove the Default behavior, but you can rely on it as your safety net
+while you add more specific flows above it.
+
+## Fixed replies versus generated answers
+
+Flows let you mix two kinds of responses:
+
+- **Fixed replies** are shown exactly as you wrote them. Use these when the wording
+  must be exact, such as a policy statement or a legal notice.
+- **Generated answers** are written by the assistant from your knowledge. Use these
+  when you want a helpful, natural answer that adapts to the question.
+
+This mix gives you control where you need it and flexibility everywhere else.
+
+## Reading the flow list
+
+Each flow in the list shows its name, a short description of what it matches, and
+the actions it will run. You can reorder flows to change priority, and you can turn
+a flow on or off without deleting it. A flow that is turned off is skipped during
+routing.
+
+Continue with [Building a flow](/flows/building-a-flow) to create one, and
+[Flow actions](/flows/actions) for the full list of things a flow can do.

@@ -1,0 +1,71 @@
+---
+title: Core concepts
+description: The vocabulary you will see throughout Ciele, and how the pieces relate to each other.
+---
+
+Ciele uses a small set of terms consistently across the whole product. Learning
+them once makes every other page easier to follow.
+
+## Organization
+
+An Organization is your workspace. It owns your assistants, your members, your
+help desks, and your data. Everything you create belongs to one organization, and
+data stays isolated between organizations.
+
+## Member and Role
+
+A Member is a person who belongs to your organization. Each member has a Role that
+controls what they can see and change. Roles range from full control to view only
+access. See [Members and roles](/organization/members-and-roles).
+
+## Assistant
+
+An Assistant is a single AI chat experience: a widget that visitors talk to. An
+organization can have many assistants, each with its own name, knowledge, rules,
+and appearance. You configure an assistant in its editor, which has a live
+preview on the right.
+
+## Visitor and Conversation
+
+A Visitor is anyone who talks to a published assistant. A Conversation is the
+full exchange between a visitor and an assistant, including every message, the
+sources cited, and any escalation. Conversations appear in the Inbox.
+
+## Knowledge and Source
+
+Knowledge is everything an assistant can draw on to answer: websites, files, and
+FAQs. When the assistant uses a piece of knowledge in an answer, it can cite the
+Source, so the visitor sees where the information came from.
+
+## Flow and Default behavior
+
+A Flow is a rule. It has a description of the kind of message it handles, optional
+conditions, and a set of actions to run. Flows are ordered, and the first one that
+matches wins. The Default behavior is the built in rule at the very end that
+handles any message no flow matched.
+
+## Flow action
+
+A Flow action is one step the assistant runs when a flow matches. Examples include
+sending a fixed message, searching your knowledge, showing buttons, or escalating.
+See [Flow actions](/flows/actions).
+
+## Help Desk
+
+A Help Desk is an escalation destination that belongs to your organization. It
+groups one or more channels, such as email or live chat, that a visitor can use
+to reach your team. Assistants choose which help desks they offer. See
+[Help Desks](/help-desks).
+
+## Widget
+
+The Widget is the assistant as your visitors see it: the launch button and the
+chat window on your site. You control its colors and position, and you publish it
+with an embed snippet.
+
+## Improvement
+
+An Improvement is a tracked item for making answers better. It can be created
+automatically when an answer falls short or a visitor escalates, or manually when
+someone flags an answer. Improvements move through a simple board from open to
+done. See [Improvements](/operations/improvements).

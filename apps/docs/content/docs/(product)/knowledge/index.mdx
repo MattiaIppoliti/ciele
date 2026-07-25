@@ -1,0 +1,41 @@
+---
+title: Knowledge overview
+description: How an assistant learns from your content and cites its sources when it answers.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Knowledge is what makes an assistant useful. It is the set of sources the
+assistant reads to answer questions: your websites, your files, and curated
+question and answer pairs. Open an assistant and select **Knowledge** to manage
+these sources.
+
+## How knowledge is used
+
+When the assistant needs to answer from your content, it searches your knowledge,
+finds the passages most relevant to the question, and writes an answer grounded in
+them. This approach keeps answers tied to your material rather than to general
+knowledge.
+
+## Sources and citations
+
+Every answer built from your knowledge can show the sources it used. A source
+points back to a real piece of content, such as a page or a document, so a
+visitor can verify the answer and read more. This transparency builds trust and
+makes it easy to spot when a source needs updating.
+
+## The source types
+
+<Cards>
+  <Card title="Websites" href="/knowledge/websites" description="Crawl your site and knowledge base so the assistant learns from your pages." />
+  <Card title="Files" href="/knowledge/files" description="Upload documents, spreadsheets, slides, and more." />
+  <Card title="FAQs" href="/knowledge/faqs" description="Write exact question and answer pairs to shape specific replies." />
+</Cards>
+
+## Keeping knowledge fresh
+
+Good answers depend on current content. Websites can be recrawled so changes on
+your site flow into the assistant. Files can be replaced when they change. FAQs
+can be edited whenever an answer needs refining. When the [Inbox](/operations/inbox)
+or [Improvements](/operations/improvements) show a weak answer, updating the
+underlying source is usually the fix.

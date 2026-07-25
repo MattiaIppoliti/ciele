@@ -1,0 +1,71 @@
+---
+title: Configuration
+description: The environment variables a self-hosted Ciele deployment reads for its database, AI providers, and operational secrets.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+A self-hosted deployment is configured entirely through environment variables.
+Copy `apps/web/.env.example` to `apps/web/.env.local` and fill in the values you
+need. The example file ships with working local-development defaults, so on a
+local database stack most of these are already set for you.
+
+## Database
+
+Set both of these and the data layer switches from the demo store to your
+database automatically. Leave them blank to stay in demo mode.
+
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | The public anon key for browser access. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only key for the widget runtime and privileged reads. Never expose it to the browser. |
+
+See [Database](/self-hosting/database) for provisioning and migrations.
+
+## AI providers
+
+Assistants call an AI provider to generate answers. Provide at least one platform
+key, or point at any OpenAI-compatible endpoint to run fully locally.
+
+| Variable | Purpose |
+| --- | --- |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Platform key used when an assistant has no per-organization provider connection. |
+| `ANTHROPIC_API_KEY` | Optional additional provider. |
+| `OPENAI_API_KEY` | Optional additional provider. |
+
+<Callout title="Run fully local, no cloud AI">
+Set `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_CHAT_MODEL` to route
+answers through any server that speaks the OpenAI chat API — a local runner, a
+self-hosted model server, or a gateway. Add `OPENAI_COMPATIBLE_EMBEDDING_MODEL`
+(and `OPENAI_COMPATIBLE_EMBEDDING_DIMS`) to enable semantic knowledge search;
+without an embedding model, knowledge search falls back to lexical matching. An
+API key is only needed if your server enforces one.
+</Callout>
+
+Organizations can also bring their own keys from inside the console, which is a
+product feature rather than deployment configuration.
+
+## Secrets and operations
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_ENCRYPTION_KEY` | Seals per-organization provider keys at rest (AES-256-GCM). Without it, such keys are stored as marked plaintext with a warning. Generate one with `openssl rand -base64 32`. |
+| `PLATFORM_OWNER_EMAIL` | The first user who signs up with this email becomes the platform owner. |
+| `CRON_SECRET` | Shared secret guarding the maintenance and cron API routes. |
+
+## Knowledge ingestion (optional)
+
+The website-crawl knowledge pipeline can use an external crawler. These are
+optional; without them, the built-in local crawler is used.
+
+| Variable | Purpose |
+| --- | --- |
+| `APIFY_API_TOKEN` | Token for the Apify-based website-crawl provider. |
+| `CRAWL4AI_BASE_URL`, `CRAWL4AI_API_TOKEN` | A private Crawl4AI worker; both are required for it to be selectable, and the token is server-only. |
+
+<Callout type="warn" title="Review row-level security before shipping">
+The database ships with permissive row-level-security policies suited to a demo.
+Scope them to authenticated administrators before exposing a deployment to real
+users.
+</Callout>

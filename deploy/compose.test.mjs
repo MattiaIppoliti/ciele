@@ -1,0 +1,284 @@
+// Contract test for the self-host stack (#440).
+//
+// Docker is not available everywhere this repo is developed, and `docker
+// compose config` in CI proves the file parses — not that it still says what
+// we promise. This asserts the promises: which profiles are on by default,
+// that the heavy ones are not, that the app cannot serve before migrations
+// have run, and that the self-host scheduler stays in step with vercel.json.
+//
+// Plain node + assert, matching the repo's script-test convention:
+//   node deploy/compose.test.mjs
+
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createHmac } from "node:crypto";
+import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const read = (rel) => readFileSync(path.join(here, rel), "utf8");
+
+let passed = 0;
+function check(label, fn) {
+  fn();
+  passed++;
+  console.log(`  ok — ${label}`);
+}
+
+const compose = read("docker-compose.yml");
+const envExample = read(".env.example");
+const crontab = read("cron/crontab");
+const vercel = JSON.parse(read("../apps/web/vercel.json"));
+
+/**
+ * Minimal reader for the one shape we assert: `service:` at two-space indent,
+ * and its `profiles: [x]` line. A YAML parser would be a new dependency for
+ * a repo-tooling test; `docker compose config` in CI is the real parser.
+ */
+function serviceProfiles(yaml) {
+  const found = {};
+  let current = null;
+  let inServices = false;
+  for (const line of yaml.split("\n")) {
+    // Top-level key: enter `services:`, leave on the next one (`volumes:`).
+    if (/^[a-z]/.test(line)) {
+      inServices = line.startsWith("services:");
+      current = null;
+      continue;
+    }
+    if (!inServices) continue;
+    const service = /^ {2}([a-z][a-z0-9-]*):\s*$/.exec(line);
+    if (service) {
+      current = service[1];
+      found[current] = null;
+      continue;
+    }
+    const profiles = /^ {4}profiles:\s*\[([^\]]*)\]/.exec(line);
+    if (profiles && current) {
+      found[current] = profiles[1].split(",").map((p) => p.trim());
+    }
+  }
+  return found;
+}
+
+const profiles = serviceProfiles(compose);
+const defaultProfiles = /^COMPOSE_PROFILES=(.+)$/m
+  .exec(envExample)[1]
+  .split(",")
+  .map((p) => p.trim());
+
+check("the default profiles are db, migrate, app and cron", () => {
+  assert.deepEqual(defaultProfiles, ["db", "migrate", "app", "cron"]);
+});
+
+check("every service declares exactly one profile", () => {
+  for (const [service, list] of Object.entries(profiles)) {
+    assert.ok(list, `service "${service}" declares no profile`);
+    assert.equal(
+      list.length,
+      1,
+      `service "${service}" is in ${list.length} profiles; one keeps the on/off story simple`
+    );
+  }
+});
+
+check("workers and studio are opt-in — nothing heavy starts by default", () => {
+  const optIn = Object.entries(profiles)
+    .filter(([, list]) => !defaultProfiles.includes(list[0]))
+    .map(([service]) => service)
+    .sort();
+  assert.deepEqual(optIn, ["crawl4ai", "graph-worker", "meta", "studio"]);
+  for (const service of ["graph-worker", "crawl4ai"]) {
+    assert.deepEqual(profiles[service], ["workers"]);
+  }
+  for (const service of ["studio", "meta"]) {
+    assert.deepEqual(profiles[service], ["studio"]);
+  }
+});
+
+check("a worker cannot start without its credential", () => {
+  // Each worker token uses the `:?` form, so enabling the profile without one
+  // stops compose with a named error instead of starting a worker that listens
+  // unauthenticated on the shared network. `:-` (empty default) would do the
+  // opposite, silently.
+  //
+  // The cost of the `:?` form is that `docker compose config` — which
+  // interpolates every service regardless of profile — needs placeholder
+  // values; the CI job supplies them and separately asserts this guard fires.
+  for (const variable of [
+    "GRAPH_WORKER_API_TOKEN",
+    "GRAPH_LLM_API_KEY",
+    "CRAWL4AI_API_TOKEN",
+    "CRAWL4AI_SECRET_KEY",
+  ]) {
+    const guarded = new RegExp(`\\$\\{${variable}:\\?[^}]+\\}`);
+    assert.match(
+      compose,
+      guarded,
+      `${variable} must use \${${variable}:?message} so the workers profile refuses to start without it`,
+    );
+  }
+});
+
+check("the app waits for migrations to finish before serving", () => {
+  // Without this a fresh install answers requests against an empty schema.
+  assert.match(
+    compose,
+    /migrate:\n\s+condition: service_completed_successfully/,
+    "app must depend on migrate completing successfully"
+  );
+});
+
+check("the migrate service waits for the auth and storage schemas", () => {
+  // Migrations reference auth.users and insert the three storage buckets;
+  // both schemas are installed by other containers at startup.
+  assert.match(compose, /WAIT_FOR_SCHEMAS: "auth,storage"/);
+});
+
+check("the scheduler runs exactly the jobs vercel.json schedules", () => {
+  const scheduled = vercel.crons
+    .map((c) => `${c.schedule} ${c.path}`)
+    .sort();
+  const selfHosted = crontab
+    .split("\n")
+    .filter((line) => line.trim() && !line.startsWith("#"))
+    .map((line) => {
+      const [min, hour, dom, mon, dow, ...rest] = line.trim().split(/\s+/);
+      return `${min} ${hour} ${dom} ${mon} ${dow} ${rest[rest.length - 1]}`;
+    })
+    .sort();
+  assert.deepEqual(
+    selfHosted,
+    scheduled,
+    "deploy/cron/crontab and vercel.json disagree — a self-host would silently skip or double-run maintenance"
+  );
+});
+
+check("bootstrap fills in every generated secret the compose file requires", () => {
+  const bootstrap = read("bootstrap.sh");
+  // Anything the compose file refuses to start without must be generated.
+  const required = [...compose.matchAll(/\$\{([A-Z_]+):\?/g)].map((m) => m[1]);
+  const generated = [...bootstrap.matchAll(/set_var ([A-Z_]+)/g)].map((m) => m[1]);
+  const workersOnly = [
+    "GRAPH_WORKER_API_TOKEN",
+    "GRAPH_LLM_API_KEY",
+    "CRAWL4AI_API_TOKEN",
+    "CRAWL4AI_SECRET_KEY",
+  ];
+  const missing = [...new Set(required)]
+    .filter((key) => !workersOnly.includes(key))
+    .filter((key) => !generated.includes(key));
+  assert.deepEqual(
+    missing,
+    [],
+    `bootstrap.sh does not generate: ${missing.join(", ")} — a default install would fail to start`
+  );
+});
+
+check(".env.example documents every variable bootstrap writes", () => {
+  const bootstrap = read("bootstrap.sh");
+  for (const [, key] of bootstrap.matchAll(/set_var ([A-Z_]+)/g)) {
+    assert.match(
+      envExample,
+      new RegExp(`^${key}=`, "m"),
+      `${key} is generated but not documented in .env.example`
+    );
+  }
+});
+
+// --- bootstrap actually produces a usable stack config ----------------------
+//
+// The riskiest code here is 20 lines of bash minting HS256 JWTs with openssl:
+// if ANON_KEY or SERVICE_ROLE_KEY is signed wrong, every request the app makes
+// is rejected and the install is dead on arrival with a confusing 401. So run
+// the real script into a temp directory and verify the tokens with node.
+
+const tmp = mkdtempSync(path.join(tmpdir(), "ciele-bootstrap-"));
+try {
+  copyFileSync(path.join(here, "bootstrap.sh"), path.join(tmp, "bootstrap.sh"));
+  copyFileSync(path.join(here, ".env.example"), path.join(tmp, ".env.example"));
+  execFileSync("bash", ["bootstrap.sh", "--env-only"], {
+    cwd: tmp,
+    stdio: "pipe",
+  });
+  const env = Object.fromEntries(
+    readFileSync(path.join(tmp, ".env"), "utf8")
+      .split("\n")
+      .filter((line) => /^[A-Z]/.test(line))
+      .map((line) => {
+        const eq = line.indexOf("=");
+        return [line.slice(0, eq), line.slice(eq + 1)];
+      })
+  );
+
+  check("bootstrap --env-only writes a complete .env", () => {
+    for (const key of [
+      "POSTGRES_PASSWORD",
+      "JWT_SECRET",
+      "ANON_KEY",
+      "SERVICE_ROLE_KEY",
+      "APP_ENCRYPTION_KEY",
+      "CRON_SECRET",
+    ]) {
+      assert.ok(env[key], `${key} is empty after bootstrap`);
+    }
+    // Every secret must be distinct: reusing one would tie unrelated
+    // compromises together.
+    const secrets = [
+      env.POSTGRES_PASSWORD,
+      env.JWT_SECRET,
+      env.APP_ENCRYPTION_KEY,
+      env.CRON_SECRET,
+    ];
+    assert.equal(new Set(secrets).size, secrets.length);
+  });
+
+  check("the generated API keys are valid JWTs signed with JWT_SECRET", () => {
+    for (const [key, role] of [
+      ["ANON_KEY", "anon"],
+      ["SERVICE_ROLE_KEY", "service_role"],
+    ]) {
+      const [header, payload, signature] = env[key].split(".");
+      const expected = createHmac("sha256", env.JWT_SECRET)
+        .update(`${header}.${payload}`)
+        .digest("base64url");
+      assert.equal(signature, expected, `${key} signature does not verify`);
+      assert.equal(JSON.parse(atob(header)).alg, "HS256");
+      const claims = JSON.parse(Buffer.from(payload, "base64url").toString());
+      assert.equal(claims.role, role);
+      assert.ok(
+        claims.exp - claims.iat > 31536000,
+        `${key} expires within a year; rotating it means rotating JWT_SECRET too`
+      );
+    }
+  });
+
+  check("APP_ENCRYPTION_KEY is a 32-byte key (AES-256)", () => {
+    assert.equal(Buffer.from(env.APP_ENCRYPTION_KEY, "base64").length, 32);
+  });
+
+  check("POSTGRES_PASSWORD is safe inside a connection string", () => {
+    // It is interpolated into the userinfo section of the database URL, so a
+    // stray @, :, / or whitespace would silently truncate the URL and point
+    // the app at the wrong host.
+    //
+    // (Spelled out rather than shown as a literal URL: a credential-shaped
+    // example in a mirrored file trips the release gate's secret scan.)
+    assert.doesNotMatch(env.POSTGRES_PASSWORD, /[@:/#?\s]/);
+  });
+
+  check("re-running bootstrap never overwrites existing secrets", () => {
+    const before = readFileSync(path.join(tmp, ".env"), "utf8");
+    execFileSync("bash", ["bootstrap.sh", "--env-only"], {
+      cwd: tmp,
+      stdio: "pipe",
+    });
+    assert.equal(readFileSync(path.join(tmp, ".env"), "utf8"), before);
+  });
+} finally {
+  rmSync(tmp, { recursive: true, force: true });
+}
+
+console.log(`\n${passed} checks passed.`);

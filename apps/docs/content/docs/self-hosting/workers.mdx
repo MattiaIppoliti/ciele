@@ -1,0 +1,73 @@
+---
+title: Background workers
+description: The optional workers profile — derived-graph retrieval and a JavaScript-rendering crawler — what each one buys you, and what a deployment does without them.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele runs completely without background workers. Two optional services make
+knowledge retrieval stronger, and both are off by default because together they
+want roughly **8 GiB of RAM** — more than the rest of the stack combined.
+
+| Service | What it adds | Without it |
+| --- | --- | --- |
+| **Graph worker** | Derives a graph over your knowledge, so retrieval can follow relationships between concepts instead of matching a single passage | Retrieval uses semantic and lexical search only |
+| **Crawl4AI** | A browser-based crawler that executes JavaScript before extracting content | The built-in fetch-based crawler handles websites — fine for server-rendered pages, weaker on JavaScript-heavy ones |
+
+Neither changes what the product *does*. Assistants answer, cite sources, route
+through flows, and escalate exactly the same way. The difference is how much a
+retrieval step can find.
+
+## Turning them on
+
+The workers are a Docker Compose profile. Add `workers` to `COMPOSE_PROFILES` in
+`deploy/.env` and give each service its secret:
+
+```sh
+# deploy/.env
+COMPOSE_PROFILES=db,migrate,app,cron,workers
+GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
+GRAPH_LLM_API_KEY=<key for the graph worker's model>
+CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
+CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+```
+
+Then bring the stack up again:
+
+```sh
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+<Callout title="Turn them on later, not up front">
+Nothing is lost by starting without the workers. Knowledge you have already
+indexed stays indexed, and enabling a worker afterwards simply gives new and
+re-synced sources a richer pipeline. Start small, then add the memory when your
+retrieval quality asks for it.
+</Callout>
+
+## Running a worker elsewhere
+
+The profile is a convenience, not a requirement — each worker is an ordinary
+HTTP service, so you can run either one on a separate host and point the app at
+it. That is the usual answer when your application server is small but you have
+a larger machine available for indexing.
+
+Crawl4AI is configured through the same two variables whether it runs in the
+profile or on its own host:
+
+| Variable | Purpose |
+| --- | --- |
+| `CRAWL4AI_BASE_URL` | Where the crawler is reachable. Both this and the token must be set before the provider can be selected. |
+| `CRAWL4AI_API_TOKEN` | Server-only token the app presents to it. |
+
+See [Configuration](/self-hosting/configuration) for the rest of the
+environment, and [Upgrading](/self-hosting/upgrade) for how workers are rebuilt
+when you take a new version.
+
+## Choosing a crawl provider
+
+With Crawl4AI available, the website-crawl pipeline can pick between the
+built-in crawler and the worker per source. The console exposes the choice as a
+capability policy rather than a hard switch: leave it on **Automatic** and each
+site gets the provider that suits it, or pin one deliberately when you know
+what a site needs.

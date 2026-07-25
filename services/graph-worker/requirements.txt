@@ -1,0 +1,9 @@
+# Ciele Graph Knowledge worker dependencies. Pinned for reproducible builds;
+# upgrade cognee only via the runbook (its storage + search contract is
+# version-sensitive — see docs/research/cognee-fit.md / cognee-spike.md).
+cognee==1.4.0
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+# Local ONNX embeddings — zero embedding-token cost (spike-verified). The LLM
+# provider is configured entirely by env (LLM_PROVIDER / LLM_MODEL / LLM_API_KEY).
+fastembed==0.5.1

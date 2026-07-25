@@ -1,0 +1,97 @@
+# Managed-container (Cloud Run) deployment of the Crawl4AI worker.
+#
+# Same image, config, auth model, and API contract as local Docker — only the
+# platform differs. This is a TEMPLATE: replace every <PLACEHOLDER> and deploy
+# as a documented action (see RUNBOOK.md), never from application code:
+#
+#   gcloud run services replace cloudrun/service.yaml --region <REGION>
+#
+# Secrets are pulled from Secret Manager at runtime (never in this file, never
+# rendered to clients). The worker's own AuthGate (CRAWL4AI_API_TOKEN) is the
+# access boundary, so the service allows ingress but every route except /health
+# demands the bearer token.
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ciele-crawl4ai-worker
+  labels:
+    app: ciele-crawl4ai-worker
+  annotations:
+    # Ingress reaches the service, but the app-level token is the real gate.
+    # Tighten to internal-and-cloud-load-balancing once fronted by an LB / VPC.
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        # Pilot: exactly one instance. The async job queue + rate-limit store
+        # live in the container's bundled Redis, so a task submitted to one
+        # instance is only pollable on that instance. Do NOT raise maxScale
+        # without moving to a shared external Redis first.
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+        # CPU stays allocated after the submit response returns, so the async
+        # crawl keeps running between polls (no request-scoped throttling).
+        run.googleapis.com/cpu-throttling: "false"
+        # Faster cold start for the browser image.
+        run.googleapis.com/startup-cpu-boost: "true"
+        # Second-generation runtime: real /dev/shm sizing for Chromium.
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/sessionAffinity: "true"
+    spec:
+      # Low concurrency bounds browser fan-out independently of Vercel.
+      containerConcurrency: 2
+      # A crawl may run for minutes; allow the request lifetime it needs.
+      timeoutSeconds: 900
+      containers:
+        - image: unclecode/crawl4ai:0.9.1  # pin by digest in production; see RUNBOOK.md
+          ports:
+            - containerPort: 11235
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          env:
+            - name: CRAWL4AI_HOOKS_ENABLED
+              value: "false"
+            # Runtime secrets from Secret Manager — never inlined.
+            - name: CRAWL4AI_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: crawl4ai-api-token
+                  key: latest
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: crawl4ai-secret-key
+                  key: latest
+          # The hardened config is delivered as a mounted secret so it is not
+          # baked into the public image. See RUNBOOK.md for creating it.
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yml
+              subPath: config.yml
+              readOnly: true
+          # Cloud Run service probes are HTTP-only, so this covers the SERVER.
+          # The BROWSER runtime is verified by running scripts/smoke-test.sh
+          # against the deployed URL as a post-deploy readiness gate (RUNBOOK.md).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 11235
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 11235
+            periodSeconds: 30
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          secret:
+            secretName: crawl4ai-config
+            items:
+              - key: config.yml
+                path: config.yml

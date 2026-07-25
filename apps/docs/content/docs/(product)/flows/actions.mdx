@@ -1,0 +1,74 @@
+---
+title: Flow actions
+description: The building blocks a flow runs in response to a message, from fixed messages to knowledge search and escalation.
+---
+
+Actions are the steps a flow runs when it matches. You add them in the response
+step of the flow builder, and they run in the order you place them. This page
+describes the actions you can use and when to reach for each.
+
+## Message
+
+Sends a message to the visitor. A message can be shown word for word, exactly as
+you wrote it, which is ideal when the wording must be precise. Use fixed messages
+for policies, disclaimers, and any reply that should never vary.
+
+## Search knowledge
+
+Searches your knowledge, finds the most relevant passages, and writes an answer
+grounded in them, with sources. This is the action that produces helpful, natural
+answers from your content. It is also what the Default behavior uses. Options let
+you tie it to escalation and to answer quality tracking, so a weak result can lead
+to a follow up.
+
+## Follow ups
+
+Offers suggested next questions after an answer. This keeps a conversation moving
+by nudging the visitor toward related topics the assistant can help with.
+
+## Button
+
+Shows a clickable button that links somewhere, for example a page on your site or
+a form. Use it to give the visitor a clear next step after a message.
+
+## Iframe
+
+Embeds external content inside the chat window, such as a page or a widget you
+want the visitor to see without leaving the conversation.
+
+## API request
+
+Calls an external service and can use the result in the conversation. Use this to
+look something up in another system while the visitor waits. You configure the
+address and method of the request.
+
+## Improvement
+
+Flags the current answer for review by creating an item on your Improvements
+board. Use this on flows where you want to keep a close eye on answer quality. See
+[Improvements](/operations/improvements).
+
+## Handover
+
+Transfers the conversation to another assistant. Use this when a different
+assistant is better suited to continue, for example a specialized one for a
+particular topic.
+
+## Escalation and Send email
+
+Escalation connects the visitor to your team through your configured
+[Help Desks](/help-desks). A send email action can notify a destination when
+a flow runs. Use these to make sure a human is looped in at the right moment.
+
+## Combining actions
+
+Actions are most powerful in combination. A single flow might send a short
+message, search your knowledge for the details, offer follow up questions, and end
+with an escalation button. Because actions run in order, you control the exact
+shape of the reply.
+
+<Callout title="Order matters">
+Actions run from top to bottom. Put a framing message before a knowledge search,
+and put buttons or escalation after the answer so they appear as the natural next
+step.
+</Callout>

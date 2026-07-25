@@ -1,0 +1,414 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Generate utilities used by the shared UI primitives (workspace source). */
+@source "../../../../packages/ui/src";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-host-grotesk);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-goudy);
+  --font-brand: var(--font-solitus);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Match the neutral surface scale used by docs.ciele.app. The widget
+     renders under this same root, so its chat chrome stays in sync. */
+  --background: #f5f5f5;
+  --foreground: oklch(0.145 0 0);
+  --card: #f1f1f1;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: #f1f1f1;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f1f1f1;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f1f1f1;
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #f1f1f1;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #f1f1f1;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #f1f1f1;
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: #121212;
+  --foreground: oklch(0.985 0 0);
+  --card: #191919;
+  --card-foreground: oklch(0.985 0 0);
+  --popover: #191919;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: #191919;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #191919;
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #191919;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #191919;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: #191919;
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Forces light-theme tokens on a subtree regardless of an ancestor .dark
+   class — needed on the auth pages, which are always light, but can render
+   under <html class="dark"> left over from a client-side nav out of the
+   (dark-mode) admin shell. */
+.light {
+  --background: #f5f5f5;
+  --foreground: oklch(0.145 0 0);
+  --card: #f1f1f1;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: #f1f1f1;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f1f1f1;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f1f1f1;
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: #f1f1f1;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar: #f1f1f1;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #f1f1f1;
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  /* The display serif (Sorts Mill Goudy) is a *marketing-only* brand accent —
+     home, pricing, policies, etc. The actual app (admin console, assistant
+     editor, chat widget) stays entirely in the sans UI font. Marketing route
+     layouts opt in with `.marketing-serif` (see (marketing)/ and home/). */
+  .marketing-serif :is(h1, h2, h3, h4) {
+    @apply font-heading;
+  }
+  /* Highlighter-style selection that flips with the theme: black highlighter
+     in light mode, white highlighter in dark mode. Using the theme tokens
+     makes it invert automatically (foreground is near-black in light,
+     near-white in dark) and follow .light/.dark subtree overrides. */
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
+}
+/* Arc-style dark gray chrome behind the translucent rail: subtle light
+   pockets so the backdrop-blur reads as translucency, not flat paint. */
+.app-backdrop {
+  background:
+    radial-gradient(
+      80rem 50rem at 90% -10%,
+      oklch(0.45 0.015 280 / 0.5),
+      transparent 60%
+    ),
+    radial-gradient(
+      60rem 45rem at -15% 110%,
+      oklch(0.4 0.02 300 / 0.4),
+      transparent 60%
+    ),
+    linear-gradient(180deg, oklch(0.32 0.006 270), oklch(0.23 0.006 270));
+}
+
+/* Dia-style composer pulse: two blurred glow dots start at the bottom-center
+   of the chat input, race along the left/right halves of its border, and meet
+   at the top-center before fading out. Coordinates live in the SVG's
+   604x108 viewBox (preserveAspectRatio="none" stretches it to the composer). */
+.composer-pulse-left {
+  offset-path: path(
+    "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 0.7s ease-out 0.2s forwards,
+    composer-pulse-fade 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.composer-pulse-right {
+  offset-path: path(
+    "M 302 106 L 570 106 A 32 32 0 0 0 602 74 L 602 34 A 32 32 0 0 0 570 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 0.7s ease-out 0.2s forwards,
+    composer-pulse-fade 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+/* Auth page loop variant: same border-race path but alternates forever
+   instead of firing once, so it never sits idle between focus events. */
+.auth-composer-pulse-left {
+  offset-path: path(
+    "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 2.2s ease-in-out infinite alternate,
+    composer-pulse-fade 2.2s ease-in-out infinite alternate;
+}
+
+.auth-composer-pulse-right {
+  offset-path: path(
+    "M 302 106 L 570 106 A 32 32 0 0 0 602 74 L 602 34 A 32 32 0 0 0 570 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 2.2s ease-in-out infinite alternate,
+    composer-pulse-fade 2.2s ease-in-out infinite alternate;
+}
+
+/* Loading variant: a single glow dot circles the whole composer border
+   clockwise, looping continuously while a response streams in. */
+.composer-pulse-loading {
+  offset-path: path(
+    "M 302 2 L 570 2 A 32 32 0 0 1 602 34 L 602 74 A 32 32 0 0 1 570 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 Z"
+  );
+  animation: composer-pulse-loop 1.6s linear infinite;
+  opacity: 0.6;
+}
+
+@keyframes composer-pulse-loop {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes composer-pulse-path {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes composer-pulse-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The login grid scrolls continuously; a second, brighter layer is revealed
+   around the cursor by AuthGrid. Both backgrounds share this animation so
+   their lines stay perfectly aligned. */
+.auth-grid-layer {
+  background-position: 0 0;
+  background-size: 64px 64px;
+  /* One 64px cell every 12s — slow enough to feel ambient, not distracting. */
+  animation: auth-grid-drift 12s linear infinite;
+}
+
+@keyframes auth-grid-drift {
+  to {
+    background-position: 64px 64px;
+  }
+}
+
+/* A moving contrast band makes the active Thinking label feel alive while the
+   answer is generated. It is text-clipped rather than an overlay, so the
+   effect follows the exact shape of each translated phase label. */
+.thinking-label-glow {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 42%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 58%,
+    var(--muted-foreground) 100%
+  );
+  background-position: 100% 50%;
+  background-size: 250% 100%;
+  color: var(--muted-foreground);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-label-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes thinking-label-glow {
+  to {
+    background-position: -100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-label-glow,
+  .auth-grid-layer {
+    animation: none;
+  }
+}
+
+/* Keeps a container scrollable without rendering the OS/browser scrollbar
+   chrome — used on the shell's left nav rail and the right widget-preview
+   panel, where a gray scrollbar reads as a stray UI element next to their
+   flush borders. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Shimmer band that sweeps the "Swipe to publish" label, hinting the drag
+   affordance. Text-clipped so the highlight follows the glyph shapes. */
+.animate-swipe-button-text {
+  animation: swipe-button-text 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes swipe-button-text {
+  0% {
+    background-position: calc(-1 * var(--swipe-button-text-width, 130px)) 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-swipe-button-text {
+    animation: none;
+  }
+}
+
+/* Ghost mark glances left and right. Values are SVG user units (viewBox
+   212x186); the eye sockets have room for ±12 without leaving the face.
+   Shared so the wordmark's eyes can animate anywhere the GhostMark renders
+   (marketing footer, contact page), not just on the home route. */
+@keyframes ghost-eyes-glance {
+  0%,
+  10% {
+    transform: translateX(0); /* center */
+  }
+  22%,
+  35% {
+    transform: translateX(8px); /* look right, more pronounced */
+  }
+  47%,
+  57% {
+    transform: translateX(0); /* back to center */
+  }
+  69%,
+  82% {
+    transform: translateX(-12px); /* look left, sharper angle */
+  }
+  94%,
+  100% {
+    transform: translateX(0); /* back to center */
+  }
+}
+
+.ghost-eyes-glance {
+  animation: ghost-eyes-glance 3.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-eyes-glance {
+    animation: none;
+  }
+}
+
+/* Home marketing page renders its own custom cursor (HomeCursor). Hide the
+   native cursor across the whole scene — including descendants that set their
+   own `cursor: pointer` (buttons, links, the card triggers) which would
+   otherwise override an inline `cursor: none` on the scene. Fine-pointer only
+   so touch is unaffected. */
+@media (hover: hover) and (pointer: fine) {
+  .home-cursor-hide-native,
+  .home-cursor-hide-native * {
+    cursor: none !important;
+  }
+}

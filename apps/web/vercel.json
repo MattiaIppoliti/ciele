@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/finalize-crawls",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/verify-goals",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/run-exports",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/sweep-recrawls",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/rollup-usage",
+      "schedule": "0 2 * * *"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+# Migrations already applied to the live project before the CI applier
+# existed (2026-07-10). scripts/apply-migrations.sh marks these as applied
+# in private.applied_migrations WITHOUT executing them; everything else in
+# supabase/migrations/ runs in filename order.
+#
+# Only ever ADD to this list, and only for a migration that was applied to
+# the live project out-of-band (dashboard / MCP) before its file landed here.
+0001_init.sql
+0002_flow_custom_message.sql
+0003_multi_tenant.sql
+0004_runtime.sql
+0005_knowledge.sql
+0006_publish.sql
+0007_website_sources.sql
+0008_website_config.sql
+0009_conversation_metadata.sql
+0010_conversation_pinned.sql
+0011_flow_builder.sql
+0012_help_desks.sql
+0013_support_channels.sql
+0014_support_channel_details.sql
+0015_help_desk_ticketing_integration.sql
+0016_improvements.sql
+0017_platform_admin_stats.sql
+0017_query_performance_hardening.sql
+0018_private_schema_hardening.sql
+0019_system_prompts.sql
+0020_member_profile_fk.sql
+0022_block_consumer_signup_domains.sql
+0023_backfill_seed_demo.sql
+0024_backfill_fix_function_search_paths.sql
+0025_backfill_query_performance_hardening.sql
+0026_backfill_private_schema_hardening.sql
+0027_backfill_system_prompts.sql
+0028_backfill_member_profile_fk.sql
+0029_alerts.sql
+0030_help_desk_auto_improvements.sql
+0031_quick_replies.sql
+0032_provider_connection_ownership.sql
+0033_harden_signup_trigger_function.sql
+0034_agentic_runtime.sql
+0034_platform_superusers.sql
+0035_assistant_avatar.sql
+0036_user_org_profile.sql
+0037_provider_connection_federated_config.sql
+0037_recrawl_schedule.sql
+0038_concept_recrawl_schedule.sql
+0038_retire_subscription_provider_connection_policies.sql
+0039_provider_connection_azure_openai.sql
+0040_public_assets_storage.sql
+0041_background_jobs.sql
+20260709205905_insights_sql_reporting.sql
+20260709233000_bound_crawl_finalize_sweep.sql
+20260710102020_source_show_in_citations.sql
+20260710150000_ai_usage.sql
+20260710160000_org_budgets.sql
+20260710170000_assistant_goals.sql
+20260710180000_goal_claim.sql
+20260710190000_answer_verdicts.sql
+20260710200000_verifier_priority.sql
+20260710210000_flow_trust.sql
+20260710220000_compost.sql

@@ -1,0 +1,53 @@
+---
+title: Authentication overview
+description: Require visitors to sign in before they chat, and personalize answers with their profile.
+---
+
+By default an assistant is open to anyone who can reach the page it lives on. When
+you need to know who is on the other side of the conversation, you can connect your
+identity provider and require people to sign in before they chat. This lets the
+assistant confirm who someone is, adapt to their role, and personalize answers with
+details from their profile.
+
+You set this up per assistant. Open an assistant, then select **Authentication**.
+
+## What connecting an identity provider gives you
+
+- **Sign in before chat.** Visitors see a **Connect Your Account** card in the
+  widget and continue only after they sign in with your identity provider.
+- **Roles and groups.** The groups a person belongs to can flow into the
+  conversation, so a [flow](/flows/building-a-flow) can treat a member differently
+  from an anonymous visitor.
+- **Personalized answers.** Profile details such as a name become available to the
+  assistant, so replies can address the person directly.
+
+<Callout title="Single sign-on, one connection">
+The connection uses OpenID Connect, the standard behind most single sign-on
+setups. Once your identity provider is connected, people sign in with the account
+they already use, and no separate password is created for the assistant.
+</Callout>
+
+## Two related settings
+
+- **Authentication** connects the identity provider that gates the chat. This is
+  what the guides in this section walk through.
+- **User data** lets you import per-person details so the assistant can fill them
+  into replies, mail-merge style. Use it when you want answers that reference
+  someone's own information.
+
+## Guides
+
+<Cards>
+  <Card
+    title="Connect Microsoft Entra ID"
+    href="/authentication/microsoft-entra-id"
+    description="Register an application in Microsoft Entra and require sign in before chat."
+  />
+</Cards>
+
+## After you connect
+
+- Open the widget preview and confirm the **Connect Your Account** card appears.
+- Sign in with a test account and check that the conversation continues.
+- If you rely on roles, confirm a [flow](/flows/building-a-flow) that checks user
+  role behaves as you expect for signed-in people.

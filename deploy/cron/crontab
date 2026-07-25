@@ -1,0 +1,11 @@
+# Ciele scheduled jobs — the same routes and UTC schedules as vercel.json,
+# so a self-host runs the same maintenance the hosted deployment does.
+# Keep this file and vercel.json in step; deploy/compose.test.mjs fails if
+# they drift.
+#
+# min hour dom mon dow  command
+0 2 * * *   /usr/local/bin/run-job.sh /api/cron/rollup-usage
+0 3 * * *   /usr/local/bin/run-job.sh /api/cron/finalize-crawls
+0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
+0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
+0 6 * * *   /usr/local/bin/run-job.sh /api/cron/sweep-recrawls

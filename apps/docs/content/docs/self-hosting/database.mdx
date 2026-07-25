@@ -1,0 +1,51 @@
+---
+title: Database
+description: Ciele stores its data in Postgres via Supabase, with row-level security for tenant isolation and a filename-ordered migration runner.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele stores its data in **Postgres**, using [Supabase](https://supabase.com) for
+the database, authentication, and row-level security. Every query is scoped to the
+signed-in user's organization by row-level-security policies, which is how tenants
+stay isolated from one another.
+
+## Provisioning
+
+You can run the database two ways:
+
+- **Locally**, with the bundled stack: `pnpm db:start` boots Postgres, auth, and
+  RLS in Docker, and `pnpm db:reset` applies the schema and seed data. This is the
+  fastest way to develop against a real database. See
+  [Installation](/self-hosting/installation).
+- **Hosted**, with a Supabase project you create. Set its URL and keys as
+  environment variables (see [Configuration](/self-hosting/configuration)) and the
+  app connects on the next start.
+
+## How migrations are applied
+
+The schema lives in `supabase/migrations` as ordered SQL files. Migrations are
+applied by a small runner (`scripts/apply-migrations.sh`) that runs each pending
+file **in filename order** and records what it has applied by filename. New
+migrations use a timestamp prefix so ordering is unambiguous, and they land
+alongside the code that needs them.
+
+<Callout title="Filename-ordered, not CLI-tracked">
+The runner tracks applied migrations by filename rather than relying on a CLI's
+version history. Follow the same timestamp-prefixed naming for any migration you
+add, and let the runner apply it — do not hand-edit the applied ledger.
+</Callout>
+
+## Seed data
+
+`supabase/seed.sql` contains neutral demo data — a generic organization and a
+couple of example assistants — so a fresh database is not empty. It is safe to
+apply to a development database and safe to skip for a clean production start.
+
+## The enterprise chain
+
+The open-source schema stands entirely on its own. The managed edition has an
+additional migration chain that is **not part of the open-source tree** and is
+never created by a self-hosted deployment. This is the database side of the
+[open-core boundary](/self-hosting/open-core-boundary): enterprise tables may
+reference open-source ones, never the reverse.

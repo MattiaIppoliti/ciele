@@ -1,0 +1,56 @@
+# Local Graph Knowledge worker for Ciele's derived graph retrieval layer.
+#
+# Same image, auth model, and API contract as the managed deployment (see
+# RUNBOOK.md) — only the platform differs. Bring it up with:
+#
+#   cp .env.example .env   # then set GRAPH_WORKER_API_TOKEN + LLM_API_KEY
+#   docker compose up -d --build
+#   ./scripts/smoke-test.sh
+#
+# The Ciele app then points at it with:
+#   GRAPH_WORKER_BASE_URL=http://localhost:8000
+#   GRAPH_WORKER_API_TOKEN=<the same token as below>
+
+services:
+  graph-worker:
+    build: .
+    container_name: ciele-graph-worker
+    restart: unless-stopped
+
+    # Secrets are injected at runtime from ./.env (git-ignored), never baked in.
+    environment:
+      # The static operator token the Ciele adapter sends as `Bearer <token>`.
+      # The server refuses to boot if this is unset/weak — fail closed.
+      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN in .env}
+      # LLM provider for cognify + graph-completion. Any litellm-supported
+      # provider works; keep embeddings local (fastembed, set in the image).
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_MODEL: ${LLM_MODEL:-gemini/gemini-2.0-flash}
+      LLM_API_KEY: ${LLM_API_KEY:?set LLM_API_KEY in .env}
+      # Telemetry stays off (also set in the image; explicit here for audit).
+      TELEMETRY_DISABLED: "1"
+
+    ports:
+      # Exposed on localhost for the Ciele dev app and the smoke test. In the
+      # managed deployment this sits behind private ingress + the token instead.
+      - "8000:8000"
+
+    volumes:
+      # The derived graph/vector/relational stores persist across restarts.
+      - graph-data:/data
+
+    # cognify + graph search are memory-hungry (embeddings + graph build).
+    mem_limit: 4g
+    cpus: 2
+
+    # Verifies the HTTP server is up. The full ingest->search round-trip is the
+    # separate scripts/smoke-test.sh (it needs an LLM key and takes minutes).
+    healthcheck:
+      test: ["CMD", "python", "/app/scripts/healthcheck.py"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  graph-data:

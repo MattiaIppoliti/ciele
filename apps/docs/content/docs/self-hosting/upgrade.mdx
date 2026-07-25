@@ -1,0 +1,88 @@
+---
+title: Upgrading
+description: Take a new version of Ciele — how releases are published, what an upgrade does to your database, and how to back up and roll back.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele is published as tagged releases. Each release is a single commit on the
+public repository plus a `vMAJOR.MINOR.PATCH` tag, so "which version am I
+running" always has an exact answer:
+
+```sh
+git describe --tags
+```
+
+Pin your deployment to a tag rather than tracking the default branch, and you
+decide when to move.
+
+## Upgrade a Docker deployment
+
+```sh
+git fetch --tags
+git checkout v0.2.0        # the release you want
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+That rebuilds the app image and restarts the stack. The `migrate` service runs
+first, applies only the migrations you do not already have, and exits; the app
+starts once it is done. You do not run migrations by hand.
+
+If you enabled the [workers profile](/self-hosting/workers), `--build` rebuilds
+those images too — no separate step.
+
+## Upgrade a source deployment
+
+Running the apps directly rather than in Compose:
+
+```sh
+git fetch --tags && git checkout v0.2.0
+pnpm install
+pnpm build
+```
+
+Apply pending migrations against your database before starting the new build —
+see [Database](/self-hosting/database) for how the filename-ordered runner
+works and how it tracks what it has already applied.
+
+## Back up first
+
+An upgrade that applies migrations changes your schema. Take a dump before you
+start, every time:
+
+```sh
+docker compose -f deploy/docker-compose.yml exec -T postgres \
+  pg_dump -U postgres postgres | gzip > ciele-$(date +%F).sql.gz
+```
+
+Two volumes hold everything that matters: `postgres-data` (the database) and
+`storage-data` (uploaded files). Back up both — a database dump alone will
+restore your assistants, conversations, and knowledge records, but not the
+files behind them.
+
+<Callout type="warn" title="Migrations move forward only">
+There is no down-migration path. Rolling back to an earlier version means
+restoring the backup you took before the upgrade, not re-running the runner in
+reverse. This is why the dump above is not optional.
+</Callout>
+
+## Rolling back
+
+```sh
+docker compose -f deploy/docker-compose.yml down
+git checkout v0.1.0
+gunzip -c ciele-2026-07-25.sql.gz | docker compose -f deploy/docker-compose.yml \
+  exec -T postgres psql -U postgres postgres
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Restore the dump that matches the version you are going back to. A newer dump
+carries a newer schema, which the older code will not understand.
+
+## What to read before a minor bump
+
+Release notes are published on each tag and call out anything that needs a
+decision from you — a new required environment variable, a changed default, a
+migration that rewrites a large table. Skim them before upgrading a deployment
+that people depend on; patch releases are routine, minor releases occasionally
+are not.

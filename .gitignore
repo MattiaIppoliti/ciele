@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# builds
+.next/
+out/
+dist/
+.turbo/
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+next-env.d.ts
+.vercel
+.claude/.state/
+apps/web/public/connectors/*.pkg
+apps/web/public/connectors/*.exe
+.playwright-mcp/
+# Local code-graph scratch output (graphify). Never committed: it is a large
+# derived artifact, and the OSS mirror assembles from `git ls-files --others`,
+# so an un-ignored scratch directory would ship in a release.
+graphify-out/
+# Derived local state of the /visualize-repo bridge (carries a timestamp, so it
+# churns). The visual docs themselves — plan.mdx — are committed.
+.agent-native/**/.plan-state.json

@@ -1,0 +1,65 @@
+# Local Crawl4AI worker for the Ciele Website Source crawler.
+#
+# Same image, config, auth model, and API contract as the managed deployment
+# (see RUNBOOK.md) — only the platform differs. Bring it up with:
+#
+#   cp .env.example .env   # then set CRAWL4AI_API_TOKEN and SECRET_KEY
+#   docker compose up -d
+#   ./scripts/smoke-test.sh
+#
+# The Ciele app then points at it with:
+#   CRAWL4AI_BASE_URL=http://localhost:11235
+#   CRAWL4AI_API_TOKEN=<the same token as below>
+
+services:
+  crawl4ai:
+    # Pinned to a specific reviewed version — never `latest`. v0.9.x is the
+    # first line whose auth is fail-closed on every route (earlier versions left
+    # the API open when jwt_enabled was false). Upgrade only via the runbook.
+    # For byte-for-byte reproducibility, pin by digest instead (see RUNBOOK.md):
+    #   image: unclecode/crawl4ai:0.9.1@sha256:<digest>
+    image: unclecode/crawl4ai:0.9.1
+    container_name: ciele-crawl4ai
+    restart: unless-stopped
+
+    # Secrets are injected at runtime from the environment, never baked into the
+    # image or this file. `docker compose` reads them from ./.env (git-ignored).
+    environment:
+      # The static operator token the Ciele adapter sends as `Bearer <token>`.
+      # A non-loopback bind (config host 0.0.0.0) makes the server refuse to
+      # boot if this is unset — fail closed.
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN in .env}
+      # HS256 signing key for the (unused) JWT path; still validated at startup.
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      # Arbitrary hook / JS-code execution stays OFF (RCE risk). This is the
+      # image default; set explicitly so it is auditable in `docker inspect`.
+      CRAWL4AI_HOOKS_ENABLED: "false"
+
+    ports:
+      # Exposed on localhost for the Ciele dev app and the smoke test. In the
+      # managed deployment this port sits behind private ingress + IAM instead.
+      - "11235:11235"
+
+    volumes:
+      # Hardened config fully replaces the image default (read-only).
+      - ./config/crawl4ai.config.yml:/app/config.yml:ro
+      # Health check script (server + browser runtime), read-only.
+      - ./scripts/healthcheck.py:/app/healthcheck.py:ro
+
+    # Chromium needs more shared memory than Docker's 64 MB default.
+    shm_size: "1gb"
+
+    # Pilot sizing: ~4 GiB RAM, ~1.5 vCPU. Enforced here for local parity with
+    # the managed limits documented in the runbook.
+    mem_limit: 4g
+    cpus: 1.5
+
+    # Verifies BOTH the HTTP server (/health) AND the browser runtime (a real
+    # headless-Chromium render of an inline fixture through /crawl/job). Runs
+    # inside the container against loopback, so no token is required.
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 60s
+      timeout: 45s
+      retries: 3
+      start_period: 90s

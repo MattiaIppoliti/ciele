@@ -1,0 +1,302 @@
+# Self-hosted Ciele (#440, spec #430).
+#
+#   ./deploy/bootstrap.sh          generate secrets, start, migrate, seed
+#   docker compose up -d           thereafter
+#
+# Profiles (every service is in exactly one). `.env` sets
+#   COMPOSE_PROFILES=db,migrate,app,cron
+# so those four come up on a bare `docker compose up`:
+#   db        Postgres + auth + data API + storage + the gateway
+#   migrate   one-shot; applies pending migrations, then the app starts
+#   app       the web app (admin console + widget runtime)
+#   cron      the five scheduled jobs, no Vercel needed
+# and these two stay off until you ask for them:
+#   workers   graph + crawler (heavy: ~8 GiB RAM, browser runtime)
+#   studio    the database admin UI — a standing privileged surface
+#
+# The database layer is the Supabase OSS stack trimmed to what Ciele uses:
+# Postgres (with pgvector), GoTrue for auth, PostgREST for the data API, and
+# storage-api for files. Realtime, Edge Functions, Analytics and the Kong
+# gateway are not started — a small nginx does the one job Ciele needs from
+# the gateway, routing /auth /rest /storage under a single origin so the app
+# has one SUPABASE_URL.
+#
+# TLS is deliberately out of scope: put your own reverse proxy in front and
+# terminate there. Nothing here is exposed beyond the ports below.
+
+name: ciele
+
+services:
+  # ── db profile ────────────────────────────────────────────────────────────
+  postgres:
+    profiles: [db]
+    image: supabase/postgres:15.8.1.060
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run ./deploy/bootstrap.sh first}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET:?run ./deploy/bootstrap.sh first}
+      JWT_EXP: 3600
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Gives the Supabase service roles the generated password on first
+      # init; without it auth/rest/storage cannot log in.
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  auth:
+    profiles: [db]
+    image: supabase/gotrue:v2.177.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${PUBLIC_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgresql://supabase_auth_admin:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      GOTRUE_SITE_URL: ${PUBLIC_URL}
+      GOTRUE_URI_ALLOW_LIST: ${PUBLIC_URL}/**
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+      # Local-first default: no SMTP, so a self-hoster can sign up without
+      # wiring mail. Set SMTP_* and flip this to require confirmation.
+      GOTRUE_MAILER_AUTOCONFIRM: ${MAILER_AUTOCONFIRM:-true}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL:-}
+      GOTRUE_LOG_LEVEL: info
+
+  rest:
+    profiles: [db]
+    image: postgrest/postgrest:v12.2.12
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgresql://authenticator:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+
+  storage:
+    profiles: [db]
+    image: supabase/storage-api:v1.19.3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rest:
+        condition: service_started
+    environment:
+      ANON_KEY: ${ANON_KEY:?run ./deploy/bootstrap.sh first}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?run ./deploy/bootstrap.sh first}
+      POSTGREST_URL: http://rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgresql://supabase_storage_admin:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      # Image transformations need imgproxy, which Ciele does not use.
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+    volumes:
+      - storage-data:/var/lib/storage
+
+  # One origin for auth + rest + storage, the single job Ciele needs from a
+  # gateway. Replaces Kong (which additionally does key-auth and rate
+  # limiting Ciele does not rely on — PostgREST and GoTrue verify the JWT
+  # themselves against JWT_SECRET).
+  gateway:
+    profiles: [db]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - rest
+      - storage
+    volumes:
+      - ./gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${SUPABASE_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/auth/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ── migrate profile (one-shot) ────────────────────────────────────────────
+  # The same filename-ledger applier CI runs against production, so a
+  # self-host and the hosted deployment converge on one migration path.
+  migrate:
+    profiles: [migrate]
+    build:
+      context: ..
+      dockerfile: deploy/migrate.Dockerfile
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Not required to be *healthy*, only running: the entrypoint waits for
+      # the schemas these two install.
+      auth:
+        condition: service_started
+      storage:
+        condition: service_started
+    environment:
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres
+      # Migrations create the three storage buckets and reference auth.users,
+      # so they must run after GoTrue and storage-api have installed their own
+      # schemas. The entrypoint waits for both rather than racing them.
+      WAIT_FOR_SCHEMAS: "auth,storage"
+      # `./deploy/bootstrap.sh --seed` sets this for the first run.
+      LOAD_DEMO_SEED: ${LOAD_DEMO_SEED:-}
+
+  # ── app profile ───────────────────────────────────────────────────────────
+  app:
+    profiles: [app]
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_* is inlined at build time, so the browser bundle needs
+        # the public Supabase origin baked in.
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_healthy
+      # The schema the app queries must exist before it serves a request.
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?run ./deploy/bootstrap.sh first}
+      CRON_SECRET: ${CRON_SECRET:?run ./deploy/bootstrap.sh first}
+      PLATFORM_OWNER_EMAIL: ${PLATFORM_OWNER_EMAIL:-}
+      # AI providers. Any one of these makes assistants answer; with none set
+      # the app still runs on its deterministic keyword engine.
+      OPENAI_COMPATIBLE_BASE_URL: ${OPENAI_COMPATIBLE_BASE_URL:-}
+      OPENAI_COMPATIBLE_API_KEY: ${OPENAI_COMPATIBLE_API_KEY:-}
+      OPENAI_COMPATIBLE_CHAT_MODEL: ${OPENAI_COMPATIBLE_CHAT_MODEL:-}
+      OPENAI_COMPATIBLE_EMBEDDING_MODEL: ${OPENAI_COMPATIBLE_EMBEDDING_MODEL:-}
+      OPENAI_COMPATIBLE_EMBEDDING_DIMS: ${OPENAI_COMPATIBLE_EMBEDDING_DIMS:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+      # Workers profile: set by bootstrap when you enable it.
+      GRAPH_WORKER_BASE_URL: ${GRAPH_WORKER_BASE_URL:-}
+      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:-}
+      CRAWL4AI_BASE_URL: ${CRAWL4AI_BASE_URL:-}
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:-}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+  # ── cron profile ──────────────────────────────────────────────────────────
+  # Replaces Vercel Cron: the same five routes on the same schedules, called
+  # with CRON_SECRET as a bearer token. Schedules live in cron/crontab.
+  cron:
+    profiles: [cron]
+    build:
+      context: ./cron
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      APP_URL: http://app:3000
+      CRON_SECRET: ${CRON_SECRET}
+
+  # ── workers profile (opt-in, off by default) ──────────────────────────────
+  graph-worker:
+    profiles: [workers]
+    build:
+      context: ../services/graph-worker
+    restart: unless-stopped
+    environment:
+      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN to run the workers profile}
+      LLM_PROVIDER: ${GRAPH_LLM_PROVIDER:-gemini}
+      LLM_MODEL: ${GRAPH_LLM_MODEL:-gemini/gemini-2.0-flash}
+      LLM_API_KEY: ${GRAPH_LLM_API_KEY:?set GRAPH_LLM_API_KEY to run the workers profile}
+      TELEMETRY_DISABLED: "1"
+    volumes:
+      - graph-data:/data
+    mem_limit: 4g
+    cpus: 2
+
+  crawl4ai:
+    profiles: [workers]
+    image: unclecode/crawl4ai:0.9.1
+    restart: unless-stopped
+    environment:
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN to run the workers profile}
+      SECRET_KEY: ${CRAWL4AI_SECRET_KEY:?set CRAWL4AI_SECRET_KEY to run the workers profile}
+      CRAWL4AI_HOOKS_ENABLED: "false"
+    volumes:
+      - ../services/crawl4ai-worker/config/crawl4ai.config.yml:/app/config.yml:ro
+    shm_size: "1gb"
+    mem_limit: 4g
+    cpus: 1.5
+
+  # ── studio profile (opt-in, off by default) ───────────────────────────────
+  # A database admin UI is a standing privileged surface; run it when you need
+  # it, behind your own proxy, and stop it again.
+  studio:
+    profiles: [studio]
+    image: supabase/studio:2025.06.30-sha-6f5982d
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SUPABASE_URL: http://gateway:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      DEFAULT_ORGANIZATION_NAME: Self-hosted
+      DEFAULT_PROJECT_NAME: Ciele
+    ports:
+      - "${STUDIO_PORT:-8080}:3000"
+
+  meta:
+    profiles: [studio]
+    image: supabase/postgres-meta:v0.91.0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: postgres
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+volumes:
+  postgres-data:
+  storage-data:
+  graph-data:

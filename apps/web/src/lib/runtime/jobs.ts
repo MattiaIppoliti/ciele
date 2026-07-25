@@ -1,0 +1,383 @@
+import { after } from "next/server";
+import type { BackgroundJob, BackgroundJobKind, Db } from "@agent-hub/db";
+import { thrownMessage } from "@/lib/thrown-message";
+import { isGraphWorkerConfigured } from "./graph-worker";
+import {
+  GRAPH_SYNC_KIND,
+  type GraphSyncJob,
+  type GraphSyncJobInput,
+  graphSyncJobFromRecord,
+  performGraphSyncConcept,
+} from "./graph-sync";
+import { draftImprovementProposal } from "./improvement-proposal";
+import { ingestSource } from "./ingest";
+
+/**
+ * The durable job ledger (ADR-0008), generic over `kind`: claim/lease,
+ * backoff, retry and terminal-failure handling live HERE, once — a job type
+ * contributes only a JobHandler (perform + optional terminal-failure hook)
+ * registered in JOB_HANDLERS, mirroring the ACTION_HANDLERS and
+ * website-crawler registries. Adding a job kind = one handler + one
+ * BackgroundJobKind member; the lifecycle is never reimplemented.
+ *
+ * Payloads are JSON-serializable on purpose: today's accelerator is
+ * in-process (`after()` — runs once the response is sent) with cron as the
+ * durable backstop, and a queue-backed adapter can replace the enqueue
+ * without touching handlers.
+ *
+ * Website crawls are Ingestion Jobs in domain language, but their current
+ * execution path is separate from `background_jobs`: `beginWebsiteCrawl`
+ * records the selected provider run, and `finalizeWebsiteCrawl` (polled by
+ * the client and swept by cron) advances it through the shared Source
+ * lifecycle. Folding them into this ledger is the planned contract step.
+ */
+
+export interface JobDeps {
+  db: Db;
+}
+
+/** One job kind's contribution to the ledger: how to run a claimed job. */
+export interface JobHandler {
+  /** Executes one claimed job to completion; throwing triggers backoff/retry. */
+  perform(record: BackgroundJob, deps: JobDeps): Promise<void>;
+  /**
+   * Runs once when attempts are exhausted (after the ledger marks the job
+   * failed): surface the failure on the job's own domain object (Source
+   * status, Alert, …).
+   */
+  onTerminalFailure?(
+    record: BackgroundJob,
+    deps: JobDeps,
+    message: string
+  ): Promise<void>;
+}
+
+export type JobOutcome = "succeeded" | "failed" | "retried";
+
+export interface RunDueJobsResult {
+  claimed: number;
+  succeeded: number;
+  failed: number;
+  retried: number;
+}
+
+/** Linear backoff base: attempt N retries N minutes later. */
+const RETRY_BACKOFF_MS = 60_000;
+
+// ---------------------------------------------------------------------------
+// ingest_source — runs the knowledge-ingestion pipeline (enrich → persist
+// Concepts → embed) off the request path, tracked by the Source `status`
+// lifecycle (`processing` → `ready`/`error`) the UI already renders.
+// ---------------------------------------------------------------------------
+
+export type IngestJob = {
+  kind: "ingest_source";
+  assistantId: string;
+  collectionId: string;
+  sourceId: string;
+  rawText: string;
+};
+
+export type IngestJobDeps = JobDeps;
+
+export type RunDueIngestJobsResult = RunDueJobsResult;
+
+/** Executes one job to completion. Rehydrates everything from the Db so the
+ *  payload stays serializable; any failure lands in the Source's `error`. */
+async function performIngestJob(job: IngestJob, deps: IngestJobDeps): Promise<void> {
+  const { db } = deps;
+  const [assistant, source] = await Promise.all([
+    db.getAssistant(job.assistantId),
+    db.getSource(job.sourceId),
+  ]);
+  if (!assistant || !source) throw new Error("Not found");
+  const connections = await db.listProviderConnections(assistant.organizationId);
+  await ingestSource({
+    db,
+    assistantId: job.assistantId,
+    collectionId: job.collectionId,
+    source,
+    rawText: job.rawText,
+    connections,
+  });
+
+  const updated = await db.getSource(job.sourceId);
+  if (updated?.status === "error") {
+    throw new Error(updated.error || "Ingestion failed");
+  }
+}
+
+export async function runIngestJob(job: IngestJob, deps: IngestJobDeps): Promise<void> {
+  const { db } = deps;
+  try {
+    await performIngestJob(job, deps);
+  } catch (error) {
+    await db.updateSource(job.sourceId, {
+      status: "error",
+      error: thrownMessage(error, "Ingestion failed"),
+    });
+  }
+}
+
+function jobFromRecord(record: BackgroundJob): IngestJob {
+  const payload = record.payload as Partial<IngestJob>;
+  if (
+    payload.kind !== "ingest_source" ||
+    !payload.assistantId ||
+    !payload.collectionId ||
+    !payload.sourceId ||
+    typeof payload.rawText !== "string"
+  ) {
+    throw new Error("Invalid ingest job payload");
+  }
+  return {
+    kind: "ingest_source",
+    assistantId: payload.assistantId,
+    collectionId: payload.collectionId,
+    sourceId: payload.sourceId,
+    rawText: payload.rawText,
+  };
+}
+
+const ingestSourceHandler: JobHandler = {
+  async perform(record, deps) {
+    await performIngestJob(jobFromRecord(record), deps);
+  },
+  async onTerminalFailure(record, deps, message) {
+    const payloadSourceId = (record.payload as Partial<IngestJob>).sourceId;
+    const sourceId = payloadSourceId ?? record.sourceId;
+    if (sourceId) {
+      await deps.db.updateSource(sourceId, { status: "error", error: message });
+    }
+  },
+};
+
+// ---------------------------------------------------------------------------
+// graph_sync_concept — projects one OKF Concept onto its Collection's derived
+// Knowledge Graph (ADR-0017). Inert when the graph worker is unconfigured.
+// ---------------------------------------------------------------------------
+
+const graphSyncHandler: JobHandler = {
+  async perform(record, deps) {
+    await performGraphSyncConcept(graphSyncJobFromRecord(record), deps);
+  },
+  // No onTerminalFailure: the graph is a derived index, so a permanently failed
+  // sync leaves OKF (the record) intact and is recoverable by a backfill; the
+  // ledger row's `failed` status is the operational signal.
+};
+
+// ---------------------------------------------------------------------------
+// draft_improvement_proposal — drafts a Suggested Fix for an Improvement
+// (ADR-0017 / #390). Best-effort: drafting failure leaves a "no proposal"
+// state, so the handler never surfaces a terminal failure on the Improvement.
+// ---------------------------------------------------------------------------
+
+const DRAFT_PROPOSAL_KIND = "draft_improvement_proposal" as const;
+
+type DraftProposalJob = {
+  kind: typeof DRAFT_PROPOSAL_KIND;
+  improvementId: string;
+  messageId: string;
+};
+
+const draftProposalHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<DraftProposalJob>;
+    if (!payload.improvementId || !payload.messageId) {
+      throw new Error("Invalid draft-proposal job payload");
+    }
+    await draftImprovementProposal({
+      db: deps.db,
+      improvementId: payload.improvementId,
+      messageId: payload.messageId,
+    });
+  },
+};
+
+// ---------------------------------------------------------------------------
+// The registry + the generic lifecycle.
+// ---------------------------------------------------------------------------
+
+const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
+  ingest_source: ingestSourceHandler,
+  graph_sync_concept: graphSyncHandler,
+  draft_improvement_proposal: draftProposalHandler,
+};
+
+async function runClaimedJob(
+  record: BackgroundJob,
+  deps: JobDeps,
+  now: Date
+): Promise<JobOutcome> {
+  const handler = JOB_HANDLERS[record.kind];
+  try {
+    await handler.perform(record, deps);
+    await deps.db.updateBackgroundJob(record.id, {
+      status: "succeeded",
+      error: "",
+      lockedAt: null,
+      lockedBy: null,
+    });
+    return "succeeded";
+  } catch (error) {
+    const message = thrownMessage(error, "Job failed");
+    if (record.attempts >= record.maxAttempts) {
+      await deps.db.updateBackgroundJob(record.id, {
+        status: "failed",
+        error: message,
+        lockedAt: null,
+        lockedBy: null,
+      });
+      await handler.onTerminalFailure?.(record, deps, message);
+      return "failed";
+    }
+
+    const retryAt = new Date(now.getTime() + RETRY_BACKOFF_MS * record.attempts);
+    await deps.db.updateBackgroundJob(record.id, {
+      status: "queued",
+      error: message,
+      nextRunAt: retryAt.toISOString(),
+      lockedAt: null,
+      lockedBy: null,
+    });
+    return "retried";
+  }
+}
+
+/**
+ * Drains a bounded batch of due jobs per kind: atomically claims (leasing
+ * against worker death via staleBefore) and runs each claimed job through its
+ * registered handler. The one entry point every cron/accelerator tick uses.
+ */
+export async function runDueJobs(
+  deps: JobDeps,
+  options: {
+    kinds?: BackgroundJobKind[];
+    now?: Date;
+    limit?: number;
+    workerId?: string;
+    staleAfterMs?: number;
+  } = {}
+): Promise<RunDueJobsResult> {
+  const now = options.now ?? new Date();
+  const staleAfterMs = options.staleAfterMs ?? 15 * 60_000;
+  const kinds =
+    options.kinds ?? (Object.keys(JOB_HANDLERS) as BackgroundJobKind[]);
+
+  const result: RunDueJobsResult = {
+    claimed: 0,
+    succeeded: 0,
+    failed: 0,
+    retried: 0,
+  };
+  for (const kind of kinds) {
+    const claimed = await deps.db.claimBackgroundJobs({
+      kind,
+      workerId: options.workerId ?? `${kind}-${crypto.randomUUID()}`,
+      now: now.toISOString(),
+      staleBefore: new Date(now.getTime() - staleAfterMs).toISOString(),
+      limit: options.limit ?? 5,
+    });
+    result.claimed += claimed.length;
+    for (const record of claimed) {
+      const outcome = await runClaimedJob(record, deps, now);
+      result[outcome] += 1;
+    }
+  }
+  return result;
+}
+
+export async function runDueIngestJobs(
+  deps: IngestJobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueIngestJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: ["ingest_source"] });
+}
+
+/**
+ * Durable adapter: creates the ledger row first, then uses Next `after()` only
+ * as an accelerator. If the instance dies before `after()` runs, cron can
+ * still claim the queued job later.
+ */
+export async function enqueueIngestJob(
+  job: IngestJob,
+  deps: IngestJobDeps
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    kind: "ingest_source",
+    sourceId: job.sourceId,
+    payload: job,
+  });
+  after(() => runDueJobs(deps, { kinds: ["ingest_source"], limit: 1 }));
+}
+
+/**
+ * Enqueues a Suggested Fix drafting job for an Improvement raised from a flagged
+ * message. Durable row first, `after()` accelerator, cron backstop. Best-effort
+ * drafting means a failed job just leaves the Improvement without a proposal.
+ */
+export async function enqueueDraftProposalJob(
+  job: { improvementId: string; messageId: string },
+  deps: JobDeps
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    kind: DRAFT_PROPOSAL_KIND,
+    payload: { kind: DRAFT_PROPOSAL_KIND, ...job },
+  });
+  after(() => runDueJobs(deps, { kinds: [DRAFT_PROPOSAL_KIND], limit: 1 }));
+}
+
+/** Drains due Suggested Fix drafting jobs — the cron backstop for `after()`. */
+export async function runDueProposalJobs(
+  deps: JobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: [DRAFT_PROPOSAL_KIND] });
+}
+
+/** Drains due graph-sync jobs — the cron backstop for the `after()` accelerator. */
+export async function runDueGraphSyncJobs(
+  deps: JobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: [GRAPH_SYNC_KIND] });
+}
+
+/**
+ * Backfills an existing Knowledge Collection into its graph: enqueues an ingest
+ * sync for every Concept. Idempotent — re-running replaces each graph document
+ * (the worker deletes-then-adds by conceptId), and excluded/deleted Concepts
+ * resolve to removes in the handler. Inert (enqueues nothing) without a worker.
+ */
+export async function backfillCollectionToGraph(
+  collectionId: string,
+  deps: JobDeps
+): Promise<{ enqueued: number }> {
+  if (!isGraphWorkerConfigured()) return { enqueued: 0 };
+  const concepts = await deps.db.listConcepts(collectionId);
+  for (const concept of concepts) {
+    await enqueueGraphSyncJob({ op: "ingest", collectionId, conceptId: concept.id }, deps);
+  }
+  return { enqueued: concepts.length };
+}
+
+/**
+ * Enqueues a graph-sync job for one Concept. **Inert when the graph worker is
+ * unconfigured** — it creates no ledger row and returns, so an environment
+ * without a sidecar never accrues queued/failed graph jobs (an acceptance
+ * criterion). Mirrors `enqueueIngestJob`: durable row first, `after()` only as
+ * an accelerator, cron as the backstop.
+ */
+export async function enqueueGraphSyncJob(
+  job: GraphSyncJobInput,
+  deps: JobDeps
+): Promise<void> {
+  if (!isGraphWorkerConfigured()) return;
+  const payload = { kind: GRAPH_SYNC_KIND, ...job } as GraphSyncJob;
+  await deps.db.createBackgroundJob({
+    kind: GRAPH_SYNC_KIND,
+    sourceId: null,
+    payload,
+  });
+  after(() => runDueJobs(deps, { kinds: [GRAPH_SYNC_KIND], limit: 1 }));
+}

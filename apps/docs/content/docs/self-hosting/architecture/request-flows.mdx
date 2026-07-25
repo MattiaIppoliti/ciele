@@ -1,0 +1,177 @@
+---
+title: Request flows
+description: What actually happens when a visitor sends a chat message, and when an administrator saves an edit in the console. The two flows the rest of the system serves.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Two request shapes account for nearly all traffic: a visitor's chat message and a
+member's edit. They are worth tracing end to end, because almost every design
+decision in the codebase is downstream of one of them.
+
+## A visitor sends a chat message
+
+The widget posts to a per-assistant endpoint and reads a streaming response. Note
+what the endpoint loads: the assistant's most recent **publication** — an
+immutable snapshot — not the live configuration a member may be editing right now.
+
+<Mermaid
+  title="One chat turn, from keystroke to persisted answer"
+  chart={`
+sequenceDiagram
+  autonumber
+  participant B as Widget
+  participant R as Chat endpoint
+  participant T as Turn
+  participant E as Runtime
+  participant DB as Postgres
+  participant AI as Provider
+
+  B->>R: message + visitorId
+  R->>DB: latest publication
+  Note over B,R: no snapshot → 404 · CORS from it
+  R->>T: start turn
+  T->>DB: get/create conversation
+  T->>DB: append the message
+  T-->>B: turn (conversation id)
+  T->>E: route
+  E->>AI: classify
+  AI-->>E: the matching flow
+  E-->>B: flow
+  loop each action
+    E-->>B: step · tool events
+    E->>DB: retrieve knowledge
+    E->>AI: generate
+    E-->>B: text · parts
+  end
+  T->>DB: persist the answer
+  T->>T: apply effects
+  T-->>B: done
+`}
+/>
+
+A few consequences of this ordering:
+
+- **The conversation id arrives before the answer does.** The first event carries
+  it, which is how the console's live preview can steer a turn in progress
+  without forking a new conversation.
+- **Effects run after the answer is committed**, never before. An action that
+  should create a follow-up item or send a mail does not do it itself — it
+  *requests* an effect, and the request is applied once the message exists. So an
+  improvement links to a real message id, and no mail goes out for a turn that
+  failed halfway.
+- **A failing action degrades to a fallback**, because each one is wrapped
+  individually. One broken action does not lose the turn.
+
+### The wire format
+
+Both the public widget and the console's preview panel read the same
+newline-delimited JSON stream, and both decode it with the same client module.
+That is the reason preview and production render identically — there is one
+producer and one consumer of this contract.
+
+| Event | Meaning |
+|---|---|
+| `turn` | The conversation id, before generation starts |
+| `flow` | Which flow was selected, and whether it was the fallback |
+| `step` | A visible thinking step |
+| `tool-start` / `tool-end` | A tool invocation opening and closing, with a short outcome |
+| `thought` | Reasoning that preceded a tool call; folded into the thinking panel |
+| `text-start` / `text-delta` / `text-end` | The answer text, streamed |
+| `part` | A non-text reply part: citations, buttons, follow-ups, an escalation chip |
+| `done` / `error` | Terminal, with the persisted message id |
+
+<Callout title="Publication snapshots are why editing is safe">
+Because the widget reads the latest publication rather than the live row, an
+administrator can edit an assistant all afternoon without visitors seeing
+anything change. The new configuration goes live at the moment of publish — and
+publishing is also the moment the cached snapshot is invalidated, so "latest"
+stays exact without a database round trip per request.
+</Callout>
+
+## A member saves an edit
+
+Console pages are server-rendered and read through a request-scoped data handle
+bound to the caller's session, so row-level security applies to reads. Writes take
+a different path: they are server actions, and every organization-scoped one opens
+with the same authorization call.
+
+<Mermaid
+  title="A console read and a console write"
+  chart={`
+flowchart TB
+  M["Member's browser"]
+
+  subgraph read["Read — a console page"]
+    direction TB
+    MW["middleware<br/>validate the session locally"]
+    LOGIN["no session →<br/>/login?next=…"]
+    P["Server Component"]
+    RD["Read through the<br/>caller-scoped handle"]
+    RLS["Row-level security:<br/>this organization's<br/>rows only"]
+    MW -->|"no"| LOGIN
+    MW -->|"yes"| P --> RD --> RLS
+  end
+
+  subgraph write["Write — a server action"]
+    direction TB
+    G["Authorization guard<br/>re-derive the session<br/>check role → capability"]
+    DENY["denied →<br/>throw"]
+    OK["allowed → returns the<br/>caller-scoped handle"]
+    MUT["Mutate"]
+    REV["Revalidate the<br/>affected paths"]
+    G -->|"no"| DENY
+    G -->|"yes"| OK --> MUT --> REV
+  end
+
+  M -->|"navigate"| MW
+  M -->|"submit"| G
+  RLS --> HTML["Rendered page"]
+  REV --> UI["Updated UI"]
+`}
+/>
+
+The guard re-derives the session rather than trusting anything the client sent,
+and it hands back the data handle as its return value. That is a small design
+choice with a useful property: an action cannot get at the database *without*
+passing the check first, because the check is what gives it the handle.
+
+### Roles and capabilities
+
+Roles are ranked, and capabilities are thresholds on that rank. The same ranking
+exists in SQL, so the database agrees with the application.
+
+<Mermaid
+  title="Role ranks and the capabilities they unlock"
+  chart={`
+flowchart TB
+  V["Viewer"] --> E["Editor"] --> A["Admin"] --> O["Owner"]
+
+  E -.-> CE["edit assistants, flows,<br/>knowledge, help desks"]
+  A -.-> CP["publish, delete assistants"]
+  A -.-> CM["invite members,<br/>manage provider keys"]
+  O -.-> CR["change roles"]
+`}
+/>
+
+Each role includes everything below it. Extending the model — adding a
+support-agent or analytics-only tier, say — means editing the role table and the
+capability thresholds, not auditing individual actions.
+
+## Scheduled work
+
+Anything that must not run on a request runs on a timer instead. Each job is an
+authenticated HTTP endpoint, which means the scheduler can be Vercel Cron, a
+container running `curl`, or anything else that can make a request.
+
+| Endpoint | Does |
+|---|---|
+| `/api/cron/finalize-crawls` | Closes out crawls whose pages have arrived |
+| `/api/cron/sweep-recrawls` | Re-crawls website sources on their schedule |
+| `/api/cron/run-exports` | Produces the queued export files |
+| `/api/cron/rollup-usage` | Aggregates usage into daily rows |
+| `/api/cron/verify-goals` | Re-checks assistant goals |
+
+Crawl work is claimed with a renewable lease and a least-recently-attempted
+ordering, so two concurrent sweeps cannot finalize the same crawl and no source
+can be starved.

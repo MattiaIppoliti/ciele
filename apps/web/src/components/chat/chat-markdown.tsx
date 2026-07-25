@@ -1,0 +1,105 @@
+"use client";
+
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
+
+/**
+ * Renders assistant markdown (bold, italic, links, lists, headings, code,
+ * tables) inside a chat bubble. Shared by the Widget, the admin Preview and
+ * the Inbox transcript so every surface reads a reply the same way.
+ * Links always open in a new tab — the widget lives in an iframe.
+ */
+export function ChatMarkdown({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("space-y-2 [overflow-wrap:anywhere]", className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium underline underline-offset-2 hover:opacity-80"
+            >
+              {children}
+            </a>
+          ),
+          strong: ({ children }) => (
+            <strong className="font-semibold">{children}</strong>
+          ),
+          em: ({ children }) => <em className="italic">{children}</em>,
+          h1: ({ children }) => (
+            <h1 className="text-lg leading-snug font-bold">{children}</h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="text-base leading-snug font-bold">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="text-[15px] leading-snug font-semibold">{children}</h3>
+          ),
+          h4: ({ children }) => (
+            <h4 className="text-sm leading-snug font-semibold">{children}</h4>
+          ),
+          ul: ({ children }) => (
+            <ul className="list-disc space-y-1 pl-5">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal space-y-1 pl-5">{children}</ol>
+          ),
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-current/20 pl-3 opacity-90">
+              {children}
+            </blockquote>
+          ),
+          hr: () => <hr className="border-current/15" />,
+          code: ({ children, className: codeClassName }) => {
+            // react-markdown marks fenced blocks with a language- class; bare
+            // inline code has none.
+            const block = /language-/.test(codeClassName ?? "");
+            return block ? (
+              <code className={codeClassName}>{children}</code>
+            ) : (
+              <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.85em]">
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-lg bg-black/10 p-3 font-mono text-xs leading-relaxed">
+              {children}
+            </pre>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-left text-xs">
+                {children}
+              </table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-current/20 px-2 py-1.5 font-semibold">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-current/10 px-2 py-1.5 align-top">
+              {children}
+            </td>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}

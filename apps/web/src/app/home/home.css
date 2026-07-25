@@ -1,0 +1,926 @@
+/* Marketing home ("/home") — sky scenes and motion. Scoped by .home-scene:
+   light mode is a day sky with birds, while dark mode is a starry night
+   with falling-star streaks. */
+
+/* Footer day sky keeps the fixed warm corner glow (it never animates). The
+   sun glow is layered over a sky that stays blue all the way down — the
+   final band is a soft sky-blue rather than white so the whole footer reads
+   as sky, matching the hero. */
+.home-sky-footer {
+  background:
+    radial-gradient(
+      82rem 58rem at 80% -8%,
+      rgba(255, 242, 196, 0.66) 0%,
+      rgba(255, 246, 212, 0.42) 22%,
+      rgba(255, 249, 224, 0.2) 44%,
+      rgba(255, 251, 232, 0.08) 62%,
+      transparent 78%
+    ),
+    linear-gradient(180deg, #9ecdf4 0%, #bbdefa 42%, #cfeafc 74%, #bfe2fb 100%);
+}
+
+/* Hero day sky is the plain blue gradient only — the warm glow lives on
+   the sun disc itself (see .home-sun) so it travels with the sun during a
+   theme toggle instead of staying behind as a second, fixed light. */
+.home-sky-light {
+  background: linear-gradient(
+    180deg,
+    #a8d4f5 0%,
+    #cbe7fb 45%,
+    #eef8ff 78%,
+    #ffffff 100%
+  );
+}
+
+/* Night sky (dark mode hero + footer). */
+.home-sky-dark {
+  background: linear-gradient(
+    180deg,
+    #070b21 0%,
+    #101736 40%,
+    #1d2a56 75%,
+    #32427c 100%
+  );
+}
+
+/* Dusk backdrop — only shows mid-handoff between day and night. Just a
+   vertical dusk band (no localized glow): the sun disc is the only light
+   source, so nothing reads as a second sun fixed in the corner. */
+.home-sky-sunset {
+  background: linear-gradient(
+    180deg,
+    #33406f 0%,
+    #8d5c8a 32%,
+    #e08a63 62%,
+    #ffce93 84%,
+    #ffe9c0 100%
+  );
+}
+
+/* Settled day/night visibility for the hero sky layers and celestial
+   bodies. The [data-sky-transition] keyframes further down override these
+   while a theme toggle is playing; without the attribute the scene paints
+   directly in its settled state (page loads never animate the handoff). */
+.home-sky-sunset,
+.home-sky-dark,
+.home-moon-track {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.dark .home-sky-dark,
+.dark .home-moon-track {
+  opacity: 1;
+  visibility: visible;
+}
+
+.dark .home-sky-light,
+.dark .home-sun-track {
+  opacity: 0;
+  visibility: hidden;
+}
+
+/* Perf: pause the hidden scene's ambient loops (star twinkle, falling
+   streaks, wing flaps, the idle sun/moon glow). visibility:hidden already
+   skips painting them, but their animations would still tick every frame;
+   pausing stops that. They resume while a transition is running so the
+   crossfades stay alive mid-handoff. */
+html:not(.dark):not([data-sky-transition])
+  :is(.home-star, .home-falling-star, .home-moon) {
+  animation-play-state: paused;
+}
+
+html.dark:not([data-sky-transition])
+  :is(.home-bird-flight, .home-bird-wing, .home-sun) {
+  animation-play-state: paused;
+}
+
+/* Perf: below-the-fold sections skip style/layout/paint until scrolled
+   near. This also shrinks the page-wide style recalc when the theme class
+   flips on <html>, which is the expensive moment of the sky handoff. */
+.home-below-fold {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 640px;
+}
+
+/* Birds and stars crossfade with the theme instead of snapping. Plain
+   class-driven transitions: nothing plays on first paint. */
+.home-day-fade,
+.home-night-fade {
+  transition:
+    opacity 0.9s ease,
+    visibility 0.9s;
+}
+
+.home-night-fade {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.dark .home-day-fade {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.dark .home-night-fade {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Animated day ⇄ night handoff. SkySceneTransition stamps
+   data-sky-transition="to-night" | "to-day" on <html> for the duration of
+   a theme toggle; these keyframes replace the settled swap with a sunset:
+   the sun arcs down-left while shifting yellow → orange, the moon rises in
+   from beyond the right edge to the sun's spot, and the backdrop passes
+   through dusk before the night gradient covers it. to-day plays the same
+   paths in reverse (moon retreats right, sun climbs back). */
+html[data-sky-transition]
+  :is(
+    .home-sun-track,
+    .home-moon-track,
+    .home-sky-light,
+    .home-sky-sunset,
+    .home-sky-dark
+  ) {
+  animation-duration: 0.9s;
+  /* linear: easing would restart between every keyframe pair, making the
+     arcs stutter. The curve lives in the keyframe positions instead — x
+     sweeps at constant speed while y follows a parabola. */
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  visibility: visible;
+}
+
+/* Perf: promote exactly what each layer animates, nothing more. The discs
+   move (transform); the fullscreen sky layers only fade — giving those a
+   transform hint would triple the compositor memory for no gain. Scoped to
+   the transition so no layers linger after it ends. */
+html[data-sky-transition] :is(.home-sun-track, .home-moon-track) {
+  will-change: transform, opacity;
+}
+
+html[data-sky-transition]
+  :is(.home-sky-light, .home-sky-sunset, .home-sky-dark) {
+  will-change: opacity;
+}
+
+/* Each direction has its own forward keyframes (not a shared reverse) so
+   the outgoing body always does the wide sweep off the left edge and the
+   incoming body the short entrance from the right — in BOTH directions.
+   to-night: sun sets (wide left), moon rises (short right), sunset colors.
+   to-day:   moon sets (wide left), sun rises (short right), dawn colors. */
+html[data-sky-transition="to-night"] .home-sun-track {
+  animation-name: home-sun-set;
+}
+html[data-sky-transition="to-night"] .home-moon-track {
+  animation-name: home-moon-rise;
+}
+html[data-sky-transition="to-night"] .home-sky-dark {
+  animation-name: home-sky-night-in;
+}
+
+html[data-sky-transition="to-day"] .home-moon-track {
+  animation-name: home-moon-set;
+}
+html[data-sky-transition="to-day"] .home-sun-track {
+  animation-name: home-sun-rise;
+}
+html[data-sky-transition="to-day"] .home-sky-dark {
+  animation-name: home-sky-night-out;
+}
+
+/* The day gradient is the bottom layer in both directions: hold it opaque
+   so the twilight and night layers fade over it without the backdrop
+   flashing through. */
+html[data-sky-transition] .home-sky-light {
+  animation-name: home-sky-hold;
+}
+
+/* Shared twilight flash (same opacity curve both ways); its gradient is
+   sunset by default and swapped to dawn under to-day (see below). */
+html[data-sky-transition] .home-sky-sunset {
+  animation-name: home-sky-twilight;
+}
+
+/* Dawn palette for the night → day handoff: softer and more muted than
+   the evening — the sunset leans deep orange/purple, dawn stays pale and
+   tips toward gentle yellow rather than pink. */
+html[data-sky-transition="to-day"] .home-sky-sunset {
+  background: linear-gradient(
+    180deg,
+    #4b5885 0%,
+    #9aa2c2 32%,
+    #dcccb4 60%,
+    #f6e3a6 84%,
+    #fff9ec 100%
+  );
+}
+
+/* Setting arc: x crosses the whole viewport at constant speed until the
+   sun is fully past the left edge (it disappears by leaving the screen,
+   not by fading), while y falls along a parabola. The yellow → orange
+   shift is NOT a filter animation — filters re-rasterize every frame on
+   some engines — it's an opacity crossfade to the pre-painted warm disc
+   (.home-sun::after below), which stays fully on the compositor. */
+@keyframes home-sun-set {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(-25vw, 3vh, 0);
+  }
+  50% {
+    transform: translate3d(-50vw, 10vh, 0);
+  }
+  75% {
+    transform: translate3d(-76vw, 22vh, 0);
+  }
+  100% {
+    transform: translate3d(-102vw, 38vh, 0);
+    opacity: 1;
+  }
+}
+
+/* Moon rising (to-night): short entrance from off the right edge (the rem
+   part clears the moon's own width on narrow screens where vw is small),
+   x approaching at constant speed while y levels off into the resting spot. */
+@keyframes home-moon-rise {
+  0% {
+    transform: translate3d(calc(10vw + 21rem), 26vh, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(calc(7.5vw + 15.75rem), 14.6vh, 0);
+  }
+  50% {
+    transform: translate3d(calc(5vw + 10.5rem), 6.5vh, 0);
+  }
+  75% {
+    transform: translate3d(calc(2.5vw + 5.25rem), 1.6vh, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/* Moon setting (to-day): the wide arc — mirrors the sun's set. Sweeps the
+   whole viewport at constant speed, falling along a parabola, and vanishes
+   by leaving the left edge (no fade). Pale disc, so no hue shift. */
+@keyframes home-moon-set {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(-25vw, 3vh, 0);
+  }
+  50% {
+    transform: translate3d(-50vw, 10vh, 0);
+  }
+  75% {
+    transform: translate3d(-76vw, 22vh, 0);
+  }
+  100% {
+    transform: translate3d(-102vw, 38vh, 0);
+    opacity: 1;
+  }
+}
+
+/* Sun rising (to-day): short entrance from off the right edge — mirrors the
+   moon's rise — while the glow cools from deep orange (just risen) back to
+   its resting yellow. */
+@keyframes home-sun-rise {
+  0% {
+    transform: translate3d(calc(10vw + 21rem), 26vh, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(calc(7.5vw + 15.75rem), 14.6vh, 0);
+  }
+  50% {
+    transform: translate3d(calc(5vw + 10.5rem), 6.5vh, 0);
+  }
+  75% {
+    transform: translate3d(calc(2.5vw + 5.25rem), 1.6vh, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes home-sky-hold {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
+/* Twilight flash shared by both directions (dusk or dawn — the gradient is
+   swapped per direction, this only drives its opacity). */
+@keyframes home-sky-twilight {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.95;
+  }
+  70% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Night fades in late (to-night) so the twilight beneath gets its moment. */
+@keyframes home-sky-night-in {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Night lifts (to-day): the mirror — starts opaque and thins out late so
+   the dawn twilight beneath shows before the day sky takes over. */
+@keyframes home-sky-night-out {
+  0% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.12;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* In dark mode the footer returns to its deeper night gradient. */
+.dark .home-sky-footer {
+  background: linear-gradient(
+    180deg,
+    #070b21 0%,
+    #131b3e 35%,
+    #27356a 70%,
+    #46599c 100%
+  );
+}
+
+/* A soft, edgeless sun glow. It originates just above the top-right — near
+   the third feature card — and washes gently down and outward with no hard
+   rim or defined beams. The blur smooths any banding so the falloff reads as
+   pure haze. */
+.home-footer-sun-rays {
+  background: radial-gradient(
+    46rem 40rem at 80% 2%,
+    rgba(255, 244, 192, 0.72) 0%,
+    rgba(255, 244, 196, 0.48) 18%,
+    rgba(255, 247, 214, 0.26) 38%,
+    rgba(255, 250, 228, 0.12) 58%,
+    transparent 80%
+  );
+  filter: blur(12px);
+  /* A light feather at the very top removes the hard clip against the white
+     section above without hiding the sun — its body stays visible just below
+     the seam. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.6) 7%,
+    black 16%,
+    rgba(0, 0, 0, 0.62) 68%,
+    transparent 100%
+  );
+  animation: home-footer-rays 10s ease-in-out infinite alternate;
+  transform-origin: 80% 0;
+}
+
+@keyframes home-footer-rays {
+  from {
+    opacity: 0.78;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+}
+
+.home-sun {
+  position: relative;
+  background: radial-gradient(
+    closest-side,
+    #fffbe6 0%,
+    #ffedad 34%,
+    rgba(255, 224, 150, 0.6) 50%,
+    rgba(255, 214, 120, 0.32) 66%,
+    rgba(255, 214, 120, 0.12) 84%,
+    rgba(255, 214, 120, 0) 100%
+  );
+  animation: home-sun-glow 7s ease-in-out infinite alternate;
+}
+
+/* Pre-painted warm (sunset-orange) variant of the disc. The theme handoff
+   crossfades this over the yellow base instead of animating filter, so the
+   color shift is a pure compositor opacity tween. Idle cost is zero: at
+   opacity 0 it isn't painted. */
+.home-sun::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    closest-side,
+    #fff0cc 0%,
+    #ffd280 34%,
+    rgba(255, 178, 92, 0.62) 50%,
+    rgba(255, 156, 66, 0.34) 66%,
+    rgba(255, 156, 66, 0.13) 84%,
+    rgba(255, 156, 66, 0) 100%
+  );
+  opacity: 0;
+}
+
+/* Keep durations in sync with the animation-duration of the umbrella
+   [data-sky-transition] rule below. Setting sun: yellow → orange. Rising
+   sun: starts half-warm (just-risen tint, milder than sunset) → yellow. */
+html[data-sky-transition="to-night"] .home-sun::after {
+  animation: home-sun-warm 0.9s linear both;
+}
+
+html[data-sky-transition="to-day"] .home-sun::after {
+  animation: home-sun-cool 0.9s linear both;
+}
+
+@keyframes home-sun-warm {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes home-sun-cool {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes home-sun-glow {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+/* Moon (dark mode) — pale disc with a soft blue halo and a few crater
+   shadings, breathing on the same glow animation as the sun. */
+.home-moon {
+  background:
+    radial-gradient(9% 9% at 44% 34%, rgba(148, 163, 184, 0.55), transparent),
+    radial-gradient(6% 6% at 55% 46%, rgba(148, 163, 184, 0.45), transparent),
+    radial-gradient(5% 5% at 40% 50%, rgba(148, 163, 184, 0.4), transparent),
+    radial-gradient(circle at 42% 36%, rgba(255, 255, 255, 0.35), transparent 30%),
+    radial-gradient(
+      closest-side,
+      #f8fafc 0%,
+      #e6ecf5 30%,
+      rgba(226, 232, 245, 0.4) 42%,
+      rgba(191, 205, 240, 0.16) 56%,
+      rgba(191, 205, 240, 0) 72%
+    );
+  animation: home-sun-glow 9s ease-in-out infinite alternate;
+}
+
+/* Cloud wrappers: slide in from the side edges on load, then follow
+   --cloud-out (0 = resting spot, 1 = pushed back out to the top corners),
+   set from scroll position by HeroClouds. The entrance keyframes end at
+   the identity transform and don't fill, so once they finish the inline
+   --cloud-out transform below takes over seamlessly. */
+.home-cloud-wrap-left,
+.home-cloud-wrap-right {
+  will-change: transform;
+}
+
+.home-cloud-wrap-left {
+  /* Scroll push-out (--cloud-out) composed with the cursor parallax
+     (--cloud-px/--cloud-py, set by HeroClouds) as a second translate. */
+  transform: translate3d(
+      calc(var(--cloud-out, 0) * -120%),
+      calc(var(--cloud-out, 0) * -35%),
+      0
+    )
+    translate3d(var(--cloud-px, 0px), var(--cloud-py, 0px), 0);
+  animation: home-cloud-enter-left 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-cloud-wrap-right {
+  transform: translate3d(
+      calc(var(--cloud-out, 0) * 120%),
+      calc(var(--cloud-out, 0) * -35%),
+      0
+    )
+    translate3d(var(--cloud-px, 0px), var(--cloud-py, 0px), 0);
+  animation: home-cloud-enter-right 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Refresh mid-page: HeroClouds sets data-no-enter so clouds don't fly in. */
+[data-no-enter] .home-cloud-wrap-left,
+[data-no-enter] .home-cloud-wrap-right {
+  animation: none;
+}
+
+@keyframes home-cloud-enter-left {
+  from {
+    transform: translate3d(-120%, -35%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes home-cloud-enter-right {
+  from {
+    transform: translate3d(120%, -35%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.home-cloud {
+  animation: home-cloud-drift 14s ease-in-out infinite alternate;
+}
+
+.home-cloud-slow {
+  animation-duration: 22s;
+  animation-delay: -6s;
+}
+
+@keyframes home-cloud-drift {
+  from {
+    transform: translateX(-1.5%);
+  }
+  to {
+    transform: translateX(1.5%);
+  }
+}
+
+/* Daytime bird formations. Each wrapper crosses the hero on a gently
+   changing arc; the inner wings flap independently so the movement keeps
+   some life without competing with the headline. */
+.home-bird-flight {
+  position: absolute;
+  left: -4rem;
+  width: 2.75rem;
+  height: 1.4rem;
+  opacity: 0;
+  will-change: transform;
+  animation: home-bird-flight 30s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.home-bird {
+  position: relative;
+  display: block;
+  width: 2.75rem;
+  height: 1.4rem;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0.28));
+  transform: scale(var(--bird-scale, 1));
+}
+
+.home-bird-wing {
+  position: absolute;
+  top: 0.38rem;
+  width: 1.45rem;
+  height: 0.82rem;
+  border-top: 2.4px solid rgba(38, 66, 92, 0.82);
+  border-radius: 78% 100% 0 0;
+  animation: home-bird-flap 0.78s ease-in-out infinite alternate;
+  animation-delay: var(--bird-flap-delay, 0s);
+}
+
+.home-bird-wing-left {
+  left: 0;
+  transform-origin: right center;
+}
+
+.home-bird-wing-right {
+  right: 0;
+  transform-origin: left center;
+  animation-name: home-bird-flap-mirror;
+}
+
+@keyframes home-bird-flight {
+  0% {
+    transform: translate3d(0, 8px, 0);
+    opacity: 0;
+  }
+  6% {
+    opacity: 0.72;
+  }
+  31% {
+    transform: translate3d(calc(32vw + 3rem), -12px, 0);
+  }
+  63% {
+    transform: translate3d(calc(68vw + 6rem), 10px, 0);
+    opacity: 0.68;
+  }
+  94% {
+    opacity: 0.68;
+  }
+  100% {
+    transform: translate3d(calc(100vw + 10rem), -6px, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes home-bird-flap {
+  from {
+    transform: rotate(16deg) translateY(0);
+  }
+  to {
+    transform: rotate(-12deg) translateY(2px);
+  }
+}
+
+@keyframes home-bird-flap-mirror {
+  from {
+    transform: rotate(-16deg) translateY(0);
+  }
+  to {
+    transform: rotate(12deg) translateY(2px);
+  }
+}
+
+.home-star {
+  position: absolute;
+  border-radius: 9999px;
+  background: #fff;
+  animation: home-twinkle 3.2s ease-in-out infinite;
+}
+
+@keyframes home-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Falling star: a bright-headed streak that dives down-left, then rests
+   until its cycle restarts. Position/delay/duration come from inline style. */
+.home-falling-star {
+  position: absolute;
+  width: 130px;
+  height: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    270deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0)
+  );
+  opacity: 0;
+  animation: home-falling-star 7s linear infinite;
+}
+
+@keyframes home-falling-star {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(145deg);
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  16% {
+    transform: translate3d(-360px, 252px, 0) rotate(145deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate3d(-360px, 252px, 0) rotate(145deg);
+    opacity: 0;
+  }
+}
+
+/* Ghost gaze: the `ghost-eyes-glance` keyframes now live in globals.css as
+   the shared source (so auth and contact pages can animate the mascot too).
+   The footer mascot loops on its own; the navbar mascot only plays while you
+   hover its logo. */
+.ghost-footer-eyes {
+  animation: ghost-eyes-glance 3.6s ease-in-out infinite;
+}
+
+/* Navbar logo: gaze plays on hover/focus of the logo link, then settles. */
+.ghost-logo-eyes {
+  transition: transform 0.25s ease;
+}
+[data-ghost-logo]:hover .ghost-logo-eyes,
+[data-ghost-logo]:focus-visible .ghost-logo-eyes {
+  animation: ghost-eyes-glance 3s ease-in-out infinite;
+}
+
+/* Mobile nav menu (below lg) — Dia-style. The pill IS the menu: it stays a
+   slim stadium when closed and, on open, its own bottom edge stretches down
+   to cover almost the whole screen (one morphing component, no overlay). The
+   panel is just the content that fills the growing pill — the container (the
+   pill) draws the card background/radius. At lg+ this is the inline desktop
+   nav, untouched. */
+@media (max-width: 1023.98px) {
+  nav .home-mobile-menu {
+    /* The panel is the pill's content, not a separate card. Only its height
+       animates: the bottom edge slides straight down. The menu links are
+       pinned to the top; the CTA buttons are absolutely anchored to the
+       bottom edge (see the component), so they ride it down without jumping. */
+    position: relative;
+    display: block;
+    width: 100%;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+    /* Collapsed: zero height + constant zero vertical padding, so nothing
+       floors the height and the pill stays slim. */
+    height: 0;
+    padding: 0 1.5rem;
+    /* Fast + snappy: a single quick ease-out on the height alone. */
+    transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  nav[data-state="active"] .home-mobile-menu {
+    /* Bottom slides down to ~0.75rem above the viewport bottom. */
+    height: calc(100dvh - 4.75rem);
+  }
+
+  /* Menu items + CTA buttons: blur + rise + fade in as the card opens, each
+     staggered by its own --reveal-delay. Fast plain reset on close. */
+  .home-reveal {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    filter: blur(10px);
+    transition:
+      opacity 0.18s linear,
+      transform 0.18s linear,
+      filter 0.18s linear;
+  }
+
+  nav[data-state="active"] .home-reveal {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+    transition:
+      opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0s),
+      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0s),
+      filter 0.7s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0s);
+  }
+
+  /* Mobile scroll-morph widths. Driven here rather than via Tailwind's
+     max-w-* utilities because this file is unlayered and so beats those
+     layered utilities regardless of source order — the only reliable way to
+     make the scrolled width win over the rest width on mobile.
+     - Rest is pinned to the rendered width (viewport minus the nav's px-2) so
+       the max-width tween below moves from frame one instead of idling until
+       the value first drops below the viewport, then snapping.
+     - Scrolled narrows to the glassy pill (auth trims it further, matching the
+       desktop max-w-md / max-w-[34rem] split).
+     - While the menu is open the card must fill the width, so the scrolled
+       narrowing is switched off via :not([data-state="active"]). */
+  nav > div {
+    max-width: calc(100vw - 1rem);
+  }
+  nav[data-scrolled]:not([data-state="active"]) > div {
+    max-width: 34rem;
+  }
+  nav[data-scrolled][data-auth]:not([data-state="active"]) > div {
+    max-width: 28rem;
+  }
+
+  /* The pill container is the card. Its radius is a constant 2.5rem (set on
+     the element): clamped to a stadium while the pill is short, reading as a
+     rounded card once tall — so the curvature opens up smoothly as the bottom
+     descends, with no mid-animation bulge. Its background stays the same
+     glassy translucent blur as the closed pill. All linear.
+
+     This same transition drives the on-scroll morph (rest → glassy pill).
+     max-width and backdrop-filter MUST be listed too: on scroll the pill
+     narrows (max-width) and its blur fades in — desktop animates these via
+     Tailwind's transition-all, but here that utility is layered and this
+     unlayered rule wins, so anything omitted would snap/pop instead of glide. */
+  nav > div {
+    transition:
+      max-width 0.3s linear,
+      background-color 0.3s linear,
+      border-color 0.3s linear,
+      box-shadow 0.3s linear,
+      -webkit-backdrop-filter 0.3s linear,
+      backdrop-filter 0.3s linear;
+  }
+
+  nav[data-state="active"] > div {
+    background-color: color-mix(in oklab, var(--background) 50%, transparent);
+    border-color: var(--border);
+    box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.45);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+  }
+}
+
+/* Hero entrance — same blur + rise + fade as the mobile menu reveal, but
+   played once on load (all breakpoints) with a per-element --reveal-delay
+   stagger across the heading, subtitle and CTAs. */
+@keyframes home-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.home-reveal-hero {
+  animation: home-reveal-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--reveal-delay, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mobile-menu {
+    transition: none !important;
+  }
+  .home-mobile-menu :is(svg) {
+    transition: none !important;
+  }
+  /* Reveal falls back to a plain fade — no blur or movement. */
+  .home-reveal {
+    transform: none !important;
+    filter: none !important;
+  }
+  .home-reveal-hero {
+    animation: none !important;
+  }
+  .home-sun,
+  .home-moon,
+  .home-cloud,
+  .home-footer-sun-rays,
+  .home-bird-flight,
+  .home-bird-wing,
+  .home-star,
+  .home-falling-star,
+  .ghost-footer-eyes,
+  [data-ghost-logo]:hover .ghost-logo-eyes,
+  [data-ghost-logo]:focus-visible .ghost-logo-eyes {
+    animation: none;
+  }
+  /* Theme toggles swap the scene instantly instead of playing the arc. */
+  html[data-sky-transition]
+    :is(
+      .home-sun-track,
+      .home-moon-track,
+      .home-sky-light,
+      .home-sky-sunset,
+      .home-sky-dark
+    ),
+  html[data-sky-transition] .home-sun::after {
+    animation: none;
+  }
+  .home-day-fade,
+  .home-night-fade {
+    transition: none;
+  }
+  .home-cloud-wrap-left,
+  .home-cloud-wrap-right {
+    animation: none;
+    transform: none;
+  }
+  .home-falling-star {
+    opacity: 0;
+  }
+  .home-bird-flight {
+    opacity: 0;
+  }
+}

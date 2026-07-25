@@ -1,0 +1,59 @@
+---
+title: The open-core boundary
+description: Exactly what is in the open-source edition and what belongs to the managed Ciele Cloud service.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele follows an open-core model: the product is open source, and a small set of
+commercial features that only make sense for a managed multi-tenant service live
+outside the open-source tree. This page draws the line precisely.
+
+## In the open-source edition (AGPL-3.0)
+
+The whole product your visitors and administrators use is open source:
+
+- The **admin console** and the assistant **editor** with live preview.
+- The **chat widget** and its runtime.
+- The **flow router** and flow actions.
+- The **knowledge** and retrieval pipeline, including website crawling, files,
+  and FAQs, with source citations.
+- **Help desks** and escalation channels.
+- The operations surfaces: **inbox**, **improvements**, **insights**, and
+  **alerts**.
+- **Multi-tenancy** with organizations, members, roles, and row-level security.
+- Publishing to your website with an embed snippet.
+
+If a feature is documented in the main [Documentation](/) without a
+managed-edition note, it is part of this open-source core.
+
+## Cloud-only (not in the open-source tree)
+
+These are the managed-service features. They are excluded from the open-source
+code and are never created in a self-hosted deployment:
+
+- **Plans and billing** — subscription plans, payment, and invoicing.
+- **Usage metering and enforced limits** — per-plan monthly quotas and their caps.
+- **The cross-organization operations surface** used to run the managed service.
+- **Managed single sign-on onboarding** for the admin console.
+- **Hosting, upgrades, backups, and support** with a service commitment.
+
+<Callout title="How the split is enforced in the code">
+Enterprise code lives under a dedicated path and is excluded when the public
+open-source tree is assembled, so an open-source checkout simply does not contain
+it. The enterprise database migrations are a separate chain applied only where
+they exist; a self-hosted deployment has no such directory and creates none of
+those tables. See [Database](/self-hosting/database).
+</Callout>
+
+## Why the boundary is where it is
+
+Everything a self-hosting organization needs to run assistants for its own users
+is in the open-source core. The Cloud-only features are the ones tied to Ciele
+operating the service *for other organizations* — charging for it, capping usage
+across tenants, and standing behind availability. Keeping them out of the
+open-source tree means the open-source edition is complete and self-contained on
+its own terms, and the managed edition adds only what a managed service needs.
+
+If you want those managed capabilities without building them yourself, use
+[Ciele Cloud](/cloud).

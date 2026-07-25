@@ -1,0 +1,23 @@
+# Keep the build context small and the image reproducible from a clean
+# checkout: nothing generated, secret, or environment-local goes to Docker.
+# Workspace package manifests stay included even for apps the image doesn't
+# ship — pnpm's frozen-lockfile validation needs every importer present.
+node_modules
+**/node_modules
+**/.next
+**/.turbo
+.git
+.github
+.claude
+.vscode
+**/.env
+**/.env.*
+!**/.env.example
+supabase/.temp
+graphify-out
+docs
+services
+apps/admin/*
+!apps/admin/package.json
+apps/docs/*
+!apps/docs/package.json

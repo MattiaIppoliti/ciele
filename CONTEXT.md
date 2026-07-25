@@ -1,0 +1,270 @@
+# Agent Hub
+
+Multi-tenant SaaS admin platform where each company configures, tests and publishes its own AI assistants (chatbot widgets embeddable on the company's websites).
+
+## Language
+
+**Organization**:
+A tenant company with its own isolated workspace of assistants and members.
+_Avoid_: company, azienda, workspace, tenant (in code)
+
+**Assistant**:
+A configurable AI chatbot owned by one Organization, edited in the admin and published as a widget.
+_Avoid_: agent, agente, bot, chatbot (as entity name)
+
+**Member**:
+A person (Supabase Auth user) belonging to one Organization with exactly one Role.
+_Avoid_: user (ambiguous with widget end users), account
+
+**Role**:
+A Member's permission level: Owner, Admin, Editor or Viewer. Publish and member management require Owner/Admin; Editors edit and test assistants; Viewers only read and test.
+_Avoid_: permission, group
+
+**Knowledge Collection**:
+A named group of knowledge inside one Assistant (e.g. "MARKETING (A) 2024/2025"), anchorable in chat as context and represented as an OKF bundle.
+_Avoid_: course (education-specific label), folder, dataset
+
+**Source**:
+An original artifact uploaded into a Knowledge Collection (file or URL) from which Concepts are derived; cited in chat replies.
+_Avoid_: document (ambiguous), attachment
+
+**Concept**:
+One OKF markdown document (YAML frontmatter + body) inside a Knowledge Collection — the unit the agent reads, links and cites.
+_Avoid_: page, note, chunk
+
+**Publication**:
+An immutable, versioned snapshot of an Assistant's config (General, Flows, Knowledge references, model) created by Publish; the live widget always serves the latest Publication. Rollback = republishing a previous one.
+_Avoid_: deploy, release, version (alone)
+
+**Widget**:
+The embeddable chat UI (floating launcher button or iFrame) served on a customer website, always backed by a Publication.
+_Avoid_: plugin, floater (in code), chatbot
+
+**Visitor**:
+An anonymous end user of a published widget, identified by a persistent `visitor_id` in the host site's localStorage (no login at day one; SSO is a later phase).
+_Avoid_: user (ambiguous with Member), student, customer
+
+**Conversation**:
+A persisted chat thread between one Visitor (or Member, in Preview) and one Assistant, optionally anchored to a Knowledge Collection; listed in the History sidebar.
+_Avoid_: chat, session, thread
+
+**Context Hint**:
+A parameter the host page passes to the embedded widget (e.g. which Knowledge Collection to anchor) — how the "Current course" chip gets pre-filled.
+_Avoid_: page context, metadata
+
+**Deep Search**:
+A composer mode that gives the agent loop more iterations and multi-hop navigation of the OKF graph (index → linked Concepts → Sources) — knowledge-only, never the open web.
+_Avoid_: web search, research mode
+
+**Provider Connection**:
+An Organization's configured way to reach an LLM. Current types are Platform plan (bundled models), API key (BYOK, encrypted), and Federated (tenant-billed keyless enterprise auth such as Google Vertex, Anthropic WIF, or Azure OpenAI). Legacy Subscription rows are retired and never power runtime traffic.
+_Avoid_: integration, LLM config
+
+**Flow**:
+A routing rule attached to an Assistant that matches an incoming user message and executes an ordered list of Flow Actions.
+_Avoid_: workflow, intent
+
+**Flow Action**:
+One step a matched Flow executes: search knowledge, custom message, suggest help desk, follow-up questions.
+_Avoid_: step, tool
+
+**Default behavior**:
+The locked, always-last Flow that handles any message no other Flow matches.
+_Avoid_: fallback flow (in UI)
+
+**Intent Classification**:
+The cheap LLM call that identifies matching enabled Flows and routes to the highest-priority one (top-to-bottom configured order; replaces keyword matching with the same `matchFlow` seam).
+_Avoid_: routing model, matcher
+
+**Thinking Steps**:
+The user-visible trace of what the runtime did for a reply (classify → search → generate), expandable in the chat UI.
+_Avoid_: reasoning, chain of thought (in UI)
+
+**Conversation Turn**:
+One user message and everything the runtime does to answer it: get-or-create the Conversation, persist the user message, route through the flow engine, persist the reply with its flow markers, apply deferred effects, stream Thinking Steps + reply. One module (`lib/runtime/turn.ts`) owns it; Widget and Preview are thin adapters over it.
+_Avoid_: exchange, round, request (alone)
+
+**Extractor**:
+One adapter in the Source text-extraction registry (`lib/runtime/extract.ts`) that turns one
+SourceKind's raw input (pasted text, a URL, uploaded file bytes) into plain text + a display name,
+ready for OKF enrichment. Adding an ingestable kind = one Extractor + one registry entry (same
+pattern as Flow Action handlers).
+_Avoid_: parser (an implementation detail), converter
+
+**Ingestion Job**:
+A JSON-serializable unit of deferred knowledge-ingestion work (enrich → persist Concepts → embed,
+or a website crawl) executed off the request path (`lib/runtime/jobs.ts`); progress and failures are
+tracked by the Source status lifecycle (`processing` → `ready`/`error`), which the Knowledge UI polls.
+_Avoid_: background task, queue item (adapter detail)
+
+**Knowledge Graph**:
+A *derived* retrieval + learning index over a Knowledge Collection's Concepts, built by the graph
+worker (cognee) as entities + typed relationships. Never the system of record — OKF stays
+authoritative — and every result resolves back to a Concept → Source citation (ADR-0017, preserving
+the ADR-0002 invariant).
+_Avoid_: knowledge base (that's OKF), memory, vector store (that's the pgvector layer)
+
+**Knowledge Engine**:
+The per-Assistant choice of how `search_knowledge` retrieves: **Vector** (the pgvector RAG, default
+and fallback) or **Graph** (answers composed from the Knowledge Graph, with the feedback loop live).
+_Avoid_: retriever, backend, mode (alone)
+
+**Retrieval Trace**:
+The record of which Knowledge Graph elements produced a given answer, captured when a Graph-engine
+search runs with the conversation as its session — the substrate feedback later re-weights.
+_Avoid_: history, log, trace (alone)
+
+**Suggested Fix**:
+A drafted, human-approved knowledge-improvement proposal attached to an Improvement (a draft FAQ
+Concept + rationale + Source refs), generated by Ciele from the flagged answer and the Member's
+description. Accepting it writes a real Concept; the loop never auto-edits a tenant's knowledge.
+_Avoid_: suggestion, recommendation, auto-fix
+
+## Relationships
+
+- An **Organization** owns many **Assistants**; every Assistant belongs to exactly one Organization
+- An **Organization** has many **Members**, each with exactly one **Role** (Owner | Admin | Editor | Viewer); at least one Owner exists
+- An **Assistant** owns many **Flows**; exactly one of them is the **Default behavior**
+- A **Flow** executes one or more **Flow Actions** in order
+- An **Assistant** owns many **Knowledge Collections**; a Collection contains **Sources** and the **Concepts** derived from them; chat can be anchored to one Collection
+- An **Organization** has many **Provider Connections**; each **Assistant** selects the provider+model it runs on
+- **Subscription** Provider Connection rows are retired. After an Organization owner opts in, a Member may use a personal Claude/ChatGPT subscription only for that Member's Preview through the local connector; published Widget traffic uses Platform, API-key, or Federated Provider Connections.
+- A **Visitor** has many **Conversations** with one Assistant; a Conversation may be anchored to one **Knowledge Collection** (via **Context Hint** or the composer chip)
+- Publish creates a **Publication**; a **Widget** serves the latest Publication — admin edits are visible only in Preview until the next Publish
+- Day-one Widget channels: Website floater (script snippet) and iFrame; campus channels (Teams, SharePoint, WordPress, …) come later
+
+## Runtime invariants
+
+- Flows are an **authoritative router**: Intent Classification picks the Flow, then its Flow Actions execute in order — the LLM never overrides them.
+- `custom_message` output is **verbatim** — never paraphrased by a model.
+- Generative behavior (agent loop with knowledge/deep-search tools, Thinking Steps) lives **inside** `search_knowledge` and the Default behavior, not above the router.
+
+## Example dialogue
+
+> **Dev:** "If the professor's **Flow** has a `custom_message`, can the model reword it to fit the conversation?"
+> **Domain expert:** "Never — the router picks the Flow via **Intent Classification**, and `custom_message` goes out verbatim. Only `search_knowledge` and the **Default behavior** generate text, and there the **Thinking Steps** show what the agent did."
+
+## Scope (current phase)
+
+**In:** Organizations + 4-role RBAC (Supabase Auth) · multi-provider agent runtime (authoritative Flow router + agent loop in `search_knowledge`/Default behavior, TypeScript, native tool-use) · Knowledge Collections as OKF bundles with pgvector RAG and Source citations · Conversations/History for anonymous Visitors with Context Hints · snapshot-based Publish with Website floater + iFrame · per-message 👍/👎 feedback · minimal Style (brand colors, logo, floater position) · Deep Search (knowledge-only).
+
+**Out (explicitly, for later phases):** AI Tutor · AI Feedback section · full Help Desks configuration (`suggest_help_desk` keeps a single configurable link) · widget Authentication/SSO · campus channels (Teams, SharePoint, MyDay, CampusGroups, Kaltura, Google, WordPress) · billing/plans · consumer subscription reuse in published Widgets (see ADR-0007).
+
+## Flagged ambiguities
+
+- "agente" (spoken wording) vs **Assistant** — resolved: **Assistant** is canonical in code, DB, APIs and docs; "agente" may appear only as an Italian UI label.
+- "aziende univoche" resolved to **Organization**: one shared SaaS platform, tenant isolation via RLS — not one deployment per company.
+
+## Additional language (full product surface)
+
+These terms extend the vocabulary beyond the current-phase core, to cover the complete product
+surface (see [`CLAUDE.md`](CLAUDE.md) for the exhaustive feature map and [`agents.md`](agents.md)
+for runtime behavior).
+
+**Help Desk**:
+An Organization-level escalation destination with a description the AI uses to decide when to
+recommend it; owns Support Channels and links to the Assistants that may offer it.
+_Avoid_: department, queue.
+
+**Support Channel**:
+One escalation method on a Help Desk — type is Email, Phone number, Live chat, Create a ticket,
+External link, Salesforce Chat Handover, or API endpoint — each with its own Form, Conversation Data
+selection, and Availability.
+_Avoid_: contact, route.
+
+**Escalation**:
+The act of handing a Conversation off from the AI to a Help Desk / human, optionally collecting a
+form and attaching conversation data; may open a ticket in a connected system.
+_Avoid_: handoff (reserved for assistant-to-assistant **Handover**), transfer.
+
+**Improvement**:
+A tracked answer-quality work item (status/priority/tags/assignee) linked to the flagged AI
+message(s); created by the Flow Improvement action, a Help Desk's auto-generate setting, or a manual
+"Improve Answer" flag.
+_Avoid_: ticket (reserved for external ticketing), issue.
+
+**Alert**:
+A system-raised operational health notice (e.g. an integration whose credentials stopped working)
+that persists until an admin resolves it or it auto-clears.
+_Avoid_: notification, warning.
+
+**Course / LMS Connection**:
+A live integration with a Learning Management System (e.g. Moodle, Canvas) that syncs Courses as
+Knowledge and enables LTI publishing; each Course carries an indexing Status.
+_Avoid_: class, integration (generic).
+
+**H5P Interactive / Study Mode**:
+AI-generated learning exercises (quizzes, flashcards, drag-the-words) and a self-assessment quiz
+shell, triggered by tags (e.g. `@quiz`) or automatically; part of the AI Tutor module.
+_Avoid_: game, activity (generic).
+
+**Quick-reply Button (starter button)**:
+A configurable launcher button on the welcome screen with a typed action (Send Text, Role-Play,
+Escalation, …); reorderable, capped per assistant.
+_Avoid_: chip, shortcut (Insights uses "shortcut button clicks" for these).
+
+**Dynamic Field**:
+A per-user data value (from SSO profile or imported User data) interpolated into messages for
+personalization.
+_Avoid_: variable, merge tag.
+
+**Role — target RBAC (5 tiers)**:
+The target org-role model is **Super Admin · Admin · Collaborator · Support Agent · Data Viewer**
+(new-member invite defaults to Collaborator). The current model has four (Owner/Admin/Editor/
+Viewer); mapping-wise Super Admin≈Owner, Admin≈Admin, Collaborator≈Editor, Data Viewer≈Viewer, and
+**Support Agent** (a help-desk/escalation operator) has no equivalent yet.
+_Avoid_: permission, group.
+
+**Analytics API**:
+A public, org-scoped HTTP API (base path `/analytics`) for pulling Insights data programmatically,
+authenticated by **API keys** minted in Organization → API Keys.
+_Avoid_: export, webhook.
+
+**AI Usage Ledger**:
+One row per model call the runtime makes (stage `classify` / `generate` / `embed` / `verify` /
+`goal_eval` / `compost`), attributed to Organization, Assistant, Conversation, message and the
+**resolved** provider/model; written post-commit, never blocking a turn. Feeds the org's daily
+token **Budget** (notify raises an Alert; block pauses AI answers with the escalation offer).
+_Avoid_: billing, metering (generic).
+
+**Standing Goal**:
+An admin-authored golden question on an Assistant with deterministic expectations (not the
+fallback, cites a Source, expected Source URL, must-contain fragments), re-verified on a schedule
+against the latest Publication; a failing Goal raises an auto-resolving Alert. Flaky Goals are
+**quarantined**, never deleted.
+_Avoid_: test, check (generic).
+
+**Answer Verdict**:
+The independent verifier's one-line judgment (pass/fail + reason) on a generative answer, graded
+fresh-context from (question, answer, cited Concept content) by a cheap-tier model; one Verdict per
+message. FAILs create/increment Improvements; Verdicts feed the Trust Tier.
+_Avoid_: rating (reserved for Visitor 👍/👎 feedback), score.
+
+**Trust Tier**:
+The earned autonomy level of an (Assistant, Flow) pair — `auto` / `queue` / `watch` — a rolling
+pass rate over recent Verdicts and explicit feedback, materialized nightly. `watch` answers always
+offer Escalation; a demotion into `watch` raises an auto-resolving Alert.
+_Avoid_: grade, rank.
+
+**Compost**:
+The weekly pass that digests an Assistant's failure exhaust (failed Verdicts, 👎, escalations,
+refusals, Goal violations, demotions) into at most three **proposed** Improvements (tagged; human
+accepts or archives — never auto-applied). A clean week is recorded, not silent.
+_Avoid_: auto-fix, retro.
+
+## Functional surface index
+
+Nine assistant SETUP sections — **General, Knowledge (Websites/Courses/Applications/Files/EdTech
+Support Guides/FAQs), AI Tutor, AI Feedback, Flows, Help Desks, Style, Authentication, Publish** —
+plus five org areas — **Assistants, Help Desks, Inbox, Improvements, Insights** — and **Alerts**.
+Full per-screen detail and the ✅/🟡/⬜ build-status map live in [`CLAUDE.md`](CLAUDE.md); the
+Flow router, condition types, action catalog, and knowledge loop live in [`agents.md`](agents.md).
+
+## Scope note (revised)
+
+The In/Out scope above reflects the **current build phase**, not the full target. The full target
+surface is broader — AI Tutor (Study Mode/H5P), AI Feedback (grading), full Help Desks with typed Support
+Channels + ticketing, Authentication (SSO/OIDC + User data), LMS/Course integration, Improvements
+tracker, Alerts, richer Publish channels (LTI, campus portals, pop-up), and the full Flow action
+catalog (Button/Iframe/API request/Send email/Handover/Study Mode/H5P). Treat the "Out (for later
+phases)" list as *sequenced*, not *excluded*; `CLAUDE.md` §11 ranks the highest-leverage gaps.
