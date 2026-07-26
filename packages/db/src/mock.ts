@@ -326,8 +326,11 @@ const HELP_DESK_SEEDS: Array<Pick<HelpDesk, "name" | "description">> = [
   },
 ];
 
-function createStore(): MockStore {
-  const store: MockStore = {
+/** The store shape with every field at its zero value (demo rows are seeded on
+ * top by `createStore`). Kept separate so `getStore`'s HMR backfill can read the
+ * full field list off the declaration instead of a hand-kept list. */
+function emptyStore(): MockStore {
+  return {
     organization: { ...DEMO_ORG },
     profiles: new Map(
       [DEMO_MEMBER, ...DEMO_TEAMMATES].map((m) => [
@@ -394,6 +397,10 @@ function createStore(): MockStore {
       updatedAt: new Date().toISOString(),
     },
   };
+}
+
+function createStore(): MockStore {
+  const store = emptyStore();
 
   seedAssistant(store, {
     id: "Vrp47KxooVPk",
@@ -1163,32 +1170,22 @@ function seedInboxDemo(store: MockStore) {
 // Survive Next.js dev-server HMR by stashing the store on globalThis.
 const globalForMock = globalThis as unknown as { __agentHubMock?: MockStore };
 
+/** Every field the store shape declares. Read once off `emptyStore` so a field
+ * added to `MockStore` is backfilled below without anyone remembering to. */
+const STORE_FIELDS = Object.keys(emptyStore()) as (keyof MockStore)[];
+
 function getStore(): MockStore {
   globalForMock.__agentHubMock ??= createStore();
   const store = globalForMock.__agentHubMock;
-  // Backfill maps added after the store was created (survives dev HMR).
-  store.connections ??= new Map();
-  store.conversations ??= new Map();
-  store.messages ??= new Map();
-  store.improvements ??= new Map();
-  store.improvementMessages ??= new Map();
-  store.improvementProposals ??= new Map();
-  store.alerts ??= new Map();
-  store.collections ??= new Map();
-  store.sources ??= new Map();
-  store.concepts ??= new Map();
-  store.chunks ??= new Map();
-  store.publications ??= new Map();
-  store.helpDesks ??= new Map();
-  store.supportChannels ??= new Map();
-  store.localConnectorPairings ??= new Map();
-  store.localConnectorDevices ??= new Map();
-  store.localInferenceJobs ??= new Map();
-  store.platformSettings ??= {
-    systemPrompt: "",
-    updatedBy: null,
-    updatedAt: new Date().toISOString(),
-  };
+  // A field added to `MockStore` after a dev-server store was stashed is absent
+  // on that warm store, and reading it throws. Refill from a fresh empty shape.
+  const missing = STORE_FIELDS.filter((field) => store[field] === undefined);
+  if (missing.length > 0) {
+    const fresh = emptyStore();
+    for (const field of missing) {
+      Object.assign(store, { [field]: fresh[field] });
+    }
+  }
   for (const [id, assistant] of store.assistants) {
     if (
       !assistant.style ||
