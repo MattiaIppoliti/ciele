@@ -8,6 +8,7 @@ import {
 } from "./defaults";
 import type { DefaultFlowSpec } from "./defaults";
 import { shortId } from "./id";
+import { okfActor } from "./okf";
 import { computeInsightsOverview } from "./insights";
 import { buildPublicationConfig } from "./publication";
 import { nextCrawlDue } from "./recrawl";
@@ -524,7 +525,10 @@ function seedKnowledgeDemo(store: MockStore) {
       type: "FAQ",
       title: "Chi è Alex?",
       description: "Alex Bianchi è un ingegnere che lavora su progetti di intelligenza artificiale.",
-      timestamp: at,
+      // Hand-written then signed off — the demo's one human-reviewed concept,
+      // so the Knowledge browser shows every trust tier out of the box.
+      generated: { by: okfActor.human(DEMO_MEMBER.userId), at },
+      verified: [{ by: okfActor.human(DEMO_MEMBER.userId), at }],
     },
     body: "Alex Bianchi è un ingegnere che lavora su progetti legati all'intelligenza artificiale. Il suo ultimo lavoro riguarda piattaforme AI e assistenti digitali.",
   });
@@ -553,9 +557,28 @@ function seedKnowledgeDemo(store: MockStore) {
       type: "Document",
       title: "Alex Bianchi — CV",
       description: "Imported from file source \"Alex_Bianchi_CV.pdf\"",
-      timestamp: at,
+      // Machine-drafted from the upload and never confirmed: unverified.
+      generated: { by: okfActor.agent("okf-enricher", "demo"), at },
+      sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
     },
     body: "Alex Bianchi — Ingegnere.\n\nPercorso: Software Engineering e progetti di prodotto digitale.\n\nEsperienza: lavora su piattaforme legate all'intelligenza artificiale (AI), automazione e assistenti digitali.\n\nPortfolio personale: https://alexbianchi.example",
+  });
+
+  // The enriched CV's verbatim companion (ADR-0002): the extracted text as-is,
+  // indexed so detail the rewrite above did not carry is still retrievable.
+  addConcept({
+    id: "concept-alex-cv-original",
+    sourceId: cvSource.id,
+    path: "originals/alex-bianchi-cv-pdf.md",
+    frontmatter: {
+      type: "Source Text",
+      title: "Alex_Bianchi_CV.pdf — full text",
+      description:
+        'Unedited text of file source "Alex_Bianchi_CV.pdf", indexed so detail the enrichment did not carry is still retrievable.',
+      generated: { by: okfActor.process("okf-verbatim-index"), at },
+      sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
+    },
+    body: "ALEX BIANCHI\nIngegnere — Software Engineering & prodotto digitale\n\nESPERIENZA\nPiattaforme di intelligenza artificiale, automazione e assistenti digitali.\nManifold Drone Synchronization — Singapore, 2019.\nArdupilot Failure — Development, 2020/2021.\n\nFORMAZIONE\nSoftware Engineering.\n\nCONTATTI\nPortfolio: https://alexbianchi.example",
   });
 
   // Website — alexbianchi.example portfolio, seeded as if already crawled
@@ -621,7 +644,14 @@ function seedKnowledgeDemo(store: MockStore) {
         title: project.title,
         description: `https://alexbianchi.example/${project.slug}`,
         resource: `https://alexbianchi.example/${project.slug}`,
-        timestamp: at,
+        generated: { by: okfActor.process("website-crawl"), at },
+        sources: [
+          {
+            id: project.slug,
+            resource: `https://alexbianchi.example/${project.slug}`,
+            title: project.title,
+          },
+        ],
       },
       body: project.body,
     });

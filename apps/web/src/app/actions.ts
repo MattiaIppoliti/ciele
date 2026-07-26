@@ -3,6 +3,7 @@
 import {
   buildPublicationConfig,
   isSupabaseConfigured,
+  okfActor,
   raiseImprovement,
   sortFlows,
 } from "@agent-hub/db";
@@ -11,6 +12,7 @@ import type {
   Assistant,
   AssistantPatch,
   Concept,
+  ConceptFrontmatter,
   Conversation,
   Db,
   FlowActionSettings,
@@ -1235,7 +1237,11 @@ async function ingestNewSource(
   name: string,
   kind: "file" | "url" | "text",
   rawText: string,
-  original?: File
+  original?: File,
+  /** The fetched URL for a `url` Source — retained so the OKF `sources` entry
+   *  its Concepts carry names a followable artifact rather than a descriptor
+   *  (the Source `name` is the page *title*, which is not addressable). */
+  sourceUrl?: string
 ) {
   const { db } = await requireMember("edit");
   const [assistant, collection] = await Promise.all([
@@ -1253,7 +1259,13 @@ async function ingestNewSource(
     originalObjectPath = stored.path;
   }
 
-  const source = await db.createSource({ collectionId, name, kind, originalObjectPath });
+  const source = await db.createSource({
+    collectionId,
+    name,
+    kind,
+    originalObjectPath,
+    ...(sourceUrl ? { config: { url: sourceUrl } } : {}),
+  });
   await enqueueIngestJob(
     { kind: "ingest_source", assistantId, collectionId, sourceId: source.id, rawText },
     { db }
@@ -1277,7 +1289,15 @@ export async function addUrlSourceAction(
   url: string
 ) {
   const extracted = await extractSourceText({ kind: "url", url });
-  await ingestNewSource(assistantId, collectionId, extracted.name, "url", extracted.text);
+  await ingestNewSource(
+    assistantId,
+    collectionId,
+    extracted.name,
+    "url",
+    extracted.text,
+    undefined,
+    url
+  );
 }
 
 /**
@@ -1587,6 +1607,14 @@ async function persistFaqConcept(args: {
   question: string;
   answer: string;
   connections: Awaited<ReturnType<Db["listProviderConnections"]>>;
+  /**
+   * OKF v0.2 trust + provenance for the Concept this writes (§5.1/§5.2) — who
+   * authored it, who confirmed it, what it derives from. Required rather than
+   * defaulted: the two callers differ exactly here (a person typing a FAQ is
+   * `human:` generated; an accepted Suggested Fix is agent-generated and
+   * human-*verified*), and silently defaulting would misattribute one of them.
+   */
+  provenance: Pick<ConceptFrontmatter, "generated" | "verified" | "sources">;
 }): Promise<Concept> {
   const question = args.question.trim();
   const slug =
@@ -1602,7 +1630,7 @@ async function persistFaqConcept(args: {
       type: "FAQ",
       title: question,
       description: args.answer.slice(0, 140),
-      timestamp: new Date().toISOString(),
+      ...args.provenance,
     },
     body: args.answer,
     connections: args.connections,
@@ -1617,7 +1645,19 @@ export async function createFaqAction(
 ) {
   const { db, session } = await requireMember("edit");
   const connections = await db.listProviderConnections(session.organization.id);
-  await persistFaqConcept({ db, assistantId, collectionId, question, answer, connections });
+  await persistFaqConcept({
+    db,
+    assistantId,
+    collectionId,
+    question,
+    answer,
+    connections,
+    // Typed by a person in the FAQ editor: hand-authored, and the act of
+    // writing it is not a verification event (§5.2 keeps those distinct).
+    provenance: {
+      generated: { by: okfActor.human(session.userId), at: new Date().toISOString() },
+    },
+  });
   revalidatePath(`/assistants/${assistantId}`);
 }
 
@@ -1666,7 +1706,10 @@ export async function importFaqsAction(formData: FormData): Promise<{
         type: "FAQ",
         title: row.question,
         description: row.answer.slice(0, 140),
-        timestamp: stamp,
+        // Hand-authored content the member supplied in bulk — the person, not
+        // the importer, is the author; the CSV is what it derives from (§5.1).
+        generated: { by: okfActor.human(session.userId), at: stamp },
+        sources: [{ id: "faq-csv", resource: `upload "${file.name}"`, title: file.name }],
       },
       body: row.answer,
       connections,
@@ -1685,12 +1728,19 @@ export async function updateFaqAction(
 ) {
   const { db, session } = await requireMember("edit");
   const connections = await db.listProviderConnections(session.organization.id);
+  const existing = await db.getConcept(conceptId);
   const concept = await db.updateConcept(conceptId, {
     frontmatter: {
+      // Carry the prior frontmatter forward: an accepted Suggested Fix holds
+      // `sources` and a `verified` stamp that a wholesale rewrite would erase.
+      // The old `verified.at` deliberately stays put — content changing without
+      // re-confirmation is exactly the signal §5.2 keeps `generated` and
+      // `verified` separate to express (edited-since-last-reviewed).
+      ...existing?.frontmatter,
       type: "FAQ",
       title: question.trim(),
       description: answer.slice(0, 140),
-      timestamp: new Date().toISOString(),
+      generated: { by: okfActor.human(session.userId), at: new Date().toISOString() },
     },
     body: answer,
   });
@@ -1938,6 +1988,21 @@ export async function acceptImprovementProposalAction(
         throw new Error("The assistant has no Knowledge Collection to add the FAQ to");
       }
       const connections = await db.listProviderConnections(session.organization.id);
+      // The drafter's provenance, resolved to OKF v0.2 (§5.1): each Concept the
+      // draft drew on becomes a bundle-relative `sources` entry, so the new FAQ
+      // records its derivation instead of losing it at accept time. Concepts
+      // deleted since the draft are dropped rather than pointing nowhere.
+      const draftedFrom = (
+        await Promise.all(
+          proposal.payload.sources.map(async (s) => {
+            const cited = await db.getConcept(s.conceptId).catch(() => null);
+            return cited
+              ? { id: s.conceptId, resource: `/${cited.path}`, title: s.conceptTitle }
+              : null;
+          })
+        )
+      ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+      const at = new Date().toISOString();
       const concept = await persistFaqConcept({
         db,
         assistantId: targetAssistantId,
@@ -1945,6 +2010,16 @@ export async function acceptImprovementProposalAction(
         question: proposal.payload.draftQuestion,
         answer: proposal.payload.draftAnswer,
         connections,
+        // Agent-drafted, then confirmed by the person who clicked accept — the
+        // one place the platform produces a `human-reviewed` trust tier (§5.3).
+        provenance: {
+          generated: {
+            by: okfActor.agent("suggested-fix-drafter", proposal.payload.model),
+            at,
+          },
+          verified: [{ by: okfActor.human(session.userId), at }],
+          ...(draftedFrom.length > 0 ? { sources: draftedFrom } : {}),
+        },
       });
       await db.updateImprovementProposal(proposal.id, {
         status: "accepted",

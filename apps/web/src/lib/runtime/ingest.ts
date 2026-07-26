@@ -4,12 +4,14 @@ import type {
   Concept,
   ConceptFrontmatter,
   Db,
+  OkfSource,
   ProviderConnection,
   ResolvedWebsiteCrawlerProvider,
   Source,
   SourceStatus,
   WebsiteSourceConfig,
 } from "@agent-hub/db";
+import { okfActor } from "@agent-hub/db";
 import type { CrawledPage } from "./apify";
 import {
   browserCrawlerFor,
@@ -45,13 +47,44 @@ export const CRAWL_FINALIZE_LEASE_MS = 2 * 60 * 60_000;
 export const MAX_CONCEPT_BODY_CHARS = 1_000_000;
 
 /**
- * Prompt-size guard for LLM enrichment — a *different* concern from the stored
- * body ceiling above. It bounds how much source text is sent to the classifier
- * model in one call (context + token cost). Very large files that exceed this
- * are still truncated for the prompt; chunked/windowed enrichment of huge files
- * is follow-on work (map #398, distillation #404).
+ * Output budget for one enrichment call. Set explicitly rather than inheriting
+ * a provider default, because this number *is* the compression ratio: whatever
+ * the model cannot say within it gets dropped from the curated layer, and an
+ * invisible default made that a silent, provider-dependent decision.
+ *
+ * 8k is deliberately conservative — `getClassifierModel` can resolve to any
+ * provider, including a user-configured `openai_compatible` model with a modest
+ * cap, and exceeding a model's own limit is a hard error that would cost us the
+ * whole enrichment. The window below is sized to this, not the other way round.
  */
-export const ENRICH_SOURCE_MAX_CHARS = 60_000;
+export const ENRICH_MAX_OUTPUT_TOKENS = 8_000;
+
+/**
+ * How much source text one enrichment call sees. Sized so its window can be
+ * rendered into concepts *within* {@link ENRICH_MAX_OUTPUT_TOKENS} rather than
+ * compressed to fit it: ~24k chars is ~6k input tokens, leaving real headroom
+ * in an 8k output budget. The old single 60k-char call had no such relationship
+ * to its (unset) output cap, so long sources were compressed by arithmetic.
+ */
+export const ENRICH_WINDOW_CHARS = 24_000;
+
+/**
+ * How many windows one Source may spend. Bounded by wall clock, not by cost:
+ * enrichment runs inside a job whose route caps at `maxDuration = 300`, and a
+ * job killed mid-flight is retried by cron — burning tokens on every attempt
+ * without ever finishing. Four sequential calls stay well inside that.
+ *
+ * Past this the curated layer stops, but nothing is lost from retrieval: the
+ * verbatim companion Concept ({@link verbatimDraft}) carries the whole document
+ * up to `MAX_CONCEPT_BODY_CHARS`.
+ */
+export const ENRICH_MAX_WINDOWS = 4;
+
+/**
+ * Total span enrichment curates. Everything past it is still stored, indexed
+ * and retrievable through the verbatim companion — only un-curated.
+ */
+export const ENRICH_SOURCE_MAX_CHARS = ENRICH_WINDOW_CHARS * ENRICH_MAX_WINDOWS;
 
 const CONCEPT_SCHEMA = z.object({
   concepts: z
@@ -85,6 +118,38 @@ function slugify(name: string): string {
   );
 }
 
+/**
+ * Splits source text into enrichment windows on paragraph boundaries, each at
+ * most {@link ENRICH_WINDOW_CHARS}, capped at {@link ENRICH_MAX_WINDOWS}.
+ *
+ * Unlike {@link chunkMarkdown}, the size limit here is **hard**. A window is a
+ * prompt budget, so an oversized paragraph is split mid-text rather than kept
+ * whole: PDF extraction routinely returns pages with no blank lines at all, and
+ * letting one 100k-char "paragraph" through would blow the very budget the
+ * windowing exists to respect.
+ */
+export function enrichmentWindows(text: string): string[] {
+  const windows: string[] = [];
+  let current = "";
+  const flush = () => {
+    if (current.trim()) windows.push(current.trim());
+    current = "";
+  };
+  for (const paragraph of text.split(/\n{2,}/)) {
+    if (paragraph.length > ENRICH_WINDOW_CHARS) {
+      flush();
+      for (let i = 0; i < paragraph.length; i += ENRICH_WINDOW_CHARS) {
+        windows.push(paragraph.slice(i, i + ENRICH_WINDOW_CHARS));
+      }
+      continue;
+    }
+    if (current && current.length + paragraph.length + 2 > ENRICH_WINDOW_CHARS) flush();
+    current += paragraph + "\n\n";
+  }
+  flush();
+  return windows.filter(Boolean).slice(0, ENRICH_MAX_WINDOWS);
+}
+
 /** Splits markdown into ~1200-char chunks on paragraph boundaries. */
 export function chunkMarkdown(body: string): string[] {
   const paragraphs = body.split(/\n{2,}/);
@@ -102,10 +167,85 @@ export function chunkMarkdown(body: string): string[] {
 }
 
 /**
+ * The OKF `sources` entry (§5.1) recording what a Source's drafted Concepts
+ * derive from. `resource` prefers a followable artifact — the page URL for a
+ * `url` Source, the retained original's storage key for an uploaded file — and
+ * otherwise falls back to a scope descriptor, which §5.1 explicitly permits for
+ * material a consumer cannot fetch (pasted text has no artifact to point at).
+ * The `id` is the stable footnote key per-claim attribution would use.
+ */
+function sourceProvenance(source: Source): OkfSource {
+  const resource =
+    source.config?.url ||
+    source.originalObjectPath ||
+    `${source.kind} source "${source.name}"`;
+  return { id: slugify(source.name), resource, title: source.name };
+}
+
+/**
+ * OKF `type` of the verbatim companion Concept (see {@link verbatimDraft}).
+ * Its own type so the Knowledge browser's type filter can separate curated
+ * knowledge from the raw index, and so a consumer can tell the two apart.
+ */
+export const SOURCE_TEXT_CONCEPT_TYPE = "Source Text";
+
+/**
+ * The **verbatim companion Concept**: the source text exactly as extracted,
+ * stored and indexed alongside the enriched Concepts.
+ *
+ * Why it exists: enrichment rewrites. `chunkMarkdown` chunks the Concept body,
+ * so before this, the *only* thing the vector index ever saw for a file / URL /
+ * pasted-text Source was the model's rewrite — and any detail the rewrite
+ * dropped was unreachable no matter how good retrieval was. The enriched
+ * Concepts stay the curated, citable layer; this one guarantees nothing in the
+ * source is missing from the index.
+ *
+ * It carries the FULL text, not the `ENRICH_SOURCE_MAX_CHARS` slice: that cap
+ * bounds the enrichment *prompt*, so a long document was previously indexed
+ * only up to 60k characters. The model still sees just the first 60k, but
+ * everything past it is now retrievable, which is the part that decides whether
+ * a visitor's question can be answered at all.
+ *
+ * Written only when enrichment actually ran. With no classifier the
+ * pass-through Concept already *is* the verbatim text, and a companion would be
+ * an exact duplicate competing with it for the same top-k slots.
+ */
+function verbatimDraft(
+  source: Source,
+  rawText: string,
+  at: string,
+  provenance: OkfSource
+): { path: string; frontmatter: ConceptFrontmatter; body: string } {
+  return {
+    path: `originals/${slugify(source.name)}.md`,
+    frontmatter: {
+      type: SOURCE_TEXT_CONCEPT_TYPE,
+      // Reads sensibly as a citation chip — a visitor sees which source the
+      // answer came from, and that it came from the source's own words.
+      title: `${source.name} — full text`,
+      description: `Unedited text of ${source.kind} source "${source.name}", indexed so detail the enrichment did not carry is still retrievable.`,
+      // No model wrote this — it is the extractor's output, copied.
+      generated: { by: okfActor.process("okf-verbatim-index"), at },
+      sources: [provenance],
+    },
+    body: rawText.slice(0, MAX_CONCEPT_BODY_CHARS),
+  };
+}
+
+/**
  * OKF enrichment (ADR-0002): drafts one Concept per meaningful unit of the
- * source via LLM; falls back to a single concept wrapping the raw text.
- * The enrichment call is a billable model call, so it meters under its own
- * `enrich` stage when the caller supplies attribution (#438).
+ * source via LLM, **plus a verbatim companion Concept** carrying the source
+ * text unedited ({@link verbatimDraft}) — curated knowledge and the raw index
+ * side by side. With no classifier it falls back to a single pass-through
+ * concept wrapping the raw text, which needs no companion because it already
+ * is one. The enrichment call is a billable model call, so it meters under its
+ * own `enrich` stage when the caller supplies attribution (#438).
+ *
+ * Every drafted Concept carries OKF v0.2 provenance: `generated` names the
+ * actor that wrote it (the enrichment model, the verbatim indexer, or the
+ * pass-through process) and `sources` names the Source it derives from, so a
+ * reader can tell machine-drafted knowledge from a verbatim copy without
+ * leaving the frontmatter.
  */
 async function enrich(
   source: Source,
@@ -113,46 +253,97 @@ async function enrich(
   connections: ProviderConnection[],
   attribution: EmbeddingUsageContext | null
 ): Promise<Array<{ path: string; frontmatter: ConceptFrontmatter; body: string }>> {
-  const timestamp = new Date().toISOString();
+  const at = new Date().toISOString();
+  const provenance = sourceProvenance(source);
   const classifier = getClassifierModel("anthropic", connections);
   const text = rawText.slice(0, ENRICH_SOURCE_MAX_CHARS);
 
   if (classifier) {
-    try {
-      const { object, usage } = await generateObject({
-        model: classifier.model,
-        schema: CONCEPT_SCHEMA,
-        system:
-          "You convert source documents into Open Knowledge Format (OKF) concept documents: one markdown file per coherent concept (a policy, a topic, a procedure). Preserve every fact; do not invent content. Keep concept bodies self-contained.",
-        prompt: `Source document "${source.name}":\n\n${text}`,
-      });
-      if (attribution) {
-        await meterUsage(attribution.db, [
-          {
-            organizationId: attribution.organizationId,
-            assistantId: attribution.assistantId ?? null,
-            stage: "enrich",
-            provider: classifier.provider,
-            modelId: classifier.modelId,
-            credentialKind: classifier.credentialKind,
-            ...usageTotals(usage),
-          },
-        ]);
-      }
-      return object.concepts.map((c) => ({
-        path: c.path.endsWith(".md") ? c.path : `${c.path}.md`,
-        frontmatter: {
-          type: c.type,
-          title: c.title,
-          description: c.description,
-          tags: c.tags,
-          timestamp,
-        },
-        body: c.body,
-      }));
-    } catch {
-      // fall through to the naive conversion
+    const windows = enrichmentWindows(text);
+    if (rawText.length > ENRICH_SOURCE_MAX_CHARS) {
+      // Not an Alert: the verbatim companion below still indexes the whole
+      // document, so this degrades curation, not answerability.
+      console.warn(
+        `[ingest] source "${source.name}" is ${rawText.length} chars; ` +
+          `enrichment curates the first ${ENRICH_SOURCE_MAX_CHARS}. The remainder ` +
+          `stays retrievable through its verbatim Concept.`
+      );
     }
+    const drafts: Array<{
+      path: string;
+      frontmatter: ConceptFrontmatter;
+      body: string;
+    }> = [];
+    const seenPaths = new Set<string>();
+
+    // Sequential, not parallel: bursting four structured-output calls at a
+    // provider is the shape that trips rate limits, and the job has the wall
+    // clock to spare (see ENRICH_MAX_WINDOWS).
+    for (const [index, window] of windows.entries()) {
+      try {
+        const { object, usage } = await generateObject({
+          model: classifier.model,
+          schema: CONCEPT_SCHEMA,
+          maxOutputTokens: ENRICH_MAX_OUTPUT_TOKENS,
+          system:
+            "You convert source documents into Open Knowledge Format (OKF) concept documents: one markdown file per coherent concept (a policy, a topic, a procedure). Preserve every fact; do not invent content. Keep concept bodies self-contained.",
+          // The model is told which slice it holds so it drafts concepts for
+          // *this* part instead of writing a whole-document overview from one.
+          prompt:
+            windows.length > 1
+              ? `Source document "${source.name}" (part ${index + 1} of ${windows.length}). Draft concepts for this part only:\n\n${window}`
+              : `Source document "${source.name}":\n\n${window}`,
+        });
+        if (attribution) {
+          await meterUsage(attribution.db, [
+            {
+              organizationId: attribution.organizationId,
+              assistantId: attribution.assistantId ?? null,
+              stage: "enrich",
+              provider: classifier.provider,
+              modelId: classifier.modelId,
+              credentialKind: classifier.credentialKind,
+              ...usageTotals(usage),
+            },
+          ]);
+        }
+        for (const concept of object.concepts) {
+          // Windows are drafted independently, so two of them can land on the
+          // same filename; suffix rather than silently writing twin Concepts.
+          const base = concept.path.endsWith(".md")
+            ? concept.path.slice(0, -3)
+            : concept.path;
+          let path = `${base}.md`;
+          let suffix = 1;
+          while (seenPaths.has(path)) path = `${base}-${++suffix}.md`;
+          seenPaths.add(path);
+          drafts.push({
+            path,
+            frontmatter: {
+              type: concept.type,
+              title: concept.title,
+              description: concept.description,
+              tags: concept.tags,
+              generated: { by: okfActor.agent("okf-enricher", classifier.modelId), at },
+              sources: [provenance],
+            },
+            body: concept.body,
+          });
+        }
+      } catch {
+        // One window failing (a provider blip, a schema violation) must not
+        // discard the windows that succeeded — skip it and keep going.
+      }
+    }
+
+    if (drafts.length > 0) {
+      // The rewrite is lossy by construction (a bounded output budget, at most
+      // 12 concepts per window, a bounded number of windows); index the
+      // source's own words next to it so nothing it dropped is unreachable.
+      return [...drafts, verbatimDraft(source, rawText, at, provenance)];
+    }
+    // Every window failed — fall through to the naive conversion, which keeps
+    // the full text and so needs no companion.
   }
 
   return [
@@ -162,9 +353,15 @@ async function enrich(
         type: "Document",
         title: source.name,
         description: `Imported from ${source.kind} source "${source.name}"`,
-        timestamp,
+        generated: { by: okfActor.process("okf-ingest-passthrough"), at },
+        sources: [provenance],
       },
-      body: text,
+      // The pass-through concept IS the source text, so it keeps all of it:
+      // `text` above is truncated only to bound the *enrichment prompt*, and
+      // reusing it here silently dropped everything past ENRICH_SOURCE_MAX_CHARS
+      // from a document no model ever looked at. Only the pathological-input
+      // ceiling applies (`chunkMarkdown` splits the rest into embeddable chunks).
+      body: rawText.slice(0, MAX_CONCEPT_BODY_CHARS),
     },
   ];
 }
@@ -679,7 +876,10 @@ export async function finalizeWebsiteCrawl(options: {
               title: page.title,
               description: page.url,
               resource: page.url,
-              timestamp,
+              // No model touches a crawled page — the body is the page text
+              // verbatim — so the actor is the crawl process, not an agent.
+              generated: { by: okfActor.process("website-crawl"), at: timestamp },
+              sources: [{ id: slugify(page.title), resource: page.url, title: page.title }],
             },
             // Store the full page text (chunked + embedded downstream); only a
             // generous pathological-input ceiling applies, not the old 60k slice

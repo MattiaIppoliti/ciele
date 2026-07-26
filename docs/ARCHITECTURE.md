@@ -379,6 +379,27 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `lib/run
   Alert, or telemetry.
 - Each Source is enriched into **Concepts** (OKF markdown + YAML frontmatter), then chunked and
   **embedded**. `concepts.excluded` drops a page from retrieval without deleting it.
+- **Windowed enrichment**: `enrich` runs up to `ENRICH_MAX_WINDOWS = 4` sequential calls of
+  `ENRICH_WINDOW_CHARS = 24_000` each, with an explicit `ENRICH_MAX_OUTPUT_TOKENS = 8_000` per call
+  — the window is sized to the budget so a slice is *rendered* into concepts rather than compressed
+  to fit. Windows split on paragraph boundaries with a hard cap (extracted PDFs often have none),
+  a failing window is skipped rather than discarding the others, and colliding concept paths are
+  suffixed. Four windows is a wall-clock bound: the job route caps at `maxDuration = 300` and a
+  killed job is retried by cron.
+- **Verbatim companion Concept**: enrichment rewrites, and only Concept *bodies* are chunked, so an
+  enriched Source also gets `originals/<slug>.md` (`type: Source Text`) carrying the extracted text
+  unedited and uncapped — the curated Concepts stay the citable layer, the companion guarantees
+  nothing in the source is missing from the index. Written only when a model actually ran (the
+  no-model pass-through and crawled pages are already verbatim). See ADR-0002 and
+  [`docs/audits/okf-enrichment-information-loss.md`](audits/okf-enrichment-information-loss.md) for
+  the rejected alternative and the cognify-cost trade-off.
+- **OKF v0.2 frontmatter** (`packages/db/src/okf.ts`, the format module re-exported through
+  `@agent-hub/db`): every Concept we write stamps `generated: { by, at }` in the actor convention
+  (`okf-enricher/<modelId>`, `process:website-crawl`, `human:<userId>`, …) and `sources: [{ id,
+  resource, title }]` naming what it derives from; accepting a Suggested Fix stamps `verified`.
+  Consumers derive trust tier / staleness / last-change only through `trustTier`,
+  `conceptStatus`, `isStale`, `conceptGeneratedAt` — the last of which falls back to the legacy
+  v0.1 `timestamp` on pre-upgrade rows (no backfill; see ADR-0002's v0.2 update for why).
 - **One write seam** (`lib/runtime/ingest.ts`): every route that lands knowledge —
   enriched source (`ingestSource`), crawled page (`crawlWebsiteSource`), FAQ (`createFaqAction`) —
   goes through **`persistConcept`** (create Concept + `embedConcept` index, title-prefixed). The
@@ -390,6 +411,12 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `lib/run
   (Anthropic has no embeddings API).
 - **Retrieval**: `match_chunks(assistant_id, collection_id, query_embedding, k)` cosine search;
   results resolve to **Concept → Source** so replies cite named Sources, never opaque chunks.
+- **`KnowledgeSearchResult.engine`** says which engine produced a result, and therefore whether
+  `similarity` is a real cosine score. The graph engine has none to report, so it fills that field
+  with a rank placeholder whose first entry is always `1`; `scoreCoverage` branches on `engine` and
+  judges graph passes on count (`graphMinResults`) instead. Without that branch every non-empty
+  graph result scored `sufficient` and the reformulation/widen policy never fired — see
+  [`docs/audits/okf-enrichment-information-loss.md`](audits/okf-enrichment-information-loss.md) §4.1.
 
 > The 1536-dim padding is a deliberate trade-off (one shared index vs. cross-model similarity caveats
 > and a costly future dimension migration); rationale kept inline here rather than as its own ADR. The

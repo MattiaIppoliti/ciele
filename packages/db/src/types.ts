@@ -1,3 +1,4 @@
+import type { ConceptFrontmatter } from "./okf";
 import type { DbTableAccessor, DbTableName } from "./table-access";
 
 export type FlowAction =
@@ -957,15 +958,13 @@ export interface ExportJob {
   updatedAt: string;
 }
 
-/** OKF v0.1 frontmatter — `type` is the only required field. */
-export interface ConceptFrontmatter {
-  type: string;
-  title?: string;
-  description?: string;
-  resource?: string;
-  tags?: string[];
-  timestamp?: string;
-}
+/**
+ * OKF v0.2 frontmatter — `type` is the only required field. The vocabulary and
+ * its consumer derivations (trust tier, staleness, the `generated.at` →
+ * legacy-`timestamp` fallback) live in `okf.ts`; re-exported here so the
+ * Concept shape stays part of the one domain-type surface.
+ */
+export type { ConceptFrontmatter } from "./okf";
 
 /** One OKF concept document inside a Knowledge Collection. */
 export interface Concept {
@@ -995,7 +994,20 @@ export interface KnowledgeSearchResult {
   /** The concept's original page/document URL (OKF `resource`), when known. */
   resourceUrl: string | null;
   content: string;
+  /**
+   * Cosine similarity in [0,1] — but ONLY when `engine` is `vector`. The graph
+   * engine has no relevance score to report, so it fills this with a
+   * rank-descending placeholder purely to keep ordering stable. Anything that
+   * compares this against a threshold must check `engine` first.
+   */
   similarity: number;
+  /**
+   * Which retrieval engine produced this result. Absent is read as `vector`
+   * (the pgvector path never had to say so). Carried on the result rather than
+   * threaded through call sites so that `similarity` is never interpreted
+   * without the context that makes it meaningful.
+   */
+  engine?: KnowledgeEngine;
 }
 
 export type ConversationSubject = "member" | "visitor";

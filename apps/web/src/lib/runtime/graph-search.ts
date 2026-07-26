@@ -69,7 +69,11 @@ export async function hydrateGraphProvenance(
       content: entry.excerpt,
       // Rank-descending in (0,1] (first entry = 1); keeps graph order for any
       // downstream score-aware consumer without inventing a real relevance score.
+      // `engine` is what stops that placeholder being read as one: the coverage
+      // gate branches on it instead of comparing 1.0 against a cosine threshold
+      // (which would score every non-empty graph result "sufficient").
       similarity: 1 - results.length / (provenance.length + 1),
+      engine: "graph",
     });
   }
   return results;

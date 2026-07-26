@@ -79,6 +79,9 @@ describe("hydrateGraphProvenance", () => {
         content: "Open the portal.",
         // Rank-descending: 1 - 0/(1+1) = 1 for the sole (first) entry.
         similarity: 1,
+        // …which is exactly why the engine is stamped: that 1 is a placeholder,
+        // not a relevance score, and the coverage gate must not read it as one.
+        engine: "graph",
       },
     ]);
   });

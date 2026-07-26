@@ -25,6 +25,27 @@ export {
   sortFlows,
 } from "./defaults";
 export { matchFlow, messageFlowCandidates } from "./engine";
+export type {
+  OkfActorStamp,
+  OkfAttester,
+  OkfExecutor,
+  OkfParameter,
+  OkfSource,
+  OkfStatus,
+  OkfTrustTier,
+  OkfUsageWindow,
+} from "./okf";
+export {
+  OKF_VERSION,
+  conceptGeneratedAt,
+  conceptStatus,
+  isHumanActor,
+  isStale,
+  lastVerifiedAt,
+  okfActor,
+  trustTier,
+  verificationEvents,
+} from "./okf";
 export { buildPublicationConfig } from "./publication";
 export { messageText } from "./message";
 export { IMPROVEMENT_TITLE_MAX, raiseImprovement } from "./improvements";

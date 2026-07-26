@@ -64,6 +64,15 @@ export interface CoverageThresholds {
    * treated as noise (`empty-conflicting`) even though rows came back.
    */
   relevanceFloor: number;
+  /**
+   * Graph-engine only: how many results a pass needs before it counts as
+   * `sufficient`. The graph reports no relevance score (see
+   * {@link KnowledgeSearchResult.engine}), so count is the only signal there
+   * is — this separates sparse from plentiful, which is strictly weaker than
+   * separating weak from strong, and is deliberately set so that a thin graph
+   * result still yields to a widened vector pass.
+   */
+  graphMinResults: number;
 }
 
 /** Tuned against the cosine similarities `match_chunks` returns (see 0005_knowledge.sql). */
@@ -71,17 +80,33 @@ export const DEFAULT_COVERAGE_THRESHOLDS: CoverageThresholds = {
   strongSimilarity: 0.7,
   minStrongResults: 1,
   relevanceFloor: 0.4,
+  graphMinResults: 3,
 };
 
 /**
- * Classifies a single pass's retrieval from relevance score + result count.
- * Pure and deterministic — the coverage gate the search loop consults.
+ * Classifies a single pass's retrieval. Pure and deterministic — the coverage
+ * gate the search loop consults.
+ *
+ * Two rules, because the two engines report different things. Vector results
+ * carry a real cosine similarity and are judged on it. Graph results carry a
+ * rank *placeholder* whose first entry is always exactly `1` — comparing that
+ * against `strongSimilarity` scored every non-empty graph result `sufficient`,
+ * which silently disabled reformulation and widening for assistants on the
+ * default engine. Graph passes are therefore judged on count alone.
+ *
+ * A mixed list is judged as graph: the placeholder scores would dominate a
+ * `Math.max`, so the weaker interpretation is the honest one.
  */
 export function scoreCoverage(
-  results: readonly Pick<KnowledgeSearchResult, "similarity">[],
+  results: readonly Pick<KnowledgeSearchResult, "similarity" | "engine">[],
   thresholds: CoverageThresholds = DEFAULT_COVERAGE_THRESHOLDS
 ): CoverageVerdict {
   if (results.length === 0) return "empty-conflicting";
+  if (results.some((r) => r.engine === "graph")) {
+    return results.length >= thresholds.graphMinResults
+      ? "sufficient"
+      : "insufficient";
+  }
   const best = Math.max(...results.map((r) => r.similarity));
   if (best < thresholds.relevanceFloor) return "empty-conflicting";
   const strong = results.filter(

@@ -29,8 +29,16 @@ An original artifact uploaded into a Knowledge Collection (file or URL) from whi
 _Avoid_: document (ambiguous), attachment
 
 **Concept**:
-One OKF markdown document (YAML frontmatter + body) inside a Knowledge Collection — the unit the agent reads, links and cites.
+One OKF v0.2 markdown document (YAML frontmatter + body) inside a Knowledge Collection — the unit the agent reads, links and cites. Its frontmatter carries provenance and trust: `generated` (who wrote it), `verified` (who confirmed it), `sources` (what it derives from).
 _Avoid_: page, note, chunk
+
+**Actor**:
+The OKF identity string on `generated.by` / `verified[].by`: `<producer>/<version>` for an agent, `human:<id>` for a person, `process:<id>` for an automated process. Build them with `okfActor`, never by hand — the `human:` prefix is what distinguishes a human review from a machine one.
+_Avoid_: author, user (both ambiguous across the three forms)
+
+**Trust tier**:
+The level derived from a Concept's `verified` field — unverified, machine-confirmed, or human-reviewed. Derived at read time, never stored, and advisory only: it never gates retrieval.
+_Avoid_: confidence, score, credibility (OKF records signals, not verdicts)
 
 **Publication**:
 An immutable, versioned snapshot of an Assistant's config (General, Flows, Knowledge references, model) created by Publish; the live widget always serves the latest Publication. Rollback = republishing a previous one.
