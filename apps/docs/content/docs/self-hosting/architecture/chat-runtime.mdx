@@ -174,7 +174,10 @@ flowchart LR
 
 The prompt is layered deliberately: a platform layer sits above the assistant's
 own answering style, so a per-assistant tone instruction can shape an answer but
-cannot displace the platform's own rules.
+cannot displace the platform's own rules. [The agentic
+model](/self-hosting/architecture/agentic-model) covers the full precedence
+chain, how a provider and model are resolved for a turn, and the budgets and
+grading loop around the agent itself.
 
 ## What is stored but not yet acted on
 

@@ -6,6 +6,7 @@
     "repository-map",
     "request-flows",
     "chat-runtime",
+    "agentic-model",
     "knowledge-pipeline",
     "data-model"
   ]
