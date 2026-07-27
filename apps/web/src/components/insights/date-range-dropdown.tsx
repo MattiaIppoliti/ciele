@@ -5,7 +5,7 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
-import { isoDay } from "@agent-hub/db";
+import { isoDay } from "@agent-hub/core";
 
 const PRESETS = [
   { label: "Last 7 Days", days: 7 },

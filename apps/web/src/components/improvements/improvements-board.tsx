@@ -2,7 +2,7 @@
 
 import { Link } from "@/components/ui/link";
 import { useMemo, useState } from "react";
-import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/db";
+import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
 import {
   ChevronDown,
   ChevronRight,

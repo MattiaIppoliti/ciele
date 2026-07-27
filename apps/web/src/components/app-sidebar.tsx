@@ -3,7 +3,7 @@
 import { Link } from "@/components/ui/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import type { Organization, Profile, Role } from "@agent-hub/db";
+import type { Organization, Profile, Role } from "@agent-hub/core";
 import {
   Building2,
   BookOpen,

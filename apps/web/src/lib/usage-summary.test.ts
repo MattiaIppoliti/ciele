@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UsageDailyRow } from "@agent-hub/db";
+import type { UsageDailyRow } from "@agent-hub/core";
 import { formatCredits, summarizeUsage } from "./usage-summary";
 
 const row = (over: Partial<UsageDailyRow>): UsageDailyRow => ({

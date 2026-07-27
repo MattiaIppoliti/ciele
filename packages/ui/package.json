@@ -23,10 +23,13 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
     "@types/react": "^19",
+    "eslint": "^9.39.4",
     "typescript": "^5"
   },
   "scripts": {
+    "lint": "eslint",
     "typecheck": "tsc --noEmit"
   }
 }

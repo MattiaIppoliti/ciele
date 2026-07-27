@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import type { Assistant } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
 import {
   NDJSON_HEADERS,
   sessionMetadata,
   streamConversationTurn,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 

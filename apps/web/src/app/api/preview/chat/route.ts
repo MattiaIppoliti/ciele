@@ -9,18 +9,18 @@ import {
   createLocalCliRunner,
   verifiedLocalSubscriptionProviders,
   type LocalCliRunner,
-} from "@/lib/local-subscription-model";
+} from "@agent-hub/agent/local-providers";
 import {
   connectedLocalSubscriptionProviders,
   isLocalSubscriptionTestEnabled,
   isLoopbackHost,
   listLocalSubscriptionStatuses,
-} from "@/lib/local-subscriptions";
+} from "@agent-hub/agent/local-providers";
 import {
   NDJSON_HEADERS,
   sessionMetadata,
   streamConversationTurn,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 import {
   applyLocalPreviewModelPreference,
   resolveLocalPreviewModelPreference,

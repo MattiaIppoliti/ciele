@@ -1,4 +1,4 @@
-import type { ChannelAvailability, WeekDay } from "@agent-hub/db";
+import type { ChannelAvailability, WeekDay } from "@agent-hub/core";
 
 /**
  * Availability of a support channel at a moment in time, in the channel's own

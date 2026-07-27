@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChannelAvailability, DayAvailability, WeekDay } from "@agent-hub/db";
+import type { ChannelAvailability, DayAvailability, WeekDay } from "@agent-hub/core";
 import { channelAvailabilityNow } from "./channel-availability";
 
 /**

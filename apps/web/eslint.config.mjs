@@ -13,23 +13,21 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
-  // Runtime module boundary (ADR-0005): the chat runtime is a deep, gray-box
-  // module. Outside code goes through its public interface — `@/lib/runtime`
-  // (server) or `@/lib/runtime/client` (client) — never its internals. This
-  // keeps the module navigable (one interface at the top) and lets its guts
-  // change freely behind locked behavior.
+  // The chat runtime's module boundary is no longer enforced here. It used to be
+  // a `no-restricted-imports` pattern over `@/lib/runtime/*`; the runtime is now
+  // the `@agent-hub/agent` package, whose `exports` map declares exactly three
+  // entry points, so a deep import into its internals does not resolve at all —
+  // in tsc or in the bundler. Resolution replaced the rule and closed a hole it
+  // had: the old single-segment glob never matched `@/lib/runtime/agentic-search/*`.
+  // See ADR-0018.
+
+  // Authentication clients are server-only: session mutation goes through a
+  // Server Action or the cookie-scoped server client.
   {
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          patterns: [
-            {
-              group: ["@/lib/runtime/*", "!@/lib/runtime/client"],
-              message:
-                "Import the runtime module's public interface from '@/lib/runtime' (server) or '@/lib/runtime/client' (client), not its internals. See ADR-0005.",
-            },
-          ],
           paths: [
             {
               name: "@supabase/ssr",
@@ -42,27 +40,13 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // Inside the runtime folder, files compose freely across internals — the
-  // boundary only applies to consumers outside the module.
-  {
-    files: ["src/lib/runtime/**"],
-    rules: { "no-restricted-imports": "off" },
-  },
-  // Session mutation is server-only. UI and route callers use server actions
-  // or the cookie-scoped server module; no browser Supabase client may appear.
+  // No browser Supabase client may appear in UI or route code at all.
   {
     files: ["src/components/**", "src/app/**"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          patterns: [
-            {
-              group: ["@/lib/runtime/*", "!@/lib/runtime/client"],
-              message:
-                "Import the runtime module's public interface from '@/lib/runtime' (server) or '@/lib/runtime/client' (client), not its internals. See ADR-0005.",
-            },
-          ],
           paths: [
             {
               name: "@supabase/ssr",

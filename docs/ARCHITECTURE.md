@@ -34,7 +34,7 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
   active on Vercel deployments, a no-op in local dev.
 - **Tooling**: pnpm workspaces + Turbo. **Tests**: Vitest (`pnpm test` → `turbo run test`) +
   `pnpm typecheck` (`turbo run typecheck`), colocated `*.test.ts`. Coverage: the deterministic engine
-  (`packages/db/engine.test.ts`) + the `Db` contract against the mock (`db-contract.test.ts`); on the
+  (`packages/core/src/engine.test.ts`) + the `Db` contract against the mock (`db-contract.test.ts`); on the
   app side, the Flow Action handler registry (`actions.test.ts`), the Conversation Turn module
   (`turn.test.ts`), the turn-stream consumer (`stream.test.ts`), the ingest write seam
   (`ingest.test.ts`), the Source extraction registry (`extract.test.ts`), the Ingestion Job runner
@@ -57,7 +57,8 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 │   │                    # 0008 durable jobs · 0009 object storage · 0010 analytics ·
 │   │                    # 0011 observability · 0012 scraping · 0013 costs/tiers ·
 │   │                    # 0014 backend migration · 0015 local CLI connections ·
-│   │                    # 0016 Db facade · 0017 graph knowledge layer
+│   │                    # 0016 Db facade · 0017 graph knowledge layer ·
+│   │                    # 0018 runtime as a package · 0019 domain under the Db seam
 │   └── runbooks/        # operational procedures (crawler providers, OSS release, …)
 ├── apps/web/            # Next.js app (admin console + widget + API) — platform.ciele.app
 │   └── src/
@@ -67,11 +68,17 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 │       ├── app/actions.ts     # server actions (all mutations, RBAC-gated)
 │       ├── components/  # editor + widget UI (assistant/, help-desks/, widget/, ui/)
 │       ├── ee/          # enterprise implementations (excluded from the public mirror)
-│       └── lib/         # auth, rbac, data (request-scoped Db), runtime/ (engine, models, …)
+│       ├── lib/         # auth, rbac, data (request-scoped Db), sso, storage, exports
+│       └── instrumentation.ts  # startup: registers the agent host ports + EE capabilities
 ├── apps/admin/          # internal staff console (service-role, cross-org) — admin.ciele.app
 ├── apps/docs/           # public documentation site (Fumadocs), incl. the reader-facing
 │                        # self-hosting/architecture section this file is the counterpart of
-├── packages/db/         # @agent-hub/db: types (Db interface), mock, supabase, keyword engine
+├── packages/agent/      # @agent-hub/agent: the LLM runtime — turn pipeline, flow engine,
+│                        # retrieval, ingestion, jobs, cron drains, providers, egress guards.
+│                        # Framework-free: 3 declared exports, host ports instead of next/*
+├── packages/db/         # @agent-hub/db: the Db interface + mock/supabase adapters + contract suite
+├── packages/core/       # @agent-hub/core: the domain — ~150 types + pure derivations (OKF, flow
+│                        # router, Insights oracle, publication, recrawl). Zero dependencies.
 ├── packages/ui/ charts/ # shared primitives consumed by the apps
 ├── services/            # worker containers: crawl4ai-worker, graph-worker (opt-in)
 ├── deploy/              # the self-host Docker Compose stack + bootstrap
@@ -170,15 +177,15 @@ flag per item:
 ### 2.5 Streaming client contract
 
 Both the widget (`WidgetChat`) and the admin `PreviewPanel` consume the **same ndjson event stream**
-(`RuntimeEvent`, `lib/runtime/types.ts`): `turn` → `flow` → `step`* → (`text-start`/`text-delta`*/`text-end`)
+(`RuntimeEvent`, `packages/agent/src/types.ts`): `turn` → `flow` → `step`* → (`text-start`/`text-delta`*/`text-end`)
 and/or `part`* → `done` | `error`. `step` events are the visible **Thinking Steps**; `part` events
 carry non-text reply parts (help-desk button, follow-ups, button, iframe, sources). The early `turn`
 event exposes the resolved conversation id before generation, allowing Preview to steer an active
 turn without forking a new conversation. Both clients
 decode and fold the stream through one client-safe module — **`consumeTurnStream`**
-(`lib/runtime/stream.ts`, unit-tested): ndjson buffering, delta accumulation into a text part, error
+(`packages/agent/src/stream.ts`, unit-tested): ndjson buffering, delta accumulation into a text part, error
 degradation. Components differ only in their `onDone`/`errorText` hooks, so the wire contract has
-exactly one producer (`lib/runtime/turn.ts`) and one consumer. This is why preview and production
+exactly one producer (`packages/agent/src/turn.ts`) and one consumer. This is why preview and production
 render identically.
 
 ---
@@ -278,21 +285,21 @@ only the OSS chain. Grouped:
 **RLS pattern**: every table has RLS; members read within their org, `editor+` create/update, `admin+`
 delete/manage; secret-bearing writes (counters) go through `security definer` RPCs. Encrypted secrets
 (`provider_connections.encrypted_key`, `help_desks.ticketing_integration`) are **AES-256-GCM**, sealed
-app-side (`lib/runtime/crypto.ts` `sealSecret`/`openSecret`) — Postgres never sees plaintext.
+app-side (`@agent-hub/core` `sealSecret`/`openSecret`) — Postgres never sees plaintext.
 
 ---
 
 ## 5. The two-engine runtime  →  see [ADR-0003](adr/0003-two-engine-runtime.md)
 
 There are **two** implementations of "route a message to a Flow", unified behind the
-widget/preview entrypoint `runAssistantChat` (`apps/web/src/lib/runtime/engine.ts:233`). Since
+widget/preview entrypoint `runAssistantChat` (`packages/agent/src/engine.ts:233`). Since
 spec #194 the deterministic side is a **router only** — action *rendering* has exactly one home,
 the runtime's `ACTION_HANDLERS` registry, and the runtime owns the `ChatReplyPart` wire contract
-(exported type-only via `@/lib/runtime/client`):
+(exported type-only via `@agent-hub/agent/client`):
 
 | | LLM runtime | Deterministic router |
 |---|---|---|
-| Function | `runAssistantChat` (`apps/web/.../runtime/engine.ts`) | `matchFlow` / `messageFlowCandidates` (`packages/db/src/engine.ts`) |
+| Function | `runAssistantChat` (`packages/agent/src/engine.ts`) | `matchFlow` / `messageFlowCandidates` (`packages/core/src/engine.ts`) |
 | Intent routing | `classifyIntent` — **`generateObject` on a cheap classifier model**, flows rendered as a catalog w/ conditions + few-shot examples (`engine.ts:73`) | keyword/token scoring, `MATCH_THRESHOLD = 3`, hardcoded built-in triggers |
 | Knowledge | real RAG agent loop (`streamText` + the per-turn toolset, bounded by the search budget, cited Sources — §5.4) | n/a — routing only, never renders |
 | Output | streamed ndjson (`text-delta`, `part`) | the matched `Flow` (or null) |
@@ -308,7 +315,7 @@ empty-candidates/error.
 ### 5.1 Flow Action handlers (the registry seam)
 
 The LLM runtime does **not** dispatch actions with an inline `switch` — it walks `flow.actions` and
-looks each up in **`ACTION_HANDLERS`** (`apps/web/src/lib/runtime/actions.ts`), a
+looks each up in **`ACTION_HANDLERS`** (`packages/agent/src/actions.ts`), a
 `Record<FlowAction, ActionHandler>`. Each **handler** is one **Adapter**:
 `(ctx: ActionContext) => Promise<ActionResult>` — it emits its own wire events via `ctx.emit`, returns
 the reply `parts` (for persistence), and may request deferred **effects** or `halt` the flow. **Adding
@@ -416,7 +423,7 @@ Browser (WidgetChat)
 Route handler (app/api/widget/[assistantId]/chat/route.ts, maxDuration 300s, CORS via allowed_domains)
   │  1. load latest Publication snapshot (NOT live config), resolve connections
   ▼
-Conversation Turn module (lib/runtime/turn.ts → streamConversationTurn)
+Conversation Turn module (packages/agent/src/turn.ts → streamConversationTurn)
   │  2. get/create conversation (reused only if subject+assistant match), append user message
   │  3. runAssistantChat({ assistant, flows, connections, message, history, searchKnowledge, emit })
   │        emit → ndjson: turn, flow, step*, text-delta*, part*, done
@@ -426,7 +433,7 @@ Browser renders stream incrementally; feedback via POST /api/widget/{id}/feedbac
 ```
 
 Steps 2–4 — the **Conversation Turn** (see context.md) — live in one module,
-`lib/runtime/turn.ts`: get-or-create conversation, history assembly, knowledge-search wiring,
+`packages/agent/src/turn.ts`: get-or-create conversation, history assembly, knowledge-search wiring,
 user/assistant message persistence, deferred-effects application, and the ndjson stream framing
 (`NDJSON_HEADERS` + one JSON `RuntimeEvent` per line). The two chat entrypoints are thin adapters
 over this seam and differ only in what they feed it.
@@ -447,14 +454,14 @@ editor changes take effect immediately, unlike the widget which is pinned to the
 
 ## 7. Knowledge & RAG pipeline (OKF → chunks → pgvector) → see [ADR-0002](adr/0002-knowledge-as-okf-bundles.md)
 
-Ingestion (server actions in `actions.ts` are thin adapters; runtime in `lib/runtime/`):
+Ingestion (server actions in `actions.ts` are thin adapters; runtime in `packages/agent/src/`):
 
-- **Extraction seam** (`lib/runtime/extract.ts`, unit-tested): the **Extractor** registry
+- **Extraction seam** (`packages/agent/src/extract.ts`, unit-tested): the **Extractor** registry
   (`EXTRACTORS`, keyed by input kind — same pattern as `ACTION_HANDLERS`) turns raw input into
   `{name, text}`: `text` passthrough, `url` (fetch + **cheerio** HTML→text with entity decoding,
   block-boundary spacing, and `<title>` as the Source name), `file` (`unpdf` for PDF, `mammoth` for
   DOCX, plain text). Server actions call `extractSourceText` and never parse anything inline.
-- **Ingestion Jobs** (`lib/runtime/jobs.ts`, unit-tested): the OKF pipeline and website crawls run
+- **Ingestion Jobs** (`packages/agent/src/jobs.ts`, unit-tested): the OKF pipeline and website crawls run
   **off the request path**. `enqueueIngestJob` is the in-process deferred adapter (Next `after()`);
   `runIngestJob` rehydrates everything from the `Db` (the payload is JSON-serializable on purpose,
   so a queue-backed adapter can replace `enqueueIngestJob` without touching callers). Progress and
@@ -466,7 +473,7 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `lib/run
   `frontmatter.type = "FAQ"`). The cron claims crawls atomically with a renewable lease; a
   least-recently-attempted partial index bounds each sweep and prevents a widget poll from
   finalizing the same crawl concurrently.
-- **Website crawl safety** (`lib/runtime/crawl-target.ts`, `pinned-fetch.ts`): every provider rejects
+- **Website crawl safety** (`packages/agent/src/crawl-target.ts`, `pinned-fetch.ts`): every provider rejects
   non-HTTP(S), credentialed, loopback/private/link-local/metadata, and privately-resolving start
   targets before submission. Local also revalidates every redirect, enforces same-origin traversal,
   pins connections to the public DNS answer that passed validation, limits responses to 5 MB, and
@@ -490,19 +497,19 @@ Ingestion (server actions in `actions.ts` are thin adapters; runtime in `lib/run
   no-model pass-through and crawled pages are already verbatim). See ADR-0002 and
   [`docs/audits/okf-enrichment-information-loss.md`](audits/okf-enrichment-information-loss.md) for
   the rejected alternative and the cognify-cost trade-off.
-- **OKF v0.2 frontmatter** (`packages/db/src/okf.ts`, the format module re-exported through
-  `@agent-hub/db`): every Concept we write stamps `generated: { by, at }` in the actor convention
+- **OKF v0.2 frontmatter** (`packages/core/src/okf.ts`, exported by `@agent-hub/core`): every
+  Concept we write stamps `generated: { by, at }` in the actor convention
   (`okf-enricher/<modelId>`, `process:website-crawl`, `human:<userId>`, …) and `sources: [{ id,
   resource, title }]` naming what it derives from; accepting a Suggested Fix stamps `verified`.
   Consumers derive trust tier / staleness / last-change only through `trustTier`,
   `conceptStatus`, `isStale`, `conceptGeneratedAt` — the last of which falls back to the legacy
   v0.1 `timestamp` on pre-upgrade rows (no backfill; see ADR-0002's v0.2 update for why).
-- **One write seam** (`lib/runtime/ingest.ts`): every route that lands knowledge —
+- **One write seam** (`packages/agent/src/ingest.ts`): every route that lands knowledge —
   enriched source (`ingestSource`), crawled page (`crawlWebsiteSource`), FAQ (`createFaqAction`) —
   goes through **`persistConcept`** (create Concept + `embedConcept` index, title-prefixed). The
   website route owns the whole Source status lifecycle, so a config/crawl/ingest failure lands in
   exactly one `error` update (no double-catch). `chunkMarkdown` + `persistConcept` are unit-tested.
-- **Embeddings** (`lib/runtime/embeddings.ts`): fixed `DIMS = 1536`, **zero-padded** so every provider
+- **Embeddings** (`packages/agent/src/embeddings.ts`): fixed `DIMS = 1536`, **zero-padded** so every provider
   shares one pgvector column + HNSW index (cosine is unaffected by padding). Model preference:
   OpenAI `text-embedding-3-small` → Google `text-embedding-004` → **null ⇒ lexical fallback**
   (Anthropic has no embeddings API).
@@ -529,7 +536,7 @@ differ in theming/interactivity for other reply parts but not for citations.
 ## 8. Providers, models & secrets -> see [ADR-0007](adr/0007-retire-subscriptions-federated-credentials.md)
 
 - **Provider Connections** (`provider_connections`): `platform` (our keys), `api_key`
-  (BYOK, encrypted, validated live on connect via `lib/runtime/validate-key.ts`), and `federated`
+  (BYOK, encrypted, validated live on connect via `packages/agent/src/validate-key.ts`), and `federated`
   (tenant-billed keyless enterprise auth; no stored secret). Legacy `subscription` rows are retired
   and never resolve as hosted credentials. Local demo Preview invokes authenticated Codex/Claude
   CLIs directly. Hosted Preview uses a signed desktop connector: the server queues an opaque model
@@ -542,16 +549,16 @@ differ in theming/interactivity for other reply parts but not for citations.
   install to the current Member + Organization. If a deployment has neither a
   configured signed-asset URL nor a bundled binary, the authenticated route emits
   a small per-user setup ZIP for the selected OS instead of a JSON error (ADR-0015).
-- **Resolution** (`lib/runtime/models.ts`): `resolveProviderCredential(provider, connections, resolution)`
+- **Resolution** (`packages/agent/src/models.ts`): `resolveProviderCredential(provider, connections, resolution)`
   returns a credential capability (`api_key`, `platform`, or provider-specific federated capability)
   instead of assuming every connection is an API key string. BYOK wins, then federated, then platform
   env fallback. `resolveProviderKey` remains only as a compatibility wrapper for static-key callers.
-  Google Vertex federated runtime uses Vercel OIDC + GCP WIF through `lib/runtime/google-vertex.ts`.
+  Google Vertex federated runtime uses Vercel OIDC + GCP WIF through `packages/agent/src/google-vertex.ts`.
   Anthropic WIF and Azure OpenAI are modeled in `ProviderConnection.config` for follow-up adapters;
   Azure OpenAI is distinct from direct OpenAI because it has endpoint, deployment and Entra config.
   `getChatModel(provider, modelId, connections, resolution)` and
   `getClassifierModel(provider, connections, resolution)` return AI-SDK clients. Model catalog
-  (`lib/runtime/catalog.ts`): Anthropic `claude-opus-4-8` / `claude-sonnet-5` / `claude-haiku-4-5`;
+  (`packages/agent/src/catalog.ts`): Anthropic `claude-opus-4-8` / `claude-sonnet-5` / `claude-haiku-4-5`;
   OpenAI `gpt-5.1` / `gpt-5.1-mini`; Google `gemini-3.5-flash` / `gemini-3.1-flash-lite` /
   `gemini-2.5-flash-lite`. The **classifier** uses a cheap model tier (haiku / mini / flash-lite),
   resolved separately from the answer model and metered separately in the usage ledger.
@@ -565,7 +572,7 @@ differ in theming/interactivity for other reply parts but not for citations.
   `usedFallback`. Degrading to the keyword engine instead is deliberately *not* the behavior — the
   system prompt would silently stop applying. The keyword router is reached only when no provider
   anywhere resolves.
-- **Secrets**: AES-256-GCM via `lib/runtime/crypto.ts`, key from `APP_ENCRYPTION_KEY`. Sealed
+- **Secrets**: AES-256-GCM via `@agent-hub/core` (`packages/core/src/crypto.ts`), key from `APP_ENCRYPTION_KEY`. Sealed
   values: BYOK keys, ServiceNow ticketing creds (`clientSecret`/`password` are redacted before any
   payload reaches the client — see `help-desks/[deskId]/page.tsx`).
 
@@ -592,23 +599,30 @@ states it.
 
 | Add a… | Steps |
 |--------|-------|
-| **Flow action type** | 1) add to `FlowAction` union (`packages/db/types.ts`); 2) optional per-action config in `FlowActionSettings`; 3) add one **Adapter** + register it in `ACTION_HANDLERS` (`apps/web/src/lib/runtime/actions.ts`) — the single home for action rendering (spec #194; the offline/no-model path runs the same registry); if it has a post-commit side effect, add an `ActionEffect` kind (`types.ts`) + a case in `effects.ts`; 4) extend the `ChatReplyPart` union (`runtime/types.ts`) if the action renders a new part shape; 5) add builder UI in `flow-builder.tsx` + catalog in `lib/flow-actions.ts`. |
+| **Flow action type** | 1) add to `FlowAction` union (`packages/core/src/types.ts`); 2) optional per-action config in `FlowActionSettings`; 3) add one **Adapter** + register it in `ACTION_HANDLERS` (`packages/agent/src/actions.ts`) — the single home for action rendering (spec #194; the offline/no-model path runs the same registry); if it has a post-commit side effect, add an `ActionEffect` kind (`types.ts`) + a case in `effects.ts`; 4) extend the `ChatReplyPart` union (`runtime/types.ts`) if the action renders a new part shape; 5) add builder UI in `flow-builder.tsx` + catalog in `lib/flow-actions.ts`. |
 | **Flow condition kind** | Extend `FlowCondition` to a discriminated union (`types.ts:29`); teach `classifyIntent`/`flowCatalogEntry` to render + weigh it (`engine.ts:49`); for hard gating, evaluate it before/around classification. (Today only `conversation_context` exists and it's soft context.) |
 | **Trigger** | Add to `FlowTrigger` (`types.ts:16`); the *message* path only routes `message` flows — non-message triggers need a client event + a new runtime entry to fire them. |
-| **Knowledge source kind** | Add to `SourceKind` (`types.ts:358`) + a config shape; add one **Extractor** to `EXTRACTORS` (`lib/runtime/extract.ts`) for its raw-input→text step; if it needs its own pipeline (like `website`), add an `IngestJob` kind (`lib/runtime/jobs.ts`); add a server action; retrieval already flows through chunks. |
-| **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `lib/runtime/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also add a **custom HTTP tool** from the console with no deploy; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |
+| **Knowledge source kind** | Add to `SourceKind` (`types.ts:358`) + a config shape; add one **Extractor** to `EXTRACTORS` (`packages/agent/src/extract.ts`) for its raw-input→text step; if it needs its own pipeline (like `website`), add an `IngestJob` kind (`packages/agent/src/jobs.ts`); add a server action; retrieval already flows through chunks. |
+| **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `packages/agent/src/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also add a **custom HTTP tool** from the console with no deploy; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |
 | **Provider** | Add to `Provider` union + `MODEL_CATALOG` (`catalog.ts`); wire the AI-SDK client in `buildModel` (`models.ts`) and, if the family has no fixed catalog, teach `configuredModelId` where its model id comes from (+ embeddings if available). |
-| **Runtime public capability** | The chat runtime is a **deep, gray-box module** (ADR-0005): add the capability inside `lib/runtime/` freely, then decide if it's public — if so, export it from the right barrel (`index.ts` server / `client.ts` client-safe) **and** update `interface.test.ts`. Consumers import `@/lib/runtime` or `@/lib/runtime/client`; importing an internal (`@/lib/runtime/<file>`) from outside the folder is a lint error. |
+| **Runtime public capability** | The chat runtime is a **deep, gray-box module** (ADR-0005/ADR-0018): add the capability inside `packages/agent/src/` freely, then decide if it's public — if so, export it from the right barrel (`index.ts` server / `client.ts` client-safe / `local-providers.ts` provider CLIs) **and** update `interface.test.ts`. Consumers import one of those three specifiers; an internal (`@agent-hub/agent/<file>`) is not in the `exports` map, so it does not resolve. |
+| **A fact the runtime needs from Next** | Never import `next/*` into `packages/agent`. Add a port to `host.ts` with a default that keeps the runtime correct unwired, export `registerRuntimeHost`'s new field through the barrel, update `interface.test.ts`, and register the Next implementation in `apps/web/src/instrumentation.ts`. |
 
 **Golden rule** (context.md invariant): new generative behavior belongs **inside an action**
 (like `search_knowledge`), never above the router.
 
-**Runtime module boundary** (ADR-0005): `lib/runtime/` exposes exactly two entry points —
-`@/lib/runtime` (server) and `@/lib/runtime/client` (client-safe). A `no-restricted-imports` lint
-rule forbids deep imports into the module from outside; the barrels' export shape is locked by
-`interface.test.ts`. Read the barrels to learn what the runtime does; open internals only to change
-behavior. (Security sealing lives in `lib/crypto.ts` and improvement-email templates in
-`lib/notify.ts` — deliberately *outside* the runtime, since they aren't chat.)
+**Runtime module boundary** (ADR-0005, amended by ADR-0018): the runtime is the `@agent-hub/agent`
+package, exposing exactly three entry points — `@agent-hub/agent` (server), `@agent-hub/agent/client`
+(client-safe) and `@agent-hub/agent/local-providers` (provider CLIs). Its `exports` map declares only
+those, so a deep import into internals **does not resolve** in `tsc` or the bundler; the barrels'
+export shape is locked by `interface.test.ts`. Read the barrels to learn what the runtime does; open
+internals only to change behavior.
+
+The package is **framework-free** — no `next/*` import anywhere in it. The two facts it needs from its
+host are ports in `packages/agent/src/host.ts` (the cached platform-prompt read, and running work
+after the response), registered by `apps/web/src/instrumentation.ts` and defaulted so the runtime
+stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvement-email templates in
+`apps/web/src/lib/notify.ts` — deliberately *outside* the runtime, since they aren't chat.)
 
 ---
 
@@ -638,7 +652,7 @@ behavior. (Security sealing lives in `lib/crypto.ts` and improvement-email templ
 - **Quality loop** (§5.5): standing goals, the independent answer verifier, per-flow trust tiers, and
   the weekly compost pass, all on one nightly cron. `watch`-tier escalation is the only tier-driven
   runtime behavior so far.
-- **Editions**: one codebase; `lib/runtime/ee.ts` is the single edition-gating registry and OSS ships
+- **Editions**: one codebase; `packages/agent/src/ee.ts` is the single edition-gating registry and OSS ships
   inert no-op defaults (metering allows every call, billing reports no subscription). The public
   mirror simply omits the enterprise tree, and every merge to `main` auto-cuts a release
   (`.github/workflows/auto-release.yml` → `oss-release.yml`).
@@ -670,9 +684,10 @@ behavior. (Security sealing lives in `lib/crypto.ts` and improvement-email templ
   direct local adapter or paired connector relay; Widget resolution excludes them (ADR-0015). Federated/keyless
   auth is implemented for Google Vertex runtime and modeled for Anthropic WIF + Azure OpenAI follow-up
   adapters. Platform-plan billing (Stripe) is the remaining tier.
-- **Enforced deep modules**: `packages/db` (the `Db` seam, contract-tested) and `lib/runtime` (barrel
-  + `no-restricted-imports` boundary, surface locked by `interface.test.ts` — ADR-0005) are the two
-  modules whose interfaces the tooling enforces; the rest of `apps/web` composes over them.
+- **Enforced deep modules**: `packages/db` (the `Db` seam, contract-tested) and `packages/agent`
+  (three declared `exports` entries make deep imports unresolvable, surface locked by
+  `interface.test.ts` — ADR-0005/ADR-0018) are the two modules whose interfaces the tooling enforces;
+  the rest of `apps/web` composes over them.
 
 Keep this section honest — it's the fastest way for a new contributor (human or agent) to know what to
 trust versus what to build.

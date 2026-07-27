@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { Db, Role } from "@agent-hub/db";
+import type { Role } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
 import {
   createAdminPageReads,
   type AdminPageReads,

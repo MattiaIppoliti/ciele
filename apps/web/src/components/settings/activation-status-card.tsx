@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { Link } from "@/components/ui/link";
-import type { ActivationState, SubscriptionState } from "@/lib/runtime";
+import type { ActivationState, SubscriptionState } from "@agent-hub/agent";
 
 /**
  * What state this organization is in, and the one action that moves it

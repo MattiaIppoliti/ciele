@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { HelpDesk, TicketingPlatform } from "@agent-hub/db";
+import type { HelpDesk, TicketingPlatform } from "@agent-hub/core";
 import { ChevronLeft, CircleCheck, Search, Trash2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatedIcon } from "@/components/ui/animated-icon";

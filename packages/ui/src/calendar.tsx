@@ -144,7 +144,9 @@ function Calendar({
             />
           )
         },
-        Chevron: ({ className, orientation, ...props }) => {
+        // No rest spread: each branch renders a fixed icon, so the remaining
+        // props react-day-picker passes are deliberately dropped.
+        Chevron: ({ className, orientation }) => {
           if (orientation === "left") {
             return (
               <ChevronLeft className={cn("cn-rtl-flip size-4", className)} />

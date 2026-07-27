@@ -1,4 +1,4 @@
-import type { SsoConnectionConfig, SsoProviderKind } from "@agent-hub/db";
+import type { SsoConnectionConfig, SsoProviderKind } from "@agent-hub/core";
 
 /**
  * The widget SSO adapter contract (spec #370, ticket #372). One implementation

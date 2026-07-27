@@ -29,7 +29,7 @@ an in-flight crawl.
 | **Apify** | Apify Website Content Crawler (metered SaaS) | File downloads, login-protected sites, managed proxy / anti-bot, explicit managed crawls | Being the default for ordinary crawls (cost) |
 
 Provider capabilities and availability live in
-`apps/web/src/lib/runtime/website-crawlers.ts`; adapters in `apify.ts`,
+`packages/agent/src/website-crawlers.ts`; adapters in `apify.ts`,
 `crawl4ai.ts`, `local-crawl.ts`; the shared lifecycle in `ingest.ts`.
 
 ### How Automatic resolves (pure policy)

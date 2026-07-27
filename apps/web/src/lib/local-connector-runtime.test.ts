@@ -7,6 +7,13 @@ import { spawn, type ChildProcess } from "node:child_process";
 
 const ORIGIN = "https://ciele.example.com";
 const TOKEN = "connector_test_token_1234567890";
+/**
+ * These cases spawn the real connector process and talk to it over HTTP, so
+ * every wait needs a deadline or a hang becomes a hung suite. The deadline is a
+ * safety net, not an assertion about latency — keep it well clear of what a
+ * contended machine needs (turbo runs this suite alongside the agent package's).
+ */
+const CONNECTOR_DEADLINE_MS = 20_000;
 const SCOPE = "a".repeat(64);
 const children: ChildProcess[] = [];
 const directories: string[] = [];
@@ -157,7 +164,7 @@ process.exit(1);
   children.push(child);
   const port = await new Promise<number>((resolvePort, reject) => {
     let output = "";
-    const timer = setTimeout(() => reject(new Error("Connector did not start")), 5_000);
+    const timer = setTimeout(() => reject(new Error("Connector did not start")), CONNECTOR_DEADLINE_MS);
     child.once("error", reject);
     child.stdout?.on("data", (chunk) => {
       output += chunk.toString();
@@ -257,7 +264,7 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
       const completed = await Promise.race([
         relay.completion,
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Relay inference timed out")), 5_000)
+          setTimeout(() => reject(new Error("Relay inference timed out")), CONNECTOR_DEADLINE_MS)
         ),
       ]);
       expect(completed.error).toBeUndefined();
@@ -298,7 +305,7 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
     const completed = await Promise.race([
       relay.completion,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Relay inference timed out")), 5_000)
+        setTimeout(() => reject(new Error("Relay inference timed out")), CONNECTOR_DEADLINE_MS)
       ),
     ]);
     expect(completed.error).toBeUndefined();
@@ -331,7 +338,7 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
     const completed = await Promise.race([
       relay.completion,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Relay inference timed out")), 5_000)
+        setTimeout(() => reject(new Error("Relay inference timed out")), CONNECTOR_DEADLINE_MS)
       ),
     ]);
     expect(completed.error).toBeUndefined();

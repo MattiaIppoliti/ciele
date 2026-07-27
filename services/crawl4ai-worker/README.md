@@ -9,7 +9,7 @@ contract.
 This directory is the **worker package** — the image pin, hardened config, auth
 and health configuration, a smoke test, and a deployment/rollback runbook. The
 Ciele-side adapter that speaks to it lives at
-`apps/web/src/lib/runtime/crawl4ai.ts` and is not part of this package.
+`packages/agent/src/crawl4ai.ts` and is not part of this package.
 
 > Deployable services live under `services/` (top level). `apps/*` are the two
 > Next.js apps and `packages/*` are JS libraries; this worker is neither — it is

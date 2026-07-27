@@ -1,4 +1,4 @@
-import type { SsoProviderKind } from "@agent-hub/db";
+import type { SsoProviderKind } from "@agent-hub/core";
 import { entraProvider } from "./entra";
 import type { SsoProvider } from "./types";
 

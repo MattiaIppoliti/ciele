@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, useTransition } from "react";
-import type { Assistant } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
 import { ExternalLink, Plane, RotateCcw, CloudOff } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatedIcon } from "@/components/ui/animated-icon";

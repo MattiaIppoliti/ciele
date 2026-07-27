@@ -10,7 +10,12 @@ const nextConfig: NextConfig = {
   // traces every runtime file into .next/standalone, so the container ships
   // node_modules-free (see apps/web/Dockerfile). No effect on Vercel deploys.
   output: "standalone",
-  transpilePackages: ["@agent-hub/db", "@agent-hub/ui"],
+  transpilePackages: [
+    "@agent-hub/agent",
+    "@agent-hub/core",
+    "@agent-hub/db",
+    "@agent-hub/ui",
+  ],
   outputFileTracingIncludes: {
     // The runtime route reads this file at request time; trace it into the
     // standalone bundle. The terminal one-liner is served from here too.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ConceptFrontmatter } from "@agent-hub/db";
+import type { ConceptFrontmatter } from "@agent-hub/core";
 import { conceptProvenanceView } from "./okf-provenance";
 
 describe("conceptProvenanceView", () => {

@@ -8,9 +8,10 @@ import type {
   Provider,
   QuickReplyButton,
   QuickReplyType,
-} from "@agent-hub/db";
-import { shortId } from "@agent-hub/db";
-import { MODEL_CATALOG, PROVIDER_NAMES } from "@/lib/runtime/client";
+} from "@agent-hub/core";
+import { shortId } from "@agent-hub/core";
+
+import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import {
   DropdownMenu,

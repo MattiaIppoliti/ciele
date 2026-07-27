@@ -2,9 +2,9 @@ import type {
   ChannelAvailability,
   ChannelFieldType,
   ChannelKind,
-  Db,
   SupportChannel,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
 
 /**
  * The escalation menu data shared by the published widget and the editor

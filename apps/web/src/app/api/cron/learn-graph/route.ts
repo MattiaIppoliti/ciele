@@ -1,5 +1,5 @@
 import { withCronAuth } from "@/lib/cron-auth";
-import { runGraphLearning } from "@/lib/runtime";
+import { runGraphLearning } from "@agent-hub/agent";
 import { getWidgetDb } from "@/lib/widget-db";
 
 /**

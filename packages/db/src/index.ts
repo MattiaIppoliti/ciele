@@ -3,7 +3,26 @@ import { mockDb } from "./mock";
 import { createSupabaseDb } from "./supabase";
 import type { Db } from "./types";
 
-export * from "./types";
+/**
+ * `@agent-hub/db` — the data-access seam, and only that.
+ *
+ * This package publishes the `Db` interface, its two adapters, and the few
+ * operations that need a `Db` to mean anything. The **domain vocabulary** it
+ * traffics in — Organization, Assistant, Flow, Concept, Publication, the OKF
+ * derivations, the Insights oracle, the deterministic router — lives in
+ * `@agent-hub/core`, which this package depends on (ADR-0019).
+ *
+ * So import a *type* from `@agent-hub/core` and an *operation* from here. There
+ * is deliberately no compatibility re-export of the domain through this barrel:
+ * the dependency arrow should be visible at every call site, otherwise the split
+ * is bookkeeping rather than architecture.
+ */
+
+// The seam itself.
+export type { Db } from "./types";
+
+// The generic typed table accessor (ADR-0016 stage 1) — the escape hatch the
+// ~125 plain-CRUD passthroughs migrate onto.
 export type {
   DbTableAccessor,
   DbTableInsert,
@@ -13,50 +32,12 @@ export type {
   DbTableRow,
   DbTableUpdate,
 } from "./table-access";
-export {
-  DEFAULT_AI_DISCLAIMER,
-  DEFAULT_FLOWS,
-  DEFAULT_WELCOME_MESSAGE,
-  WEEK_DAYS,
-  defaultChannelAvailability,
-  defaultChannelConversationData,
-  defaultTimeRange,
-  normalizeChannelAvailability,
-  sortFlows,
-} from "./defaults";
-export { matchFlow, messageFlowCandidates } from "./engine";
-export type {
-  OkfActorStamp,
-  OkfAttester,
-  OkfExecutor,
-  OkfParameter,
-  OkfSource,
-  OkfStatus,
-  OkfTrustTier,
-  OkfUsageWindow,
-} from "./okf";
-export {
-  OKF_VERSION,
-  conceptGeneratedAt,
-  conceptStatus,
-  isHumanActor,
-  isStale,
-  lastVerifiedAt,
-  okfActor,
-  trustTier,
-  verificationEvents,
-} from "./okf";
-// Credits — the cost unit plan allowances are denominated in. Only the
-// conversion is public; the rate tables behind it stay package-private so
-// there is one place a price list is read.
-export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
-export type { MeteredUnit } from "./pricing";
-export { buildPublicationConfig } from "./publication";
-export { messageText } from "./message";
+
+// Raising an Improvement is one policy over the seam, so it lives with the
+// seam rather than in the domain package: it takes a `Db`.
 export { IMPROVEMENT_TITLE_MAX, raiseImprovement } from "./improvements";
-export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
-export { hostOf, isoDay } from "./insights";
-export { shortId } from "./id";
+
+// The demo org the in-memory adapter seeds.
 export { DEMO_MEMBER, DEMO_ORG } from "./mock";
 
 export function isSupabaseConfigured(): boolean {

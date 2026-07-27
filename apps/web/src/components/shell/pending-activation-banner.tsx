@@ -1,6 +1,6 @@
 import { Clock } from "lucide-react";
 import { Link } from "@/components/ui/link";
-import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { getEnterpriseCapabilities } from "@agent-hub/agent";
 
 /**
  * The pending-activation state, shown on every console page (#444).

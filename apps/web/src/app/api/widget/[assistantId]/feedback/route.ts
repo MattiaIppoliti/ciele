@@ -1,5 +1,5 @@
 import { after, NextRequest } from "next/server";
-import { feedbackScore, forwardGraphFeedback } from "@/lib/runtime";
+import { feedbackScore, forwardGraphFeedback } from "@agent-hub/agent";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 
 export async function POST(

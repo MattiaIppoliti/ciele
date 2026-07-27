@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlanCatalogEntry } from "@/lib/runtime";
+import type { PlanCatalogEntry } from "@agent-hub/agent";
 import {
   currentPlanEntry,
   planTierViews,

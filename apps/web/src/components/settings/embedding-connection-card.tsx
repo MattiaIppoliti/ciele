@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Boxes } from "lucide-react";
 import { toast } from "sonner";
-import type { ProviderConnection } from "@agent-hub/db";
+import type { ProviderConnection } from "@agent-hub/core";
 import { updateEmbeddingConnectionAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { canEmbedWithConnection } from "@/lib/runtime/client";
+import { canEmbedWithConnection } from "@agent-hub/agent/client";
 
 const AUTOMATIC = "automatic";
 

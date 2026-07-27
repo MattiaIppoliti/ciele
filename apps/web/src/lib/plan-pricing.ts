@@ -1,4 +1,4 @@
-import type { PlanCatalogEntry } from "@/lib/runtime";
+import type { PlanCatalogEntry } from "@agent-hub/agent";
 
 /**
  * How a plan catalog reads on the public pricing page and on Billing (#511).

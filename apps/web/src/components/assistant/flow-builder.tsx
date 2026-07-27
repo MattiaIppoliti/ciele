@@ -10,13 +10,14 @@ import type {
   FlowActionSettings,
   FlowButtonIcon as FlowButtonIconName,
   FlowButtonType,
-  KeyValuePair,
   FlowCondition,
   FlowConditionExample,
   FlowConditionLogic,
   FlowTrigger,
   FlowTrust,
-} from "@agent-hub/db";
+  KeyValuePair,
+} from "@agent-hub/core";
+
 import {
   Braces,
   ChevronDown,
@@ -77,8 +78,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FLOW_ACTION_PICKER, FLOW_ACTIONS } from "@/lib/flow-actions";
-import { TEMPLATE_VARIABLES } from "@/lib/runtime/client";
-import type { ApiRequestTestResult } from "@/lib/runtime/client";
+import { TEMPLATE_VARIABLES } from "@agent-hub/agent/client";
+import type { ApiRequestTestResult } from "@agent-hub/agent/client";
 import { cn } from "@/lib/utils";
 import { TrustBadge } from "@/components/assistant/trust-badge";
 import {

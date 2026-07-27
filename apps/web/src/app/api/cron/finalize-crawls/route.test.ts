@@ -2,58 +2,43 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@agent-hub/db";
 
 const mocks = vi.hoisted(() => ({
-  claimProcessingCrawlSources: vi.fn(),
-  runDueIngestJobs: vi.fn(),
-  runDueGraphSyncJobs: vi.fn(),
-  runDueProposalJobs: vi.fn(),
-  finalizeWebsiteCrawl: vi.fn(),
+  finalizeDueCrawls: vi.fn(),
 }));
 
-vi.mock("@/lib/widget-db", () => ({
-  getWidgetDb: () =>
-    ({
-      claimProcessingCrawlSources: mocks.claimProcessingCrawlSources,
-    } as unknown as Pick<Db, "claimProcessingCrawlSources">),
-}));
+const widgetDb = { marker: "widget-db" } as unknown as Db;
 
-vi.mock("@/lib/runtime", () => ({
-  CRAWL_FINALIZE_LEASE_MS: 2 * 60 * 60_000,
-  finalizeWebsiteCrawl: mocks.finalizeWebsiteCrawl,
-  runDueIngestJobs: mocks.runDueIngestJobs,
-  runDueGraphSyncJobs: mocks.runDueGraphSyncJobs,
-  runDueProposalJobs: mocks.runDueProposalJobs,
-}));
+vi.mock("@/lib/widget-db", () => ({ getWidgetDb: () => widgetDb }));
 
-import { CRAWL_FINALIZE_BATCH_SIZE, GET } from "./route";
+vi.mock("@agent-hub/agent", () => ({ finalizeDueCrawls: mocks.finalizeDueCrawls }));
+
+import { GET } from "./route";
+
+/**
+ * The route is an adapter: cron auth in, the drain's report out. What a tick
+ * does — draining the job ledger, then claiming and finalizing a bounded batch
+ * of in-flight crawls — lives in `@agent-hub/agent` (`finalizeDueCrawls`) and is
+ * tested there. Here we only prove the wrapper.
+ */
+
+const NO_JOBS = { claimed: 0, succeeded: 0, failed: 0, retried: 0 };
+
+const authed = () =>
+  new Request("https://ciele.app/api/cron/finalize-crawls", {
+    headers: { authorization: "Bearer cron-secret" },
+  });
 
 describe("GET /api/cron/finalize-crawls", () => {
   const originalSecret = process.env.CRON_SECRET;
 
   beforeEach(() => {
     process.env.CRON_SECRET = "cron-secret";
-    mocks.claimProcessingCrawlSources.mockReset();
-    mocks.runDueIngestJobs.mockReset();
-    mocks.runDueGraphSyncJobs.mockReset();
-    mocks.finalizeWebsiteCrawl.mockReset();
-    mocks.runDueIngestJobs.mockResolvedValue({
-      claimed: 0,
-      succeeded: 0,
-      failed: 0,
-      retried: 0,
+    mocks.finalizeDueCrawls.mockReset();
+    mocks.finalizeDueCrawls.mockResolvedValue({
+      jobs: NO_JOBS,
+      graphSync: NO_JOBS,
+      proposals: NO_JOBS,
+      crawls: { swept: 0, settled: 0, results: [] },
     });
-    mocks.runDueGraphSyncJobs.mockResolvedValue({
-      claimed: 0,
-      succeeded: 0,
-      failed: 0,
-      retried: 0,
-    });
-    mocks.runDueProposalJobs.mockResolvedValue({
-      claimed: 0,
-      succeeded: 0,
-      failed: 0,
-      retried: 0,
-    });
-    mocks.finalizeWebsiteCrawl.mockResolvedValue("processing");
   });
 
   afterEach(() => {
@@ -61,26 +46,33 @@ describe("GET /api/cron/finalize-crawls", () => {
     else process.env.CRON_SECRET = originalSecret;
   });
 
-  it("finalizes only one bounded batch, leaving later crawls for another tick", async () => {
-    const batch = Array.from({ length: CRAWL_FINALIZE_BATCH_SIZE }, (_, index) => ({
-      sourceId: `source-${index}`,
-      collectionId: `collection-${index}`,
-      assistantId: `assistant-${index}`,
-    }));
-    mocks.claimProcessingCrawlSources.mockResolvedValue(batch);
+  it("refuses to run when CRON_SECRET is not configured", async () => {
+    delete process.env.CRON_SECRET;
+    const response = await GET(authed());
+    expect(response.status).toBe(503);
+    expect(mocks.finalizeDueCrawls).not.toHaveBeenCalled();
+  });
 
-    const response = await GET(
-      new Request("https://ciele.app/api/cron/finalize-crawls", {
-        headers: { authorization: "Bearer cron-secret" },
-      })
-    );
+  it("runs the finalizer against the service-role Db and serializes its report", async () => {
+    const report = {
+      jobs: { claimed: 1, succeeded: 1, failed: 0, retried: 0 },
+      graphSync: NO_JOBS,
+      proposals: NO_JOBS,
+      crawls: {
+        swept: 2,
+        settled: 1,
+        results: [
+          { sourceId: "a", status: "ready" },
+          { sourceId: "b", status: "processing" },
+        ],
+      },
+    };
+    mocks.finalizeDueCrawls.mockResolvedValue(report);
 
-    expect(mocks.claimProcessingCrawlSources).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: CRAWL_FINALIZE_BATCH_SIZE })
-    );
-    expect(mocks.finalizeWebsiteCrawl).toHaveBeenCalledTimes(CRAWL_FINALIZE_BATCH_SIZE);
-    await expect(response.json()).resolves.toMatchObject({
-      crawls: { swept: CRAWL_FINALIZE_BATCH_SIZE, settled: 0 },
-    });
+    const response = await GET(authed());
+
+    // The cron finalizer spans every org, so it must run on the service-role Db.
+    expect(mocks.finalizeDueCrawls).toHaveBeenCalledWith({ db: widgetDb });
+    await expect(response.json()).resolves.toEqual(report);
   });
 });

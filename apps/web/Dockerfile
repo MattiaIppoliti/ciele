@@ -25,6 +25,8 @@ COPY apps/web/package.json apps/web/
 # even for apps this image never ships.
 COPY apps/admin/package.json apps/admin/
 COPY apps/docs/package.json apps/docs/
+COPY packages/agent/package.json packages/agent/
+COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
 COPY packages/ui/package.json packages/ui/
 COPY packages/charts/package.json packages/charts/

@@ -3,7 +3,7 @@
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { Assistant } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
 import {
   ChevronRight,
   CopyPlus,

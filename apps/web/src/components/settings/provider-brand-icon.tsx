@@ -1,4 +1,4 @@
-import type { ProviderConnectionProvider } from "@agent-hub/db";
+import type { ProviderConnectionProvider } from "@agent-hub/core";
 import type { ConnectorProvider } from "@/lib/local-connector-protocol";
 import { cn } from "@/lib/utils";
 

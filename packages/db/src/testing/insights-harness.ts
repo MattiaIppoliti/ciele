@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { colorizeOverview } from "../insights";
 import type {
   ConversationMetadata,
   InsightsFilter,
   InsightsOverview,
-} from "../types";
+} from "@agent-hub/core";
+import { colorizeOverview } from "@agent-hub/core";
 
 /**
  * Seeded-Postgres harness for the Insights read model (PRD #270, slice #271).

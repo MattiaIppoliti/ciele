@@ -5,7 +5,7 @@ import type {
   ChannelKind,
   SupportChannelConfig,
   WeekDay,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 import { findCountry } from "./countries";
 import {
   AlignLeft,

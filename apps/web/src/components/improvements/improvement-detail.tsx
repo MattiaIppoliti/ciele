@@ -10,8 +10,9 @@ import type {
   ImprovementProposal,
   ImprovementStatus,
   StoredMessage,
-} from "@agent-hub/db";
-import { messageText } from "@agent-hub/db";
+} from "@agent-hub/core";
+import { messageText } from "@agent-hub/core";
+
 import {
   Calendar as CalendarIcon,
   Check,

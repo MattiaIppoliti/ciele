@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ExportJobFormat } from "@agent-hub/db";
+import type { ExportJobFormat } from "@agent-hub/core";
 
 /**
  * Private bucket for generated report artifacts (ADR-0010): reads go through

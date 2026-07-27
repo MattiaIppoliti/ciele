@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UsageLimitsSnapshot, UsageMeterSnapshot } from "@/lib/runtime";
+import type { UsageLimitsSnapshot, UsageMeterSnapshot } from "@agent-hub/agent";
 import {
   budgetMeterView,
   planGlanceRows,

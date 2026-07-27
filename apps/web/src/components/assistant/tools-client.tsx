@@ -1,12 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import type {
-  AssistantTools,
-  BuiltInToolName,
-  CustomToolConfig,
-  Skill,
-} from "@agent-hub/db";
+import type { AssistantTools, BuiltInToolName, CustomToolConfig, Skill } from "@agent-hub/core";
 import { Globe, Pencil, Plus, Trash2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import {

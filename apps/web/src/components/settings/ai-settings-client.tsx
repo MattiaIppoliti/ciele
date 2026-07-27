@@ -10,7 +10,7 @@ import type {
   Provider,
   ProviderConnection,
   ProviderConnectionProvider,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 import { CloudCog, Key, Plus, Server, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
@@ -49,7 +49,7 @@ import { LocalConnectorSettings } from "@/components/settings/local-connector-se
 import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
-} from "@/lib/local-subscriptions";
+} from "@agent-hub/agent/local-providers";
 import { Switch } from "@/components/ui/switch";
 
 const PROVIDER_LABELS: Record<Provider, string> = {

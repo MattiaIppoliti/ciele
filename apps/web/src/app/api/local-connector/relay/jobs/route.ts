@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import type { LocalSubscriptionProvider } from "@/lib/local-subscriptions";
+import type { LocalSubscriptionProvider } from "@agent-hub/agent/local-providers";
 import {
   claimRelayJob,
   completeRelayJob,

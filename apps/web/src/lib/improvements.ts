@@ -1,6 +1,6 @@
 import type { ComponentType } from "react"
 import { ChartNoAxesColumnIncreasing, MoreHorizontal } from "lucide-react"
-import type { ImprovementPriority, ImprovementStatus } from "@agent-hub/db"
+import type { ImprovementPriority, ImprovementStatus } from "@agent-hub/core"
 
 type IconType = ComponentType<{ className?: string }>
 

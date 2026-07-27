@@ -1,11 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { LocalConnectorDevice } from "@agent-hub/db";
+import type { LocalConnectorDevice } from "@agent-hub/core";
 import type {
   LocalCliInvocation,
   LocalCliResult,
   LocalCliRunner,
-} from "./local-subscription-model";
-import type { LocalSubscriptionProvider } from "./local-subscriptions";
+  LocalSubscriptionProvider,
+} from "@agent-hub/agent/local-providers";
 import {
   createRelayPairingCode,
   InvalidRelayPairingCodeError,

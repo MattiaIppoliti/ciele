@@ -6,19 +6,24 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
   },
   "dependencies": {
+    "@agent-hub/core": "workspace:*",
     "@supabase/supabase-js": "^2.49.0"
   },
   "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
     "@electric-sql/pglite": "^0.5.4",
     "@electric-sql/pglite-pgvector": "^0.0.5",
     "@types/node": "^20.19.43",
+    "eslint": "^9.39.4",
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
   "scripts": {
+    "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   }

@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { QuickReplyButton } from "@agent-hub/db";
-import type { ChatReplyPart } from "@/lib/runtime/client";
-import { consumeTurnStream, type TurnView } from "@/lib/runtime/client";
+import type { QuickReplyButton } from "@agent-hub/core";
+import type { ChatReplyPart } from "@agent-hub/agent/client";
+import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { CitationList } from "@/components/chat/citation-list";

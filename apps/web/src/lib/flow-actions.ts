@@ -1,4 +1,4 @@
-import type { FlowAction } from "@agent-hub/db";
+import type { FlowAction } from "@agent-hub/core";
 import {
   AtSign,
   ChartLine,

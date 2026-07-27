@@ -1,0 +1,20 @@
+{
+  "name": "@agent-hub/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./base.mjs"
+  },
+  "peerDependencies": {
+    "eslint": "^9"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.4",
+    "typescript-eslint": "^8.62.1"
+  },
+  "scripts": {
+    "lint": "eslint"
+  }
+}

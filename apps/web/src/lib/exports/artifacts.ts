@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ExportJob } from "@agent-hub/db";
+import type { ExportJob } from "@agent-hub/core";
 import {
   getInsightsOverview,
   insightsFilterFromSearchParams,

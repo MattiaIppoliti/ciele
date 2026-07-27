@@ -9,7 +9,7 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 > reading below:
 > - **Intent Classification is real** in the production/widget runtime (`runAssistantChat`): a cheap
 >   **LLM classifier** (`generateObject`) routes to a flow, **falling back to the keyword `matchFlow`**
->   when no model is configured or on error. The keyword engine (`packages/db/engine.ts`) is the
+>   when no model is configured or on error. The keyword engine (`packages/core/src/engine.ts`) is the
 >   offline/demo path (ADR-0003).
 > - **`search_knowledge` is a real agent loop** (`streamText` + a knowledge tool, ≤5 steps, cited
 >   Sources).

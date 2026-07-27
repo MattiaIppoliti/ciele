@@ -2,6 +2,10 @@
 
 Multi-tenant SaaS admin platform where each company configures, tests and publishes its own AI assistants (chatbot widgets embeddable on the company's websites).
 
+Every term below is encoded as a type in **`@agent-hub/core`** (`packages/core/src/types.ts`), and the
+pure functions that derive facts from those terms live beside them (ADR-0019). Add the term here
+first, then the type.
+
 ## Language
 
 **Organization**:
@@ -89,11 +93,11 @@ The user-visible trace of what the runtime did for a reply (classify → search 
 _Avoid_: reasoning, chain of thought (in UI)
 
 **Conversation Turn**:
-One user message and everything the runtime does to answer it: get-or-create the Conversation, persist the user message, route through the flow engine, persist the reply with its flow markers, apply deferred effects, stream Thinking Steps + reply. One module (`lib/runtime/turn.ts`) owns it; Widget and Preview are thin adapters over it.
+One user message and everything the runtime does to answer it: get-or-create the Conversation, persist the user message, route through the flow engine, persist the reply with its flow markers, apply deferred effects, stream Thinking Steps + reply. One module (`packages/agent/src/turn.ts`) owns it; Widget and Preview are thin adapters over it.
 _Avoid_: exchange, round, request (alone)
 
 **Extractor**:
-One adapter in the Source text-extraction registry (`lib/runtime/extract.ts`) that turns one
+One adapter in the Source text-extraction registry (`packages/agent/src/extract.ts`) that turns one
 SourceKind's raw input (pasted text, a URL, uploaded file bytes) into plain text + a display name,
 ready for OKF enrichment. Adding an ingestable kind = one Extractor + one registry entry (same
 pattern as Flow Action handlers).
@@ -101,7 +105,7 @@ _Avoid_: parser (an implementation detail), converter
 
 **Ingestion Job**:
 A JSON-serializable unit of deferred knowledge-ingestion work (enrich → persist Concepts → embed,
-or a website crawl) executed off the request path (`lib/runtime/jobs.ts`); progress and failures are
+or a website crawl) executed off the request path (`packages/agent/src/jobs.ts`); progress and failures are
 tracked by the Source status lifecycle (`processing` → `ready`/`error`), which the Knowledge UI polls.
 _Avoid_: background task, queue item (adapter detail)
 

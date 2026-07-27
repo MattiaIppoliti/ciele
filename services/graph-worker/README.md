@@ -7,7 +7,7 @@ graph is a *retrieval + learning index*, never the system of record — OKF stay
 authoritative and every result maps back to a **Concept → Source** citation.
 
 The Ciele-side adapter that speaks this worker's contract is
-[`apps/web/src/lib/runtime/graph-worker.ts`](../../apps/web/src/lib/runtime/graph-worker.ts).
+[`packages/agent/src/graph-worker.ts`](../../packages/agent/src/graph-worker.ts).
 Runtime docs live in [`docs/research/cognee-fit.md`](../../docs/research/cognee-fit.md)
 (capabilities/cost/tenancy) and [`docs/research/cognee-spike.md`](../../docs/research/cognee-spike.md)
 (the validating spike). Operations, sizing, and deploy: [`RUNBOOK.md`](./RUNBOOK.md).

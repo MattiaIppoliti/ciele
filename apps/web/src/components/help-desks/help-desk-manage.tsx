@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
-import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/db";
+import type { ChannelKind, HelpDesk, SupportChannel } from "@agent-hub/core";
 import {
   CircleCheck,
   ChevronDown,

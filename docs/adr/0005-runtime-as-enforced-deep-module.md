@@ -1,5 +1,15 @@
 # The chat runtime is an enforced deep module (barrel + lint boundary, not a package)
 
+## Status
+
+**Partially superseded by [ADR-0018](0018-agent-runtime-as-a-package.md).** The substance below
+stands — the runtime is a deep, gray-box module with narrow curated barrels locked by
+`interface.test.ts`. What ADR-0018 replaces is the *enforcement mechanism* and the location: the
+runtime is now the `@agent-hub/agent` package, its `exports` map makes deep imports unresolvable, and
+the ESLint rule described here is deleted. Read the "Rejected — extract to `packages/runtime`"
+section below as history: both of its cost premises were measured and found wrong, and its flip
+condition (external reuse) was the wrong trigger.
+
 `apps/web/src/lib/runtime/` had grown to ~25 files that any code in the app could import
 individually — no declared interface, so a fresh reader (human or agent) saw a pile of disparate
 files instead of one seam. Meanwhile `crypto` (secret sealing) and `notify` (improvement-email

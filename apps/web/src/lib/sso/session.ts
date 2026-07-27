@@ -1,5 +1,6 @@
-import type { SsoProviderKind } from "@agent-hub/db";
-import { openSecret, sealSecret } from "@/lib/crypto";
+import type { SsoProviderKind } from "@agent-hub/core";
+import { openSecret, sealSecret } from "@agent-hub/core";
+
 import type { SsoTransient } from "./types";
 
 /**

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { SsoConnection, SsoProviderKind } from "@agent-hub/db";
-import { openSecret } from "@/lib/crypto";
+import type { SsoConnection, SsoProviderKind } from "@agent-hub/core";
+import { openSecret } from "@agent-hub/core";
+
 import { getWidgetDb } from "@/lib/widget-db";
 import { getSsoProvider } from "./index";
 import {

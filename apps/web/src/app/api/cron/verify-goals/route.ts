@@ -5,7 +5,7 @@ import {
   runDueAnswerVerifications,
   runDueGoalEvals,
   runTrustMaterialization,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 
 /**
  * Standing-goal re-verification tick (spec: scheduled golden-question checks

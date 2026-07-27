@@ -1,4 +1,4 @@
-import type { DayAvailability, TimeRange, WeekDay } from "@agent-hub/db";
+import type { DayAvailability, TimeRange, WeekDay } from "@agent-hub/core";
 
 export type { DayAvailability, TimeRange, WeekDay };
 

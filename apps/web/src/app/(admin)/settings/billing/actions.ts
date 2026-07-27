@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/authz";
-import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { getEnterpriseCapabilities } from "@agent-hub/agent";
 
 /**
  * Open Stripe's Customer Portal — where an existing subscriber changes tier,

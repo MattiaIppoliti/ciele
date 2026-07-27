@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   verify:
-    name: typecheck · test · lint
+    name: typecheck · test · lint · build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +31,16 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # `setup-node`'s `cache: pnpm` caches the pnpm store, not turbo's task
+      # cache. Without this every run recomputes every task from cold.
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
@@ -42,3 +52,6 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: Build
+        run: pnpm build

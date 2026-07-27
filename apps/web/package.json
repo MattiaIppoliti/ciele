@@ -14,7 +14,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@agent-hub/agent": "workspace:*",
     "@agent-hub/charts": "workspace:*",
+    "@agent-hub/core": "workspace:*",
     "@agent-hub/db": "workspace:*",
     "@agent-hub/ui": "workspace:*",
     "@ai-sdk/anthropic": "^4.0.5",

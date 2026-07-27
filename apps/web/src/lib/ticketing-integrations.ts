@@ -1,4 +1,4 @@
-import type { TicketingPlatform } from "@agent-hub/db";
+import type { TicketingPlatform } from "@agent-hub/core";
 
 export interface TicketingPlatformMeta {
   label: string;

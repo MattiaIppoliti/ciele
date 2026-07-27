@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import type { TurnStep } from "@/lib/runtime/client";
+import type { TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, formatToolName } from "./tool-icons";
 
 /**

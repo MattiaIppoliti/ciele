@@ -1,0 +1,194 @@
+/**
+ * The scheduled drains — one function per cron tick.
+ *
+ * These used to live inside `apps/web`'s cron route handlers, which meant the
+ * *policy* of a scheduled run (how large a batch to claim, how long a lease is
+ * stale, what a partial failure reports) sat in a Next.js route while the
+ * pipeline it drives lived here. Now the route is a pure adapter — cron auth in,
+ * `Response.json` out — and each tick's behavior is testable without a request.
+ *
+ * Both return the tick's report as the exact object the cron endpoint serializes,
+ * so the operational payload an admin reads in Vercel's cron log is pinned by
+ * this package's tests rather than by a route.
+ */
+
+import type { SourceStatus } from "@agent-hub/core";
+import { thrownMessage } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
+
+import {
+  CRAWL_FINALIZE_LEASE_MS,
+  finalizeWebsiteCrawl,
+  restartWebsiteCrawl,
+} from "./ingest";
+import {
+  type RunDueJobsResult,
+  runDueGraphSyncJobs,
+  runDueIngestJobs,
+  runDueProposalJobs,
+} from "./jobs";
+
+export interface ScheduledDeps {
+  db: Db;
+}
+
+/**
+ * Each claimed Source triggers a full site crawl. Keep each run deliberately
+ * small so one tick never fans out across every due Source at once; the rest
+ * stay due and are picked up by the next tick.
+ */
+export const RECRAWL_SWEEP_BATCH_SIZE = 5;
+
+/**
+ * Finalization can fetch and ingest a complete website. Keep each tick
+ * deliberately small so one slow batch never fans out across every pending
+ * crawl; remaining Sources stay `processing` for the next tick.
+ */
+export const CRAWL_FINALIZE_BATCH_SIZE = 5;
+
+/**
+ * Lease-holder prefix for a finalize tick. Each of the four claims this tick
+ * makes derives its worker id from this, so a stuck lease in the ledger is
+ * traceable to the cron that took it.
+ */
+const FINALIZE_WORKER_ID = "cron-finalize-crawls";
+
+/** One Source's outcome in a sweep tick: crawl started, or why it did not. */
+export type SweptRecrawlResult =
+  | { sourceId: string; status: "processing" }
+  | { sourceId: string; status: "skipped"; message: string }
+  | { sourceId: string; status: "error"; message: string };
+
+export interface SweepDueRecrawlsReport {
+  recrawls: { swept: number; launched: number; results: SweptRecrawlResult[] };
+}
+
+/**
+ * Scheduled re-crawl sweep (#36). Turns each Website Source's per-site cadence
+ * (daily / weekly / monthly; "never" opts out) into hands-off refreshes.
+ *
+ * Atomically claims a bounded, oldest-crawled-first batch of due Sources across
+ * all orgs, then runs each through the *same* provider resolution + crawl-start
+ * pipeline as a manual re-crawl (`restartWebsiteCrawl`) — scheduling decides
+ * only *when*, never *how*. Claiming flips a due Source to `processing`, so a
+ * Source already crawling is skipped and running the sweep twice inside a
+ * window never starts a duplicate remote run. The previous ready Concepts stay
+ * live until the replacement crawl finalizes with usable pages, so a failed
+ * refresh keeps the existing knowledge. One Source failing to start never
+ * aborts the rest of the batch; crawl failures surface through the
+ * crawl-failure Alert the pipeline already raises on finalize.
+ */
+export async function sweepDueRecrawls(
+  deps: ScheduledDeps,
+  options: { now?: Date; limit?: number } = {}
+): Promise<SweepDueRecrawlsReport> {
+  const { db } = deps;
+  const now = options.now ?? new Date();
+  const due = await db.claimDueRecrawlSources({
+    now: now.toISOString(),
+    limit: options.limit ?? RECRAWL_SWEEP_BATCH_SIZE,
+  });
+
+  const results = await Promise.all(
+    due.map(async ({ sourceId }): Promise<SweptRecrawlResult> => {
+      try {
+        const result = await restartWebsiteCrawl({ db, sourceId });
+        // A re-crawl refused for budget (#510) is not a run and not a failure:
+        // report it as skipped so a sweep never claims work it did not start.
+        return result.started
+          ? { sourceId, status: "processing" as const }
+          : { sourceId, status: "skipped" as const, message: result.reason };
+      } catch (error) {
+        return {
+          sourceId,
+          status: "error" as const,
+          message: thrownMessage(error, "re-crawl failed"),
+        };
+      }
+    })
+  );
+
+  const launched = results.filter((r) => r.status === "processing").length;
+  return { recrawls: { swept: due.length, launched, results } };
+}
+
+/** One Source's outcome in a finalize tick: the reached status, or why it threw. */
+export type FinalizedCrawlResult =
+  | { sourceId: string; status: SourceStatus }
+  | { sourceId: string; status: "error"; message: string };
+
+export interface FinalizeDueCrawlsReport {
+  jobs: RunDueJobsResult;
+  graphSync: RunDueJobsResult;
+  proposals: RunDueJobsResult;
+  crawls: { swept: number; settled: number; results: FinalizedCrawlResult[] };
+}
+
+/**
+ * Background safety-net tick for website crawls and the durable job ledger.
+ *
+ * The Knowledge UI polls in-flight crawls while it is open; an admin who closes
+ * the tab mid-crawl would otherwise leave the Source on `processing`. This drains
+ * the ledger (ingest, graph-sync, Suggested Fix drafting — each the cron backstop
+ * for the host's after-response accelerator), then atomically claims one bounded,
+ * least-recently-attempted batch of `processing` crawls across all orgs and
+ * finalizes any whose provider run has finished. A finalize failure is reported
+ * per Source and never aborts the batch.
+ */
+export async function finalizeDueCrawls(
+  deps: ScheduledDeps,
+  options: { now?: Date; limit?: number } = {}
+): Promise<FinalizeDueCrawlsReport> {
+  const { db } = deps;
+  const workerId = FINALIZE_WORKER_ID;
+  const jobs = await runDueIngestJobs({ db }, { workerId, limit: 10 });
+  // Durable backstop for the graph-sync ledger. Inert when the graph worker is
+  // unconfigured — no rows queue.
+  const graphSync = await runDueGraphSyncJobs(
+    { db },
+    { workerId: `${workerId}-graph`, limit: 20 }
+  );
+  // Backstop for Suggested Fix drafting jobs (#390); best-effort like the rest.
+  const proposals = await runDueProposalJobs(
+    { db },
+    { workerId: `${workerId}-proposals`, limit: 10 }
+  );
+
+  const claimedAt = options.now ?? new Date();
+  const crawlWorkerId = `${workerId}-${crypto.randomUUID()}`;
+  const pending = await db.claimProcessingCrawlSources({
+    workerId: crawlWorkerId,
+    now: claimedAt.toISOString(),
+    staleBefore: new Date(claimedAt.getTime() - CRAWL_FINALIZE_LEASE_MS).toISOString(),
+    limit: options.limit ?? CRAWL_FINALIZE_BATCH_SIZE,
+  });
+
+  const results = await Promise.all(
+    pending.map(async ({ sourceId, collectionId, assistantId }) => {
+      try {
+        const status = await finalizeWebsiteCrawl({
+          db,
+          assistantId,
+          collectionId,
+          sourceId,
+          claimedWorkerId: crawlWorkerId,
+        });
+        return { sourceId, status };
+      } catch (error) {
+        return {
+          sourceId,
+          status: "error" as const,
+          message: thrownMessage(error, "finalize failed"),
+        };
+      }
+    })
+  );
+
+  const settled = results.filter((r) => r.status !== "processing").length;
+  return {
+    jobs,
+    graphSync,
+    proposals,
+    crawls: { swept: pending.length, settled, results },
+  };
+}

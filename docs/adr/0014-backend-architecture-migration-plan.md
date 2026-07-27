@@ -210,7 +210,7 @@ Rollback:
 
 ## Verification Strategy
 
-- Runtime capability changes go through `apps/web/src/lib/runtime/index.ts` and
+- Runtime capability changes go through `packages/agent/src/index.ts` and
   the locked interface test.
 - Db shape changes update both Supabase and mock Db contract tests.
 - Storage helpers get unit tests around path generation, allowed MIME/size, and

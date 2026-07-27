@@ -1,6 +1,13 @@
 # packages/db — `@agent-hub/db`
 
-The data layer for `apps/web` only (`apps/admin` deliberately does not use it — see
+The **data-access seam, and only that** (ADR-0019). Every noun this package traffics in is a domain
+type from [`@agent-hub/core`](../core/CLAUDE.md), which it depends on; what lives here are the
+*operations*.
+
+> **Import a type from `@agent-hub/core`, an operation from here.** This barrel does not re-export the
+> domain, on purpose — the dependency arrow should be visible at every call site.
+
+Used by `apps/web` and `@agent-hub/agent` (`apps/admin` deliberately does not — see
 `apps/admin/CLAUDE.md`).
 
 ## Commands
@@ -12,13 +19,18 @@ pnpm --filter @agent-hub/db typecheck   # tsc --noEmit
 
 ## Shape
 
-- `types.ts` — the `Db` interface and every domain type. **This is the seam.** Consumers program
-  against it; nothing else in the package is public API.
+- `types.ts` — the `Db` interface: 170 method signatures over types imported from
+  `@agent-hub/core`. **This is the seam.** Consumers program against it; nothing else here is public.
 - `supabase.ts` — the RLS-scoped implementation.
 - `mock.ts` — in-memory demo implementation. The app runs on it when Supabase env is absent.
-- `engine.ts` — the deterministic keyword router (`matchFlow`), the offline/no-model fallback.
-  **Routing only** — action rendering lives solely in `apps/web/src/lib/runtime` (ADR-0003).
+- `table-access.ts` — the generic typed table accessor (ADR-0016 stage 1) that the plain-CRUD
+  passthroughs migrate onto.
+- `improvements.ts` — `raiseImprovement`. It lives here rather than in the domain package because it
+  takes a `Db`; that is the test for which side of the seam a function belongs on.
 - `src/testing/` — Supabase-backed harnesses (pglite + a PostgREST shim), not shipped code.
+
+The deterministic keyword router (`matchFlow`), the OKF derivations, the Insights oracle and the rest
+of the pure domain logic moved to `@agent-hub/core` — they never needed a database (ADR-0019).
 
 ## Adding to the `Db` interface
 

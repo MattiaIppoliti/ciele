@@ -44,7 +44,7 @@ The first implementation should add org-scoped reporting views/functions for:
 
 The admin UI should ask the server for bounded aggregate results by filter
 instead of receiving all conversation/message rows. Keep the pure
-`packages/db/src/insights.ts` functions as the TS oracle and parity check while
+`packages/core/src/insights.ts` functions as the TS oracle and parity check while
 the SQL layer takes over. Parity is enforced by an in-process PGlite test that
 runs the real `get_insights_overview` against that oracle over shared fixtures
 (`packages/db/src/testing/insights.parity.test.ts`, PRD #270).

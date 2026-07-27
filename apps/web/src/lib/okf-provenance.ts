@@ -22,7 +22,7 @@ import {
   type ConceptFrontmatter,
   type OkfStatus,
   type OkfTrustTier,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 
 const TRUST_LABELS: Record<OkfTrustTier, string> = {
   unverified: "Unverified",

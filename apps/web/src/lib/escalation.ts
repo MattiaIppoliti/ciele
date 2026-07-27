@@ -1,17 +1,20 @@
-import { messageText, raiseImprovement } from "@agent-hub/db";
-import type { Assistant, Db } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
+import { messageText } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
+import { raiseImprovement } from "@agent-hub/db";
+
 import {
   enqueueDraftProposalJob,
   feedbackScore,
   forwardGraphFeedback,
   sendEmail,
   sendEscalationApiRequest,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 import type {
   ApiRequestOutcome,
   EmailTransport,
   EscalationEndpointConfig,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 import {
   buildEscalationEmail,
   missingRequiredFields,

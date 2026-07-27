@@ -1,4 +1,4 @@
-import type { FlowButtonIcon as FlowButtonIconName } from "@agent-hub/db";
+import type { FlowButtonIcon as FlowButtonIconName } from "@agent-hub/core";
 import type { CSSProperties } from "react";
 import {
   Bell,

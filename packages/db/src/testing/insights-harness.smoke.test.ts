@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { createInsightsHarness, type InsightsHarness } from "./insights-harness";
-import type { InsightsFilter } from "../types";
+import type { InsightsFilter } from "@agent-hub/core";
 
 /**
  * Smoke test for the PGlite Insights harness (PRD #270, slice #271): proves the

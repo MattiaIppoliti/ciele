@@ -1,4 +1,5 @@
-import type { Db, Improvement } from "./types";
+import type { Improvement } from "@agent-hub/core";
+import type { Db } from "./types";
 
 /**
  * One clamp for every raised Improvement title. The hand-built call sites

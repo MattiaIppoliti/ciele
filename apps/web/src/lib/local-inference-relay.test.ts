@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { getMockDb, shortId } from "@agent-hub/db";
+import { shortId } from "@agent-hub/core";
+import { getMockDb } from "@agent-hub/db";
 
 // The relay obtains its Db through the facade seam; the in-memory mock adapter
 // implements the same contract-pinned behavioural methods as the Supabase one,

@@ -8,7 +8,7 @@ import {
   isLocalSubscriptionProvider,
   isLocalSubscriptionTestEnabled,
   isLoopbackHost,
-} from "@/lib/local-subscriptions";
+} from "@agent-hub/agent/local-providers";
 
 export const dynamic = "force-dynamic";
 

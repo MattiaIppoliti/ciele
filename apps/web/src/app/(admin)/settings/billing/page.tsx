@@ -10,7 +10,7 @@ import {
 } from "@agent-hub/ui";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
-import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
 import {

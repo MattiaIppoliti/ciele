@@ -1,4 +1,4 @@
-import type { Role } from "@agent-hub/db";
+import type { Role } from "@agent-hub/core";
 
 const RANK: Record<Role, number> = { owner: 4, admin: 3, editor: 2, viewer: 1 };
 

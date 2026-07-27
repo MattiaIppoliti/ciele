@@ -1,7 +1,7 @@
 import { Link } from "@/components/ui/link";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
-import type { UsageDailyRow, UsageResource } from "@agent-hub/db";
+import type { UsageDailyRow, UsageResource } from "@agent-hub/core";
 import {
   Card,
   CardContent,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
-import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { formatCredits, summarizeUsage } from "@/lib/usage-summary";
 import { budgetMeterView, usageLimitsView } from "@/lib/usage-meters";
 import {

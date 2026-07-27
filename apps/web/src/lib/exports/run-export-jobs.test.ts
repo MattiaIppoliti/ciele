@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { getMockDb, DEMO_ORG, type ExportJob } from "@agent-hub/db";
+import { type ExportJob } from "@agent-hub/core";
+import { getMockDb, DEMO_ORG } from "@agent-hub/db";
 import { runDueExportJobs, type ExportRunnerDeps } from "./run-export-jobs";
 
 /**

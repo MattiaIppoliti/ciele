@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
-import type { HelpDesk } from "@agent-hub/db";
+import type { HelpDesk } from "@agent-hub/core";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { createHelpDeskAction } from "@/app/actions";

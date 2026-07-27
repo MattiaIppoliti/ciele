@@ -1,13 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { unstable_cache, updateTag } from "next/cache";
-import {
-  createDb,
-  getMockDb,
-  isSupabaseConfigured,
-  type Conversation,
-  type Db,
-  type Publication,
-} from "@agent-hub/db";
+import { type Conversation, type Publication } from "@agent-hub/core";
+import { createDb, getMockDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
 
 let widgetDb: Db | null = null;
 

@@ -1,4 +1,4 @@
-import type { FlowTrust } from "@agent-hub/db";
+import type { FlowTrust } from "@agent-hub/core";
 import { Badge } from "@agent-hub/ui";
 
 /**

@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition, type PointerEvent } from "react";
 import { Link } from "@/components/ui/link";
-import type { Flow, FlowTrust } from "@agent-hub/db";
+import type { Flow, FlowTrust } from "@agent-hub/core";
 import {
   GripVertical,
   Lock,

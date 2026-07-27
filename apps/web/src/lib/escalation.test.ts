@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 // after() is the enqueue accelerator (Suggested Fix drafting on escalation);
 // a no-op keeps it out of the escalation-transaction assertions.
 vi.mock("next/server", () => ({ after: vi.fn() }));
+import type { Db } from "@agent-hub/db";
 import { DEMO_ORG, getMockDb } from "@agent-hub/db";
-import type { Assistant, ChannelFormField, Db } from "@agent-hub/db";
-import type { EmailTransport } from "@/lib/runtime";
-import type { EmailMessage } from "@/lib/runtime";
+import type { Assistant, ChannelFormField } from "@agent-hub/core";
+
+import type { EmailTransport } from "@agent-hub/agent";
+import type { EmailMessage } from "@agent-hub/agent";
 import { escalateConversation, type EscalationRequest } from "./escalation";
 
 /**

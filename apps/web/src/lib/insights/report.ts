@@ -1,13 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createDb, isoDay } from "@agent-hub/db";
-import type { InsightsFilter } from "@agent-hub/db";
+import type { InsightsFilter } from "@agent-hub/core";
+import { isoDay } from "@agent-hub/core";
+import { createDb } from "@agent-hub/db";
+
 import { getDb } from "@/lib/data";
 
 export type {
   InsightsAggregate,
   InsightsFilter,
   InsightsOverview,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 
 /**
  * Insights read module (apps/web façade): the aggregation lives in the Db

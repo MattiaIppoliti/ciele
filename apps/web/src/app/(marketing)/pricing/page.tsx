@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getSession } from "@/lib/auth";
-import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeShell } from "@/components/home/home-shell";
 import { PricingContent } from "@/components/marketing/pricing-content";

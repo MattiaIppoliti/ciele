@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AiUsageStage, Db } from "./types";
-import { ASSISTANT_GOAL_CAP } from "./types";
-import { shortId } from "./index";
-import { buildPublicationConfig } from "./publication";
+import type { AiUsageStage } from "@agent-hub/core";
+import { ASSISTANT_GOAL_CAP, buildPublicationConfig, shortId } from "@agent-hub/core";
+import type { Db } from "./types";
 
 /**
  * Db contract tests: interface-level behavior every Db adapter must share.

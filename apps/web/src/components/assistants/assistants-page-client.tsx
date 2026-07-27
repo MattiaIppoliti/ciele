@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Assistant } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
 import {
   ArrowDownAZ,
   Clock,

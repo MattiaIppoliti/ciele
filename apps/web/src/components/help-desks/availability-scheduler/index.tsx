@@ -4,16 +4,11 @@ import { LayoutGroup, useReducedMotion } from "motion/react";
 import { useCallback, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { DayRow } from "./day-row";
-import {
-  type DayAvailability,
-  type WeekDay,
-  type WeekHours,
-  WEEKDAYS,
-  buildOptions,
-  rangeId,
-} from "./types";
+import { type DayAvailability, type WeekDay } from "@agent-hub/core";
+import { type WeekHours, WEEKDAYS, buildOptions, rangeId } from "./types";
 
-export type { DayAvailability, TimeRange, WeekDay, WeekHours } from "./types";
+export type { DayAvailability, TimeRange, WeekDay } from "@agent-hub/core";
+export type { WeekHours } from "./types";
 
 export interface AvailabilitySchedulerProps {
   /** The seven-day opening schedule (a channel's `availability.hours`). */

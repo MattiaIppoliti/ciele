@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import type { ImprovementListItem } from "@agent-hub/db"
+import type { ImprovementListItem } from "@agent-hub/core"
 import { Search } from "lucide-react"
 import {
   createImprovementFromMessageAction,

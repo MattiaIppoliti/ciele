@@ -20,11 +20,14 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
     "@types/react": "^19",
+    "eslint": "^9.39.4",
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
   "scripts": {
+    "lint": "eslint",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   }

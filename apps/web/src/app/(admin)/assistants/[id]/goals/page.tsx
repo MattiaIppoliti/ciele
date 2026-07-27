@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ASSISTANT_GOAL_CAP } from "@agent-hub/db";
+import { ASSISTANT_GOAL_CAP } from "@agent-hub/core";
 import { GoalsClient } from "@/components/assistant/goals-client";
 import { requirePageMember } from "@/lib/authz";
 import { canEdit } from "@/lib/rbac";

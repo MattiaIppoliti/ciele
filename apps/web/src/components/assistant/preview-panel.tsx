@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Assistant, Conversation } from "@agent-hub/db";
-import type { ChatReplyPart } from "@/lib/runtime/client";
+import type { Assistant, Conversation } from "@agent-hub/core";
+import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
   ArrowUp,
   ChevronDown,
@@ -35,7 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@agent-hub/ui";
-import { consumeTurnStream, type TurnView } from "@/lib/runtime/client";
+import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import {
   completeFollowUp,
   initialFollowUpState,

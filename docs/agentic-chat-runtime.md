@@ -17,7 +17,7 @@ The toy version of a coding agent is ~200 lines:
 4. Loop until the model replies with plain text.
 
 That loop is real — it is exactly what runs in
-[`apps/web/src/lib/runtime/actions.ts`](../apps/web/src/lib/runtime/actions.ts)
+[`packages/agent/src/actions.ts`](../packages/agent/src/actions.ts)
 (`searchKnowledgeHandler`, via the AI SDK's `streamText` + `tools` +
 `stopWhen: stepCountIs(5)`). Everything else in this document is what
 production adds around that loop, and where each piece lives here.

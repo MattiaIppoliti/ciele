@@ -14,7 +14,7 @@ pnpm --filter @agent-hub/web typecheck   # tsc --noEmit
 pnpm --filter @agent-hub/web lint        # eslint
 ```
 
-Single test file: `pnpm --filter @agent-hub/web exec vitest run src/lib/runtime/engine.test.ts`.
+Single test file: `pnpm --filter @agent-hub/web exec vitest run src/lib/escalation.test.ts`.
 
 Dev server: use the Browser pane (`preview_start` with `web`, or `web-demo` for the
 Supabase-less mock build) — see `.claude/launch.json`. Never `pnpm dev` in a shell.
@@ -27,14 +27,23 @@ Supabase-less mock build) — see `.claude/launch.json`. Never `pnpm dev` in a s
   large surface by concern (`ingest.security.test.ts`, `ingest.crawl.test.ts`).
 - `@` resolves to `src/`.
 
+## The chat runtime is a package, not a folder
+
+The runtime lives in [`packages/agent`](../../packages/agent/CLAUDE.md) (`@agent-hub/agent`), with
+three entry points: `@agent-hub/agent` (server), `@agent-hub/agent/client` (client-safe) and
+`@agent-hub/agent/local-providers` (provider CLIs). Its `exports` map declares only those, so a deep
+import into its internals does not resolve — no lint rule needed (ADR-0005). Adding a public
+capability = export it from a barrel **and** update `packages/agent/src/interface.test.ts`
+deliberately; that test locks the surface.
+
+The runtime is framework-free, so this app hands it the two Next-specific facts it needs by calling
+`registerRuntimeHost` in `src/instrumentation.ts`. Anything the runtime needs from Next goes through
+a port there, never an import.
+
 ## Boundaries the linter enforces
 
 These are ESLint errors, not style preferences (`eslint.config.mjs`):
 
-- **Runtime is a deep module** (ADR-0005): import it only via `@/lib/runtime` (server) or
-  `@/lib/runtime/client` (client). Deep imports into `@/lib/runtime/*` are rejected. Adding a
-  public capability = export it from the barrel **and** update `src/lib/runtime/interface.test.ts`
-  deliberately — that test locks the surface.
 - **No browser Supabase client.** `createBrowserClient` from `@supabase/ssr` is banned in
   `src/components/**` and `src/app/**`; session mutation goes through a Server Action or the
   cookie-scoped server client.
@@ -42,8 +51,9 @@ These are ESLint errors, not style preferences (`eslint.config.mjs`):
 ## Data access
 
 Everything goes through the `Db` seam in `@agent-hub/db` — never a raw Supabase query in a page
-or component. Every read is org-scoped by Postgres RLS; with no Supabase env the app falls back
-to the in-memory mock db, which is how `web-demo` runs.
+or component. **Domain types come from `@agent-hub/core`, operations from `@agent-hub/db`**
+(ADR-0019): the db barrel does not re-export the vocabulary. Every read is org-scoped by Postgres
+RLS; with no Supabase env the app falls back to the in-memory mock db, which is how `web-demo` runs.
 
 ## Mutations
 
@@ -53,5 +63,8 @@ Server Actions live in `src/app/actions.ts`, `src/app/auth/actions.ts`, and rout
 ## Gotchas
 
 - `src/ee/` is enterprise-only and excluded from the public mirror. OSS code must not import it.
-- Runtime files ending `.security.test.ts` / `egress.security.test.ts` assert egress and
-  SSRF guards — treat a failure there as a security regression, not a flaky test.
+- `vitest.config.ts` caps `maxWorkers` and raises `testTimeout`: this suite and `packages/agent`'s
+  are both ~56 files and turbo runs them concurrently, so an unbounded worker pool oversubscribes
+  the CPU and trips the default timeout on tests that assert behaviour, not speed.
+- `src/lib/local-connector-runtime.test.ts` spawns the real connector process over HTTP; its waits
+  use one `CONNECTOR_DEADLINE_MS` safety net, not a latency assertion.

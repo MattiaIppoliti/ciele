@@ -1,4 +1,4 @@
-import type { ChatReplyPart } from "@/lib/runtime/client";
+import type { ChatReplyPart } from "@agent-hub/agent/client";
 
 /**
  * Inline help-desk actions duplicate the widget's persistent support button,

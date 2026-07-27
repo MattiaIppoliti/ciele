@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { Assistant } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
 import { ChevronsLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@agent-hub/ui";

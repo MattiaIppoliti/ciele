@@ -9,7 +9,7 @@ import {
 } from "@agent-hub/ui";
 import { Link } from "@/components/ui/link";
 import { cn } from "@/lib/utils";
-import type { PlanCatalogEntry } from "@/lib/runtime";
+import type { PlanCatalogEntry } from "@agent-hub/agent";
 import {
   planDisplayName as titleCase,
   planTierViews,

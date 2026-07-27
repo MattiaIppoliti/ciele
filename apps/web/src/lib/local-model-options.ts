@@ -1,4 +1,4 @@
-import type { Provider } from "@agent-hub/db";
+import type { Provider } from "@agent-hub/core";
 import {
   parseLocalModelSelector,
   type ConnectorProvider,

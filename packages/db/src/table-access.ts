@@ -4,8 +4,8 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Skill,
-} from "./types";
-import { shortId } from "./id";
+} from "@agent-hub/core";
+import { shortId } from "@agent-hub/core";
 
 /**
  * Generic typed table access — ADR-0016 stage 1.

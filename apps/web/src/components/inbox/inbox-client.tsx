@@ -3,9 +3,15 @@
 import { Link } from "@/components/ui/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { AnswerVerdict, ImprovementMessageLink, InboxConversation, StoredMessage } from "@agent-hub/db";
-import { messageText } from "@agent-hub/db";
-import type { ChatReplyPart } from "@/lib/runtime/client";
+import type {
+  AnswerVerdict,
+  ImprovementMessageLink,
+  InboxConversation,
+  StoredMessage,
+} from "@agent-hub/core";
+import { isoDay, messageText } from "@agent-hub/core";
+
+import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
   Calendar as CalendarIcon,
   Download,
@@ -73,13 +79,6 @@ interface Filters {
   conversationIds: string;
   feedback: "" | "up" | "down";
   escalation: "" | "escalated" | "not_escalated";
-}
-
-/** Local-date yyyy-mm-dd (toISOString would shift the day near midnight). */
-function isoDay(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
 }
 
 function defaultFilters(): Filters {

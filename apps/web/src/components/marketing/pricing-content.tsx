@@ -1,6 +1,6 @@
 import { Check, Server, Sparkles } from "lucide-react";
 import { Link } from "@/components/ui/link";
-import type { PlanCatalog } from "@/lib/runtime";
+import type { PlanCatalog } from "@agent-hub/agent";
 import { planTierViews } from "@/lib/plan-pricing";
 
 /**

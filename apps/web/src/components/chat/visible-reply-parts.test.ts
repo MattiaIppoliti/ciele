@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChatReplyPart } from "@/lib/runtime/client";
+import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { latestHelpDeskId, visibleReplyParts } from "./visible-reply-parts";
 
 describe("visibleReplyParts", () => {

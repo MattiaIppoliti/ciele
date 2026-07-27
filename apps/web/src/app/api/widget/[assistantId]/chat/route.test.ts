@@ -8,7 +8,7 @@ vi.mock("@/lib/widget-db", () => ({
   widgetOptions: vi.fn(),
 }));
 // The turn machinery is irrelevant to the gate check (which runs first).
-vi.mock("@/lib/runtime", () => ({
+vi.mock("@agent-hub/agent", () => ({
   NDJSON_HEADERS: {},
   sessionMetadata: vi.fn(() => ({})),
   streamConversationTurn: vi.fn(),

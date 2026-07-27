@@ -6,7 +6,7 @@ import {
   type Provider,
   type UsageDailyRow,
   type UsageResource,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 
 /**
  * Folds the org's daily usage rows into what the Usage page shows (#506).

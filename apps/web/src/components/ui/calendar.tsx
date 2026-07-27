@@ -3,7 +3,7 @@
 import type { DateRange } from "react-day-picker";
 
 import { Calendar as UiCalendar } from "@agent-hub/ui";
-import { isoDay } from "@agent-hub/db";
+import { isoDay } from "@agent-hub/core";
 import { cn } from "@/lib/utils";
 
 /**

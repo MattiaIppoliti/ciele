@@ -21,11 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { type DayAvailability, type TimeRange, type WeekDay } from "@agent-hub/core";
 import {
-  type DayAvailability,
   type TimeOption,
-  type TimeRange,
-  type WeekDay,
   WEEKDAYS,
   closesMinutes,
   fromMinutes,

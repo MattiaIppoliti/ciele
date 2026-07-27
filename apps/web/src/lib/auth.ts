@@ -1,13 +1,7 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
-import {
-  DEMO_MEMBER,
-  DEMO_ORG,
-  isSupabaseConfigured,
-  type Organization,
-  type Profile,
-  type Role,
-} from "@agent-hub/db";
+import { type Organization, type Profile, type Role } from "@agent-hub/core";
+import { DEMO_MEMBER, DEMO_ORG, isSupabaseConfigured } from "@agent-hub/db";
 import { getDb } from "./data";
 import { createSupabaseServerClient } from "./supabase/server";
 

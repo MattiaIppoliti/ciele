@@ -1,4 +1,4 @@
-import type { EmailMessage } from "@/lib/runtime";
+import type { EmailMessage } from "@agent-hub/agent";
 
 /**
  * Improvement notification templates.

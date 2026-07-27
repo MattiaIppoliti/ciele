@@ -11,7 +11,7 @@ vi.mock("@/lib/authz", () => ({
 }));
 
 import { requireMember } from "@/lib/authz";
-import { runDueIngestJobs } from "@/lib/runtime";
+import { runDueIngestJobs } from "@agent-hub/agent";
 import { retrySourceIngestAction } from "./actions";
 
 /**

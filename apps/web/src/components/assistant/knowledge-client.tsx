@@ -8,8 +8,9 @@ import type {
   RecrawlSchedule,
   Source,
   WebsiteCrawlerProvider,
-} from "@agent-hub/db";
-import { effectivePageSchedule, nextCrawlDue } from "@agent-hub/db";
+} from "@agent-hub/core";
+import { effectivePageSchedule, nextCrawlDue } from "@agent-hub/core";
+
 import { conceptProvenanceView } from "@/lib/okf-provenance";
 import {
   Bold,

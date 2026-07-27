@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { KnowledgeClient } from "@/components/assistant/knowledge-client";
 import { requirePageMember } from "@/lib/authz";
-import { websiteCrawlerCapabilities } from "@/lib/runtime";
+import { websiteCrawlerCapabilities } from "@agent-hub/agent";
 import { getAssistantCached } from "../get-assistant";
 
 export default async function KnowledgePage({

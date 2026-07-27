@@ -11,7 +11,7 @@ import type {
   KeyValuePair,
   SupportChannel,
   SupportChannelConfig,
-} from "@agent-hub/db";
+} from "@agent-hub/core";
 import {
   Calendar,
   CalendarClock,

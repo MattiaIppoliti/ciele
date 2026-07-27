@@ -1,18 +1,18 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { colorizeOverview, computeInsightsOverview } from "../insights";
+import type { InboxConversation, InsightsMessage } from "@agent-hub/core";
+import { colorizeOverview, computeInsightsOverview } from "@agent-hub/core";
 import {
   ASSISTANTS,
   CHANNELS,
   FILTER_CASES,
   fixtureConversations,
   fixtureMessages,
-} from "./insights-fixtures";
+} from "@agent-hub/core/testing";
 import {
   createInsightsHarness,
   type InsightsHarness,
   type InsightsSeed,
 } from "./insights-harness";
-import type { InboxConversation, InsightsMessage } from "../types";
 
 /**
  * Insights TS↔SQL parity (PRD #270, slice #273): the first case that runs the

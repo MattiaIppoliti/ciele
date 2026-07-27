@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { randomUUID } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
 import { createSchemaLoadedPglite } from "./supabase-contract-harness";
 

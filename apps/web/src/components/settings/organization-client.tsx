@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { Organization } from "@agent-hub/db";
+import type { Organization } from "@agent-hub/core";
 import { toast } from "sonner";
 import {
   updateOrganizationAction,

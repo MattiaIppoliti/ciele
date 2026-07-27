@@ -7,20 +7,16 @@ import { BudgetCard } from "@/components/settings/budget-card";
 import { EmbeddingConnectionCard } from "@/components/settings/embedding-connection-card";
 import { PlatformPromptCard } from "@/components/settings/platform-prompt-card";
 import { requirePageMember } from "@/lib/authz";
-import {
-  DEFAULT_PLATFORM_PROMPT,
-  getStoredPlatformPrompt,
-  isPlatformOwner,
-} from "@/lib/platform";
+import { getStoredPlatformPrompt, isPlatformOwner } from "@/lib/platform";
 import { canManageMembers } from "@/lib/rbac";
 import { canChangeRoles } from "@/lib/rbac";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
-import { providerAvailability } from "@/lib/runtime";
+import { DEFAULT_PLATFORM_PROMPT, providerAvailability } from "@agent-hub/agent";
 import {
   isLocalSubscriptionTestEnabled,
   isLoopbackHost,
   listLocalSubscriptionStatuses,
-} from "@/lib/local-subscriptions";
+} from "@agent-hub/agent/local-providers";
 
 export const dynamic = "force-dynamic";
 

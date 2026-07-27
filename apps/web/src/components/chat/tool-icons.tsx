@@ -7,7 +7,7 @@ import {
   Workflow,
   Wrench,
 } from "lucide-react";
-import type { StepStage, TurnStep } from "@/lib/runtime/client";
+import type { StepStage, TurnStep } from "@agent-hub/agent/client";
 
 /**
  * Per-step icon lookup for the Thinking panel / ToolCallsSection. Every

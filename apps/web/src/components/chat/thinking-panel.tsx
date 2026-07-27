@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
-import type { TurnPhase, TurnStep } from "@/lib/runtime/client";
+import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
 import { ToolCallsSection } from "./tool-calls-section";
 

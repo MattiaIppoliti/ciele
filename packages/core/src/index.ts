@@ -1,0 +1,97 @@
+/**
+ * `@agent-hub/core` — the domain, and everything derivable from it.
+ *
+ * This package holds the vocabulary `CONTEXT.md` fixes (Organization, Assistant,
+ * Member, Knowledge Collection, Source, Concept, Publication, Flow, …) as types,
+ * plus the pure functions that derive facts *from* those types — flow routing,
+ * OKF trust/lifecycle, the Insights read model, publication snapshots, re-crawl
+ * scheduling, cost estimates. **Zero runtime dependencies, no I/O, no framework.**
+ *
+ * `@agent-hub/db` declares the `Db` interface over these types and depends on
+ * this package. `@agent-hub/agent` runs on both. Nothing here may depend on
+ * either — the arrow points one way, and that is what makes the vocabulary
+ * usable without dragging an adapter behind it (ADR-0019).
+ *
+ * Two kinds of module here, exported two ways on purpose:
+ *
+ * - The **vocabulary** (`types`, `okf`) is `export *`. It has no internals to
+ *   hide — its whole content *is* the vocabulary — so curating it would be
+ *   ceremony, and `export *` keeps barrel and module from drifting.
+ * - The **derivations** are curated, because they do have internals. The
+ *   Insights read model composes seven helpers into `computeInsightsOverview`;
+ *   publishing them would turn a private composition step into API that nothing
+ *   locks. Export what has a consumer, and add a name when something needs it.
+ */
+
+// The domain vocabulary — every noun in CONTEXT.md, as a type.
+export * from "./types";
+
+// Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the
+// read-time derivations over it (trust tier, lifecycle status, staleness).
+// Never re-implement these rules — derive through them (ADR-0002).
+export * from "./okf";
+
+// --- Derivations: curated, because these modules have internals ------------
+
+// The deterministic keyword router: the offline/no-model `matchFlow` fallback
+// half of the two-engine runtime (ADR-0003). Routing only — action rendering
+// lives in @agent-hub/agent.
+export { matchFlow, messageFlowCandidates } from "./engine";
+
+// The Insights read model. `computeInsightsOverview` is the oracle the SQL
+// aggregate `get_insights_overview` is checked against (ADR-0010); the seven
+// helpers it composes stay internal, and its tests reach them directly.
+export { computeInsightsOverview, colorizeOverview, isoDay } from "./insights";
+
+// Shipped defaults for a new Assistant and for support-channel availability.
+export {
+  DEFAULT_AI_DISCLAIMER,
+  DEFAULT_FLOWS,
+  DEFAULT_WELCOME_MESSAGE,
+  defaultChannelAvailability,
+  defaultChannelConversationData,
+  normalizeChannelAvailability,
+  sortFlows,
+} from "./defaults";
+export type { DefaultFlowSpec } from "./defaults";
+
+// Which Assistant fields freeze into an immutable Publication snapshot.
+export { buildPublicationConfig } from "./publication";
+
+// Per-site re-crawl cadence: when a Website Source next falls due. Clock-free.
+export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
+
+// Flattens a stored message's content parts to text.
+export { messageText } from "./message";
+
+// Per-model token prices and the cost estimate derived from them.
+export { estimateCostEur } from "./pricing";
+
+// Credits — the cost unit plan allowances are denominated in. Only the
+// conversion is public; the rate tables behind it stay package-private so
+// there is one place a price list is read.
+export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
+export type { MeteredUnit } from "./pricing";
+
+// Short opaque ids for domain objects.
+export { shortId } from "./id";
+
+// Who paid for a model call. Exhaustive over `AiCredentialKind` by construction,
+// so adding a credential kind without attributing it is a compile error.
+export { fundingBucket } from "./funding";
+export type { FundingBucket } from "./funding";
+
+// --- Pure helpers that are not domain derivations -------------------------
+// These predate the domain move and are here for the same reason: more than one
+// workspace needs them and they depend on nothing.
+
+// AES-256-GCM sealing for stored secrets. Sealed by the app when a credential is
+// saved (provider connections, SSO, session cookies), opened by the agent
+// runtime when it resolves a provider credential. Only the seal/open pair is
+// public: `sealSecret` is what handles the no-key case, and a caller reaching
+// past it would write a row `openSecret` cannot read back.
+export { sealSecret, openSecret } from "./crypto";
+
+// Reads a message off a thrown value — including the plain objects PostgREST
+// throws instead of Error instances.
+export { thrownMessage } from "./thrown-message";

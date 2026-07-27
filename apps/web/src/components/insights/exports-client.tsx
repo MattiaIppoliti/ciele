@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import type { ExportJobKind, ExportJobStatus } from "@agent-hub/db";
+import type { ExportJobKind, ExportJobStatus } from "@agent-hub/core";
 import { Download, FileText, Loader2, RotateCw, TriangleAlert } from "lucide-react";
 import {
   requestInsightsExportAction,

@@ -4,7 +4,7 @@ import {
   jwtVerify,
   type JWTVerifyGetKey,
 } from "jose";
-import type { EntraSsoConfig } from "@agent-hub/db";
+import type { EntraSsoConfig } from "@agent-hub/core";
 import {
   SsoCallbackError,
   type SsoProvider,

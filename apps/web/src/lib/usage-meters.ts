@@ -1,10 +1,10 @@
-import { USAGE_RESOURCES, type UsageResource } from "@agent-hub/db";
+import { USAGE_RESOURCES, type UsageResource } from "@agent-hub/core";
 import {
   USAGE_WARN_FRACTION,
   type UsageLimitsSnapshot,
   type UsageMeterSnapshot,
   type UsageWindowName,
-} from "@/lib/runtime";
+} from "@agent-hub/agent";
 
 /**
  * Turns a plan's meters into what the Usage page draws (#509).

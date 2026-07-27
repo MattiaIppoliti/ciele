@@ -1,4 +1,5 @@
-import type { Assistant, Db } from "@agent-hub/db";
+import type { Assistant } from "@agent-hub/core";
+import type { Db } from "@agent-hub/db";
 
 export interface AdminShellReads {
   assistants: Assistant[];

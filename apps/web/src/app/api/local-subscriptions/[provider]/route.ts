@@ -9,8 +9,8 @@ import {
   isLocalSubscriptionTestEnabled,
   isLoopbackHost,
   startLocalSubscriptionLogin,
-} from "@/lib/local-subscriptions";
-import { clearLocalSubscriptionReadinessProbe } from "@/lib/local-subscription-model";
+} from "@agent-hub/agent/local-providers";
+import { clearLocalSubscriptionReadinessProbe } from "@agent-hub/agent/local-providers";
 
 async function authorize(
   request: NextRequest,
