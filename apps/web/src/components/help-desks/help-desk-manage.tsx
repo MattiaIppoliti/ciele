@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Link } from "@/components/ui/link";
@@ -15,7 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   deleteHelpDeskAction,
   deleteSupportChannelAction,

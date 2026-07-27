@@ -2879,6 +2879,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as AlertRow[]).map(toAlert);
     },
 
+    async listActiveAlerts(organizationId, limit = 5) {
+      const { data, error } = await client
+        .from("alerts")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("status", "active")
+        .order("detected_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data as AlertRow[]).map(toAlert);
+    },
+
     async countActiveAlerts(organizationId) {
       const { count, error } = await client
         .from("alerts")

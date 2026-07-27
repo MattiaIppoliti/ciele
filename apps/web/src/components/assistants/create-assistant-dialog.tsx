@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { createAssistantAction } from "@/app/actions";
 import { Button } from "@agent-hub/ui";
 import {

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CopyPlus, Ellipsis, Trash2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { duplicateAssistantAction } from "@/app/actions";
 import { DeleteAssistantModal } from "@/components/assistants/delete-assistant-modal";
 import { Button } from "@agent-hub/ui";

@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import type { AssistantGoal, GoalExpectations } from "@agent-hub/core";
 import {
   createGoalAction,

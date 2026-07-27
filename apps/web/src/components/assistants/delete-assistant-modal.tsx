@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useId, useState, useTransition } from "react";
 import { Loader2, Trash2, TriangleAlert } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { deleteAssistantAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";

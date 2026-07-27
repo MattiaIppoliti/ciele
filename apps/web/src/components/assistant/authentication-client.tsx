@@ -1,9 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { EntraSsoConfig, SsoProviderKind, SsoValidationStatus } from "@agent-hub/core";
-import { toast } from "sonner";
+import type {
+  EntraSsoConfig,
+  SsoProviderKind,
+  SsoValidationStatus,
+} from "@agent-hub/core";
+import { toast } from "@/lib/toast";
 import {
   Badge,
   Button,

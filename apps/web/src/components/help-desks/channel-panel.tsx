@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   createSupportChannelAction,
   updateSupportChannelAction,

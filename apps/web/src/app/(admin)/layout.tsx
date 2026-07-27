@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ShellProvider } from "@/components/shell/shell-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeScript } from "@/components/theme-script";
@@ -17,8 +18,9 @@ export default async function AdminLayout({
   const { session, organizationId, reads } = await requirePageMember();
 
   // The shell (scope switcher + Find menu) needs the org's assistants; the
-  // sidebar's Alerts row needs the active-alert count for its badge.
-  const { assistants, activeAlertCount } = await reads.shell();
+  // sidebar's Alerts row needs the active-alert count for its badge, and the
+  // bottom-right notification stack the newest active alerts themselves.
+  const { assistants, activeAlertCount, activeAlerts } = await reads.shell();
   const summaries = assistants.map((assistant) => ({
     id: assistant.id,
     title: assistant.title,
@@ -35,35 +37,39 @@ export default async function AdminLayout({
       <ThemeScript />
       <ThemeProvider>
         <TooltipProvider delay={300}>
-        <ShellProvider assistants={summaries}>
-        <div className="bg-background text-foreground flex h-full">
-          <Suspense fallback={<div className="w-60 shrink-0 border-r" />}>
-            <AppSidebar
-              orgId={organizationId}
-              orgName={session.organization.name}
-              orgLogoUrl={session.organization.logoUrl}
-              organizations={session.organizations}
-              email={session.email}
-              role={session.role}
-              demo={session.demo}
-              profile={session.profile}
-              alertCount={activeAlertCount}
-            />
-          </Suspense>
-          <div className="flex min-w-0 flex-1 flex-col">
-            <Suspense fallback={<div className="h-14 shrink-0 border-b" />}>
-              <TopBar demo={session.demo} />
-            </Suspense>
-            {/* Managed edition only: inert on a self-host (#444). */}
-            <Suspense fallback={null}>
-              <PendingActivationBanner organizationId={organizationId} />
-            </Suspense>
-            <main className="min-h-0 flex-1 overflow-hidden">
-              <StaticIcons>{children}</StaticIcons>
-            </main>
-          </div>
-        </div>
-        </ShellProvider>
+          <ShellProvider assistants={summaries}>
+            <div className="bg-background text-foreground flex h-full">
+              <Suspense fallback={<div className="w-60 shrink-0 border-r" />}>
+                <AppSidebar
+                  orgId={organizationId}
+                  orgName={session.organization.name}
+                  orgLogoUrl={session.organization.logoUrl}
+                  organizations={session.organizations}
+                  email={session.email}
+                  role={session.role}
+                  demo={session.demo}
+                  profile={session.profile}
+                  alertCount={activeAlertCount}
+                />
+              </Suspense>
+              <div className="flex min-w-0 flex-1 flex-col">
+                <Suspense fallback={<div className="h-14 shrink-0 border-b" />}>
+                  <TopBar demo={session.demo} />
+                </Suspense>
+                {/* Managed edition only: inert on a self-host (#444). */}
+                <Suspense fallback={null}>
+                  <PendingActivationBanner organizationId={organizationId} />
+                </Suspense>
+                <main className="min-h-0 flex-1 overflow-hidden">
+                  <StaticIcons>{children}</StaticIcons>
+                </main>
+              </div>
+              <NotificationCenter
+                alerts={activeAlerts}
+                totalAlertCount={activeAlertCount}
+              />
+            </div>
+          </ShellProvider>
         </TooltipProvider>
       </ThemeProvider>
     </>

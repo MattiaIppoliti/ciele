@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useRef } from "react";
 import { Pencil } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 
 const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 

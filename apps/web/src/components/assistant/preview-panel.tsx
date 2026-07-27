@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Assistant, Conversation } from "@agent-hub/core";
@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   deleteConversationAction,
   getConversationMessagesAction,

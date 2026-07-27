@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -33,7 +33,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateAssistantAction, uploadAssistantAvatarAction } from "@/app/actions";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";

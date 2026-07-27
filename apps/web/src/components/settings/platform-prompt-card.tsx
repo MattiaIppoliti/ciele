@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { ShieldCheck } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updatePlatformPromptAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { Badge } from "@agent-hub/ui";

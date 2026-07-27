@@ -2340,6 +2340,38 @@ export function describeDbContract(
         await db.resolveAlert(b.id, ctx.userId);
         await db.resolveAlertsByKey(ctx.organizationId, sourceKey);
       });
+
+      it("lists only active alerts, newest first, capped at the limit", async () => {
+        const raised = [];
+        for (const title of ["Stack one", "Stack two", "Stack three"]) {
+          raised.push(
+            await db.raiseAlert(ctx.organizationId, {
+              type: "system",
+              title,
+              detail: "d",
+              sourceKey: `contract-alert:${shortId()}`,
+            })
+          );
+        }
+        const [oldest, , newest] = raised;
+
+        const capped = await db.listActiveAlerts(ctx.organizationId, 2);
+        expect(capped).toHaveLength(2);
+        expect(capped.every((alert) => alert.status === "active")).toBe(true);
+        // Newest first (raises inside one millisecond can tie, so compare
+        // timestamps rather than pinning an id).
+        expect(capped[0].detectedAt >= capped[1].detectedAt).toBe(true);
+
+        // Resolved alerts drop out of the list.
+        await db.resolveAlert(newest.id, ctx.userId);
+        const afterResolve = await db.listActiveAlerts(ctx.organizationId, 100);
+        expect(afterResolve.map((alert) => alert.id)).not.toContain(newest.id);
+        expect(afterResolve.map((alert) => alert.id)).toContain(oldest.id);
+
+        for (const alert of raised) {
+          if (alert.id !== newest.id) await db.resolveAlert(alert.id, ctx.userId);
+        }
+      });
     });
 
     describe("help desk ticketing integration (sealed credentials)", () => {

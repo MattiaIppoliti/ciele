@@ -3059,6 +3059,14 @@ export const mockDb: Db = {
       .sort((a, b) => (a.detectedAt < b.detectedAt ? 1 : -1));
   },
 
+  async listActiveAlerts(organizationId, limit = 5) {
+    const store = getStore();
+    return [...store.alerts.values()]
+      .filter((a) => a.organizationId === organizationId && a.status === "active")
+      .sort((a, b) => (a.detectedAt < b.detectedAt ? 1 : -1))
+      .slice(0, limit);
+  },
+
   async countActiveAlerts(organizationId) {
     const store = getStore();
     return [...store.alerts.values()].filter(

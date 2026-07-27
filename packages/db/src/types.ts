@@ -560,6 +560,8 @@ export interface Db {
 
   // Alerts (operational health)
   listAlerts(organizationId: string): Promise<Alert[]>;
+  /** Newest active alerts, capped — the shell's bottom-right notification stack. */
+  listActiveAlerts(organizationId: string, limit?: number): Promise<Alert[]>;
   /** Active-alert count for the sidebar badge. */
   countActiveAlerts(organizationId: string): Promise<number>;
   /** Raise an alert; refreshes the active alert with the same sourceKey instead of duplicating. */

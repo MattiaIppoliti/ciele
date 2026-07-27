@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import { Link } from "@/components/ui/link";
 import type { HelpDesk, HelpDeskSettings } from "@agent-hub/core";
 import { Search } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateAssistantAction } from "@/app/actions";
 import { Card } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";

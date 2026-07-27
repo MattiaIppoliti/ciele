@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Profile } from "@agent-hub/core";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { updateProfileAction, uploadProfileAvatarAction } from "@/app/actions";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import { UserAvatar } from "@/components/ui/user-avatar";

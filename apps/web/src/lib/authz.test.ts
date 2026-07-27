@@ -10,6 +10,7 @@ import type { Session } from "@/lib/auth";
 const {
   countActiveAlertsMock,
   getSessionMock,
+  listActiveAlertsMock,
   listAssistantsMock,
   reactCacheMock,
   redirectMock,
@@ -41,6 +42,7 @@ const {
   })(),
   countActiveAlertsMock: vi.fn(),
   getSessionMock: vi.fn(),
+  listActiveAlertsMock: vi.fn(),
   listAssistantsMock: vi.fn(),
   redirectMock: vi.fn((path: string) => {
     throw new Error(`REDIRECT:${path}`);
@@ -51,6 +53,7 @@ vi.mock("@/lib/auth", () => ({ getSession: getSessionMock }));
 vi.mock("@/lib/data", () => ({
   getDb: async () => ({
     countActiveAlerts: countActiveAlertsMock,
+    listActiveAlerts: listActiveAlertsMock,
     listAssistants: listAssistantsMock,
   }),
 }));
@@ -75,6 +78,7 @@ function session(role: Session["role"], withOrg = true): Session {
 beforeEach(() => {
   resetReactCacheMock();
   countActiveAlertsMock.mockReset().mockResolvedValue(2);
+  listActiveAlertsMock.mockReset().mockResolvedValue([]);
   getSessionMock.mockReset();
   listAssistantsMock.mockReset().mockResolvedValue([]);
 });
@@ -167,6 +171,7 @@ describe("requirePageMember", () => {
     expect(shell.activeAlertCount).toBe(2);
     expect(listAssistantsMock).toHaveBeenCalledOnce();
     expect(countActiveAlertsMock).toHaveBeenCalledOnce();
+    expect(listActiveAlertsMock).toHaveBeenCalledOnce();
   });
 
   it("shares one read coordinator between concurrent layout and page guards", async () => {

@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { RotateCw, ShieldCheck, SquareTerminal } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { BottomSheet } from "@/components/motion/bottom-sheet";
 import { ProviderBrandIcon } from "@/components/settings/provider-brand-icon";

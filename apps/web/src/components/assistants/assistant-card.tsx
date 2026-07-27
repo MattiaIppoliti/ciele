@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import {
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { duplicateAssistantAction } from "@/app/actions";
 import { DeleteAssistantModal } from "@/components/assistants/delete-assistant-modal";

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRef, useState, useTransition, type PointerEvent } from "react";
 import { Link } from "@/components/ui/link";
@@ -9,7 +9,7 @@ import {
   Pencil,
   Plus,
 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { reorderFlowsAction, updateFlowAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { Badge } from "@agent-hub/ui";

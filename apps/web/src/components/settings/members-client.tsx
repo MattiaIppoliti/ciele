@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
 import { Plus, Trash2, UserRound } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import {
   createInviteAction,
   removeMemberAction,
