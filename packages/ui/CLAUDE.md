@@ -1,6 +1,6 @@
 # packages/ui — `@agent-hub/ui`
 
-Shared primitives (shadcn/ui style, on Base UI) used by `apps/web`, `apps/admin`, `apps/docs`.
+Shared primitives (shadcn/ui style, on Base UI) used by every app in the workspace.
 
 ## Commands
 

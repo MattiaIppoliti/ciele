@@ -45,7 +45,7 @@ Dev server: Browser pane, config `docs` (port 3200).
   facing counterpart to [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) and to the
   `/visualize-repo` layer in `.agent-native/visual-docs/repo-overview/plan.mdx`; a change to one
   of the three should update the others. Keep it describing an **OSS checkout** — never enumerate
-  `ee/` or `apps/admin` internals, which the mirror strips.
+  the enterprise internals under `ee/`, which the mirror strips.
 - **Diagrams** use `<Mermaid chart={...} title="..." />` (`src/components/mermaid.tsx`), registered
   globally in `src/components/mdx.tsx` alongside `Files`/`Folder`/`File` — no per-page import.
   `mermaid` is a dynamic `import()`, so only pages with a diagram pay for it. The component renders

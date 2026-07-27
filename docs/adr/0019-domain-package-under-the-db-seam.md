@@ -67,7 +67,7 @@ depends on it and keeps only the seam.
   parity stay in core; the "does the adapter agree with the oracle" half became
   `packages/db/src/insights-adapter.test.ts`, next to the adapter it tests. The SQL half was already
   separate.
-- `apps/admin` can now use the domain vocabulary without adopting the `Db` facade — which is the
+- The staff console can now use the domain vocabulary without adopting the `Db` facade — which is the
   precondition for closing its duplicated types (the next candidate in the architecture review).
 - **ADR-0016's stages 3–4 are unaffected, with one wording knock-on**: its "a new table then costs
   one row-type, not three hand-written methods" now means one row-type *in `@agent-hub/core`*. That

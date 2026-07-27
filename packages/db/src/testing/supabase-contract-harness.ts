@@ -88,23 +88,38 @@ language sql immutable as $$
 $$;
 `;
 
+export interface SchemaLoadedPgliteOptions {
+  /**
+   * Absolute paths to migration directories applied *after* the open-source
+   * chain, in the order given — the same phase ordering
+   * `scripts/apply-migrations.sh` uses for `ee/migrations`. A caller outside
+   * the open-source tree passes its own chain here so this harness never has
+   * to know that chain exists (the dependency direction stays one-way).
+   */
+  extraMigrationDirs?: readonly string[];
+}
+
 /** Boot PGlite and apply the full production schema. */
-export async function createSchemaLoadedPglite(): Promise<PGlite> {
+export async function createSchemaLoadedPglite(
+  opts: SchemaLoadedPgliteOptions = {}
+): Promise<PGlite> {
   const pg = new PGlite({ extensions: { vector } });
   await pg.exec("set timezone = 'UTC';");
   await pg.exec(PREAMBLE);
-  const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-  for (const file of files) {
-    if (FRESH_DB_SKIP.has(file)) continue;
-    try {
-      await pg.exec(readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
-    } catch (err) {
-      throw new Error(
-        `supabase-contract-harness: migration ${file} failed: ${(err as Error).message}`,
-        { cause: err }
-      );
+  for (const dir of [MIGRATIONS_DIR, ...(opts.extraMigrationDirs ?? [])]) {
+    const files = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort();
+    for (const file of files) {
+      if (FRESH_DB_SKIP.has(file)) continue;
+      try {
+        await pg.exec(readFileSync(join(dir, file), "utf8"));
+      } catch (err) {
+        throw new Error(
+          `supabase-contract-harness: migration ${file} failed: ${(err as Error).message}`,
+          { cause: err }
+        );
+      }
     }
   }
   return pg;

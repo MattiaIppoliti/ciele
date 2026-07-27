@@ -33,7 +33,7 @@ root.
 
 ## Where the boundaries live
 
-### `apps/web` (platform.ciele.app)
+`apps/web` (the tenant-facing product):
 
 | Route | `loading.tsx` | Mirrors |
 |-------|---------------|---------|
@@ -45,11 +45,8 @@ root.
 When you build a new page whose layout differs meaningfully from the `(admin)` fallback, add a
 route-scoped `loading.tsx` next to its `page.tsx`.
 
-### `apps/admin` (admin.ciele.app)
-
-| Route | `loading.tsx` | Mirrors |
-|-------|---------------|---------|
-| `(admin)/*` | `(admin)/loading.tsx` | Overview shape: title + 4 KPI cards + chart + two side-by-side cards |
+The same rule applies to any other app in the workspace; each app documents its own boundaries in
+its README.
 
 ## Checklist when touching a page's UI
 

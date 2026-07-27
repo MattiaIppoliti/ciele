@@ -74,8 +74,7 @@ alter table private.platform_superuser_emails enable row level security;
 
 -- Auto-enroll allowlisted emails as platform superusers the moment their
 -- auth.users row exists (covers fresh signups on any environment sharing
--- this project). Keep the allowlist in sync with apps/admin's
--- PLATFORM_ADMIN_EMAILS if the same humans should hold both surfaces.
+-- this project).
 create or replace function private.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin

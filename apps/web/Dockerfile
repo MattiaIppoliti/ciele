@@ -20,11 +20,12 @@ WORKDIR /app
 # the lockfile or a manifest changes, keeping rebuilds fast and reproducible.
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
+# Only the manifests this filtered install resolves. pnpm accepts a lockfile
+# that still carries importers whose workspace directory is absent, so sibling
+# apps the image never ships need no placeholder manifest here — which also
+# keeps this Dockerfile buildable from the open-source tree, where the
+# enterprise apps do not exist at all.
 COPY apps/web/package.json apps/web/
-# Every workspace manifest must be present for frozen-lockfile validation,
-# even for apps this image never ships.
-COPY apps/admin/package.json apps/admin/
-COPY apps/docs/package.json apps/docs/
 COPY packages/agent/package.json packages/agent/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/

@@ -7,8 +7,8 @@ type from [`@agent-hub/core`](../core/CLAUDE.md), which it depends on; what live
 > **Import a type from `@agent-hub/core`, an operation from here.** This barrel does not re-export the
 > domain, on purpose — the dependency arrow should be visible at every call site.
 
-Used by `apps/web` and `@agent-hub/agent` (`apps/admin` deliberately does not — see
-`apps/admin/CLAUDE.md`).
+Used by `apps/web` and `@agent-hub/agent`. The enterprise staff console deliberately does not — see
+its own CLAUDE.md.
 
 ## Commands
 

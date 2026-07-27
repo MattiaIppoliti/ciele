@@ -70,7 +70,6 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 │       ├── ee/          # enterprise implementations (excluded from the public mirror)
 │       ├── lib/         # auth, rbac, data (request-scoped Db), sso, storage, exports
 │       └── instrumentation.ts  # startup: registers the agent host ports + EE capabilities
-├── apps/admin/          # internal staff console (service-role, cross-org) — admin.ciele.app
 ├── apps/docs/           # public documentation site (Fumadocs), incl. the reader-facing
 │                        # self-hosting/architecture section this file is the counterpart of
 ├── packages/agent/      # @agent-hub/agent: the LLM runtime — turn pipeline, flow engine,
@@ -82,7 +81,8 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 ├── packages/ui/ charts/ # shared primitives consumed by the apps
 ├── services/            # worker containers: crawl4ai-worker, graph-worker (opt-in)
 ├── deploy/              # the self-host Docker Compose stack + bootstrap
-├── ee/                  # enterprise-only tree (migrations chain; excluded from the mirror)
+├── ee/                  # enterprise-only tree: apps + its own migration chain. Excluded from
+│                        # the mirror in full, so an OSS checkout has no ee/ at all
 ├── mirror/ + scripts/   # the public-mirror overlay + the release gate, the migration
 │                        # applier, the version bumper
 └── supabase/            # migrations (filename order) + seed.sql

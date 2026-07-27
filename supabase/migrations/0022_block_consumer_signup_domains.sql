@@ -3,10 +3,10 @@
 -- restriction existed). Enforced here rather than only in the client
 -- because apps/web's signup form calls supabase.auth.signUp() directly
 -- from the browser with the anon key — there is no server action in front
--- of it to gate otherwise. Applies to both apps/web and apps/admin since
--- they share this Supabase project's auth.users table; keep the domain
--- list in sync with apps/web/src/lib/email-domain.ts (client-side copy,
--- for immediate UX feedback before hitting this trigger).
+-- of it to gate otherwise. Applies to every app backed by this Supabase
+-- project, since they share one auth.users table; keep the domain list in
+-- sync with apps/web/src/lib/email-domain.ts (client-side copy, for
+-- immediate UX feedback before hitting this trigger).
 create or replace function public.reject_consumer_email_domains()
 returns trigger
 language plpgsql

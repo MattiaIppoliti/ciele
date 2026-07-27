@@ -47,8 +47,8 @@ boundary (package `exports` physically hide internals), but higher churn and har
 means inverting the one outward coupling (`turn.ts` → `@/lib/platform`), dropping the `@/` alias
 inside the package, and wiring Turbo/tsconfig references — for a module only ever consumed by
 `apps/web`. The lint boundary gets ~95% of the benefit at a fraction of the cost. **Flip condition:**
-promote to a package if the runtime ever needs to be reused outside `apps/web` (e.g. `apps/admin` or
-a standalone ingestion worker).
+promote to a package if the runtime ever needs to be reused outside `apps/web` (e.g. another app in
+the workspace, or a standalone ingestion worker).
 
 **Consequences.** New public runtime capability = add it to the right barrel *and* update
 `interface.test.ts` on purpose. The boundary is one repo's lint config, not a physical package, so a

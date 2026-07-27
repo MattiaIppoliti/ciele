@@ -8,7 +8,7 @@ import type { AiCredentialKind } from "./types";
  * build knows is attributed on purpose, and anything it does not know falls to
  * "unknown" rather than to "customer".
  *
- * These cases moved here from `apps/admin/src/lib/ai-usage.test.ts`, where the
+ * These cases moved here from the staff console, where the
  * classification used to be restated as a hand-maintained set of strings.
  */
 

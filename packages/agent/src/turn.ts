@@ -40,8 +40,8 @@ import { getRuntimeHost } from "./host";
 
 /**
  * Origin of the tenant-facing web app (apps/web) for {{conversation.link}} —
- * the Inbox lives under its (admin) route group, not the separate staff
- * console (apps/admin). Falls back to the known production host when unset.
+ * the Inbox lives under its (admin) route group. Falls back to the known
+ * production host when unset.
  */
 function platformAppOrigin(): string {
   return (

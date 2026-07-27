@@ -2,5 +2,9 @@ packages:
   - apps/*
   - packages/*
   - scripts/mirror-gate
+  # Enterprise-edition apps. Everything under ee/ is excluded from the public
+  # mirror, so a single prefix is the whole open-core boundary; the glob matches
+  # nothing in an open-source checkout, which pnpm accepts.
+  - ee/apps/*
 
 pmOnFail: warn

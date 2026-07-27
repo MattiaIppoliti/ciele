@@ -3,15 +3,15 @@
 ## Status
 
 Accepted. Records a **rejection**: an architecture review proposed routing
-`apps/admin`'s service-role client through the `Db` seam as a third adapter. That is
-forbidden by `apps/admin/CLAUDE.md` and the prohibition is correct. This ADR exists so the
+the staff console's service-role client through the `Db` seam as a third adapter. That is
+forbidden by that console's own CLAUDE.md and the prohibition is correct. This ADR exists so the
 proposal is not made a third time, and so the *real* problem it identified still gets fixed.
 
 ## Context
 
-`apps/admin` is the Ciele-staff console at `admin.ciele.app`. It reads through a Supabase
-**service-role** client, which bypasses RLS entirely — that is what lets it see every
-organization instead of one. `apps/admin/CLAUDE.md` states the consequence bluntly:
+The staff console is an enterprise-edition app, outside the open-source distribution. It reads
+through a Supabase **service-role** client, which bypasses RLS entirely — that is what lets it
+see every organization instead of one. Its CLAUDE.md states the consequence bluntly:
 
 > `packages/db` is intentionally **not** a dependency. Do not add it. Its whole contract is
 > "org-scoped by RLS", which is false here.
@@ -19,9 +19,9 @@ organization instead of one. `apps/admin/CLAUDE.md` states the consequence blunt
 The review's observation was nonetheless real and worth acting on: **the 94-case `Db`
 contract suite covers none of the staff console's queries**, because none of them go through
 `Db`. Nothing in `platform-data.ts`, `billing-data.ts` or `session.ts` had a test at all. The
-two aggregate views those reads depend on (`platform_org_stats`, `platform_daily_usage`,
-migration `0017_platform_admin_stats`) are `revoke`d from anon/authenticated, so no RLS test
-touches them either. A migration renaming a column in either view would produce blank fields
+two cross-org aggregate views those reads depend on — defined in the enterprise migration chain,
+not the open-source one — are `revoke`d from anon/authenticated, so no RLS test touches them
+either. A migration renaming a column in either view would produce blank fields
 on every admin page with nothing failing anywhere.
 
 ## Decision
@@ -42,7 +42,7 @@ on every admin page with nothing failing anywhere.
 **Instead, give the console's own SQL a test against the real schema.** `@agent-hub/db` now
 publishes its PGlite harness as a **test-only** subpath, `@agent-hub/db/testing`
 (`createSchemaLoadedPglite` — an in-process Postgres with the real migration chain applied).
-`apps/admin` takes `@agent-hub/db` as a **devDependency only**, and
+The console takes `@agent-hub/db` as a **devDependency only**, and
 `platform-data.views.test.ts` asserts that the two views expose exactly the columns the console
 maps, and that the counts they compute are right.
 
@@ -61,7 +61,7 @@ from a test.
   real migrations.
 - The console keeps one obvious property: **every query in it is visibly service-role**. There
   is no path where a reader has to know which client backs a call.
-- The rule in `apps/admin/CLAUDE.md` gains a stated exception for the test harness, so the next
+- The rule in the console's CLAUDE.md gains a stated exception for the test harness, so the next
   reader does not have to guess whether the devDependency is a violation.
 - **What is still uncovered**, precisely: `getOrgDetail`'s six per-org queries hit base tables
   through PostgREST embeds, which the harness's query-builder shim does not model; and

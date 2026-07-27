@@ -21,7 +21,6 @@
 0014_support_channel_details.sql
 0015_help_desk_ticketing_integration.sql
 0016_improvements.sql
-0017_platform_admin_stats.sql
 0017_query_performance_hardening.sql
 0018_private_schema_hardening.sql
 0019_system_prompts.sql

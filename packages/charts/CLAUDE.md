@@ -1,7 +1,7 @@
 # packages/charts — `@agent-hub/charts`
 
 Chart + animated-number primitives (`motion`, `@number-flow/react`) shared by the Insights
-surfaces in `apps/web` and `apps/admin`.
+surfaces of every app in the workspace.
 
 ## Commands
 

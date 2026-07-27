@@ -33,8 +33,9 @@ Rules that follow from that:
 
 - Since `0018_private_schema_hardening`, the RLS helpers live in the `private` schema. Call
   `private.is_org_member(...)` / `private.has_org_role(...)`, **never** `public.*`.
-- Duplicate prefix `0017` exists (`0017_platform_admin_stats` + `0017_query_performance_hardening`)
-  and there is no `0021`. Both are intentional history — don't "fix" them.
+- There is no `0021`, and `0017` once had a duplicate prefix: its enterprise twin now lives in
+  `ee/migrations/`, keeping the legacy filename because the filename is the ledger key. Intentional
+  history — don't "fix" it.
 - Enterprise migrations live in `ee/migrations/`, a separate chain applied strictly **after** the
   full OSS chain by the same applier. EE tables may reference OSS ones, never the reverse.
 - New tables need RLS policies in the same migration. `packages/db`'s pglite contract tests
