@@ -1771,11 +1771,11 @@ export function describeDbContract(
           },
         ]);
         const after = await db.getOrgCostUsedToday(ctx.organizationId);
-        // 40M embedding tokens at €0.02/1M is €0.80. Until embedding models
+        // 40M embedding tokens at €0.019/1M is €0.76. Until embedding models
         // were priced, the same batch fell through to the €3/1M chat fallback
         // and was reported as €120 — enough to trip a euro budget on
         // indexing that cost cents.
-        expect(after - before).toBeCloseTo(0.8, 5);
+        expect(after - before).toBeCloseTo(0.76, 5);
       });
 
       it("ignores other organizations and empty batches", async () => {

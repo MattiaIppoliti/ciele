@@ -62,7 +62,7 @@ describe("summarizeUsage", () => {
     const summary = summarizeUsage([
       // 1M flash input = €0.30 = 30 credits.
       row({ inputTokens: 1_000_000 }),
-      // 1M embedding tokens = €0.02 = 2 credits.
+      // 1M embedding tokens = €0.019 = 1.9 credits.
       row({
         kind: "embedding",
         provider: "openai",
@@ -73,7 +73,7 @@ describe("summarizeUsage", () => {
       row({ kind: "crawl", provider: "apify", modelId: "", units: 100 }),
     ]);
     expect(summary.byResource.ai.credits).toBeCloseTo(30, 6);
-    expect(summary.byResource.embedding.credits).toBeCloseTo(2, 6);
+    expect(summary.byResource.embedding.credits).toBeCloseTo(1.9, 6);
     expect(summary.byResource.scraping.credits).toBeCloseTo(20, 6);
   });
 

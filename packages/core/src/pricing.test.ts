@@ -37,9 +37,9 @@ describe("estimateCostEur — embedding models", () => {
   // daily AI budget an admin actually reads is asserted at the ledger level in
   // db-contract.suite.ts; these cases pin the rates themselves.
   it.each([
-    ["openai", "text-embedding-3-small", 0.02],
-    ["google", "text-embedding-005", 0.025],
-    ["google", "gemini-embedding-001", 0.15],
+    ["openai", "text-embedding-3-small", 0.019],
+    ["google", "text-embedding-005", 0.023],
+    ["google", "gemini-embedding-001", 0.14],
   ] as const)("prices %s/%s from its own rate", (provider, modelId, perMillion) => {
     expect(estimateCostEur(provider, modelId, MILLION, 0)).toBeCloseTo(perMillion, 10);
   });
@@ -134,8 +134,8 @@ describe("creditsFor", () => {
       },
       { kind: "crawl", crawler: "apify", pages: 100 },
     ]);
-    // €0.02 + €0.20 = €0.22 = 22 credits.
-    expect(credits).toBeCloseTo(22, 10);
+    // €0.019 + €0.20 = €0.219 = 21.9 credits.
+    expect(credits).toBeCloseTo(21.9, 10);
   });
 
   it("returns zero for nothing metered", () => {

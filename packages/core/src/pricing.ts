@@ -36,14 +36,16 @@ const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
   openai: {
     "gpt-5.1": { inputPerMillion: 4.5, outputPerMillion: 13.5 },
     "gpt-5.1-mini": { inputPerMillion: 0.9, outputPerMillion: 3.6 },
-    "text-embedding-3-small": { inputPerMillion: 0.02, outputPerMillion: 0 },
+    "text-embedding-3-small": { inputPerMillion: 0.019, outputPerMillion: 0 },
   },
   google: {
     "gemini-3.5-flash": { inputPerMillion: 0.3, outputPerMillion: 1.2 },
     "gemini-3.1-flash-lite": { inputPerMillion: 0.1, outputPerMillion: 0.4 },
     "gemini-2.5-flash-lite": { inputPerMillion: 0.1, outputPerMillion: 0.4 },
-    "text-embedding-005": { inputPerMillion: 0.025, outputPerMillion: 0 },
-    "gemini-embedding-001": { inputPerMillion: 0.15, outputPerMillion: 0 },
+    // Vertex text embeddings (google_vertex_federated credentials).
+    "text-embedding-005": { inputPerMillion: 0.023, outputPerMillion: 0 },
+    // Gemini API embeddings (plain API-key credentials) — ~6x the Vertex rate.
+    "gemini-embedding-001": { inputPerMillion: 0.14, outputPerMillion: 0 },
   },
   // Arbitrary self-chosen endpoints (Ollama, vLLM, gateways): no provider
   // price list exists, and self-hosted models have no per-token bill — the
@@ -51,7 +53,12 @@ const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
   openai_compatible: {},
 };
 
-/** Used for a provider/model pair not in the table above (retired or renamed). */
+/**
+ * Used for a provider/model pair not in the table above (retired or renamed).
+ * It is a mid-range *chat* rate, so it overstates an unlisted embedding model
+ * by ~150x — every model `getEmbeddingModel` can resolve must have a row above,
+ * and pricing.test.ts pins them so a fallback regression fails the build.
+ */
 const FALLBACK_PRICE: ModelPriceEur = { inputPerMillion: 3, outputPerMillion: 15 };
 const FREE_PRICE: ModelPriceEur = { inputPerMillion: 0, outputPerMillion: 0 };
 
