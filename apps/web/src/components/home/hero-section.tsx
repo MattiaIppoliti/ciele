@@ -15,6 +15,7 @@ import {
   StarField,
 } from "@/components/home/sky";
 import { SkySceneTransition } from "@/components/home/sky-transition";
+import { ChromaticTextReveal } from "@/components/motion/text-animation";
 import { cn } from "@/lib/utils";
 
 export function HeroSection() {
@@ -78,7 +79,26 @@ export function HeroSection() {
             className="home-reveal-hero mx-auto mt-8 max-w-4xl text-balance text-5xl max-md:font-semibold md:max-w-5xl md:text-pretty md:text-6xl xl:max-w-6xl xl:text-7xl"
             style={{ "--reveal-delay": "0.05s" } as CSSProperties}
           >
-            Your organization&apos;s AI Teammates,{" "}
+            Your organization&apos;s{" "}
+            {/* The role noun rotates under a chromatic sweep. "AI" rides
+                inside the component so it never wraps away from the rotating
+                word, and the comma is the suffix so it travels with each word
+                instead of parking at the widest one's edge. The four words
+                are within ~30px of each other at the largest hero size, so
+                the reserved (widest-word) box leaves no visible hole before
+                "above the clouds" when it wraps on narrow screens. */}
+            <ChromaticTextReveal
+              prefix="AI"
+              words={["Teammates", "Assistants", "Colleagues", "Concierges"]}
+              suffix=","
+              delay={0.05}
+              duration={1.1}
+              pauseDuration={1.6}
+              // Above the fold: run on mount instead of waiting on an
+              // IntersectionObserver frame, which never arrives in hidden or
+              // prerendering tabs and would leave the word clipped away.
+              startOnView={false}
+            />{" "}
             {/* Desktop (lg+): hard break so the headline is exactly two lines —
                 only where line 1 fits at the current font size. Below lg the
                 break is hidden and the text wraps freely. */}
