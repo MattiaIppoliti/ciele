@@ -45,7 +45,7 @@ function LoginFormInner() {
       </div>
       {state.error && <p className="text-destructive text-sm">{state.error}</p>}
       <Button type="submit" className="w-full" disabled={pending}>
-        {pending ? "Signing in..." : "Sign in"}
+        {pending ? "Logging in..." : "Log in"}
       </Button>
       <p className="text-muted-foreground text-center text-sm">
         No account?{" "}
@@ -55,6 +55,17 @@ function LoginFormInner() {
         >
           Contact sales
         </Link>
+      </p>
+      <p className="text-muted-foreground text-center text-xs">
+        By signing in, you agree to our{" "}
+        <Link href="/policies/terms-of-service" className="underline hover:no-underline">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/policies/privacy" className="underline hover:no-underline">
+          Privacy Policy
+        </Link>
+        .
       </p>
     </form>
   );

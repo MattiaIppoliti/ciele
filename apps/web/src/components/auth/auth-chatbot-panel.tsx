@@ -8,8 +8,9 @@ export function AuthChatbotPanel() {
   return (
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-[#1a1a1a] p-8">
       {/* Vercel-style square grid: thin gridlines tile small squares, fading
-          toward the panel edges. */}
-      <AuthGrid tone="dark" />
+          toward the panel edges. Static and cursor-blind — this panel is
+          decoration next to the login form, so it neither moves nor reacts. */}
+      <AuthGrid tone="dark" drift={false} cursorHighlight={false} />
 
       <div className="relative z-10 w-full max-w-[480px]">
         <div className="mb-8 flex justify-center">

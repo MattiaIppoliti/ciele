@@ -21,8 +21,8 @@ export function AuthShell({
       <div className="light text-foreground relative flex flex-col gap-4 overflow-hidden bg-white p-6 md:p-10">
         {/* Same square grid as the chatbot panel, in light-theme ink — but
             inverted mask: faint behind the form at center, visible toward
-            the panel edges. */}
-        <AuthGrid tone="light" />
+            the panel edges. Static: nothing behind the form should move. */}
+        <AuthGrid tone="light" drift={false} />
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0"
@@ -55,8 +55,19 @@ export function AuthShell({
           </div>
         </div>
       </div>
-      <div className="hidden lg:block">
-        <AuthChatbotPanel />
+      {/* The right panel is decoration, not a second place to sign in. It is
+          dimmed, desaturated and inert (no pointer events, no focusable
+          controls) behind a scrim that fades out toward the far edge, so the
+          eye settles on the form at left. Its own background colour sits on the
+          wrapper so the dimmed content blends into dark, not into the page. */}
+      <div className="relative hidden bg-[#1a1a1a] lg:block">
+        <div inert className="pointer-events-none h-full opacity-60 grayscale select-none">
+          <AuthChatbotPanel />
+        </div>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#1a1a1a]/70 via-[#1a1a1a]/45 to-[#1a1a1a]/25"
+        />
       </div>
     </div>
   );

@@ -280,7 +280,7 @@
   }
 }
 
-/* The login grid scrolls continuously; a second, brighter layer is revealed
+/* The grid scrolls continuously; a second, brighter layer is revealed
    around the cursor by AuthGrid. Both backgrounds share this animation so
    their lines stay perfectly aligned. */
 .auth-grid-layer {
@@ -288,6 +288,12 @@
   background-size: 64px 64px;
   /* One 64px cell every 12s — slow enough to feel ambient, not distracting. */
   animation: auth-grid-drift 12s linear infinite;
+}
+
+/* Auth-shell variant: a drifting background behind the login form pulled the
+   eye away from it, so both panels there tile the grid without moving. */
+.auth-grid-layer--static {
+  animation: none;
 }
 
 @keyframes auth-grid-drift {
