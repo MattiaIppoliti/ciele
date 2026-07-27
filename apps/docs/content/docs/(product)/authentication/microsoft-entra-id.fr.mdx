@@ -1,0 +1,136 @@
+---
+title: Connectez Microsoft Entra ID
+description: Enregistrez une application dans Microsoft Entra et exigez que les utilisateurs se connectent avant de discuter.
+---
+
+Microsoft Entra ID (anciennement Azure Active Directory) est le fournisseur
+d'identité que de nombreuses organisations utilisent déjà pour
+l'authentification unique. En le connectant, vous permettez aux utilisateurs de
+se connecter à votre assistant avec leur compte professionnel existant, et vous
+permettez à l'assistant de voir leur rôle et leur profil. La connexion utilise
+OpenID Connect ; la configuration consiste donc à enregistrer une application
+dans Entra et à coller quelques valeurs dans l'assistant.
+
+Vous avez besoin d'un accès administrateur à votre locataire Microsoft Entra
+pour enregistrer une application, ainsi que d'un accès à la page
+**Authentication** de l'assistant dans Ciele.
+
+## Avant de commencer
+
+1. Ouvrez l'assistant, puis sélectionnez **Authentication**.
+2. Choisissez Microsoft Entra comme fournisseur d'identité. La page affiche une
+   **URL de redirection** (parfois appelée URL de rappel ou de réponse) pour cet
+   assistant. Gardez cette page ouverte : vous collerez cette valeur dans Entra
+   à l'étape suivante, puis vous rapporterez les valeurs ici.
+
+<Callout title="Keep the redirect URL exact">
+Copy the redirect URL exactly as shown, including `https://` and any path. Entra
+matches it character for character, and a mismatch is the most common reason sign
+in fails.
+</Callout>
+
+## Étape 1 : Enregistrez une application dans Entra
+
+1. Connectez-vous au
+   [centre d'administration Microsoft Entra](https://entra.microsoft.com) en
+   tant qu'administrateur.
+2. Accédez à **Identity**, puis à **Applications**, puis à **App
+   registrations**, et sélectionnez **New registration**.
+3. Donnez à l'application un **nom** que votre équipe reconnaîtra, tel que
+   `Ciele Assistant`.
+4. Sous **Supported account types**, choisissez l'option correspondant aux
+   personnes qui devraient pouvoir se connecter. Pour une seule organisation,
+   choisissez les comptes de ce répertoire organisationnel uniquement.
+5. Sous **Redirect URI**, sélectionnez la plateforme **Web** et collez l'URL de
+   redirection que vous avez copiée depuis la page d'authentification de
+   l'assistant.
+6. Sélectionnez **Register**.
+
+## Étape 2 : Récupérez les identifiants du client et du locataire
+
+Après votre inscription, vous accédez à la page **Overview** de l'application.
+
+1. Copiez le **Application (client) ID**.
+2. Copiez le **Directory (tenant) ID**.
+
+Conservez les deux valeurs ; vous les collerez dans l'assistant sous peu.
+
+## Étape 3 : Créez un secret client
+
+1. Dans l'application, ouvrez **Certificates & secrets**.
+2. Sélectionnez **New client secret**, ajoutez une brève description et
+   choisissez une date d'expiration conforme à la politique de votre
+   organisation.
+3. Sélectionnez **Add**, puis copiez immédiatement le secret **Value**. Il
+   n'apparaît qu'une seule fois, alors copiez-le maintenant plutôt que
+   l'identifiant du secret.
+
+<Callout type="warn" title="Secrets expire">
+A client secret has an expiry date. Set a reminder to create a new secret and
+update it in the assistant before the old one expires, otherwise sign in will stop
+working when it lapses. Clearing the connection later is covered under
+[Alerts](/operations/alerts), which flags a connection that has stopped working.
+</Callout>
+
+## Étape 4 : Choisissez ce que l'assistant peut lire
+
+L'assistant a besoin des étendues de connexion de base pour identifier une
+personne.
+
+1. Ouvrez **API permissions**.
+2. Veuillez confirmer que les autorisations déléguées incluent **openid**,
+   **profile** et **email**. Celles-ci permettent à l'assistant de lire
+   l'identité d'une personne. Elles sont généralement présentes par défaut.
+3. Si vous souhaitez que l'assistant réagisse aux groupes ou aux rôles d'une
+   personne, ouvrez **Token configuration** et ajoutez une **revendication de
+   groupes** (ou les revendications facultatives que votre organisation utilise
+   pour les rôles). C'est ce qui permet aux
+   [conditions de flux](/flows/building-a-flow) basées sur les groupes et les
+   rôles de fonctionner pour les personnes connectées.
+4. Si votre organisation l'exige, accordez le consentement de l'administrateur
+   pour les autorisations.
+
+## Étape 5 : Terminez la connexion dans Ciele
+
+Retournez à la page **Authentication** de l'assistant et saisissez les valeurs
+d'Entra :
+
+1. **Client ID** : l'ID de l'application (client) de l'étape 2.
+2. **Tenant ID** : l'ID du répertoire (locataire) de l'étape 2.
+3. **Client secret** : la valeur secrète de l'étape 3.
+4. **Scopes** : laissez les étendues de connexion par défaut, sauf si votre
+   configuration en nécessite davantage.
+5. Enregistrez la connexion.
+
+## Étape 6 : testez la connexion
+
+1. Ouvrez l'aperçu en direct de l'assistant ou une page sur laquelle il est
+   publié.
+2. Le widget affiche une carte **Connect Your Account**. Sélectionnez-la.
+3. Connectez-vous avec un compte Microsoft de votre locataire.
+4. Vérifiez que la conversation se poursuit et, si vous avez configuré des
+   groupes, qu'un flux basé sur les rôles se comporte comme prévu.
+
+## Dépannage
+
+- **Redirect URI mismatch.** L'erreur indique une URL de réponse qui ne
+  correspond pas. Copiez à nouveau l'URL de redirection de la page
+  d'authentification et assurez-vous que la valeur dans Entra, sous la
+  plateforme **Web**, est identique.
+- **Sign in works but roles do not.** Ajoutez la **revendication de groupes**
+  dans **Token configuration** (étape 4). Sans cela, l'assistant voit la
+  personne, mais pas ses groupes.
+- **Sign in stopped working after a while.** Le secret client a probablement
+  expiré. Créez un nouveau secret dans **Certificates & secrets** et mettez-le à
+  jour sur la page Authentification.
+- **Admin consent required.** Un administrateur doit donner son consentement
+  pour les autorisations de l'application une seule fois, dans **API
+  permissions**.
+
+## Les prochaines étapes
+
+- Personnalisez les réponses avec les informations propres à une personne en
+  utilisant **User data** sur la même page d'authentification.
+- Utilisez le rôle de la personne dans les règles de la page
+  [Flux](/flows/building-a-flow), afin que l'assistant réponde différemment aux
+  membres et aux visiteurs anonymes.

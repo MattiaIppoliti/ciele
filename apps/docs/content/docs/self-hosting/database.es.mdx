@@ -1,0 +1,56 @@
+---
+title: Base de datos
+description: Ciele almacena sus datos en Postgres a través de Supabase, con seguridad a nivel de fila para el aislamiento de los inquilinos y un ejecutor de migraciones ordenado por nombre de archivo.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele almacena sus datos en **Postgres** y utiliza
+[Supabase](https://supabase.com) para la base de datos, la autenticación y la
+seguridad a nivel de fila. Cada consulta se limita a la organización del usuario
+que ha iniciado sesión mediante políticas de seguridad a nivel de fila, lo que
+permite que los inquilinos permanezcan aislados entre sí.
+
+## Aprovisionamiento
+
+Puedes ejecutar la base de datos de dos maneras:
+
+- **Locally**, con el paquete integrado: `pnpm db:start` arranca Postgres, la
+  autenticación y RLS en Docker, y `pnpm db:reset` aplica el esquema y los datos
+  iniciales. Esta es la forma más rápida de desarrollar contra una base de datos
+  real. Consulta [Instalación](/self-hosting/installation).
+- **Hosted**, con un proyecto de Supabase que crees tú. Establece su URL y sus
+  claves como variables de entorno (consulta
+  [Configuración](/self-hosting/configuration)) y la aplicación se conectará la
+  próxima vez que se inicie.
+
+## Cómo se aplican las migraciones
+
+El esquema reside en `supabase/migrations` como archivos SQL ordenados. Las
+migraciones las aplica un pequeño runner (`scripts/apply-migrations.sh`) que
+ejecuta cada archivo pendiente **por orden de nombre de archivo** y registra lo
+que ha aplicado por nombre de archivo. Las nuevas migraciones utilizan un
+prefijo de marca de tiempo para que el orden sea inequívoco, y se colocan junto
+al código que las necesita.
+
+<Callout title="Filename-ordered, not CLI-tracked">
+The runner tracks applied migrations by filename rather than relying on a CLI's
+version history. Follow the same timestamp-prefixed naming for any migration you
+add, and let the runner apply it — do not hand-edit the applied ledger.
+</Callout>
+
+## Datos iniciales
+
+`supabase/seed.sql` contiene datos de demostración neutros —una organización
+genérica y un par de asistentes de ejemplo— para que una base de datos nueva no
+esté vacía. Puedes aplicarlo sin problemas a una base de datos de desarrollo y
+también puedes omitirlo para empezar con una producción limpia.
+
+## La cadena empresarial
+
+El esquema de código abierto es completamente independiente. La edición
+administrada tiene una cadena de migración adicional que **no forma parte del
+árbol de código abierto** y que nunca se crea en una implementación autoalojada.
+Este es el lado de la base de datos del
+[límite open-core](/self-hosting/open-core-boundary): las tablas empresariales
+pueden hacer referencia a las de código abierto, pero nunca al revés.

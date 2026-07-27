@@ -1,0 +1,57 @@
+---
+title: Panoramica dei flussi
+description: Come Ciele decide cosa fa un assistente con ogni messaggio, utilizzando un insieme ordinato di regole.
+---
+
+I flussi sono il modo in cui controlli il comportamento di un assistente. Un
+flusso è una regola che dice "quando un messaggio ha questo aspetto, fai queste
+cose". I flussi sono ordinati e il primo che corrisponde a un messaggio ha la
+priorità. Questo rende prevedibile un assistente: puoi guardare l'elenco e
+sapere come gestirà ogni tipo di domanda.
+
+Apri un assistente e seleziona **Flows** per visualizzare l'elenco.
+
+## Come funziona il routing
+
+Per ogni messaggio in arrivo, l'assistente scorre l'elenco dei flussi e
+seleziona il primo il cui contenuto corrisponde al messaggio. Quindi esegue le
+azioni di quel flusso in ordine. Poiché la corrispondenza si basa sul
+significato del messaggio, descrivi ogni flusso in un linguaggio semplice invece
+di scrivere parole chiave.
+
+## Il comportamento predefinito
+
+In fondo alla lista c'è il **Default behavior**. È una regola integrata che si
+trova sempre per ultima e gestisce qualsiasi messaggio a cui nessun altro flusso
+corrisponde. Il comportamento predefinito risponde in base alla tua conoscenza,
+motivo per cui un assistente funziona non appena dispone di conoscenza, anche in
+assenza di flussi personalizzati.
+
+Non puoi rimuovere il comportamento predefinito, ma puoi fare affidamento su di
+esso come rete di sicurezza mentre aggiungi flussi più specifici al di sopra di
+esso.
+
+## Risposte fisse vs risposte generate
+
+I flussi ti consentono di combinare due tipi di risposte:
+
+- **Fixed replies** vengono mostrate esattamente come le hai scritte. Usale
+  quando la formulazione deve essere esatta, come nel caso di una dichiarazione
+  di politica o di una nota legale.
+- **Generated answers** sono scritte dall'assistente sulla base della tua
+  conoscenza. Usale quando vuoi una risposta utile e naturale che si adatti alla
+  domanda.
+
+Questo mix ti dà il controllo dove ne hai bisogno e flessibilità in tutto il
+resto.
+
+## Lettura dell'elenco dei flussi
+
+Ogni flusso nell'elenco mostra il suo nome, una breve descrizione di ciò a cui
+corrisponde e le azioni che eseguirà. Puoi riordinare i flussi per modificarne
+la priorità e puoi attivare o disattivare un flusso senza eliminarlo. Un flusso
+disattivato viene ignorato durante il routing.
+
+Continua con [Creare un flusso](/flows/building-a-flow) per crearne uno e
+[Azioni del flusso](/flows/actions) per l'elenco completo delle azioni che un
+flusso può eseguire.

@@ -1,0 +1,57 @@
+---
+title: Présentation des flux
+description: Comment Ciele décide de ce qu'un assistant fait de chaque message, en utilisant un ensemble ordonné de règles.
+---
+
+Les flux vous permettent de contrôler le comportement d'un assistant. Un flux
+est une règle qui dit : « Quand un message ressemble à ceci, fais ceci. » Les
+flux sont classés par ordre de priorité, et le premier qui correspond à un
+message est prioritaire. Cela rend un assistant prévisible : vous pouvez
+consulter la liste et savoir comment il traitera chaque type de question.
+
+Ouvrez un assistant et sélectionnez **Flows** pour afficher la liste.
+
+## Fonctionnement du routage
+
+Pour chaque message entrant, l'assistant parcourt la liste des flux et choisit
+le premier dont la description correspond au message. Il exécute ensuite les
+actions de ce flux dans l'ordre. La correspondance étant basée sur le sens du
+message, vous décrivez chaque flux en langage clair plutôt que d'écrire des
+mots-clés.
+
+## Le comportement par défaut
+
+Tout en bas de la liste se trouve le **Default behavior**. Il s'agit d'une règle
+intégrée qui se trouve toujours en dernier et qui traite tout message auquel
+aucun autre flux ne correspond. Le comportement par défaut répond à partir de
+vos connaissances, c'est pourquoi un assistant fonctionne dès qu'il a des
+connaissances, même sans flux personnalisés.
+
+Vous ne pouvez pas supprimer le comportement par défaut, mais vous pouvez vous
+en servir comme filet de sécurité pendant que vous ajoutez des flux plus
+spécifiques au-dessus.
+
+## Réponses fixes ou réponses générées : quel est le choix ?
+
+Les flux vous permettent de combiner deux types de réponses :
+
+- Les **Fixed replies** sont affichées exactement telles que vous les avez
+  rédigées. Utilisez-les lorsque la formulation doit être exacte, par exemple
+  pour un énoncé de politique ou un avis juridique.
+- **Generated answers** sont rédigées par l'assistant à partir de vos
+  connaissances. Utilisez-les lorsque vous souhaitez une réponse utile et
+  naturelle qui s'adapte à la question.
+
+Ce mélange vous donne le contrôle là où vous en avez besoin et de la flexibilité
+partout ailleurs.
+
+## Lecture de la liste des flux
+
+Chaque flux de la liste affiche son nom, une brève description de ce à quoi il
+correspond et les actions qu'il exécutera. Vous pouvez réorganiser les flux pour
+modifier leur priorité, et vous pouvez activer ou désactiver un flux sans le
+supprimer. Un flux désactivé est ignoré lors du routage.
+
+Poursuivez avec [Créer un flux](/flows/building-a-flow) pour en créer un, et
+[Actions de flux](/flows/actions) pour la liste complète des actions qu'un flux
+peut effectuer.

@@ -5,11 +5,14 @@
   "root": true,
   "pages": [
     "index",
+    "---Run it---",
     "installation",
     "configuration",
     "database",
     "workers",
+    "---Keep it running---",
     "upgrade",
+    "---Understand it---",
     "architecture",
     "open-core-boundary"
   ]

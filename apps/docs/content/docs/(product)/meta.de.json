@@ -1,0 +1,23 @@
+{
+  "title": "Dokumentation",
+  "description": "Erstellen und starten Sie Ihre Assistenten",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "index",
+    "editions",
+    "---Beginnen Sie hier---",
+    "getting-started",
+    "---Erstellen Sie einen Assistenten---",
+    "assistants",
+    "knowledge",
+    "flows",
+    "---Verbinden Sie ihn---",
+    "help-desks",
+    "authentication",
+    "publishing",
+    "---Führen Sie ihn aus---",
+    "operations",
+    "organization"
+  ]
+}

@@ -1,0 +1,86 @@
+---
+title: Flow-Aktionen
+description: Die Bausteine, die ein Flow als Reaktion auf eine Nachricht ausführt, reichen von festen Nachrichten bis hin zu Wissenssuche und Eskalation.
+---
+
+Aktionen sind die Schritte, die ein Flow ausführt, wenn er übereinstimmt. Sie
+fügen sie im Antwortschritt des Flow-Builders hinzu, und sie werden in der
+Reihenfolge ausgeführt, in der Sie sie platzieren. Auf dieser Seite wird
+beschrieben, welche Aktionen Sie verwenden können und wann Sie zu welcher
+greifen sollten.
+
+## Nachricht
+
+Sendet eine Nachricht an den Besucher. Eine Nachricht kann Wort für Wort
+angezeigt werden, genau so, wie Sie sie geschrieben haben. Das ist ideal, wenn
+der Wortlaut präzise sein muss. Verwenden Sie feste Nachrichten für Richtlinien,
+Haftungsausschlüsse und jede Antwort, die niemals variieren sollte.
+
+## Wissen durchsuchen
+
+Durchsucht Ihr Wissen, findet die relevantesten Passagen und verfasst darauf
+basierend eine Antwort mit Quellenangaben. Dies ist die Aktion, die hilfreiche,
+natürlich klingende Antworten aus Ihren Inhalten generiert. Dies ist auch das,
+was das Standardverhalten verwendet. Mit Optionen können Sie sie an die
+Eskalation binden und an die Qualitätsverfolgung für Antworten, sodass ein
+schwaches Ergebnis zu einer Nachverfolgung führen kann.
+
+## Folgeaktionen
+
+Bietet nach einer Antwort vorgeschlagene Folgefragen an. Dadurch bleibt das
+Gespräch in Gang, indem der Besucher zu verwandten Themen hingeführt wird, bei
+denen der Assistent helfen kann.
+
+## Schaltfläche
+
+Zeigt eine anklickbare Schaltfläche an, die zu einer bestimmten Stelle führt,
+beispielsweise zu einer Seite auf Ihrer Website oder zu einem Formular.
+Verwenden Sie es, um dem Besucher nach einer Nachricht einen klaren nächsten
+Schritt zu geben.
+
+## Iframe
+
+Bettet externe Inhalte in das Chat-Fenster ein, z. B. eine Seite oder ein
+Widget, das der Besucher sehen soll, ohne die Konversation zu verlassen.
+
+## API-Anfrage
+
+Ruft einen externen Dienst auf und kann das Ergebnis in der Konversation
+verwenden. Verwenden Sie dies, um etwas in einem anderen System nachzuschlagen,
+während der Besucher wartet. Sie konfigurieren die Adresse und die Methode der
+Anfrage.
+
+## Verbesserung
+
+Markiert die aktuelle Antwort zur Überprüfung, indem ein Element auf Ihrem Board
+„Verbesserungen“ erstellt wird. Verwenden Sie dies für Abläufe, bei denen Sie
+die Antwortqualität genau im Blick behalten möchten. Siehe
+[Verbesserungen](/operations/improvements).
+
+## Übergabe
+
+Überträgt die Konversation an einen anderen Assistenten. Verwenden Sie diese
+Option, wenn ein anderer Assistent besser geeignet ist, die Konversation
+fortzusetzen, beispielsweise ein auf ein bestimmtes Thema spezialisierter
+Assistent.
+
+## Eskalation und E-Mail senden
+
+Die Eskalation verbindet den Besucher über Ihre konfigurierten
+[Help Desks](/help-desks) mit Ihrem Team. Eine Aktion zum Senden einer E-Mail
+kann einen Empfänger benachrichtigen, wenn ein Flow ausgeführt wird. Verwenden
+Sie diese, um sicherzustellen, dass zum richtigen Zeitpunkt ein Mensch
+informiert wird.
+
+## Aktionen kombinieren
+
+Aktionen sind in Kombination am wirkungsvollsten. Ein einzelner Flow kann eine
+kurze Nachricht senden, Ihre Wissensdatenbank nach Details durchsuchen,
+Folgefragen stellen und mit einer Eskalationsschaltfläche enden. Da Aktionen der
+Reihe nach ausgeführt werden, bestimmen Sie die genaue Form der Antwort.
+
+<Callout title="Order matters">
+Actions run from top to bottom. Put a framing message before a knowledge search,
+and put buttons or escalation after the answer so they appear as the natural next
+step.
+</Callout>

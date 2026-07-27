@@ -26,6 +26,44 @@
   color: #000;
 }
 
+/*
+ * Sidebar footer row: [home] [repo] │ … │ [theme].
+ *
+ * The theme switch already carries a leading divider (fumadocs applies its own
+ * `border-s` there). This closes the pair by drawing the matching line after the
+ * last icon link, so the two clusters read as bracketed groups instead of one
+ * drifting apart. Hung on the repository button's `aria-label`
+ * (REPO_BUTTON_LABEL in lib/layout.shared.tsx — keep them in step) because
+ * fumadocs offers no hook inside that row; both the docked sidebar and the
+ * mobile drawer are covered.
+ */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub'] {
+  position: relative;
+  margin-inline-end: 0.375rem;
+}
+
+/*
+ * Same glyph size as the theme switch beside them. Fumadocs sizes icons inside
+ * these buttons at 18px while its own switch draws its sun and moon at 14px
+ * (a `size-6.5` box with `p-1.5`), so the pair read as oversized. Sized here
+ * rather than with a class on the icon because the button's own
+ * `[&_svg]:size-4.5` rule outranks one.
+ */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Back to ciele.app'] svg,
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub'] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub']::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: calc(-0.375rem / 2);
+  inset-block: 0;
+  width: 1px;
+  background-color: var(--color-fd-border);
+}
+
 /* Wiggle for the "Ask AI" launcher chat icon (hover / mount nudge). */
 @keyframes ciele-wiggle {
   0% {

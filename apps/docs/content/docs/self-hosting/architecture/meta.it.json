@@ -1,0 +1,13 @@
+{
+  "title": "Architettura",
+  "description": "Come viene assemblata la codebase",
+  "pages": [
+    "index",
+    "repository-map",
+    "request-flows",
+    "chat-runtime",
+    "agentic-model",
+    "knowledge-pipeline",
+    "data-model"
+  ]
+}

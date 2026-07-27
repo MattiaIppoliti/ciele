@@ -1,0 +1,59 @@
+---
+title: Base de données
+description: Ciele stocke ses données dans Postgres via Supabase, avec une sécurité au niveau des lignes pour l'isolation des locataires et un exécuteur de migration ordonné par nom de fichier.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele stocke ses données dans **Postgres**, en utilisant
+[Supabase](https://supabase.com) pour la base de données, l'authentification et
+la sécurité au niveau des lignes. Chaque requête est limitée à l'organisation de
+l'utilisateur connecté par des politiques de sécurité au niveau des lignes, ce
+qui permet d'isoler les locataires les uns des autres.
+
+## Provisionnement
+
+Vous pouvez exécuter la base de données de deux manières :
+
+- **Locally**, avec la pile fournie : `pnpm db:start` lance Postgres,
+  l'authentification et RLS dans Docker, et `pnpm db:reset` applique le schéma
+  et les données d'amorçage. C'est le moyen le plus rapide de développer sur une
+  vraie base de données. Voir [Installation](/self-hosting/installation).
+- **Hosted**, avec un projet Supabase que vous créez. Définissez son URL et ses
+  clés en tant que variables d'environnement (voir
+  [Configuration](/self-hosting/configuration)) et l'application se connectera
+  au prochain démarrage.
+
+## Comment les migrations sont appliquées
+
+Le schéma se trouve dans `supabase/migrations` sous forme de fichiers SQL
+ordonnés. Les migrations sont appliquées par un petit exécuteur
+(`scripts/apply-migrations.sh`) qui traite chaque fichier en attente **dans
+l'ordre des noms de fichiers** et enregistre ce qu'il a appliqué par nom de
+fichier. Les nouvelles migrations utilisent un préfixe d'horodatage afin que
+l'ordre soit sans ambiguïté, et elles sont placées à côté du code qui en a
+besoin.
+
+<Callout title="Filename-ordered, not CLI-tracked">
+The runner tracks applied migrations by filename rather than relying on a CLI's
+version history. Follow the same timestamp-prefixed naming for any migration you
+add, and let the runner apply it — do not hand-edit the applied ledger.
+</Callout>
+
+## Données d'amorçage
+
+`supabase/seed.sql` contient des données de démonstration neutres — une
+organisation générique et quelques assistants d'exemple — de sorte qu'une base
+de données neuve n'est pas vide. Vous pouvez l'appliquer en toute sécurité à une
+base de données de développement et l'ignorer pour un démarrage de production
+sans encombre.
+
+## La chaîne d'entreprise
+
+Le schéma open source est entièrement autonome. L'édition gérée dispose d'une
+chaîne de migration supplémentaire qui **ne fait pas partie de l'arborescence
+open source** et n'est jamais créée par un déploiement auto-hébergé. Il s'agit
+du côté base de données de la
+[frontière open-core](/self-hosting/open-core-boundary) : les tables
+d'entreprise peuvent faire référence à des tables open-source, mais jamais
+l'inverse.

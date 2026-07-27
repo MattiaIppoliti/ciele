@@ -1,0 +1,77 @@
+---
+title: Hintergrund-Worker
+description: Das optionale Worker-Profil – Abruf abgeleiteter Graphen und ein JavaScript-Rendering-Crawler – was Ihnen jeder einzelne bringt und wie eine Bereitstellung ohne sie aussieht.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele läuft vollständig ohne Hintergrund-Worker. Zwei optionale Dienste
+verbessern den Wissensabruf. Beide sind standardmäßig deaktiviert, da sie
+zusammen etwa **8 GiB RAM** benötigen – mehr als der Rest des Stacks zusammen.
+
+| Dienst | Was er hinzufügt | Ohne ihn |
+| --- | --- | --- |
+| **Graph worker** | Leitet einen Graphen über Ihr Wissen ab, sodass die Abfrage Beziehungen zwischen Konzepten verfolgen kann, anstatt eine einzelne Textstelle abzugleichen | Die Abfrage verwendet ausschließlich semantische und lexikalische Suche |
+| **Crawl4AI** | Ein browserbasierter Crawler, der JavaScript ausführt, bevor er Inhalte extrahiert | Der integrierte Fetch-basierte Crawler verarbeitet Websites – gut für servergerenderte Seiten, schwächer bei Seiten mit viel JavaScript |
+
+Beide ändern nichts an der *Funktionsweise* des Produkts. Assistenten antworten,
+zitieren Quellen, leiten durch Abläufe weiter und eskalieren auf genau dieselbe
+Weise. Der Unterschied liegt darin, wie viel ein Abrufschritt finden kann.
+
+## Aktivieren
+
+Die Worker sind ein Docker-Compose-Profil. Fügen Sie `workers` zu
+`COMPOSE_PROFILES` in `deploy/.env` hinzu und geben Sie jedem Dienst sein
+Secret:
+
+```sh
+# deploy/.env
+COMPOSE_PROFILES=db,migrate,app,cron,workers
+GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
+GRAPH_LLM_API_KEY=<key for the graph worker's model>
+CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
+CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+```
+
+Starten Sie dann den Stack erneut:
+
+```sh
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+<Callout title="Turn them on later, not up front">
+Nothing is lost by starting without the workers. Knowledge you have already
+indexed stays indexed, and enabling a worker afterwards simply gives new and
+re-synced sources a richer pipeline. Start small, then add the memory when your
+retrieval quality asks for it.
+</Callout>
+
+## Einen Worker an einem anderen Ort ausführen
+
+Das Profil ist eine Annehmlichkeit, keine Anforderung – jeder Worker ist ein
+gewöhnlicher HTTP-Dienst, sodass Sie jeden von ihnen auf einem separaten Host
+ausführen und die App darauf verweisen können. Das ist die übliche Antwort, wenn
+Ihr Anwendungsserver klein ist, Sie aber eine größere Maschine für die
+Indizierung zur Verfügung haben.
+
+Crawl4AI wird über dieselben zwei Variablen konfiguriert, unabhängig davon, ob
+es im Profil oder auf einem eigenen Host ausgeführt wird:
+
+| Variable | Zweck |
+| --- | --- |
+| `CRAWL4AI_BASE_URL` | Wo der Crawler erreichbar ist. Sowohl diese als auch das Token müssen festgelegt werden, bevor der Provider ausgewählt werden kann. |
+| `CRAWL4AI_API_TOKEN` | Server-only-Token, das die App ihm präsentiert. |
+
+Informationen zur restlichen Umgebung finden Sie unter
+[Konfiguration](/self-hosting/configuration). Informationen dazu, wie Worker neu
+erstellt werden, wenn Sie eine neue Version verwenden, finden Sie unter
+[Upgrade](/self-hosting/upgrade).
+
+## Auswahl eines Crawl-Anbieters
+
+Wenn Crawl4AI verfügbar ist, kann die Website-Crawl-Pipeline pro Quelle zwischen
+dem integrierten Crawler und dem Worker wählen. Die Konsole stellt die Auswahl
+als Funktionsrichtlinie und nicht als festen Schalter zur Verfügung: Lassen Sie
+sie auf **Automatic** stehen, und jede Website erhält den Anbieter, der zu ihr
+passt, oder legen Sie bewusst einen fest, wenn Sie wissen, was eine Website
+benötigt.

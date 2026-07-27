@@ -217,6 +217,37 @@ export interface SkillInput {
   prompt: string;
 }
 
+/**
+ * One recorded cookie-consent decision — our own evidence that a visitor
+ * consented (GDPR Art. 7(1)), independent of the `cc_cookie` they hold.
+ *
+ * Append-only: a withdrawal is a new row with `action: "changed"`, never an
+ * edit of the row that granted consent. The history is the evidence.
+ *
+ * Not org-scoped — anonymous visitors have no organization — and deliberately
+ * holds no IP address; `consentId` (mirrored in the visitor's cookie) is the
+ * link back to the device. See migration 20260726100000_cookie_consent_records.
+ */
+export interface CookieConsentRecord {
+  id: string;
+  /** The consent plugin's random id, also written to the visitor's cookie. */
+  consentId: string;
+  /** Which revision of the cookie declaration the visitor was shown. */
+  revision: number;
+  acceptedCategories: string[];
+  rejectedCategories: string[];
+  /** "all" | "custom" | "necessary" — the shape of the choice. */
+  acceptType: string;
+  /** "granted" on a first decision, "changed" on a later edit or withdrawal. */
+  action: string;
+  /** Visitor's clock when they chose; untrusted, kept alongside `createdAt`. */
+  consentedAt: string | null;
+  pageUrl: string;
+  userAgent: string;
+  /** Our clock when the record was stored — the trusted timestamp. */
+  createdAt: string;
+}
+
 export type SkillPatch = Partial<Pick<Skill, "name" | "description" | "prompt">>;
 
 /** What the runtime needs of an attached skill (frozen into Publications). */
@@ -894,6 +925,14 @@ export interface WebsiteSourceConfig {
    * fresh manual/scheduled crawl clears it.
    */
   crawlEscalated?: boolean;
+  /**
+   * Why the last crawl attempt did not start, when it was refused rather than
+   * failed — today only a spent scraping allowance (#510). Cleared the moment a
+   * run starts. Deliberately separate from `error`: a refusal leaves the Source
+   * on its previous status, because knowledge that already works must not be
+   * downgraded by a budget.
+   */
+  crawlBlockedReason?: string;
 }
 
 export interface Source {
@@ -1534,8 +1573,41 @@ export interface AiUsageInput {
   outputTokens: number;
 }
 
-/** Whether a metered call was an LLM chat call or an embedding call. */
-export type UsageKind = "chat" | "embedding";
+/**
+ * How a metered unit of work is recorded in the usage rollup: an LLM chat call,
+ * an embedding call, or a completed website crawl (whose unit is pages, not
+ * tokens). This is the STORAGE vocabulary; `UsageResource` is the plan-facing
+ * one, and `chat` maps to the `ai` resource.
+ */
+export type UsageKind = "chat" | "embedding" | "crawl";
+
+/**
+ * The three kinds of work the platform pays for, and therefore the three things
+ * a plan allowance is expressed in: `ai` (routing, answers, verification and
+ * scheduled AI work), `embedding` (knowledge indexing and query vectors), and
+ * `scraping` (pages fetched by a website crawler). Disjoint by construction —
+ * every metered unit belongs to exactly one — so the three can be capped and
+ * displayed independently: a crawl budget must never stop answering.
+ */
+export type UsageResource = "ai" | "embedding" | "scraping";
+
+/** Every metered resource, for iterating the three meters in a stable order. */
+export const USAGE_RESOURCES: readonly UsageResource[] = [
+  "ai",
+  "embedding",
+  "scraping",
+];
+
+/**
+ * The plan-facing resource a stored usage kind belongs to — the one mapping
+ * between the two vocabularies. `chat` is `ai` because routing, answering and
+ * scheduled AI work are one allowance; the SQL rollup carries the same mapping.
+ */
+export function usageResourceOf(kind: UsageKind): UsageResource {
+  if (kind === "embedding") return "embedding";
+  if (kind === "crawl") return "scraping";
+  return "ai";
+}
 
 /**
  * One org-facing usage aggregate: an org's calls and tokens for one UTC day,
@@ -1549,9 +1621,38 @@ export interface UsageDailyRow {
   kind: UsageKind;
   /** 'unknown' buckets ledger rows recorded before credential metering landed. */
   credentialKind: AiCredentialKind | "unknown";
+  /**
+   * What actually ran: an LLM provider for chat/embedding rows, the resolved
+   * crawler for crawl rows. Part of the grain because credits are estimated
+   * cost, which cannot be recovered from a model-blind aggregate.
+   */
+  provider: string;
+  /** The model that ran; empty on a crawl row, which has none. */
+  modelId: string;
   calls: number;
   inputTokens: number;
   outputTokens: number;
+  /** Metered units that are not tokens — crawled pages. Zero for model calls. */
+  units: number;
+}
+
+/**
+ * One organization's usage over an arbitrary window, grouped finely enough to
+ * price in credits: per metered resource, per funding credential, per
+ * provider/model. The window need not align to UTC days — plan windows run from
+ * a billing anchor — so the read takes whole closed days from the rollup and the
+ * partial ends live from the raw sources.
+ */
+export interface UsageMeterRow {
+  resource: UsageResource;
+  credentialKind: AiCredentialKind | "unknown";
+  provider: string;
+  modelId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Crawled pages on a scraping row; zero for model calls. */
+  units: number;
 }
 
 /**
@@ -2173,6 +2274,17 @@ export interface Db {
    * today aggregated live from the raw ledger. Newest day first.
    */
   getOrgUsageDaily(organizationId: string, days?: number): Promise<UsageDailyRow[]>;
+  /**
+   * Usage over an arbitrary `[from, to)` window (ISO instants), grouped per
+   * resource/credential/provider/model so the caller can price it in credits.
+   * Closed days come from the rollup, the partial ends live from the raw
+   * sources; the ranges are disjoint, so nothing is counted twice.
+   */
+  getOrgUsageMeters(
+    organizationId: string,
+    from: string,
+    to: string
+  ): Promise<UsageMeterRow[]>;
   /** Cross-org: every Knowledge Collection whose assistant uses the graph
    * engine — the datasets the nightly graph-learning cron sweeps. Service-role
    * (spans orgs), like the other cron-claim reads. */

@@ -299,6 +299,9 @@ export async function streamConversationTurn(
       usageGate = await getEnterpriseCapabilities().metering.checkUsage({
         organizationId: input.organizationId,
         connectionKind,
+        // A conversation turn spends the AI allowance; indexing and crawling
+        // have their own meters and their own gates (#510).
+        resource: "ai",
       });
     } catch (error) {
       console.error("[runtime] usage check failed (failing open):", error);

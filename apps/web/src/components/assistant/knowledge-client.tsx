@@ -872,6 +872,14 @@ function WebsitesTab({
                         ? ` · Resolved: ${source.config.resolvedCrawlerProvider}`
                         : ""}
                     </span>
+                    {/* A crawl refused for budget (#510) leaves the Source on
+                        its previous status, so the reason needs saying here —
+                        the status badge alone would look like nothing happened. */}
+                    {source.config.crawlBlockedReason ? (
+                      <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
+                        {source.config.crawlBlockedReason}
+                      </span>
+                    ) : null}
                   </span>
                 )}
               </span>
@@ -1984,8 +1992,12 @@ export function KnowledgeClient({
           {mode === "faqs" && <FaqsTab assistantId={assistantId} collectionId={selected.id} faqs={faqs} />}
           {mode === "okf" && (
             <div className="space-y-2">
+              {/* Reader-facing copy: no internal vocabulary, no ADR numbers. */}
               <p className="text-muted-foreground text-sm">
-                OKF bundle · {nonFaqConcepts.length} concept document{nonFaqConcepts.length === 1 ? "" : "s"} (ADR-0002).
+                {nonFaqConcepts.length} concept document
+                {nonFaqConcepts.length === 1 ? "" : "s"} — the pieces of
+                knowledge an answer can cite, each one traceable to the source
+                it came from.
               </p>
               {nonFaqConcepts.map((concept) => (
                 <ConceptCard key={concept.id} assistantId={assistantId} concept={concept} />

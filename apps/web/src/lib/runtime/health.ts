@@ -1,4 +1,5 @@
-import type { AlertType, Db } from "@agent-hub/db";
+import type { AlertType, Db, UsageResource } from "@agent-hub/db";
+import type { UsageWindowName } from "./ee";
 
 /**
  * Keyed operational-health signals — the one home for the raise-on-unhealthy /
@@ -22,8 +23,18 @@ export const alertKeys = {
     `provider:${provider}:${credentialKind}`,
   /** Daily AI budget ceiling, per organization. */
   budget: (organizationId: string) => `budget:${organizationId}`,
-  /** Monthly plan-cap ladder (EE metering enforcement, #442), per organization. */
-  planCap: (organizationId: string) => `plan-cap:${organizationId}`,
+  /**
+   * Plan-cap ladder (EE metering enforcement, #442/#507): one key per
+   * (organization, metered resource, window), so a scraping warning and an AI
+   * block are separate banners that resolve independently. The single-key
+   * `plan-cap:<org>` format this replaces never reached production — nothing
+   * ever wrote the caps table, so no cap alert could have been raised.
+   */
+  planCap: (
+    organizationId: string,
+    resource: UsageResource,
+    window: UsageWindowName
+  ) => `plan-cap:${organizationId}:${resource}:${window}`,
   /** Flow trust-tier demotions (flow trust ledger). */
   flowTrust: (flowId: string) => `flow-trust:${flowId}`,
   /** Standing-goal verification failures. */

@@ -1,0 +1,60 @@
+---
+title: Panoramica dell'autenticazione
+description: Richiedi ai visitatori di effettuare l'accesso prima di chattare e personalizza le risposte con il loro profilo.
+---
+
+Per impostazione predefinita, un assistente è disponibile per chiunque possa
+accedere alla pagina in cui si trova. Quando hai bisogno di sapere chi c'è
+dall'altra parte della conversazione, puoi collegare il tuo provider di identità
+e richiedere alle persone di effettuare l'accesso prima di chattare. Ciò
+consente all'assistente di confermare l'identità di una persona, di adattarsi al
+suo ruolo e di personalizzare le risposte con i dettagli del suo profilo.
+
+Puoi configurare questa opzione per ogni assistente. Apri un assistente, quindi
+seleziona **Authentication**.
+
+## Cosa ottieni collegando un provider di identità
+
+- **Sign in before chat.** I visitatori vedono una scheda **Connect Your
+  Account** nel widget e proseguono solo dopo aver effettuato l'accesso con il
+  tuo provider di identità.
+- **Roles and groups.** I gruppi di appartenenza di una persona possono essere
+  integrati nella conversazione, in modo che un [flusso](/flows/building-a-flow)
+  possa trattare un membro in modo diverso rispetto a un visitatore anonimo.
+- **Personalized answers.** I dettagli del profilo, come il nome, diventano
+  disponibili per l'assistente, così le risposte possono rivolgersi direttamente
+  alla persona.
+
+<Callout title="Single sign-on, one connection">
+The connection uses OpenID Connect, the standard behind most single sign-on
+setups. Once your identity provider is connected, people sign in with the account
+they already use, and no separate password is created for the assistant.
+</Callout>
+
+## Due impostazioni correlate
+
+- **Authentication** collega il provider di identità che controlla l'accesso
+  alla chat. Questo è ciò che viene illustrato nelle guide di questa sezione.
+- **User data** ti consente di importare i dettagli personali in modo che
+  l'assistente possa inserirli nelle risposte, come in una stampa unione. Usalo
+  quando vuoi risposte che facciano riferimento alle informazioni personali di
+  qualcuno.
+
+## Guide
+
+<Cards>
+  <Card
+    title="Collega Microsoft Entra ID"
+    href="/authentication/microsoft-entra-id"
+    description="Registra un'applicazione in Microsoft Entra e richiedi l'accesso prima della chat."
+  />
+</Cards>
+
+## Dopo aver effettuato la connessione
+
+- Apri l'anteprima del widget e verifica che la scheda **Connect Your Account**
+  venga visualizzata.
+- Accedi con un account di prova e verifica che la conversazione prosegua.
+- Se utilizzi i ruoli, verifica che un [flusso](/flows/building-a-flow) che
+  controlla il ruolo dell'utente si comporti come previsto per le persone che
+  hanno effettuato l'accesso.

@@ -1,0 +1,69 @@
+---
+title: Editionen
+description: Ciele gibt es in zwei Editionen – den Open-Source-Kern, den Sie selbst hosten können, und Ciele Cloud, den vollständig verwalteten Dienst. Auf dieser Seite wird erläutert, was jede Edition beinhaltet.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele ist in zwei Editionen erhältlich, die dasselbe Produkt und dieselbe
+Dokumentation nutzen. Alles in diesem Abschnitt **Documentation** – Assistenten,
+Wissen, Flows, Helpdesks, Veröffentlichung und Betrieb – funktioniert in beiden
+Editionen auf die gleiche Weise. Die Editionen unterscheiden sich nur darin,
+**wer die Software betreibt**, sowie in einer kleinen Anzahl von **nur
+verwalteten Funktionen**.
+
+## Der Open-Source-Kern
+
+Der Kern von Ciele ist Open Source unter der **AGPL-3.0**-Lizenz. Es ist das
+gesamte Produkt, mit dem ein Besucher und ein Administrator interagieren: die
+Admin-Konsole, das Chat-Widget, der Flow-Router, die Wissens- und Abruf-Pipeline
+sowie die Betriebsoberflächen (Posteingang, Verbesserungen, Einblicke,
+Warnungen). Sie können ihn auf Ihrer eigenen Infrastruktur ohne Lizenzkosten
+betreiben.
+
+Unter [Open Source](/self-hosting) erfahren Sie, wie Sie eine selbst gehostete
+Bereitstellung installieren, konfigurieren und betreiben und wo genau die
+Open-Core-Grenze liegt.
+
+## Ciele Cloud
+
+Ciele Cloud ist derselbe Kern, der für Sie gehostet und betrieben wird, plus die
+kommerziellen Funktionen, die nur für einen verwalteten Multi-Tenant-Dienst
+sinnvoll sind. Sie installieren oder patchen nichts; Sie melden sich an und
+beginnen mit dem Erstellen.
+
+Die verwaltete Edition bietet zusätzlich:
+
+- **Plans and billing** – Abonnementpläne, Rechnungsstellung und Zahlung, die in
+  der Konsole verwaltet werden. Siehe
+  [Pläne und Abrechnung](/cloud/plans-and-billing).
+- **Usage limits** – Kontingente pro Plan, die die monatliche Nutzung messen und
+  begrenzen. Siehe [Nutzung und Limits](/cloud/usage-and-limits).
+- **Managed single sign-on** – SSO-Onboarding für Organisationen, das für Sie
+  durchgeführt wird. Siehe [Team und Single Sign-On](/cloud/team-and-sso).
+- **Operations and support** – Hosting, Upgrades, Backups und ein Support-Kanal
+  mit Serviceverpflichtung. Siehe [Support](/cloud/support).
+
+Diese Funktionen befinden sich außerhalb des Open-Source-Kerns und werden in
+einer selbst gehosteten Bereitstellung nicht erstellt.
+
+## Welche Edition nutze ich?
+
+Wenn Sie sich beim gehosteten Dienst angemeldet und nie etwas installiert haben,
+nutzen Sie **Ciele Cloud**. Wenn Ihre Organisation Ciele auf ihren eigenen
+Servern betreibt, nutzen Sie die **Open-Source**-Edition. Abrechnung,
+Nutzungslimits und verwaltetes SSO sind nur in der Ciele Cloud verfügbar.
+
+<Callout title="Same docs, both editions">
+Feature pages that describe a managed-only capability say so at the top. Where a
+page has no such note, the feature is part of the open-source core and behaves the
+same wherever Ciele runs.
+</Callout>
+
+## Was kommt als Nächstes?
+
+<Cards>
+  <Card title="Open Source" href="/self-hosting" description="Install, configure, and operate a self-hosted deployment, and see the open-core boundary." />
+  <Card title="Ciele Cloud" href="/cloud" description="Plans, usage limits, managed single sign-on, and support for the hosted service." />
+</Cards>

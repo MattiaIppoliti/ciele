@@ -1,0 +1,67 @@
+---
+title: La limite de l'open-core
+description: Ce qui se trouve exactement dans l'édition open source et ce qui appartient au service géré Ciele Cloud.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele suit un modèle open-core : le produit est open source, et un petit
+ensemble de fonctionnalités commerciales, qui n'ont de sens que pour un service
+géré multi-entités, se trouve en dehors de l'arborescence open source. Cette
+page trace la ligne de démarcation avec précision.
+
+## Dans l'édition open source (AGPL-3.0)
+
+L'ensemble du produit utilisé par vos visiteurs et vos administrateurs est open
+source :
+
+- La **console d'administration** et l'**éditeur** d'assistant avec aperçu en
+  direct.
+- Le **widget de chat** et son moteur d'exécution.
+- Le **routeur de flux** et les actions de flux.
+- Le pipeline de **connaissances** et de récupération, y compris l'exploration
+  de sites Web, les fichiers et les FAQ, avec des citations de sources.
+- **Help desks** et canaux d'escalade.
+- Les surfaces d'opérations : **boîte de réception**, **améliorations**,
+  **informations** et **alertes**.
+- **Multi-tenancy** avec des organisations, des membres, des rôles et une
+  sécurité au niveau des lignes.
+- Publication sur votre site Web avec un extrait d'intégration.
+
+Si une fonctionnalité est documentée dans la [Documentation](/) principale sans
+mention d'édition gérée, elle fait partie de ce noyau open source.
+
+## Cloud uniquement (pas dans l'arborescence open source)
+
+Il s'agit des fonctionnalités du service géré. Elles sont exclues du code open
+source et ne sont jamais créées dans un déploiement auto-hébergé :
+
+- **Plans and billing** — formules d'abonnement, paiement et facturation.
+- **Usage metering and enforced limits** — quotas mensuels par forfait et leurs
+  plafonds.
+- **The cross-organization operations surface** utilisé pour exécuter le service
+  géré.
+- **Managed single sign-on onboarding** pour la console d'administration.
+- **Hosting, upgrades, backups, and support** avec un engagement de service.
+
+<Callout title="How the split is enforced in the code">
+Enterprise code lives under a dedicated path and is excluded when the public
+open-source tree is assembled, so an open-source checkout simply does not contain
+it. The enterprise database migrations are a separate chain applied only where
+they exist; a self-hosted deployment has no such directory and creates none of
+those tables. See [Database](/self-hosting/database).
+</Callout>
+
+## Pourquoi la limite est là où elle est
+
+Tout ce dont une organisation en auto-hébergement a besoin pour exécuter des
+assistants pour ses propres utilisateurs se trouve dans le noyau open source.
+Les fonctionnalités réservées au Cloud sont celles liées à l'exploitation du
+service par Ciele *pour d'autres organisations* : la facturation, la limitation
+de l'utilisation entre les locataires et la garantie de la disponibilité. Le
+fait de les exclure de l'arborescence open source signifie que l'édition open
+source est complète et autonome selon ses propres conditions, et que l'édition
+gérée n'ajoute que ce dont un service géré a besoin.
+
+Si vous souhaitez bénéficier de ces fonctionnalités gérées sans les développer
+vous-même, utilisez [Ciele Cloud](/cloud).

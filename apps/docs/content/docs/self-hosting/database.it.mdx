@@ -1,0 +1,55 @@
+---
+title: Database
+description: Ciele archivia i suoi dati in Postgres tramite Supabase, con sicurezza a livello di riga per l'isolamento dei tenant e un runner di migrazione ordinato per nome di file.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele archivia i suoi dati in **Postgres**, utilizzando
+[Supabase](https://supabase.com) per il database, l'autenticazione e la
+sicurezza a livello di riga. Ogni query è limitata all'organizzazione
+dell'utente che ha effettuato l'accesso tramite criteri di sicurezza a livello
+di riga: in questo modo i tenant rimangono isolati l'uno dall'altro.
+
+## Provisioning
+
+Puoi eseguire il database in due modi:
+
+- **Locally**, con lo stack in bundle: `pnpm db:start` avvia Postgres,
+  l'autenticazione e RLS in Docker e `pnpm db:reset` applica lo schema e i dati
+  iniziali. Questo è il modo più veloce per sviluppare su un database reale.
+  Vedi [Installazione](/self-hosting/installation).
+- **Hosted**, con un progetto Supabase creato da te. Imposta il suo URL e le sue
+  chiavi come variabili di ambiente (vedi
+  [Configurazione](/self-hosting/configuration)) e l'app si connetterà al
+  prossimo avvio.
+
+## Come vengono applicate le migrazioni
+
+Lo schema risiede in `supabase/migrations` sotto forma di file SQL ordinati. Le
+migrazioni vengono applicate da un piccolo runner
+(`scripts/apply-migrations.sh`) che esegue ogni file in sospeso **in ordine di
+nome file** e registra ciò che ha applicato per nome file. Le nuove migrazioni
+utilizzano un prefisso con data e ora, in modo che l'ordinamento sia
+inequivocabile, e vengono inserite accanto al codice che ne ha bisogno.
+
+<Callout title="Filename-ordered, not CLI-tracked">
+The runner tracks applied migrations by filename rather than relying on a CLI's
+version history. Follow the same timestamp-prefixed naming for any migration you
+add, and let the runner apply it — do not hand-edit the applied ledger.
+</Callout>
+
+## Dati iniziali
+
+`supabase/seed.sql` contiene dati demo neutri — un'organizzazione generica e un
+paio di assistenti di esempio — in modo che un database nuovo non sia vuoto.
+Puoi applicarlo tranquillamente a un database di sviluppo e puoi tranquillamente
+saltarlo per un avvio pulito in produzione.
+
+## La catena enterprise
+
+Lo schema open source è completamente autonomo. L'edizione gestita ha una catena
+di migrazione aggiuntiva che **non fa parte dell'albero open source** e non
+viene mai creata da una distribuzione self-hosted. Questo è il lato database del
+[confine open-core](/self-hosting/open-core-boundary): le tabelle enterprise
+possono fare riferimento a quelle open-source, mai il contrario.

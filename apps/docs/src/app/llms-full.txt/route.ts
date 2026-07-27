@@ -5,7 +5,9 @@ import { getLLMText } from '@/lib/get-llm-text';
 export const revalidate = false;
 
 export async function GET() {
-  const scan = source.getPages().map(getLLMText);
+  // English only, like llms.txt: this is the canonical corpus, and every other
+  // locale is generated from it.
+  const scan = source.getPages('en').map(getLLMText);
   const scanned = await Promise.all(scan);
 
   return new Response(scanned.join('\n\n'), {

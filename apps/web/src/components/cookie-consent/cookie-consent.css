@@ -1,0 +1,240 @@
+/* Re-skins the consent plugin's own UI with Ciele's design tokens.
+ *
+ * Two things to know before editing:
+ *
+ * 1. No JS drives the theme. Every colour resolves to a token from
+ *    globals.css, and those tokens are redefined under `.dark` — so the banner
+ *    and the modal follow the app's light/dark theme for free. The plugin's
+ *    `cc--darkmode` class is intentionally never applied.
+ *
+ * 2. Specificity, not source order, is what makes these win. The plugin ships
+ *    its own stylesheet and Next gives no ordering guarantee between the two
+ *    imports, so every override outranks its counterpart:
+ *      - variables go on `#cc-main` (1,0,0), beating the plugin's `:root` (0,1,0)
+ *      - rules go through `.cm-wrapper` / `.pm-wrapper` (1,2,0), beating the
+ *        plugin's `#cc-main .cm` (1,1,0)
+ *    Keep that shape when adding rules, or they will silently stop applying.
+ */
+
+#cc-main {
+  --cc-font-family: var(--font-sans);
+  /* Above page content, below the toaster (sonner sits near 1e9) so transient
+     feedback is never buried by the banner. */
+  --cc-z-index: 100000;
+  --cc-modal-margin: 1.25rem;
+  --cc-modal-border-radius: var(--radius-xl);
+  --cc-btn-border-radius: var(--radius-lg);
+  --cc-pm-toggle-border-radius: 999px;
+  --cc-modal-transition-duration: 0.2s;
+
+  /* Surfaces and text */
+  --cc-bg: var(--background);
+  --cc-primary-color: var(--foreground);
+  --cc-secondary-color: var(--muted-foreground);
+  --cc-link-color: var(--foreground);
+  --cc-separator-border-color: var(--border);
+  --cc-overlay-bg: color-mix(in oklch, var(--background) 70%, transparent);
+
+  /* Primary action — mirrors <Button variant="default"> */
+  --cc-btn-primary-bg: var(--primary);
+  --cc-btn-primary-color: var(--primary-foreground);
+  --cc-btn-primary-border-color: var(--primary);
+  --cc-btn-primary-hover-bg: color-mix(in oklch, var(--primary) 80%, transparent);
+  --cc-btn-primary-hover-color: var(--primary-foreground);
+  --cc-btn-primary-hover-border-color: color-mix(
+    in oklch,
+    var(--primary) 80%,
+    transparent
+  );
+
+  /* Secondary action — mirrors <Button variant="secondary">. Same size and
+     radius as the primary, because "Reject all" must not read as the quieter
+     option. */
+  --cc-btn-secondary-bg: var(--secondary);
+  --cc-btn-secondary-color: var(--secondary-foreground);
+  --cc-btn-secondary-border-color: var(--border);
+  --cc-btn-secondary-hover-bg: color-mix(in oklch, var(--secondary), var(--foreground) 5%);
+  --cc-btn-secondary-hover-color: var(--secondary-foreground);
+  --cc-btn-secondary-hover-border-color: var(--border);
+
+  /* Toggles — modelled on components/ui/switch.tsx: coloured track, pale knob.
+     The plugin draws the ✓/✗ inside the knob and strokes it with the *track*
+     colour, so knob and track must contrast or the state icon disappears.
+     A near-white knob works in both themes; the token pair would not, since
+     --primary-foreground flips from near-white to near-black. */
+  --cc-toggle-on-bg: var(--primary);
+  --cc-toggle-on-knob-bg: var(--primary-foreground);
+  --cc-toggle-off-bg: color-mix(in oklch, var(--foreground) 32%, var(--background));
+  --cc-toggle-off-knob-bg: oklch(0.985 0 0);
+  /* Also drives the expandable-section arrow and the scrollbar thumb, so this
+     needs to stay visible rather than nearly transparent. */
+  --cc-toggle-readonly-bg: color-mix(in oklch, var(--foreground) 20%, var(--background));
+  --cc-toggle-readonly-knob-bg: oklch(0.985 0 0);
+  --cc-toggle-readonly-knob-icon-color: color-mix(
+    in oklch,
+    var(--foreground) 45%,
+    var(--background)
+  );
+  /* --cc-toggle-enabled-icon-color / --cc-toggle-disabled-icon-color are
+     declared by the plugin but unused in v3 — setting them does nothing. */
+
+  /* Category blocks in the preferences modal */
+  --cc-cookie-category-block-bg: var(--secondary);
+  --cc-cookie-category-block-border: var(--border);
+  --cc-cookie-category-block-hover-bg: color-mix(
+    in oklch,
+    var(--secondary),
+    var(--foreground) 5%
+  );
+  --cc-cookie-category-block-hover-border: var(--border);
+  --cc-cookie-category-expanded-block-bg: var(--background);
+  --cc-cookie-category-expanded-block-hover-bg: var(--secondary);
+  --cc-section-category-border: var(--border);
+
+  /* Footer strip holding the notice links */
+  --cc-footer-bg: var(--secondary);
+  --cc-footer-color: var(--muted-foreground);
+  --cc-footer-border-color: var(--border);
+
+  --cc-webkit-scrollbar-bg: var(--border);
+  --cc-webkit-scrollbar-hover-bg: var(--muted-foreground);
+}
+
+.dark #cc-main {
+  color-scheme: dark;
+}
+
+/* --- Links ------------------------------------------------------------ */
+
+/* The plugin only colours `.cc__link`, which it never applies to authored
+   markup — so links inside our descriptions arrive as bold body text. Bold
+   alone is not a link affordance, and here there is no colour difference
+   either, so underline them. */
+#cc-main .cm-wrapper a,
+#cc-main .pm-wrapper a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in oklch, var(--foreground) 40%, transparent);
+  transition: text-decoration-color 0.15s ease;
+}
+
+#cc-main .cm-wrapper a:hover,
+#cc-main .pm-wrapper a:hover {
+  text-decoration-color: var(--foreground);
+}
+
+/* --- Consent banner (first layer) ------------------------------------- */
+
+/* A compact bordered card, matching the marketing navbar pill and footer:
+   translucent surface, blurred backdrop, soft shadow rather than the plugin's
+   hard drop shadow. */
+#cc-main .cm-wrapper .cm {
+  max-width: 23rem;
+  border: 1px solid var(--border);
+  background: color-mix(in oklch, var(--background) 88%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 40px -16px oklch(0 0 0 / 0.35);
+}
+
+#cc-main .cm-wrapper .cm__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+#cc-main .cm-wrapper .cm__desc {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+#cc-main .cm-wrapper .cm__title + .cm__desc {
+  margin-top: 0.6rem;
+}
+
+/* Stack the three actions: "Accept all" and "Reject all" share a row of equal
+   halves, "Manage preferences" sits below at the same weight. */
+#cc-main .cm-wrapper .cm__btn {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.55rem 0.9rem;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+#cc-main .cm-wrapper .cm__btn:active {
+  transform: translateY(1px);
+}
+
+#cc-main .cm-wrapper .cm__footer {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  padding: 0.6rem 1.1rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+#cc-main .cm-wrapper .cm__footer a {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+#cc-main .cm-wrapper .cm__footer a:hover {
+  color: var(--foreground);
+}
+
+/* --- Preferences modal (second layer) --------------------------------- */
+
+#cc-main .pm-wrapper .pm {
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px -20px oklch(0 0 0 / 0.4);
+}
+
+#cc-main .pm-wrapper .pm__title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+#cc-main .pm-wrapper .pm__section-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+#cc-main .pm-wrapper .pm__section-desc {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+#cc-main .pm-wrapper .pm__btn {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* The disclosure tables carry the actual cookie names, so keep them legible
+   rather than shrinking them away. */
+#cc-main .pm-wrapper .pm__section-table {
+  font-size: 0.75rem;
+}
+
+#cc-main .pm-wrapper .pm__table-caption,
+#cc-main .pm-wrapper .pm__table-th {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+#cc-main .pm-wrapper .pm__badge {
+  background: color-mix(in oklch, var(--foreground) 10%, transparent);
+  color: var(--muted-foreground);
+}
+
+/* --- Motion ----------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  #cc-main {
+    --cc-modal-transition-duration: 0s;
+  }
+}

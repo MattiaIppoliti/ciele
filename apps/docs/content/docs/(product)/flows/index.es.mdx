@@ -1,0 +1,56 @@
+---
+title: Resumen de los flujos
+description: Cómo decide Ciele lo que hace un asistente con cada mensaje, mediante un conjunto ordenado de reglas.
+---
+
+Los flujos son la forma en que controlas el comportamiento de un asistente. Un
+flujo es una regla que dice «cuando un mensaje tenga este aspecto, haz estas
+cosas». Los flujos están ordenados y el primero que coincida con un mensaje
+prevalece. Esto hace que un asistente sea predecible: puedes mirar la lista y
+saber cómo gestionará cada tipo de pregunta.
+
+Abre un asistente y selecciona **Flows** para ver la lista.
+
+## Cómo funciona el enrutamiento
+
+Por cada mensaje entrante, el asistente lee la lista de flujos y elige el primer
+flujo cuya descripción coincida con el mensaje. A continuación, ejecuta las
+acciones de ese flujo en orden. Dado que la coincidencia se basa en el
+significado del mensaje, describes cada flujo en lenguaje sencillo en lugar de
+escribir palabras clave.
+
+## El comportamiento predeterminado
+
+Al final de la lista está el **Default behavior**. Es una regla integrada que
+siempre está en último lugar y gestiona cualquier mensaje con el que no haya
+coincidido ningún otro flujo. El comportamiento predeterminado responde a partir
+de tu conocimiento, por lo que un asistente funciona en cuanto tiene
+conocimiento, incluso sin flujos personalizados.
+
+No puedes eliminar el comportamiento predeterminado, pero puedes confiar en él
+como tu red de seguridad mientras añades flujos más específicos por encima.
+
+## Respuestas fijas frente a respuestas generadas
+
+Los flujos te permiten combinar dos tipos de respuestas:
+
+- **Fixed replies** se muestran exactamente como las escribiste. Úsalas cuando
+  la redacción deba ser exacta, como en una declaración de política o un aviso
+  legal.
+- El asistente escribe las **Generated answers** a partir de tu conocimiento.
+  Úsalas cuando quieras una respuesta útil y natural que se adapte a la
+  pregunta.
+
+Esta combinación te da control donde lo necesitas y flexibilidad en todo lo
+demás.
+
+## Cómo leer la lista de flujos
+
+Cada flujo de la lista muestra su nombre, una breve descripción de lo que
+coincide y las acciones que ejecutará. Puedes reordenar los flujos para cambiar
+la prioridad y puedes activar o desactivar un flujo sin eliminarlo. Un flujo que
+está desactivado se omite durante el enrutamiento.
+
+Continúa con [Crear un flujo](/flows/building-a-flow) para crear uno y con
+[Acciones de flujo](/flows/actions) para ver la lista completa de cosas que
+puede hacer un flujo.

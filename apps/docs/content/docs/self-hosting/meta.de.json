@@ -1,0 +1,19 @@
+{
+  "title": "Open Source",
+  "description": "Selbsthosting des AGPL-Kerns",
+  "icon": "Boxes",
+  "root": true,
+  "pages": [
+    "index",
+    "---Führen Sie es aus---",
+    "installation",
+    "configuration",
+    "database",
+    "workers",
+    "---Lassen Sie es weiterlaufen---",
+    "upgrade",
+    "---Verstehen Sie es---",
+    "architecture",
+    "open-core-boundary"
+  ]
+}

@@ -1,0 +1,204 @@
+---
+title: Architettura
+description: "Un tour visivo di come viene assemblata una distribuzione Ciele: le applicazioni, il database, i processi in background e le interconnessioni tra di loro."
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Questa sezione è rivolta a chi esegue Ciele sulla propria infrastruttura o
+modifica il suo codice. Descrive la distribuzione così com'è realmente: quali
+processi esistono, con cosa comunica ciascuno di essi e dove si trovano i
+confini. Le pagine delle funzionalità nella [Documentazione](/) principale
+descrivono cosa fa il prodotto; queste pagine descrivono come è costruito.
+
+<Callout title="Read the code when the two disagree">
+These diagrams are maintained alongside the source, but the source is the
+authority. Every page names the files it describes so you can check.
+</Callout>
+
+## L'applicazione in breve
+
+Inizia da qui. Questa è l'intera applicazione in un'unica immagine: tutti i
+principali sottosistemi e la direzione in cui viaggiano le richieste attraverso
+di essi. Ogni livello sottostante è trattato in una delle pagine di questa
+sezione.
+
+<Mermaid
+  title="L'applicazione, livello per livello"
+  chart={`
+flowchart TB
+  S["<b>Surfaces</b><br/>chat widget · admin console · embed and iframe"]
+  E["<b>Request handling</b><br/>session gate → server components (reads)<br/>server actions (writes) · route handlers (chat · cron)"]
+  G["<b>Authorization</b><br/>role → capability · one guard for every write"]
+  R["<b>Chat runtime</b><br/>flow router · action registry · agentic search"]
+  K["<b>Knowledge</b><br/>ingestion jobs · crawler matrix · chunking and embeddings"]
+  O["<b>Operations</b><br/>publishing · insights and exports · improvements and alerts"]
+  D["<b>Data layer</b><br/>one interface · two implementations"]
+  P[("<b>Postgres + pgvector</b><br/>row-level security")]
+  X["<b>External</b><br/>AI providers · sites you crawl · email · ticketing"]
+
+  S --> E --> G --> R
+  E --> D
+  R --> K
+  R --> O
+  R --> D
+  K --> D
+  O --> D
+  D --> P
+  R --> X
+  K --> X
+  O --> X
+`}
+/>
+
+Leggilo dall'alto verso il basso. **Surfaces** sono le uniche cose che un
+browser tocca. **Request handling** separa le letture dalle scritture: le pagine
+leggono, le azioni scrivono e i gestori di route trasportano la chat e il lavoro
+pianificato. **Authorization** è un unico guardiano attraverso il quale passa
+ogni scrittura a livello di organizzazione. Le bande **chat runtime**,
+**knowledge** e **operations** sono il cuore del comportamento. Tutto raggiunge
+Postgres attraverso un'unica interfaccia del **livello dati**, mai direttamente.
+
+Ciò che il diagramma omette è altrettanto informativo di ciò che mostra. Nessuna
+superficie raggiunge da sola il runtime o il database, nulla scrive senza
+passare attraverso il guard e solo le tre bande centrali comunicano con il mondo
+esterno.
+
+## L'intera distribuzione, in un'unica immagine
+
+Questo è il software. Ecco cosa esegui effettivamente: un'applicazione Next.js,
+un database Postgres e una manciata di job pianificati. Tutto il resto è
+facoltativo.
+
+<Mermaid
+  title="Una distribuzione self-hosted e le sue dipendenze esterne"
+  chart={`
+flowchart TB
+  V["Visitor<br/>widget on your site"]
+  M["Member<br/>admin console"]
+
+  subgraph app["Your deployment"]
+    direction TB
+    W["<b>apps/web</b><br/>console · widget · API"]
+    C["Scheduled jobs<br/>/api/cron/*"]
+    K["Workers<br/>services/ · optional"]
+  end
+
+  PG[("Postgres + pgvector<br/>Auth · RLS · Storage")]
+  AI["AI providers"]
+  SITE["Sites you crawl"]
+  MAIL["Email"]
+
+  V -->|"embed script"| W
+  M -->|"signed in"| W
+  W --> PG
+  C --> PG
+  K --> PG
+  W --> AI
+  W --> SITE
+  W --> MAIL
+`}
+/>
+
+L'applicazione è volutamente noiosa da gestire: è un server Next.js standard,
+non mantiene alcuno stato proprio e tutti i dati persistenti risiedono in
+Postgres. Scala l'applicazione eseguendo più copie.
+
+## I processi
+
+| Processo | Descrizione | Obbligatorio |
+|---|---|---|
+| **Web app** | La console di amministrazione, il widget di chat pubblica e l'API HTTP, in un'unica applicazione Next.js | Sì |
+| **Postgres** | Ogni riga di dati persistenti, con sicurezza a livello di riga e pgvector per il recupero | Sì |
+| **Scheduled jobs** | Endpoint HTTP sotto `/api/cron/*` richiamati con un timer — finalizzazione della scansione, sweep di ripetizione della scansione, esportazioni, rollup dell'utilizzo, controlli degli obiettivi | Consigliato |
+| **Docs site** | Questa documentazione, un'app Next.js separata | No |
+| **Workers** | Container sotto `services/` per crawling più pesante e lavoro sui grafi | No |
+
+Lo [stack Docker Compose](/self-hosting/installation) collega i primi tre per
+impostazione predefinita e lascia i worker dietro un profilo opt-in.
+
+## Due limiti imposti dagli strumenti
+
+La maggior parte del codebase è costituita da normale codice applicativo che
+puoi leggere dall'inizio alla fine. Due moduli sono diversi: la loro interfaccia
+pubblica è vincolata, quindi puoi farci affidamento e modificare tutto ciò che
+sta dietro.
+
+<Mermaid
+  title="I due confini dei moduli imposti"
+  chart={`
+flowchart TB
+  UI["Console pages · API routes<br/>server actions"]
+
+  subgraph rt["Chat runtime"]
+    direction TB
+    RTB["Two entry points:<br/>server barrel · client barrel"]
+    RTI["Internals: router, actions,<br/>retrieval, crawlers, embeddings"]
+    RTB --> RTI
+  end
+
+  subgraph db["Data layer"]
+    direction TB
+    DBI["One interface<br/>every query in the app"]
+    IMPL1["Postgres"]
+    IMPL2["In-memory"]
+    DBI --> IMPL1
+    DBI --> IMPL2
+  end
+
+  UI --> RTB
+  UI --> DBI
+  RTI --> DBI
+  UI -.->|"lint error"| RTI
+`}
+/>
+
+- **The data layer** è un'interfaccia con due implementazioni. Quella reale
+  comunica con Postgres con sicurezza a livello di riga; quella in memoria
+  consente all'intera applicazione di avviarsi senza alcun database, ed è così
+  che funziona un nuovo checkout senza alcuna configurazione. Una suite di test
+  condivisa viene eseguita su entrambi, quindi non possono deviare.
+- **The chat runtime** espone esattamente due entry point — un server barrel e
+  un client-safe barrel — e una regola lint rifiuta le importazioni che li
+  superano. Un test blocca la superficie esportata, quindi ampliarla è un'azione
+  intenzionale e non un incidente.
+
+Entrambi i confini esistono per lo stesso motivo: sono le parti che hanno
+maggiori probabilità di essere sostituite e quelle in cui una perdita si
+propagherebbe più lontano.
+
+## E adesso dove andare?
+
+<Cards>
+  <Card
+    title="Mappa del repository"
+    href="/self-hosting/architecture/repository-map"
+    description="La struttura delle directory, come le aree di lavoro dipendono l'una dall'altra e quali moduli hanno il peso maggiore."
+  />
+  <Card
+    title="Flussi di richiesta"
+    href="/self-hosting/architecture/request-flows"
+    description="Cosa succede al messaggio di chat di un visitatore e alla modifica di un amministratore, passo dopo passo."
+  />
+  <Card
+    title="Il runtime della chat"
+    href="/self-hosting/architecture/chat-runtime"
+    description="Il routing del flusso, il registro delle azioni e il ciclo di recupero alla base di una risposta."
+  />
+  <Card
+    title="Il modello agentico"
+    href="/self-hosting/architecture/agentic-model"
+    description="Come viene scelto un modello, cosa può decidere, i budget che lo vincolano e il ciclo che lo valuta."
+  />
+  <Card
+    title="Pipeline della conoscenza"
+    href="/self-hosting/architecture/knowledge-pipeline"
+    description="Come una fonte diventa testo ricercabile e come una risposta ottiene le sue citazioni."
+  />
+  <Card
+    title="Modello di dati"
+    href="/self-hosting/architecture/data-model"
+    description="Le tabelle, come vengono isolati i tenant e come vengono applicate le migrazioni."
+  />
+</Cards>

@@ -1,0 +1,66 @@
+---
+title: Código abierto
+description: "Ejecuta Ciele en tu propia infraestructura. El núcleo es de código abierto bajo la licencia AGPL-3.0: la consola de administración, el widget de chat, el enrutador de flujos, la canalización de conocimiento y las superficies de operaciones."
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+El núcleo de Ciele es de código abierto bajo la licencia **AGPL-3.0**, y puedes
+ejecutarlo tú mismo. La edición de código abierto es el producto completo que
+utilizan tus visitantes y administradores: la consola de administración, el
+widget de chat, el enrutador de [flow](/flows), el canal de
+[knowledge](/knowledge) y recuperación, y las superficies de operaciones:
+[inbox](/operations/inbox), [improvements](/operations/improvements),
+[insights](/operations/insights) y [alerts](/operations/alerts).
+
+<Callout title="Same product, you operate it">
+Every feature page in the main [Documentation](/) applies to a self-hosted
+deployment. The difference is operational: you provide the infrastructure, the
+database, and the AI provider keys, and you apply upgrades. The managed
+alternative is [Ciele Cloud](/cloud).
+</Callout>
+
+## Lo que proporcionas
+
+- **A place to run it.** Las aplicaciones son aplicaciones estándar de Next.js;
+  cualquier entorno que ejecute Node puede alojarlas.
+- **A database.** Ciele almacena sus datos en Postgres y utiliza
+  [Supabase](/self-hosting/database) para la base de datos, la autenticación y
+  la seguridad a nivel de fila.
+- **AI provider keys.** Los asistentes llaman a un proveedor de IA para generar
+  respuestas; tú traes tus propias claves. Consulta
+  [Configuración](/self-hosting/configuration).
+
+## La licencia, en pocas palabras
+
+AGPL-3.0 es una licencia de código abierto. Puedes ejecutar, estudiar, modificar
+y compartir el software. Su condición definitoria es la cláusula de red: si
+modificas Ciele y ofreces esa versión modificada a otros a través de una red,
+también debes ofrecer a esos usuarios el código fuente correspondiente de tu
+versión modificada. Si lo ejecutas sin modificaciones o lo modificas solo para
+uso interno de tu propia organización, no se genera esa obligación. Esta página
+es un resumen práctico, no un asesoramiento legal; los términos autorizados se
+encuentran en el archivo `LICENSE` en la raíz del repositorio.
+
+Si tu organización prefiere no asumir las obligaciones de la AGPL ni el trabajo
+operativo, [Ciele Cloud](/cloud) es el mismo núcleo bajo un acuerdo comercial.
+
+## Lo que no está en la edición de código abierto
+
+Un pequeño conjunto de funciones comerciales de servicio gestionado se
+encuentran fuera del núcleo de código abierto y no forman parte de una
+implementación autoalojada. Consulta
+[El límite del núcleo abierto](/self-hosting/open-core-boundary) para conocer la
+línea exacta.
+
+## Siguientes pasos
+
+<Cards>
+  <Card title="Installation" href="/self-hosting/installation" description="One command with Docker, or run the monorepo directly." />
+  <Card title="Configuration" href="/self-hosting/configuration" description="Environment variables for the database and AI providers." />
+  <Card title="Database" href="/self-hosting/database" description="Postgres, Supabase, and how migrations are applied." />
+  <Card title="Background workers" href="/self-hosting/workers" description="The optional graph and crawler services, and what they add." />
+  <Card title="Upgrading" href="/self-hosting/upgrade" description="Take a new release, back up, and roll back." />
+  <Card title="The open-core boundary" href="/self-hosting/open-core-boundary" description="Exactly what is open source and what is Cloud-only." />
+</Cards>

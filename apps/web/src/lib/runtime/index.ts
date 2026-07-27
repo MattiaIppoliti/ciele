@@ -101,6 +101,7 @@ export type { ApiRequestTestResult, ExtractedVariable } from "./api-request";
 // the enterprise edition registers real implementations once at startup. Read
 // capabilities through here so the open-core boundary stays one reviewed seam.
 export {
+  USAGE_WARN_FRACTION,
   getEnterpriseCapabilities,
   registerEnterpriseCapabilities,
 } from "./ee";
@@ -111,7 +112,16 @@ export { alertKeys } from "./health";
 export type {
   EnterpriseCapabilities,
   MeteringEnforcement,
+  UsageWindow,
+  UsageWindowName,
+  UsageMeterSnapshot,
+  UsageLimitsSnapshot,
   BillingAccessor,
+  AnswerModelBasis,
+  PlanCatalog,
+  PlanCatalogEntry,
+  PlanVolumes,
+  UpgradeCheckoutInput,
   ActivationPolicy,
   ActivationState,
   UsageCheckInput,

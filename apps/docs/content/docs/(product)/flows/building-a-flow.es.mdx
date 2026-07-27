@@ -1,0 +1,65 @@
+---
+title: Crear un flujo
+description: "Crea un flujo con el generador de tres pasos: desencadenante, condiciones y respuesta."
+---
+
+Creas un flujo en tres pasos: eliges qué lo inicia, añades condiciones
+opcionales y defines la respuesta. Abre un asistente, selecciona **Flows** y, a
+continuación, crea un nuevo flujo para abrir el generador.
+
+## Paso 1: Activador
+
+El desencadenante es el evento que hace que un flujo pueda ejecutarse. El
+desencadenante más común es cuando un visitante envía un mensaje, y otros
+desencadenantes cubren momentos como la apertura del chat. Elige el
+desencadenante que se ajuste a aquello a lo que quieres que reaccione el flujo.
+Para la mayoría de las reglas que responden a preguntas, el desencadenante de
+mensaje es la opción correcta.
+
+## Paso 2: Condiciones
+
+Las condiciones son opcionales. Restringen un flujo para que se ejecute solo en
+situaciones específicas. Puedes exigir que coincida cualquier condición o que
+coincidan todas, y puedes combinar varias.
+
+La condición que más vas a usar describe el **contexto de la conversación**:
+explicas, en un lenguaje sencillo, el tipo de mensaje que debe gestionar este
+flujo, y puedes dar algunos ejemplos de mensajes que deberían coincidir y otros
+que no. Estos ejemplos afinan la coincidencia para que el flujo se active con
+las preguntas correctas.
+
+Deja las condiciones vacías cuando un flujo deba aplicarse de forma general y
+añádelas cuando necesites precisión.
+
+## Paso 3: Respuesta
+
+La respuesta es lo que realmente hace el flujo. Es una lista ordenada de
+acciones que se ejecutan de arriba abajo. Una respuesta debe tener al menos una
+acción.
+
+Los patrones habituales incluyen:
+
+- Un único **mensaje fijo** para una regla que siempre responde de la misma
+  manera.
+- Una **búsqueda en tu conocimiento** para una regla que debería dar una
+  respuesta útil y fundamentada.
+- Un mensaje seguido de **botones** que dirigen a los visitantes al siguiente
+  paso.
+- Una **escalada** cuando una regla deba derivar al visitante a tu equipo.
+
+Consulta [Acciones de flujo](/flows/actions) para ver cada acción y su
+configuración.
+
+## Guarda, ordena y prueba
+
+Cuando guardas un flujo, se añade a la lista. Arrástralo para establecer su
+prioridad en relación con los demás flujos, recordando que la primera
+coincidencia gana. Luego pruébalo en la vista previa en vivo enviando mensajes
+que deberían activarlo y otros que no. Ajusta la descripción y los ejemplos
+hasta que se active exactamente cuando quieras.
+
+<Callout title="Start simple">
+A small number of clear flows is easier to reason about than many overlapping
+ones. Add a flow when you have a specific behavior in mind, and lean on the
+Default behavior for everything else.
+</Callout>

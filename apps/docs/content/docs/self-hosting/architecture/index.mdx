@@ -135,7 +135,7 @@ flowchart TB
 
   subgraph db["Data layer"]
     direction TB
-    DBI["One interface<br/>~45 methods"]
+    DBI["One interface<br/>every query in the app"]
     IMPL1["Postgres"]
     IMPL2["In-memory"]
     DBI --> IMPL1

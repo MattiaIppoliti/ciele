@@ -1,0 +1,84 @@
+---
+title: Willkommen bei Ciele
+description: Erstellen, testen und veröffentlichen Sie KI-Assistenten, die aus Ihren eigenen Inhalten antworten, Konversationen mithilfe von Regeln weiterleiten und bei Bedarf an Ihr Team eskalieren.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { BookOpen, Boxes, Cloud } from 'lucide-react';
+
+Ciele ist eine Plattform, auf der Sie KI-Assistenten erstellen können, die auf
+Ihrer Website und in Ihren Apps verfügbar sind. Jeder Assistent beantwortet
+Fragen mithilfe Ihrer eigenen Inhalte, befolgt die von Ihnen festgelegten Regeln
+und übergibt die Konversation an Ihr Team, wenn ein Mensch der richtige nächste
+Schritt ist.
+
+Sie konfigurieren alles über eine einzige Admin-Konsole: was der Assistent weiß,
+wie er antwortet, wann er eskaliert und wo er angezeigt wird. Eine Live-Vorschau
+zeigt den Assistenten genau so, wie Ihre Besucher ihn sehen werden, während Sie
+Änderungen vornehmen.
+
+## Drei Bereiche, ein Produkt
+
+Mit dem Schalter oben in der Seitenleiste wechseln Sie zwischen ihnen. Alles in
+**Documentation** gilt unabhängig davon, welche Edition Sie verwenden.
+
+<Cards>
+  <Card
+    icon={<BookOpen />}
+    title="Dokumentation"
+    href="/getting-started"
+    description="Was das Produkt leistet und wie Sie jeden Teil davon nutzen: Assistenten, Wissen, Flows, Helpdesks, Veröffentlichung und den täglichen Betrieb."
+  />
+  <Card
+    icon={<Cloud />}
+    title="Ciele Cloud"
+    href="/cloud"
+    description="Der gleiche Kern, vollständig verwaltet. Pläne und Abrechnung, Nutzungslimits, verwaltetes Single Sign-On und wie Sie den Support erreichen."
+  />
+  <Card
+    icon={<Boxes />}
+    title="Open Source"
+    href="/self-hosting"
+    description="Betreiben Sie den AGPL-3.0-Core auf Ihrer eigenen Infrastruktur: Installation, Konfiguration, Datenbank, Worker, Upgrades und Architektur."
+  />
+</Cards>
+
+Welche Variante Sie benötigen, hängt davon ab, wo das Produkt läuft: ein
+**Open-Source-Kern**, den Sie selbst unter der AGPL-3.0 hosten, oder **Ciele
+Cloud**, dasselbe Produkt, das für Sie betrieben wird. [Editions](/editions)
+zieht die Grenze präzise.
+
+## Was Sie mit Ciele machen können
+
+- Erstellen Sie einen oder mehrere Assistenten, jeder mit seiner eigenen
+  Identität, seinem eigenen Wissen und seinen eigenen Regeln.
+- Versorgen Sie jeden Assistenten mit Wissen aus Ihren Websites, Ihren Dateien
+  und kuratierten Frage-Antwort-Paaren.
+- Steuern Sie Konversationen mit Flows, einem geordneten Satz von Regeln, der
+  bestimmt, wie der Assistent auf jede Nachricht reagiert.
+- Eskalieren Sie über Help Desks an Ihr Team, mit Kanälen wie E-Mail, Telefon,
+  Live-Chat und Support-Tickets.
+- Veröffentlichen Sie den Assistenten mit einem kleinen Snippet auf Ihrer
+  Website, überprüfen Sie dann jede Konversation, verfolgen Sie die
+  Antwortqualität und lesen Sie die Analysen.
+
+## Für wen diese Dokumentation bestimmt ist
+
+Diese Dokumentation richtet sich an zwei Zielgruppen gleichzeitig. Wenn Sie
+Ciele evaluieren, erfahren Sie in den ersten Abschnitten, was die Plattform
+leistet und wie die einzelnen Komponenten zusammenpassen. Wenn Sie Ciele bereits
+nutzen, zeigt Ihnen jeder Abschnitt auch Schritt für Schritt, wie Sie die
+Funktion in der App verwenden. Dies gilt unabhängig davon, ob Sie die
+Open-Source-Edition selbst betreiben oder Ciele Cloud nutzen.
+
+## Beginnen Sie hier
+
+<Cards>
+  <Card title="Getting started" href="/getting-started" description="Core concepts and your first assistant, from empty console to live widget." />
+  <Card title="Assistants" href="/assistants" description="Create assistants and shape their identity, replies, and appearance." />
+  <Card title="Knowledge" href="/knowledge" description="Give an assistant its sources: websites, files, and FAQs." />
+  <Card title="Flows" href="/flows" description="Route conversations with rules and decide how each message is answered." />
+  <Card title="Help Desks" href="/help-desks" description="Set up escalation to your team through channels, forms, and tickets." />
+  <Card title="Publishing" href="/publishing" description="Embed the assistant on your website and in your apps." />
+  <Card title="Editions" href="/editions" description="Open-source self-hosting versus the managed Ciele Cloud, and what each includes." />
+</Cards>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GhostMark } from "@/components/auth/ghost-mark";
+import { CookiePreferencesButton } from "@/components/cookie-consent/cookie-preferences-button";
 import { FooterClock, FooterNewsletter } from "@/components/home/footer-widgets";
 import {
   FallingStars,
@@ -31,6 +32,7 @@ const COLUMNS: Array<{
     links: [
       { name: "Security", href: "/security" },
       { name: "Privacy Policy", href: "/policies/privacy" },
+      { name: "Cookie Notice", href: "/policies/cookies" },
       { name: "Terms of Service", href: "/policies/terms-of-service" },
     ],
   },
@@ -104,6 +106,14 @@ export function HomeFooter() {
                         </Link>
                       </li>
                     ))}
+                    {/* Withdrawing consent has to be as easy as giving it, so the
+                        re-opener lives in the footer of every page, not only in
+                        the notice. */}
+                    {column.title === "Legal" ? (
+                      <li>
+                        <CookiePreferencesButton className="text-foreground/80 hover:text-foreground cursor-pointer text-left transition-colors" />
+                      </li>
+                    ) : null}
                   </ul>
                 </div>
               ))}

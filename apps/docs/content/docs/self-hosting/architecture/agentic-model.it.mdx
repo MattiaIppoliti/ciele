@@ -1,0 +1,329 @@
+---
+title: Il modello agentico
+description: Come viene scelto il modello, cosa può decidere, i livelli di prompt e gli strumenti con cui opera, i budget che lo vincolano e il ciclo notturno che lo valuta.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Un agente, ridotto all'essenziale, è un modello con strumenti in un ciclo:
+risponde, oppure chiama uno strumento, e qualunque cosa lo strumento restituisca
+torna a lui finché non risponde. Questo loop è davvero ciò che viene eseguito
+qui. Questa pagina tratta di tutto ciò che ruota attorno a questo ciclo: quale
+modello risponde alla fine, cosa può decidere il modello, a cosa può accedere,
+dove viene interrotto e come vengono valutate le sue risposte in seguito.
+
+La pagina [chat runtime](/self-hosting/architecture/chat-runtime) descrive il
+meccanismo attraverso il quale passa un messaggio. Questa pagina riguarda il
+modello al suo interno.
+
+## Cosa decide il modello e cosa non decide mai
+
+La cosa più utile da sapere su questa architettura è dove si trova il limite.
+L'autonomia viene concessa deliberatamente, una decisione alla volta.
+
+| Il modello decide | Il codice decide |
+|---|---|
+| A quale flusso appartiene il messaggio | Quali azioni vengono quindi eseguite e in quale ordine |
+| Se chiamare uno strumento e con quali argomenti | Quali strumenti esistono in questo turno |
+| Cosa cercare e se cercare di nuovo | Il limite massimo di ricerche consentite per turno |
+| La formulazione di una risposta generativa | Se la generazione è consentita in questo passaggio |
+| Quali fatti recuperati utilizzare | Quali fonti citare — solo ciò che è stato effettivamente letto |
+| Nulla dopo che la risposta è stata scritta | Persistenza, effetti collaterali, escalation, valutazione |
+
+Due conseguenze che vale la pena interiorizzare. Il testo configurato non viene
+mai riscritto: un'azione di messaggio invia la sua copia parola per parola,
+quindi la formulazione di un amministratore è al sicuro da parafrasi. E un
+modello non può mai ampliare la propria portata: uno strumento che non gli è
+stato fornito per lui non esiste e nessun risultato di uno strumento gliene
+concede uno nuovo.
+
+## Scegliere il modello che risponde
+
+Un assistente indica un provider e un modello, ma questa preferenza è l'*inizio*
+della risoluzione, non la sua conclusione.
+
+<Mermaid
+  title="Risoluzione del modello che risponde a un turno"
+  chart={`
+flowchart TB
+  T["A turn needs a model"]
+  P{"Credential for the<br/>assistant's provider?"}
+  A{"Credential for any<br/>other provider?"}
+  RUN["Generate on the<br/>assistant's own model"]
+  FB["Generate on a fallback<br/>provider, cheap tier"]
+  KW["Keyword router<br/>no generation at all"]
+
+  T --> P
+  P -->|"yes"| RUN
+  P -->|"no"| A
+  A -->|"yes"| FB
+  A -->|"no"| KW
+`}
+/>
+
+All'interno di un singolo provider, il runtime utilizza la prima credenziale che
+trova, in questo ordine:
+
+1. Una CLI del provider connessa rilevata sul computer che esegue la console —
+   **solo sulla superficie di anteprima**, mai per il traffico pubblicato.
+2. La credenziale dell'organizzazione: una chiave API fornita
+   dall'organizzazione stessa o una credenziale federata, se supportata dal
+   provider.
+3. La chiave della piattaforma dall'ambiente della distribuzione.
+
+Sono supportate quattro famiglie di provider: Anthropic, OpenAI, Google e
+**qualsiasi server che parli l'API OpenAI**. In questo modo una distribuzione
+viene eseguita completamente in locale sul proprio server di inferenza,
+configurato per ogni organizzazione o tramite le variabili di ambiente
+`OPENAI_COMPATIBLE_*` in [Configurazione](/self-hosting/configuration). Google
+accetta inoltre una credenziale Vertex federata al posto di una chiave statica.
+
+Per ogni turno vengono risolti due livelli di modello, non uno. La
+classificazione dell'intento viene eseguita su un modello volutamente economico;
+la risposta viene eseguita su quello scelto dall'assistente. Entrambe le
+risoluzioni vengono registrate nel registro di utilizzo con il provider, l'ID
+del modello e il tipo di credenziale che ha pagato la chiamata.
+
+<Callout title="A missing key degrades to a different model, never to silence">
+When the assistant's own provider has no credential, another provider answers —
+at that provider's cheap tier, since a fallback key was not a pricing choice the
+organization made. Falling back to the keyword router instead would silently stop
+applying the system prompt, which is a far worse failure than an unexpected
+model. The keyword router is reached only when *no* provider anywhere has a
+credential.
+</Callout>
+
+La regola di sola anteprima nel passaggio 1 è strutturale e non un controllo
+delle policy: la superficie fa parte dell'input di risoluzione e il traffico dei
+widget pubblicati non supera mai il flag che rende idonea una credenziale
+locale.
+
+## Il prompt è strutturato in livelli e i livelli sono classificati
+
+Un assistente multi-tenant non può avere un unico prompt di sistema, perché
+diverse parti hanno una legittima voce in capitolo e non si fidano l'una
+dell'altra allo stesso modo. Il prompt viene composto a turno, iniziando da
+quello con la priorità più alta.
+
+| Livello | Proprietà di | Cosa contiene |
+|---|---|---|
+| **Platform** | l'operatore di distribuzione | Gli aspetti non negoziabili: i fatti di base dell'organizzazione nella knowledge base, la risposta nella lingua dell'utente, il prompt mai rivelato, i documenti recuperati trattati come dati anziché come istruzioni, il rispetto dell'ambito |
+| **Assistant** | l'organizzazione | Identità, persona, tono, formato — esplicitamente contrassegnati nel prompt composto come subordinati al livello della piattaforma |
+| **Skills** | l'organizzazione | Playbook riutilizzabili collegati a un assistente, applicati quando pertinenti |
+| **Session memory** | la conversazione | Brevi informazioni salvate da uno strumento in un turno precedente |
+| **Retrieval context** | questo turno | La domanda risolta e tutto ciò che la ricerca pre-modello ha già trovato |
+| **Flow** | il router | Quale flusso sta gestendo questo messaggio e le sue linee guida per la risposta e la ricerca |
+
+L'ordine è obbligatorio, non facoltativo. Il livello della piattaforma risiede
+in una tabella con la sicurezza a livello di riga abilitata e *nessuna* policy:
+nessuna organizzazione può leggerlo, né tantomeno modificarlo; solo l'account
+proprietario della distribuzione può accedervi tramite un percorso del ruolo di
+servizio. Quindi un'istruzione sul tono per assistente può modellare la voce di
+una risposta e non può sostituire una regola della piattaforma. La difesa contro
+il prompt injection si trova nello stesso livello per lo stesso motivo: i
+documenti recuperati sono denominati come dati dall'unico livello che nessun
+tenant può toccare.
+
+## Il set di strumenti viene assemblato turno per turno
+
+Gli strumenti sono un registro, non un elenco codificato. Uno strumento è una
+specifica — un nome, una descrizione che il modello legge, uno schema di input
+tipizzato, un'etichetta leggibile dall'utente per il pannello di pensiero e
+un'implementazione — e ogni turno assembla il proprio set.
+
+| Strumento | Predefinito | Note |
+|---|---|---|
+| Ricerca nella conoscenza | sempre attiva | Non disattivabile: il grounding è un invariante di runtime |
+| Memoria di sessione | attiva | Salva un breve fatto per i turni successivi in questa conversazione |
+| Recupera un URL | **off** | L'accesso alla rete in uscita è opt-in, per ciascun assistente |
+| Strumenti HTTP personalizzati | come configurati | Definiti dagli amministratori; i parametri che il modello compila diventano una stringa di query o un corpo JSON |
+
+Ogni strumento, ad eccezione della ricerca nella knowledge base, è avvolto dalla
+stessa strumentazione, ed è proprio in questo wrapper che risiede gran parte
+dell'affidabilità: emette gli eventi di inizio e fine che il widget rende come
+passaggi visibili, misura i tempi della chiamata e **contiene gli errori**. Uno
+strumento throwing restituisce un valore di errore al modello e contrassegna il
+suo passaggio come non riuscito; non interrompe il turno. Il modello legge
+l'errore e lo aggira, esattamente come farebbe con uno strumento che riportasse
+"non trovato".
+
+La ricerca nella knowledge base è un'eccezione voluta. Il suo ciclo di vita, il
+suo verdetto di copertura e la sua contabilità di budget risiedono invece in una
+primitiva di ricerca condivisa, in modo che le ricerche del modello e quelle che
+il runtime genera prima ancora che il modello venga eseguito non possano
+divergere. Consulta la
+[knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) per scoprire
+cosa fa effettivamente una ricerca.
+
+### L'apertura verso l'esterno è un'azione controllata
+
+Il recupero di un URL e la chiamata a uno strumento HTTP personalizzato passano
+entrambi attraverso un unico gateway di uscita, condiviso con il crawler del
+sito web e con l'estrazione della conoscenza. Convalida la destinazione al
+momento della risoluzione DNS, fissa la connessione agli indirizzi convalidati
+in modo che la destinazione non possa cambiare tra la verifica e la connessione,
+riconvalida ogni hop di reindirizzamento e limita sia il tempo che la dimensione
+della risposta. Un host bloccato e un host non raggiungibile restituiscono lo
+*stesso* messaggio, quindi lo strumento non può essere utilizzato per mappare
+una rete privata.
+
+## L'autonomia è limitata dalla costruzione
+
+Il ciclo è aperto nella forma e chiuso nel costo. Si applicano diversi limiti
+indipendenti e nessuno di essi dipende dalla scelta del modello di fermarsi.
+
+<Mermaid
+  title="Un passaggio attraverso il ciclo dell'agente e le porte che lo terminano"
+  chart={`
+flowchart TB
+  IN["Messages + layered prompt<br/>+ this turn's toolset"]
+  STEP["Model step"]
+  KIND{"Tool call<br/>or text?"}
+  TOOL["Run the tool<br/>timed · errors contained"]
+  GATE{"Search budget or<br/>step cap reached?"}
+  TEXT["Answer text, streamed"]
+  FIN["Reply parts + citations"]
+
+  IN --> STEP --> KIND
+  KIND -->|"tool call"| TOOL --> GATE
+  GATE -->|"no"| STEP
+  KIND -->|"text"| TEXT
+  GATE -->|"yes"| TEXT
+  TEXT --> FIN
+`}
+/>
+
+| Limite | Effetto |
+|---|---|
+| Budget di ricerca | Massimo sei ricerche nella knowledge base per turno, conteggiate specificamente, in modo che le chiamate a strumenti non correlati non possano consumare il budget di recupero |
+| Limite di passaggi | Un limite separato sul numero totale di passaggi, in modo che un modello che non esegue mai ricerche non possa comunque andare in loop all'infinito |
+| Limiti per chiamata | Ogni chiamata di uno strumento in uscita ha un timeout e una dimensione massima di risposta |
+| Rifiuto | Il rifiuto di un provider è un motivo di conclusione distinto, con una risposta onesta e una via d'uscita umana offerta, senza mai effettuare un nuovo tentativo con un altro provider |
+| Troncamento | Una risposta interrotta dal limite di output lo indica esplicitamente, invece di fingere che non sia stato trovato nulla |
+| Fine vuota | Se un gate termina il ciclo prima che venga trasmesso qualsiasi testo, il turno risponde comunque: o con una domanda di chiarimento mirata, o con un avviso che indica cosa è stato cercato e cosa manca |
+
+Quando il budget è esaurito, il modello viene *informato* nel risultato dello
+strumento stesso: "non cercare di nuovo, rispondi con ciò che hai e dì
+onestamente se non è sufficiente". Limitare un ciclo e lasciare che il modello
+scopra il limite andando a sbatterci contro produce risposte peggiori rispetto a
+limitare il ciclo e dirlo apertamente.
+
+## Stato che non è un messaggio
+
+La trascrizione non è l'unica cosa che una conversazione ricorda. Ogni
+conversazione porta con sé un piccolo contenitore di stato, caricato prima
+dell'esecuzione del turno e riscritto dopo che il messaggio dell'assistente è
+stato salvato in modo permanente, e solo se uno strumento lo ha effettivamente
+modificato, quindi un turno di sola lettura non comporta alcuna scrittura
+aggiuntiva e un turno fallito non scrive mai lo stato in modo incompleto. Lo
+strumento di memoria vi aggiunge fatti limitati e deduplicati, che il prompt del
+turno successivo inserisce come livello di memoria di sessione.
+
+Ciò impedisce che "stato uguale a trascrizione" diventi un limite senza che la
+trascrizione cresca per sostenerlo.
+
+## Ragionamento reso visibile senza una seconda chiamata al modello
+
+I modelli spesso narrano prima di chiamare uno strumento. Consuma solo il flusso
+di testo e quella narrazione finisce nel fumetto della risposta; il runtime
+invece consuma l'intero flusso e, quando arriva una chiamata a uno strumento,
+riclassifica il testo trasmesso finora come un *pensiero*. Il client lo sposta
+nel pannello di pensiero e la risposta ricomincia da zero dopo il ritorno dello
+strumento.
+
+Un tipo di evento aggiuntivo permette di ottenere l'intera interfaccia utente di
+ragionamento, senza dover richiamare un secondo modello e senza bisogno di un
+riepilogatore separato. Il vocabolario completo degli eventi è disponibile in
+[Request flows](/self-hosting/architecture/request-flows).
+
+## Nessuno corregge i propri compiti
+
+La generazione è il percorso veloce; la qualità è un ciclo separato, più lento,
+che viene eseguito in base a una pianificazione. La risposta di un visitatore
+non dipende mai da questo.
+
+<Mermaid
+  title="Il ciclo di qualità pianificato"
+  chart={`
+flowchart TB
+  TICK["Nightly tick"]
+  GOALS["Standing goals<br/>replayed headlessly"]
+  VER["Answer verifier<br/>an independent second read"]
+  TRUST["Trust tiers<br/>rolling pass rate per flow"]
+  COMP["Weekly digest<br/>at most three proposals"]
+  OUT["Alerts · Improvements"]
+  NEXT["Next turn: a watch-tier flow<br/>always offers human escalation"]
+
+  TICK --> GOALS --> VER --> TRUST --> COMP --> OUT
+  TRUST --> NEXT
+`}
+/>
+
+- **Standing goals** sono domande con aspettative verificabili, riproposte
+  attraverso il motore reale rispetto all'istantanea pubblicata dell'assistente,
+  con cronologia vuota e senza nulla di persistente. La valutazione è una pura
+  funzione della risposta: se un controllo non può essere scritto come codice,
+  non fa parte di un obiettivo.
+- **The verifier** rilegge le risposte generative recenti con input volutamente
+  ristretti: la domanda, la risposta e il contenuto citato vengono recuperati
+  nuovamente al momento della valutazione. Non vede mai i prompt del modello di
+  risposta o le tracce degli strumenti, perché la confidenza non è una prova.
+- **Trust** è un tasso di superamento continuo per flusso, calcolato sui suoi
+  ultimi segnali valutati: i verdetti del verificatore più il feedback esplicito
+  dei visitatori, con un verdetto vincente quando entrambi hanno valutato la
+  stessa risposta. Tre livelli: un tasso di superamento elevato e costante su un
+  numero sufficiente di esecuzioni porta al livello più alto, un numero troppo
+  basso di esecuzioni o un tasso troppo basso portano al livello `watch`, e
+  tutto ciò che sta nel mezzo rimane nel livello intermedio. Un flusso senza
+  cronologia non ha ottenuto nulla e inizia in `watch`. La finestra scorre,
+  quindi la fiducia può essere persa così come guadagnata.
+- **The tier has exactly one runtime effect today**: le risposte generative di
+  un flusso di livello `watch` offrono sempre la possibilità di un intervento
+  umano. Un comportamento deliberatamente ristretto, piuttosto che un ampio
+  passaggio all'autonomia.
+- **The weekly digest** trasforma i fallimenti della settimana in un massimo di
+  tre proposte — una FAQ suggerita, una modifica al flusso, un cambiamento nello
+  stile di risposta, un nuovo obiettivo — ognuna delle quali viene visualizzata
+  come elemento di miglioramento con tag. Nulla viene mai applicato
+  automaticamente. Una persona accetta una proposta eseguendo il lavoro oppure
+  la rifiuta archiviandola.
+
+<Callout title="Read this section as a design stance, not a feature list">
+Every part of it exists to keep an unattended agent honest: it is graded by
+something that did not write the answer, its autonomy is measured rather than
+assumed, and its self-improvement requires a human signature.
+</Callout>
+
+## Estensione dell'agente
+
+Il punto sono le giunture. Ognuna di queste è un'aggiunta, non una modifica al
+ciclo:
+
+- **A new tool** — aggiungi una specifica al registro. Include eventi del ciclo
+  di vita, contenimento degli errori e avanzamento del pannello di riflessione.
+- **An organization-defined tool** — un amministratore descrive un endpoint HTTP
+  nella console. Nessuna distribuzione.
+- **A new capability with its own configuration** — aggiungi un'azione di
+  flusso, in modo che l'amministratore che ha collegato il flusso decida
+  comunque se eseguirlo.
+- **An external tool server** — un client in stile MCP si inserisce come
+  *fornitore* di strumenti: elenca i suoi strumenti all'inizio di un turno e li
+  distribuisce nel set assemblato. Il protocollo degli eventi copre già il loro
+  avanzamento, ed è a questo che serve il collegamento del registro.
+- **Headless callers** — il punto di ingresso del motore è privo di interfaccia
+  utente. Qualsiasi elemento in grado di fornire un assistente, i suoi flussi e
+  le sue credenziali ottiene l'intero agente; è così che il goal replay e la
+  suite di test offline lo guidano.
+
+## Le invarianze di questo livello
+
+1. I flussi instradano; il modello no. Il nuovo comportamento generativo va
+   **all'interno** di un'azione, mai al di sopra del router.
+2. Lo strumento di ricerca della conoscenza non può essere disattivato. Il
+   grounding non è un'impostazione.
+3. Le citazioni vengono raccolte da ciò che il modello ha effettivamente letto e
+   non vengono mai ricostruite in seguito.
+4. Gli effetti collaterali vengono descritti durante il turno e applicati dopo
+   il commit della risposta.
+5. Nessun elemento valuta le proprie risposte e nessun elemento applica le
+   proprie proposte.

@@ -22,12 +22,15 @@ import {
 } from "./table-access";
 import {
   ASSISTANT_GOAL_CAP,
+  usageResourceOf,
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
 } from "./types";
 import type {
   AiUsageInput,
   UsageDailyRow,
+  UsageMeterRow,
+  UsageResource,
   RuntimeEventInput,
   Alert,
   AnswerVerdictInput,
@@ -50,6 +53,7 @@ import type {
   CrawlFinalizeClaim,
   Concept,
   Conversation,
+  CookieConsentRecord,
   Db,
   Flow,
   FlowInput,
@@ -207,6 +211,7 @@ interface MockStore {
   localConnectorPairings: Map<string, LocalConnectorPairing>;
   localConnectorDevices: Map<string, LocalConnectorDevice>;
   localInferenceJobs: Map<string, LocalInferenceJob>;
+  cookieConsentRecords: Map<string, CookieConsentRecord>;
   /** Single-row platform settings (the platform-wide system prompt). */
   platformSettings: {
     systemPrompt: string;
@@ -363,9 +368,46 @@ function emptyStore(): MockStore {
     improvementMessages: new Map(),
     improvementProposals: new Map(),
     alerts: new Map(),
-    aiUsage: [],
+    // A little seeded usage so the demo build shows a populated Usage page
+    // instead of an empty state: two model calls on the platform default and
+    // one completed crawl, which is also the only place the crawl meter can be
+    // seen without a real crawler credential.
+    aiUsage: [
+      {
+        organizationId: DEMO_ORG.id,
+        assistantId: null,
+        stage: "generate",
+        provider: "google",
+        modelId: "gemini-3.5-flash",
+        credentialKind: "platform",
+        inputTokens: 184_000,
+        outputTokens: 12_400,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        organizationId: DEMO_ORG.id,
+        assistantId: null,
+        stage: "embed",
+        provider: "openai",
+        modelId: "text-embedding-3-small",
+        credentialKind: "platform",
+        inputTokens: 640_000,
+        outputTokens: 0,
+        createdAt: new Date().toISOString(),
+      },
+    ],
     usageDaily: new Map(),
-    runtimeEvents: [],
+    runtimeEvents: [
+      {
+        organizationId: DEMO_ORG.id,
+        assistantId: null,
+        kind: "crawl",
+        status: "succeeded",
+        crawlerProvider: "crawl4ai",
+        pageCount: 320,
+        createdAt: new Date().toISOString(),
+      },
+    ],
     orgBudgets: new Map(),
     goals: new Map(),
     goalRuns: [],
@@ -391,6 +433,7 @@ function emptyStore(): MockStore {
     localConnectorPairings: new Map(),
     localConnectorDevices: new Map(),
     localInferenceJobs: new Map(),
+    cookieConsentRecords: new Map(),
     platformSettings: {
       systemPrompt: "",
       updatedBy: null,
@@ -1266,6 +1309,7 @@ function getStore(): MockStore {
 const MOCK_TABLE_STORES: {
   [K in DbTableName]: () => Map<string, DbTableRow<K>>;
 } = {
+  cookieConsentRecords: () => getStore().cookieConsentRecords,
   skills: () => getStore().skills,
   localConnectorPairings: () => getStore().localConnectorPairings,
   localConnectorDevices: () => getStore().localConnectorDevices,
@@ -1365,7 +1409,7 @@ function aggregateLedger(
     }
     const day = u.createdAt.slice(0, 10);
     if (day < bounds.startDay || day >= bounds.endDay) continue;
-    const key = `${u.organizationId}|${day}|${usageKindOfStage(u.stage)}|${u.credentialKind ?? "unknown"}`;
+    const key = `${u.organizationId}|${day}|${usageKindOfStage(u.stage)}|${u.credentialKind ?? "unknown"}|${u.provider}|${u.modelId}`;
     let row = groups.get(key);
     if (!row) {
       row = {
@@ -1373,9 +1417,12 @@ function aggregateLedger(
         day,
         kind: usageKindOfStage(u.stage),
         credentialKind: u.credentialKind ?? "unknown",
+        provider: u.provider,
+        modelId: u.modelId,
         calls: 0,
         inputTokens: 0,
         outputTokens: 0,
+        units: 0,
       };
       groups.set(key, row);
     }
@@ -1386,11 +1433,59 @@ function aggregateLedger(
   return groups;
 }
 
+/**
+ * Aggregates completed crawls into the same rollup shape: the unit is pages, the
+ * provider is the crawler that ran, and the funding is always the platform's
+ * (every crawler credential is the app's own). Mirrors the SQL rollup's crawl
+ * branch, including ignoring failed and empty crawls — they produced no metered
+ * unit, and pages are what the allowance is denominated in.
+ */
+function aggregateCrawls(
+  events: (RuntimeEventInput & { createdAt: string })[],
+  bounds: { organizationId?: string; startDay: string; endDay: string }
+): Map<string, UsageDailyAggregate> {
+  const groups = new Map<string, UsageDailyAggregate>();
+  for (const e of events) {
+    if (e.kind !== "crawl" || e.status !== "succeeded") continue;
+    const pages = e.pageCount ?? 0;
+    if (pages <= 0) continue;
+    if (bounds.organizationId && e.organizationId !== bounds.organizationId) {
+      continue;
+    }
+    const day = e.createdAt.slice(0, 10);
+    if (day < bounds.startDay || day >= bounds.endDay) continue;
+    const provider = e.crawlerProvider ?? "unknown";
+    const key = `${e.organizationId}|${day}|crawl|platform|${provider}|`;
+    let row = groups.get(key);
+    if (!row) {
+      row = {
+        organizationId: e.organizationId,
+        day,
+        kind: "crawl",
+        credentialKind: "platform",
+        provider,
+        modelId: "",
+        calls: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        units: 0,
+      };
+      groups.set(key, row);
+    }
+    row.calls += 1;
+    row.units += pages;
+  }
+  return groups;
+}
+
 function usageDailyRowOf(row: UsageDailyAggregate): UsageDailyRow {
   return {
     day: row.day,
     kind: row.kind,
     credentialKind: row.credentialKind,
+    provider: row.provider,
+    modelId: row.modelId,
+    units: row.units,
     calls: row.calls,
     inputTokens: row.inputTokens,
     outputTokens: row.outputTokens,
@@ -1398,6 +1493,34 @@ function usageDailyRowOf(row: UsageDailyAggregate): UsageDailyRow {
 }
 
 /** UTC day (YYYY-MM-DD) `back` days before today; 0 = today. */
+/** Milliseconds at the start of the UTC day containing `iso`. */
+function startOfUtcDayMs(iso: string): number {
+  const at = new Date(Date.parse(iso));
+  at.setUTCHours(0, 0, 0, 0);
+  return at.getTime();
+}
+
+/**
+ * Splits an arbitrary [from, to) window into the part the day-grained rollup can
+ * answer and the parts that must come live from the raw sources. Mirrors the
+ * `cuts` CTE in org_usage_meters: whole closed days from the rollup, the partial
+ * day at each end (and all of today) live, the ranges disjoint so nothing is
+ * counted twice. A window with no whole closed day in it collapses to live-only.
+ */
+function usageWindowCuts(from: string, to: string): { cutLo: number; cutHi: number } {
+  const fromMs = Date.parse(from);
+  const toMs = Date.parse(to);
+  const dayStart = startOfUtcDayMs(from);
+  const firstFullDay = fromMs === dayStart ? dayStart : dayStart + 86_400_000;
+  const rollupEnd = Math.min(
+    startOfUtcDayMs(to),
+    startOfUtcDayMs(new Date().toISOString())
+  );
+  return rollupEnd > firstFullDay
+    ? { cutLo: firstFullDay, cutHi: rollupEnd }
+    : { cutLo: toMs, cutHi: toMs };
+}
+
 function utcDayBack(back: number): string {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -3056,12 +3179,15 @@ export const mockDb: Db = {
     const store = getStore();
     // Recompute the window from the raw ledger — same grouping as the SQL
     // rollup, idempotent by construction. endDay = tomorrow includes today.
-    const groups = aggregateLedger(store.aiUsage, {
+    const bounds = {
       startDay: utcDayBack(Math.max(days, 1) - 1),
       endDay: utcDayBack(-1),
-    });
+    };
+    const groups = aggregateLedger(store.aiUsage, bounds);
+    const crawls = aggregateCrawls(store.runtimeEvents, bounds);
     for (const [key, row] of groups) store.usageDaily.set(key, row);
-    return groups.size;
+    for (const [key, row] of crawls) store.usageDaily.set(key, row);
+    return groups.size + crawls.size;
   },
 
   async getOrgUsageDaily(organizationId, days = 30) {
@@ -3076,18 +3202,107 @@ export const mockDb: Db = {
       if (row.day >= today || row.day < startDay) continue;
       rows.push(usageDailyRowOf(row));
     }
-    const liveToday = aggregateLedger(store.aiUsage, {
+    const liveBounds = {
       organizationId,
       startDay: today,
       endDay: utcDayBack(-1),
-    });
-    for (const row of liveToday.values()) rows.push(usageDailyRowOf(row));
+    };
+    for (const row of aggregateLedger(store.aiUsage, liveBounds).values()) {
+      rows.push(usageDailyRowOf(row));
+    }
+    for (const row of aggregateCrawls(store.runtimeEvents, liveBounds).values()) {
+      rows.push(usageDailyRowOf(row));
+    }
     return rows.sort(
       (a, b) =>
         b.day.localeCompare(a.day) ||
         a.kind.localeCompare(b.kind) ||
-        a.credentialKind.localeCompare(b.credentialKind)
+        a.credentialKind.localeCompare(b.credentialKind) ||
+        a.provider.localeCompare(b.provider) ||
+        a.modelId.localeCompare(b.modelId)
     );
+  },
+
+  async getOrgUsageMeters(organizationId, from, to) {
+    const store = getStore();
+    const fromMs = Date.parse(from);
+    const toMs = Date.parse(to);
+    const { cutLo, cutHi } = usageWindowCuts(from, to);
+    const liveLo = Math.min(cutLo, toMs);
+    const liveHi = Math.max(cutHi, fromMs);
+    // Instants, never ISO strings: two spellings of the same moment must not
+    // compare differently, and lexicographic order is not chronological order.
+    const inLiveRange = (createdAt: string): boolean => {
+      const at = Date.parse(createdAt);
+      return (at >= fromMs && at < liveLo) || (at >= liveHi && at < toMs);
+    };
+
+    const meters = new Map<string, UsageMeterRow>();
+    const add = (
+      row: Omit<UsageMeterRow, "resource"> & { kind: UsageDailyRow["kind"] }
+    ) => {
+      const resource = usageResourceOf(row.kind);
+      const key = `${resource}|${row.credentialKind}|${row.provider}|${row.modelId}`;
+      const at =
+        meters.get(key) ??
+        ({
+          resource,
+          credentialKind: row.credentialKind,
+          provider: row.provider,
+          modelId: row.modelId,
+          calls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          units: 0,
+        } satisfies UsageMeterRow);
+      at.calls += row.calls;
+      at.inputTokens += row.inputTokens;
+      at.outputTokens += row.outputTokens;
+      at.units += row.units;
+      meters.set(key, at);
+    };
+
+    // Whole closed days, from the rollup.
+    const dayLo = new Date(cutLo).toISOString().slice(0, 10);
+    const dayHi = new Date(cutHi).toISOString().slice(0, 10);
+    for (const row of store.usageDaily.values()) {
+      if (row.organizationId !== organizationId) continue;
+      if (row.day < dayLo || row.day >= dayHi) continue;
+      add(row);
+    }
+    // Partial ends, live from the raw sources.
+    for (const u of store.aiUsage) {
+      if (u.organizationId !== organizationId) continue;
+      if (!inLiveRange(u.createdAt)) continue;
+      add({
+        kind: usageKindOfStage(u.stage),
+        credentialKind: u.credentialKind ?? "unknown",
+        provider: u.provider,
+        modelId: u.modelId,
+        calls: 1,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+        units: 0,
+      });
+    }
+    for (const e of store.runtimeEvents) {
+      if (e.organizationId !== organizationId) continue;
+      if (e.kind !== "crawl" || e.status !== "succeeded") continue;
+      const pages = e.pageCount ?? 0;
+      if (pages <= 0) continue;
+      if (!inLiveRange(e.createdAt)) continue;
+      add({
+        kind: "crawl",
+        credentialKind: "platform",
+        provider: e.crawlerProvider ?? "unknown",
+        modelId: "",
+        calls: 1,
+        inputTokens: 0,
+        outputTokens: 0,
+        units: pages,
+      });
+    }
+    return [...meters.values()];
   },
 
   async recordRuntimeEvent(event) {

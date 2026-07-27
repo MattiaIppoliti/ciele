@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { CookieConsent } from "@/components/cookie-consent/cookie-consent";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -54,8 +53,11 @@ export default function RootLayout({
       <body className="app-backdrop h-screen overflow-hidden font-sans">
         {children}
         <Toaster richColors position="bottom-right" />
-        <Analytics />
-        <SpeedInsights />
+        {/* Owns the consent banner *and* the Vercel analytics scripts, which it
+            renders only once the visitor has allowed the analytics category —
+            see components/cookie-consent/cookie-consent-ui.tsx. Mounting the
+            trackers here unconditionally is what the banner exists to prevent. */}
+        <CookieConsent />
       </body>
     </html>
   );

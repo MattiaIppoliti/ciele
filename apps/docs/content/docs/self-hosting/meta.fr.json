@@ -1,0 +1,19 @@
+{
+  "title": "Open source",
+  "description": "Hébergez vous-même le noyau AGPL",
+  "icon": "Boxes",
+  "root": true,
+  "pages": [
+    "index",
+    "---Exécutez-le---",
+    "installation",
+    "configuration",
+    "database",
+    "workers",
+    "---Maintenez-le en fonctionnement---",
+    "upgrade",
+    "---Comprenez-le---",
+    "architecture",
+    "open-core-boundary"
+  ]
+}

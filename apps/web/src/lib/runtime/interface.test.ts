@@ -29,6 +29,11 @@ describe("runtime public interface", () => {
       "CRAWL_FINALIZE_LEASE_MS",
       "InvalidProviderKeyError",
       "NDJSON_HEADERS",
+      // The warn threshold: a deliberate widening (#509). The admin Usage
+      // surface must colour a gauge amber at exactly the fraction the
+      // enterprise ladder warns at, and open-source code cannot import from
+      // src/ee — so the constant is declared here and consumed by both.
+      "USAGE_WARN_FRACTION",
       // Alert sourceKey registry — a deliberate widening so EE capability
       // implementations mint keys through the one namespace registry (#442).
       "alertKeys",

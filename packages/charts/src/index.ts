@@ -4,6 +4,11 @@ export {
   type MetricGrowthCardProps,
 } from "./metric-growth-card";
 export { KpiStatCard, type KpiStatCardProps } from "./kpi-stat-card";
+export {
+  RadialGauge,
+  type RadialGaugeProps,
+  type RadialGaugeRing,
+} from "./radial-gauge";
 export { PALETTES, type PaletteName } from "./palettes";
 export { APPEARANCES, type AppearanceTokens } from "./appearances";
 export {

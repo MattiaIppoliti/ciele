@@ -1,0 +1,215 @@
+---
+title: Il runtime della chat
+description: Come un messaggio viene instradato a un flusso, come vengono inviate le azioni del flusso e cosa fa il ciclo di recupero prima che venga scritta una risposta.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Tutto ciò che accade tra "a message arrived" e "reply parts are ready" risiede
+in un unico modulo. È la parte più densa del codebase e quella con una
+superficie pubblica obbligatoria: due punti di ingresso, un server barrel e un
+client-safe barrel, con una regola lint che rifiuta tutto ciò che li supera.
+
+## I flussi instradano; il modello no
+
+L'invariante centrale è che i [flussi](/flows) sono un **router autorevole**. Un
+modello viene utilizzato per decidere *quale* flusso risponde, dopodiché le
+azioni di quel flusso vengono eseguite in ordine. Il modello non ha mai la
+priorità sul flusso e non sceglie mai cosa fare dopo.
+
+<Mermaid
+  title="Instradamento di un messaggio a un flusso"
+  chart={`
+flowchart TB
+  MSG["Visitor message"]
+  RESOLVE{"Is a model<br/>available?"}
+  CLASSIFY["Classify intent<br/>flows rendered as a catalogue,<br/>with conditions and examples"]
+  KEYWORD["Keyword router<br/>token scoring, built-in triggers"]
+  MATCHED{"A flow<br/>matched?"}
+  DEFAULT["Default behaviour<br/>the locked catch-all"]
+  RUN["Run the flow's actions,<br/>in order"]
+  PARTS["Reply parts + events"]
+
+  MSG --> RESOLVE
+  RESOLVE -->|"yes"| CLASSIFY
+  RESOLVE -->|"no"| KEYWORD
+  CLASSIFY -->|"empty or error"| KEYWORD
+  CLASSIFY --> MATCHED
+  KEYWORD --> MATCHED
+  MATCHED -->|"yes"| RUN
+  MATCHED -->|"no"| DEFAULT
+  DEFAULT --> RUN
+  RUN --> PARTS
+`}
+/>
+
+Ci sono due router e un percorso di azione. Il classificatore è il percorso
+normale; il router delle parole chiave è il fallback quando nessun modello è
+configurato da nessuna parte, quando il set di candidati restituisce un
+risultato vuoto o quando si verificano errori di classificazione. Entrambi
+alimentano lo *stesso* registro delle azioni, quindi una distribuzione senza
+alcun provider di IA esegue comunque i flussi, emette gli stessi eventi e
+restituisce un rendering identico: risponde semplicemente con testo recuperato
+anziché con testo generato.
+
+<Callout title="Why the fallback matters even in production">
+It is what makes the whole product testable offline. The test suite routes
+messages, dispatches actions, and asserts reply parts with no network and no keys.
+</Callout>
+
+## Le azioni sono un registro, non un interruttore
+
+Il motore percorre l'elenco delle azioni del flusso e cerca ciascuna di esse in
+un registro con chiave basata sul tipo di azione. Ogni gestore è un adattatore
+con una sola firma: riceve un contesto, emette i propri eventi wire, restituisce
+le parti di risposta da conservare e può richiedere un effetto differito o
+interrompere il resto del flusso.
+
+<Mermaid
+  title="Invio delle azioni ed effetti differiti"
+  chart={`
+flowchart LR
+  REG{"Registry<br/>lookup"}
+  H1["custom_message<br/><i>verbatim</i>"]
+  H2["search_knowledge<br/><i>generative</i>"]
+  H3["suggest_help_desk"]
+  H4["follow_up_questions"]
+  H5["show_button · iframe"]
+  H6["api_request"]
+  H7["improvement"]
+  H8["send_email"]
+  H9["handover<br/><i>halts</i>"]
+
+  PARTS["Reply parts"]
+  EFF["Requested<br/>effects"]
+  DONE["Persist, then<br/>apply effects"]
+
+  REG --> H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9
+  H1 & H2 & H3 & H4 & H5 & H6 & H9 --> PARTS
+  H7 & H8 --> EFF
+  PARTS --> DONE
+  EFF --> DONE
+`}
+/>
+
+| Azione | Cosa fa |
+|---|---|
+| `custom_message` | Invia il testo configurato **testualmente**. Mai riscritto da un modello. |
+| `search_knowledge` | Il turno di recupero generativo: cerca, quindi scrivi una risposta citata |
+| `suggest_help_desk` | Offre un pulsante di escalation |
+| `follow_up_questions` | Offre fino a tre suggerimenti per domande successive |
+| `show_button` / `iframe` | Visualizza un pulsante di collegamento o un frame incorporato |
+| `api_request` | Chiama un endpoint esterno e può reinserire il risultato nella risposta |
+| `improvement` | Invia silenziosamente un elemento di qualità della risposta per la revisione |
+| `send_email` | Inoltra la conversazione via e-mail |
+| `handover` | Conferma e interrompe il flusso |
+
+Ne conseguono due cose. L'aggiunta di un tipo di azione è **un adattatore più
+una voce di registro**, non una modifica in due punti che possono divergere. E
+gli handler rimangono puri: poiché un effetto collaterale viene *richiesto*
+anziché eseguito, un handler può essere sottoposto a unit test verificando quale
+effetto ha richiesto, senza che sia presente alcun database.
+
+## All'interno di una risposta generativa
+
+`search_knowledge` è il punto in cui è consentita la generazione, e si tratta di
+un ciclo, non di una singola chiamata. La fase di recupero comprende la domanda
+nel contesto, effettua la ricerca, valuta se i risultati sono sufficienti,
+riformula la domanda in caso contrario e solo allora scrive.
+
+<Mermaid
+  title="Il turno di recupero dietro una risposta citata"
+  chart={`
+flowchart TB
+  IN["The question + conversation context"]
+  FRAME["Build a context frame<br/>what is this turn actually about?"]
+  UQ["Understand the query<br/>intent and search terms"]
+  CLARIFY1{"Too ambiguous<br/>to search?"}
+  ASK["Ask a clarifying question"]
+  PASS["Search pass<br/>vector + lexical retrieval"]
+  SCORE{"Coverage<br/>good enough?"}
+  BUDGET{"Passes<br/>left?"}
+  REFORM["Reformulate the query"]
+  GEN["Generate the answer<br/>grounded in what was retrieved"]
+  CAVEAT["Add a best-effort caveat"]
+  CITE["Project retrieved chunks<br/>to their sources"]
+  OUT["Answer + citations<br/>(+ escalation chip if nothing grounded it)"]
+
+  IN --> FRAME --> UQ --> CLARIFY1
+  CLARIFY1 -->|"yes"| ASK
+  CLARIFY1 -->|"no"| PASS
+  PASS --> SCORE
+  SCORE -->|"no"| BUDGET
+  BUDGET -->|"yes"| REFORM --> PASS
+  BUDGET -->|"no"| CAVEAT --> GEN
+  SCORE -->|"yes"| GEN
+  GEN --> CITE --> OUT
+`}
+/>
+
+Il ciclo è limitato: c'è un numero massimo di passaggi di ricerca e un unico
+limite di budget che tutti devono rispettare, quindi una domanda difficile costa
+di più di una facile, ma mai in modo illimitato. Il punteggio di copertura, la
+riformulazione e la decisione di chiarimento sono tutte funzioni pure che il
+ciclo consulta, prive di modello e quindi testabili da sole.
+
+Quando nulla di quanto recuperato fornisce effettivamente una base per la
+risposta, l'azione può aggiungere un pulsante di escalation e inviare una
+richiesta di miglioramento, così una domanda senza risposta si trasforma in due
+risultati utili invece che in una risposta sbagliata ma sicura.
+
+## Strumenti e competenze
+
+Oltre al recupero, a un assistente possono essere forniti strumenti: endpoint
+HTTP descritti in modo sufficientemente chiaro da consentire a un modello di
+chiamarli. Il set di strumenti viene assemblato a ogni turno a partire dalla
+configurazione dell'assistente e dalle competenze condivise dell'organizzazione,
+con gli stessi eventi del ciclo di vita (`tool-start`, `tool-end`) che il widget
+rende visibili come passaggi.
+
+<Mermaid
+  title="Cosa assembla un turno prima di essere eseguito"
+  chart={`
+flowchart LR
+  A["Assistant config<br/>enabled tools"] --> TS["Per-turn toolset"]
+  S["Organization skills<br/>shared definitions"] --> TS
+  BI["Built-in tools<br/>e.g. knowledge search"] --> TS
+  TS --> TURN["The turn"]
+  SESSION["Turn session<br/>state carried across steps"] --> TURN
+  PROMPT["Platform prompt<br/>+ the assistant's answering style"] --> TURN
+`}
+/>
+
+Il prompt è volutamente stratificato: un livello della piattaforma si sovrappone
+allo stile di risposta dell'assistente, quindi un'istruzione sul tono specifica
+per l'assistente può modellare una risposta ma non può sostituire le regole
+della piattaforma.
+[Il modello agentico](/self-hosting/architecture/agentic-model) copre l'intera
+catena di precedenza, il modo in cui un provider e un modello vengono risolti
+per un turno e i budget e il ciclo di valutazione relativi all'agente stesso.
+
+## Ciò che è memorizzato ma su cui non si è ancora agito
+
+Essere onesti su questo aspetto è più utile di un diagramma che suggerisce più
+di quanto non faccia il codice:
+
+- **Non-message triggers.** Un flusso può essere configurato per attivarsi al
+  caricamento della pagina, all'apertura della chat o dopo un tempo di attesa.
+  Queste impostazioni vengono memorizzate, ma al momento solo i flussi attivati
+  dai messaggi competono per il messaggio di un visitatore.
+- **Richer conditions.** La condizione del contesto conversazionale di un flusso
+  viene fornita al classificatore come contesto di routing: *influenza* la
+  scelta anziché fungere da gate rigido. Gli altri tipi di condizione nel
+  builder non vengono ancora valutati.
+
+## Le regole che non devono essere infrante
+
+1. I flussi effettuano il routing, il modello no. La classificazione seleziona
+   il flusso; le azioni del flusso vengono quindi eseguite in ordine.
+2. `custom_message` è letterale.
+3. Il nuovo comportamento generativo va **all'interno** di un'azione. Mai al di
+   sopra del router.
+
+Il terzo è quello da tenere a mente quando si estende il runtime. Una nuova
+funzionalità che genera testo deve essere inserita in un gestore, dove il flusso
+che l'ha richiamata decide ancora se eseguirla o meno.

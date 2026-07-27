@@ -4,6 +4,7 @@ description: Build, test, and publish AI assistants that answer from your own co
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
+import { BookOpen, Boxes, Cloud } from 'lucide-react';
 
 Ciele is a platform for building AI assistants that live on your website and in
 your apps. Each assistant answers questions using your own content, follows the
@@ -14,10 +15,35 @@ You configure everything from one admin console: what the assistant knows, how
 it replies, when it escalates, and where it appears. A live preview shows the
 assistant exactly as your visitors will see it while you make changes.
 
-Ciele comes in two editions: an **open-source core** you can self-host under the
-AGPL-3.0 license, and **Ciele Cloud**, the same product fully managed for you. The
-guides in this section apply to both. See [Editions](/editions) for what each one
-includes.
+## Three sections, one product
+
+The switcher at the top of the sidebar moves between them. Everything in
+**Documentation** applies whichever edition you run.
+
+<Cards>
+  <Card
+    icon={<BookOpen />}
+    title="Documentation"
+    href="/getting-started"
+    description="What the product does and how to use every part of it: assistants, knowledge, flows, help desks, publishing, and day-to-day operations."
+  />
+  <Card
+    icon={<Cloud />}
+    title="Ciele Cloud"
+    href="/cloud"
+    description="The same core, fully managed. Plans and billing, usage limits, managed single sign-on, and how to reach support."
+  />
+  <Card
+    icon={<Boxes />}
+    title="Open Source"
+    href="/self-hosting"
+    description="Run the AGPL-3.0 core on your own infrastructure: installation, configuration, the database, workers, upgrades, and the architecture."
+  />
+</Cards>
+
+Which one you need depends on where the product runs: an **open-source core** you
+self-host under AGPL-3.0, or **Ciele Cloud**, the same product operated for you.
+[Editions](/editions) draws the line precisely.
 
 ## What you can do with Ciele
 

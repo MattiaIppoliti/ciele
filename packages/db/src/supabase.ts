@@ -103,6 +103,7 @@ import type {
   SupportChannelConfig,
   TicketingIntegration,
   UsageDailyRow,
+  UsageMeterRow,
   UsageKind,
   WidgetStyle,
 } from "./types";
@@ -3034,9 +3035,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         day: string;
         kind: UsageKind;
         credential_kind: UsageDailyRow["credentialKind"];
+        provider: string | null;
+        model_id: string | null;
         calls: number | string;
         input_tokens: number | string;
         output_tokens: number | string;
+        units: number | string | null;
       }[];
       return rows.map((r) => ({
         // PostgREST serializes `date` as YYYY-MM-DD; some drivers hand back a
@@ -3044,9 +3048,43 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         day: String(r.day).slice(0, 10),
         kind: r.kind,
         credentialKind: r.credential_kind,
+        provider: r.provider ?? "",
+        modelId: r.model_id ?? "",
         calls: Number(r.calls),
         inputTokens: Number(r.input_tokens),
         outputTokens: Number(r.output_tokens),
+        units: Number(r.units ?? 0),
+      }));
+    },
+
+    async getOrgUsageMeters(organizationId, from, to) {
+      const { data, error } = await client.rpc("org_usage_meters", {
+        p_organization_id: organizationId,
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as {
+        resource: UsageMeterRow["resource"];
+        credential_kind: UsageMeterRow["credentialKind"];
+        provider: string | null;
+        model_id: string | null;
+        calls: number | string;
+        input_tokens: number | string;
+        output_tokens: number | string;
+        units: number | string | null;
+      }[];
+      // bigint sums arrive as strings over PostgREST; a string here would make
+      // every cap comparison downstream lexicographic.
+      return rows.map((r) => ({
+        resource: r.resource,
+        credentialKind: r.credential_kind,
+        provider: r.provider ?? "",
+        modelId: r.model_id ?? "",
+        calls: Number(r.calls),
+        inputTokens: Number(r.input_tokens),
+        outputTokens: Number(r.output_tokens),
+        units: Number(r.units ?? 0),
       }));
     },
 

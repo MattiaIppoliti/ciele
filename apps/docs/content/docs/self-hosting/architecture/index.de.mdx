@@ -1,0 +1,207 @@
+---
+title: Architektur
+description: Eine visuelle Tour, die zeigt, wie eine Ciele-Bereitstellung aufgebaut ist – die Anwendungen, die Datenbank, die Hintergrund-Worker und die Verbindungen zwischen ihnen.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Dieser Abschnitt richtet sich an Personen, die Ciele auf ihrer eigenen
+Infrastruktur betreiben oder den Code ändern. Sie zeigt die Bereitstellung so,
+wie sie tatsächlich ist: welche Prozesse es gibt, mit was jeder einzelne
+kommuniziert und wo die Grenzen liegen. Die Funktionsseiten in der
+Haupt-[Dokumentation](/) beschreiben, was das Produkt leistet; diese Seiten
+beschreiben, wie es aufgebaut ist.
+
+<Callout title="Read the code when the two disagree">
+These diagrams are maintained alongside the source, but the source is the
+authority. Every page names the files it describes so you can check.
+</Callout>
+
+## Die Anwendung auf einen Blick
+
+Beginnen Sie hier. Dies ist die gesamte Anwendung in einer Abbildung – jedes
+wichtige Subsystem und die Richtung, in die Anfragen durch sie hindurchfließen.
+Jede der folgenden Ebenen ist Gegenstand einer der Seiten in diesem Abschnitt.
+
+<Mermaid
+  title="Die Anwendung, Schicht für Schicht"
+  chart={`
+flowchart TB
+  S["<b>Surfaces</b><br/>chat widget · admin console · embed and iframe"]
+  E["<b>Request handling</b><br/>session gate → server components (reads)<br/>server actions (writes) · route handlers (chat · cron)"]
+  G["<b>Authorization</b><br/>role → capability · one guard for every write"]
+  R["<b>Chat runtime</b><br/>flow router · action registry · agentic search"]
+  K["<b>Knowledge</b><br/>ingestion jobs · crawler matrix · chunking and embeddings"]
+  O["<b>Operations</b><br/>publishing · insights and exports · improvements and alerts"]
+  D["<b>Data layer</b><br/>one interface · two implementations"]
+  P[("<b>Postgres + pgvector</b><br/>row-level security")]
+  X["<b>External</b><br/>AI providers · sites you crawl · email · ticketing"]
+
+  S --> E --> G --> R
+  E --> D
+  R --> K
+  R --> O
+  R --> D
+  K --> D
+  O --> D
+  D --> P
+  R --> X
+  K --> X
+  O --> X
+`}
+/>
+
+Lesen Sie es von oben nach unten. **Surfaces** sind die einzigen Dinge, die ein
+Browser berührt. **Request handling** trennt Lese- von Schreibvorgängen: Seiten
+lesen, Aktionen schreiben, und Routen-Handler übernehmen Chat und geplante
+Aufgaben. **Authorization** ist eine einzige Absicherung, die jeder
+Schreibvorgang im Organisationsbereich durchläuft. In den Bereichen
+**Chat-Runtime**, **Wissen** und **Operationen** findet das Verhalten statt.
+Alles erreicht Postgres über eine einzige **Datenschicht**-Schnittstelle –
+niemals direkt.
+
+Was das Diagramm auslässt, ist genauso informativ wie das, was es zeigt. Keine
+Oberfläche erreicht die Laufzeit oder die Datenbank allein, nichts schreibt,
+ohne den Guard zu passieren, und nur die drei mittleren Bänder kommunizieren
+überhaupt mit der Außenwelt.
+
+## Die gesamte Bereitstellung auf einen Blick
+
+Das ist die Software. Das ist es, was Sie tatsächlich ausführen: eine
+Next.js-Anwendung, eine Postgres-Datenbank und eine Handvoll geplanter Jobs.
+Alles andere ist optional.
+
+<Mermaid
+  title="Eine selbst gehostete Bereitstellung und ihre externen Abhängigkeiten"
+  chart={`
+flowchart TB
+  V["Visitor<br/>widget on your site"]
+  M["Member<br/>admin console"]
+
+  subgraph app["Your deployment"]
+    direction TB
+    W["<b>apps/web</b><br/>console · widget · API"]
+    C["Scheduled jobs<br/>/api/cron/*"]
+    K["Workers<br/>services/ · optional"]
+  end
+
+  PG[("Postgres + pgvector<br/>Auth · RLS · Storage")]
+  AI["AI providers"]
+  SITE["Sites you crawl"]
+  MAIL["Email"]
+
+  V -->|"embed script"| W
+  M -->|"signed in"| W
+  W --> PG
+  C --> PG
+  K --> PG
+  W --> AI
+  W --> SITE
+  W --> MAIL
+`}
+/>
+
+Die Anwendung ist absichtlich langweilig zu bedienen: Sie ist ein
+Standard-Next.js-Server, speichert keinen eigenen Zustand und alle dauerhaften
+Daten befinden sich in Postgres. Skalieren Sie sie, indem Sie mehr Instanzen
+ausführen.
+
+## Die Prozesse
+
+| Prozess | Was es ist | Erforderlich |
+|---|---|---|
+| **Web app** | Die Admin-Konsole, das öffentliche Chat-Widget und die HTTP-API in einer Next.js-Anwendung | Ja |
+| **Postgres** | Jede Zeile mit dauerhaften Daten, mit Sicherheit auf Zeilenebene und pgvector für den Abruf | Ja |
+| **Scheduled jobs** | HTTP-Endpunkte unter `/api/cron/*`, die über einen Timer aufgerufen werden – Abschluss des Crawls, erneute Crawl-Durchläufe, Exporte, Nutzungs-Rollup, Zielprüfungen | Empfohlen |
+| **Docs site** | Diese Dokumentation, eine separate Next.js-App | Nein |
+| **Workers** | Container unter `services/` für umfangreichere Durchforstung und Graphenarbeit | Nein |
+
+Der [Docker-Compose-Stack](/self-hosting/installation) verbindet die ersten drei
+standardmäßig miteinander und lässt die Worker hinter einem Opt-in-Profil.
+
+## Zwei Grenzen, die das Tooling durchsetzt
+
+Der größte Teil der Codebasis besteht aus gewöhnlichem Anwendungscode, den Sie
+von oben bis unten lesen können. Zwei Module sind anders: Ihre öffentliche
+Oberfläche ist festgelegt, sodass Sie sich darauf verlassen und alles dahinter
+ändern können.
+
+<Mermaid
+  title="Die beiden erzwungenen Modulgrenzen"
+  chart={`
+flowchart TB
+  UI["Console pages · API routes<br/>server actions"]
+
+  subgraph rt["Chat runtime"]
+    direction TB
+    RTB["Two entry points:<br/>server barrel · client barrel"]
+    RTI["Internals: router, actions,<br/>retrieval, crawlers, embeddings"]
+    RTB --> RTI
+  end
+
+  subgraph db["Data layer"]
+    direction TB
+    DBI["One interface<br/>every query in the app"]
+    IMPL1["Postgres"]
+    IMPL2["In-memory"]
+    DBI --> IMPL1
+    DBI --> IMPL2
+  end
+
+  UI --> RTB
+  UI --> DBI
+  RTI --> DBI
+  UI -.->|"lint error"| RTI
+`}
+/>
+
+- **The data layer** ist eine Schnittstelle mit zwei Implementierungen. Die
+  reale kommuniziert mit Postgres unter Zeilenebenen-Sicherheit; die
+  In-Memory-Version ermöglicht den Start der gesamten Anwendung ohne jegliche
+  Datenbank. So läuft ein frischer Checkout ohne jegliche Konfiguration. Eine
+  gemeinsame Testsuite wird für beide Module ausgeführt, sodass sie nicht
+  auseinanderlaufen können.
+- **The chat runtime** stellt genau zwei Einstiegspunkte bereit – ein
+  Server-Barrel und ein Client-Safe-Barrel – und eine Lint-Regel lehnt Importe
+  ab, die über diese hinausgehen. Ein Test sperrt die exportierte Oberfläche,
+  sodass eine Erweiterung eher eine bewusste Handlung als ein Versehen ist.
+
+Beide Grenzen existieren aus demselben Grund: Sie sind die Teile, die am
+wahrscheinlichsten ausgetauscht werden, und die Teile, in denen sich ein Leck am
+weitesten ausbreiten würde.
+
+## Nächste Schritte
+
+<Cards>
+  <Card
+    title="Repository-Übersicht"
+    href="/self-hosting/architecture/repository-map"
+    description="Der Verzeichnisaufbau, wie die Arbeitsbereiche voneinander abhängen und welche Module am wichtigsten sind."
+  />
+  <Card
+    title="Anforderungsabläufe"
+    href="/self-hosting/architecture/request-flows"
+    description="Was bei einer Chat-Nachricht eines Besuchers und bei einer Bearbeitung durch einen Administrator passiert, Schritt für Schritt."
+  />
+  <Card
+    title="Die Chat-Laufzeit"
+    href="/self-hosting/architecture/chat-runtime"
+    description="Flow-Routing, das Aktionsregister und die Abrufschleife hinter einer Antwort."
+  />
+  <Card
+    title="Das agentische Modell"
+    href="/self-hosting/architecture/agentic-model"
+    description="Wie ein Modell ausgewählt wird, was es entscheiden darf, die Budgets, an die es gebunden ist, und die Schleife, die es bewertet."
+  />
+  <Card
+    title="Wissens-Pipeline"
+    href="/self-hosting/architecture/knowledge-pipeline"
+    description="Wie eine Quelle zu durchsuchbarem Text wird und wie eine Antwort ihre Zitate erhält."
+  />
+  <Card
+    title="Datenmodell"
+    href="/self-hosting/architecture/data-model"
+    description="Die Tabellen, wie Mandanten isoliert werden und wie Migrationen durchgeführt werden."
+  />
+</Cards>

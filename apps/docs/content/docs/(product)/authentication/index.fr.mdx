@@ -1,0 +1,61 @@
+---
+title: Présentation de l'authentification
+description: Demandez aux visiteurs de se connecter avant de discuter et personnalisez les réponses en fonction de leur profil.
+---
+
+Par défaut, un assistant est accessible à toute personne pouvant accéder à la
+page sur laquelle il se trouve. Lorsque vous avez besoin de savoir qui est à
+l'autre bout de la conversation, vous pouvez connecter votre fournisseur
+d'identité et exiger que les utilisateurs se connectent avant de discuter. Cela
+permet à l'assistant de confirmer l'identité d'une personne, de s'adapter à son
+rôle et de personnaliser ses réponses à l'aide des informations de son profil.
+
+Vous configurez cela pour chaque assistant. Ouvrez un assistant, puis
+sélectionnez **Authentication**.
+
+## Ce que vous apporte la connexion d'un fournisseur d'identité
+
+- **Sign in before chat.** Les visiteurs voient une carte **Connect Your
+  Account** dans le widget et ne peuvent poursuivre qu'après s'être connectés
+  avec votre fournisseur d'identité.
+- **Roles and groups.** Les groupes auxquels une personne appartient peuvent
+  être intégrés à la conversation, de sorte qu'un [flux](/flows/building-a-flow)
+  peut traiter un membre différemment d'un visiteur anonyme.
+- **Personalized answers.** Les informations de profil, telles que le nom, sont
+  mises à la disposition de l'assistant, ce qui permet d'adresser directement
+  les réponses à la personne concernée.
+
+<Callout title="Single sign-on, one connection">
+The connection uses OpenID Connect, the standard behind most single sign-on
+setups. Once your identity provider is connected, people sign in with the account
+they already use, and no separate password is created for the assistant.
+</Callout>
+
+## Deux paramètres connexes
+
+- **Authentication** connecte le fournisseur d'identité qui contrôle l'accès au
+  chat. C'est ce que décrivent les guides de cette section.
+- **User data** vous permet d'importer des informations personnelles afin que
+  l'assistant puisse les insérer dans ses réponses, à la manière d'un
+  publipostage. Utilisez-le lorsque vous souhaitez obtenir des réponses faisant
+  référence aux informations personnelles d'une personne.
+
+## Guides
+
+<Cards>
+  <Card
+    title="Connectez Microsoft Entra ID"
+    href="/authentication/microsoft-entra-id"
+    description="Enregistrez une application dans Microsoft Entra et exigez une connexion avant le chat."
+  />
+</Cards>
+
+## Après la connexion
+
+- Ouvrez l'aperçu du widget et vérifiez que la carte **Connect Your Account**
+  s'affiche.
+- Connectez-vous avec un compte de test et vérifiez que la conversation se
+  poursuit.
+- Si vous utilisez des rôles, vérifiez qu'un [flux](/flows/building-a-flow) qui
+  contrôle le rôle de l'utilisateur se comporte comme prévu pour les personnes
+  connectées.

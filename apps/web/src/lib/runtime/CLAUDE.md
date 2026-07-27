@@ -18,6 +18,10 @@ changing behaviour.
 - **Adding a public capability is two edits, not one**: export it from `index.ts` (server) or
   `client.ts` (client-safe: type-only or pure static data), *and* update the expected export set
   in `interface.test.ts`. The test fails otherwise — that is the point (ADR-0005).
+  - The exception, stated so nobody has to re-derive it: `interface.test.ts` locks **value**
+    exports only (types erase at runtime, see its header). A type-only widening — a new
+    `export type`, or a method added to an existing capability interface — needs no edit there.
+    Widening the value surface always does.
 - `client.ts` must stay free of the AI SDK and anything server-only; a client component importing
   it should not pull server code into the bundle.
 - Inside this folder, files compose across internals freely — the import ban applies only to

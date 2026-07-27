@@ -1,0 +1,81 @@
+---
+title: Azioni del flusso
+description: I blocchi costitutivi che un flusso esegue in risposta a un messaggio, dai messaggi fissi alla ricerca nella knowledge base e all'escalation.
+---
+
+Le azioni sono i passaggi che un flusso esegue quando trova una corrispondenza.
+Le aggiungi nella fase di risposta del generatore di flussi e vengono eseguite
+nell'ordine in cui le posizioni. Questa pagina descrive le azioni che puoi
+utilizzare e quando ricorrere a ciascuna di esse.
+
+## Messaggio
+
+Invia un messaggio al visitatore. Un messaggio può essere mostrato parola per
+parola, esattamente come l'hai scritto, il che è l'ideale quando la formulazione
+deve essere precisa. Utilizza messaggi fissi per le politiche, le dichiarazioni
+di non responsabilità e qualsiasi risposta che non debba mai variare.
+
+## Cerca nella conoscenza
+
+Cerca nella tua conoscenza, trova i passaggi più pertinenti e scrive una
+risposta basata su di essi, con le relative fonti. Questa è l'azione che genera
+risposte utili e naturali a partire dai tuoi contenuti. È anche ciò che utilizza
+il comportamento predefinito. Le opzioni ti consentono di collegarla
+all'escalation e al monitoraggio della qualità delle risposte, in modo che un
+risultato insoddisfacente possa portare a un follow-up.
+
+## Follow-up
+
+Dopo una risposta, suggerisce le domande successive. Questo mantiene viva la
+conversazione, spingendo il visitatore verso argomenti correlati per i quali
+l'assistente può essere d'aiuto.
+
+## Pulsante
+
+Mostra un pulsante cliccabile che rimanda a una destinazione, ad esempio una
+pagina del tuo sito o un modulo. Usalo per indicare chiaramente al visitatore il
+passo successivo dopo un messaggio.
+
+## Iframe
+
+Incorpora contenuti esterni all'interno della finestra di chat, come una pagina
+o un widget che vuoi mostrare al visitatore senza che debba uscire dalla
+conversazione.
+
+## Richiesta API
+
+Chiama un servizio esterno e può utilizzare il risultato nella conversazione.
+Usalo per cercare qualcosa in un altro sistema mentre il visitatore attende.
+Configuri l'indirizzo e il metodo della richiesta.
+
+## Miglioramento
+
+Contrassegna la risposta corrente per la revisione creando un elemento sulla tua
+bacheca Miglioramenti. Usalo nei flussi in cui vuoi tenere d'occhio la qualità
+delle risposte. Vedi [Miglioramenti](/operations/improvements).
+
+## Passaggio di consegne
+
+Trasferisce la conversazione a un altro assistente. Usa questa opzione quando un
+altro assistente è più adatto a proseguire, ad esempio uno specializzato in un
+determinato argomento.
+
+## Escalation e Invia email
+
+L'escalation collega il visitatore al tuo team attraverso gli
+[Help Desk](/help-desks) che hai configurato. Un'azione di invio e-mail può
+notificare a una destinazione l'esecuzione di un flusso. Usale per assicurarti
+che una persona venga informata al momento giusto.
+
+## Combinare le azioni
+
+Le azioni sono più efficaci se combinate. Un singolo flusso potrebbe inviare un
+breve messaggio, cercare i dettagli nella tua knowledge base, proporre domande
+di follow-up e terminare con un pulsante di escalation. Poiché le azioni vengono
+eseguite in ordine, hai il controllo sulla forma esatta della risposta.
+
+<Callout title="Order matters">
+Actions run from top to bottom. Put a framing message before a knowledge search,
+and put buttons or escalation after the answer so they appear as the natural next
+step.
+</Callout>

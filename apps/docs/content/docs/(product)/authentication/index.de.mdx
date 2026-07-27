@@ -1,0 +1,62 @@
+---
+title: Authentifizierungsübersicht
+description: Fordern Sie Besucher auf, sich anzumelden, bevor sie chatten, und personalisieren Sie die Antworten mit ihrem Profil.
+---
+
+Standardmäßig ist ein Assistent für jeden zugänglich, der die Seite erreichen
+kann, auf der er sich befindet. Wenn Sie wissen möchten, wer sich auf der
+anderen Seite des Gesprächs befindet, können Sie Ihren Identitätsanbieter
+verbinden und verlangen, dass sich Personen anmelden, bevor sie chatten. Dadurch
+kann der Assistent bestätigen, wer jemand ist, sich an dessen Rolle anpassen und
+Antworten mit Details aus dem Profil personalisieren.
+
+Sie richten dies für jeden Assistenten einzeln ein. Öffnen Sie einen Assistenten
+und wählen Sie dann **Authentication**.
+
+## Was Ihnen die Verbindung mit einem Identitätsanbieter bringt
+
+- **Sign in before chat.** Besucher sehen eine **Connect Your Account**-Karte im
+  Widget und können erst fortfahren, nachdem sie sich bei Ihrem
+  Identitätsanbieter angemeldet haben.
+- **Roles and groups.** Die Gruppen, denen eine Person angehört, können in das
+  Gespräch einfließen, sodass ein [Flow](/flows/building-a-flow) ein Mitglied
+  anders behandeln kann als einen anonymen Besucher.
+- **Personalized answers.** Profildetails wie ein Name stehen dem Assistenten
+  zur Verfügung, sodass er in seinen Antworten die Person direkt ansprechen
+  kann.
+
+<Callout title="Single sign-on, one connection">
+The connection uses OpenID Connect, the standard behind most single sign-on
+setups. Once your identity provider is connected, people sign in with the account
+they already use, and no separate password is created for the assistant.
+</Callout>
+
+## Zwei verwandte Einstellungen
+
+- **Authentication** verbindet den Identitätsanbieter, der den Chat schützt.
+  Dies ist, was in den Anleitungen in diesem Abschnitt Schritt für Schritt
+  erklärt wird.
+- Mit **User data** können Sie personenbezogene Details importieren, damit der
+  Assistent sie im Stil von Serienbriefen in Antworten einfügen kann. Verwenden
+  Sie diese Option, wenn Sie Antworten wünschen, die auf die persönlichen Daten
+  einer Person verweisen.
+
+## Anleitungen
+
+<Cards>
+  <Card
+    title="Microsoft Entra ID verbinden"
+    href="/authentication/microsoft-entra-id"
+    description="Registrieren Sie eine Anwendung in Microsoft Entra und verlangen Sie eine Anmeldung vor dem Chat."
+  />
+</Cards>
+
+## Nachdem Sie eine Verbindung hergestellt haben
+
+- Öffnen Sie die Widget-Vorschau und vergewissern Sie sich, dass die **Connect
+  Your Account**-Karte angezeigt wird.
+- Melden Sie sich mit einem Testkonto an und prüfen Sie, ob die Konversation
+  fortgesetzt wird.
+- Wenn Sie sich auf Rollen stützen, vergewissern Sie sich, dass ein
+  [Flow](/flows/building-a-flow), der die Benutzerrolle überprüft, sich für
+  angemeldete Personen wie erwartet verhält.

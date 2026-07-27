@@ -863,10 +863,19 @@ describe("plan-cap gate (#442)", () => {
     process.env[PLATFORM_KEY] = "test-platform-key";
     registerEnterpriseCapabilities({
       metering: {
-        checkUsage: async ({ connectionKind }) => {
+        checkUsage: async ({ connectionKind, resource }) => {
           expect(connectionKind).toBe("platform");
-          return { outcome: "block", message: "Included usage exhausted." };
+          // A conversation turn spends the AI allowance, never another meter's.
+          expect(resource).toBe("ai");
+          return {
+            outcome: "block",
+            message: "Included usage exhausted.",
+            resource: "ai",
+            window: "week",
+            resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
+          };
         },
+        getUsageLimits: async () => null,
       },
     });
 
@@ -905,6 +914,7 @@ describe("plan-cap gate (#442)", () => {
           metering.called = true;
           return { outcome: "allow" };
         },
+        getUsageLimits: async () => null,
       },
     });
 
@@ -951,8 +961,15 @@ describe("plan-cap gate (#442)", () => {
       metering: {
         checkUsage: async () => {
           checkUsage.called = true;
-          return { outcome: "warn", usedFraction: 0.9 };
+          return {
+            outcome: "warn",
+            usedFraction: 0.9,
+            resource: "ai",
+            window: "week",
+            resetsAt: new Date(Date.now() + 86_400_000).toISOString(),
+          };
         },
+        getUsageLimits: async () => null,
       },
     });
     const events = await runTurn({ assistant, flows, message: "hello there" });

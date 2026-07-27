@@ -11,7 +11,7 @@ import type {
   SourceStatus,
   WebsiteSourceConfig,
 } from "@agent-hub/db";
-import { okfActor } from "@agent-hub/db";
+import { isFreeCrawler, okfActor } from "@agent-hub/db";
 import type { CrawledPage } from "./apify";
 import {
   browserCrawlerFor,
@@ -25,8 +25,10 @@ import {
 } from "./website-crawlers";
 import {
   embedTextsWithStatus,
+  embeddingConnectionKind,
   type EmbeddingUsageContext,
 } from "./embeddings";
+import { getEnterpriseCapabilities } from "./ee";
 import { getClassifierModel } from "./models";
 import { meterUsage, usageTotals } from "./usage";
 import { validateCrawlTarget } from "./crawl-target";
@@ -409,17 +411,53 @@ export async function embedConcept(options: {
       `[ingest] embedding without usage attribution: assistant ${options.assistantId} not resolvable`
     );
   }
-  const { embeddings, mode } = await embedTextsWithStatus(
-    chunks,
-    options.connections,
-    assistant
-      ? {
-          db: options.db,
+  // Indexing spends the embedding allowance (#510). Gate it here, at the one
+  // ingestion write path, rather than inside the embedding helper: a QUERY
+  // embedding goes through the same helper and must never be refused — an
+  // exhausted indexing budget degrades what can be added to the index, never
+  // the ability to search what is already in it.
+  const capped =
+    assistant !== null &&
+    embeddingConnectionKind(options.connections) === "platform" &&
+    (
+      await getEnterpriseCapabilities()
+        .metering.checkUsage({
           organizationId: assistant.organizationId,
-          assistantId: options.assistantId,
-        }
-      : null
-  );
+          connectionKind: "platform",
+          resource: "embedding",
+        })
+        .catch((error) => {
+          // Fail open, like every other accounting read: a broken meter must
+          // not stop knowledge from being indexed.
+          console.error("[ingest] embedding usage check failed:", error);
+          return { outcome: "allow" as const };
+        })
+    ).outcome === "block";
+
+  const { embeddings, mode } = capped
+    ? {
+        // Same shape as an absent provider: chunks are stored without vectors,
+        // so the content is searchable lexically and a later re-embed fills
+        // them in once the window resets.
+        embeddings: chunks.map(() => null),
+        mode: "capped" as const,
+      }
+    : await embedTextsWithStatus(
+        chunks,
+        options.connections,
+        assistant
+          ? {
+              db: options.db,
+              organizationId: assistant.organizationId,
+              assistantId: options.assistantId,
+            }
+          : null
+      );
+  if (capped) {
+    console.warn(
+      `[ingest] embedding allowance spent for organization ${assistant?.organizationId} — content stored for lexical search only`
+    );
+  }
   await options.db.saveChunks(
     chunks.map((content, i) => ({
       conceptId: options.conceptId,
@@ -520,11 +558,71 @@ export async function persistConcept(options: {
  * the resolved provider plus run ids, leaving the Source `processing`.
  * Any start-time failure lands the Source in `error` so it never silently
  * hangs on `processing`.
+ *
+ * Returns whether a run actually started: a crawl refused for budget is not a
+ * failure, and the caller (a scheduled sweep especially) needs to tell the two
+ * apart rather than report a run it never began.
  */
+export type CrawlStartResult =
+  | { started: true }
+  | {
+      started: false;
+      /**
+       * `refused` means an allowance said no: nothing is wrong with the Source,
+       * so its status and knowledge are left alone. `failed` means the start
+       * itself broke (bad target, no provider) and the Source is in `error`.
+       * The two must stay distinguishable — a caller that rolls back a refusal
+       * would wipe a real failure's error message.
+       */
+      outcome: "refused" | "failed";
+      reason: string;
+    };
+
+/**
+ * Whether the organization owning this Collection may spend scraping budget on a
+ * crawl by this crawler — and the visitor-safe reason when it may not.
+ *
+ * A crawler that costs nothing (the in-process local one) is never gated: there
+ * is no budget to spend. Every crawler credential is the platform's own, so the
+ * check is always a platform-funded one. Fails OPEN: a broken meter must not
+ * stop a crawl.
+ */
+async function crawlBudgetRefusal(
+  db: Db,
+  collectionId: string,
+  crawler: ResolvedWebsiteCrawlerProvider
+): Promise<string | null> {
+  if (isFreeCrawler(crawler)) return null;
+  try {
+    const collection = await db.getCollection(collectionId);
+    const assistant = collection
+      ? await db.getAssistant(collection.assistantId)
+      : null;
+    if (!assistant) {
+      // Allowing an unattributable crawl is the right call, but never a silent
+      // one: it means a crawl ran outside any organization's allowance.
+      console.warn(
+        `[ingest] crawl not gated: no organization resolvable for collection ${collectionId}`
+      );
+      return null;
+    }
+    const outcome = await getEnterpriseCapabilities().metering.checkUsage({
+      organizationId: assistant.organizationId,
+      connectionKind: "platform",
+      resource: "scraping",
+    });
+    if (outcome.outcome !== "block") return null;
+    return `Crawling is paused until the organization's scraping allowance resets (${new Date(outcome.resetsAt).toUTCString()}).`;
+  } catch (error) {
+    console.error("[ingest] crawl usage check failed (failing open):", error);
+    return null;
+  }
+}
+
 export async function beginWebsiteCrawl(options: {
   db: Db;
   sourceId: string;
-}): Promise<void> {
+}): Promise<CrawlStartResult> {
   const { db, sourceId } = options;
   try {
     const source = await db.getSource(sourceId);
@@ -543,6 +641,25 @@ export async function beginWebsiteCrawl(options: {
     );
     if ("error" in resolution) throw new Error(resolution.error);
     const resolvedCrawlerProvider = resolution.provider;
+
+    // Crawling spends the scraping allowance (#510). The gate runs AFTER
+    // resolution on purpose: the resolved crawler is what costs money, and a
+    // crawl that lands on the free in-process crawler must never be refused for
+    // budget. A refusal leaves the Source exactly as it was — the previously
+    // ingested Concepts and its `ready` status stay, because a spent budget is
+    // not a reason to downgrade knowledge that already works.
+    const refusal = await crawlBudgetRefusal(
+      db,
+      source.collectionId,
+      resolvedCrawlerProvider
+    );
+    if (refusal) {
+      await db.updateSource(sourceId, {
+        config: { ...config, resolvedCrawlerProvider, crawlBlockedReason: refusal },
+      });
+      return { started: false, outcome: "refused", reason: refusal };
+    }
+
     const crawlOptions = crawlOptionsFromConfig(config);
     await db.updateSource(sourceId, {
       status: "processing",
@@ -550,6 +667,7 @@ export async function beginWebsiteCrawl(options: {
       config: {
         ...config,
         resolvedCrawlerProvider,
+        crawlBlockedReason: undefined,
         crawlEscalated: undefined,
         crawlRunId: undefined,
         crawlDatasetId: undefined,
@@ -565,17 +683,19 @@ export async function beginWebsiteCrawl(options: {
       config: {
         ...config,
         resolvedCrawlerProvider,
+        crawlBlockedReason: undefined,
         crawlEscalated: undefined,
         crawlRunId: runId,
         crawlDatasetId: datasetId,
         crawlStartedAt: new Date().toISOString(),
       },
     });
+    return { started: true };
   } catch (error) {
-    await db.updateSource(sourceId, {
-      status: "error",
-      error: error instanceof Error ? error.message : "Crawl failed to start",
-    });
+    const reason =
+      error instanceof Error ? error.message : "Crawl failed to start";
+    await db.updateSource(sourceId, { status: "error", error: reason });
+    return { started: false, outcome: "failed", reason };
   }
 }
 
@@ -614,7 +734,7 @@ export async function updateWebsiteSourceConfiguration(options: {
 export async function restartWebsiteCrawl(options: {
   db: Db;
   sourceId: string;
-}): Promise<void> {
+}): Promise<CrawlStartResult> {
   const { db, sourceId } = options;
   const source = await db.getSource(sourceId);
   if (!source) throw new Error("Not found");
@@ -629,7 +749,19 @@ export async function restartWebsiteCrawl(options: {
       crawlDatasetId: undefined,
     },
   });
-  await beginWebsiteCrawl({ db, sourceId });
+  const result = await beginWebsiteCrawl({ db, sourceId });
+  if (!result.started && result.outcome === "refused") {
+    // A re-crawl refused by an allowance must not leave the Source stuck on the
+    // `processing` this function just set, with no run behind it — the knowledge
+    // it already has is still good, and it must stay claimable by the next
+    // scheduled sweep. `ready` is that state; a start FAILURE is left in
+    // `error` on purpose, which is why the two outcomes are distinguishable.
+    await db.updateSource(sourceId, {
+      status: source.status === "processing" ? "ready" : source.status,
+      error: "",
+    });
+  }
+  return result;
 }
 
 /**

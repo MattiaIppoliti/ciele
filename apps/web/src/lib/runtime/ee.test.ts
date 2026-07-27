@@ -23,8 +23,10 @@ describe("enterprise capability registry", () => {
       await caps.metering.checkUsage({
         organizationId: "o1",
         connectionKind: "platform",
+        resource: "ai",
       })
     ).toEqual({ outcome: "allow" });
+    expect(await caps.metering.getUsageLimits("o1")).toBeNull();
     expect(await caps.billing.getSubscription("o1")).toBeNull();
   });
 
@@ -32,7 +34,16 @@ describe("enterprise capability registry", () => {
     registerEnterpriseCapabilities({
       metering: {
         async checkUsage() {
-          return { outcome: "block", message: "cap reached" };
+          return {
+            outcome: "block",
+            message: "cap reached",
+            resource: "ai",
+            window: "month",
+            resetsAt: "2026-08-01T00:00:00.000Z",
+          };
+        },
+        async getUsageLimits() {
+          return null;
         },
       },
     });
@@ -41,15 +52,25 @@ describe("enterprise capability registry", () => {
       await caps.metering.checkUsage({
         organizationId: "o1",
         connectionKind: "platform",
+        resource: "ai",
       })
-    ).toEqual({ outcome: "block", message: "cap reached" });
+    ).toMatchObject({ outcome: "block", message: "cap reached", window: "month" });
   });
 
   it("a partial registration leaves untouched capabilities on their OSS default", async () => {
     registerEnterpriseCapabilities({
       metering: {
         async checkUsage() {
-          return { outcome: "warn", usedFraction: 0.9 };
+          return {
+            outcome: "warn",
+            usedFraction: 0.9,
+            resource: "ai",
+            window: "week",
+            resetsAt: "2026-07-08T00:00:00.000Z",
+          };
+        },
+        async getUsageLimits() {
+          return null;
         },
       },
     });
@@ -61,7 +82,36 @@ describe("enterprise capability registry", () => {
     registerEnterpriseCapabilities({
       billing: {
         async getSubscription() {
-          return { plan: "pro", status: "active", checkoutUrl: null };
+          return {
+            plan: "pro",
+            status: "active",
+            checkoutUrl: null,
+            stripeManaged: true,
+          };
+        },
+        getPlanCatalog() {
+          return {
+            tiers: [
+              {
+                slug: "pro",
+                priceEur: 199,
+                salesLed: false,
+                checkout: true,
+                volumes: { answers: 1_000, pages: 200, documents: 300 },
+              },
+            ],
+            answerBasis: {
+              quotedModel: "Light",
+              frontierModel: "Frontier",
+              frontierFactor: 100,
+            },
+          };
+        },
+        async startUpgradeCheckout() {
+          return "https://checkout.example/session";
+        },
+        async startBillingPortal() {
+          return "https://portal.example/session";
         },
       },
     });

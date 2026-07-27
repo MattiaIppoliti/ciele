@@ -1,0 +1,185 @@
+---
+title: Flussi di richiesta
+description: Cosa succede effettivamente quando un visitatore invia un messaggio in chat e quando un amministratore salva una modifica nella console. I due flussi serviti dal resto del sistema.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Quasi tutto il traffico è costituito da due tipi di richiesta: il messaggio di
+chat di un visitatore e la modifica di un membro. Vale la pena seguirli
+dall'inizio alla fine, perché quasi ogni decisione di progettazione nel codebase
+è conseguenza di uno di questi.
+
+## Un visitatore invia un messaggio in chat
+
+Il widget invia un messaggio a un endpoint specifico per ogni assistente e legge
+una risposta in streaming. Nota cosa carica l'endpoint: la **pubblicazione** più
+recente dell'assistente — un'istantanea immutabile — non la configurazione live
+che un membro potrebbe star modificando in quel momento.
+
+<Mermaid
+  title="Un turno di chat, dalla pressione di un tasto alla risposta persistente"
+  chart={`
+sequenceDiagram
+  autonumber
+  participant B as Widget
+  participant R as Chat endpoint
+  participant T as Turn
+  participant E as Runtime
+  participant DB as Postgres
+  participant AI as Provider
+
+  B->>R: message + visitorId
+  R->>DB: latest publication
+  Note over B,R: no snapshot → 404 · CORS from it
+  R->>T: start turn
+  T->>DB: get/create conversation
+  T->>DB: append the message
+  T-->>B: turn (conversation id)
+  T->>E: route
+  E->>AI: classify
+  AI-->>E: the matching flow
+  E-->>B: flow
+  loop each action
+    E-->>B: step · tool events
+    E->>DB: retrieve knowledge
+    E->>AI: generate
+    E-->>B: text · parts
+  end
+  T->>DB: persist the answer
+  T->>T: apply effects
+  T-->>B: done
+`}
+/>
+
+Alcune conseguenze di questo ordinamento:
+
+- **The conversation id arrives before the answer does.** Il primo evento lo
+  porta con sé, ed è così che l'anteprima in tempo reale della console può
+  guidare un turno in corso senza creare una nuova conversazione.
+- **Effects run after the answer is committed**, mai prima d'ora. Un'azione che
+  dovrebbe creare un elemento di follow-up o inviare un'e-mail non lo fa da
+  sola: *richiede* un effetto e la richiesta viene applicata una volta che il
+  messaggio esiste. Quindi un miglioramento si collega a un ID messaggio reale e
+  non viene inviata alcuna e-mail per un turno che è fallito a metà.
+- **A failing action degrades to a fallback**, perché ognuno è incapsulato
+  singolarmente. Un'azione non riuscita non fa perdere il turno.
+
+### Il formato wire
+
+Sia il widget pubblico che il pannello di anteprima della console leggono lo
+stesso flusso JSON delimitato da newline e lo decodificano entrambi con lo
+stesso modulo client. Questo è il motivo per cui l'anteprima e la produzione
+vengono visualizzate in modo identico: c'è un solo produttore e un solo
+consumatore di questo contratto.
+
+| Evento | Significato |
+|---|---|
+| `turn` | L'ID della conversazione, prima dell'inizio della generazione |
+| `flow` | Quale flusso è stato selezionato e se si trattava del fallback |
+| `step` | Un passaggio di pensiero visibile |
+| `tool-start` / `tool-end` | Apertura e chiusura di un invocazione di strumento, con un breve risultato |
+| `thought` | Ragionamento che ha preceduto una chiamata allo strumento; inserito nel pannello di pensiero |
+| `text-start` / `text-delta` / `text-end` | Il testo della risposta, in streaming |
+| `part` | Una parte di risposta non testuale: citazioni, pulsanti, follow-up, un chip di escalation |
+| `done` / `error` | Terminale, con l'ID del messaggio persistente |
+
+<Callout title="Publication snapshots are why editing is safe">
+Because the widget reads the latest publication rather than the live row, an
+administrator can edit an assistant all afternoon without visitors seeing
+anything change. The new configuration goes live at the moment of publish — and
+publishing is also the moment the cached snapshot is invalidated, so "latest"
+stays exact without a database round trip per request.
+</Callout>
+
+## Un membro salva una modifica
+
+Le pagine della console vengono renderizzate dal server e lette tramite un
+handle di dati nell'ambito della richiesta associato alla sessione del
+chiamante, quindi alle letture si applica la sicurezza a livello di riga. Le
+scritture seguono un percorso diverso: sono azioni del server e ogni azione a
+livello di organizzazione si apre con la stessa chiamata di autorizzazione.
+
+<Mermaid
+  title="Una lettura e una scrittura della console"
+  chart={`
+flowchart TB
+  M["Member's browser"]
+
+  subgraph read["Read — a console page"]
+    direction TB
+    MW["middleware<br/>validate the session locally"]
+    LOGIN["no session →<br/>/login?next=…"]
+    P["Server Component"]
+    RD["Read through the<br/>caller-scoped handle"]
+    RLS["Row-level security:<br/>this organization's<br/>rows only"]
+    MW -->|"no"| LOGIN
+    MW -->|"yes"| P --> RD --> RLS
+  end
+
+  subgraph write["Write — a server action"]
+    direction TB
+    G["Authorization guard<br/>re-derive the session<br/>check role → capability"]
+    DENY["denied →<br/>throw"]
+    OK["allowed → returns the<br/>caller-scoped handle"]
+    MUT["Mutate"]
+    REV["Revalidate the<br/>affected paths"]
+    G -->|"no"| DENY
+    G -->|"yes"| OK --> MUT --> REV
+  end
+
+  M -->|"navigate"| MW
+  M -->|"submit"| G
+  RLS --> HTML["Rendered page"]
+  REV --> UI["Updated UI"]
+`}
+/>
+
+La guard ridefinisce la sessione anziché fidarsi di qualsiasi cosa inviata dal
+client e restituisce il data handle come valore di ritorno. Si tratta di una
+piccola scelta di progettazione con una proprietà utile: un'azione non può
+accedere al database *senza* prima superare il controllo, perché è il controllo
+a fornirle l'handle.
+
+### Ruoli e capacità
+
+I ruoli sono classificati e le capacità sono soglie all'interno di tale
+classifica. Lo stesso ordine di priorità esiste in SQL, quindi il database è in
+accordo con l'applicazione.
+
+<Mermaid
+  title="I livelli dei ruoli e le funzionalità che sbloccano"
+  chart={`
+flowchart TB
+  V["Viewer"] --> E["Editor"] --> A["Admin"] --> O["Owner"]
+
+  E -.-> CE["edit assistants, flows,<br/>knowledge, help desks"]
+  A -.-> CP["publish, delete assistants"]
+  A -.-> CM["invite members,<br/>manage provider keys"]
+  O -.-> CR["change roles"]
+`}
+/>
+
+Ogni ruolo include tutto ciò che si trova al di sotto di esso. Estendere il
+modello, ad esempio aggiungendo un livello per gli agenti di supporto o uno
+dedicato esclusivamente all'analisi, significa modificare la tabella dei ruoli e
+le soglie delle capacità, non controllare le singole azioni.
+
+## Lavoro pianificato
+
+Tutto ciò che non deve essere eseguito su richiesta viene invece eseguito in
+base a un timer. Ogni job è un endpoint HTTP autenticato, il che significa che
+lo scheduler può essere Vercel Cron, un container che esegue `curl` o qualsiasi
+altra cosa in grado di effettuare una richiesta.
+
+| Endpoint | Azione |
+|---|---|
+| `/api/cron/finalize-crawls` | Chiude le scansioni le cui pagine sono arrivate |
+| `/api/cron/sweep-recrawls` | Riesegue la scansione delle sorgenti del sito web in base alla loro pianificazione |
+| `/api/cron/run-exports` | Produce i file di esportazione in coda |
+| `/api/cron/rollup-usage` | Aggrega l'utilizzo in righe giornaliere |
+| `/api/cron/verify-goals` | Ricontrolla gli obiettivi dell'assistente |
+
+Il lavoro di crawling viene richiesto con un contratto rinnovabile e un
+ordinamento basato sul tentativo meno recente, quindi due scansioni simultanee
+non possono finalizzare lo stesso crawling e nessuna fonte può essere esclusa.

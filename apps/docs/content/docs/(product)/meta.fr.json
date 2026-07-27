@@ -1,0 +1,23 @@
+{
+  "title": "Documentation",
+  "description": "Créez et exécutez vos assistants",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "index",
+    "editions",
+    "---Commencez ici---",
+    "getting-started",
+    "---Créez un assistant---",
+    "assistants",
+    "knowledge",
+    "flows",
+    "---Connectez-le---",
+    "help-desks",
+    "authentication",
+    "publishing",
+    "---Exécutez-le---",
+    "operations",
+    "organization"
+  ]
+}

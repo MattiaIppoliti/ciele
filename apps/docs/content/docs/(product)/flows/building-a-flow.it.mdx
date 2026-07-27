@@ -1,0 +1,65 @@
+---
+title: Creare un flusso
+description: "Crea un flusso con il generatore in tre passaggi: trigger, condizioni e risposta."
+---
+
+Crei un flusso in tre passaggi: scegli cosa lo avvia, aggiungi condizioni
+facoltative e definisci la risposta. Apri un assistente, seleziona **Flows**,
+quindi crea un nuovo flusso per aprire il generatore.
+
+## Passaggio 1: trigger
+
+Il trigger è l'evento che rende un flusso idoneo all'esecuzione. Il trigger più
+comune è quando un visitatore invia un messaggio, mentre altri trigger
+riguardano momenti come l'apertura della chat. Scegli il trigger che si adatta a
+ciò a cui vuoi che il flusso reagisca. Per la maggior parte delle regole che
+rispondono a domande, il trigger del messaggio è la scelta giusta.
+
+## Passaggio 2: Condizioni
+
+Le condizioni sono facoltative. Limitano un flusso in modo che venga eseguito
+solo in situazioni specifiche. Puoi richiedere che una qualsiasi condizione
+corrisponda, oppure che corrispondano tutte, e puoi anche combinarne diverse
+insieme.
+
+La condizione che utilizzerai più spesso descrive il **contesto della
+conversazione**: spieghi, in un linguaggio semplice, il tipo di messaggio che
+questo flusso dovrebbe gestire e puoi fornire alcuni messaggi di esempio che
+dovrebbero corrispondere e alcuni che non dovrebbero. Questi esempi affinano la
+corrispondenza in modo che il flusso si attivi per le domande giuste.
+
+Lascia vuote le condizioni quando un flusso deve essere applicato in modo
+generico e aggiungile quando hai bisogno di precisione.
+
+## Passaggio 3: Risposta
+
+La risposta è ciò che il flusso fa effettivamente. È un elenco ordinato di
+azioni, che vengono eseguite dall'alto verso il basso. Una risposta deve
+contenere almeno un'azione.
+
+I modelli più comuni includono:
+
+- Un singolo **messaggio fisso** per una regola che risponde sempre allo stesso
+  modo.
+- Una **ricerca nella tua conoscenza** per una regola che dovrebbe fornire una
+  risposta utile e fondata.
+- Un messaggio seguito da **pulsanti** che indirizzano i visitatori al passaggio
+  successivo.
+- Un'**escalation** quando una regola deve trasferire il visitatore al tuo team.
+
+Vedi [Azioni del flusso](/flows/actions) per ogni azione e le relative
+impostazioni.
+
+## Salva, ordina e prova
+
+Quando salvi un flusso, questo viene aggiunto all'elenco. Trascinalo per
+impostarne la priorità rispetto agli altri flussi, ricordando che vince la prima
+corrispondenza. Quindi provalo nell'anteprima live inviando messaggi che
+dovrebbero e non dovrebbero attivarlo. Modifica la descrizione e gli esempi
+finché non si attiva esattamente quando vuoi.
+
+<Callout title="Start simple">
+A small number of clear flows is easier to reason about than many overlapping
+ones. Add a flow when you have a specific behavior in mind, and lean on the
+Default behavior for everything else.
+</Callout>

@@ -9,6 +9,7 @@ import {
   BookOpen,
   Check,
   ChevronsUpDown,
+  Cookie,
   Ellipsis,
   Fingerprint,
   Gauge,
@@ -27,6 +28,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { openCookiePreferences } from "@/components/cookie-consent/open-preferences";
 import { signOutAction, switchOrganizationAction } from "@/app/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@agent-hub/ui";
@@ -721,6 +723,13 @@ function SidebarContent({
                 account menu only carries personal items. */}
             <DropdownMenuItem render={<Link href="/settings/profile" />}>
               <AnimatedIcon icon={Fingerprint} size={16} /> Profile
+            </DropdownMenuItem>
+            {/* The console shows the consent banner like any other first-party
+                page, so it also needs a way back in — withdrawing consent has to
+                be as easy as giving it, and the marketing footer is not reachable
+                from in here. */}
+            <DropdownMenuItem onClick={openCookiePreferences}>
+              <AnimatedIcon icon={Cookie} size={16} /> Cookie preferences
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <ThemeSwitcher />

@@ -1,0 +1,68 @@
+---
+title: Création d'un flux
+description: "Créez un flux avec le générateur en trois étapes : déclencheur, conditions et réponse."
+---
+
+Vous créez un flux en trois étapes : choisissez ce qui le déclenche, ajoutez des
+conditions facultatives et définissez la réponse. Ouvrez un assistant,
+sélectionnez **Flows**, puis créez un nouveau flux pour ouvrir le générateur.
+
+## Étape 1 : Déclencheur
+
+Le déclencheur est l'événement qui rend un flux éligible à l'exécution. Le
+déclencheur le plus courant est l'envoi d'un message par un visiteur. D'autres
+déclencheurs couvrent des moments tels que l'ouverture du chat. Choisissez le
+déclencheur qui correspond à l'élément auquel vous souhaitez que le flux
+réagisse. Pour la plupart des règles qui répondent à des questions, le
+déclencheur de message est le bon choix.
+
+## Étape 2 : Conditions
+
+Les conditions sont facultatives. Elles restreignent un flux afin qu'il ne
+s'exécute que dans des situations spécifiques. Vous pouvez exiger qu'une
+condition quelconque soit remplie, ou que toutes les conditions soient remplies,
+et vous pouvez en combiner plusieurs.
+
+La condition que vous utiliserez le plus décrit le **contexte de la
+conversation** : vous expliquez, en termes simples, le type de message que ce
+flux doit traiter, et vous pouvez donner quelques exemples de messages qui
+doivent correspondre et quelques exemples de messages qui ne doivent pas
+correspondre. Ces exemples affinent la correspondance afin que le flux se
+déclenche sur les bonnes questions.
+
+Laissez les conditions vides lorsqu'un flux doit s'appliquer de manière
+générale, et ajoutez-les lorsque vous avez besoin de précision.
+
+## Étape 3 : Réponse
+
+La réponse est ce que le flux fait réellement. Il s'agit d'une liste ordonnée
+d'actions, qui s'exécutent de haut en bas. Une réponse doit comporter au moins
+une action.
+
+Les modèles courants comprennent :
+
+- Un seul **message fixe** pour une règle qui répond toujours de la même
+  manière.
+- Une **recherche dans vos connaissances** pour une règle qui devrait fournir
+  une réponse utile et fondée.
+- Un message suivi de **boutons** qui dirigent les visiteurs vers l'étape
+  suivante.
+- Une **escalade** lorsqu'une règle doit transférer le visiteur à votre équipe.
+
+Consultez [Actions de flux](/flows/actions) pour chaque action et ses
+paramètres.
+
+## Enregistrez, ordonnez et testez
+
+Lorsque vous enregistrez un flux, il est ajouté à la liste. Faites-le glisser
+pour définir sa priorité par rapport aux autres flux, en gardant à l'esprit que
+la première correspondance l'emporte. Testez-le ensuite dans l'aperçu en direct
+en envoyant des messages qui devraient et ne devraient pas le déclencher.
+Ajustez la description et les exemples jusqu'à ce qu'il se déclenche exactement
+au moment souhaité.
+
+<Callout title="Start simple">
+A small number of clear flows is easier to reason about than many overlapping
+ones. Add a flow when you have a specific behavior in mind, and lean on the
+Default behavior for everything else.
+</Callout>

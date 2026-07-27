@@ -1758,6 +1758,27 @@ export function describeDbContract(
         expect(after - before).toBeCloseTo(2.8, 5);
       });
 
+      it("prices an embedding batch from its own rate, not the chat fallback", async () => {
+        const before = await db.getOrgCostUsedToday(ctx.organizationId);
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "embed",
+            provider: "openai",
+            modelId: "text-embedding-3-small",
+            inputTokens: 40_000_000,
+            outputTokens: 0,
+          },
+        ]);
+        const after = await db.getOrgCostUsedToday(ctx.organizationId);
+        // 40M embedding tokens at €0.02/1M is €0.80. Until embedding models
+        // were priced, the same batch fell through to the €3/1M chat fallback
+        // and was reported as €120 — enough to trip a euro budget on
+        // indexing that cost cents.
+        expect(after - before).toBeCloseTo(0.8, 5);
+      });
+
       it("ignores other organizations and empty batches", async () => {
         const before = await db.getOrgTokensUsedToday(ctx.organizationId);
         await db.recordAiUsage([]);
@@ -1786,20 +1807,28 @@ export function describeDbContract(
         kind: string;
         credentialKind: string;
       }): UsageKey => `${r.day}|${r.kind}|${r.credentialKind}`;
+      // The rollup's grain includes the provider and model that ran, so more
+      // than one row can share a (day, kind, credential) key — fold them.
       const indexRows = async (): Promise<
         Map<UsageKey, { calls: number; inputTokens: number; outputTokens: number }>
       > => {
         const rows = await db.getOrgUsageDaily(ctx.organizationId, 30);
-        return new Map(
-          rows.map((r) => [
-            keyOf(r),
-            {
-              calls: r.calls,
-              inputTokens: r.inputTokens,
-              outputTokens: r.outputTokens,
-            },
-          ])
-        );
+        const index = new Map<
+          UsageKey,
+          { calls: number; inputTokens: number; outputTokens: number }
+        >();
+        for (const r of rows) {
+          const at = index.get(keyOf(r)) ?? {
+            calls: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+          };
+          at.calls += r.calls;
+          at.inputTokens += r.inputTokens;
+          at.outputTokens += r.outputTokens;
+          index.set(keyOf(r), at);
+        }
+        return index;
       };
       const today = () => new Date().toISOString().slice(0, 10);
 
@@ -1926,6 +1955,293 @@ export function describeDbContract(
           },
         ]);
         expect(await indexRows()).toEqual(before);
+      });
+
+      it("keeps the provider and model that ran, so a day can be priced", async () => {
+        // Two models, same day/kind/credential: without the finer grain the two
+        // collapse and the cost of the day becomes unknowable.
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "gemini-3.5-flash",
+            credentialKind: "platform",
+            inputTokens: 5_000,
+            outputTokens: 100,
+          },
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "anthropic",
+            modelId: "claude-opus-4-8",
+            credentialKind: "platform",
+            inputTokens: 5_000,
+            outputTokens: 100,
+          },
+        ]);
+        const rows = await db.getOrgUsageDaily(ctx.organizationId, 1);
+        const flash = rows.find((r) => r.modelId === "gemini-3.5-flash");
+        const opus = rows.find((r) => r.modelId === "claude-opus-4-8");
+        expect(flash).toMatchObject({ provider: "google", units: 0 });
+        expect(opus).toMatchObject({ provider: "anthropic", units: 0 });
+      });
+
+      it("reports a completed crawl as pages, attributed to the crawler", async () => {
+        const apifyPages = async () =>
+          (await db.getOrgUsageDaily(ctx.organizationId, 1))
+            .filter((r) => r.kind === "crawl" && r.provider === "apify")
+            .reduce((sum, r) => sum + r.units, 0);
+        const before = await apifyPages();
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "succeeded",
+          crawlerProvider: "apify",
+          pageCount: 12,
+        });
+        expect(await apifyPages()).toBe(before + 12);
+        const apify = (await db.getOrgUsageDaily(ctx.organizationId, 1)).find(
+          (r) => r.kind === "crawl" && r.provider === "apify"
+        );
+        expect(apify).toMatchObject({
+          credentialKind: "platform",
+          inputTokens: 0,
+          outputTokens: 0,
+          modelId: "",
+        });
+      });
+
+      it("reports nothing for a crawl that failed or returned no pages", async () => {
+        const pagesOf = async () =>
+          (await db.getOrgUsageDaily(ctx.organizationId, 1))
+            .filter((r) => r.kind === "crawl")
+            .reduce((sum, r) => sum + r.units, 0);
+        const before = await pagesOf();
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "failed",
+          crawlerProvider: "apify",
+          pageCount: 9,
+        });
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "succeeded",
+          crawlerProvider: "local",
+          pageCount: 0,
+        });
+        expect(await pagesOf()).toBe(before);
+      });
+    });
+
+    describe("usage meters over an arbitrary window", () => {
+      // The seam can only ever record rows at `now()`, so every window here
+      // lands inside today and exercises the LIVE branch. The closed-day and
+      // partial-day arithmetic — including UTC pinning — is driven against real
+      // SQL with backdated rows in src/testing/usage-rollup.test.ts; the case
+      // below is the most this seam can say about the boundary itself.
+      const wideWindow = (): [string, string] => [
+        new Date(Date.now() - 3_600_000).toISOString(),
+        new Date(Date.now() + 3_600_000).toISOString(),
+      ];
+      const sumOf = (
+        rows: Awaited<ReturnType<Db["getOrgUsageMeters"]>>,
+        resource: string
+      ) =>
+        rows
+          .filter((r) => r.resource === resource)
+          .reduce(
+            (acc, r) => ({
+              tokens: acc.tokens + r.inputTokens + r.outputTokens,
+              units: acc.units + r.units,
+            }),
+            { tokens: 0, units: 0 }
+          );
+
+      it("groups model calls by resource, provider and model", async () => {
+        const [from, to] = wideWindow();
+        const before = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "gemini-3.5-flash",
+            credentialKind: "platform",
+            inputTokens: 1_000,
+            outputTokens: 100,
+          },
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "embed",
+            provider: "openai",
+            modelId: "text-embedding-3-small",
+            credentialKind: "platform",
+            inputTokens: 2_000,
+            outputTokens: 0,
+          },
+        ]);
+        const after = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        expect(sumOf(after, "ai").tokens - sumOf(before, "ai").tokens).toBe(1_100);
+        expect(
+          sumOf(after, "embedding").tokens - sumOf(before, "embedding").tokens
+        ).toBe(2_000);
+        const flash = after.find(
+          (r) => r.resource === "ai" && r.modelId === "gemini-3.5-flash"
+        );
+        expect(flash).toMatchObject({ provider: "google", credentialKind: "platform" });
+      });
+
+      it("counts crawled pages as the scraping resource", async () => {
+        const [from, to] = wideWindow();
+        const before = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        await db.recordRuntimeEvent({
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "succeeded",
+          crawlerProvider: "crawl4ai",
+          pageCount: 30,
+        });
+        const after = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        expect(
+          sumOf(after, "scraping").units - sumOf(before, "scraping").units
+        ).toBe(30);
+        expect(
+          after.some((r) => r.resource === "scraping" && r.provider === "crawl4ai")
+        ).toBe(true);
+      });
+
+      it("excludes usage outside the window at both ends", async () => {
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "gemini-3.5-flash",
+            credentialKind: "platform",
+            inputTokens: 500,
+            outputTokens: 50,
+          },
+        ]);
+        const past = await db.getOrgUsageMeters(
+          ctx.organizationId,
+          new Date(Date.now() - 7_200_000).toISOString(),
+          new Date(Date.now() - 3_600_000).toISOString()
+        );
+        const future = await db.getOrgUsageMeters(
+          ctx.organizationId,
+          new Date(Date.now() + 3_600_000).toISOString(),
+          new Date(Date.now() + 7_200_000).toISOString()
+        );
+        expect(sumOf(past, "ai").tokens).toBe(0);
+        expect(sumOf(future, "ai").tokens).toBe(0);
+      });
+
+      it("does not double-count once the rollup has run", async () => {
+        const [from, to] = wideWindow();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "gemini-3.1-flash-lite",
+            credentialKind: "platform",
+            inputTokens: 300,
+            outputTokens: 30,
+          },
+        ]);
+        const beforeRollup = sumOf(
+          await db.getOrgUsageMeters(ctx.organizationId, from, to),
+          "ai"
+        );
+        await db.rollupUsageDaily(2);
+        await db.rollupUsageDaily(2);
+        expect(
+          sumOf(await db.getOrgUsageMeters(ctx.organizationId, from, to), "ai")
+        ).toEqual(beforeRollup);
+      });
+
+      it("reads nothing from a window that closes before today began", async () => {
+        // Rows recorded now belong to today, which is served live; a window that
+        // ends at today's start must therefore see none of them, whether or not
+        // the rollup has run. This is the boundary where the read switches from
+        // the rollup to the raw sources.
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "gemini-3.5-flash",
+            credentialKind: "platform",
+            inputTokens: 900,
+            outputTokens: 90,
+          },
+        ]);
+        await db.rollupUsageDaily(2);
+        const startOfToday = `${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`;
+        const closed = await db.getOrgUsageMeters(
+          ctx.organizationId,
+          new Date(Date.parse(startOfToday) - 7 * 86_400_000).toISOString(),
+          startOfToday
+        );
+        const today = await db.getOrgUsageMeters(
+          ctx.organizationId,
+          startOfToday,
+          new Date(Date.now() + 3_600_000).toISOString()
+        );
+        expect(sumOf(closed, "ai").tokens).toBe(0);
+        expect(sumOf(today, "ai").tokens).toBeGreaterThanOrEqual(990);
+      });
+
+      it("reads the same window whether the instant is spelled with Z or an offset", async () => {
+        // Two legal spellings of one instant must not compare differently — a
+        // string comparison would put them in different windows.
+        const [from, to] = wideWindow();
+        const withOffset = (iso: string) => iso.replace("Z", "+00:00");
+        expect(
+          await db.getOrgUsageMeters(ctx.organizationId, withOffset(from), withOffset(to))
+        ).toEqual(await db.getOrgUsageMeters(ctx.organizationId, from, to));
+      });
+
+      it("scopes the window read to the requested organization", async () => {
+        const [from, to] = wideWindow();
+        const before = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.foreignOrganizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "openai",
+            modelId: "gpt-5.1",
+            credentialKind: "platform",
+            inputTokens: 4_000,
+            outputTokens: 400,
+          },
+        ]);
+        await db.recordRuntimeEvent({
+          organizationId: ctx.foreignOrganizationId,
+          assistantId: null,
+          kind: "crawl",
+          status: "succeeded",
+          crawlerProvider: "apify",
+          pageCount: 77,
+        });
+        const after = await db.getOrgUsageMeters(ctx.organizationId, from, to);
+        expect(sumOf(after, "ai")).toEqual(sumOf(before, "ai"));
+        expect(sumOf(after, "scraping")).toEqual(sumOf(before, "scraping"));
       });
     });
 
@@ -2470,6 +2786,94 @@ export function describeDbContract(
         await skills().delete(skill.id);
         expect(await skills().get(skill.id)).toBeNull();
         await expect(skills().delete(shortId())).resolves.toBeUndefined();
+      });
+    });
+
+    /* Our own evidence that a visitor consented (GDPR Art. 7(1)) — the cookie
+       on their device is evidence they hold and can erase, so it cannot
+       discharge our accountability obligation on its own. Unlike everything
+       else here these rows are not org-scoped: anonymous visitors have no
+       organization. */
+    describe("cookie consent records", () => {
+      const records = () => db.table("cookieConsentRecords");
+      const newRecord = (
+        over: Partial<{
+          consentId: string;
+          revision: number;
+          acceptedCategories: string[];
+          rejectedCategories: string[];
+          acceptType: string;
+          action: string;
+          consentedAt: string | null;
+          pageUrl: string;
+          userAgent: string;
+        }> = {}
+      ) =>
+        records().insert({
+          consentId: `consent-${shortId()}`,
+          revision: 1,
+          acceptedCategories: ["necessary", "analytics"],
+          rejectedCategories: ["functional"],
+          acceptType: "custom",
+          action: "granted",
+          ...over,
+        });
+
+      it("stores the decision with spec defaults and a server timestamp", async () => {
+        const record = await newRecord();
+        expect(record.id).toBeTruthy();
+        expect(record.revision).toBe(1);
+        expect(record.acceptedCategories).toEqual(["necessary", "analytics"]);
+        expect(record.rejectedCategories).toEqual(["functional"]);
+        expect(record.acceptType).toBe("custom");
+        expect(record.action).toBe("granted");
+        // Omitted context falls back to the spec defaults rather than null,
+        // so a record never reads as "we failed to store something".
+        expect(record.consentedAt).toBeNull();
+        expect(record.pageUrl).toBe("");
+        expect(record.userAgent).toBe("");
+        // Ours is the trusted clock — it must be set even though the visitor's
+        // `consentedAt` was not supplied.
+        expect(record.createdAt).toBeTruthy();
+      });
+
+      it("keeps a withdrawal as a new row instead of editing the grant", async () => {
+        const consentId = `consent-${shortId()}`;
+        const granted = await newRecord({ consentId, acceptType: "all", action: "granted" });
+        const withdrawn = await newRecord({
+          consentId,
+          acceptedCategories: ["necessary"],
+          rejectedCategories: ["functional", "analytics"],
+          acceptType: "necessary",
+          action: "changed",
+        });
+
+        // Both survive: the history is what proves what was agreed and when.
+        const history = await records().list({ consentId });
+        expect(history.map((r) => r.id).sort()).toEqual(
+          [granted.id, withdrawn.id].sort()
+        );
+        expect(history.map((r) => r.action).sort()).toEqual(["changed", "granted"]);
+      });
+
+      it("finds a visitor's records by consent id and hides other visitors'", async () => {
+        const mine = await newRecord();
+        const theirs = await newRecord();
+        const found = await records().list({ consentId: mine.consentId });
+        expect(found.map((r) => r.id)).toEqual([mine.id]);
+        expect(found.map((r) => r.id)).not.toContain(theirs.id);
+      });
+
+      it("records the visitor's own timestamp alongside ours when supplied", async () => {
+        const consentedAt = new Date(Date.now() - 5_000).toISOString();
+        const record = await newRecord({
+          consentedAt,
+          pageUrl: "https://ciele.app/home",
+          userAgent: "contract-suite",
+        });
+        expect(record.consentedAt).toBe(consentedAt);
+        expect(record.pageUrl).toBe("https://ciele.app/home");
+        expect(record.userAgent).toBe("contract-suite");
       });
     });
 

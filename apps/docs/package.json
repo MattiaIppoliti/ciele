@@ -9,7 +9,9 @@
     "start": "next start",
     "postinstall": "fumadocs-mdx",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "translate:docs": "node scripts/translate-docs.mjs",
+    "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {
     "@agent-hub/ui": "workspace:*",
@@ -24,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@translated/lara": "^1.13.0",
     "@types/mdx": "^2.0.14",
     "@types/node": "^20",
     "@types/react": "^19",

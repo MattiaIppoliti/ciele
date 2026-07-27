@@ -34,7 +34,8 @@ describe("GET /api/cron/sweep-recrawls", () => {
     mocks.claimDueRecrawlSources.mockReset();
     mocks.restartWebsiteCrawl.mockReset();
     mocks.claimDueRecrawlSources.mockResolvedValue([]);
-    mocks.restartWebsiteCrawl.mockResolvedValue(undefined);
+    // The start op reports whether a run actually began (#510).
+    mocks.restartWebsiteCrawl.mockResolvedValue({ started: true });
   });
 
   afterEach(() => {
@@ -110,6 +111,37 @@ describe("GET /api/cron/sweep-recrawls", () => {
     );
   });
 
+  it("reports a re-crawl refused for budget as skipped, not as launched", async () => {
+    // A crawl the scraping allowance refused (#510) is neither a run nor a
+    // failure; a sweep that counted it as launched would claim work it never did.
+    mocks.claimDueRecrawlSources.mockResolvedValue([
+      { sourceId: "ok", collectionId: "c", assistantId: "a" },
+      { sourceId: "capped", collectionId: "c", assistantId: "a" },
+    ]);
+    mocks.restartWebsiteCrawl.mockImplementation(
+      async ({ sourceId }: { sourceId: string }) =>
+        sourceId === "capped"
+          ? { started: false, reason: "Crawling is paused until the allowance resets." }
+          : { started: true }
+    );
+
+    const response = await GET(authed());
+
+    await expect(response.json()).resolves.toMatchObject({
+      recrawls: {
+        swept: 2,
+        launched: 1,
+        results: expect.arrayContaining([
+          expect.objectContaining({
+            sourceId: "capped",
+            status: "skipped",
+            message: expect.stringMatching(/paused/i),
+          }),
+        ]),
+      },
+    });
+  });
+
   it("reports a failed re-crawl without aborting the rest of the batch", async () => {
     mocks.claimDueRecrawlSources.mockResolvedValue([
       { sourceId: "ok", collectionId: "c", assistantId: "a" },
@@ -118,6 +150,7 @@ describe("GET /api/cron/sweep-recrawls", () => {
     mocks.restartWebsiteCrawl.mockImplementation(
       async ({ sourceId }: { sourceId: string }) => {
         if (sourceId === "boom") throw new Error("Not found");
+        return { started: true };
       }
     );
 

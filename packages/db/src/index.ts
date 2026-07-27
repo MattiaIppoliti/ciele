@@ -46,6 +46,11 @@ export {
   trustTier,
   verificationEvents,
 } from "./okf";
+// Credits — the cost unit plan allowances are denominated in. Only the
+// conversion is public; the rate tables behind it stay package-private so
+// there is one place a price list is read.
+export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
+export type { MeteredUnit } from "./pricing";
 export { buildPublicationConfig } from "./publication";
 export { messageText } from "./message";
 export { IMPROVEMENT_TITLE_MAX, raiseImprovement } from "./improvements";

@@ -1,0 +1,67 @@
+---
+title: Die Open-Core-Grenze
+description: Genau das, was in der Open-Source-Edition enthalten ist, und was zum verwalteten Ciele-Cloud-Dienst gehört.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Ciele folgt einem Open-Core-Modell: Das Produkt ist Open Source, und eine kleine
+Anzahl kommerzieller Funktionen, die nur für einen verwalteten
+Multi-Tenant-Dienst sinnvoll sind, befindet sich außerhalb des
+Open-Source-Baums. Diese Seite zieht die Grenze präzise.
+
+## In der Open-Source-Edition (AGPL-3.0)
+
+Das gesamte Produkt, das Ihre Besucher und Administratoren nutzen, ist Open
+Source:
+
+- Die **Admin-Konsole** und der Assistenten-**Editor** mit Live-Vorschau.
+- Das **Chat-Widget** und seine Laufzeit.
+- Der **Flow-Router** und Flow-Aktionen.
+- Die **Wissens-**- und Abruf-Pipeline, einschließlich Website-Crawling, Dateien
+  und FAQs, mit Quellenangaben.
+- **Help desks** und Eskalationskanäle.
+- Die Bedienoberflächen: **Posteingang**, **Verbesserungen**, **Einblicke** und
+  **Warnungen**.
+- **Multi-tenancy** mit Organisationen, Mitgliedern, Rollen und Sicherheit auf
+  Zeilenebene.
+- Veröffentlichung auf Ihrer Website mit einem Einbettungs-Snippet.
+
+Wenn eine Funktion in der Haupt-[Dokumentation](/) ohne Hinweis auf die
+Managed-Edition dokumentiert ist, ist sie Teil dieses Open-Source-Kerns.
+
+## Nur in der Cloud (nicht im Open-Source-Baum)
+
+Dies sind die Funktionen des Managed Services. Sie sind vom Open-Source-Code
+ausgeschlossen und werden niemals in einer selbst gehosteten Bereitstellung
+erstellt:
+
+- **Plans and billing** – Abonnementpläne, Zahlung und Rechnungsstellung.
+- **Usage metering and enforced limits** – monatliche Quoten pro Plan und deren
+  Obergrenzen.
+- **The cross-organization operations surface** wird verwendet, um den Managed
+  Service auszuführen.
+- **Managed single sign-on onboarding** für die Admin-Konsole.
+- **Hosting, upgrades, backups, and support** mit einer Service-Zusage.
+
+<Callout title="How the split is enforced in the code">
+Enterprise code lives under a dedicated path and is excluded when the public
+open-source tree is assembled, so an open-source checkout simply does not contain
+it. The enterprise database migrations are a separate chain applied only where
+they exist; a self-hosted deployment has no such directory and creates none of
+those tables. See [Database](/self-hosting/database).
+</Callout>
+
+## Warum die Grenze dort ist, wo sie ist
+
+Alles, was eine selbst hostende Organisation benötigt, um Assistenten für ihre
+eigenen Benutzer auszuführen, befindet sich im Open-Source-Kern. Die
+Cloud-exklusiven Funktionen sind diejenigen, die damit zusammenhängen, dass
+Ciele den Dienst *für andere Organisationen* betreibt – also die Abrechnung, die
+Begrenzung der Nutzung für alle Mandanten und die Gewährleistung der
+Verfügbarkeit. Indem sie aus dem Open-Source-Baum herausgehalten werden, ist die
+Open-Source-Edition vollständig und in sich geschlossen, während die
+Managed-Edition nur das hinzufügt, was ein Managed Service benötigt.
+
+Wenn Sie diese verwalteten Funktionen nutzen möchten, ohne sie selbst zu
+erstellen, verwenden Sie [Ciele Cloud](/cloud).

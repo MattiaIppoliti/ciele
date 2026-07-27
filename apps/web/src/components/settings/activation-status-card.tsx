@@ -101,9 +101,16 @@ export function ActivationStatusCard({
           {comped ? "Active — evaluation" : "Active"}
         </CardTitle>
         <CardDescription>
-          {comped
-            ? "You are on an evaluation grant with the full managed experience and evaluation-sized limits."
-            : `You are on the ${subscription.plan} plan.`}
+          {comped ? (
+            "You are on an evaluation grant with the full managed experience and evaluation-sized limits."
+          ) : (
+            // The plan is a slug, printed verbatim on purpose (#511) — but
+            // capitalized in a sentence, so it does not read as a typo.
+            <>
+              You are on the{" "}
+              <span className="capitalize">{subscription.plan}</span> plan.
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

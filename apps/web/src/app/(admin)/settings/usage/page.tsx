@@ -1,7 +1,7 @@
 import { Link } from "@/components/ui/link";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
-import type { UsageDailyRow } from "@agent-hub/db";
+import type { UsageDailyRow, UsageResource } from "@agent-hub/db";
 import {
   Card,
   CardContent,
@@ -19,6 +19,14 @@ import {
 } from "@/components/ui/table";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
+import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { formatCredits, summarizeUsage } from "@/lib/usage-summary";
+import { budgetMeterView, usageLimitsView } from "@/lib/usage-meters";
+import {
+  DailyBudgetCard,
+  UnmeteredNotice,
+  UsageLimitsBlock,
+} from "@/components/settings/usage-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -35,24 +43,31 @@ const CREDENTIAL_LABELS: Record<UsageDailyRow["credentialKind"], string> = {
 const KIND_LABELS: Record<UsageDailyRow["kind"], string> = {
   chat: "Chat",
   embedding: "Embedding",
+  crawl: "Crawl",
 };
 
-interface UsageTotals {
-  calls: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-function totalsOf(rows: UsageDailyRow[]): UsageTotals {
-  return rows.reduce(
-    (sum, r) => ({
-      calls: sum.calls + r.calls,
-      inputTokens: sum.inputTokens + r.inputTokens,
-      outputTokens: sum.outputTokens + r.outputTokens,
-    }),
-    { calls: 0, inputTokens: 0, outputTokens: 0 }
-  );
-}
+/** The three meters, in the order a plan lists them. */
+const METERS: {
+  resource: UsageResource;
+  title: string;
+  description: string;
+}[] = [
+  {
+    resource: "ai",
+    title: "AI",
+    description: "Intent routing, answers, and scheduled AI work",
+  },
+  {
+    resource: "embedding",
+    title: "Embeddings",
+    description: "Knowledge indexing and vector search queries",
+  },
+  {
+    resource: "scraping",
+    title: "Scraping",
+    description: "Pages fetched when a Website Source is crawled",
+  },
+];
 
 const formatCount = new Intl.NumberFormat("en-US").format;
 
@@ -62,15 +77,28 @@ export default async function UsageSettingsPage() {
   // provider/budget settings it complements.
   if (!canManageMembers(role)) redirect("/");
 
-  const rows = await db.getOrgUsageDaily(organizationId, USAGE_WINDOW_DAYS);
-  const chat = totalsOf(rows.filter((r) => r.kind === "chat"));
-  const embedding = totalsOf(rows.filter((r) => r.kind === "embedding"));
-  const platformTokens = totalsOf(
-    rows.filter((r) => r.credentialKind === "platform")
-  );
-  const ownTokens = totalsOf(
-    rows.filter((r) => r.credentialKind !== "platform")
-  );
+  // The plan's meters, the 30-day ledger, and the org's own daily ceiling: the
+  // three things that can pause an assistant, read together so the page can
+  // show them in one language.
+  const [rows, limits, budget, usedTokens, usedEur] = await Promise.all([
+    db.getOrgUsageDaily(organizationId, USAGE_WINDOW_DAYS),
+    getEnterpriseCapabilities().metering.getUsageLimits(organizationId),
+    db.getOrgBudget(organizationId),
+    db.getOrgTokensUsedToday(organizationId),
+    db.getOrgCostUsedToday(organizationId),
+  ]);
+  const summary = summarizeUsage(rows);
+  const view = limits ? usageLimitsView(limits, new Date().toISOString()) : null;
+  // A plan whose every meter is uncapped (a staff exemption, or billing data too
+  // stale to enforce against) is not a capped state: gauges of zero under
+  // "each meter is capped" copy would misdescribe it.
+  const limitsView = view && !view.allUncapped ? view : null;
+  const dailyBudget = budgetMeterView({
+    tokenLimit: budget?.dailyTokenLimit ?? null,
+    euroLimit: budget?.dailyEuroLimit ?? null,
+    usedTokens,
+    usedEur,
+  });
 
   return (
     <div className="h-full overflow-y-auto">
@@ -86,73 +114,90 @@ export default async function UsageSettingsPage() {
         </div>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">Usage</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {session.organization.name}&apos;s AI usage over the last{" "}
-          {USAGE_WINDOW_DAYS} days — every chat and embedding model call,
-          split by the credential that answered it.
+          {session.organization.name}&apos;s usage over the last{" "}
+          {USAGE_WINDOW_DAYS} days — every model call and crawled page, split by
+          the credential that funded it. Credits are estimated cost: one credit
+          is a cent of what the work cost to run.
         </p>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Chat</CardTitle>
-              <CardDescription>
-                Intent routing, answers, and scheduled AI work
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              <p>
-                <span className="font-medium">{formatCount(chat.calls)}</span>{" "}
-                model calls
-              </p>
-              <p className="text-muted-foreground">
-                {formatCount(chat.inputTokens)} tokens in ·{" "}
-                {formatCount(chat.outputTokens)} tokens out
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Embeddings</CardTitle>
-              <CardDescription>
-                Knowledge indexing and vector search queries
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
-              <p>
-                <span className="font-medium">
-                  {formatCount(embedding.calls)}
-                </span>{" "}
-                model calls
-              </p>
-              <p className="text-muted-foreground">
-                {formatCount(embedding.inputTokens)} tokens in
-              </p>
-            </CardContent>
-          </Card>
+        {limitsView ? (
+          <UsageLimitsBlock
+            view={limitsView}
+            budget={dailyBudget}
+            ownCredentialsOnly={
+              summary.own.credits > 0 && summary.platform.credits === 0
+            }
+          />
+        ) : (
+          <>
+            <UnmeteredNotice plan={view?.plan} />
+            {dailyBudget ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <DailyBudgetCard budget={dailyBudget} />
+              </div>
+            ) : null}
+          </>
+        )}
+
+        <h2 className="mt-8 text-lg font-semibold tracking-tight">
+          Last {USAGE_WINDOW_DAYS} days
+        </h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {METERS.map((meter) => {
+            const usage = summary.byResource[meter.resource];
+            return (
+              <Card key={meter.resource}>
+                <CardHeader>
+                  <CardTitle>{meter.title}</CardTitle>
+                  <CardDescription>{meter.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <p>
+                    <span className="font-medium">
+                      {formatCredits(usage.platformCredits)}
+                    </span>{" "}
+                    platform-funded credits
+                  </p>
+                  <p className="text-muted-foreground">
+                    {meter.resource === "scraping"
+                      ? `${formatCount(usage.pages)} pages · ${formatCount(usage.calls)} crawls`
+                      : `${formatCount(usage.calls)} calls · ${formatCount(
+                          usage.inputTokens + usage.outputTokens
+                        )} tokens`}
+                  </p>
+                  {usage.credits > usage.platformCredits && (
+                    <p className="text-muted-foreground">
+                      + {formatCredits(usage.credits - usage.platformCredits)} on
+                      your own credentials
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>Platform vs your own credentials</CardTitle>
             <CardDescription>
-              Platform-funded calls run on the platform&apos;s keys; calls on
-              your own API keys or federated credentials are yours end to end.
+              Platform-funded work runs on the platform&apos;s keys and counts
+              against your plan; work on your own API keys or federated
+              credentials is yours end to end and is never counted.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             <p>
               <span className="font-medium">Platform:</span>{" "}
-              {formatCount(platformTokens.calls)} calls ·{" "}
-              {formatCount(
-                platformTokens.inputTokens + platformTokens.outputTokens
-              )}{" "}
-              tokens
+              {formatCredits(summary.platform.credits)} credits ·{" "}
+              {formatCount(summary.platform.tokens)} tokens ·{" "}
+              {formatCount(summary.platform.pages)} pages
             </p>
             <p>
               <span className="font-medium">Your credentials:</span>{" "}
-              {formatCount(ownTokens.calls)} calls ·{" "}
-              {formatCount(ownTokens.inputTokens + ownTokens.outputTokens)}{" "}
-              tokens
+              {formatCredits(summary.own.credits)} credits ·{" "}
+              {formatCount(summary.own.tokens)} tokens ·{" "}
+              {formatCount(summary.own.pages)} pages
             </p>
           </CardContent>
         </Card>
@@ -168,8 +213,9 @@ export default async function UsageSettingsPage() {
           <CardContent>
             {rows.length === 0 ? (
               <p className="text-muted-foreground py-4 text-sm">
-                No AI usage recorded yet. Usage appears here as soon as an
-                assistant answers a message or indexes knowledge.
+                No usage recorded yet. Usage appears here as soon as an
+                assistant answers a message, indexes knowledge, or crawls a
+                website.
               </p>
             ) : (
               <Table>
@@ -178,29 +224,37 @@ export default async function UsageSettingsPage() {
                     <TableHead>Day</TableHead>
                     <TableHead>Kind</TableHead>
                     <TableHead>Credential</TableHead>
+                    <TableHead>Ran on</TableHead>
                     <TableHead className="text-right">Calls</TableHead>
-                    <TableHead className="text-right">Tokens in</TableHead>
-                    <TableHead className="text-right">Tokens out</TableHead>
+                    <TableHead className="text-right">Tokens in · out</TableHead>
+                    <TableHead className="text-right">Pages</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow
-                      key={`${r.day}-${r.kind}-${r.credentialKind}`}
+                      key={`${r.day}-${r.kind}-${r.credentialKind}-${r.provider}-${r.modelId}`}
                     >
                       <TableCell className="font-medium">{r.day}</TableCell>
                       <TableCell>{KIND_LABELS[r.kind]}</TableCell>
                       <TableCell>
                         {CREDENTIAL_LABELS[r.credentialKind]}
                       </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {r.modelId || r.provider || "—"}
+                      </TableCell>
                       <TableCell className="text-right">
                         {formatCount(r.calls)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCount(r.inputTokens)}
+                        {r.kind === "crawl"
+                          ? "—"
+                          : `${formatCount(r.inputTokens)} · ${formatCount(
+                              r.outputTokens
+                            )}`}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCount(r.outputTokens)}
+                        {r.kind === "crawl" ? formatCount(r.units) : "—"}
                       </TableCell>
                     </TableRow>
                   ))}

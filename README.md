@@ -1,6 +1,6 @@
 <div align="center">
 
-# Ciele
+# <img src=".github/readme/ciele-ghost.svg" alt="" width="44" align="middle">&nbsp;Ciele
 
 **Build, test, and publish AI assistants that answer from your own knowledge.**
 

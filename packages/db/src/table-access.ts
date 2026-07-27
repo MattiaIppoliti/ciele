@@ -1,4 +1,5 @@
 import type {
+  CookieConsentRecord,
   LocalConnectorDevice,
   LocalConnectorPairing,
   LocalInferenceJob,
@@ -20,6 +21,27 @@ import { shortId } from "./id";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  /**
+   * Append-only consent evidence. `update` and `delete` exist on the accessor
+   * because every mapped table shares the five operations, but nothing should
+   * call them here — rewriting an audit log destroys the thing that makes it
+   * evidence. A withdrawal is a new row, so `update` is deliberately `never`.
+   */
+  cookieConsentRecords: {
+    row: CookieConsentRecord;
+    insert: {
+      consentId: string;
+      revision: number;
+      acceptedCategories: string[];
+      rejectedCategories: string[];
+      acceptType: string;
+      action: string;
+      consentedAt?: string | null;
+      pageUrl?: string;
+      userAgent?: string;
+    };
+    update: never;
+  };
   skills: {
     row: Skill;
     insert: {
@@ -120,6 +142,22 @@ export interface DbTableSpec<K extends DbTableName> {
 }
 
 export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
+  cookieConsentRecords: {
+    table: "cookie_consent_records",
+    id: "uuid",
+    defaults: {
+      acceptedCategories: [],
+      rejectedCategories: [],
+      consentedAt: null,
+      pageUrl: "",
+      userAgent: "",
+    },
+    // Newest first: the question asked of this table is always "what is the
+    // latest decision", not "what was the first".
+    orderBy: "createdAt",
+    ascending: false,
+    touchesUpdatedAt: false,
+  },
   skills: {
     table: "skills",
     id: "shortId",

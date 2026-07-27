@@ -21,6 +21,14 @@ export async function GET(
   });
 }
 
+/**
+ * English only: this endpoint is the canonical text an agent fetches, and every
+ * other locale is generated from it. `getPage(slug)` above already resolves
+ * against the default language.
+ */
 export function generateStaticParams() {
-  return source.generateParams();
+  return source
+    .generateParams()
+    .filter((params) => params.lang === 'en')
+    .map(({ slug }) => ({ slug }));
 }

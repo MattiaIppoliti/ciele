@@ -1,0 +1,132 @@
+---
+title: Conectar Microsoft Entra ID
+description: Registra una aplicación en Microsoft Entra y exige que las personas inicien sesión antes de chatear.
+---
+
+Microsoft Entra ID (anteriormente Azure Active Directory) es el proveedor de
+identidad que muchas organizaciones ya utilizan para el inicio de sesión único.
+Al conectarlo, las personas pueden iniciar sesión en tu asistente con su cuenta
+de trabajo existente y el asistente puede ver su rol y su perfil. La conexión
+utiliza OpenID Connect, por lo que la configuración consiste en registrar una
+aplicación en Entra y pegar algunos valores en el asistente.
+
+Necesitas acceso de administrador a tu inquilino de Microsoft Entra para
+registrar una aplicación, así como acceso a la página **Authentication** del
+asistente en Ciele.
+
+## Antes de empezar
+
+1. Abre el asistente y, a continuación, selecciona **Authentication**.
+2. Elige Microsoft Entra como proveedor de identidad. La página muestra una
+   **URL de redireccionamiento** (a veces llamada URL de devolución de llamada o
+   de respuesta) para este asistente. Mantén esta página abierta, pegarás este
+   valor en Entra en el siguiente paso y luego traerás los valores de vuelta
+   aquí.
+
+<Callout title="Keep the redirect URL exact">
+Copy the redirect URL exactly as shown, including `https://` and any path. Entra
+matches it character for character, and a mismatch is the most common reason sign
+in fails.
+</Callout>
+
+## Paso 1: Registra una aplicación en Entra
+
+1. Inicia sesión en el
+   [Centro de administración de Microsoft Entra](https://entra.microsoft.com)
+   como administrador.
+2. Ve a **Identity**, luego a **Applications**, luego a **App registrations** y
+   selecciona **New registration**.
+3. Ponle a la aplicación un **nombre** que tu equipo reconozca, como
+   `Ciele Assistant`.
+4. En **Supported account types**, elige la opción que corresponda a quién
+   debería poder iniciar sesión. Para una sola organización, elige cuentas solo
+   en este directorio organizativo.
+5. En **Redirect URI**, selecciona la plataforma **Web** y pega la URL de
+   redireccionamiento que copiaste de la página de autenticación del asistente.
+6. Selecciona **Register**.
+
+## Paso 2: Recopila los identificadores de cliente e inquilino
+
+Después de registrarte, llegarás a la página **Overview** de la aplicación.
+
+1. Copia el **Application (client) ID**.
+2. Copia el **Directory (tenant) ID**.
+
+Guarda ambos valores, los pegarás en el asistente en breve.
+
+## Paso 3: Crea un secreto de cliente
+
+1. En la aplicación, abre **Certificates & secrets**.
+2. Selecciona **New client secret**, añade una breve descripción y elige una
+   fecha de caducidad que se ajuste a la política de tu organización.
+3. Selecciona **Add** y, a continuación, copia inmediatamente el secreto
+   **Value**. Solo se muestra una vez, así que cópialo ahora en lugar del ID del
+   secreto.
+
+<Callout type="warn" title="Secrets expire">
+A client secret has an expiry date. Set a reminder to create a new secret and
+update it in the assistant before the old one expires, otherwise sign in will stop
+working when it lapses. Clearing the connection later is covered under
+[Alerts](/operations/alerts), which flags a connection that has stopped working.
+</Callout>
+
+## Paso 4: Elige lo que puede leer el asistente
+
+El asistente necesita los ámbitos básicos de inicio de sesión para identificar a
+una persona.
+
+1. Abre **API permissions**.
+2. Confirma que los permisos delegados incluyan **openid**, **profile** y
+   **email**. Estos permiten que el asistente lea quién es alguien. Por lo
+   general, están presentes de forma predeterminada.
+3. Si quieres que el asistente reaccione a los grupos o roles de una persona,
+   abre **Token configuration** y añade una **declaración de grupos** (o las
+   declaraciones opcionales que tu organización use para los roles). Esto es lo
+   que hace que las [condiciones de flujo](/flows/building-a-flow) basadas en
+   grupos y roles funcionen para las personas que han iniciado sesión.
+4. Si tu organización lo requiere, otorga el consentimiento del administrador
+   para los permisos.
+
+## Paso 5: Finaliza la conexión en Ciele
+
+Vuelve a la página **Authentication** del asistente e introduce los valores de
+Entra:
+
+1. **Client ID**: el ID de la aplicación (cliente) del paso 2.
+2. **Tenant ID**: el ID del directorio (inquilino) del paso 2.
+3. **Client secret**: el valor del secreto del paso 3.
+4. **Scopes**: deja los ámbitos de inicio de sesión predeterminados a menos que
+   tu configuración necesite más.
+5. Guarda la conexión.
+
+## Paso 6: Prueba de inicio de sesión
+
+1. Abre la vista previa en vivo del asistente o una página en la que esté
+   publicado.
+2. El widget muestra una tarjeta **Connect Your Account**. Selecciónala.
+3. Inicia sesión con una cuenta de Microsoft de tu inquilino.
+4. Confirma que la conversación continúa y, si configuraste grupos, que un flujo
+   basado en roles se comporta como se espera.
+
+## Resolución de problemas
+
+- **Redirect URI mismatch.** El error indica una URL de respuesta que no
+  coincide. Vuelve a copiar la URL de redireccionamiento de la página de
+  Autenticación y asegúrate de que el valor en Entra bajo la plataforma **Web**
+  sea idéntico.
+- **Sign in works but roles do not.** Añade la **declaración de grupos** en
+  **Token configuration** (Paso 4). Sin ella, el asistente ve a la persona, pero
+  no a sus grupos.
+- **Sign in stopped working after a while.** Es probable que el secreto de
+  cliente haya caducado. Crea un nuevo secreto en **Certificates & secrets** y
+  actualízalo en la página de Autenticación.
+- **Admin consent required.** Un administrador debe dar su consentimiento para
+  los permisos de la aplicación una vez, en **API permissions**.
+
+## Qué viene después
+
+- Personaliza las respuestas con los datos de una persona usando **User data**
+  en la misma página de Autenticación.
+- Utiliza el rol de la persona en las reglas de la página
+  [Flujos](/flows/building-a-flow) para que el asistente responda de forma
+  diferente a los miembros y a los visitantes anónimos.

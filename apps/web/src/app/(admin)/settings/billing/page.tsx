@@ -11,28 +11,57 @@ import {
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
 import { getEnterpriseCapabilities } from "@/lib/runtime";
+import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
+import {
+  CheckoutNotice,
+  PlanSummaryCard,
+  PlanUpgradeCard,
+  type CheckoutOutcome,
+} from "@/components/settings/plan-card";
 
 export const dynamic = "force-dynamic";
 
+const CHECKOUT_OUTCOMES: readonly CheckoutOutcome[] = [
+  "success",
+  "cancelled",
+  "error",
+];
+
+const checkoutOutcome = (value: string | string[] | undefined) =>
+  CHECKOUT_OUTCOMES.find((outcome) => outcome === value) ?? null;
+
 /**
- * Billing and activation (#444).
+ * Billing, activation, and the plan ladder (#444 / #511).
  *
  * On a self-hosted deployment there is nothing to bill: the enterprise
  * capabilities are their OSS defaults, so the organization reads as active
- * with no subscription and this page says exactly that. On the managed
- * platform the same page carries the activation state, the talk-to-us CTA
- * while pending, and the checkout hand-off once staff have set a plan.
+ * with no subscription, there is no catalog, and this page says exactly that.
+ * On the managed platform the same page carries the activation state, the
+ * talk-to-us CTA while pending, the plan with its meters at a glance, and the
+ * self-serve way up.
  */
-export default async function BillingPage() {
-  const { session, role } = await requirePageMember();
+export default async function BillingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { session, organizationId, role } = await requirePageMember();
   if (!canManageMembers(role)) redirect("/");
 
   const capabilities = getEnterpriseCapabilities();
-  const [activation, subscription] = await Promise.all([
+  const [activation, subscription, limits, params] = await Promise.all([
     capabilities.activation.getActivation(session.organization.id),
     capabilities.billing.getSubscription(session.organization.id),
+    capabilities.metering.getUsageLimits(organizationId),
+    searchParams,
   ]);
+  const catalog = capabilities.billing.getPlanCatalog();
+  const view = limits ? usageLimitsView(limits, new Date().toISOString()) : null;
+  // An all-uncapped plan is not a capped state; the summary says so in words
+  // rather than drawing three empty rings (same rule as the Usage page).
+  const meters = view && !view.allUncapped ? view : null;
+  const outcome = checkoutOutcome(params.checkout);
 
   return (
     <div className="h-full overflow-y-auto">
@@ -51,10 +80,36 @@ export default async function BillingPage() {
           {session.organization.name}&apos;s plan and activation status.
         </p>
 
+        {outcome ? <CheckoutNotice outcome={outcome} /> : null}
+
         <ActivationStatusCard
           activation={activation}
           subscription={subscription}
         />
+
+        {/* The plan and the ladder exist only where there is something to sell. */}
+        {catalog ? (
+          <>
+            {subscription ? (
+              <PlanSummaryCard
+                plan={subscription.plan}
+                comped={subscription.status === "comped"}
+                paying={subscription.stripeManaged}
+                catalog={catalog.tiers}
+                limits={meters}
+              />
+            ) : null}
+            {/* A pending organization has no plan yet: sales activate it, so the
+                ladder would be an upgrade path from nothing. */}
+            {activation.state === "active" ? (
+              <PlanUpgradeCard
+                plan={subscription?.plan ?? null}
+                paying={subscription?.stripeManaged ?? false}
+                catalog={catalog.tiers}
+              />
+            ) : null}
+          </>
+        ) : null}
 
         <Card className="mt-6">
           <CardHeader>

@@ -1,0 +1,196 @@
+---
+title: Modelo de datos
+description: Las tablas y cómo se relacionan, cómo se mantienen separadas las filas de una organización de las de otra y cómo se aplica el esquema a una base de datos.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Cada byte duradero reside en Postgres. Hay unas cuarenta tablas, y casi todas
+dependen de uno de estos dos anclajes: una **organización** o un **asistente**.
+Aprende esos dos pilares y el resto del esquema vendrá solo.
+
+## Los dos anclajes
+
+Se puede acceder a casi todas las tablas desde una organización. Estas son las
+filas que una organización posee directamente:
+
+<Mermaid
+  title="Lo que posee una organización (cada flecha es uno-a-muchos)"
+  chart={`
+flowchart LR
+  O["organizations"]
+  P["profiles"]
+  OM["organization_members"]
+  OI["organization_invites"]
+  A["assistants"]
+  KC["knowledge_collections"]
+  PC["provider_connections"]
+  HD["help_desks"]
+  SC["support_channels"]
+
+  O --> OM
+  P --> OM
+  O --> OI
+  O --> A
+  O --> KC
+  O --> PC
+  O --> HD --> SC
+`}
+/>
+
+Y esta es la cadena que vale la pena saber de memoria: la ruta desde un
+asistente hasta una cita, y desde una respuesta hasta un elemento de revisión:
+
+<Mermaid
+  title="De un asistente a una respuesta citada, y de una respuesta a un elemento de revisión"
+  chart={`
+flowchart TB
+  A["assistants"]
+  F["flows"]
+  PB["publications"]
+  CV["conversations"]
+  MS["messages"]
+  IM["improvement_messages"]
+  IMP["improvements"]
+
+  A -->|"routes with"| F
+  A -->|"snapshots into"| PB
+  A -->|"answers in"| CV
+  CV -->|"contains"| MS
+  MS -->|"flagged in"| IM
+  IMP -->|"collects"| IM
+
+  KC["knowledge_collections"]
+  S["sources"]
+  C["concepts"]
+  CH["concept_chunks"]
+
+  KC -->|"gathers"| S
+  S -->|"enriches into"| C
+  C -->|"splits into"| CH
+`}
+/>
+
+Las dos cadenas se encuentran en la recuperación en lugar de a través de una
+clave externa: un fragmento se resuelve en su concepto y su fuente, y estos se
+convierten en las citas de un mensaje (consulta
+[Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline)).
+
+Las filas de contenido utilizan una clave primaria de texto corto en lugar de un
+UUID, por lo que el ID de un asistente se puede leer y copiar en la consola. Las
+tablas de organización, miembro e invitación utilizan UUID de Postgres.
+
+## Todo el esquema, por área
+
+| Área | Tablas | Qué contiene |
+|---|---|---|
+| **Tenancy and identity** | `organizations`, `organization_members`, `organization_invites`, `profiles`, `sso_connections`, `platform_settings` | Organizaciones, sus miembros e invitaciones pendientes, y una copia de la tabla de usuarios de autenticación con la que las políticas pueden combinarse |
+| **Assistants and routing** | `assistants`, `flows`, `publications`, `assistant_access`, `assistant_skills`, `skills`, `assistant_goals`, `assistant_goal_runs`, `flow_trust`, `flow_trust_events` | Configuración del asistente, sus flujos y las instantáneas inmutables que ofrece el widget; además de herramientas, habilidades compartidas y objetivos |
+| **Knowledge and retrieval** | `knowledge_collections`, `sources`, `concepts`, `concept_chunks` | Colecciones, las fuentes que contienen, los conceptos en los que se convierte cada fuente y los fragmentos incrustados que permiten la búsqueda inversa |
+| **Conversations** | `conversations`, `messages`, `runtime_events` | Todas las conversaciones y mensajes, con el flujo que produjo cada respuesta y los eventos de tiempo de ejecución que hay detrás |
+| **Answer quality** | `improvements`, `improvement_counters`, `improvement_messages`, `improvement_proposals`, `answer_verdicts`, `answer_verifier_claims`, `compost_runs`, `compost_claims` | El rastreador de mejoras, su numeración por organización, las propuestas y la verificación de respuestas |
+| **Escalation** | `help_desks`, `support_channels` | Servicios de asistencia y sus canales de soporte por escrito |
+| **Operations** | `alerts`, `background_jobs`, `export_jobs`, `ai_usage`, `usage_daily`, `org_budgets` | Alertas de estado, trabajo en segundo plano en cola, archivos de exportación y contabilidad de uso |
+| **Provider access** | `provider_connections`, `local_connector_devices`, `local_connector_pairings`, `local_inference_jobs` | Conexiones de proveedores y los registros que hay detrás del acceso a modelos ejecutados localmente |
+
+## Cómo se mantienen separados los inquilinos
+
+El aislamiento se aplica dos veces, deliberadamente. La aplicación comprueba las
+capacidades antes de una mutación y la base de datos rechaza las filas que estén
+fuera de la organización del llamante, independientemente de lo que haya
+solicitado la aplicación.
+
+<Mermaid
+  title="Dos puertas independientes en la misma fila"
+  chart={`
+flowchart TB
+  REQ["A request"]
+  APP{"Application:<br/>does this role have<br/>the capability?"}
+  SQL{"Postgres:<br/>is the caller a member<br/>of this row's organization?"}
+  ROW[("The row")]
+  NO1["Rejected in the action"]
+  NO2["Invisible to the query"]
+
+  REQ --> APP
+  APP -->|"no"| NO1
+  APP -->|"yes"| SQL
+  SQL -->|"no"| NO2
+  SQL -->|"yes"| ROW
+`}
+/>
+
+La seguridad a nivel de fila está activada para todas las tablas. Los miembros
+pueden leer dentro de su organización, los editores y roles superiores pueden
+crear y actualizar, y los administradores y roles superiores pueden eliminar.
+Las escrituras que no deben ser falsificables —por ejemplo, un contador
+monotónico— pasan por funciones que se ejecutan con derechos elevados en lugar
+de por una política que tendría que confiar en el llamador.
+
+Las funciones auxiliares a las que llaman las políticas se encuentran en un
+esquema privado, no en el público, por lo que no forman parte de la superficie
+de la API que expone la base de datos.
+
+### Secretos
+
+La aplicación cifra dos tipos de valores antes de que lleguen a Postgres: las
+claves de la API del proveedor y las credenciales de integración de tickets. Se
+sellan con cifrado autenticado mediante una clave del entorno, por lo que la
+base de datos solo contiene texto cifrado y un volcado de la base de datos no
+filtra las credenciales.
+
+<Callout title="Set the encryption key before storing any credential">
+The key comes from configuration, not from the database. Rotating it without
+re-sealing existing rows makes them unreadable — see
+[Configuration](/self-hosting/configuration).
+</Callout>
+
+## Cómo se aplica el esquema
+
+Las migraciones son archivos SQL simples que se aplican en el orden de los
+nombres de archivo. **No** se aplican a mano ni con el comando push de la CLI de
+Supabase: el historial en vivo de este proyecto se escribió en parte fuera de
+banda, con nombres y prefijos numéricos duplicados que el historial con clave de
+versión de la CLI no puede representar.
+
+<Mermaid
+  title="El aplicador de migraciones"
+  chart={`
+flowchart TB
+  START["Run the applier<br/>against a database URL"]
+  LOCK["Take an advisory lock<br/>so concurrent runs are safe"]
+  LIST["List migration files<br/>in filename order"]
+  BASE{"Listed in the<br/>baseline file?"}
+  RECORD["Record it without running it"]
+  LEDGER{"Already in<br/>the ledger?"}
+  SKIP["Skip"]
+  TX["Run it in its own transaction —<br/>which also writes the ledger row"]
+  FAIL["Failed: no ledger row,<br/>so the next run retries it"]
+  EE["Then the enterprise chain,<br/>where one exists"]
+
+  START --> LOCK --> LIST --> BASE
+  BASE -->|"yes"| RECORD
+  BASE -->|"no"| LEDGER
+  LEDGER -->|"yes"| SKIP
+  LEDGER -->|"no"| TX
+  TX -->|"error"| FAIL
+  TX --> EE
+`}
+/>
+
+Las propiedades que importan desde el punto de vista operativo:
+
+- **The ledger is keyed by filename**, en un esquema privado. Lo que se ha
+  ejecutado es un hecho en la base de datos, no una suposición.
+- **Each migration is its own transaction**, y esa transacción escribe la fila
+  del libro mayor. Una migración que falla no deja nada atrás, por lo que al
+  volver a ejecutar el aplicador se reintenta exactamente lo mismo.
+- **Concurrent runs are safe**, mediante un bloqueo consultivo y una nueva
+  comprobación dentro de la transacción.
+- **New migrations use a timestamp prefix** y se incluyen en el mismo cambio que
+  el código que los necesita.
+- **The enterprise chain, where present, is applied strictly after the whole
+  open-source chain** y utiliza el mismo libro mayor. Una comprobación de código
+  abierto no tiene dicho directorio y aplica solo la cadena de código abierto.
+
+Consulta [Database](/self-hosting/database) para ejecutar esto en tu propio
+Postgres.

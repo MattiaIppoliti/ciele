@@ -1,0 +1,33 @@
+<!-- The Ciele ghost brand mark, for the public README's title.
+     Standalone copy of apps/docs/src/app/icon.svg: literal colors rather than
+     `currentColor`, because GitHub renders a README image as an <img> and no
+     page CSS reaches inside it. The white body with a grey outline reads on
+     both GitHub themes — the same way the mark renders in the product.
+
+     The 104 units of empty space below the drawing are load-bearing. GitHub
+     strips `style`, so the only vertical control is the legacy `align` attribute,
+     and `align="middle"` means "put the box's centre on the text baseline"
+     (-webkit-baseline-middle / -moz-middle-with-baseline) — not "centre it on the
+     text". That leaves the mark sitting ~11.7px low beside a 2em heading. Making
+     the box taller than the drawing raises the visible mark by half the padding:
+     at width="44", 104 units lands the mark's optical centre within 0.1px of the
+     title's cap-height centre. Change the padding, the width, or the heading size
+     and the three stop agreeing. -->
+<svg width="196" height="300" viewBox="8 -6 196 300" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ciele">
+  <path
+    d="M38 156H181V127C181 76 148 27 104 27C73 27 53 48 53 80C39 86 31 101 31 123C31 135 34 146 38 156Z"
+    fill="white"
+    stroke="#7F7F7F"
+    stroke-width="15"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M101 72H99C94.5817 72 91 75.5817 91 80V104C91 108.418 94.5817 112 99 112H101C105.418 112 109 108.418 109 104V80C109 75.5817 105.418 72 101 72Z"
+    fill="#7F7F7F"
+  />
+  <path
+    d="M136 72H134C129.582 72 126 75.5817 126 80V104C126 108.418 129.582 112 134 112H136C140.418 112 144 108.418 144 104V80C144 75.5817 140.418 72 136 72Z"
+    fill="#7F7F7F"
+  />
+</svg>

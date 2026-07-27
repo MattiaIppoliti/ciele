@@ -43,8 +43,12 @@ export const GET = withCronAuth(async () => {
   const results = await Promise.all(
     due.map(async ({ sourceId }) => {
       try {
-        await restartWebsiteCrawl({ db, sourceId });
-        return { sourceId, status: "processing" as const };
+        const result = await restartWebsiteCrawl({ db, sourceId });
+        // A re-crawl refused for budget (#510) is not a run and not a failure:
+        // report it as skipped so a sweep never claims work it did not start.
+        return result.started
+          ? { sourceId, status: "processing" as const }
+          : { sourceId, status: "skipped" as const, message: result.reason };
       } catch (error) {
         return {
           sourceId,

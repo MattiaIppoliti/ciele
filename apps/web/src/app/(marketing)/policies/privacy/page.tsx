@@ -94,7 +94,24 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Our website and admin console use a small number of cookies. Strictly necessary cookies keep you signed in and remember your interface preferences, such as light or dark theme. We also use privacy-respecting analytics to understand aggregate usage. You can control non-essential cookies through your browser settings.",
+        text: (
+          <>
+            Our website and admin console use a small number of cookies.
+            Strictly necessary cookies keep you signed in and remember your
+            interface preferences, such as light or dark theme. Optional
+            cookies — including the privacy-respecting analytics we use to
+            understand aggregate usage — are set only if you allow them, and
+            you can change or withdraw that choice at any time from the cookie
+            preferences link in our footer. Our{" "}
+            <a
+              href="/policies/cookies"
+              className="text-foreground font-medium underline underline-offset-4"
+            >
+              Cookie Notice
+            </a>{" "}
+            lists every cookie we set, what it does and how long it lasts.
+          </>
+        ),
       },
     ],
   },

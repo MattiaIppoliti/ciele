@@ -1,0 +1,82 @@
+---
+title: Actions de flux
+description: Les blocs de construction qu'un flux exécute en réponse à un message, depuis les messages fixes jusqu'à la recherche de connaissances et l'escalade.
+---
+
+Les actions sont les étapes qu'un flux exécute lorsqu'il correspond. Vous les
+ajoutez à l'étape de réponse du générateur de flux, et elles s'exécutent dans
+l'ordre dans lequel vous les placez. Cette page décrit les actions que vous
+pouvez utiliser et les situations dans lesquelles vous pouvez y avoir recours.
+
+## Message
+
+Envoie un message au visiteur. Un message peut être affiché mot pour mot,
+exactement tel que vous l'avez rédigé, ce qui est idéal lorsque la formulation
+doit être précise. Utilisez des messages fixes pour les politiques, les clauses
+de non-responsabilité et toute réponse qui ne doit jamais varier.
+
+## Rechercher dans la base de connaissances
+
+Effectue une recherche dans votre base de connaissances, trouve les passages les
+plus pertinents et rédige une réponse fondée sur ces passages, en indiquant les
+sources. C'est l'action qui produit des réponses utiles et naturelles à partir
+de votre contenu. C'est également ce que le comportement par défaut utilise. Les
+options vous permettent de l'associer à l'escalade et au suivi de la qualité des
+réponses, de sorte qu'un résultat médiocre puisse donner lieu à un suivi.
+
+## Suivis
+
+Propose des suggestions de questions supplémentaires après une réponse. Cela
+permet de maintenir la conversation en incitant le visiteur à aborder des sujets
+connexes pour lesquels l'assistant peut l'aider.
+
+## Bouton
+
+Affiche un bouton cliquable qui renvoie vers une destination, par exemple une
+page de votre site ou un formulaire. Utilisez-le pour indiquer clairement au
+visiteur la prochaine étape à suivre après un message.
+
+## Iframe
+
+Intègre du contenu externe dans la fenêtre de chat, comme une page ou un widget
+que vous souhaitez que le visiteur voie sans quitter la conversation.
+
+## Requête API
+
+Appelle un service externe et peut utiliser le résultat dans la conversation.
+Utilisez cette fonction pour rechercher quelque chose dans un autre système
+pendant que le visiteur attend. Vous configurez l'adresse et la méthode de la
+requête.
+
+## Amélioration
+
+Marque la réponse actuelle pour révision en créant un élément sur votre tableau
+Améliorations. Utilisez cette option pour les flux où vous souhaitez surveiller
+de près la qualité des réponses. Voir [Améliorations](/operations/improvements).
+
+## Transfert
+
+Transfère la conversation à un autre assistant. Utilisez cette option lorsqu'un
+autre assistant est mieux à même de poursuivre, par exemple un assistant
+spécialisé dans un sujet particulier.
+
+## Remontée et Envoi d'e-mail
+
+L'escalade met le visiteur en relation avec votre équipe via les
+[Help Desks](/help-desks) que vous avez configurés. Une action d'envoi d'e-mail
+peut notifier une destination lorsqu'un flux s'exécute. Utilisez-les pour vous
+assurer qu'un humain est informé au bon moment.
+
+## Combinaison d'actions
+
+Les actions sont plus efficaces lorsqu'elles sont combinées. Un seul flux peut
+envoyer un court message, rechercher les détails dans votre base de
+connaissances, proposer des questions de suivi et se terminer par un bouton
+d'escalade. Comme les actions s'exécutent dans l'ordre, vous contrôlez la forme
+exacte de la réponse.
+
+<Callout title="Order matters">
+Actions run from top to bottom. Put a framing message before a knowledge search,
+and put buttons or escalation after the answer so they appear as the natural next
+step.
+</Callout>

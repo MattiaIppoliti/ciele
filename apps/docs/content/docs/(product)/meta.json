@@ -6,13 +6,17 @@
   "pages": [
     "index",
     "editions",
+    "---Start here---",
     "getting-started",
+    "---Build an assistant---",
     "assistants",
     "knowledge",
     "flows",
+    "---Connect it up---",
     "help-desks",
     "authentication",
     "publishing",
+    "---Run it---",
     "operations",
     "organization"
   ]

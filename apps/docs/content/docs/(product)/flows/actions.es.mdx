@@ -1,0 +1,80 @@
+---
+title: Acciones de flujo
+description: Los bloques de construcción que ejecuta un flujo en respuesta a un mensaje, desde mensajes fijos hasta la búsqueda de conocimiento y la escalada.
+---
+
+Las acciones son los pasos que ejecuta un flujo cuando coincide. Las añades en
+el paso de respuesta del generador de flujos y se ejecutan en el orden en que
+las colocas. Esta página describe las acciones que puedes usar y cuándo recurrir
+a cada una.
+
+## Mensaje
+
+Envía un mensaje al visitante. Un mensaje se puede mostrar palabra por palabra,
+exactamente como lo escribiste, lo cual es ideal cuando la redacción debe ser
+precisa. Utiliza mensajes fijos para las políticas, los descargos de
+responsabilidad y cualquier respuesta que nunca deba variar.
+
+## Buscar en el conocimiento
+
+Busca en tu conocimiento, encuentra los pasajes más relevantes y escribe una
+respuesta basada en ellos, con fuentes. Esta es la acción que genera respuestas
+útiles y naturales a partir de tu contenido. También es lo que utiliza el
+comportamiento predeterminado. Las opciones te permiten vincularlo a la escalada
+y al seguimiento de la calidad de las respuestas, de modo que un resultado
+deficiente pueda dar lugar a un seguimiento.
+
+## Seguimientos
+
+Ofrece sugerencias de preguntas posteriores después de una respuesta. Esto
+mantiene viva la conversación al guiar al visitante hacia temas relacionados con
+los que el asistente puede ayudar.
+
+## Botón
+
+Muestra un botón en el que se puede hacer clic y que enlaza a algún lugar, por
+ejemplo, a una página de tu sitio web o a un formulario. Úsalo para indicarle al
+visitante claramente el siguiente paso después de un mensaje.
+
+## Iframe
+
+Incrusta contenido externo dentro de la ventana de chat, como una página o un
+widget que quieras que el visitante vea sin salir de la conversación.
+
+## Solicitud de API
+
+Llama a un servicio externo y puede usar el resultado en la conversación.
+Utiliza esto para buscar algo en otro sistema mientras el visitante espera.
+Configuras la dirección y el método de la solicitud.
+
+## Mejora
+
+Marca la respuesta actual para su revisión creando un elemento en tu panel de
+Mejoras. Utiliza esto en los flujos en los que quieras vigilar de cerca la
+calidad de las respuestas. Consulta [Mejoras](/operations/improvements).
+
+## Transferencia
+
+Transfiere la conversación a otro asistente. Utiliza esta opción cuando otro
+asistente sea más adecuado para continuar, por ejemplo, uno especializado en un
+tema en particular.
+
+## Escalada y Envío de correo electrónico
+
+La escalada conecta al visitante con tu equipo a través de los
+[Help Desks](/help-desks) que hayas configurado. Una acción de envío de correo
+electrónico puede notificar a un destinatario cuando se ejecuta un flujo. Úsalas
+para asegurarte de que una persona esté al tanto en el momento adecuado.
+
+## Combinar acciones
+
+Las acciones son más potentes cuando se combinan. Un solo flujo podría enviar un
+mensaje breve, buscar los detalles en tu base de conocimientos, ofrecer
+preguntas de seguimiento y terminar con un botón de escalada. Como las acciones
+se ejecutan en orden, tú controlas la forma exacta de la respuesta.
+
+<Callout title="Order matters">
+Actions run from top to bottom. Put a framing message before a knowledge search,
+and put buttons or escalation after the answer so they appear as the natural next
+step.
+</Callout>

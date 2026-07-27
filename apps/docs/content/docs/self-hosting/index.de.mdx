@@ -1,0 +1,68 @@
+---
+title: Open Source
+description: Betreiben Sie Ciele auf Ihrer eigenen Infrastruktur. Der Kern ist Open Source unter der AGPL-3.0 – die Admin-Konsole, das Chat-Widget, der Flow-Router, die Knowledge-Pipeline und die Operations-Oberflächen.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Der Kern von Ciele ist Open Source unter der **AGPL-3.0**-Lizenz, und Sie können
+ihn selbst ausführen. Die Open-Source-Edition ist das gesamte Produkt, das Ihre
+Besucher und Administratoren nutzen: die Admin-Konsole, das Chat-Widget, den
+[flow](/flows)-Router, die [knowledge](/knowledge)- und Abruf-Pipeline sowie die
+Operations-Oberflächen – [inbox](/operations/inbox),
+[improvements](/operations/improvements), [insights](/operations/insights) und
+[alerts](/operations/alerts).
+
+<Callout title="Same product, you operate it">
+Every feature page in the main [Documentation](/) applies to a self-hosted
+deployment. The difference is operational: you provide the infrastructure, the
+database, and the AI provider keys, and you apply upgrades. The managed
+alternative is [Ciele Cloud](/cloud).
+</Callout>
+
+## Was Sie bereitstellen
+
+- **A place to run it.** Die Apps sind Standard-Apps in Next.js; überall, wo
+  Node läuft, können sie gehostet werden.
+- **A database.** Ciele speichert seine Daten in Postgres und nutzt
+  [Supabase](/self-hosting/database) für die Datenbank, die Authentifizierung
+  und die Sicherheit auf Zeilenebene.
+- **AI provider keys.** Assistenten rufen einen KI-Anbieter auf, um Antworten zu
+  generieren; Sie stellen Ihre eigenen Schlüssel bereit. Siehe
+  [Konfiguration](/self-hosting/configuration).
+
+## Die Lizenz in Kürze
+
+Die AGPL-3.0 ist eine Open-Source-Lizenz. Sie dürfen die Software ausführen,
+untersuchen, modifizieren und weitergeben. Die entscheidende Bedingung ist die
+Netzwerkklausel: Wenn Sie Ciele modifizieren und diese modifizierte Version über
+ein Netzwerk anderen anbieten, müssen Sie diesen Nutzern auch den entsprechenden
+Quellcode Ihrer modifizierten Version zur Verfügung stellen. Wenn Sie die
+Software unverändert ausführen oder sie nur für den internen Gebrauch Ihrer
+eigenen Organisation modifizieren, entsteht diese Verpflichtung nicht. Diese
+Seite ist eine praktische Zusammenfassung und stellt keine Rechtsberatung dar.
+Die maßgeblichen Bedingungen finden Sie in der Datei `LICENSE` im
+Stammverzeichnis des Repositorys.
+
+Wenn Ihre Organisation die Verpflichtungen aus der AGPL oder die Betriebsarbeit
+lieber nicht übernehmen möchte, bietet [Ciele Cloud](/cloud) denselben Kern im
+Rahmen einer kommerziellen Vereinbarung.
+
+## Was in der Open-Source-Edition nicht enthalten ist
+
+Eine kleine Anzahl kommerzieller Managed-Service-Funktionen befindet sich
+außerhalb des Open-Source-Kerns und ist nicht Teil einer selbst gehosteten
+Bereitstellung. Die genaue Grenze finden Sie unter
+[The open-core boundary](/self-hosting/open-core-boundary).
+
+## Nächste Schritte
+
+<Cards>
+  <Card title="Installation" href="/self-hosting/installation" description="One command with Docker, or run the monorepo directly." />
+  <Card title="Configuration" href="/self-hosting/configuration" description="Environment variables for the database and AI providers." />
+  <Card title="Database" href="/self-hosting/database" description="Postgres, Supabase, and how migrations are applied." />
+  <Card title="Background workers" href="/self-hosting/workers" description="The optional graph and crawler services, and what they add." />
+  <Card title="Upgrading" href="/self-hosting/upgrade" description="Take a new release, back up, and roll back." />
+  <Card title="The open-core boundary" href="/self-hosting/open-core-boundary" description="Exactly what is open source and what is Cloud-only." />
+</Cards>

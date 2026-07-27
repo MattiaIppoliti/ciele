@@ -240,7 +240,13 @@ export async function embedText(
  * operational failure (provider call threw) that callers should surface —
  * silently landing null embeddings hides knowledge from vector search (#312).
  */
-export type EmbeddingBatchMode = "ok" | "no_model" | "error";
+/**
+ * Why a batch produced the embeddings it did. `capped` means the organization's
+ * embedding allowance is spent (#510): the content is stored and searchable
+ * lexically, exactly as when no provider is configured, and becomes vector-
+ * searchable when the window resets and it is re-embedded.
+ */
+export type EmbeddingBatchMode = "ok" | "no_model" | "error" | "capped";
 
 export async function embedTextsWithStatus(
   texts: string[],
@@ -258,6 +264,20 @@ export async function embedTextsWithStatus(
     console.error("[embeddings] batch embedding failed:", error);
     return { embeddings: texts.map(() => null), mode: "error" };
   }
+}
+
+/**
+ * Which credential would answer an embedding call for these connections, in the
+ * vocabulary the usage gate speaks — or null when nothing can embed. Resolving
+ * the model is local work (no request), so this is cheap enough to ask before
+ * deciding whether a batch is allowed to run.
+ */
+export function embeddingConnectionKind(
+  connections: ProviderConnection[]
+): "platform" | "byok" | null {
+  const resolved = getEmbeddingModel(connections);
+  if (!resolved) return null;
+  return resolved.credentialKind === "platform" ? "platform" : "byok";
 }
 
 export async function embedTexts(

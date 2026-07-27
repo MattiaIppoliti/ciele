@@ -16,8 +16,11 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 
 - **Frontend/app**: Next.js (App Router, RSC + Server Actions), **Tailwind v4**, **shadcn/ui**
   (Radix primitives under `components/ui`), `lucide-react` icons.
-- **AI runtime**: **Vercel AI SDK** (`ai`, `@ai-sdk/anthropic|openai|google`) — `streamText`,
-  `generateObject`, `tool`, `embed`/`embedMany`.
+- **AI runtime**: **Vercel AI SDK** (`ai`, `@ai-sdk/anthropic|openai|google|openai-compatible`) —
+  `streamText`, `generateObject`, `tool`, `embed`/`embedMany`. The agentic layer around the loop
+  (per-turn tool registry, layered system prompt, turn sessions, search budgets, the scheduled
+  grading loop) is described in §5.4–§5.5; the reader-facing version of the same material is
+  [`apps/docs` → Architecture → The agentic model](../apps/docs/content/docs/self-hosting/architecture/agentic-model.mdx).
 - **Data**: **Supabase** (Postgres + Auth + RLS) with **pgvector**; an in-memory **mock** for
   offline/demo.
 - **Crawler**: a provider matrix behind one lifecycle for Website Sources — **Local** (built-in
@@ -47,18 +50,35 @@ request/data flows, the runtime engines, the schema, and the seams you extend.
 ├── agents.md            # conversational runtime (the router + actions)
 ├── docs/
 │   ├── ARCHITECTURE.md  # ← this file (the "how")
-│   └── adr/             # 0001 providers · 0002 OKF knowledge · 0003 two-engine runtime ·
-│                         # 0004 per-app middleware · 0005 path-based revalidation
-├── apps/web/            # Next.js app (admin console + widget + API)
+│   ├── agentic-chat-runtime.md   # the agent loop and what production adds around it
+│   ├── adr/             # decisions: 0001 providers · 0002 OKF knowledge · 0003 two engines ·
+│   │                    # 0004 per-app middleware · 0005 deep module + revalidation ·
+│   │                    # 0006 tools/sessions/skills · 0007 federated credentials ·
+│   │                    # 0008 durable jobs · 0009 object storage · 0010 analytics ·
+│   │                    # 0011 observability · 0012 scraping · 0013 costs/tiers ·
+│   │                    # 0014 backend migration · 0015 local CLI connections ·
+│   │                    # 0016 Db facade · 0017 graph knowledge layer
+│   └── runbooks/        # operational procedures (crawler providers, OSS release, …)
+├── apps/web/            # Next.js app (admin console + widget + API) — platform.ciele.app
 │   └── src/
 │       ├── app/(admin)/ # authenticated admin console
 │       ├── app/widget/  # public widget page
-│       ├── app/api/     # widget + preview HTTP endpoints
+│       ├── app/api/     # widget + preview HTTP endpoints + /api/cron/*
 │       ├── app/actions.ts     # server actions (all mutations, RBAC-gated)
 │       ├── components/  # editor + widget UI (assistant/, help-desks/, widget/, ui/)
+│       ├── ee/          # enterprise implementations (excluded from the public mirror)
 │       └── lib/         # auth, rbac, data (request-scoped Db), runtime/ (engine, models, …)
+├── apps/admin/          # internal staff console (service-role, cross-org) — admin.ciele.app
+├── apps/docs/           # public documentation site (Fumadocs), incl. the reader-facing
+│                        # self-hosting/architecture section this file is the counterpart of
 ├── packages/db/         # @agent-hub/db: types (Db interface), mock, supabase, keyword engine
-└── supabase/            # migrations 0001–0016 + seed.sql
+├── packages/ui/ charts/ # shared primitives consumed by the apps
+├── services/            # worker containers: crawl4ai-worker, graph-worker (opt-in)
+├── deploy/              # the self-host Docker Compose stack + bootstrap
+├── ee/                  # enterprise-only tree (migrations chain; excluded from the mirror)
+├── mirror/ + scripts/   # the public-mirror overlay + the release gate, the migration
+│                        # applier, the version bumper
+└── supabase/            # migrations (filename order) + seed.sql
 ```
 
 ---
@@ -119,17 +139,19 @@ flag per item:
 |---------|------|--------|
 | General | `general` | ✅ enabled |
 | Knowledge | `knowledge` | ✅ enabled |
-| AI Tutor | `ai-tutor` | ⬜ disabled ("Coming soon") |
-| AI Feedback | `ai-feedback` | ⬜ disabled |
 | Flows | `flows` | ✅ enabled |
-| Help Desks | `help-desks` | ✅ enabled |
-| Style | `style` | ⬜ disabled |
-| Authentication | `authentication` | ⬜ disabled |
+| Tools & Skills | `tools` | ✅ enabled |
+| Goals | `goals` | ✅ enabled |
+| Assistant Help Desks | `help-desks` | ✅ enabled |
+| Style | `style` | ✅ enabled |
+| Authentication | `authentication` | ✅ enabled |
 | Publish | `publish` | ✅ enabled |
 
-> Note the divergence from the full target map in CLAUDE.md §4: the target editor has 9 live
-> sections; **this repo ships 5** (General, Knowledge, Flows, Help Desks, Publish). Style &
-> Authentication are stubbed nav entries, not routes.
+> All nine sections are live routes; the `enabled` flag remains the seam for gating a future one.
+> The divergence from CLAUDE.md §4 is no longer "how many sections" but *which*: this repo has
+> **Tools & Skills** and **Goals** (neither exists in the reference map), and does not have the
+> reference's education modules — **AI Tutor** and **AI Feedback** are out of scope and absent
+> from `SETUP_SECTIONS` entirely.
 
 ### 2.4 Key components
 
@@ -188,8 +210,8 @@ render identically.
 
 `packages/db` is a self-contained data package with **one interface, two implementations**:
 
-- **`types.ts`** — all domain types **and** the `Db` interface (~45 methods). This is the contract
-  every consumer codes against.
+- **`types.ts`** — all domain types **and** the `Db` interface (~170 methods, grown with every
+  feature; narrowing it is ADR-0016's subject). This is the contract every consumer codes against.
 - **`mock.ts`** — in-memory `MockStore` (Maps per entity), stashed on `globalThis.__agentHubMock` to
   survive Next HMR, richly seeded (demo org, 6 assistants w/ default flows, 6 help desks, an inbox
   conversation + linked improvement). No external deps.
@@ -201,10 +223,14 @@ render identically.
 - **`id.ts`** — `shortId()` 12-char slug (dash at position 8) used as the **text primary key** for
   content rows (assistants, flows, conversations, …); org/user/invite tables use Postgres `uuid`.
 
-### 4.1 Schema (16 migrations → 19 tables)
+### 4.1 Schema (~84 migrations → ~44 tables)
 
-Migrations `0001_init` → `0016_improvements` (note: **0016**, not 0015 — the Improvements feature is
-built). Grouped:
+Migrations run in **filename order**; early ones are numbered (`0001_init` → `0034_agentic_runtime`)
+and everything since uses a `YYYYMMDDHHMMSS_` prefix. They reach production through CI
+(`scripts/apply-migrations.sh`), tracked **by filename** in `private.applied_migrations` — not
+`supabase db push` (see CLAUDE.md §10 for why). Enterprise tables live in a **separate chain**,
+`ee/migrations/`, applied by the same applier strictly after the OSS chain; an OSS checkout applies
+only the OSS chain. Grouped:
 
 - **Tenancy**: `organizations`, `organization_members` (PK `(org,user)`, `org_role` enum),
   `organization_invites` (token), `profiles` (mirrors `auth.users` for RLS). Helpers:
@@ -227,7 +253,27 @@ built). Grouped:
   `config`/`form`/`conversation_data`/`availability` jsonb).
 - **Improvements**: `improvements` (`seq` per-org human key, status/priority/tags/assignee/due_date),
   `improvement_counters` (monotonic `next_seq`, RPC `next_improvement_seq`),
-  `improvement_messages` (M:N improvement↔message).
+  `improvement_messages` (M:N improvement↔message), `improvement_proposals` (the compost loop's
+  own run records).
+- **Agentic layer** (ADR-0006): `skills` + `assistant_skills` (org-authored prompt playbooks,
+  attached per assistant), `assistants.tools` jsonb (built-in gating + custom HTTP tools),
+  `conversations.session_state` jsonb (cross-turn tool state), `platform_settings.system_prompt`
+  (owner-only; RLS enabled with **zero policies**, so only the service-role client reads it).
+- **Quality loop** (§5.5): `assistant_goals` + `assistant_goal_runs` (standing goals and their
+  ledger), `answer_verdicts` + `answer_verifier_claims` (the independent verifier's per-message
+  verdict and its claim lease), `flow_trust` + `flow_trust_events` (the rolling per-flow trust
+  window), `compost_runs` + `compost_claims` (the weekly proposal pass).
+- **Operations**: `alerts` (integration health, auto-resolving), `background_jobs` (the durable job
+  layer, ADR-0008), `export_jobs` (async report files), `ai_usage` + `usage_daily` + `org_budgets`
+  (the token ledger, its rollup and per-org caps), `runtime_events` (turn-level telemetry,
+  ADR-0011).
+- **Identity & access**: `sso_connections` (per-org IdP config), `assistant_access` (per-assistant
+  grants), `local_connector_devices` / `local_connector_pairings` / `local_inference_jobs`
+  (the Preview-only local-CLI relay, ADR-0015).
+- **Retrieval engine selector**: `assistants.knowledge_engine` (`graph` default, `vector`
+  fallback — ADR-0017); the graph itself lives in the worker sidecar, not in Postgres.
+- **Enterprise chain** (`ee/migrations/`, not in an OSS checkout): `billing_subscriptions`,
+  `plan_limits`.
 
 **RLS pattern**: every table has RLS; members read within their org, `editor+` create/update, `admin+`
 delete/manage; secret-bearing writes (counters) go through `security definer` RPCs. Encrypted secrets
@@ -248,7 +294,7 @@ the runtime's `ACTION_HANDLERS` registry, and the runtime owns the `ChatReplyPar
 |---|---|---|
 | Function | `runAssistantChat` (`apps/web/.../runtime/engine.ts`) | `matchFlow` / `messageFlowCandidates` (`packages/db/src/engine.ts`) |
 | Intent routing | `classifyIntent` — **`generateObject` on a cheap classifier model**, flows rendered as a catalog w/ conditions + few-shot examples (`engine.ts:73`) | keyword/token scoring, `MATCH_THRESHOLD = 3`, hardcoded built-in triggers |
-| Knowledge | real RAG agent loop (`streamText` + `searchKnowledge` tool, `stepCountIs(5)`, cited Sources) | n/a — routing only, never renders |
+| Knowledge | real RAG agent loop (`streamText` + the per-turn toolset, bounded by the search budget, cited Sources — §5.4) | n/a — routing only, never renders |
 | Output | streamed ndjson (`text-delta`, `part`) | the matched `Flow` (or null) |
 | Used by | `/api/widget/[id]/chat`, `/api/preview/chat` (including no-provider action execution) | classifier fallback (no model / empty candidates / error) |
 
@@ -273,7 +319,7 @@ degrades to a fallback part instead of killing the turn.
 | Action | Behavior |
 |--------|----------|
 | `custom_message` | `flow.customMessage` **verbatim** (never model-rewritten) |
-| `search_knowledge` | Generative agent loop: `streamText` + `searchKnowledge` tool (≤5 steps) → text + dedup'd `sources`; `escalatePrompt` adds a help-desk button when nothing grounded the answer |
+| `search_knowledge` | Generative retrieval turn — the whole loop lives in `agentic-search/` (`runAgenticSearch`): context frame → query understanding → pre-search clarify → deterministic seed/reformulate passes → the model loop over the per-turn toolset → post-search clarify / best-effort caveat → dedup'd `sources`. `escalatePrompt` adds a help-desk button when nothing grounded the answer |
 | `suggest_help_desk` | Help-desk button (`helpDeskSettings.contactButtonLabel`) |
 | `follow_up_questions` | Up to 3 `suggestedQuestions` |
 | `show_button` / `iframe` | Emit if `actionSettings.{show_button.url, iframe.url}` set |
@@ -307,6 +353,57 @@ request, with no db).
 2. `custom_message` is **verbatim**.
 3. Generative behavior lives **inside** `search_knowledge` (and the Default behavior), never above the
    router.
+
+### 5.4 The agentic layer inside an action → see [ADR-0006](adr/0006-tau-style-runtime-sessions-tools-skills.md)
+
+Everything the model is given, and everything that bounds it, is assembled per turn. Reader-facing
+version: [`apps/docs` → Architecture → The agentic model](../apps/docs/content/docs/self-hosting/architecture/agentic-model.mdx).
+
+- **Tool registry** (`tools.ts`): a tool is a spec (name, description, zod input schema, step label,
+  `execute`); `buildToolset(ctx)` assembles the turn's AI-SDK ToolSet from the built-ins the
+  assistant enables (`assistants.tools.builtIns`) plus its admin-defined **custom HTTP tools**
+  (model-filled params → GET query string / POST JSON body). Built-ins: `searchKnowledge` (always
+  on — grounding is an ADR-0002 invariant, and it is the one spec deliberately *not* routed through
+  `instrument`: its lifecycle, coverage verdict and budget accounting live in the shared search-pass
+  primitive so seeded and model-driven passes cannot drift), `remember` (default on), `fetchUrl`
+  (default **off** — egress is opt-in). `instrument()` gives every other tool its
+  `tool-start`/`tool-end` events, duration, and **error containment**: a throwing tool returns
+  `{error}` to the model and never aborts the turn.
+- **Layered system prompt** (`buildSystemPrompt`, `agentic-search/run.ts`), highest precedence
+  first: platform (`platform_settings.system_prompt`, owner-only) → assistant identity +
+  `answering_style` → attached Skills → session memory → the turn's retrieval context → flow routing
+  context (incl. per-flow answering style / search guidelines, which either layer on the org default
+  or replace it).
+- **Turn sessions** (`session.ts` + `conversations.session_state`): loaded before the engine runs,
+  written back **after** the assistant message persists and only when a tool marked it dirty. The
+  `remember` built-in appends capped (20), deduped facts (≤500 chars) that the next turn injects as
+  its session-memory layer.
+- **Bounds**: `MAX_SEARCH_PASSES = 6` `searchKnowledge` calls per turn — counted specifically, so
+  non-search tools cannot consume retrieval budget — plus `stepCountIs(MAX_SEARCH_PASSES + 6)` as
+  the runaway guard, per-call timeouts and response caps, and explicit handling for a refusal
+  (`finishReason === "content-filter"` / raw `refusal`; never retried on another provider), a
+  `length` truncation, and a gate that ends the loop before any text streamed (clarify, or a
+  coverage-aware best-effort caveat).
+- **Egress** (`egress.ts`): the one policy gate for every model- or admin-supplied URL — validation
+  at DNS-resolution time, connections pinned to the validated addresses, every redirect hop
+  re-validated, and one indistinguishable message for "blocked" vs "down".
+
+### 5.5 The scheduled quality loop (nothing grades its own homework)
+
+Generation is the fast path; grading is out-of-band, on one nightly tick
+(`/api/cron/verify-goals`, in this order):
+
+| Pass | Module | What it does |
+|---|---|---|
+| Standing goals | `goal-runner.ts` + `goals.ts` | Replays due goals headlessly through the real engine against the assistant's latest Publication, empty history, nothing persisted. Grading is a **pure function** of the reply parts — if it can't be checked in code, it isn't a goal expectation. Raises/auto-resolves a per-goal Alert |
+| Answer verifier | `verifier.ts` | Re-reads recent generative answers with deliberately narrow input — question, answer, and the cited Concepts' content re-fetched at grade time; never the answering model's prompts or tool traces. One verdict per message |
+| Flow trust | `trust.ts` | Rolling pass rate over the last `TRUST_WINDOW = 50` graded signals per (Assistant, Flow) — verdicts + explicit Visitor feedback. ≥20 runs at ≥95% → `auto`; <10 runs or <90% → `watch`; between → `queue`. Trust is losable by construction |
+| Compost | `compost.ts` | Weekly per assistant: turns the window's failures into **at most three** proposals (faq / flow_adjustment / answering_style / standing_goal), each landing as an `AI proposal`-tagged Improvement. Nothing is ever auto-applied |
+
+The one runtime behavior tiers have today: a `watch`-tier flow's generative answers always offer the
+human exit ramp (`needsWatchEscalation`, pure and deduplicated against escalate-on-ungrounded). A
+missing tier reads fail-open (changes nothing); an *absent* trust row reads as `watch`, because
+absence of history must never grant more autonomy than a measured flow.
 
 ---
 
@@ -455,8 +552,19 @@ differ in theming/interactivity for other reply parts but not for citations.
   `getChatModel(provider, modelId, connections, resolution)` and
   `getClassifierModel(provider, connections, resolution)` return AI-SDK clients. Model catalog
   (`lib/runtime/catalog.ts`): Anthropic `claude-opus-4-8` / `claude-sonnet-5` / `claude-haiku-4-5`;
-  OpenAI `gpt-5.1` / `gpt-5.1-mini`; Google `gemini-3.5-flash` / `gemini-3.1-flash-lite`. The
-  **classifier** uses a cheap model tier (haiku / mini / flash-lite).
+  OpenAI `gpt-5.1` / `gpt-5.1-mini`; Google `gemini-3.5-flash` / `gemini-3.1-flash-lite` /
+  `gemini-2.5-flash-lite`. The **classifier** uses a cheap model tier (haiku / mini / flash-lite),
+  resolved separately from the answer model and metered separately in the usage ledger.
+- **The fourth provider family**: `openai_compatible` (#436) — any server speaking the OpenAI API.
+  It has **no static catalog**: the model ids live on the connection config (or the
+  `OPENAI_COMPATIBLE_*` env fallback, so a self-host runs fully local with zero in-app config), and
+  its API key is optional because many local servers ignore auth. `resolveOpenAiCompatibleCredential`
+  therefore treats "a connection exists" as BYOK rather than "a key is stored".
+- **Cross-provider fallback** (`resolveChatModel`): when the assistant's configured provider has no
+  credential, another provider answers at its **cheap tier** (`FALLBACK_MODEL`), flagged
+  `usedFallback`. Degrading to the keyword engine instead is deliberately *not* the behavior — the
+  system prompt would silently stop applying. The keyword router is reached only when no provider
+  anywhere resolves.
 - **Secrets**: AES-256-GCM via `lib/runtime/crypto.ts`, key from `APP_ENCRYPTION_KEY`. Sealed
   values: BYOK keys, ServiceNow ticketing creds (`clientSecret`/`password` are redacted before any
   payload reaches the client — see `help-desks/[deskId]/page.tsx`).
@@ -488,7 +596,8 @@ states it.
 | **Flow condition kind** | Extend `FlowCondition` to a discriminated union (`types.ts:29`); teach `classifyIntent`/`flowCatalogEntry` to render + weigh it (`engine.ts:49`); for hard gating, evaluate it before/around classification. (Today only `conversation_context` exists and it's soft context.) |
 | **Trigger** | Add to `FlowTrigger` (`types.ts:16`); the *message* path only routes `message` flows — non-message triggers need a client event + a new runtime entry to fire them. |
 | **Knowledge source kind** | Add to `SourceKind` (`types.ts:358`) + a config shape; add one **Extractor** to `EXTRACTORS` (`lib/runtime/extract.ts`) for its raw-input→text step; if it needs its own pipeline (like `website`), add an `IngestJob` kind (`lib/runtime/jobs.ts`); add a server action; retrieval already flows through chunks. |
-| **Provider** | Add to `Provider` union + `MODEL_CATALOG` (`catalog.ts`); wire the AI-SDK client in `models.ts` (+ embeddings if available). |
+| **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `lib/runtime/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also add a **custom HTTP tool** from the console with no deploy; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |
+| **Provider** | Add to `Provider` union + `MODEL_CATALOG` (`catalog.ts`); wire the AI-SDK client in `buildModel` (`models.ts`) and, if the family has no fixed catalog, teach `configuredModelId` where its model id comes from (+ embeddings if available). |
 | **Runtime public capability** | The chat runtime is a **deep, gray-box module** (ADR-0005): add the capability inside `lib/runtime/` freely, then decide if it's public — if so, export it from the right barrel (`index.ts` server / `client.ts` client-safe) **and** update `interface.test.ts`. Consumers import `@/lib/runtime` or `@/lib/runtime/client`; importing an internal (`@/lib/runtime/<file>`) from outside the folder is a lint error. |
 
 **Golden rule** (context.md invariant): new generative behavior belongs **inside an action**
@@ -517,12 +626,24 @@ behavior. (Security sealing lives in `lib/crypto.ts` and improvement-email templ
 
 ## 12. Status snapshot (what actually runs today)
 
-- **Live**: multi-tenant admin (Assistants/Knowledge/Flows/Help Desks/Publish), LLM widget runtime
-  (classifier routing + RAG agent loop + streaming), OKF knowledge (text/url/file/website/FAQ) with
-  pgvector + lexical fallback, Publications, Inbox, Insights overview, Improvements (schema + actions),
-  provider connections (platform + BYOK), 4-role RBAC + RLS.
-- **Tests**: offline Vitest unit suites (~100 tests across `apps/web` + `packages/db`) — see the
-  coverage list in §1 (`pnpm test`).
+- **Live**: multi-tenant admin (all nine SETUP sections — Assistants/Knowledge/Flows/Tools &
+  Skills/Goals/Help Desks/Style/Authentication/Publish), LLM widget runtime (classifier routing +
+  Agentic Search + streaming), OKF knowledge (text/url/file/website/FAQ) with pgvector + lexical
+  fallback and a graph engine selector, Publications, Inbox, Insights overview, Improvements,
+  Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
+- **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` always on, `remember` on,
+  `fetchUrl` opt-in, plus org-defined custom HTTP tools), org Skills layered into the prompt and
+  snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
+  search budget. **[target]** an MCP tool *provider* — the registry seam exists, the client does not.
+- **Quality loop** (§5.5): standing goals, the independent answer verifier, per-flow trust tiers, and
+  the weekly compost pass, all on one nightly cron. `watch`-tier escalation is the only tier-driven
+  runtime behavior so far.
+- **Editions**: one codebase; `lib/runtime/ee.ts` is the single edition-gating registry and OSS ships
+  inert no-op defaults (metering allows every call, billing reports no subscription). The public
+  mirror simply omits the enterprise tree, and every merge to `main` auto-cuts a release
+  (`.github/workflows/auto-release.yml` → `oss-release.yml`).
+- **Tests**: offline Vitest suites — ~120 colocated `*.test.ts` files across `apps/web` and
+  `packages/` (plus the `deploy/` compose contract) — see the coverage list in §1 (`pnpm test`).
 - **Ingestion**: extraction behind the `EXTRACTORS` registry (cheerio HTML→text, PDF, DOCX, plain
   text) and the pipeline running off the request path as **Ingestion Jobs** (in-process `after()`
   adapter; queue adapter is a later swap). The Knowledge UI polls Source status while processing.
@@ -541,8 +662,9 @@ behavior. (Security sealing lives in `lib/crypto.ts` and improvement-email templ
   failures still degrade silently to null embeddings with no Alert/backfill (#312); ticket/
   salesforce/api_endpoint channels render info-only in the widget (#315).
 - **[stored-but-inert]**: non-message triggers; rich condition types (role/url/course/schedule).
-- **⬜ disabled UI**: Style, Authentication, AI Feedback editor sections. AI Tutor is out of scope
-  (removed from the SETUP nav; no `study_mode`/`h5p` flow actions).
+- **⬜ out of scope**: the reference's education modules — AI Tutor and AI Feedback have no SETUP
+  section and no `study_mode`/`h5p` flow actions. (Style and Authentication, previously listed here as
+  disabled, are live sections now — see §2.3.)
 - **provider connections**: API keys remain supported; hosted consumer subscription credentials are
   retired (see ADR-0007). Per-Member local subscriptions can resolve only for Preview through the
   direct local adapter or paired connector relay; Widget resolution excludes them (ADR-0015). Federated/keyless

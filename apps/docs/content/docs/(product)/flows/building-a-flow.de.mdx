@@ -1,0 +1,69 @@
+---
+title: Einen Flow erstellen
+description: "Erstellen Sie einen Flow mit dem dreistufigen Builder: Trigger, Bedingungen und Antwort."
+---
+
+Sie erstellen einen Flow in drei Schritten: Wählen Sie aus, was ihn startet,
+fügen Sie optionale Bedingungen hinzu und definieren Sie die Antwort. Öffnen Sie
+einen Assistenten, wählen Sie **Flows** aus und erstellen Sie dann einen neuen
+Flow, um den Builder zu öffnen.
+
+## Schritt 1: Auslöser
+
+Der Trigger ist das Ereignis, das einen Flow zur Ausführung berechtigt. Der
+häufigste Auslöser ist, wenn ein Besucher eine Nachricht sendet. Andere Auslöser
+decken Momente wie das Öffnen des Chats ab. Wählen Sie den Trigger aus, der zu
+dem passt, worauf der Flow reagieren soll. Für die meisten Regeln, die Fragen
+beantworten, ist der Nachrichten-Trigger die richtige Wahl.
+
+## Schritt 2: Bedingungen
+
+Bedingungen sind optional. Sie schränken einen Flow ein, sodass er nur in
+bestimmten Situationen ausgeführt wird. Sie können festlegen, dass eine
+beliebige Bedingung erfüllt sein muss oder dass alle erfüllt sein müssen, und
+Sie können mehrere Bedingungen miteinander verknüpfen.
+
+Die Bedingung, die Sie am häufigsten verwenden, beschreibt den **Kontext der
+Konversation**: Sie erläutern in einfacher Sprache, welche Art von Nachricht
+dieser Flow verarbeiten soll, und Sie können einige Beispielnachrichten angeben,
+die übereinstimmen sollten, sowie einige, die dies nicht tun sollten. Diese
+Beispiele verfeinern die Übereinstimmung, sodass der Flow bei den richtigen
+Fragen ausgelöst wird.
+
+Lassen Sie die Bedingungen leer, wenn ein Flow allgemein gelten soll, und fügen
+Sie sie hinzu, wenn Sie Präzision benötigen.
+
+## Schritt 3: Antwort
+
+Die Antwort ist das, was der Flow tatsächlich tut. Es handelt sich um eine
+geordnete Liste von Aktionen, die von oben nach unten ausgeführt werden. Eine
+Antwort muss mindestens eine Aktion enthalten.
+
+Zu den gängigen Mustern gehören:
+
+- Eine einzelne **feste Nachricht** für eine Regel, die immer auf die gleiche
+  Weise antwortet.
+- Eine **Durchsuchung Ihres Wissens** nach einer Regel, die eine hilfreiche,
+  fundierte Antwort liefern sollte.
+- Eine Nachricht, gefolgt von **Schaltflächen**, die Besucher zum nächsten
+  Schritt führen.
+- Eine **Eskalation**, wenn eine Regel den Besucher an Ihr Team weiterleiten
+  soll.
+
+Unter [Flow-Aktionen](/flows/actions) finden Sie jede Aktion und ihre
+Einstellungen.
+
+## Speichern, sortieren und testen
+
+Wenn Sie einen Flow speichern, wird er in die Liste aufgenommen. Ziehen Sie ihn,
+um seine Priorität relativ zu den anderen Flows festzulegen, wobei zu beachten
+ist, dass die erste Übereinstimmung gewinnt. Testen Sie ihn dann in der
+Live-Vorschau, indem Sie Nachrichten senden, die ihn auslösen bzw. nicht
+auslösen sollen. Passen Sie die Beschreibung und die Beispiele an, bis er genau
+dann ausgelöst wird, wenn Sie es möchten.
+
+<Callout title="Start simple">
+A small number of clear flows is easier to reason about than many overlapping
+ones. Add a flow when you have a specific behavior in mind, and lean on the
+Default behavior for everything else.
+</Callout>

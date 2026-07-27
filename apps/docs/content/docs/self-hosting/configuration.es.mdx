@@ -1,0 +1,77 @@
+---
+title: Configuración
+description: Las variables de entorno que lee una implementación de Ciele autohospedada para su base de datos, proveedores de IA y secretos operativos.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Una implementación autohospedada se configura íntegramente mediante variables de
+entorno. Copia `apps/web/.env.example` en `apps/web/.env.local` y rellena los
+valores que necesites. El archivo de ejemplo viene con valores predeterminados
+de desarrollo local que funcionan, por lo que en una pila de base de datos local
+la mayoría de estos ya están configurados para ti.
+
+## Base de datos
+
+Configura ambos y la capa de datos cambiará automáticamente de la tienda de
+demostración a tu base de datos. Déjalos en blanco para permanecer en modo de
+demostración.
+
+| Variable | Finalidad |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | La URL de tu proyecto de Supabase. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | La clave pública anónima para el acceso desde el navegador. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave exclusiva del servidor para el tiempo de ejecución del widget y las lecturas con privilegios. Nunca la expongas al navegador. |
+
+Consulta [Base de datos](/self-hosting/database) para el aprovisionamiento y las
+migraciones.
+
+## Proveedores de IA
+
+Los asistentes llaman a un proveedor de IA para generar respuestas. Proporciona
+al menos una clave de plataforma o apunta a cualquier punto de conexión
+compatible con OpenAI para ejecutarlo de forma totalmente local.
+
+| Variable | Finalidad |
+| --- | --- |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Clave de plataforma utilizada cuando un asistente no tiene conexión a un proveedor por organización. |
+| `ANTHROPIC_API_KEY` | Proveedor adicional opcional. |
+| `OPENAI_API_KEY` | Proveedor adicional opcional. |
+
+<Callout title="Run fully local, no cloud AI">
+Set `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_CHAT_MODEL` to route
+answers through any server that speaks the OpenAI chat API — a local runner, a
+self-hosted model server, or a gateway. Add `OPENAI_COMPATIBLE_EMBEDDING_MODEL`
+(and `OPENAI_COMPATIBLE_EMBEDDING_DIMS`) to enable semantic knowledge search;
+without an embedding model, knowledge search falls back to lexical matching. An
+API key is only needed if your server enforces one.
+</Callout>
+
+Las organizaciones también pueden traer sus propias claves desde dentro de la
+consola, lo cual es una característica del producto y no una configuración de
+implementación.
+
+## Secretos y operaciones
+
+| Variable | Finalidad |
+| --- | --- |
+| `APP_ENCRYPTION_KEY` | Sella las claves de proveedor por organización en reposo (AES-256-GCM). Sin esta función, dichas claves se almacenan como texto plano marcado con una advertencia. Genera una con `openssl rand -base64 32`. |
+| `PLATFORM_OWNER_EMAIL` | El primer usuario que se registre con este correo electrónico se convierte en el propietario de la plataforma. |
+| `CRON_SECRET` | Secreto compartido que protege las rutas de la API de mantenimiento y cron. |
+
+## Ingestión de conocimiento (opcional)
+
+El canal de conocimiento de rastreo de sitios web puede usar un rastreador
+externo. Estos son opcionales; sin ellos, se utiliza el rastreador local
+integrado.
+
+| Variable | Finalidad |
+| --- | --- |
+| `APIFY_API_TOKEN` | Token para el proveedor de rastreo de sitios web basado en Apify. |
+| `CRAWL4AI_BASE_URL`, `CRAWL4AI_API_TOKEN` | Un trabajador privado de Crawl4AI; ambos son necesarios para que sea seleccionable, y el token es solo para el servidor. |
+
+<Callout type="warn" title="Review row-level security before shipping">
+The database ships with permissive row-level-security policies suited to a demo.
+Scope them to authenticated administrators before exposing a deployment to real
+users.
+</Callout>

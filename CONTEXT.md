@@ -235,6 +235,22 @@ One row per model call the runtime makes (stage `classify` / `generate` / `embed
 token **Budget** (notify raises an Alert; block pauses AI answers with the escalation offer).
 _Avoid_: billing, metering (generic).
 
+**Credit**:
+One euro cent of **estimated** platform cost — the unit the managed edition's plan allowances are
+denominated in, derived from the **AI Usage Ledger** and from crawled pages through one rate table.
+Denominating an allowance in cost rather than in tokens or pages is what keeps a plan's margin
+independent of which model an Organization runs. Never a billed amount: no provider gives Ciele a
+per-call cost feed, so every credit figure is a projection.
+_Avoid_: token, quota, point.
+
+**Metered Resource**:
+One of the three kinds of work the platform funds and therefore caps separately — **AI** (routing,
+answers, verification, scheduled AI work), **Embeddings** (knowledge indexing and query vectors),
+and **Scraping** (pages fetched by a crawler). Disjoint: every metered unit belongs to exactly one,
+so an exhausted crawl budget never stops answering. Each carries a monthly allowance from the plan
+and a weekly ceiling that guards against spending the month in days.
+_Avoid_: category, bucket, dimension.
+
 **Standing Goal**:
 An admin-authored golden question on an Assistant with deterministic expectations (not the
 fallback, cites a Source, expected Source URL, must-contain fragments), re-verified on a schedule

@@ -1,0 +1,132 @@
+---
+title: Installation
+description: Exécutez l'ensemble du produit avec une seule commande à l'aide de Docker, ou exécutez directement le monorepo pour le développement.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+Il existe deux façons de procéder. **Docker** vous fournit l'ensemble du produit
+— console, moteur d'exécution des widgets, base de données, tâches planifiées —
+sur une seule machine, avec une seule commande, et constitue la voie à suivre
+pour un déploiement réel. **Running the monorepo directly** est destiné au
+développement à partir du code.
+
+## L'installation en une seule commande
+
+```bash
+git clone <this repository> && cd ciele
+./deploy/bootstrap.sh
+```
+
+Le script de démarrage génère tous les secrets dont la pile a besoin — y compris
+les clés de base de données qu'elle signe elle-même — les écrit dans
+`deploy/.env` et lance l'ensemble. La première exécution récupère les images et
+compile l'application ; prévoyez donc plusieurs minutes. Une fois l'opération
+terminée, ouvrez [http://localhost:3000](http://localhost:3000) et
+inscrivez-vous : **le premier compte devient le propriétaire de son
+organisation**.
+
+Ajoutez `--seed` pour charger du contenu de démonstration nettoyé, afin de voir
+un produit prérempli avant d'ajouter votre propre contenu.
+
+<Callout title="No account anywhere, no license fee">
+A self-hosted deployment talks to no Ciele service. It can also talk to no AI
+vendor: point it at any server speaking the OpenAI chat and embeddings API — a
+local model runner on the same host works — and the whole thing runs offline.
+See [Configuration](/self-hosting/configuration).
+</Callout>
+
+### Ce qui s'exécute
+
+La pile est un ensemble de profils Docker Compose, sélectionnés par
+`COMPOSE_PROFILES` dans `deploy/.env` :
+
+| Profil | Par défaut | Description |
+| --- | :--: | --- |
+| `db` | ✅ | Postgres avec pgvector, ainsi que l'authentification, l'API de données, le stockage de fichiers et une passerelle leur fournissant une origine unique |
+| `migrate` | ✅ | One-shot : applique les migrations en attente et provisionne les compartiments de stockage, puis l'application démarre |
+| `app` | ✅ | L'application Web — console d'administration et moteur d'exécution des widgets |
+| `cron` | ✅ | Les tâches planifiées, selon les mêmes calendriers que ceux utilisés par le service géré |
+| `workers` | ⬜ | Récupération de graphes et un crawler de rendu JavaScript. Lourd — voir [Background workers](/self-hosting/workers) |
+| `studio` | ⬜ | Une interface utilisateur d'administration de base de données |
+
+<Callout type="warn" title="TLS is yours to terminate">
+The stack listens on plain HTTP and expects a reverse proxy in front of it. Only
+the app and the database gateway are published; Postgres is not reachable from
+outside the Compose network. When you put a proxy in front, set `PUBLIC_URL` and
+`SUPABASE_PUBLIC_URL` to the public HTTPS origins and rebuild the app image — the
+browser bundle inlines the latter at build time.
+</Callout>
+
+L'adoption d'une nouvelle version ultérieure correspond à une
+[Mise à niveau](/self-hosting/upgrade).
+
+## Exécutez directement le monorepo
+
+Ciele est un monorepo pnpm et Turborepo. Le produit destiné aux locataires est
+une application Next.js sous `apps/web` ; la couche de données est `packages/db`
+; le schéma de la base de données se trouve dans `supabase/`.
+
+## Prérequis
+
+- **Node.js** et **pnpm**.
+- **Docker**, si vous souhaitez exécuter la pile de base de données complète
+  localement (facultatif — voir le mode démo ci-dessous).
+
+## Exécutez-le localement
+
+```bash
+pnpm install
+pnpm dev        # starts the web app on http://localhost:3000
+```
+
+<Callout title="Demo mode with zero setup">
+Without a database configured, the app runs on an in-memory demo dataset so you
+can click through the whole console immediately. A banner on the dashboard reminds
+you that you are in demo mode. Configure the database when you are ready to keep
+real data.
+</Callout>
+
+## Exécuter avec une base de données locale
+
+Pour développer sur la même pile Postgres, avec la même authentification et la
+même sécurité au niveau des lignes que celle de production, exécutez la pile de
+base de données locale (Docker est requis) :
+
+```bash
+pnpm db:start                                  # boot the local database stack
+pnpm db:reset                                  # apply migrations + seed data
+cp apps/web/.env.example apps/web/.env.local   # local credentials are pre-filled
+pnpm dev                                        # the app now uses the database
+```
+
+- `pnpm db:status` affiche les URL locales, les clés et le lien vers le studio
+  de base de données.
+- `pnpm db:reset` efface et réinitialise à tout moment ; `pnpm db:stop`
+  l'arrête.
+- Laissez les variables de la base de données vides dans `.env.local` pour
+  revenir en mode démo.
+
+## Passer en production
+
+Pour un déploiement hébergé, pointez l'application vers un projet
+Postgres/Supabase hébergé et définissez ses informations d'identification en
+tant que variables d'environnement. Le schéma est appliqué par le moteur de
+migration, et non manuellement. Chacun de ces deux sujets a sa propre page :
+
+- [Configuration](/self-hosting/configuration) — les variables d'environnement à
+  définir.
+- [Base de données](/self-hosting/database) — la base de données hébergée et la
+  manière dont les migrations sont appliquées.
+
+## Scripts courants
+
+| Commande          | Ce qu'elle fait                              |
+| ---------------- | ----------------------------------------- |
+| `pnpm dev`       | Serveurs de développement pour l'espace de travail             |
+| `pnpm build`     | Version de production                          |
+| `pnpm lint`      | Analyse de l'espace de travail avec Lint                        |
+| `pnpm db:start`  | Démarrer la pile de base de données locale (Docker)    |
+| `pnpm db:reset`  | Appliquer les migrations et les données d'amorçage en local    |
+| `pnpm db:status` | Afficher les URL, les clés et les liens de la base de données locale |
+| `pnpm db:stop`   | Arrêter la pile de base de données locale             |

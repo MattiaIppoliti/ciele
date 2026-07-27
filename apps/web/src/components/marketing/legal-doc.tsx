@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 export type LegalBlock =
   | { type: "p"; text: ReactNode }
   | { type: "h3"; text: string }
-  | { type: "ul"; items: ReactNode[] };
+  | { type: "ul"; items: ReactNode[] }
+  /* Disclosure tables — what the Cookie Notice needs to list cookie names,
+     providers and retention side by side. */
+  | { type: "table"; caption?: string; headers: string[]; rows: ReactNode[][] };
 
 export interface LegalSection {
   id: string;
@@ -31,6 +34,57 @@ function Block({ block }: { block: LegalBlock }) {
           </li>
         ))}
       </ul>
+    );
+  }
+  if (block.type === "table") {
+    return (
+      <figure className="mt-6">
+        {/* The table scrolls inside its own box: five columns will not fit a
+            phone, and the page body must never scroll sideways. */}
+        <div className="border-border/60 overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[42rem] border-collapse text-left text-sm">
+            {block.caption ? (
+              <caption className="text-muted-foreground border-border/60 border-b px-4 py-3 text-left text-xs">
+                {block.caption}
+              </caption>
+            ) : null}
+            <thead>
+              <tr className="border-border/60 border-b">
+                {block.headers.map((header) => (
+                  <th
+                    key={header}
+                    scope="col"
+                    className="text-muted-foreground px-4 py-3 font-mono text-xs font-medium uppercase tracking-wider"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr
+                  key={rowIndex}
+                  className="border-border/60 border-b last:border-b-0"
+                >
+                  {row.map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className={
+                        cellIndex === 0
+                          ? "text-foreground px-4 py-3 align-top font-mono text-xs leading-relaxed"
+                          : "text-muted-foreground px-4 py-3 align-top text-sm leading-relaxed"
+                      }
+                    >
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </figure>
     );
   }
   return (

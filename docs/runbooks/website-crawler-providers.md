@@ -65,7 +65,27 @@ All three entry points call the same two functions, so behavior is identical:
 - **Scheduled re-crawl** — the `sweep-recrawls` cron claims due Sources and calls the same start op.
 
 `beginWebsiteCrawl` validates the target, resolves + persists the provider, and
-starts the async job, leaving the Source `processing`. `finalizeWebsiteCrawl`
+starts the async job, leaving the Source `processing`. It has three terminal
+outcomes, and they are deliberately distinguishable (`CrawlStartResult`):
+
+| Outcome | Source after | Where it shows |
+|---|---|---|
+| **started** | `processing`, run ids recorded | the Knowledge row's status badge |
+| **refused** — a spend allowance said no (#510) | **unchanged**: previous status and Concepts kept, `config.crawlBlockedReason` set | an amber line on the Knowledge row + the plan-cap Alert |
+| **failed** — bad target, no provider, adapter error | `error` with the message | the status badge |
+
+A refusal is not a failure: nothing is wrong with the Source, so nothing about it
+is downgraded, and a re-crawl refused after the scheduled sweep already claimed
+it is returned to `ready` so the next sweep can claim it again. Only crawlers
+that cost money are gated — a crawl resolved to the free in-process crawler is
+never refused.
+
+**Accounting is post-hoc, bounded by the page cap.** The allowance is checked
+when a crawl *starts*, and the pages it fetched are metered when it *finishes*,
+so a single crawl can overshoot the remaining budget by at most the Source's own
+`maxPages`. Charging up front would mean either refusing legitimate crawls or
+holding credits against an unknown page count, and neither is worth it at this
+granularity. `finalizeWebsiteCrawl`
 polls the stored run, and on success ingests one Concept per page, marks the
 Source `ready`, and resolves any crawl Alert; on failure/empty it marks `error`
 and raises a crawl Alert. Finalization is driven both by the client poll (open
