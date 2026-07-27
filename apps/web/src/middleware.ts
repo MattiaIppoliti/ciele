@@ -4,6 +4,11 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = [
   // Marketing home — also reachable by signed-in users who want to see it.
   /^\/home$/,
+  // The rest of the (marketing) route group: static security/legal pages the
+  // home footer's "Legal" column links to. No private data, so a signed-out
+  // visitor must reach them instead of bouncing to /login?next=.
+  /^\/security$/,
+  /^\/policies\//,
   /^\/login/,
   // Self-serve signup is closed; /signup is a redirect stub to /contact/sales
   // (see app/signup/page.tsx). Public so signed-out visitors reach the redirect.

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
+import { ThemeScript } from "@/components/theme-script";
 import { CookieConsent } from "@/components/cookie-consent/cookie-consent";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -51,6 +52,8 @@ export default function RootLayout({
       className={`${hostGrotesk.variable} ${sortsMillGoudy.variable} ${solitus.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="app-backdrop h-screen overflow-hidden font-sans">
+        {/* Must stay in the root layout — see theme-script.tsx. */}
+        <ThemeScript />
         {children}
         <Toaster richColors position="bottom-right" />
         {/* Owns the consent banner *and* the Vercel analytics scripts, which it

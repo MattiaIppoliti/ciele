@@ -3,7 +3,6 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ShellProvider } from "@/components/shell/shell-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ThemeScript } from "@/components/theme-script";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
 import { TopBar } from "@/components/shell/top-bar";
 import { StaticIcons } from "@/components/ui/animated-icon";
@@ -31,10 +30,6 @@ export default async function AdminLayout({
 
   return (
     <>
-      {/* Server-rendered: sets the theme class before paint. Kept a sibling of
-          the client provider so React doesn't reconcile a <script> on the
-          client (which would warn). */}
-      <ThemeScript />
       <ThemeProvider>
         <TooltipProvider delay={300}>
           <ShellProvider assistants={summaries}>

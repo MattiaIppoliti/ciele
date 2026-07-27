@@ -109,6 +109,21 @@ describe("middleware local connector relay", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
+  it("serves the security and legal pages without a session", async () => {
+    for (const path of [
+      "/security",
+      "/policies/privacy",
+      "/policies/terms-of-service",
+    ]) {
+      const response = await middleware(
+        new NextRequest(`https://ciele.example.com${path}`)
+      );
+
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.get("location")).toBeNull();
+    }
+  });
+
   it("lets an authenticated user view the marketing home", async () => {
     mocks.getClaims.mockResolvedValueOnce({
       data: { claims: { sub: "user-1" } },
