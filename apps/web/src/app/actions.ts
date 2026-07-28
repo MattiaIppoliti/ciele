@@ -82,13 +82,13 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth";
-import { requireMember, requireSession } from "@/lib/authz";
+import { type MemberContext, requireMember, requireSession } from "@/lib/authz";
 import { orgMutation } from "@/lib/org-mutation";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { invalidatePublication } from "@/lib/widget-db";
-import { canManageMembers } from "@/lib/rbac";
+import { canChangeRoles, canManageMembers } from "@/lib/rbac";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createSupabaseServiceClient,
@@ -248,19 +248,44 @@ export async function joinDemoOrgAction() {
 
 // --- Members & invites --------------------------------------------------------
 
+/**
+ * Admins and owners edit roles; only owners may grant or revoke ownership.
+ * The same asymmetry is enforced by RLS (20260728120000) — this check is the
+ * one that produces a readable error instead of a silent no-op update.
+ */
+async function assertMayManageMemberTier(
+  ctx: MemberContext,
+  userId: string,
+  targetRole?: Role
+) {
+  const { db, session } = ctx;
+  if (canChangeRoles(session.role)) return;
+  if (targetRole === "owner") throw new Error("Only owners can grant ownership");
+  const members = await db.listMembers(session.organization.id);
+  const target = members.find((m) => m.userId === userId);
+  if (target?.role === "owner")
+    throw new Error("Only owners can change an owner");
+}
+
 export async function updateMemberRoleAction(userId: string, role: Role) {
   await orgMutation(
-    { capability: "changeRoles", entities: [{ kind: "members" }] },
-    ({ db, session }) =>
-      db.updateMemberRole(session.organization.id, userId, role)
+    { capability: "manageMembers", entities: [{ kind: "members" }] },
+    async (ctx) => {
+      await assertMayManageMemberTier(ctx, userId, role);
+      await ctx.db.updateMemberRole(ctx.session.organization.id, userId, role);
+    }
   );
 }
 
 export async function removeMemberAction(userId: string) {
-  // Admins remove anyone; any Member may remove themselves (leave org).
-  const { db, session } = await requireMember();
-  if (!canManageMembers(session.role) && userId !== session.userId)
-    throw new Error("Not allowed");
+  // Admins remove anyone below the owner tier; any Member may remove
+  // themselves (leave org).
+  const ctx = await requireMember();
+  const { db, session } = ctx;
+  if (userId !== session.userId) {
+    if (!canManageMembers(session.role)) throw new Error("Not allowed");
+    await assertMayManageMemberTier(ctx, userId);
+  }
   await db.removeMember(session.organization.id, userId);
   revalidatePath("/settings/members");
 }

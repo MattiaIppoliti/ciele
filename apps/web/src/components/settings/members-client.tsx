@@ -1,20 +1,23 @@
-﻿"use client";
+"use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
-import { Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, Link2, Plus, Trash2, UserRound } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
+import { createInviteAction, updateMemberRoleAction } from "@/app/actions";
+import { Table, type TableColumn } from "@/components/motion/table";
+import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
+import { formatDay } from "@/lib/format";
 import {
-  createInviteAction,
-  removeMemberAction,
-  revokeInviteAction,
-  updateMemberRoleAction,
-} from "@/app/actions";
+  assignableRoles,
+  buildMemberRows,
+  canManageRow,
+  type MemberRow,
+} from "@/lib/member-rows";
 import {
   Badge,
   Button,
-  Card,
   CopyFeedbackIcon,
   Hint,
   Input,
@@ -27,8 +30,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const ROLES: Role[] = ["owner", "admin", "editor", "viewer"];
-
 function inviteUrl(token: string): string {
   return `${window.location.origin}/join/${token}`;
 }
@@ -37,24 +38,40 @@ export function MembersClient({
   members,
   invites,
   currentUserId,
-  canChangeRoles,
+  canManageRoles,
+  canManageOwners,
   canInvite,
   demo,
 }: {
   members: Member[];
   invites: Invite[];
   currentUserId: string;
-  canChangeRoles: boolean;
+  /** Admins and owners edit roles and remove people. */
+  canManageRoles: boolean;
+  /** Only owners may grant or revoke ownership. */
+  canManageOwners: boolean;
   canInvite: boolean;
   demo: boolean;
 }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("editor");
+  const [pendingRemoval, setPendingRemoval] = useState<MemberRow | null>(null);
   const [isPending, startTransition] = useTransition();
   const { copyText, isCopied } = useCopyFeedback<string>();
 
-  async function copyInvite(invite: Invite) {
-    if (await copyText(invite.id, inviteUrl(invite.token))) {
+  const rows = useMemo(
+    () => buildMemberRows(members, invites, currentUserId),
+    [members, invites, currentUserId]
+  );
+  const inviteTokens = useMemo(
+    () => new Map(invites.map((i) => [i.id, i.token])),
+    [invites]
+  );
+
+  async function copyInvite(row: MemberRow) {
+    const token = inviteTokens.get(row.subjectId);
+    if (!token) return;
+    if (await copyText(row.subjectId, inviteUrl(token))) {
       toast.success("Invite link copied");
     } else {
       toast.error("Could not copy the invite link");
@@ -72,6 +89,142 @@ export function MembersClient({
     });
   }
 
+  const manageOpts = { canManageMembers: canManageRoles, canManageOwners };
+
+  const columns: TableColumn<MemberRow>[] = [
+    {
+      key: "name",
+      header: "User",
+      accessor: (row) => row.name,
+      sortable: true,
+      width: "38%",
+      cell: (row) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-full">
+            <UserRound className="text-foreground/70 size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate font-medium">
+              {row.name}
+              {row.isSelf && <span className="text-muted-foreground"> (you)</span>}
+            </p>
+            {row.email && row.email !== row.name ? (
+              <p className="text-muted-foreground truncate text-xs">{row.email}</p>
+            ) : null}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      accessor: (row) => row.status,
+      sortable: true,
+      width: "14%",
+      cell: (row) =>
+        row.status === "active" ? (
+          <Badge variant="secondary">Active</Badge>
+        ) : (
+          <Badge variant="outline">Pending</Badge>
+        ),
+    },
+    {
+      key: "since",
+      header: "Joined",
+      accessor: (row) => row.since,
+      sortable: true,
+      width: "18%",
+      hideBelowSm: true,
+      cell: (row) => (
+        <span className="text-muted-foreground">{formatDay(row.since)}</span>
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      accessor: (row) => row.role,
+      sortable: true,
+      width: "18%",
+      // A pending invite's role is fixed at creation — there is no member row
+      // to update yet, so it renders as a badge like an unmanageable member.
+      cell: (row) =>
+        row.kind === "member" && canManageRow(row, manageOpts) ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="outline" size="sm" className="capitalize" />
+              }
+            >
+              {row.role}
+              <ChevronDown className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {assignableRoles(canManageOwners).map((role) => (
+                <DropdownMenuItem
+                  key={role}
+                  className="capitalize"
+                  onClick={() =>
+                    startTransition(async () => {
+                      await updateMemberRoleAction(row.subjectId, role);
+                      toast.success(`Role updated to ${role}`);
+                    })
+                  }
+                >
+                  {role}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Badge variant="outline" className="capitalize">
+            {row.role}
+          </Badge>
+        ),
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">Actions</span>,
+      align: "right",
+      width: "12%",
+      cell: (row) => (
+        <div className="flex items-center justify-end gap-1">
+          {row.kind === "invite" && canManageRoles ? (
+            <Hint label="Copy invite link">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Copy invite link"
+                onClick={() => void copyInvite(row)}
+              >
+                {isCopied(row.subjectId) ? (
+                  <CopyFeedbackIcon copied className="size-4" />
+                ) : (
+                  <Link2 className="size-4" />
+                )}
+              </Button>
+            </Hint>
+          ) : null}
+          {canManageRow(row, manageOpts) ? (
+            <Hint label={row.kind === "invite" ? "Revoke invitation" : "Remove member"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={
+                  row.kind === "invite"
+                    ? `Revoke invitation for ${row.name}`
+                    : `Remove ${row.name}`
+                }
+                onClick={() => setPendingRemoval(row)}
+              >
+                <AnimatedIcon icon={Trash2} size={16} />
+              </Button>
+            </Hint>
+          ) : null}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className={`mt-8 space-y-8 ${isPending ? "opacity-70" : ""}`}>
       {demo && (
@@ -80,159 +233,60 @@ export function MembersClient({
         </Badge>
       )}
 
-      {/* Members table */}
-      <Card size="sm" className="gap-0 p-0">
-        {members.map((member) => (
-          <div
-            key={member.userId}
-            className="flex items-center gap-3 border-b px-5 py-4 last:border-b-0"
-          >
-            <span className="bg-muted flex size-9 items-center justify-center rounded-full">
-              <UserRound className="text-foreground/70 size-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">
-                {member.email || member.userId}
-                {member.userId === currentUserId && (
-                  <span className="text-muted-foreground"> (you)</span>
-                )}
-              </p>
-            </div>
-            {canChangeRoles && member.userId !== currentUserId ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button variant="outline" size="sm" className="capitalize" />}
-                >
-                  {member.role}
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {ROLES.map((role) => (
-                    <DropdownMenuItem
-                      key={role}
-                      className="capitalize"
-                      onClick={() =>
-                        startTransition(async () => {
-                          await updateMemberRoleAction(member.userId, role);
-                          toast.success(`Role updated to ${role}`);
-                        })
-                      }
-                    >
-                      {role}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Badge variant="outline" className="capitalize">
-                {member.role}
-              </Badge>
-            )}
-            {member.userId !== currentUserId && canChangeRoles && (
-              <Hint label="Remove member">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remove member"
-                  onClick={() => {
-                    if (!window.confirm("Remove this member?")) return;
-                    startTransition(async () => {
-                      await removeMemberAction(member.userId);
-                      toast.success("Member removed");
-                    });
-                  }}
-                >
-                  <AnimatedIcon icon={Trash2} size={16} />
-                </Button>
-              </Hint>
-            )}
-          </div>
-        ))}
-      </Card>
+      <Table
+        data={rows}
+        columns={columns}
+        getRowId={(row) => row.id}
+        emptyState="No members yet"
+      />
+
+      <RemoveMemberModal
+        row={pendingRemoval}
+        open={pendingRemoval !== null}
+        onClose={() => setPendingRemoval(null)}
+      />
 
       {/* Invite — admins only; editors get a read-only roster. */}
       {canInvite && (
-      <div>
-        <h2 className="text-lg font-semibold">Invite people</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Creates a join link you can share. Email is optional (just a note).
-        </p>
-        <form onSubmit={handleInvite} className="mt-3 flex flex-wrap gap-2">
-          <Input
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="email (optional)"
-            type="email"
-            className="w-64"
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={<Button type="button" variant="outline" className="capitalize" />}
-            >
-              {inviteRole}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {ROLES.filter((r) => r !== "owner").map((role) => (
-                <DropdownMenuItem
-                  key={role}
-                  className="capitalize"
-                  onClick={() => setInviteRole(role)}
-                >
-                  {role}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button type="submit" disabled={isPending}>
-            <Plus className="size-4" /> Create invite
-          </Button>
-        </form>
-
-        {invites.length > 0 && (
-          <div className="mt-4 space-y-2">
-            {invites.map((invite) => (
-              <div
-                key={invite.id}
-                className="flex items-center gap-3 rounded-xl border px-4 py-2.5"
+        <div>
+          <h2 className="text-lg font-semibold">Invite people</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Creates a join link you can share. Email is optional (just a note).
+          </p>
+          <form onSubmit={handleInvite} className="mt-3 flex flex-wrap gap-2">
+            <Input
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              placeholder="email (optional)"
+              type="email"
+              className="w-64"
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button type="button" variant="outline" className="capitalize" />
+                }
               >
-                <div className="min-w-0 flex-1 text-sm">
-                  <span className="font-medium">
-                    {invite.email || "Anyone with the link"}
-                  </span>{" "}
-                  <Badge variant="outline" className="ml-1 capitalize">
-                    {invite.role}
-                  </Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void copyInvite(invite)}
-                >
-                  <CopyFeedbackIcon
-                    copied={isCopied(invite.id)}
-                    className="size-4"
-                  />
-                  {isCopied(invite.id) ? "Copied" : "Copy link"}
-                </Button>
-                <Hint label="Revoke invite">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Revoke invite"
-                    onClick={() =>
-                      startTransition(async () => {
-                        await revokeInviteAction(invite.id);
-                        toast.success("Invite revoked");
-                      })
-                    }
+                {inviteRole}
+                <ChevronDown className="size-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {assignableRoles(false).map((role) => (
+                  <DropdownMenuItem
+                    key={role}
+                    className="capitalize"
+                    onClick={() => setInviteRole(role)}
                   >
-                    <AnimatedIcon icon={Trash2} size={16} />
-                  </Button>
-                </Hint>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                    {role}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button type="submit" disabled={isPending}>
+              <Plus className="size-4" /> Create invite
+            </Button>
+          </form>
+        </div>
       )}
     </div>
   );

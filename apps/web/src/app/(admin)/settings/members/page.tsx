@@ -26,7 +26,8 @@ export default async function MembersPage() {
         members={members}
         invites={invites}
         currentUserId={session.userId}
-        canChangeRoles={canChangeRoles(role)}
+        canManageRoles={canManage}
+        canManageOwners={canChangeRoles(role)}
         canInvite={canManage}
         demo={session.demo}
       />
