@@ -296,15 +296,14 @@ function PlanTilt({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Where "View the source" points. It is configuration rather than a constant
- * because the public repository slug cannot be written here: this file ships in
- * the mirror, and the release gate rejects the private tracker's owner slug. A
- * deployment that has not set it sends the visitor to the open-core page, which
- * names the repository it belongs to.
+ * The open-source repository — where "View the source" goes and what the quick
+ * start clones. Writing it out is deliberate: an install command a reader has to
+ * fill in themselves is not an install command.
+ *
+ * Overridable so a fork points at itself rather than at us.
  */
 const SOURCE_URL =
-  process.env.NEXT_PUBLIC_SOURCE_URL ||
-  "https://docs.ciele.app/self-hosting/open-core-boundary";
+  process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com/MattiaIppoliti/ciele";
 
 /**
  * Getting the open-source edition running. The commands are the ones from
@@ -316,11 +315,9 @@ const INSTALL_TABS = [
   {
     label: "Quick start",
     language: "bash",
-    // The repository URL is deliberately a placeholder, exactly as the docs
-    // write it: this file ships in the public mirror, whose gate rejects the
-    // private tracker's owner slug, and the mirror is the copy a self-hoster
-    // is already looking at when they read this.
-    code: `git clone <this repository> && cd ciele
+    // Copy-pasteable as printed. `SOURCE_URL` is a build-time constant, so a
+    // fork that sets NEXT_PUBLIC_SOURCE_URL gets its own address here too.
+    code: `git clone ${SOURCE_URL}.git && cd ciele
 pnpm install
 pnpm dev`,
   },
