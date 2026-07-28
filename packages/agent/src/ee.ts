@@ -193,6 +193,12 @@ export interface BillingPaymentMethod {
 /** One issued invoice, as the billing page lists it. */
 export interface BillingInvoice {
   id: string;
+  /**
+   * The provider's human invoice number (e.g. "N3WRKR5S-0001"), or null before
+   * one is assigned. This is the reference an accounts department reconciles
+   * against, so it is worth a column of its own — `id` is ours to key rows with.
+   */
+  number: string | null;
   /** ISO instant the invoice was issued. */
   issuedAt: string;
   /** Minor-unit total in `currency` (a provider always bills in minor units). */

@@ -10,6 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { openBillingPortalAction } from "@/app/(admin)/settings/billing/actions";
+import {
+  EMPTY_FIELD,
+  formatBillingDate,
+  formatBillingMoney,
+  invoiceRows,
+} from "@/lib/billing-account-view";
 
 /**
  * What Stripe knows, on the Billing tab: when the next invoice falls due and for
@@ -31,13 +37,11 @@ export function BillingAccountCard({
           <CardTitle>Next invoice</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm sm:grid-cols-3">
-          <Field label="Renews">{formatDate(account.renewsAt)}</Field>
+          <Field label="Renews">{formatBillingDate(account.renewsAt)}</Field>
           <Field label="Projected total">
-            {formatMoney(account.nextAmountMinor, account.currency)}
+            {formatBillingMoney(account.nextAmountMinor, account.currency)}
           </Field>
-          <Field label="Cancels">
-            {account.cancelAt ? formatDate(account.cancelAt) : "—"}
-          </Field>
+          <Field label="Cancels">{formatBillingDate(account.cancelAt)}</Field>
         </CardContent>
       </Card>
 
@@ -94,32 +98,31 @@ export function BillingAccountCard({
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  {/* The provider's invoice number: what an accounts department
+                      reconciles a payment against. */}
+                  <TableHead>Number</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead className="text-right">Invoice</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {account.invoices.map((invoice) => (
-                  <TableRow key={invoice.id}>
-                    <TableCell className="font-medium">
-                      {formatDate(invoice.issuedAt)}
+                {invoiceRows(account.invoices).map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.dateLabel}</TableCell>
+                    <TableCell className="text-muted-foreground tabular-nums">
+                      {row.numberLabel}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={invoice.status === "paid" ? "secondary" : "outline"}
-                        className="capitalize"
-                      >
-                        {invoice.status}
-                      </Badge>
+                      <Badge variant={row.statusVariant}>{row.statusLabel}</Badge>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {formatMoney(invoice.amountMinor, invoice.currency)}
+                      {row.amountLabel}
                     </TableCell>
                     <TableCell className="text-right">
-                      {invoice.url ? (
+                      {row.url ? (
                         <a
-                          href={invoice.url}
+                          href={row.url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 underline underline-offset-4"
@@ -127,7 +130,7 @@ export function BillingAccountCard({
                           View <ExternalLink className="size-3" />
                         </a>
                       ) : (
-                        "—"
+                        EMPTY_FIELD
                       )}
                     </TableCell>
                   </TableRow>
@@ -156,22 +159,5 @@ function Field({
   );
 }
 
-/** Dates are rendered in UTC so two admins in different places read one date. */
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
-/** Stripe bills in minor units; the currency it billed in is the one we print. */
-function formatMoney(amountMinor: number | null, currency: string): string {
-  if (amountMinor === null) return "—";
-  return (amountMinor / 100).toLocaleString("en-GB", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  });
-}
+/* Date, money and status formatting live in `@/lib/billing-account-view` — a
+   plain module, so the rules a billing table is read through have tests. */
