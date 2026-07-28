@@ -113,6 +113,9 @@ describe("enterprise capability registry", () => {
         async startBillingPortal() {
           return "https://portal.example/session";
         },
+        async reconcileCheckout() {
+          return true;
+        },
       },
     });
     resetEnterpriseCapabilities();

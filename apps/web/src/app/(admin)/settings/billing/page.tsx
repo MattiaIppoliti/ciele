@@ -54,11 +54,26 @@ export default async function BillingPage({
   if (!canManageMembers(role)) redirect("/");
 
   const capabilities = getEnterpriseCapabilities();
-  const [activation, subscription, limits, params] = await Promise.all([
+  const params = await searchParams;
+  // Straight back from Checkout: write the subscription from the session before
+  // reading anything, so a customer who lands ahead of the webhook is not told
+  // their organization is still pending. Failures are swallowed on purpose — the
+  // webhook is the source of record and will apply the same row moments later.
+  const returnedSession = params.session_id;
+  if (params.checkout === "success" && typeof returnedSession === "string") {
+    try {
+      await capabilities.billing.reconcileCheckout({
+        organizationId: session.organization.id,
+        sessionId: returnedSession,
+      });
+    } catch (error) {
+      console.error("[billing] checkout reconciliation failed", error);
+    }
+  }
+  const [activation, subscription, limits] = await Promise.all([
     capabilities.activation.getActivation(session.organization.id),
     capabilities.billing.getSubscription(session.organization.id),
     capabilities.metering.getUsageLimits(organizationId),
-    searchParams,
   ]);
   const catalog = capabilities.billing.getPlanCatalog();
   // Whether the pending card offers a card field or a conversation: only a tier

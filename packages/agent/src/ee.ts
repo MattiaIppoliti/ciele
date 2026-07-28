@@ -216,6 +216,25 @@ export interface BillingAccessor {
    * for (OSS, a comped grant, an unconfigured Stripe).
    */
   startBillingPortal(organizationId: string): Promise<string | null>;
+  /**
+   * Write the subscription for a checkout session the buyer has just returned
+   * from, so activation does not wait on the webhook. `true` when a row was
+   * written; `false` for every case that legitimately writes nothing — no
+   * checkout provider, a session that does not belong to this organization, one
+   * that has not paid, or a subscription already recorded.
+   *
+   * Intended for the redirect back from checkout, where the session id is
+   * attacker-supplied: implementations must verify the session belongs to
+   * `organizationId` rather than trusting it.
+   */
+  reconcileCheckout(input: CheckoutReturn): Promise<boolean>;
+}
+
+/** The checkout session a buyer was redirected back with. */
+export interface CheckoutReturn {
+  organizationId: string;
+  /** The provider's session id, straight from the return URL. Untrusted. */
+  sessionId: string;
 }
 
 /**
@@ -277,6 +296,10 @@ const OSS_DEFAULTS: EnterpriseCapabilities = {
     },
     async startBillingPortal() {
       return null;
+    },
+    // Nothing sells anything here, so there is no checkout return to reconcile.
+    async reconcileCheckout() {
+      return false;
     },
   },
   activation: {

@@ -292,14 +292,15 @@ export function PlanUpgradeCard({
 export type CheckoutOutcome = "success" | "cancelled" | "error";
 
 /**
- * The one line an admin needs after a round trip to Stripe. Success is
- * deliberately hedged: the subscription arrives by webhook, which may land a
- * moment after the redirect, so this promises a refresh rather than a plan.
+ * The one line an admin needs after a round trip to Stripe. Success still hedges
+ * slightly: the page reconciles the returned session itself, so the plan is
+ * normally already below — but a Stripe read that fails leaves the webhook to
+ * apply it a moment later, and this copy has to hold in that case too.
  */
 export function CheckoutNotice({ outcome }: { outcome: CheckoutOutcome }) {
   const copy: Record<CheckoutOutcome, string> = {
     success:
-      "Payment received — thank you. Your new plan appears here as soon as Stripe confirms it, usually within a few seconds.",
+      "Payment received — thank you. Your plan and its allowance are below; if they are not there yet, refresh in a few seconds.",
     cancelled: "Checkout cancelled. Nothing was charged and your plan is unchanged.",
     error:
       "We could not start checkout. Nothing was charged — try again, or talk to us and we will set it up with you.",
