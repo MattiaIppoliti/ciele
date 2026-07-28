@@ -15,9 +15,18 @@ import type { ActivationState, SubscriptionState } from "@agent-hub/agent";
  * forward (#444).
  *
  * Three shapes, in the order an organization meets them:
- *   pending  → talk to us (evaluation is sales-led by decision #427)
+ *   pending  → pay for a plan (or talk to us where nothing is sellable)
  *   comped   → active on an evaluation grant; checkout when staff set a plan
  *   paid     → the plan, and where to manage it
+ *
+ * The pending action is **self-serve wherever it can be**: paying is what
+ * activation is derived from (`ee/activation.ts` — an `active` subscription IS an
+ * active organization), so a card is the shortest path from this card to a
+ * working assistant, and sales is the fallback rather than the gate. Where
+ * nothing can be charged — the open-source edition, or a managed deployment with
+ * no Stripe Price configured — the conversation is the only honest CTA, so the
+ * caller passes `selfServe: false` and this card says so instead of offering a
+ * button that lands on a contact form.
  *
  * A self-hosted deployment always renders the "active, no subscription" case,
  * because its enterprise capabilities are the OSS defaults.
@@ -25,9 +34,15 @@ import type { ActivationState, SubscriptionState } from "@agent-hub/agent";
 export function ActivationStatusCard({
   activation,
   subscription,
+  selfServe = false,
+  plansAnchor = "plans",
 }: {
   activation: ActivationState;
   subscription: SubscriptionState | null;
+  /** At least one tier can be paid for right now (see `selfServeTiers`). */
+  selfServe?: boolean;
+  /** Element id of the plan ladder rendered below, for the pending CTA. */
+  plansAnchor?: string;
 }) {
   if (activation.state === "pending") {
     return (
@@ -38,24 +53,50 @@ export function ActivationStatusCard({
             Pending activation
           </CardTitle>
           <CardDescription>
-            Your assistants do not answer yet. Everything else is open — build
-            them now and they start working the moment we activate you.
+            {selfServe ? (
+              <>
+                Your assistants do not answer yet. Everything else is open —
+                pick a plan and they start answering as soon as the payment
+                clears.
+              </>
+            ) : (
+              <>
+                Your assistants do not answer yet. Everything else is open —
+                build them now and they start working the moment we activate
+                you.
+              </>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground text-sm">
-            Ciele Cloud is sales-led: we set up your organization with model
-            credentials included, so there is nothing for you to configure. Tell
-            us what you are building and we will get you running.
+            {selfServe
+              ? "Pay by card and your organization activates itself: model credentials are included, so there is nothing to configure afterwards. Each plan below states the answering, crawling and indexing it funds every month."
+              : "Ciele Cloud is sales-led: we set up your organization with model credentials included, so there is nothing for you to configure. Tell us what you are building and we will get you running."}
           </p>
           <div className="flex flex-wrap items-center gap-3">
-            <Button render={<Link href="/contact/sales" />}>Talk to us</Button>
-            <Button
-              variant="outline"
-              render={<a href="https://ciele.app/docs/self-hosting" />}
-            >
-              Or self-host it free
-            </Button>
+            {selfServe ? (
+              <>
+                <Button render={<a href={`#${plansAnchor}`} />}>
+                  Choose a plan
+                </Button>
+                <Button variant="outline" render={<Link href="/contact/sales" />}>
+                  Or talk to us
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button render={<Link href="/contact/sales" />}>
+                  Talk to us
+                </Button>
+                <Button
+                  variant="outline"
+                  render={<a href="https://ciele.app/docs/self-hosting" />}
+                >
+                  Or self-host it free
+                </Button>
+              </>
+            )}
           </div>
           <p className="text-muted-foreground text-xs">
             Prefer to run it yourself? The open-source edition is the same

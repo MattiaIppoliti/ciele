@@ -202,23 +202,41 @@ export function PlanUpgradeCard({
   plan,
   paying,
   catalog,
+  pending = false,
+  id,
 }: {
   plan: string | null;
   /** A live Stripe subscription backs the current plan. */
   paying: boolean;
   catalog: PlanCatalogEntry[];
+  /**
+   * This organization is not activated yet, so the ladder is its purchase path
+   * rather than an upgrade path — paying is exactly what activates it
+   * (`ee/activation.ts`), which is what the heading and copy have to say.
+   */
+  pending?: boolean;
+  /** Anchor id, so the pending activation card can point at this ladder. */
+  id?: string;
 }) {
   const options = upgradeOptions(plan, catalog, { paying });
   if (options.length === 0 && !paying) return null;
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 scroll-mt-6" id={id}>
       <CardHeader>
-        <CardTitle>{paying ? "Change your plan" : "Room to grow"}</CardTitle>
+        <CardTitle>
+          {paying
+            ? "Change your plan"
+            : pending
+              ? "Choose your plan"
+              : "Room to grow"}
+        </CardTitle>
         <CardDescription>
           {paying
             ? "Moving up raises every allowance at once. Tier changes, card details and cancellation all happen in Stripe’s billing portal."
-            : "Moving up raises every allowance at once, from the next billing period you start."}
+            : pending
+              ? "Payment is by card through Stripe, and it is what activates your organization: your assistants start answering as soon as it clears, with the allowance below included every month."
+              : "Moving up raises every allowance at once, from the next billing period you start."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -245,7 +263,10 @@ export function PlanUpgradeCard({
               <form action={startPlanCheckoutAction}>
                 <input type="hidden" name="plan" value={tier.slug} />
                 <Button type="submit">
-                  {tier.slug === plan
+                  {/* A pending org has no plan to move from, and a comped one is
+                      already on the tier it is being offered — both are a first
+                      subscription, not a move. */}
+                  {pending || tier.slug === plan
                     ? `Subscribe to ${tier.name}`
                     : `Move to ${tier.name}`}
                 </Button>

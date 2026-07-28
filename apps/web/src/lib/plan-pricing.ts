@@ -93,6 +93,24 @@ export function planTierViews(
     }));
 }
 
+/**
+ * The tiers a customer can buy right here, right now — self-serve and with a
+ * Stripe Price that checkout can actually reach.
+ *
+ * This is what decides whether a pending organization is offered a card field or
+ * a conversation. Both are legitimate answers: with no sellable tier (the open
+ * source edition, or a managed deployment whose Prices are not configured yet)
+ * the only honest CTA is sales, and a "pay now" button that lands on
+ * /contact/sales is worse than no button.
+ */
+export function selfServeTiers(
+  catalog: readonly PlanCatalogEntry[] | null
+): PlanTierView[] {
+  return planTierViews(catalog).filter(
+    (tier) => !tier.salesLed && tier.cta === "checkout"
+  );
+}
+
 /** The catalog entry an organization is currently on, if the catalog knows it. */
 export function currentPlanEntry(
   plan: string | null | undefined,

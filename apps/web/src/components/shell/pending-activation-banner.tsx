@@ -1,6 +1,7 @@
 import { Clock } from "lucide-react";
 import { Link } from "@/components/ui/link";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
+import { selfServeTiers } from "@/lib/plan-pricing";
 
 /**
  * The pending-activation state, shown on every console page (#444).
@@ -18,10 +19,17 @@ export async function PendingActivationBanner({
   organizationId: string;
 }) {
   let pending = false;
+  let selfServe = false;
   try {
-    const activation =
-      await getEnterpriseCapabilities().activation.getActivation(organizationId);
+    const capabilities = getEnterpriseCapabilities();
+    const activation = await capabilities.activation.getActivation(organizationId);
     pending = activation.state === "pending";
+    // Where a plan can actually be bought, paying is the fastest way out of this
+    // state — activation is derived from the billing row — so the banner names
+    // that instead of a conversation.
+    selfServe =
+      selfServeTiers(capabilities.billing.getPlanCatalog()?.tiers ?? null)
+        .length > 0;
   } catch {
     // Never let a banner take the console down; the turn pipeline is where
     // activation is actually enforced.
@@ -36,14 +44,15 @@ export async function PendingActivationBanner({
         Pending activation
       </span>
       <span className="text-muted-foreground">
-        Build your assistants now — they start answering once we activate your
-        organization.
+        {selfServe
+          ? "Build your assistants now — they start answering as soon as you pick a plan."
+          : "Build your assistants now — they start answering once we activate your organization."}
       </span>
       <Link
         href="/settings/billing"
         className="font-medium underline underline-offset-4"
       >
-        Talk to us
+        {selfServe ? "Choose a plan" : "Talk to us"}
       </Link>
     </div>
   );

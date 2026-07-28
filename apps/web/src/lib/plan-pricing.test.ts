@@ -3,6 +3,7 @@ import type { PlanCatalogEntry } from "@agent-hub/agent";
 import {
   currentPlanEntry,
   planTierViews,
+  selfServeTiers,
   upgradeOptions,
 } from "@/lib/plan-pricing";
 
@@ -99,6 +100,25 @@ describe("planTierViews", () => {
     const views = planTierViews([entry("legacy", 79)]);
     expect(views[0].name).toBe("Legacy");
     expect(views[0].audience).toBe("");
+  });
+});
+
+describe("selfServeTiers", () => {
+  it("is the tiers a customer can pay for without talking to anyone", () => {
+    expect(selfServeTiers(CATALOG).map((tier) => tier.slug)).toEqual([
+      "go",
+      "business",
+    ]);
+  });
+
+  it("excludes a self-serve tier whose Stripe Price is not configured", () => {
+    // The pending card branches on this to decide between a card field and a
+    // conversation: a "pay now" button that redirects to sales is a dead end.
+    expect(selfServeTiers([entry("go", 49, { checkout: false })])).toEqual([]);
+  });
+
+  it("is empty with no catalog, which is how the open-source edition reads", () => {
+    expect(selfServeTiers(null)).toEqual([]);
   });
 });
 

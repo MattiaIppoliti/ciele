@@ -10,6 +10,7 @@ import {
 } from "@agent-hub/ui";
 import { requirePageMember } from "@/lib/authz";
 import { canManageMembers } from "@/lib/rbac";
+import { selfServeTiers } from "@/lib/plan-pricing";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
@@ -27,6 +28,9 @@ const CHECKOUT_OUTCOMES: readonly CheckoutOutcome[] = [
   "cancelled",
   "error",
 ];
+
+/** Anchor the pending card's "Choose a plan" button jumps to. */
+const PLANS_ANCHOR = "plans";
 
 const checkoutOutcome = (value: string | string[] | undefined) =>
   CHECKOUT_OUTCOMES.find((outcome) => outcome === value) ?? null;
@@ -57,6 +61,9 @@ export default async function BillingPage({
     searchParams,
   ]);
   const catalog = capabilities.billing.getPlanCatalog();
+  // Whether the pending card offers a card field or a conversation: only a tier
+  // Stripe can actually charge for counts (see `selfServeTiers`).
+  const selfServe = selfServeTiers(catalog?.tiers ?? null).length > 0;
   const view = limits ? usageLimitsView(limits, new Date().toISOString()) : null;
   // An all-uncapped plan is not a capped state; the summary says so in words
   // rather than drawing three empty rings (same rule as the Usage page).
@@ -85,6 +92,8 @@ export default async function BillingPage({
         <ActivationStatusCard
           activation={activation}
           subscription={subscription}
+          selfServe={selfServe}
+          plansAnchor={PLANS_ANCHOR}
         />
 
         {/* The plan and the ladder exist only where there is something to sell. */}
@@ -99,15 +108,18 @@ export default async function BillingPage({
                 limits={meters}
               />
             ) : null}
-            {/* A pending organization has no plan yet: sales activate it, so the
-                ladder would be an upgrade path from nothing. */}
-            {activation.state === "active" ? (
-              <PlanUpgradeCard
-                plan={subscription?.plan ?? null}
-                paying={subscription?.stripeManaged ?? false}
-                catalog={catalog.tiers}
-              />
-            ) : null}
+            {/* Shown while pending as well as while active: paying IS activation
+                (ee/activation.ts derives one from the other), so for a pending
+                organization this ladder is the way out of the pending state and
+                hiding it would leave the console with no self-serve path at
+                all. It renders nothing where no tier can be charged. */}
+            <PlanUpgradeCard
+              plan={subscription?.plan ?? null}
+              paying={subscription?.stripeManaged ?? false}
+              catalog={catalog.tiers}
+              pending={activation.state === "pending"}
+              id={PLANS_ANCHOR}
+            />
           </>
         ) : null}
 
