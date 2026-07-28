@@ -2,7 +2,7 @@
 
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type { Assistant } from "@agent-hub/core";
 import {
   ChevronRight,
@@ -27,13 +27,43 @@ import {
   useCopyFeedback,
 } from "@agent-hub/ui";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  useContextMenuControls,
+} from "@/components/motion/context-menu";
 import { cn } from "@/lib/utils";
+
+/** Menu width, so the ⋮ button can right-align the panel under itself. */
+const MENU_WIDTH = 224;
+
+/** Opens the card's context menu from the ⋮ button, anchored under it. */
+function MoreActionsButton() {
+  const { open, openAt } = useContextMenuControls();
+  const wasOpen = useRef(false);
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      aria-label="More actions"
+      onPointerDown={() => {
+        // The outside-pointerdown handler closes the menu before this click
+        // lands; remember the state so the button toggles instead of reopening.
+        wasOpen.current = open;
+      }}
+      onClick={(event) => {
+        if (wasOpen.current) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        openAt({ x: rect.right - MENU_WIDTH, y: rect.bottom + 4 }, "pointer");
+      }}
+    >
+      <Ellipsis className="size-4" />
+    </Button>
+  );
+}
 
 function formatUpdated(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -80,46 +110,43 @@ export function AssistantCard({
     });
   }
 
-  const menu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" size="icon-sm" aria-label="More actions" />
-        }
+  const menuContent = (
+    <ContextMenuContent
+      ariaLabel={`Actions for ${assistant.title}`}
+      className="w-56"
+    >
+      <ContextMenuItem
+        textValue="Edit General"
+        onSelect={() => router.push(`/assistants/${assistant.id}/general`)}
       >
-        <Ellipsis className="size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem
-          render={<Link href={`/assistants/${assistant.id}/general`} />}
-        >
-          <AnimatedIcon icon={SlidersHorizontal} size={16} /> Edit General
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          closeOnClick={false}
-          onClick={() => void copyId("menu")}
-        >
-          <CopyFeedbackIcon copied={menuCopied} className="size-4" />
-          {menuCopied ? "Copied" : "Copy ID"}
-        </DropdownMenuItem>
-        {canEdit && (
-          <DropdownMenuItem onClick={handleDuplicate}>
-            <AnimatedIcon icon={CopyPlus} size={16} /> Duplicate assistant
-          </DropdownMenuItem>
-        )}
-        {canDelete && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <AnimatedIcon icon={Trash2} size={16} /> Delete
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+        <AnimatedIcon icon={SlidersHorizontal} size={16} /> Edit General
+      </ContextMenuItem>
+      <ContextMenuItem
+        textValue="Copy ID"
+        closeOnSelect={false}
+        onSelect={() => void copyId("menu")}
+      >
+        <CopyFeedbackIcon copied={menuCopied} className="size-4" />
+        {menuCopied ? "Copied" : "Copy ID"}
+      </ContextMenuItem>
+      {canEdit && (
+        <ContextMenuItem textValue="Duplicate assistant" onSelect={handleDuplicate}>
+          <AnimatedIcon icon={CopyPlus} size={16} /> Duplicate assistant
+        </ContextMenuItem>
+      )}
+      {canDelete && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            textValue="Delete"
+            tone="destructive"
+            onSelect={() => setConfirmDelete(true)}
+          >
+            <AnimatedIcon icon={Trash2} size={16} /> Delete
+          </ContextMenuItem>
+        </>
+      )}
+    </ContextMenuContent>
   );
 
   const avatar = (
@@ -144,6 +171,8 @@ export function AssistantCard({
 
   if (view === "list") {
     return (
+      <ContextMenu>
+        <ContextMenuTrigger>
       <div
         className={cn(
           "group relative flex items-center gap-3 overflow-hidden px-4 py-3 transition-colors duration-300 hover:bg-foreground/[0.02] dark:hover:bg-white/[0.03]",
@@ -175,14 +204,20 @@ export function AssistantCard({
         <p className="text-muted-foreground hidden shrink-0 text-xs sm:block">
           Updated {formatUpdated(assistant.updatedAt)}
         </p>
-        <div className="z-[2]">{menu}</div>
+        <div className="z-[2]">
+          <MoreActionsButton />
+        </div>
         {deleteModal}
       </div>
+        </ContextMenuTrigger>
+        {menuContent}
+      </ContextMenu>
     );
   }
 
   return (
-    <>
+    <ContextMenu>
+    <ContextMenuTrigger>
     <Card
       className={cn(
         "group relative h-full gap-2 py-4 transition-colors duration-200 hover:bg-muted/20",
@@ -218,7 +253,7 @@ export function AssistantCard({
             <span className="bg-foreground/5 text-muted-foreground rounded-md px-2 py-1 text-xs font-medium dark:bg-white/10">
               Active
             </span>
-            {menu}
+            <MoreActionsButton />
           </div>
         </div>
       </CardHeader>
@@ -267,7 +302,9 @@ export function AssistantCard({
         )}
       />
     </Card>
+    </ContextMenuTrigger>
+    {menuContent}
     {deleteModal}
-    </>
+    </ContextMenu>
   );
 }
