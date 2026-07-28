@@ -181,6 +181,51 @@ export interface PlanCatalog {
   answerBasis: AnswerModelBasis;
 }
 
+/** A card (or other method) as a billing page names it — never card data. */
+export interface BillingPaymentMethod {
+  /** "visa", "amex", "sepa_debit"… straight from the provider. */
+  brand: string;
+  last4: string;
+  expMonth: number | null;
+  expYear: number | null;
+}
+
+/** One issued invoice, as the billing page lists it. */
+export interface BillingInvoice {
+  id: string;
+  /** ISO instant the invoice was issued. */
+  issuedAt: string;
+  /** Minor-unit total in `currency` (a provider always bills in minor units). */
+  amountMinor: number;
+  currency: string;
+  /** "paid", "open", "void"… the provider's own word, printed as a badge. */
+  status: string;
+  /** Provider-hosted invoice page, when it published one. */
+  url: string | null;
+}
+
+/**
+ * The provider-side billing account behind a subscription (#settings-modal):
+ * what renews when, on which card, and the invoices already issued.
+ *
+ * Distinct from `SubscriptionState`, which is our own stored row and is read on
+ * every request: this one costs live provider calls, so it is fetched only by
+ * the Billing tab. Null whenever there is no provider account to read — OSS,
+ * a comped grant, an unconfigured provider.
+ */
+export interface BillingAccountSnapshot {
+  /** ISO instant the current period ends — the next invoice's date. */
+  renewsAt: string | null;
+  /** Expected total of the next invoice, in minor units of `currency`. */
+  nextAmountMinor: number | null;
+  currency: string;
+  /** Set when the subscription is scheduled to stop, ISO. */
+  cancelAt: string | null;
+  paymentMethod: BillingPaymentMethod | null;
+  /** Most recent first. */
+  invoices: BillingInvoice[];
+}
+
 /** What an organization needs to start hosted checkout for a tier. */
 export interface UpgradeCheckoutInput {
   organizationId: string;
@@ -228,6 +273,17 @@ export interface BillingAccessor {
    * `organizationId` rather than trusting it.
    */
   reconcileCheckout(input: CheckoutReturn): Promise<boolean>;
+  /**
+   * The live provider-side account: renewal, card, invoices. Null when there is
+   * nothing to read (OSS, a comped grant, an unconfigured provider) — the
+   * Billing tab then shows only what our own row already says.
+   *
+   * Costs provider round-trips, so call it from a billing surface, never from a
+   * request path that only needs the plan.
+   */
+  getBillingAccount(
+    organizationId: string,
+  ): Promise<BillingAccountSnapshot | null>;
 }
 
 /** The checkout session a buyer was redirected back with. */
@@ -300,6 +356,10 @@ const OSS_DEFAULTS: EnterpriseCapabilities = {
     // Nothing sells anything here, so there is no checkout return to reconcile.
     async reconcileCheckout() {
       return false;
+    },
+    // No payment provider, so no card, renewal or invoice history to read.
+    async getBillingAccount() {
+      return null;
     },
   },
   activation: {

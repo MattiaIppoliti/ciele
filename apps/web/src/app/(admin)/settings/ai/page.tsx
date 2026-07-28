@@ -1,8 +1,7 @@
-import { Link } from "@/components/ui/link";
-import { ChevronLeft } from "lucide-react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AiSettingsClient } from "@/components/settings/ai-settings-client";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import { BudgetCard } from "@/components/settings/budget-card";
 import { EmbeddingConnectionCard } from "@/components/settings/embedding-connection-card";
 import { PlatformPromptCard } from "@/components/settings/platform-prompt-card";
@@ -23,7 +22,7 @@ export const dynamic = "force-dynamic";
 export default async function AiSettingsPage() {
   const { session, organizationId, role, db } = await requirePageMember();
   // Provider connections are org-wide config — admins and owners only.
-  if (!canManageMembers(role)) redirect("/");
+  if (!canManageMembers(role)) redirect("/settings/profile");
 
   const connections = await db.listProviderConnections(organizationId);
   const owner = isPlatformOwner(session.email);
@@ -52,23 +51,11 @@ export default async function AiSettingsPage() {
   ]);
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-1 text-sm font-medium underline underline-offset-4 hover:opacity-70"
-          >
-            <ChevronLeft className="size-4" strokeWidth={3} />
-            All assistants
-          </Link>
-        </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">AI Providers</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Choose how {session.organization.name}&apos;s assistants reach their models:
-          platform plan, your own API keys, or keyless enterprise auth.
-        </p>
-        <AiSettingsClient
+    <SettingsPanel
+      title="AI Provider"
+      description={`Choose how ${session.organization.name}'s assistants reach their models: platform plan, your own API keys, or keyless enterprise auth.`}
+    >
+      <AiSettingsClient
           connections={connections.map((c) => ({ ...c, encryptedKey: null }))}
           availability={providerAvailability(connections)}
           canManage={canManage}
@@ -100,7 +87,6 @@ export default async function AiSettingsPage() {
             defaultPrompt={DEFAULT_PLATFORM_PROMPT}
           />
         )}
-      </div>
-    </div>
+    </SettingsPanel>
   );
 }

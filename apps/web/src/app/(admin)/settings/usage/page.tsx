@@ -1,5 +1,3 @@
-import { Link } from "@/components/ui/link";
-import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 import type { UsageDailyRow, UsageResource } from "@agent-hub/core";
 import {
@@ -27,6 +25,8 @@ import {
   UnmeteredNotice,
   UsageLimitsBlock,
 } from "@/components/settings/usage-limits";
+import { SettingsPanel } from "@/components/settings/settings-panel";
+import { UsagePies } from "@/components/settings/usage-pies";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +75,7 @@ export default async function UsageSettingsPage() {
   const { session, organizationId, role, db } = await requirePageMember();
   // Usage is org-wide operational data — admins and owners only, like the
   // provider/budget settings it complements.
-  if (!canManageMembers(role)) redirect("/");
+  if (!canManageMembers(role)) redirect("/settings/profile");
 
   // The plan's meters, the 30-day ledger, and the org's own daily ceiling: the
   // three things that can pause an assistant, read together so the page can
@@ -101,24 +101,28 @@ export default async function UsageSettingsPage() {
   });
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-1 text-sm font-medium underline underline-offset-4 hover:opacity-70"
-          >
-            <ChevronLeft className="size-4" strokeWidth={3} />
-            All assistants
-          </Link>
-        </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">Usage</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
+    <SettingsPanel
+      title="Usage"
+      description={
+        <>
           {session.organization.name}&apos;s usage over the last{" "}
           {USAGE_WINDOW_DAYS} days — every model call and crawled page, split by
           the credential that funded it. Credits are estimated cost: one credit
           is a cent of what the work cost to run.
-        </p>
+        </>
+      }
+    >
+        <UsagePies
+          byResource={METERS.map((meter) => ({
+            key: meter.resource,
+            label: meter.title,
+            credits: summary.byResource[meter.resource].credits,
+          }))}
+          byFunding={[
+            { key: "platform", label: "Platform plan", credits: summary.platform.credits },
+            { key: "own", label: "Your credentials", credits: summary.own.credits },
+          ]}
+        />
 
         {limitsView ? (
           <UsageLimitsBlock
@@ -263,7 +267,6 @@ export default async function UsageSettingsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </SettingsPanel>
   );
 }

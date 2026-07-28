@@ -17,6 +17,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { SETTINGS_HOME } from "@/components/settings/settings-nav";
 
 /** Minimal assistant shape shared by the scope switcher and Find menu. */
 export interface AssistantSummary {
@@ -39,6 +40,8 @@ export interface GlobalNavItem {
   exact?: boolean;
   /** Rendered after the SETUP group, at the bottom of the sidebar nav. */
   bottom?: boolean;
+  /** Hidden from anyone who cannot administer the Organization. */
+  adminOnly?: boolean;
 }
 
 export const GLOBAL_NAV: GlobalNavItem[] = [
@@ -51,11 +54,13 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   {
     label: "Settings",
     icon: Settings,
-    // Lands on Profile — the one settings page every role can open; the
-    // sidebar renders this entry as a role-gated submenu instead of a link.
-    href: "/settings/profile",
+    // Opens the Settings dialog on its first tab. Organization-wide config is
+    // all it holds, so the entry is hidden from anyone who cannot change any of
+    // it; personal settings stay reachable from the account menu.
+    href: SETTINGS_HOME,
     match: "/settings",
     bottom: true,
+    adminOnly: true,
   },
 ];
 

@@ -1,5 +1,3 @@
-import { Link } from "@/components/ui/link";
-import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
 import {
   Card,
@@ -14,6 +12,8 @@ import { selfServeTiers } from "@/lib/plan-pricing";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
+import { BillingAccountCard } from "@/components/settings/billing-account-card";
+import { SettingsPanel } from "@/components/settings/settings-panel";
 import {
   CheckoutNotice,
   PlanSummaryCard,
@@ -51,7 +51,7 @@ export default async function BillingPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { session, organizationId, role } = await requirePageMember();
-  if (!canManageMembers(role)) redirect("/");
+  if (!canManageMembers(role)) redirect("/settings/profile");
 
   const capabilities = getEnterpriseCapabilities();
   const params = await searchParams;
@@ -70,10 +70,19 @@ export default async function BillingPage({
       console.error("[billing] checkout reconciliation failed", error);
     }
   }
-  const [activation, subscription, limits] = await Promise.all([
+  const [activation, subscription, limits, account] = await Promise.all([
     capabilities.activation.getActivation(session.organization.id),
     capabilities.billing.getSubscription(session.organization.id),
     capabilities.metering.getUsageLimits(organizationId),
+    // Live Stripe: renewal, card, invoices. A provider failure must not take the
+    // whole tab down — everything else here comes from our own row, which is
+    // still worth showing.
+    capabilities.billing
+      .getBillingAccount(session.organization.id)
+      .catch((error) => {
+        console.error("[billing] account lookup failed", error);
+        return null;
+      }),
   ]);
   const catalog = capabilities.billing.getPlanCatalog();
   // Whether the pending card offers a card field or a conversation: only a tier
@@ -86,22 +95,10 @@ export default async function BillingPage({
   const outcome = checkoutOutcome(params.checkout);
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/"
-            className="flex items-center gap-1 text-sm font-medium underline underline-offset-4 hover:opacity-70"
-          >
-            <ChevronLeft className="size-4" strokeWidth={3} />
-            All assistants
-          </Link>
-        </div>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight">Billing</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {session.organization.name}&apos;s plan and activation status.
-        </p>
-
+    <SettingsPanel
+      title="Billing"
+      description={`${session.organization.name}'s plan, payment method, and invoices.`}
+    >
         {outcome ? <CheckoutNotice outcome={outcome} /> : null}
 
         <ActivationStatusCard
@@ -138,6 +135,9 @@ export default async function BillingPage({
           </>
         ) : null}
 
+        {/* What Stripe knows, for an organization that actually pays. */}
+        {account ? <BillingAccountCard account={account} /> : null}
+
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Your data is yours</CardTitle>
@@ -165,7 +165,6 @@ export default async function BillingPage({
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </SettingsPanel>
   );
 }

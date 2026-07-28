@@ -5,14 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import {
-  Building2,
   BookOpen,
   Check,
   ChevronsUpDown,
-  Cookie,
   Ellipsis,
   Fingerprint,
-  Gauge,
   LifeBuoy,
   LogOut,
   Map as MapIcon,
@@ -22,13 +19,10 @@ import {
   PanelLeftOpen,
   Search,
   Settings,
-  Sparkles,
   Ticket,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { openCookiePreferences } from "@/components/cookie-consent/open-preferences";
 import { signOutAction, switchOrganizationAction } from "@/app/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Badge } from "@agent-hub/ui";
@@ -53,7 +47,7 @@ import {
   setupHref,
 } from "@/components/shell/nav";
 import { useShell } from "@/components/shell/shell-provider";
-import { canManageMembers, canViewMembers } from "@/lib/rbac";
+import { canManageMembers } from "@/lib/rbac";
 
 /** Full name if set, else username, else the email local-part. */
 function profileDisplayName(profile: Profile | null, email: string): string {
@@ -373,6 +367,7 @@ function SidebarContent({
     (item) => !item.bottom && item.label !== "Assistants"
   );
   const alertsNav = GLOBAL_NAV.find((item) => item.label === "Alerts");
+  const settingsNav = GLOBAL_NAV.find((item) => item.label === "Settings");
 
   const scopedId = assistantIdFromPath(pathname);
   const scopedAssistant = scopedId
@@ -610,53 +605,19 @@ function SidebarContent({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Settings submenu — entries are gated by role: every member gets
-              Profile + Theme, editors also see Members, admins/owners see
-              everything (Organization + AI Providers). */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label="Settings"
-                  data-highlight-row
-                  className={`${rowClass(collapsed)} ${
-                    pathname.startsWith("/settings") ? ROW_ACTIVE : ROW_IDLE
-                  }`}
-                />
-              }
-            >
-              <AnimatedIcon icon={Settings} size={16} className="shrink-0" />
-              {!collapsed && <span className="truncate">Settings</span>}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="end" className="w-56">
-              <DropdownMenuItem render={<Link href="/settings/profile" />}>
-                <AnimatedIcon icon={Fingerprint} size={16} /> Profile
-              </DropdownMenuItem>
-              {canViewMembers(role) && (
-                <DropdownMenuItem render={<Link href="/settings/members" />}>
-                  <AnimatedIcon icon={Users} size={16} /> Members
-                </DropdownMenuItem>
-              )}
-              {canManageMembers(role) && (
-                <DropdownMenuItem render={<Link href="/settings/organization" />}>
-                  <AnimatedIcon icon={Building2} size={16} /> Organization
-                </DropdownMenuItem>
-              )}
-              {canManageMembers(role) && (
-                <DropdownMenuItem render={<Link href="/settings/ai" />}>
-                  <AnimatedIcon icon={Sparkles} size={16} /> AI Providers
-                </DropdownMenuItem>
-              )}
-              {canManageMembers(role) && (
-                <DropdownMenuItem render={<Link href="/settings/usage" />}>
-                  <AnimatedIcon icon={Gauge} size={16} /> Usage
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <ThemeSwitcher />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Settings opens the org-settings dialog, so the entry only exists
+              for roles that can change something in it (owner / admin).
+              Everyone else reaches their personal settings — Profile and
+              theme — from the account menu below. */}
+          {settingsNav && canManageMembers(role) && (
+            <NavRow
+              icon={settingsNav.icon}
+              label={settingsNav.label}
+              href={settingsNav.href}
+              collapsed={collapsed}
+              active={pathname.startsWith(settingsNav.match ?? settingsNav.href)}
+            />
+          )}
         </div>
         </HoverHighlight>
       </nav>
@@ -719,18 +680,16 @@ function SidebarContent({
               </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* Org-level pages live in the sidebar's Settings submenu — the
-                account menu only carries personal items. */}
+            {/* Org-level settings live in the sidebar's Settings dialog — the
+                account menu only carries personal items, which is also how a
+                non-admin reaches their own profile at all. */}
             <DropdownMenuItem render={<Link href="/settings/profile" />}>
               <AnimatedIcon icon={Fingerprint} size={16} /> Profile
             </DropdownMenuItem>
-            {/* The console shows the consent banner like any other first-party
-                page, so it also needs a way back in — withdrawing consent has to
-                be as easy as giving it, and the marketing footer is not reachable
-                from in here. */}
-            <DropdownMenuItem onClick={openCookiePreferences}>
-              <AnimatedIcon icon={Cookie} size={16} /> Cookie preferences
-            </DropdownMenuItem>
+            {/* No cookie-preferences entry: the console sets no non-essential
+                cookies and shows no banner (components/cookie-consent/
+                cookie-consent.tsx), so there is nothing here to withdraw.
+                Consent belongs to the public site, where the trackers are. */}
             <DropdownMenuSeparator />
             <ThemeSwitcher />
             {!demo && (

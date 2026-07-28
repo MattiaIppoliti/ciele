@@ -28,6 +28,7 @@ import {
   Copy,
   CopyPlus,
   CornerDownLeft,
+  CreditCard,
   Download,
   FileText,
   Fingerprint,
@@ -105,6 +106,7 @@ import { ConnectIcon } from "@/components/ui/connect";
 import { ChevronsUpDownIcon } from "@/components/ui/chevrons-up-down";
 import { CopyIcon } from "@/components/ui/copy";
 import { CornerDownLeftIcon } from "@/components/ui/corner-down-left";
+import { CreditCardIcon } from "@/components/ui/credit-card";
 import { DeleteIcon } from "@/components/ui/delete";
 import { DocumentDuplicateIcon } from "@/components/ui/document-duplicate";
 import { DownloadIcon } from "@/components/ui/download";
@@ -204,6 +206,7 @@ const ANIMATED = new Map<LucideIcon, AnimatedIconComponent>([
   [Copy, CopyIcon],
   [CopyPlus, DocumentDuplicateIcon],
   [CornerDownLeft, CornerDownLeftIcon],
+  [CreditCard, CreditCardIcon],
   [Download, DownloadIcon],
   [FileText, FileTextIcon],
   [Fingerprint, FingerprintIcon],
@@ -274,6 +277,18 @@ export function StaticIcons({ children }: { children: ReactNode }) {
     <AnimateIconsContext.Provider value={false}>
       {children}
     </AnimateIconsContext.Provider>
+  );
+}
+
+/**
+ * Re-enables animation inside a `<StaticIcons>` subtree — for chrome that
+ * happens to be *rendered* by a page rather than by the shell (the Settings
+ * dialog's tab rail lives under `(admin)/settings/layout.tsx`, so it inherits
+ * the page's static context even though it reads as sidebar navigation).
+ */
+export function AnimateIcons({ children }: { children: ReactNode }) {
+  return (
+    <AnimateIconsContext.Provider value>{children}</AnimateIconsContext.Provider>
   );
 }
 

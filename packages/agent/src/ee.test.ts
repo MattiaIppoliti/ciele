@@ -116,6 +116,16 @@ describe("enterprise capability registry", () => {
         async reconcileCheckout() {
           return true;
         },
+        async getBillingAccount() {
+          return {
+            renewsAt: "2026-01-01T00:00:00.000Z",
+            nextAmountMinor: 19_900,
+            currency: "eur",
+            cancelAt: null,
+            paymentMethod: null,
+            invoices: [],
+          };
+        },
       },
     });
     resetEnterpriseCapabilities();
