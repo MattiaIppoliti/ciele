@@ -1,280 +1,579 @@
-import { Check, Server, Sparkles } from "lucide-react";
-import { Link } from "@/components/ui/link";
+"use client";
+
+import Link from "next/link";
+import { Check } from "lucide-react";
+import React from "react";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  cn,
+} from "@agent-hub/ui";
 import type { PlanCatalog } from "@agent-hub/agent";
-import { planTierViews } from "@/lib/plan-pricing";
+import { planTierViews, type PlanTierView } from "@/lib/plan-pricing";
+import {
+  BouncyAccordion,
+  type BouncyAccordionItem,
+} from "@/components/motion/bouncy-accordion";
+import { GridBeam } from "@/components/motion/grid-beam";
 
 /**
- * Public pricing (#444 / #511, decisions #427 and #424).
+ * What this page says about each tier that is NOT a number: who it is for, what
+ * it unlocks, and how you buy it.
  *
- * Three deliberate properties:
+ * Every price and every included volume is deliberately absent here. Those
+ * arrive as a `PlanCatalog` from the enterprise billing seam — one ladder,
+ * derived from the allowance constants the caps actually enforce and priced at
+ * `PLAN_PRICE_EUR`, which is also what the Stripe products charge. Restating a
+ * price in this file is how a marketing page and an invoice start disagreeing,
+ * so the only pricing this component owns is the layout it renders it in.
  *
- *  1. **Real prices.** The original page listed tiers without numbers because
- *     metering cost data did not exist yet (#444). It does now, so each tier
- *     shows its monthly price and its allowance restated as volumes — answers,
- *     crawled pages, indexed documents — derived from the same constants the caps
- *     enforce. The top tier stays sales-led and reads "from", because a sized
- *     deployment is a conversation.
- *  2. **Self-hosting keeps equal weight.** It is the free, uncapped path and sits
- *     side by side with the managed one, not in a footnote.
- *  3. **A deployment with nothing to sell shows nothing to sell.** The plan
- *     ladder comes from the enterprise capability seam; with no catalog (the
- *     open-source edition) the page is the self-host story plus a way to reach us,
- *     which is exactly true there.
+ * A deployment with no catalog (the open-source edition, which ships no
+ * `src/ee`) therefore has no prices to publish, and the cards say so instead of
+ * advertising a ladder that cannot be bought.
+ *
+ * Feature lines describe what the platform does today (see docs/ARCHITECTURE.md
+ * §12 for the shipped-vs-inert breakdown). Enterprise's last two lines are
+ * contractual rather than product: commitments sales makes, not switches.
  */
+interface Tier {
+  /** Matches the catalog entry's slug — and the Stripe product's name. */
+  slug: "go" | "business" | "enterprise";
+  name: string;
+  tagline: string;
+  featuresLabel: string;
+  features: string[];
+  /**
+   * The plan this tier buys through Stripe Checkout, or null for the sales-led
+   * tier. Only these two have a Stripe Price env (`plans.ts` ENV_KEY), and the
+   * checkout route rejects anything else.
+   */
+  checkoutPlan: "go" | "business" | null;
+  salesCta: string;
+  recommended: boolean;
+}
 
-const SELF_HOST_POINTS = [
-  "The whole product — nothing held back",
-  "One command to install with Docker",
-  "Any OpenAI-compatible model, including fully local",
-  "Your data never leaves your infrastructure",
+const TIERS: Tier[] = [
+  {
+    slug: "go",
+    name: "Go",
+    tagline: "One team, one assistant, answering from your own content.",
+    featuresLabel: "Everything you need to launch:",
+    features: [
+      "Unlimited assistants, edited beside a live widget preview",
+      "Knowledge from websites, files and FAQs, re-crawled weekly",
+      "Grounded answers that cite the exact Source behind them",
+      "Publish as a website floater or an embedded iframe",
+      "Conversation inbox, insights dashboard and help-desk escalation",
+      "Tenant isolation, role-based access and single sign-on for admins",
+    ],
+    checkoutPlan: "go",
+    salesCta: "Request access",
+    recommended: false,
+  },
+  {
+    slug: "business",
+    name: "Business",
+    tagline: "Several assistants across departments, wired into your systems.",
+    featuresLabel: "Everything in Go, plus:",
+    features: [
+      "Bring your own model keys, and pick the model per assistant",
+      "Crawl JavaScript-heavy and login-protected sites",
+      "Advanced flow actions: API requests, email, handover",
+      "Ticketing integrations that open a real case on escalation",
+      // Trend reports and exports are routed but stubbed (ARCHITECTURE §12), so
+      // this line advertises the alerting that actually ships today.
+      "Operational alerts when an integration's credentials stop working",
+      "Priority support",
+    ],
+    checkoutPlan: "business",
+    salesCta: "Request access",
+    recommended: true,
+  },
+  {
+    slug: "enterprise",
+    name: "Enterprise",
+    tagline: "Institution-wide rollout, on your own cloud account and terms.",
+    featuresLabel: "Everything in Business, plus:",
+    features: [
+      "Keyless federated access to Vertex, Anthropic and Azure OpenAI",
+      "Model spend billed to your own cloud account, not resold through us",
+      "Organization-wide usage caps and budget controls",
+      "Extended runtime-event retention for audit and review",
+      "Self-hosting on the AGPL core",
+      "DPA, Standard Contractual Clauses and security review support",
+      "Onboarding, a named contact and an availability commitment",
+    ],
+    // Sales-led on purpose: Enterprise carries custom terms, an availability
+    // commitment and often tenant-billed models — none of it a card can settle.
+    checkoutPlan: null,
+    salesCta: "Talk to sales",
+    recommended: false,
+  },
 ];
 
-const CLOUD_POINTS = [
-  "Model credentials included — nothing to configure",
-  "We run the infrastructure, upgrades and backups",
-  "Usage visible in-product against your plan",
-  "Support from the people who build it",
-];
+const [GO, BUSINESS, ENTERPRISE] = TIERS;
 
-function Points({ items }: { items: readonly string[] }) {
-  return (
-    <ul className="mt-6 space-y-3 text-sm">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5">
-          <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-          <span className="text-muted-foreground">{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
+/** `true` renders a check, `false` a dash, a string renders verbatim. */
+type ComparisonCell = boolean | string;
+
+const COMPARISON_COLUMNS = [
+  "Self-hosted",
+  GO.name,
+  BUSINESS.name,
+  ENTERPRISE.name,
+] as const;
+
+/**
+ * Feature matrix, in the column order above. The self-hosted column is the
+ * AGPL mirror: it carries the whole open-source product but none of the paths
+ * the mirror strips (`scripts/mirror-gate` EE_PATHS) — no billing, no plan
+ * metering, no managed SSO onboarding, no staff console — and it has no
+ * platform-funded models, so its own provider keys are mandatory rather than
+ * optional.
+ *
+ * Its cells therefore say what the self-hoster PROVIDES, never a bare check.
+ * A tick reads as "included", and on this column the same capability is work
+ * the reader takes on — a matrix where the free column collects more ticks than
+ * the plans above it is not generous, it is wrong, and it argues against every
+ * plan on the page.
+ *
+ * The two priced rows are a function of the catalog for the same reason the
+ * cards are: there is one ladder, and it is not stated here.
+ */
+function comparisonRows(
+  views: Map<string, PlanTierView>
+): Array<{ label: string; cells: ComparisonCell[] }> {
+  const price = (tier: Tier) => {
+    const view = views.get(tier.slug);
+    if (!view) return "Let’s talk";
+    return view.pricePrefix
+      ? `${view.pricePrefix} ${view.priceLabel}`
+      : view.priceLabel;
+  };
+  // The answer volume, the one line a reader compares tier to tier. The crawl
+  // and indexing volumes are on the cards; repeating all three here would make
+  // the row three lines tall in a column an eighth of the page wide.
+  const answers = (tier: Tier) => views.get(tier.slug)?.volumes[0] ?? "Sized with you";
+
+  return [
+    {
+      label: "Monthly price",
+      cells: ["Free", price(GO), price(BUSINESS), price(ENTERPRISE)],
+    },
+    {
+      label: "Included AI usage",
+      cells: [
+        "Your own bill",
+        answers(GO),
+        answers(BUSINESS),
+        answers(ENTERPRISE),
+      ],
+    },
+    {
+      label: "Model credentials included",
+      cells: [false, true, true, true],
+    },
+    {
+      label: "Hosting, updates and backups",
+      cells: ["You run it", "Managed", "Managed", "Managed"],
+    },
+    {
+      label: "Plan allowance, usage gauges and caps",
+      cells: [false, true, true, true],
+    },
+    { label: "Unlimited assistants and flows", cells: [true, true, true, true] },
+    { label: "Website, file and FAQ knowledge", cells: [true, true, true, true] },
+    { label: "Grounded answers with citations", cells: [true, true, true, true] },
+    {
+      label: "Inbox, insights and improvements",
+      cells: [true, true, true, true],
+    },
+    { label: "Help desks and escalation", cells: [true, true, true, true] },
+    {
+      label: "Bring your own model keys",
+      cells: ["Required", false, true, true],
+    },
+    {
+      label: "Crawl JavaScript-heavy and gated sites",
+      cells: ["You host the crawler", false, true, true],
+    },
+    {
+      label: "Ticketing integrations",
+      cells: ["You configure it", false, true, true],
+    },
+    {
+      label: "Keyless federated model access",
+      cells: ["Your own cloud setup", false, false, true],
+    },
+    {
+      label: "Managed SSO onboarding",
+      cells: [false, false, true, true],
+    },
+    {
+      label: "DPA, SCCs and security review",
+      cells: [false, false, false, true],
+    },
+    {
+      label: "Support",
+      cells: ["Community", "Email", "Priority", "Named contact"],
+    },
+    {
+      label: "Uptime and response commitment",
+      cells: [false, false, false, true],
+    },
+  ];
 }
 
 export function PricingContent({
+  billingEnabled,
   catalog,
 }: {
-  /** The purchasable tiers, or null on a deployment that sells nothing. */
+  /**
+   * Whether this deployment can actually take a card (Stripe configured, and
+   * the enterprise checkout route present). The open-source mirror ships
+   * neither, so its buttons must lead to sales instead of a 404.
+   */
+  billingEnabled: boolean;
+  /**
+   * The purchasable ladder — prices and allowance-derived volumes — or null on a
+   * deployment that sells nothing.
+   */
   catalog: PlanCatalog | null;
 }) {
-  const tiers = planTierViews(catalog?.tiers ?? null);
-  const entry = tiers[0] ?? null;
+  /** The catalog's tiers, keyed by slug so a card can find its own numbers. */
+  const views = React.useMemo(() => {
+    const entries = planTierViews(catalog?.tiers ?? null);
+    return new Map(entries.map((view) => [view.slug, view]));
+  }, [catalog]);
+  const rows = React.useMemo(() => comparisonRows(views), [views]);
   const basis = catalog?.answerBasis ?? null;
+
+  const cta = (tier: Tier): { label: string; href: string } =>
+    billingEnabled && tier.checkoutPlan
+      ? {
+          label: "Get started",
+          href: `/api/ee/stripe/checkout?plan=${tier.checkoutPlan}`,
+        }
+      : { label: tier.salesCta, href: "/contact/sales" };
 
   return (
     <main className="relative px-4 pb-24 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
+        {/* Hero */}
         <div className="max-w-3xl">
           <p className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
             Pricing
           </p>
           <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            Run it yourself, or let us run it
+            Pricing that scales with your usage
           </h1>
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Ciele is open source. Self-hosting is free and always will be — the
-            same complete product, on your own infrastructure. Ciele Cloud is
-            for organizations that would rather not operate it, and it includes
-            the model credentials so there is nothing to configure.
+            Every plan includes the whole product — assistants, knowledge, flows,
+            inbox and insights — for as many members as you like. What changes is
+            how much AI work the plan funds each month, and how deeply Ciele
+            plugs into your existing systems.
           </p>
         </div>
 
-        {/* The two ways to get Ciele, equally weighted. */}
-        <div className="mt-14 grid gap-6 md:grid-cols-2">
-          <section className="border-border bg-background/50 rounded-2xl border p-8 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <Server className="text-muted-foreground size-5" />
-              <h2 className="text-foreground text-xl font-semibold">
-                Self-hosted
-              </h2>
-            </div>
-            <p className="text-foreground mt-4 text-3xl font-semibold tracking-tight">
-              Free
+        {/* What the plan meters, stated before any number below it: an
+            allowance is only readable once you know what it is spent on. */}
+        <div className="border-border bg-card/60 mt-12 rounded-2xl border p-6 backdrop-blur-sm sm:p-8">
+          <p className="text-foreground text-base font-semibold">
+            What a plan pays for
+          </p>
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+            Members are unlimited on every plan, and visitors chatting with a
+            published widget are never counted. What a plan meters is the AI work
+            the platform funds on your behalf: answering questions, crawling your
+            sites and indexing your documents. Each plan below states that
+            allowance as the volumes it covers, and your Usage page shows exactly
+            where you are against it.
+          </p>
+          {basis ? (
+            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+              Answer volumes are quoted on{" "}
+              <span className="text-foreground font-medium">
+                {basis.quotedModel}
+              </span>
+              , the lightest model on the platform. Which model your assistants
+              run is your choice and it moves this a lot: on{" "}
+              {basis.frontierModel} — what a new assistant starts with — one
+              answer costs roughly {basis.frontierFactor}× more, so the same
+              allowance covers proportionally fewer.
             </p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              AGPL-3.0, forever. You provide the machine and the models, and
-              nothing is capped.
-            </p>
-            <Points items={SELF_HOST_POINTS} />
-            <a
-              href="https://ciele.app/docs/self-hosting"
-              className="border-border hover:bg-muted mt-8 inline-flex w-full items-center justify-center rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors"
-            >
-              Read the self-hosting guide
-            </a>
-          </section>
-
-          <section className="border-foreground/20 bg-background/50 rounded-2xl border p-8 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <Sparkles className="text-muted-foreground size-5" />
-              <h2 className="text-foreground text-xl font-semibold">
-                Ciele Cloud
-              </h2>
-            </div>
-            <p className="text-foreground mt-4 text-3xl font-semibold tracking-tight">
-              {entry ? (
-                <>
-                  {entry.priceLabel}
-                  <span className="text-muted-foreground text-base font-normal">
-                    {" "}
-                    / month and up
-                  </span>
-                </>
-              ) : (
-                "Let’s talk"
-              )}
-            </p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              {entry
-                ? // Not "three plans": the ladder is data, and a fourth tier
-                  // would make a counted noun wrong. Not "cancel any time"
-                  // either — cancellation is Stripe's billing portal, which is
-                  // where the copy on your billing page points.
-                  "Monthly, each plan with an included usage allowance. You manage it yourself in the billing portal."
-                : "Priced to your usage. We set the organization up with you."}
-            </p>
-            <Points items={CLOUD_POINTS} />
-            <Link
-              href={entry ? "/signup" : "/contact/sales"}
-              className="bg-primary text-primary-foreground hover:bg-primary/85 mt-8 inline-flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
-            >
-              {entry ? "Get started" : "Talk to us"}
-            </Link>
-          </section>
+          ) : null}
         </div>
 
-        {tiers.length > 0 && (
-          <section className="mt-20">
-            <h2 className="text-foreground text-2xl font-semibold tracking-tight">
-              Ciele Cloud plans
-            </h2>
-            <p className="text-muted-foreground mt-3 max-w-2xl text-sm leading-relaxed">
-              Every plan is the whole product — flows, knowledge, help desks,
-              inbox and insights. They differ by how much platform-funded work
-              they include each month.
-            </p>
-            <div className="mt-8 grid gap-6 md:grid-cols-3">
-              {tiers.map((tier) => (
-                <div
-                  key={tier.slug}
-                  className="border-border bg-background/50 flex flex-col rounded-2xl border p-6 backdrop-blur-sm"
-                >
-                  <h3 className="text-foreground text-lg font-semibold">
+        {/* Tier cards */}
+        {/* Stretch, not items-start: the three lists are close enough in length
+            now that equal-height cards line the CTAs up for comparison. */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-3">
+          {TIERS.map((tier) => (
+            <Card
+              key={tier.name}
+              className={cn(
+                "bg-card/60 relative gap-0 backdrop-blur-sm [--card-spacing:--spacing(6)]",
+                tier.recommended && "ring-2 ring-primary"
+              )}
+            >
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-foreground text-lg font-semibold">
                     {tier.name}
-                  </h3>
-                  <p className="mt-3">
-                    {tier.pricePrefix && (
-                      <span className="text-muted-foreground text-sm">
-                        {tier.pricePrefix}{" "}
-                      </span>
-                    )}
-                    <span className="text-foreground text-3xl font-semibold tracking-tight">
-                      {tier.priceLabel}
-                    </span>
+                  </CardTitle>
+                  {tier.recommended && <Badge>Most popular</Badge>}
+                </div>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {tier.tagline}
+                </p>
+                {/* Price and volumes come from the catalog, so a tier the
+                    catalog does not carry says so rather than inventing one. */}
+                <div className="mt-6 flex items-baseline gap-1.5">
+                  {views.get(tier.slug)?.pricePrefix && (
                     <span className="text-muted-foreground text-sm">
-                      {" "}
+                      {views.get(tier.slug)?.pricePrefix}
+                    </span>
+                  )}
+                  <span className="text-foreground text-4xl font-semibold tabular-nums">
+                    {views.get(tier.slug)?.priceLabel ?? "Let’s talk"}
+                  </span>
+                  {views.has(tier.slug) && (
+                    <span className="text-muted-foreground text-sm">
                       / month
                     </span>
-                  </p>
-                  {tier.audience && (
-                    <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                      {tier.audience}
-                    </p>
                   )}
-                  <ul className="mt-5 space-y-2.5 text-sm">
-                    {tier.volumes.map((line) => (
-                      <li key={line} className="flex items-start gap-2.5">
-                        <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                        <span className="text-muted-foreground">{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {/* Sales-led vs self-serve is a property of the TIER, so this
-                      branches on that rather than on whether checkout is wired:
-                      the visitor signs up either way, and buying happens on
-                      their billing page. */}
-                  <Link
-                    href={tier.salesLed ? "/contact/sales" : "/signup"}
-                    className="border-border hover:bg-muted mt-6 inline-flex w-full items-center justify-center rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
-                  >
-                    {tier.salesLed ? "Talk to us" : `Start with ${tier.name}`}
-                  </Link>
                 </div>
-              ))}
-            </div>
-
-            <div className="text-muted-foreground mt-8 space-y-3 text-sm leading-relaxed">
-              <p>
-                Every volume is what the allowance funds, rounded down. A crawled
-                page is priced at our metered crawler&apos;s rate and a document
-                is about 1,500 words, so both are floors — most deployments get
-                more.
-              </p>
-              {basis ? (
-                <p>
-                  Answers are quoted on{" "}
-                  <span className="text-foreground font-medium">
-                    {basis.quotedModel}
-                  </span>
-                  , the lightest model on the platform. Which model your
-                  assistants run is your choice and it changes this number a lot:
-                  on {basis.frontierModel} — what a new assistant starts with —
-                  one answer costs roughly {basis.frontierFactor}× more, so the
-                  same allowance covers proportionally fewer. Your Usage page
-                  shows exactly where you are, and each allowance is also capped
-                  per week so a busy few days cannot spend the month.
+                <p className="text-muted-foreground mt-1.5 text-xs">
+                  {views.has(tier.slug)
+                    ? "Unlimited members. Cancel or change in the billing portal."
+                    : "Priced to your usage, once we have sized it with you."}
                 </p>
-              ) : null}
-              <p>
-                <span className="text-foreground font-medium">
-                  Using your own model keys?
-                </span>{" "}
-                That traffic is yours end to end — it is never counted against a
-                plan allowance and never blocked by one. Plans meter only the work
-                the platform funds.
-              </p>
-            </div>
-          </section>
-        )}
+                {views.has(tier.slug) && (
+                  <div className="border-border/60 mt-4 rounded-lg border border-dashed px-3 py-2.5">
+                    <p className="text-foreground text-xs font-semibold">
+                      Included each month:
+                    </p>
+                    <ul className="mt-1.5 space-y-1">
+                      {views.get(tier.slug)?.volumes.map((line) => (
+                        <li
+                          key={line}
+                          className="text-muted-foreground text-xs leading-relaxed tabular-nums"
+                        >
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </CardHeader>
 
-        <section className="border-border mt-20 rounded-2xl border p-8">
-          <h2 className="text-foreground text-xl font-semibold">
-            How getting started works
-          </h2>
-          <ol className="text-muted-foreground mt-5 space-y-4 text-sm leading-relaxed">
-            <li>
-              <span className="text-foreground font-medium">1. Sign up.</span>{" "}
-              You can build assistants, add knowledge and invite your team
-              immediately. Assistants start answering once your organization is
-              activated.
-            </li>
-            <li>
-              <span className="text-foreground font-medium">
-                2. Try it properly.
-              </span>{" "}
-              We switch you on with evaluation limits so you can see it working
-              against your own content, and help you size a plan if you want the
-              conversation.
-            </li>
-            <li>
-              <span className="text-foreground font-medium">
-                3. Pick a plan when it is working.
-              </span>{" "}
-              {entry
-                ? "Your billing page carries the plans and their meters — subscribe there, and change or cancel later in the billing portal."
-                : "Your billing page carries a checkout link for the plan we agreed."}
-            </li>
-          </ol>
-          <p className="text-muted-foreground mt-6 text-sm">
-            In a hurry, or would rather not talk to anyone?{" "}
-            <a
-              href="https://ciele.app/docs/self-hosting"
+              <CardContent className="mt-6 flex-1">
+                <p className="text-foreground text-xs font-semibold">
+                  {tier.featuresLabel}
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex gap-2.5 text-sm">
+                      <Check
+                        aria-hidden="true"
+                        className="text-primary mt-0.5 size-4 shrink-0"
+                        strokeWidth={2.25}
+                      />
+                      <span className="text-muted-foreground leading-relaxed">
+                        {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="mt-6">
+                {/* Checkout is a server redirect chain out to Stripe, so it is
+                    a plain <a>: next/link would try to prefetch and soft-
+                    navigate a route that only ever answers with a 303. */}
+                <Button
+                  className="h-9 w-full"
+                  variant={tier.recommended ? "default" : "outline"}
+                  nativeButton={false}
+                  render={
+                    billingEnabled && tier.checkoutPlan ? (
+                      <a href={cta(tier).href} />
+                    ) : (
+                      <Link href={cta(tier).href} />
+                    )
+                  }
+                >
+                  <span>{cta(tier).label}</span>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+
+        {/* Notes — centred under the three-column card row rather than hugging
+            the left edge, which read as a stray column against the grid. */}
+        <div className="mx-auto mt-12 max-w-3xl text-center">
+          <p className="text-sm leading-relaxed">
+            <span className="text-muted-foreground">
+              Need more than the top plan funds, a multi-campus rollout, or
+              procurement requirements?{" "}
+            </span>
+            <Link
+              href="/contact/sales"
               className="text-foreground font-medium underline underline-offset-4"
             >
-              Self-host it today
-            </a>{" "}
-            — it is the same product, free.
+              Talk to sales
+            </Link>
+            <span className="text-muted-foreground">
+              {" "}
+              and we will quote it properly.
+            </span>
           </p>
-        </section>
+        </div>
+
+        {/* Comparison matrix */}
+        <div className="mt-20">
+          <h2 className="text-foreground text-center text-2xl font-semibold tracking-tight">
+            Compare every plan
+          </h2>
+          <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed">
+            Ciele is open source under the AGPL, so running it yourself is
+            always an option — you bring the infrastructure and the model
+            account, and you keep the whole product.
+          </p>
+
+          {/* Five columns will not fit a phone; scroll the grid inside its own
+              container rather than letting the page scroll sideways. */}
+          <div className="mt-8 overflow-x-auto">
+            <GridBeam
+              className="border-border/70 min-w-[820px] overflow-hidden rounded-2xl border"
+              cols={COMPARISON_COLUMNS.length + 1}
+              columnsTemplate="minmax(0, 1.7fr) repeat(4, minmax(0, 1fr))"
+              rows={rows.length + 1}
+            >
+              {/* Header row: an empty corner cell, then the plan names. */}
+              <div className="px-4 py-3.5" />
+              {COMPARISON_COLUMNS.map((column) => (
+                <div
+                  key={column}
+                  className={cn(
+                    "px-4 py-3.5 font-mono text-[10.5px] font-medium uppercase tracking-widest",
+                    column === BUSINESS.name
+                      ? "text-foreground"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {column}
+                </div>
+              ))}
+
+              {rows.map((row) => (
+                <React.Fragment key={row.label}>
+                  <div className="text-foreground px-4 py-3.5 text-sm leading-snug">
+                    {row.label}
+                  </div>
+                  {row.cells.map((cell, index) => (
+                    <div
+                      key={`${row.label}-${COMPARISON_COLUMNS[index]}`}
+                      className="text-muted-foreground px-4 py-3.5 text-sm leading-snug tabular-nums"
+                    >
+                      {cell === true ? (
+                        <>
+                          <Check
+                            aria-hidden="true"
+                            className="text-foreground size-4"
+                            strokeWidth={2.25}
+                          />
+                          <span className="sr-only">Included</span>
+                        </>
+                      ) : cell === false ? (
+                        <>
+                          <span aria-hidden="true" className="opacity-40">
+                            —
+                          </span>
+                          <span className="sr-only">Not included</span>
+                        </>
+                      ) : (
+                        cell
+                      )}
+                    </div>
+                  ))}
+                </React.Fragment>
+              ))}
+            </GridBeam>
+          </div>
+        </div>
+
+        {/* FAQ — the block is centred, but each row stays left-aligned: a
+            question centred against its own chevron reads as a layout bug,
+            not as a choice. */}
+        <div className="mx-auto mt-20 max-w-3xl">
+          <h2 className="text-foreground text-center text-2xl font-semibold tracking-tight">
+            Frequently asked questions
+          </h2>
+          <BouncyAccordion
+            className="mt-6 text-left"
+            items={FAQ_ITEMS}
+            classNames={{
+              // Match the translucent surfaces the rest of the page sits on,
+              // so the rows read as part of the sky shell rather than as opaque
+              // cards pasted over it.
+              item: "bg-card/60 ring-1 ring-border/60 backdrop-blur-sm",
+              title: "whitespace-normal text-wrap",
+            }}
+          />
+        </div>
       </div>
     </main>
   );
 }
+
+const FAQ_ITEMS: BouncyAccordionItem[] = [
+  {
+    id: "allowance",
+    title: "What does the included allowance actually cover?",
+    description:
+      "The AI work the platform funds for you: answering questions, crawling your sites and indexing your documents. Each plan states that as volumes — answers, pages, documents — and all three draw on the same monthly allowance, so a month spent indexing a large site leaves less for answering, and the other way round. Your Usage page shows the split as it happens.",
+  },
+  {
+    id: "why-not-tokens",
+    title: "Why volumes instead of tokens?",
+    description:
+      "Because tokens are our unit, not yours. A plan's allowance is denominated in cost, which we then restate as the volumes that cost funds — so the plan means the same thing whichever model your assistants run. A frontier model spends the allowance faster and covers proportionally fewer answers; it never quietly costs you more than the plan.",
+  },
+  {
+    id: "run-out",
+    title: "What happens if we use up the allowance?",
+    description:
+      "Assistants keep working while you are inside it, and the console warns you as you approach the cap. Each allowance is also capped per week, so a busy few days cannot spend the month. On Business and Enterprise you can connect your own provider keys or a federated cloud account, in which case that model usage is billed to you directly and is never counted against a plan.",
+  },
+  {
+    id: "visitors",
+    title: "Do members or chat visitors cost extra?",
+    description:
+      "Neither. Members with console access are unlimited on every plan, and students, staff and website visitors chatting with a published widget are never counted or charged. Plans meter the AI work, not the people.",
+  },
+  {
+    id: "byok",
+    title: "Can we bring our own models?",
+    description:
+      "Yes, from Business up. Connect your own Anthropic, OpenAI or Google key, or any OpenAI-compatible endpoint including a self-hosted one. Enterprise adds keyless federated access — Google Vertex, Anthropic workload identity or Azure OpenAI — so no long-lived key is ever stored with us.",
+  },
+  {
+    id: "switch",
+    title: "Can we switch plans later?",
+    description:
+      "Yes. Plans change from the console and take effect on the next billing period; your assistants, knowledge and history carry over untouched.",
+  },
+  {
+    id: "education",
+    title: "Do you offer education or non-profit pricing?",
+    description:
+      "We do. Ciele is built for institutions, and we quote academic and non-profit rollouts case by case — get in touch and we will work it out with you.",
+  },
+];

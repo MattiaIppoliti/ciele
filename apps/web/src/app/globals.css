@@ -418,3 +418,79 @@
     cursor: none !important;
   }
 }
+
+/* GridBeam — soft glow travelling along the dividers of a comparison grid.
+   Two identical lattices are stacked over the same tracks: the lower one draws
+   the static hairlines, the upper one draws them in `--foreground` but is
+   revealed only through a moving radial mask, so the highlight reads as light
+   running along the lines rather than a shape sliding over them.
+
+   The overlay aligns to the content via `grid-template-*: subgrid`, which is
+   the only way to follow auto-sized rows exactly. Where subgrid is missing the
+   overlay would be off by whole rows, so the component gates the glow behind
+   the same @supports and the grid simply renders static. */
+.grid-beam-glow {
+  --grid-beam-spot: 46%;
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    #000 0%,
+    rgb(0 0 0 / 0.4) 42%,
+    transparent 68%
+  );
+  mask-image: radial-gradient(
+    circle at center,
+    #000 0%,
+    rgb(0 0 0 / 0.4) 42%,
+    transparent 68%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: var(--grid-beam-spot) var(--grid-beam-spot);
+  mask-size: var(--grid-beam-spot) var(--grid-beam-spot);
+  animation: grid-beam-drift 11s ease-in-out infinite;
+}
+
+/* A second, faster and smaller pass on the opposite diagonal: one spot alone
+   reads as a loop, two crossing at different rates read as ambient. */
+.grid-beam-glow-alt {
+  --grid-beam-spot: 30%;
+  animation: grid-beam-drift-alt 7.5s ease-in-out infinite;
+}
+
+@keyframes grid-beam-drift {
+  0% {
+    -webkit-mask-position: -15% 0%;
+    mask-position: -15% 0%;
+  }
+  50% {
+    -webkit-mask-position: 115% 100%;
+    mask-position: 115% 100%;
+  }
+  100% {
+    -webkit-mask-position: -15% 0%;
+    mask-position: -15% 0%;
+  }
+}
+
+@keyframes grid-beam-drift-alt {
+  0% {
+    -webkit-mask-position: 115% 10%;
+    mask-position: 115% 10%;
+  }
+  50% {
+    -webkit-mask-position: -15% 90%;
+    mask-position: -15% 90%;
+  }
+  100% {
+    -webkit-mask-position: 115% 10%;
+    mask-position: 115% 10%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-beam-glow,
+  .grid-beam-glow-alt {
+    animation: none;
+    opacity: 0;
+  }
+}

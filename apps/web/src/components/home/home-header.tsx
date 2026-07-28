@@ -8,8 +8,11 @@ import { GhostMark } from "@/components/auth/ghost-mark";
 import { Magnetic } from "@/components/core/magnetic";
 import { useTheme } from "@/components/theme-provider";
 
+// Only destinations that resolve from every page the header renders on.
+// "Features" was a bare #features anchor: it scrolled on the marketing home and
+// did nothing at all on /pricing, /security or the policy pages.
 const menuItems = [
-  { name: "Features", href: "#features" },
+  { name: "Pricing", href: "/pricing" },
   { name: "Docs", href: "https://docs.ciele.app", external: true },
 ];
 

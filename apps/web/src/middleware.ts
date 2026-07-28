@@ -4,6 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = [
   // Marketing home — also reachable by signed-in users who want to see it.
   /^\/home$/,
+  // Public pricing — a signed-out visitor comparing plans must never be
+  // bounced to /login.
+  /^\/pricing$/,
+  // Checkout gates itself (see the route): letting middleware bounce it would
+  // drop the ?plan= the buyer just picked, since the /login redirect below
+  // carries only the pathname.
+  /^\/api\/ee\/stripe\/checkout$/,
   // The rest of the (marketing) route group: static security/legal pages the
   // home footer's "Legal" column links to. No private data, so a signed-out
   // visitor must reach them instead of bouncing to /login?next=.
