@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { isValidElement } from "react"
 
 import { cn } from "./cn"
 
@@ -40,16 +41,35 @@ const buttonVariants = cva(
   }
 )
 
+/**
+ * Whether Base UI should treat the rendered element as a native `<button>`.
+ *
+ * Its `nativeButton` prop defaults to true, so rendering a link through
+ * `render={<Link/>}` — the idiom for a button-shaped navigation, used all over
+ * the admin console — trips a console error on every mount and asks Base UI to
+ * skip the keyboard/role shims a non-button needs. Inferring it from `render`
+ * keeps the call sites free of a prop nobody should have to remember, and an
+ * explicit `nativeButton` still wins.
+ */
+function rendersNativeButton(render: ButtonPrimitive.Props["render"]): boolean {
+  if (!isValidElement(render)) return true
+  return render.type === "button"
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  nativeButton,
+  render,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      nativeButton={nativeButton ?? rendersNativeButton(render)}
+      {...(render ? { render } : {})}
       {...props}
     />
   )

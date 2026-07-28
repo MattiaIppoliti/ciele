@@ -371,7 +371,31 @@ const OSS_DEFAULTS: EnterpriseCapabilities = {
   },
 };
 
-let current: EnterpriseCapabilities = OSS_DEFAULTS;
+/**
+ * The registry cell, held on `globalThis` rather than in a module-level `let`.
+ *
+ * Why: registration happens once at startup from the host's instrumentation
+ * entrypoint, and reads happen inside request handlers. A bundler is free to
+ * compile those two into separate module instances — Next's dev server does
+ * exactly that for `instrumentation.ts` — and a module-scoped variable then
+ * gives the writer and the reader *different* cells: the enterprise edition
+ * registers, and every request still sees the OSS defaults. A production build
+ * shares one graph, so the bug appears only in development, which is the worst
+ * place for it: the managed edition silently reads as open-source locally.
+ *
+ * The process is the intended scope of this registry (see the header), so
+ * `globalThis` is the honest home for it rather than a workaround.
+ */
+const CELL = Symbol.for("@agent-hub/agent.enterpriseCapabilities");
+
+interface RegistryHost {
+  [CELL]?: { current: EnterpriseCapabilities };
+}
+
+function cell(): { current: EnterpriseCapabilities } {
+  const host = globalThis as RegistryHost;
+  return (host[CELL] ??= { current: OSS_DEFAULTS });
+}
 
 /**
  * Register enterprise implementations. Shallow-merges over the current
@@ -382,7 +406,8 @@ let current: EnterpriseCapabilities = OSS_DEFAULTS;
 export function registerEnterpriseCapabilities(
   overrides: Partial<EnterpriseCapabilities>
 ): void {
-  current = { ...current, ...overrides };
+  const held = cell();
+  held.current = { ...held.current, ...overrides };
 }
 
 /**
@@ -391,10 +416,10 @@ export function registerEnterpriseCapabilities(
  * diverge (e.g. the turn pipeline's usage gate).
  */
 export function getEnterpriseCapabilities(): EnterpriseCapabilities {
-  return current;
+  return cell().current;
 }
 
 /** Test-only: restore the OSS no-op defaults. Not exported through the barrel. */
 export function resetEnterpriseCapabilities(): void {
-  current = OSS_DEFAULTS;
+  cell().current = OSS_DEFAULTS;
 }
