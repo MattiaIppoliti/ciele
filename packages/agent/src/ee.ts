@@ -165,8 +165,8 @@ export interface PlanCatalogEntry {
 
 /**
  * Which model an answer volume is quoted on, and how much dearer per answer the
- * model a new assistant starts with is. Published next to the volumes: an answer
- * count means nothing without the model it was priced on.
+ * mid-tier frontier model is. Published next to the volumes: an answer count
+ * means nothing without the model it was priced on.
  */
 export interface AnswerModelBasis {
   quotedModel: string;

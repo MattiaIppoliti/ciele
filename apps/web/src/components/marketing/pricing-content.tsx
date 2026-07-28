@@ -521,9 +521,9 @@ export function PricingContent({
               </span>
               , the lightest model on the platform. Which model your assistants
               run is your choice and it moves this a lot: on{" "}
-              {basis.frontierModel} — what a new assistant starts with — one
-              answer costs roughly {basis.frontierFactor}× more, so the same
-              allowance covers proportionally fewer.
+              {basis.frontierModel} — the usual step up when you want a stronger
+              answer — one answer costs roughly {basis.frontierFactor}× more, so
+              the same allowance covers proportionally fewer.
             </p>
           ) : null}
         </div>
