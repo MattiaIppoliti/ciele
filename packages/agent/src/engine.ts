@@ -4,6 +4,7 @@ import type {
   Assistant,
   Flow,
   FlowAction,
+  FlowRoutingContext,
   Provider,
   ProviderConnection,
   SkillSnapshot,
@@ -69,7 +70,13 @@ export function flowCatalogEntry(flow: Flow): string {
   const lines = [
     `- id: ${flow.id} — name: ${flow.name} — triggers when: ${flow.description}`,
   ];
-  const conditions = flow.conditions ?? [];
+  // Only semantic conditions belong in a prompt. URL and Schedule are objective
+  // facts, already gated in `messageFlowCandidates` before this flow became a
+  // candidate; showing them here would be noise at best and misleading steering
+  // at worst (spec #550).
+  const conditions = (flow.conditions ?? []).filter(
+    (condition) => condition.kind === "conversation_context"
+  );
   if (conditions.length > 0) {
     const logic =
       (flow.conditionLogic ?? "any") === "all"
@@ -95,13 +102,16 @@ export async function classifyIntent(
   classifier: LanguageModel | null,
   assistantName?: string,
   /** Raw SDK usage of the classify call, for the AI usage ledger. */
-  onUsage?: (usage: unknown) => void
+  onUsage?: (usage: unknown) => void,
+  /** Page URL + clock for the objective condition gate (spec #550). */
+  routing: FlowRoutingContext = {}
 ): Promise<Flow | null> {
-  // Flows fired by page/chat events never compete for user messages.
-  const candidates = messageFlowCandidates(flows);
+  // Flows fired by page/chat events never compete for user messages, and
+  // neither do flows whose URL/Schedule conditions cannot pass.
+  const candidates = messageFlowCandidates(flows, routing);
   const defaultFlow = flows.find((f) => f.isDefault && f.enabled) ?? null;
   if (candidates.length === 0 || !classifier) {
-    return matchFlow(message, flows);
+    return matchFlow(message, flows, routing);
   }
 
   try {
@@ -136,7 +146,7 @@ export async function classifyIntent(
     const picked = candidates.find((flow) => matchingIds.has(flow.id));
     return picked ?? defaultFlow;
   } catch {
-    return matchFlow(message, flows);
+    return matchFlow(message, flows, routing);
   }
 }
 
@@ -220,6 +230,12 @@ export async function runAssistantChat(options: {
   history: HistoryMessage[];
   /** Resolved template-variable catalog interpolated into action text this turn. */
   templateContext?: ActionContext["templateContext"];
+  /**
+   * Page URL + clock the objective Flow Conditions (URL, Schedule) are gated
+   * against (spec #550). Omitted leaves them unevaluatable, which never
+   * disqualifies a Flow — an unwired caller keeps the previous behaviour.
+   */
+  routing?: FlowRoutingContext;
   searchKnowledge?: KnowledgeSearcher;
   /**
    * Active Knowledge Collection anchor (see the #53 audit). Scopes retrieval
@@ -263,6 +279,7 @@ export async function runAssistantChat(options: {
     message,
     history,
     templateContext,
+    routing = {},
     searchKnowledge,
     collectionId = null,
     session,
@@ -340,7 +357,7 @@ export async function runAssistantChat(options: {
       label: "Classifying intent (keyword matching)",
       stage: "classify",
     });
-    const flow = matchFlow(message, flows);
+    const flow = matchFlow(message, flows, routing);
     if (!flow) {
       const part: ChatReplyPart = {
         type: "text",
@@ -420,7 +437,8 @@ export async function runAssistantChat(options: {
         credentialKind: classifier.credentialKind,
         ...usageTotals(usage),
       });
-    }
+    },
+    routing
   );
 
   if (!flow) {

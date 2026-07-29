@@ -14,6 +14,7 @@ vi.mock("@agent-hub/agent", () => ({
   streamConversationTurn: vi.fn(),
 }));
 
+import { sessionMetadata } from "@agent-hub/agent";
 import { POST } from "./route";
 import { SSO_GATE_COOKIE, sealGate } from "@/lib/sso";
 
@@ -103,5 +104,35 @@ describe("widget chat route — SSO gate enforcement", () => {
     mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
     const res = await post(undefined, {});
     expect(res.status).toBe(400); // reaches body validation, never 401
+  });
+});
+
+/**
+ * The embedding page the launcher forwards. Without it, URL Flow Conditions
+ * would be evaluated against the chat iframe's own origin (spec #550).
+ */
+describe("widget chat route — reported page URL", () => {
+  beforeEach(() => {
+    mocks.resolveWidgetContext.mockReset();
+    vi.mocked(sessionMetadata).mockClear();
+  });
+
+  it("hands the body's pageUrl to sessionMetadata", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
+    await post(undefined, {
+      visitorId: "v1",
+      message: "hi",
+      pageUrl: "https://campus.edu/courses/psychology",
+    });
+    expect(sessionMetadata).toHaveBeenCalledWith(
+      expect.anything(),
+      "https://campus.edu/courses/psychology"
+    );
+  });
+
+  it("passes undefined when the embed reported nothing", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
+    await post(undefined, { visitorId: "v1", message: "hi", pageUrl: null });
+    expect(sessionMetadata).toHaveBeenCalledWith(expect.anything(), undefined);
   });
 });

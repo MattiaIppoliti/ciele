@@ -1,3 +1,7 @@
+import {
+  flowConditionsAllowRouting,
+  type FlowRoutingContext,
+} from "./flow-conditions";
 import type { Flow } from "./types";
 
 /**
@@ -98,8 +102,13 @@ function scoreFlow(message: string, messageStems: Set<string>, flow: Flow): numb
 
   // Builder conditions sharpen the keyword match: descriptions score like the
   // flow description, positive examples like built-in trigger phrases.
+  //
+  // Only the semantic kind participates. Keyword-scoring a URL pattern would
+  // tokenize `.*/courses/.*` against the user's message; objective conditions
+  // have already been gated upstream in `messageFlowCandidates` (spec #550).
   const conditionScores: number[] = [];
   for (const condition of flow.conditions ?? []) {
+    if (condition.kind !== "conversation_context") continue;
     let conditionScore = 0;
     const condStems = new Set(tokenize(condition.description).map(stem));
     for (const s of condStems) if (messageStems.has(s)) conditionScore += 1;
@@ -140,14 +149,27 @@ function scoreFlow(message: string, messageStems: Set<string>, flow: Flow): numb
 
 const MATCH_THRESHOLD = 3;
 
-/** Enabled message flows in the exact priority order used by every router. */
-export function messageFlowCandidates(flows: Flow[]): Flow[] {
+/**
+ * Enabled message flows in the exact priority order used by every router.
+ *
+ * The one funnel both engines share, and therefore the one place the objective
+ * condition gate belongs: a Flow whose URL or Schedule conditions cannot pass is
+ * not a candidate here, so neither the keyword router below nor the LLM
+ * classifier in `@agent-hub/agent` ever sees it, and the two cannot drift
+ * (spec #550). Omitting `context` leaves objective conditions unevaluatable,
+ * which never disqualifies — an unwired caller keeps the previous behaviour.
+ */
+export function messageFlowCandidates(
+  flows: Flow[],
+  context: FlowRoutingContext = {}
+): Flow[] {
   return flows
     .filter(
       (flow) =>
         flow.enabled &&
         !flow.isDefault &&
-        (flow.trigger ?? "message") === "message"
+        (flow.trigger ?? "message") === "message" &&
+        flowConditionsAllowRouting(flow, context)
     )
     .sort((a, b) => a.position - b.position);
 }
@@ -156,13 +178,17 @@ export function messageFlowCandidates(flows: Flow[]): Flow[] {
  * Evaluates enabled message flows in configured priority order and returns
  * the first match, or the default flow when nothing clears the threshold.
  */
-export function matchFlow(message: string, flows: Flow[]): Flow | null {
+export function matchFlow(
+  message: string,
+  flows: Flow[],
+  context: FlowRoutingContext = {}
+): Flow | null {
   const normalized = normalize(message);
   const messageStems = new Set(tokenize(message).map(stem));
 
   // Only message-triggered flows compete for user messages; flows fired by
   // page/chat events never match here.
-  const candidates = messageFlowCandidates(flows);
+  const candidates = messageFlowCandidates(flows, context);
 
   // Priority is authoritative: the first matching flow wins. This makes the
   // order configured in the Flows screen meaningful when intents overlap.

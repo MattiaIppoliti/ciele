@@ -56,12 +56,55 @@ export interface FlowConditionExample {
 }
 
 /** "Conversation context" condition: an LLM-evaluated description + examples. */
-export interface FlowCondition {
+export interface ConversationContextCondition {
   id: string;
   kind: "conversation_context";
   description: string;
   examples: FlowConditionExample[];
 }
+
+/** How a URL condition compares the page URL to its configured value. */
+export type FlowUrlOperator = "matches" | "contains" | "regex";
+
+/** "URL" condition: the page the Visitor is on, matched three ways. */
+export interface UrlCondition {
+  id: string;
+  kind: "url";
+  operator: FlowUrlOperator;
+  /** Exact URL, substring or regular expression, per `operator`. */
+  value: string;
+}
+
+/**
+ * "Schedule" condition: a wall-clock window read in one IANA timezone.
+ *
+ * The bounds are local wall-clock date-times, never instants, for the same
+ * reason `ChannelAvailability` stores local opening hours plus a zone — "09:00
+ * in Europe/Rome" has to stay 09:00 across a daylight-saving change.
+ */
+export interface ScheduleCondition {
+  id: string;
+  kind: "schedule";
+  /** Wall-clock local date-time, `YYYY-MM-DDTHH:mm`. Required. */
+  startAt: string;
+  /** Same shape; absent or blank leaves the window open-ended. */
+  endAt?: string;
+  /** IANA zone id, e.g. "Europe/Rome". Both bounds are read in this zone. */
+  timezone: string;
+}
+
+/**
+ * One criterion a Flow must meet to stay a routing candidate.
+ *
+ * `conversation_context` is **semantic** — evaluated by the classifier (or, with
+ * no model, keyword-scored). `url` and `schedule` are **objective**: checkable
+ * facts, gated deterministically before Intent Classification by
+ * `flowConditionsAllowRouting` and never shown to the model (spec #550).
+ */
+export type FlowCondition =
+  | ConversationContextCondition
+  | UrlCondition
+  | ScheduleCondition;
 
 /** One response-extraction rule: a JSON path bound to a template variable name. */
 export interface ApiRequestJsonPath {

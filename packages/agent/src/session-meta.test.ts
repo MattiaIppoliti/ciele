@@ -64,6 +64,33 @@ describe("sessionMetadata", () => {
     expect(meta.language).toBe("it-IT");
   });
 
+  // The chat runs in a cross-origin iframe, so `referer` describes the widget,
+  // not the page the visitor is on. The embed reports it instead (spec #550).
+  it("prefers the embed-reported page URL over the headers", () => {
+    const meta = sessionMetadata(
+      new Headers({ referer: "https://platform.ciele.app/widget/abc?theme=light" }),
+      "https://campus.edu/courses/psychology"
+    );
+    expect(meta.launchUrl).toBe("https://campus.edu/courses/psychology");
+  });
+
+  it("falls back to the headers when the reported page URL is unusable", () => {
+    const headers = new Headers({ referer: "https://campus.edu/course/1" });
+    expect(sessionMetadata(headers, "   ").launchUrl).toBe(
+      "https://campus.edu/course/1"
+    );
+    expect(sessionMetadata(headers, "not a url").launchUrl).toBe(
+      "https://campus.edu/course/1"
+    );
+    // A non-http scheme must never reach a field the Inbox renders.
+    expect(sessionMetadata(headers, "javascript:alert(1)").launchUrl).toBe(
+      "https://campus.edu/course/1"
+    );
+    expect(
+      sessionMetadata(headers, `https://campus.edu/${"x".repeat(600)}`).launchUrl
+    ).toBe("https://campus.edu/course/1");
+  });
+
   it("leaves everything undefined for an empty header set", () => {
     const meta = sessionMetadata(new Headers());
     expect(meta.os).toBeUndefined();

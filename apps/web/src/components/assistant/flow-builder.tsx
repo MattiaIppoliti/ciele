@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Link } from "@/components/ui/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -15,6 +15,7 @@ import type {
   FlowConditionLogic,
   FlowTrigger,
   FlowTrust,
+  FlowUrlOperator,
   KeyValuePair,
 } from "@agent-hub/core";
 
@@ -78,6 +79,19 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FLOW_ACTION_PICKER, FLOW_ACTIONS } from "@/lib/flow-actions";
+import {
+  cleanFlowConditions,
+  FLOW_CONDITION_KINDS,
+  FLOW_URL_OPERATORS,
+  flowConditionDescription,
+  flowConditionIssue,
+  flowConditionPicker,
+  flowConditionsSavable,
+  newFlowCondition,
+  timezoneOptions,
+  UNAVAILABLE_KIND_HINT,
+  urlOperatorHint,
+} from "@/lib/flow-conditions";
 import { TEMPLATE_VARIABLES } from "@agent-hub/agent/client";
 import type { ApiRequestTestResult } from "@agent-hub/agent/client";
 import { cn } from "@/lib/utils";
@@ -137,14 +151,6 @@ function newExample(shouldTrigger: boolean): FlowConditionExample {
   return { message: "", note: "", shouldTrigger };
 }
 
-function newCondition(): FlowCondition {
-  return {
-    id: localId(),
-    kind: "conversation_context",
-    description: "",
-    examples: [newExample(true), newExample(false)],
-  };
-}
 
 /** Compact collapsible section using the app's neutral visual language. */
 function StepCard({
@@ -352,6 +358,12 @@ function ExampleGroup({
   );
 }
 
+/**
+ * One condition, rendered per kind: `conversation_context` keeps its
+ * description + examples, while the objective kinds (URL, Schedule) get the
+ * fields the runtime gate reads. Validation copy comes from
+ * `flowConditionIssue` so the editor and the gate share one completeness rule.
+ */
 function ConditionCard({
   condition,
   onChange,
@@ -361,10 +373,15 @@ function ConditionCard({
   onChange: (next: FlowCondition) => void;
   onRemove: () => void;
 }) {
+  const issue = flowConditionIssue(condition);
+  const label =
+    FLOW_CONDITION_KINDS.find((meta) => meta.kind === condition.kind)?.label ??
+    "Condition";
+
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Conversation context</h3>
+        <h3 className="text-sm font-semibold">{label}</h3>
         <Hint label="Remove condition">
           <Button
             type="button"
@@ -378,35 +395,175 @@ function ConditionCard({
         </Hint>
       </div>
 
-      <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-2">
-        <span className="text-muted-foreground border-r pr-2 text-xs font-medium">
-          User
-        </span>
-        <input
-          value={condition.description}
-          onChange={(e) =>
-            onChange({ ...condition, description: e.target.value })
-          }
-          placeholder="Describe the conversation context, e.g. A customer is asking the assistant to create content for them"
-          className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
-        />
-      </div>
+      {condition.kind === "conversation_context" && (
+        <>
+          <div className="flex h-9 items-center gap-2 rounded-md border bg-background px-2">
+            <span className="text-muted-foreground border-r pr-2 text-xs font-medium">
+              User
+            </span>
+            <input
+              value={condition.description}
+              onChange={(e) =>
+                onChange({ ...condition, description: e.target.value })
+              }
+              placeholder="Describe the conversation context, e.g. A customer is asking the assistant to create content for them"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+            />
+          </div>
 
-      <p className="text-muted-foreground text-xs">
-        Add example messages to improve trigger accuracy.
-      </p>
+          <p className="text-muted-foreground text-xs">
+            Add example messages to improve trigger accuracy.
+          </p>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <ExampleGroup
-          shouldTrigger
-          examples={condition.examples}
-          onChange={(examples) => onChange({ ...condition, examples })}
+          <div className="grid gap-3 lg:grid-cols-2">
+            <ExampleGroup
+              shouldTrigger
+              examples={condition.examples}
+              onChange={(examples) => onChange({ ...condition, examples })}
+            />
+            <ExampleGroup
+              shouldTrigger={false}
+              examples={condition.examples}
+              onChange={(examples) => onChange({ ...condition, examples })}
+            />
+          </div>
+        </>
+      )}
+
+      {condition.kind === "url" && (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={condition.operator}
+              onValueChange={(value) =>
+                onChange({ ...condition, operator: value as FlowUrlOperator })
+              }
+            >
+              <SelectTrigger className="h-9 w-32" aria-label="URL operator">
+                {/* The label, not the stored value: "Matches" is the operator's
+                    name in the UI, and Base UI's Value renders the raw value. */}
+                {FLOW_URL_OPERATORS.find(
+                  (operator) => operator.value === condition.operator
+                )?.label ?? condition.operator}
+              </SelectTrigger>
+              <SelectContent>
+                {FLOW_URL_OPERATORS.map((operator) => (
+                  <SelectItem key={operator.value} value={operator.value}>
+                    {operator.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              value={condition.value}
+              onChange={(e) => onChange({ ...condition, value: e.target.value })}
+              placeholder={
+                condition.operator === "regex"
+                  ? ".*/courses/.*"
+                  : condition.operator === "contains"
+                    ? "/courses"
+                    : "https://site.com/courses"
+              }
+              aria-label="URL"
+              aria-invalid={issue !== null}
+              className="h-9 min-w-0 flex-1"
+            />
+          </div>
+          <p className="text-muted-foreground text-xs">
+            {urlOperatorHint(condition.operator)}
+          </p>
+          {issue && <p className="text-destructive text-xs">{issue}</p>}
+        </div>
+      )}
+
+      {condition.kind === "schedule" && (
+        <div className="space-y-3">
+          <ScheduleBound
+            label="Start date & time"
+            required
+            date={condition.startAt}
+            timezone={condition.timezone}
+            onDateChange={(startAt) => onChange({ ...condition, startAt })}
+            onTimezoneChange={(timezone) => onChange({ ...condition, timezone })}
+          />
+          <ScheduleBound
+            label="End date & time"
+            date={condition.endAt ?? ""}
+            timezone={condition.timezone}
+            onDateChange={(endAt) => onChange({ ...condition, endAt })}
+            onTimezoneChange={(timezone) => onChange({ ...condition, timezone })}
+          />
+          {issue && <p className="text-destructive text-xs">{issue}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One bound of a Schedule condition: a native date input, "at", a native time
+ * input, and the zone. Native inputs give the locale `dd/mm/yyyy` presentation
+ * and keyboard entry for free. Both bounds write the same `timezone` field — the
+ * select is rendered twice for reference parity, so a window can never straddle
+ * two zones.
+ */
+function ScheduleBound({
+  label,
+  required = false,
+  date,
+  timezone,
+  onDateChange,
+  onTimezoneChange,
+}: {
+  label: string;
+  required?: boolean;
+  /** Wall-clock `YYYY-MM-DDTHH:mm`, or "". */
+  date: string;
+  timezone: string;
+  onDateChange: (next: string) => void;
+  onTimezoneChange: (next: string) => void;
+}) {
+  const [day, time] = date.includes("T") ? date.split("T") : [date, ""];
+  const zones = useMemo(() => timezoneOptions(), []);
+  const compose = (nextDay: string, nextTime: string) =>
+    nextDay ? `${nextDay}T${nextTime || "00:00"}` : "";
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm font-medium">
+        {label} {required && <span className="text-destructive">*</span>}
+      </Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="date"
+          value={day}
+          onChange={(e) => onDateChange(compose(e.target.value, time))}
+          aria-label={`${label} date`}
+          className="h-9 w-40"
         />
-        <ExampleGroup
-          shouldTrigger={false}
-          examples={condition.examples}
-          onChange={(examples) => onChange({ ...condition, examples })}
+        <span className="text-muted-foreground text-sm">at</span>
+        <Input
+          type="time"
+          value={time}
+          onChange={(e) => onDateChange(compose(day, e.target.value))}
+          aria-label={`${label} time`}
+          className="h-9 w-28"
         />
+        <Select
+          value={timezone}
+          onValueChange={(value) => value && onTimezoneChange(value)}
+        >
+          <SelectTrigger className="h-9 w-56" aria-label={`${label} timezone`}>
+            {zones.find((zone) => zone.value === timezone)?.label ?? timezone}
+          </SelectTrigger>
+          <SelectContent>
+            {zones.map((zone) => (
+              <SelectItem key={zone.value} value={zone.value}>
+                {zone.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
     </div>
   );
@@ -1395,7 +1552,10 @@ export function FlowBuilder({
   });
   const responseOk = actions.length > 0 && configuredActions;
   const nameOk = name.trim().length > 0;
-  const canSave = triggerOk && responseOk && nameOk;
+  // An incomplete objective condition would reach the runtime as a condition
+  // the gate has to ignore — refuse it here instead (spec #550).
+  const conditionsOk = flowConditionsSavable(conditions);
+  const canSave = triggerOk && responseOk && nameOk && conditionsOk;
 
   const disabledHint = !triggerOk
     ? `Set a trigger to enable ${isEdit ? "Save changes" : "Create flow"}`
@@ -1403,27 +1563,18 @@ export function FlowBuilder({
       ? `Add a response action to enable ${isEdit ? "Save changes" : "Create flow"}`
       : !configuredActions
         ? "Complete the required settings for every response action"
-        : !nameOk
-          ? `Name the flow to enable ${isEdit ? "Save changes" : "Create flow"}`
-          : null;
+        : !conditionsOk
+          ? "Complete every condition you added"
+          : !nameOk
+            ? `Name the flow to enable ${isEdit ? "Save changes" : "Create flow"}`
+            : null;
 
   function save() {
     if (!canSave) return;
-    const cleanedConditions = conditions
-      .map((c) => ({
-        ...c,
-        description: c.description.trim(),
-        examples: c.examples.filter(
-          (e) => e.message.trim() || e.note.trim()
-        ),
-      }))
-      .filter((c) => c.description || c.examples.length > 0);
-    // The classifier catalogs flows by description — keep it in sync with
-    // the builder's condition descriptions.
-    const joined = cleanedConditions
-      .map((c) => c.description)
-      .filter(Boolean)
-      .join("; ");
+    const cleanedConditions = cleanFlowConditions(conditions);
+    // The classifier catalogs flows by description — keep it in sync with the
+    // builder's semantic condition descriptions.
+    const joined = flowConditionDescription(cleanedConditions);
     const payload = {
       description: joined || flow?.description || "",
       trigger: trigger ?? ("message" as FlowTrigger),
@@ -1580,10 +1731,6 @@ export function FlowBuilder({
             <p className="text-base">
               Select a trigger to see the available conditions.
             </p>
-          ) : trigger !== "message" ? (
-            <p className="text-muted-foreground text-sm">
-              No conditions are available for this trigger yet.
-            </p>
           ) : (
             <div className="space-y-3">
               {conditions.length > 0 && (
@@ -1592,8 +1739,8 @@ export function FlowBuilder({
                   <div className="flex items-center rounded-lg border p-0.5">
                     {(
                       [
-                        { value: "any", label: "Match any" },
-                        { value: "all", label: "Match all" },
+                        { value: "any", label: "Any condition matches" },
+                        { value: "all", label: "All conditions match" },
                       ] as const
                     ).map((o) => (
                       <Button
@@ -1631,15 +1778,48 @@ export function FlowBuilder({
                 />
               ))}
 
-              <div className="flex justify-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConditions((prev) => [...prev, newCondition()])}
-                >
-                  Add condition <Plus className="size-4" />
-                </Button>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Add a condition</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {flowConditionPicker(trigger).map((meta) => {
+                    const chip = (
+                      <Button
+                        key={meta.kind}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!meta.enabled}
+                        onClick={() =>
+                          meta.enabled &&
+                          setConditions((prev) => [
+                            ...prev,
+                            newFlowCondition(
+                              meta.kind as
+                                | "conversation_context"
+                                | "url"
+                                | "schedule",
+                              localId()
+                            ),
+                          ])
+                        }
+                      >
+                        {meta.label} <Plus className="size-4" />
+                      </Button>
+                    );
+                    // Greyed kinds stay visible so the surface is legible; the
+                    // tooltip says why, so the greying doesn't read as "you
+                    // lack permission".
+                    return meta.enabled ? (
+                      chip
+                    ) : (
+                      <Hint key={meta.kind} label={UNAVAILABLE_KIND_HINT}>
+                        <span className="inline-flex cursor-not-allowed">
+                          {chip}
+                        </span>
+                      </Hint>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}

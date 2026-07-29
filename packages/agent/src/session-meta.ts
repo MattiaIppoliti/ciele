@@ -18,12 +18,45 @@ function parseBrowser(ua: string): string | undefined {
   return undefined;
 }
 
+/** Longest launch URL we store. Matches the consent log's page-URL cap. */
+const LAUNCH_URL_LIMIT = 500;
+
+/**
+ * A page URL reported by the embed, or undefined when it is unusable.
+ *
+ * The floater launcher runs on the customer's page and the chat runs in an
+ * iframe on our origin, so `referer` describes *us*, not the visitor's page —
+ * which is why the embed has to say. Only http(s) is accepted, so a hostile
+ * embed cannot park a `javascript:` string in a field the Inbox renders.
+ */
+function reportedPageUrl(pageUrl: string | undefined): string | undefined {
+  const raw = (pageUrl ?? "").trim();
+  if (!raw || raw.length > LAUNCH_URL_LIMIT) return undefined;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return undefined;
+    }
+    return raw;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Best-effort session context from request headers for the Inbox details
  * panel. Location/city rely on proxy geo headers (Vercel/Cloudflare) and
  * are simply absent when running locally.
+ *
+ * `pageUrl` is the embedding page as reported by the embed; it wins over the
+ * header-derived value, which stays the fallback for embeds that cannot supply
+ * one (direct iframe, pop-up). URL Flow Conditions are evaluated against
+ * whichever of the two lands here (spec #550).
  */
-export function sessionMetadata(headers: Headers): ConversationMetadata {
+export function sessionMetadata(
+  headers: Headers,
+  pageUrl?: string
+): ConversationMetadata {
   const ua = headers.get("user-agent") ?? "";
   const language = headers.get("accept-language")?.split(",")[0]?.trim();
   const ip =
@@ -36,7 +69,11 @@ export function sessionMetadata(headers: Headers): ConversationMetadata {
     undefined;
   const rawCity =
     headers.get("x-vercel-ip-city") ?? headers.get("cf-ipcity") ?? undefined;
-  const launchUrl = headers.get("referer") ?? headers.get("origin") ?? undefined;
+  const launchUrl =
+    reportedPageUrl(pageUrl) ??
+    headers.get("referer") ??
+    headers.get("origin") ??
+    undefined;
 
   return {
     launchUrl,

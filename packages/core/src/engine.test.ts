@@ -177,6 +177,84 @@ describe("matchFlow", () => {
     ).toBe(higherPriority);
   });
 
+  it("does not keyword-score an objective condition's pattern", () => {
+    // "courses" appears only inside the URL pattern. If objective conditions
+    // were tokenized like semantic ones, this would match on the word alone.
+    const gated = makeFlow({
+      name: "Section flow",
+      conditions: [
+        { id: "c1", kind: "url", operator: "regex", value: ".*/courses/.*" },
+      ],
+    });
+    const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+
+    expect(
+      matchFlow("tell me about courses", [gated, defaultFlow], {
+        url: "https://site.com/courses/psychology",
+      })
+    ).toBe(defaultFlow);
+  });
+
+  it("drops a flow whose URL condition fails, and keeps it when it passes", () => {
+    const gated = makeFlow({
+      name: "Human help needed",
+      conditions: [
+        { id: "c1", kind: "url", operator: "contains", value: "/courses" },
+      ],
+    });
+    const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+
+    expect(
+      matchFlow("talk to a human", [gated, defaultFlow], {
+        url: "https://site.com/admissions",
+      })
+    ).toBe(defaultFlow);
+    expect(
+      matchFlow("talk to a human", [gated, defaultFlow], {
+        url: "https://site.com/courses",
+      })
+    ).toBe(gated);
+  });
+
+  it("drops a flow outside its scheduled window", () => {
+    const gated = makeFlow({
+      name: "Human help needed",
+      conditions: [
+        {
+          id: "c1",
+          kind: "schedule",
+          startAt: "2026-08-01T09:00",
+          endAt: "2026-08-01T18:00",
+          timezone: "Europe/Rome",
+        },
+      ],
+    });
+    const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+
+    expect(
+      matchFlow("talk to a human", [gated, defaultFlow], {
+        now: new Date("2026-08-01T20:00:00Z"),
+      })
+    ).toBe(defaultFlow);
+    expect(
+      matchFlow("talk to a human", [gated, defaultFlow], {
+        now: new Date("2026-08-01T07:30:00Z"),
+      })
+    ).toBe(gated);
+  });
+
+  it("keeps an objectively-gated flow when no routing context is passed", () => {
+    const gated = makeFlow({
+      name: "Human help needed",
+      conditions: [
+        { id: "c1", kind: "url", operator: "contains", value: "/courses" },
+      ],
+    });
+    const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+
+    expect(matchFlow("talk to a human", [gated, defaultFlow])).toBe(gated);
+  });
+
   it("returns null when no flow is enabled at all", () => {
     const defaultFlow = makeFlow({
       name: "Default behavior",

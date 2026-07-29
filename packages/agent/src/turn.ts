@@ -576,6 +576,13 @@ export async function streamConversationTurn(
             conversationId,
             appOrigin: platformAppOrigin(),
           }),
+          // Objective Flow Conditions are gated against the page the
+          // Conversation was launched from (spec #550) — captured once at
+          // launch, so mid-conversation navigation is not re-evaluated.
+          routing: {
+            url: conversation.metadata.launchUrl,
+            now: new Date(),
+          },
           searchKnowledge,
           collectionId,
           session,
@@ -644,6 +651,12 @@ export async function streamConversationTurn(
                 session,
                 alreadyClarified,
                 skills: targetConfig.skills ?? [],
+                // A handover does not move the visitor off the page they are
+                // on: the target assistant's flows gate on the same facts.
+                routing: {
+                  url: conversation.metadata.launchUrl,
+                  now: new Date(),
+                },
                 emit,
                 signal,
                 keyResolution: input.keyResolution,

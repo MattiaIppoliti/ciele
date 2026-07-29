@@ -94,6 +94,9 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
     history: [],
     searchKnowledge,
     session: createTurnSession(`goal-${goal.id}`, {}),
+    // Synthetic traffic has no page, so URL conditions stay unevaluatable — but
+    // it does happen at a moment, so a scheduled flow is honored here too.
+    routing: { now: new Date() },
     emit: () => {},
   });
 

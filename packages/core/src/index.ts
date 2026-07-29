@@ -38,6 +38,19 @@ export * from "./okf";
 // lives in @agent-hub/agent.
 export { matchFlow, messageFlowCandidates } from "./engine";
 
+// Objective Flow Conditions (URL, Schedule): the deterministic gate both
+// routers apply through `messageFlowCandidates` before Intent Classification,
+// plus the completeness rule the Flow Builder validates against so the editor
+// and the runtime cannot disagree about what "configured" means (spec #550).
+export {
+  FLOW_URL_PATTERN_LIMIT,
+  evaluateFlowCondition,
+  flowConditionDefect,
+  flowConditionsAllowRouting,
+  isObjectiveFlowCondition,
+} from "./flow-conditions";
+export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
+
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL
 // aggregate `get_insights_overview` is checked against (ADR-0010); the seven
 // helpers it composes stay internal, and its tests reach them directly.

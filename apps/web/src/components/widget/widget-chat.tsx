@@ -408,6 +408,10 @@ export function WidgetChat({
           conversationId,
           collectionId: anchored?.id ?? null,
           message,
+          // The embedding page, forwarded by the launcher as `?u=` — the
+          // request's own referer is this iframe, not the host page. Gates URL
+          // Flow Conditions server-side (spec #550).
+          pageUrl: searchParams.get("u"),
           ...(options?.faq ? { faq: true } : {}),
         }),
         signal: controller.signal,

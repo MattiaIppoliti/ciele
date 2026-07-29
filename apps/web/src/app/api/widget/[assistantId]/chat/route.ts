@@ -48,6 +48,11 @@ export async function POST(
     message: string;
     /** True when the message came from an FAQ quick reply (verbatim answer). */
     faq?: boolean;
+    /**
+     * The embedding page, forwarded by the launcher. Validated in
+     * `sessionMetadata`, which falls back to the request headers.
+     */
+    pageUrl?: string | null;
   };
   const message = (body.message ?? "").trim();
   const visitorId = (body.visitorId ?? "").trim();
@@ -79,7 +84,7 @@ export async function POST(
     collectionId: body.collectionId,
     message,
     faqQuestion: body.faq === true,
-    metadata: sessionMetadata(request.headers),
+    metadata: sessionMetadata(request.headers, body.pageUrl ?? undefined),
     signal: request.signal,
   });
 

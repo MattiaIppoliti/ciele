@@ -239,6 +239,56 @@ describe("classifyIntent", () => {
     );
     expect(reported).toHaveLength(0);
   });
+
+  // Objective conditions are gated before classification (spec #550): a flow
+  // the gate rejects is never offered to the model, so even a classifier that
+  // names it cannot route there.
+  it("never routes to a flow whose URL condition fails", async () => {
+    const sectionFlow = makeFlow({
+      id: "courses",
+      name: "Course help",
+      description: "questions about a course",
+      conditions: [
+        { id: "c1", kind: "url", operator: "contains", value: "/courses" },
+      ],
+    });
+
+    const offSection = await classifyIntent(
+      "how do I enroll?",
+      [sectionFlow, defaultFlow],
+      pickerModel("courses"),
+      undefined,
+      undefined,
+      { url: "https://site.com/admissions" }
+    );
+    expect(offSection?.id).toBe("default");
+
+    const onSection = await classifyIntent(
+      "how do I enroll?",
+      [sectionFlow, defaultFlow],
+      pickerModel("courses"),
+      undefined,
+      undefined,
+      { url: "https://site.com/courses/psychology" }
+    );
+    expect(onSection?.id).toBe("courses");
+  });
+
+  it("keeps an objectively-gated flow routable when no routing context is given", async () => {
+    const sectionFlow = makeFlow({
+      id: "courses",
+      name: "Course help",
+      conditions: [
+        { id: "c1", kind: "url", operator: "contains", value: "/courses" },
+      ],
+    });
+    const flow = await classifyIntent(
+      "how do I enroll?",
+      [sectionFlow, defaultFlow],
+      pickerModel("courses")
+    );
+    expect(flow?.id).toBe("courses");
+  });
 });
 
 describe("flowCatalogEntry", () => {
@@ -272,6 +322,50 @@ describe("flowCatalogEntry", () => {
     expect(entry).toContain('- "I feel overwhelmed" matches (wellbeing)');
     expect(entry).toContain('- "exam dates?" does NOT match');
     expect(entry).not.toContain("ignored");
+  });
+
+  it("shows the classifier nothing about objective conditions", () => {
+    const entry = flowCatalogEntry(
+      makeFlow({
+        id: "f1",
+        name: "Course help",
+        description: "course questions",
+        conditionLogic: "all",
+        conditions: [
+          {
+            id: "c1",
+            kind: "conversation_context",
+            description: "asks about a course",
+            examples: [],
+          },
+          { id: "c2", kind: "url", operator: "regex", value: ".*/courses/.*" },
+          {
+            id: "c3",
+            kind: "schedule",
+            startAt: "2026-08-01T09:00",
+            timezone: "Europe/Rome",
+          },
+        ],
+      })
+    );
+    expect(entry).toContain("• asks about a course");
+    expect(entry).not.toContain("courses/.*");
+    expect(entry).not.toContain("2026-08-01");
+    expect(entry).not.toContain("Europe/Rome");
+  });
+
+  it("renders no condition block when every condition is objective", () => {
+    const entry = flowCatalogEntry(
+      makeFlow({
+        id: "f1",
+        name: "Course help",
+        description: "course questions",
+        conditions: [
+          { id: "c1", kind: "url", operator: "contains", value: "/courses" },
+        ],
+      })
+    );
+    expect(entry).toBe("- id: f1 — name: Course help — triggers when: course questions");
   });
 });
 

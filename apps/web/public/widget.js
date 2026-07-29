@@ -67,6 +67,11 @@
   var src = base + "/widget/" + encodeURIComponent(assistantId);
   var query = "?theme=" + encodeURIComponent(detectTheme());
   if (collection) query += "&c=" + encodeURIComponent(collection);
+  // The page the visitor is on. The chat is a cross-origin iframe, so its own
+  // referer describes us, not the host page — URL Flow Conditions (and the
+  // Inbox's Launch URL) need the host to say. Capped like the server does.
+  var pageUrl = String(window.location.href).slice(0, 500);
+  query += "&u=" + encodeURIComponent(pageUrl);
   src += query;
   frame.title = "Chat assistant";
   frame.allow = "clipboard-write";

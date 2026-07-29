@@ -344,11 +344,24 @@ request, with no db).
 
 ### 5.2 Conditions & triggers — what actually runs
 
-- **Conditions** (`conversation_context` w/ few-shot examples) are **fed to the LLM classifier as
-  routing context** (`flowCatalogEntry`, `engine.ts:49`) — they *influence* routing but are **not
-  evaluated as hard gates**. The richer condition types in the FlowBuilder UI (User role, URL,
-  External data, Course, Schedule) are **[target]** — not yet in the `FlowCondition` model or the
-  classifier.
+- **Conditions** are two mechanisms, split by what each is good at (spec #550). `FlowCondition` is a
+  discriminated union of three kinds:
+  - **Semantic** — `conversation_context` (w/ few-shot examples) is **fed to the LLM classifier as
+    routing context** (`flowCatalogEntry`) — it *influences* routing but is **not** a hard gate.
+  - **Objective** — `url` (Matches / Contains / Regex) and `schedule` (wall-clock start/end + IANA
+    zone) are checkable facts, so they are **checked**: `flowConditionsAllowRouting`
+    (`packages/core/src/flow-conditions.ts`) runs inside `messageFlowCandidates`, the one candidate
+    filter both `matchFlow` and `classifyIntent` call, so a gated-out flow reaches neither engine and
+    the two cannot drift. Objective kinds are excluded from keyword scoring *and* from the classifier
+    prompt. The gate is "cannot pass": under **all** one false verdict disqualifies; under **any** a
+    flow is disqualified only when every condition returned a false verdict. A defective or
+    unevaluatable condition (no page URL in context, uncompilable regex) yields no verdict and
+    therefore never disqualifies.
+  - URL conditions read the Conversation's **launch URL**, which the embed reports (`?u=` →
+    `pageUrl` → `sessionMetadata`) because the chat iframe's own `referer` describes the app origin,
+    not the visitor's page. Per-conversation, not per-turn.
+  - **User role, External data, Course** remain **[target]** — shown greyed in the picker, absent
+    from the model and the runtime.
 - **Triggers**: only `message`-triggered flows compete for user messages (`engine.ts:80`).
   `page_load` / `time_on_page` / `chat_open` are stored on the flow but **not fired** by any runtime
   path yet **[target]**.
@@ -600,7 +613,7 @@ states it.
 | Add a… | Steps |
 |--------|-------|
 | **Flow action type** | 1) add to `FlowAction` union (`packages/core/src/types.ts`); 2) optional per-action config in `FlowActionSettings`; 3) add one **Adapter** + register it in `ACTION_HANDLERS` (`packages/agent/src/actions.ts`) — the single home for action rendering (spec #194; the offline/no-model path runs the same registry); if it has a post-commit side effect, add an `ActionEffect` kind (`types.ts`) + a case in `effects.ts`; 4) extend the `ChatReplyPart` union (`runtime/types.ts`) if the action renders a new part shape; 5) add builder UI in `flow-builder.tsx` + catalog in `lib/flow-actions.ts`. |
-| **Flow condition kind** | Extend `FlowCondition` to a discriminated union (`types.ts:29`); teach `classifyIntent`/`flowCatalogEntry` to render + weigh it (`engine.ts:49`); for hard gating, evaluate it before/around classification. (Today only `conversation_context` exists and it's soft context.) |
+| **Flow condition kind** | Add the member to the `FlowCondition` union in `packages/core/src/types.ts`. **Objective kind** (a checkable fact): add its evaluator + completeness rule to `packages/core/src/flow-conditions.ts` — the gate in `messageFlowCandidates` and the Flow Builder's validation both read it, so there is one rule; if it needs a new input, extend `FlowRoutingContext` and thread it from `turn.ts`. **Semantic kind** (a judgement): teach `flowCatalogEntry` to render it. Then add the picker entry in `apps/web/src/lib/flow-conditions.ts` and a card branch in `flow-builder.tsx`. No migration — `flows.conditions` is unconstrained JSONB. |
 | **Trigger** | Add to `FlowTrigger` (`types.ts:16`); the *message* path only routes `message` flows — non-message triggers need a client event + a new runtime entry to fire them. |
 | **Knowledge source kind** | Add to `SourceKind` (`types.ts:358`) + a config shape; add one **Extractor** to `EXTRACTORS` (`packages/agent/src/extract.ts`) for its raw-input→text step; if it needs its own pipeline (like `website`), add an `IngestJob` kind (`packages/agent/src/jobs.ts`); add a server action; retrieval already flows through chunks. |
 | **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `packages/agent/src/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also add a **custom HTTP tool** from the console with no deploy; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |

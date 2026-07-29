@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AiUsageStage } from "@agent-hub/core";
+import type { AiUsageStage, FlowCondition } from "@agent-hub/core";
 import { ASSISTANT_GOAL_CAP, buildPublicationConfig, shortId } from "@agent-hub/core";
 import type { Db } from "./types";
 
@@ -252,6 +252,58 @@ export function describeDbContract(
         const names = (await db.listFlows(assistant.id)).map((f) => f.name);
         expect(names.indexOf("B")).toBeLessThan(names.indexOf("A"));
         expect((await db.listFlows(assistant.id)).at(-1)?.isDefault).toBe(true);
+      });
+
+      // Conditions are one unconstrained JSONB column, which is why the
+      // objective kinds (spec #550) needed no migration. This is the proof, for
+      // both implementations at once.
+      it("round-trips every Flow Condition kind through create, read and patch", async () => {
+        const assistant = await newAssistant();
+        const conditions: FlowCondition[] = [
+          {
+            id: "c1",
+            kind: "conversation_context",
+            description: "asks about a course",
+            examples: [
+              { message: "which courses run in autumn?", note: "", shouldTrigger: true },
+            ],
+          },
+          { id: "c2", kind: "url", operator: "contains", value: "/courses" },
+          {
+            id: "c3",
+            kind: "schedule",
+            startAt: "2026-08-01T09:00",
+            endAt: "2026-08-31T18:00",
+            timezone: "Europe/Rome",
+          },
+        ];
+
+        const created = await db.createFlow(assistant.id, {
+          name: "Course help",
+          description: "asks about a course",
+          actions: ["custom_message"],
+          conditionLogic: "all",
+          conditions,
+        });
+        expect(created.conditions).toEqual(conditions);
+        expect(created.conditionLogic).toBe("all");
+
+        const read = (await db.listFlows(assistant.id)).find(
+          (flow) => flow.id === created.id
+        );
+        expect(read?.conditions).toEqual(conditions);
+        expect(read?.conditionLogic).toBe("all");
+
+        const patched = await db.updateFlow(created.id, {
+          conditionLogic: "any",
+          conditions: [
+            { id: "c4", kind: "url", operator: "regex", value: ".*/courses/.*" },
+          ],
+        });
+        expect(patched.conditionLogic).toBe("any");
+        expect(patched.conditions).toEqual([
+          { id: "c4", kind: "url", operator: "regex", value: ".*/courses/.*" },
+        ]);
       });
     });
 

@@ -20,8 +20,12 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 >   continuation yet).
 > - **AI Tutor is out of scope**: Study Mode / H5P interactives have no SETUP nav entry and no
 >   `study_mode`/`h5p` flow actions in this repo (see `context.md` §Scope).
-> - **Conditions**: only `conversation_context` exists and it is **soft context** fed to the
->   classifier (few-shot), not a hard gate. Role/URL/course/schedule conditions are **[target]**.
+> - **Conditions**: three kinds exist, gated two different ways on purpose.
+>   `conversation_context` is **soft context** fed to the classifier (few-shot), not a hard gate;
+>   **URL** and **Schedule** are objective, so they are a **hard gate applied before classification**
+>   — `flowConditionsAllowRouting` runs inside `messageFlowCandidates`, the one candidate filter both
+>   engines share, and objective kinds are kept out of the classifier prompt entirely. User role,
+>   External data and Course remain **[target]** (shown greyed in the picker).
 > - **Triggers**: only `message` flows are routed for user messages; `page_load`/`time_on_page`/
 >   `chat_open` are stored but **not fired** yet **[target]**.
 
@@ -97,6 +101,13 @@ combined by the Any/All logic toggle above.)
 
 Implement conditions as small predicate evaluators keyed by type; keep the `matchFlow` seam so the
 classifier and conditions share the same semantic-match implementation.
+
+**How this repo does it** (spec #550): the objective kinds are evaluated by pure predicates in
+`packages/core/src/flow-conditions.ts` and gated in `messageFlowCandidates` — the single candidate
+filter `matchFlow` and `classifyIntent` both call — so the two engines cannot disagree. A satisfied
+objective condition is *necessary, not sufficient*: it keeps a flow eligible, it never promotes it,
+and under **Any** logic a flow is disqualified only when every condition on it returned a false
+verdict. The semantic kind stays with the classifier; URL/Schedule never enter its prompt.
 
 ---
 
