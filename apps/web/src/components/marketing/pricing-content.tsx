@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowDown, Check } from "lucide-react";
+import { ArrowDown, Check, Minus } from "lucide-react";
 import React from "react";
 import {
   Badge,
@@ -142,6 +142,13 @@ const DEFAULT_ANSWERS = 5_000;
  * `apps/docs/content/docs/self-hosting/open-core-boundary.mdx` — the whole
  * product minus what the mirror gate strips (billing, plan metering, the staff
  * console, managed SSO onboarding, and anything with a service commitment).
+ *
+ * Ticks and burdens are two fields on purpose, for the reason the comparison
+ * matrix keeps bare checks off this column: a tick reads as "included", and the
+ * free column collecting as many of them as the plans above it argues against
+ * every plan on the page. So the ticks stop at the capabilities, and stay fewer
+ * than Go's; what the self-hoster takes on renders below them as a burden, not
+ * as a benefit.
  */
 const SELF_HOSTED = {
   name: "Self-hosted",
@@ -152,8 +159,11 @@ const SELF_HOSTED = {
     "Knowledge from websites, files and FAQs, with source citations",
     "Flow router, help desks, inbox, insights, improvements and alerts",
     "Organizations, members, roles and row-level security",
+  ],
+  burdensLabel: "What you take on:",
+  burdens: [
     "Your own provider keys, or a local model server — and their bill",
-    "You run the servers, the upgrades and the backups; support is the community",
+    "The servers, the upgrades and the backups; support is the community",
   ],
   /** Anchor of the install section rendered below the comparison grid. */
   anchor: "self-hosted",
@@ -593,6 +603,27 @@ export function PricingContent({
                       />
                       <span className="text-muted-foreground leading-relaxed">
                         {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {/* Same list shape, deliberately not the same marker: a dash
+                    where the tiers carry a tick, so the two lines read as the
+                    cost of running it yourself rather than as four extra
+                    features the paid plans lack. */}
+                <p className="text-foreground mt-5 text-xs font-semibold">
+                  {SELF_HOSTED.burdensLabel}
+                </p>
+                <ul className="mt-3 space-y-2.5">
+                  {SELF_HOSTED.burdens.map((burden) => (
+                    <li key={burden} className="flex gap-2.5 text-sm">
+                      <Minus
+                        aria-hidden="true"
+                        className="text-muted-foreground/60 mt-0.5 size-4 shrink-0"
+                        strokeWidth={2.25}
+                      />
+                      <span className="text-muted-foreground leading-relaxed">
+                        {burden}
                       </span>
                     </li>
                   ))}
