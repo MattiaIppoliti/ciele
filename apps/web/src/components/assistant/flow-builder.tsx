@@ -86,6 +86,8 @@ import {
   FLOW_ACTIONS,
   FLOW_TRIGGER_LABELS,
   PROACTIVE_FLOW_ACTION_PICKER,
+  actionsFitTrigger,
+  partitionActionsForTrigger,
 } from "@/lib/flow-actions";
 import {
   cleanFlowConditions,
@@ -1682,7 +1684,11 @@ export function FlowBuilder({
     }
     return true;
   });
-  const responseOk = actions.length > 0 && configuredActions;
+  // Belt to the braces in chooseTrigger: the runtime refuses an action its trigger
+  // may not run, so the editor must never offer to save that pair — a refused save
+  // has to be a disabled button with a reason, never a 500.
+  const actionsMatchTrigger = actionsFitTrigger(actions, trigger);
+  const responseOk = actions.length > 0 && configuredActions && actionsMatchTrigger;
   const nameOk = name.trim().length > 0;
   // An incomplete objective condition would reach the runtime as a condition
   // the gate has to ignore — refuse it here instead (spec #550).
@@ -1693,13 +1699,16 @@ export function FlowBuilder({
    * Picks a trigger, clearing configuration the new trigger cannot express.
    * Crossing the reactive/proactive line invalidates the whole Response step (and
    * any conditions), so the admin is asked first rather than losing work silently.
+   *
+   * The question is asked of the *actions*, not of the previous trigger: "Remove
+   * trigger" nulls the trigger while leaving the actions in place, so comparing
+   * trigger kinds saw no crossing and cleared nothing — the editor then offered to
+   * save `custom_message` on `chat_open`, a pair the server action refuses.
    */
   function chooseTrigger(next: FlowTrigger) {
-    const crossesKind =
-      trigger !== null && isProactiveTrigger(next) !== isProactiveTrigger(trigger);
-    const hasWork =
-      actions.length > 0 || conditions.length > 0 || customMessage.trim().length > 0;
-    if (crossesKind && hasWork) {
+    const { discarded } = partitionActionsForTrigger(actions, next);
+    const losesConditions = isProactiveTrigger(next) && conditions.length > 0;
+    if (discarded.length > 0 || losesConditions) {
       setPendingTrigger(next);
       return;
     }
@@ -1708,12 +1717,18 @@ export function FlowBuilder({
 
   function applyPendingTrigger() {
     if (pendingTrigger === null) return;
+    // Keep whatever the new trigger can still run; drop only what it cannot.
+    const { kept } = partitionActionsForTrigger(actions, pendingTrigger);
     setTrigger(pendingTrigger);
     setPendingTrigger(null);
-    setActions([]);
-    setConditions([]);
-    setCustomMessage("");
-    setSettings({});
+    setActions(kept);
+    if (isProactiveTrigger(pendingTrigger)) {
+      setConditions([]);
+      setCustomMessage("");
+    }
+    if (!kept.includes("notification")) {
+      setSettings((prev) => ({ ...prev, notification: undefined }));
+    }
   }
 
   const disabledHint = !dwellOk
@@ -1722,6 +1737,10 @@ export function FlowBuilder({
     ? `Set a trigger to enable ${isEdit ? "Save changes" : "Create flow"}`
     : actions.length === 0
       ? `Add a response action to enable ${isEdit ? "Save changes" : "Create flow"}`
+      : !actionsMatchTrigger
+        ? `Remove the actions this trigger cannot run: ${partitionActionsForTrigger(actions, trigger ?? "message")
+            .discarded.map((action) => FLOW_ACTIONS[action].label)
+            .join(", ")}`
       : !configuredActions
         ? "Complete the required settings for every response action"
         : !conditionsOk
@@ -2478,11 +2497,22 @@ export function FlowBuilder({
             <DialogTitle>Change the trigger?</DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground text-sm">
-            {pendingTrigger !== null && isProactiveTrigger(pendingTrigger)
-              ? "“" +
-                TRIGGER_LABELS[pendingTrigger] +
-                "” responds with a single notification, so this flow's current actions and conditions will be removed."
-              : "A message-triggered flow answers what the user asked, so this flow's notification will be removed."}
+            {pendingTrigger === null
+              ? null
+              : `“${TRIGGER_LABELS[pendingTrigger]}” cannot run ${partitionActionsForTrigger(
+                  actions,
+                  pendingTrigger
+                )
+                  .discarded.map((action) => FLOW_ACTIONS[action].label)
+                  .join(", ")}${
+                  isProactiveTrigger(pendingTrigger) && conditions.length > 0
+                    ? ", and a flow that starts on its own has no conditions"
+                    : ""
+                }. Changing the trigger removes ${
+                  isProactiveTrigger(pendingTrigger) && conditions.length > 0
+                    ? "them"
+                    : "those actions"
+                }; everything else is kept.`}
           </p>
           <div className="flex justify-end gap-2">
             <Button

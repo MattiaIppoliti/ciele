@@ -1,4 +1,5 @@
 import type { FlowAction, FlowTrigger } from "@agent-hub/core";
+import { actionAllowedForTrigger } from "@agent-hub/core";
 import {
   AtSign,
   BellRing,
@@ -115,3 +116,35 @@ export const FLOW_ACTION_PICKER: FlowAction[] = [
 
 /** The Response step's catalog for a proactively-triggered flow. */
 export const PROACTIVE_FLOW_ACTION_PICKER: FlowAction[] = ["notification"];
+
+/**
+ * The actions a flow would keep if its trigger became `trigger`, and the ones it
+ * would lose. The editor asks before discarding; the save path refuses a pair the
+ * runtime would reject.
+ *
+ * Its own function because the builder learned this the hard way: "Remove trigger"
+ * sets the trigger to null while leaving the actions in place, so comparing
+ * against the *current* trigger sees no kind change and clears nothing — the
+ * editor then happily posts, say, `custom_message` on `chat_open`, which the
+ * server action correctly refuses with a 500.
+ */
+export function partitionActionsForTrigger(
+  actions: FlowAction[],
+  trigger: FlowTrigger
+): { kept: FlowAction[]; discarded: FlowAction[] } {
+  const kept: FlowAction[] = [];
+  const discarded: FlowAction[] = [];
+  for (const action of actions) {
+    (actionAllowedForTrigger(action, trigger) ? kept : discarded).push(action);
+  }
+  return { kept, discarded };
+}
+
+/** Whether every configured action can run on this trigger. */
+export function actionsFitTrigger(
+  actions: FlowAction[],
+  trigger: FlowTrigger | null
+): boolean {
+  if (trigger === null) return true;
+  return actions.every((action) => actionAllowedForTrigger(action, trigger));
+}
