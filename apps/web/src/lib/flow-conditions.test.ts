@@ -3,6 +3,7 @@ import type { FlowCondition } from "@agent-hub/core";
 import {
   availableFlowConditionKinds,
   cleanFlowConditions,
+  FLOW_CONDITION_KINDS,
   FLOW_URL_OPERATORS,
   flowConditionDescription,
   flowConditionIssue,
@@ -37,23 +38,28 @@ describe("flowConditionPicker", () => {
     ).toBe(false);
   });
 
-  it("still shows the unbuilt kinds, greyed, so the surface is legible", () => {
-    const picker = flowConditionPicker("message");
-    const disabled = picker.filter((meta) => !meta.enabled).map((m) => m.kind);
-    expect(disabled).toEqual(["user_role", "external_data", "course"]);
-    // Reference order, unbuilt kinds included.
-    expect(picker.map((m) => m.kind)).toEqual([
+  // Kinds the runtime cannot evaluate are not offered at all — no greyed chip
+  // for User role, External data or Course.
+  it("offers no kind that cannot be evaluated", () => {
+    expect(flowConditionPicker("message").map((m) => m.kind)).toEqual([
       "conversation_context",
-      "user_role",
       "url",
-      "external_data",
-      "course",
       "schedule",
     ]);
+    for (const kind of ["user_role", "external_data", "course"]) {
+      expect(FLOW_CONDITION_KINDS.some((meta) => meta.kind === kind)).toBe(false);
+    }
   });
 
-  it("enables nothing until a trigger is chosen", () => {
+  it("labels every kind it offers", () => {
+    for (const meta of flowConditionPicker("message")) {
+      expect(meta.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("offers nothing until a trigger is chosen", () => {
     expect(availableFlowConditionKinds(null)).toEqual([]);
+    expect(flowConditionPicker(null)).toEqual([]);
   });
 });
 

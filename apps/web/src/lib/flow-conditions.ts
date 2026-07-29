@@ -18,27 +18,24 @@ import { flowConditionDefect } from "@agent-hub/core";
  * "configured" means.
  */
 
-/** Every kind the picker shows, built or not. Order matches the reference. */
-export type FlowConditionKind =
-  | "conversation_context"
-  | "user_role"
-  | "url"
-  | "external_data"
-  | "course"
-  | "schedule";
+/**
+ * The condition kinds that exist. Only these — a kind the runtime cannot
+ * evaluate is not offered at all, greyed or otherwise: an affordance that never
+ * does anything is worse than its absence.
+ */
+export type FlowConditionKind = FlowCondition["kind"];
 
 export interface FlowConditionKindMeta {
   kind: FlowConditionKind;
   label: string;
   /**
-   * False for kinds we show greyed so the surface is legible — a Collaborator
-   * should not have to wonder whether they missed a setting.
-   */
-  available: boolean;
-  /**
    * Triggers this kind can be configured for. A semantic read of the user's
    * message is meaningless for a page-load Flow, so `conversation_context` is
-   * message-only; objective kinds apply to every trigger.
+   * message-only; the objective kinds are trigger-agnostic in themselves.
+   *
+   * In practice the builder offers no conditions at all for a proactive trigger
+   * (#541), so `"all"` is currently only ever consulted for `message` — it says
+   * what the kind *can* gate on, not what the editor happens to render today.
    */
   triggers: FlowTrigger[] | "all";
 }
@@ -49,48 +46,27 @@ export const FLOW_CONDITION_KINDS: FlowConditionKindMeta[] = [
   {
     kind: "conversation_context",
     label: "Conversation context",
-    available: true,
     triggers: ["message"],
   },
-  { kind: "user_role", label: "User role", available: false, triggers: ALL_TRIGGERS },
-  { kind: "url", label: "URL", available: true, triggers: ALL_TRIGGERS },
-  {
-    kind: "external_data",
-    label: "External data",
-    available: false,
-    triggers: ALL_TRIGGERS,
-  },
-  { kind: "course", label: "Course", available: false, triggers: ALL_TRIGGERS },
-  { kind: "schedule", label: "Schedule", available: true, triggers: ALL_TRIGGERS },
+  { kind: "url", label: "URL", triggers: ALL_TRIGGERS },
+  { kind: "schedule", label: "Schedule", triggers: ALL_TRIGGERS },
 ];
 
-/** Why a chip is greyed out, for its tooltip. */
-export const UNAVAILABLE_KIND_HINT = "Not available yet";
-
-/**
- * The picker's chips for a trigger: every kind, each marked enabled or not.
- * Kinds that are built but not applicable to this trigger are dropped rather
- * than greyed — they are not "coming", they are irrelevant here.
- */
+/** The picker's chips for a trigger — every one of them addable. */
 export function flowConditionPicker(
   trigger: FlowTrigger | null
-): Array<FlowConditionKindMeta & { enabled: boolean }> {
-  return FLOW_CONDITION_KINDS.filter((meta) => {
-    if (meta.triggers === ALL_TRIGGERS) return true;
-    return trigger === null || meta.triggers.includes(trigger);
-  }).map((meta) => ({
-    ...meta,
-    enabled: meta.available && (trigger !== null),
-  }));
+): FlowConditionKindMeta[] {
+  if (trigger === null) return [];
+  return FLOW_CONDITION_KINDS.filter(
+    (meta) => meta.triggers === ALL_TRIGGERS || meta.triggers.includes(trigger)
+  );
 }
 
-/** The kinds that can actually be added for a trigger. */
+/** The kinds that can be added for a trigger. */
 export function availableFlowConditionKinds(
   trigger: FlowTrigger | null
 ): FlowConditionKind[] {
-  return flowConditionPicker(trigger)
-    .filter((meta) => meta.enabled)
-    .map((meta) => meta.kind);
+  return flowConditionPicker(trigger).map((meta) => meta.kind);
 }
 
 export const FLOW_URL_OPERATORS: Array<{
@@ -174,7 +150,7 @@ function gmtOffsetLabel(timezone: string, now: Date): string {
 
 /** A blank condition of the requested kind, ready to configure. */
 export function newFlowCondition(
-  kind: "conversation_context" | "url" | "schedule",
+  kind: FlowConditionKind,
   id: string,
   timezone: string = defaultTimezone()
 ): FlowCondition {

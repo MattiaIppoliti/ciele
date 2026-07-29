@@ -25,6 +25,7 @@ import {
   Braces,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   Check,
   CircleMinus,
   CirclePlus,
@@ -99,7 +100,6 @@ import {
   flowConditionsSavable,
   newFlowCondition,
   timezoneOptions,
-  UNAVAILABLE_KIND_HINT,
   urlOperatorHint,
 } from "@/lib/flow-conditions";
 import { TEMPLATE_VARIABLES } from "@agent-hub/agent/client";
@@ -329,50 +329,79 @@ function ExampleGroup({
   examples: FlowConditionExample[];
   onChange: (next: FlowConditionExample[]) => void;
 }) {
+  const [open, setOpen] = useState(false);
   // Examples live in one array on the condition; this group edits its slice.
   const indices = examples
     .map((e, i) => ({ e, i }))
     .filter(({ e }) => e.shouldTrigger === shouldTrigger);
 
+  // Collapsed by default: a tuned condition carries a dozen examples with a
+  // note each, and left open they bury the rest of the Conditions step with no
+  // way to shrink them. The row states the count so it is still legible shut.
+  //
+  // `open` is React state rather than a `group-open:` variant on the chevron:
+  // that variant does not resolve under this Tailwind setup (the step cards
+  // above have the same dead class), and a disclosure whose arrow never turns
+  // reads as broken.
   return (
-    <div className="space-y-2.5 rounded-lg border p-3">
-      <Badge
-        className={`rounded-full border ${
-          shouldTrigger
-            ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-            : "border-red-400/50 bg-red-500/15 text-red-700 dark:text-red-300"
-        }`}
-      >
-        {shouldTrigger ? (
-          <CirclePlus className="size-3" />
-        ) : (
-          <CircleMinus className="size-3" />
-        )}
-        {shouldTrigger ? "Should trigger" : "Should not trigger"}
-      </Badge>
-      {indices.length === 0 && (
-        <p className="text-muted-foreground text-sm">No examples yet.</p>
-      )}
-      {indices.map(({ e, i }) => (
-        <ExampleRow
-          key={i}
-          example={e}
-          onChange={(patch) =>
-            onChange(examples.map((ex, j) => (j === i ? { ...ex, ...patch } : ex)))
-          }
-          onRemove={() => onChange(examples.filter((_, j) => j !== i))}
-        />
-      ))}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => onChange([...examples, newExample(shouldTrigger)])}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-medium transition-colors"
+    <details
+      className="rounded-lg border"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-3 select-none [&::-webkit-details-marker]:hidden">
+        <Badge
+          className={`shrink-0 rounded-full border ${
+            shouldTrigger
+              ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+              : "border-red-400/50 bg-red-500/15 text-red-700 dark:text-red-300"
+          }`}
         >
-          Add example <Plus className="size-4" />
-        </button>
+          {shouldTrigger ? (
+            <CirclePlus className="size-3" />
+          ) : (
+            <CircleMinus className="size-3" />
+          )}
+          {shouldTrigger ? "Matching example" : "Non-matching example"}
+        </Badge>
+        <span className="text-muted-foreground min-w-0 flex-1 truncate text-sm">
+          {indices.length === 0
+            ? "No examples added"
+            : `${indices.length} example${indices.length === 1 ? "" : "s"} added`}
+        </span>
+        {/* Swap the glyph rather than rotate one. `rotate-90` compiles to an
+            unset custom property in this build (it resolves to 0deg, as the step
+            cards' own `rotate-180` chevrons do) and even an explicit inline
+            transform is overridden on these SVGs — so the arrow would never
+            turn. Two icons cannot silently stop working. */}
+        {open ? (
+          <ChevronDown className="text-muted-foreground size-4 shrink-0" />
+        ) : (
+          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+        )}
+      </summary>
+      <div className="space-y-2.5 border-t p-3">
+        {indices.map(({ e, i }) => (
+          <ExampleRow
+            key={i}
+            example={e}
+            onChange={(patch) =>
+              onChange(examples.map((ex, j) => (j === i ? { ...ex, ...patch } : ex)))
+            }
+            onRemove={() => onChange(examples.filter((_, j) => j !== i))}
+          />
+        ))}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => onChange([...examples, newExample(shouldTrigger)])}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-medium transition-colors"
+          >
+            Add example <Plus className="size-4" />
+          </button>
+        </div>
       </div>
-    </div>
+    </details>
   );
 }
 
@@ -433,7 +462,9 @@ function ConditionCard({
             Add example messages to improve trigger accuracy.
           </p>
 
-          <div className="grid gap-3 lg:grid-cols-2">
+          {/* Stacked, not side by side: collapsed each group is a single row,
+              so two columns would only halve the width of the count line. */}
+          <div className="space-y-2">
             <ExampleGroup
               shouldTrigger
               examples={condition.examples}
@@ -1975,26 +2006,35 @@ export function FlowBuilder({
               {conditions.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
                   <p className="text-sm font-medium">Condition logic</p>
-                  <div className="flex items-center rounded-lg border p-0.5">
+                  {/* Segmented control on a bordered track, selected half
+                      filled with `primary`.
+                      The theme sets `--muted`, `--card`, `--accent` and
+                      `--secondary` to the same value, so every "subtle surface"
+                      treatment — the old `secondary`-vs-`ghost` Button variants
+                      included — renders as no change at all and the choice was
+                      invisible. `primary` is the one token that contrasts with
+                      the card in both themes. */}
+                  <div className="border-input flex items-center rounded-lg border p-0.5">
                     {(
                       [
                         { value: "any", label: "Any condition matches" },
                         { value: "all", label: "All conditions match" },
                       ] as const
                     ).map((o) => (
-                      <Button
+                      <button
                         key={o.value}
                         type="button"
-                        size="sm"
-                        variant={
-                          conditionLogic === o.value ? "secondary" : "ghost"
-                        }
-                        className="h-7 px-2.5 text-xs"
                         aria-pressed={conditionLogic === o.value}
                         onClick={() => setConditionLogic(o.value)}
+                        className={cn(
+                          "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                          conditionLogic === o.value
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
                       >
                         {o.label}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -2020,44 +2060,22 @@ export function FlowBuilder({
               <div className="space-y-2">
                 <p className="text-sm font-medium">Add a condition</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  {flowConditionPicker(trigger).map((meta) => {
-                    const chip = (
-                      <Button
-                        key={meta.kind}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={!meta.enabled}
-                        onClick={() =>
-                          meta.enabled &&
-                          setConditions((prev) => [
-                            ...prev,
-                            newFlowCondition(
-                              meta.kind as
-                                | "conversation_context"
-                                | "url"
-                                | "schedule",
-                              localId()
-                            ),
-                          ])
-                        }
-                      >
-                        {meta.label} <Plus className="size-4" />
-                      </Button>
-                    );
-                    // Greyed kinds stay visible so the surface is legible; the
-                    // tooltip says why, so the greying doesn't read as "you
-                    // lack permission".
-                    return meta.enabled ? (
-                      chip
-                    ) : (
-                      <Hint key={meta.kind} label={UNAVAILABLE_KIND_HINT}>
-                        <span className="inline-flex cursor-not-allowed">
-                          {chip}
-                        </span>
-                      </Hint>
-                    );
-                  })}
+                  {flowConditionPicker(trigger).map((meta) => (
+                    <Button
+                      key={meta.kind}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setConditions((prev) => [
+                          ...prev,
+                          newFlowCondition(meta.kind, localId()),
+                        ])
+                      }
+                    >
+                      {meta.label} <Plus className="size-4" />
+                    </Button>
+                  ))}
                 </div>
               </div>
             </div>

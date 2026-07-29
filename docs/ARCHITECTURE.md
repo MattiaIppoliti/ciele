@@ -386,8 +386,9 @@ request, with no db).
   - URL conditions read the Conversation's **launch URL**, which the embed reports (`?u=` →
     `pageUrl` → `sessionMetadata`) because the chat iframe's own `referer` describes the app origin,
     not the visitor's page. Per-conversation, not per-turn.
-  - **User role, External data, Course** remain **[target]** — shown greyed in the picker, absent
-    from the model and the runtime.
+  - **User role, External data, Course** remain **[target]** — absent from the model, the runtime
+    *and* the picker. The Flow Builder offers exactly the kinds `FlowCondition` can express, so the
+    union is the single source of truth for what a Collaborator sees.
   - A **proactive** flow has no conditions at all: the editor offers none, since a
     conversation-context condition has no conversation to read before the first message.
 

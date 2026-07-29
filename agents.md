@@ -26,7 +26,8 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 >   — `flowConditionsAllowRouting` runs inside `messageFlowCandidates` (and inside
 >   `proactiveFlowCandidates`), the candidate filters every router shares, and objective kinds are
 >   kept out of the classifier prompt entirely. User role, External data and Course remain
->   **[target]** (shown greyed in the picker).
+>   **[target]** and are **not offered in the picker at all** — an affordance that cannot do anything
+>   is worse than its absence.
 > - **Triggers**: all four fire. `message` flows route through Intent Classification;
 >   `page_load` / `time_on_page` / `chat_open` are reported by the embed (and by Preview) and run
 >   through the same Conversation Turn without a model. A proactive flow has **no conditions** and
