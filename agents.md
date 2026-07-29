@@ -16,18 +16,22 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 > - **Live actions**: `custom_message` (verbatim), `search_knowledge`, `suggest_help_desk`
 >   (with AI desk recommendation when enabled), `follow_up_questions`, `show_button`, `iframe`,
 >   `api_request` (full config), `send_email` (Resend transport; honest copy when unconfigured),
->   `improvement`. **[partial]**: `handover` (acknowledges + halts; no target-assistant
->   continuation yet).
+>   `improvement`, `notification` (verbatim, proactive-only — see §4.2). **[partial]**: `handover`
+>   (acknowledges + halts; no target-assistant continuation yet).
 > - **AI Tutor is out of scope**: Study Mode / H5P interactives have no SETUP nav entry and no
 >   `study_mode`/`h5p` flow actions in this repo (see `context.md` §Scope).
 > - **Conditions**: three kinds exist, gated two different ways on purpose.
 >   `conversation_context` is **soft context** fed to the classifier (few-shot), not a hard gate;
 >   **URL** and **Schedule** are objective, so they are a **hard gate applied before classification**
->   — `flowConditionsAllowRouting` runs inside `messageFlowCandidates`, the one candidate filter both
->   engines share, and objective kinds are kept out of the classifier prompt entirely. User role,
->   External data and Course remain **[target]** (shown greyed in the picker).
-> - **Triggers**: only `message` flows are routed for user messages; `page_load`/`time_on_page`/
->   `chat_open` are stored but **not fired** yet **[target]**.
+>   — `flowConditionsAllowRouting` runs inside `messageFlowCandidates` (and inside
+>   `proactiveFlowCandidates`), the candidate filters every router shares, and objective kinds are
+>   kept out of the classifier prompt entirely. User role, External data and Course remain
+>   **[target]** (shown greyed in the picker).
+> - **Triggers**: all four fire. `message` flows route through Intent Classification;
+>   `page_load` / `time_on_page` / `chat_open` are reported by the embed (and by Preview) and run
+>   through the same Conversation Turn without a model. A proactive flow has **no conditions** and
+>   exactly one action, `notification`. Still **[target]** within that: **multiple triggers per
+>   flow** ("Add trigger") and the Notification's **auto-delete**.
 
 ---
 
@@ -65,8 +69,20 @@ configured; only **Search knowledge** and the **Default behavior** run the gener
 - **Time on page** — fire after a dwell threshold; config is a duration (**minutes + seconds**).
 - **Chat opens** — fire when the widget is opened.
 
-A flow can have **multiple triggers** ("Add trigger"). Non-message triggers do not need intent
-classification; they fire on the client event and then run their conditions + response.
+A flow can have **multiple triggers** ("Add trigger") — **[target]**; this repo stores exactly one.
+Non-message triggers do not need intent classification; they fire on the client event and then run
+their conditions + response.
+
+**How a proactive trigger reaches the runtime here.** The chat frame cannot see the host page, so the
+embed script reports the events it alone can observe — page loaded, its URL, dwell elapsed, chat
+opened — and the runtime decides what answers them. The report is a *claim*: which flows run, whether
+the dwell was really reached, and whether the nudge has already been delivered are all re-decided
+server-side, so a reopen loop or a replayed report changes nothing. An assistant with no proactive
+flows arms no listeners at all (the published config says which triggers exist), and a trigger nothing
+is configured for writes nothing and streams nothing.
+
+Delivery is bounded by the Notification's **delivery rule** — once per conversation (default), once
+per user, or every time. Preview ignores it: an admin pressing Refresh expects to see the nudge again.
 
 **Trigger-dependent editor** (important): the trigger changes what Conditions and Response actions are
 available.
@@ -75,6 +91,9 @@ available.
 - With a **proactive trigger** (On page load / Time on page / Chat opens): **Conversation context** is
   NOT offered as a condition (only User role / URL / External data / Course / Schedule), and the
   Response collapses to a single **Notification** action (§4.2) — a proactive in-widget nudge.
+  Here that means a proactive flow has **no conditions at all** (the other condition types are still
+  `[target]` for message flows too), and the pairing is enforced on save *and* at dispatch — stored
+  data cannot make the runtime run what the editor forbids.
 
 ---
 
@@ -165,10 +184,29 @@ action is **Notification** — a proactive in-widget message:
 - **Title** (≤100) · **Notification content** (rich text, ≤5000).
 - **Delivery rule** — how often it's delivered to the same user (e.g. *Once per session*).
 - **Auto-delete notification** — remove from the inbox after a selected time (e.g. *Never*).
+  **[target]** here: it needs a notification-inbox surface this repo does not have.
 - **Allow users to reply** (toggle) · **Add button** (attach clickable buttons).
 
 This is the proactive-engagement primitive (nudge/announcement), distinct from the reactive
 answer/action flows driven by "User sends a message".
+
+**As implemented here.** The content is emitted **verbatim**, exactly as `custom_message` is — a
+proactive turn makes no model call and meters no tokens. It is persisted as an Assistant message on
+the Visitor's Conversation, so it appears in the chat window and in the Inbox transcript with its flow
+marker like any other reply; nothing is persisted on the Visitor's behalf, because nobody spoke.
+Buttons ride the same reply part the Button action emits (link out or send-text-into-chat only — a
+help-desk or FAQ button answers a question nobody asked). Turning replies off closes the composer and
+says so, and only the newest reply decides that, so an announcement cannot lock a chat the Visitor was
+later invited back into. Delivery state lives in the Conversation's session state; nothing is recorded
+for a flow that produced no output, so it can still be delivered later.
+
+**How it counts.** A Notification is *not* an AI answer, and a Conversation containing nothing but
+Notifications is not a Conversation — so turning proactive flows on cannot move the answer KPIs or the
+AI Resolution Rate. What it does move is a KPI of its own, **Notifications Sent**, plus a matching
+chart series. The Inbox still shows those Conversations, marked "Notification only" so a queue is not
+padded with non-conversations. One reply of any kind makes it a real conversation again, counted
+normally from then on. The rules live in `packages/core/src/insights.ts` and are mirrored by the SQL
+aggregate, which the parity test holds to the same answers (ADR-0010).
 
 ---
 

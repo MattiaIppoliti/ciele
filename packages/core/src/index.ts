@@ -38,6 +38,27 @@ export * from "./okf";
 // lives in @agent-hub/agent.
 export { matchFlow, messageFlowCandidates } from "./engine";
 
+// Proactive triggers (page load / time on page / chat opens): which flows a
+// fired client event runs, whether a nudge may be delivered into a Conversation
+// again, and which actions a trigger may pair with. Routing + policy only — the
+// Notification itself is rendered by @agent-hub/agent.
+export {
+  DEFAULT_DWELL_SECONDS,
+  actionAllowedForTrigger,
+  flowDwellSeconds,
+  isProactiveTrigger,
+  needsVisitorDeliveryHistory,
+  notificationDelivery,
+  notificationDeliveryRule,
+  proactiveDwellSeconds,
+  proactiveFlowCandidates,
+  proactiveTriggers,
+} from "./engine";
+export type {
+  NotificationDeliveryContext,
+  ProactiveTriggerContext,
+} from "./engine";
+
 // Objective Flow Conditions (URL, Schedule): the deterministic gate both
 // routers apply through `messageFlowCandidates` before Intent Classification,
 // plus the completeness rule the Flow Builder validates against so the editor
@@ -74,8 +95,9 @@ export { buildPublicationConfig } from "./publication";
 // Per-site re-crawl cadence: when a Website Source next falls due. Clock-free.
 export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
 
-// Flattens a stored message's content parts to text.
-export { messageText } from "./message";
+// Reads a stored message's content parts: flattened to text, and whether the
+// message is a proactive Notification (the Insights accounting rule, #546).
+export { isProactiveMessage, messageText } from "./message";
 
 // Per-model token prices and the cost estimate derived from them.
 export { estimateCostEur } from "./pricing";

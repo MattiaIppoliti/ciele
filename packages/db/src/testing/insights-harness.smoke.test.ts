@@ -56,7 +56,8 @@ it("boots PGlite, runs the real SQL function, returns a well-formed Overview", a
 
   // Shape intact: every InsightsOverview branch present.
   expect(overview.stats).toBeTruthy();
-  expect(overview.chart.series).toHaveLength(13);
+  // 13 original metrics + Notifications (#546).
+  expect(overview.chart.series).toHaveLength(14);
   expect(overview.assistantBreakdown.series.length).toBeGreaterThan(0);
   expect(Array.isArray(overview.channelBreakdown.series)).toBe(true);
   expect(overview.options.roles).toContain("student");

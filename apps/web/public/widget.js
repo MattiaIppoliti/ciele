@@ -65,7 +65,10 @@
   button.setAttribute("aria-label", "Open chat");
   var frame = document.createElement("iframe");
   var src = base + "/widget/" + encodeURIComponent(assistantId);
-  var query = "?theme=" + encodeURIComponent(detectTheme());
+  // launcher=1 tells the chat it is inside this floater: the iframe is warmed on
+  // idle, long before the visitor opens it, so "chat opens" is an event only this
+  // script can report (see the ciele:open message below).
+  var query = "?launcher=1&theme=" + encodeURIComponent(detectTheme());
   if (collection) query += "&c=" + encodeURIComponent(collection);
   // The page the visitor is on. The chat is a cross-origin iframe, so its own
   // referer describes us, not the host page — URL Flow Conditions (and the
@@ -168,13 +171,112 @@
 
   function render() {
     button.innerHTML = state.open ? closeIcon : chatIcon;
+    button.appendChild(dot); // innerHTML above replaces the button's children
+    renderDot();
     applyStyles();
+  }
+
+  // Proactive triggers (#541, #542). The chat can't see the host page — not when
+  // it loaded, not its URL — so this script reports those events and the chat asks
+  // the server what, if anything, answers them. Which listeners are armed comes
+  // from the published config below: an assistant with no proactive flows costs
+  // this page nothing.
+  //
+  // Everything is posted into the frame, which can only hear it once its own
+  // listener is mounted — so events that happen while the frame is still loading
+  // are replayed on its load.
+  var frameReady = false;
+  var pendingTriggers = [];
+  function postTrigger(report) {
+    if (frame.contentWindow) {
+      frame.contentWindow.postMessage(
+        {
+          type: "ciele:trigger",
+          trigger: report.trigger,
+          url: location.href,
+          elapsedSeconds: report.elapsedSeconds,
+        },
+        "*"
+      );
+    }
+  }
+  function reportTrigger(trigger, elapsedSeconds) {
+    var report = { trigger: trigger, elapsedSeconds: elapsedSeconds };
+    if (frameReady) {
+      postTrigger(report);
+    } else {
+      pendingTriggers.push(report);
+      warmFrame(); // a proactive event is a reason to load the frame now
+    }
+  }
+  frame.addEventListener("load", function () {
+    frameReady = true;
+    var queued = pendingTriggers;
+    pendingTriggers = [];
+    for (var i = 0; i < queued.length; i++) postTrigger(queued[i]);
+  });
+
+  // "Time on page": one timer per configured threshold, restarted whenever the
+  // host page changes. An SPA route change is a new page, and the visitor has not
+  // lingered on it yet — so a dwell nudge must not inherit the previous page's
+  // clock. History is patched rather than polled: pushState fires no event.
+  var dwellTimers = [];
+  var dwellThresholds = [];
+  function armDwellTimers() {
+    for (var i = 0; i < dwellTimers.length; i++) clearTimeout(dwellTimers[i]);
+    dwellTimers = [];
+    for (var j = 0; j < dwellThresholds.length; j++) {
+      (function (seconds) {
+        dwellTimers.push(
+          setTimeout(function () {
+            reportTrigger("time_on_page", seconds);
+          }, seconds * 1000)
+        );
+      })(dwellThresholds[j]);
+    }
+  }
+  function watchPageChanges() {
+    var lastUrl = location.href;
+    function onNavigate() {
+      if (location.href === lastUrl) return;
+      lastUrl = location.href;
+      armDwellTimers();
+    }
+    window.addEventListener("popstate", onNavigate);
+    window.addEventListener("hashchange", onNavigate);
+    var pushState = history.pushState;
+    var replaceState = history.replaceState;
+    history.pushState = function () {
+      pushState.apply(history, arguments);
+      onNavigate();
+    };
+    history.replaceState = function () {
+      replaceState.apply(history, arguments);
+      onNavigate();
+    };
+  }
+  function reportOpen() {
+    reportTrigger("chat_open");
+  }
+
+  // Unread dot: a nudge that arrives while the chat is closed must be noticeable
+  // without the page grabbing the visitor's attention.
+  var unread = false;
+  var dot = document.createElement("span");
+  function renderDot() {
+    dot.style.cssText =
+      "position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;" +
+      "background:#ef4444;border:2px solid #fff;display:" +
+      (unread && !state.open ? "block" : "none") +
+      ";";
   }
 
   button.addEventListener("click", function () {
     warmFrame(); // touch devices skip hover — make sure the frame loads
     state.open = !state.open;
+    if (state.open) unread = false; // opening is reading it
     render();
+    if (state.open) reportOpen();
   });
   button.addEventListener("mouseenter", function () {
     warmFrame();
@@ -194,6 +296,10 @@
       render();
     } else if (event.data === "ciele:restore") {
       state.fullscreen = false;
+      render();
+    } else if (event.data === "ciele:unread") {
+      // The chat received a proactive nudge; badge the launcher if it's closed.
+      unread = true;
       render();
     }
   });
@@ -215,6 +321,28 @@
         position = config.style.position;
       }
       render();
+      // Arm only the triggers this assistant actually has flows for. Page load
+      // is reported once the host page has finished loading, so proactivity
+      // never competes with the page's own work.
+      var armed = config.proactiveTriggers || [];
+      if (armed.indexOf("page_load") !== -1) {
+        if (document.readyState === "complete") {
+          reportTrigger("page_load");
+        } else {
+          window.addEventListener(
+            "load",
+            function () {
+              reportTrigger("page_load");
+            },
+            { once: true }
+          );
+        }
+      }
+      if (armed.indexOf("time_on_page") !== -1) {
+        dwellThresholds = config.proactiveDwellSeconds || [];
+        armDwellTimers();
+        watchPageChanges();
+      }
     })
     .catch(function () {});
 

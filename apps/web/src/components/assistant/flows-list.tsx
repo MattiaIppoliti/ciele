@@ -17,7 +17,7 @@ import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/switch";
-import { FLOW_ACTIONS } from "@/lib/flow-actions";
+import { FLOW_ACTIONS, FLOW_TRIGGER_LABELS } from "@/lib/flow-actions";
 import { moveFlowId } from "@/lib/flow-order";
 import { TrustBadge } from "@/components/assistant/trust-badge";
 
@@ -204,6 +204,16 @@ export function FlowsList({
                     className="text-muted-foreground rounded-full"
                   >
                     Built-in
+                  </Badge>
+                )}
+                {/* Which event starts the flow — so a proactive nudge is
+                    distinguishable from an answer without opening it (#548). */}
+                {!flow.isDefault && (
+                  <Badge
+                    variant="outline"
+                    className="text-muted-foreground rounded-full"
+                  >
+                    {FLOW_TRIGGER_LABELS[flow.trigger ?? "message"]}
                   </Badge>
                 )}
                 {(() => {

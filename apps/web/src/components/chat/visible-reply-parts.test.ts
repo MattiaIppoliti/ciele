@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import { latestHelpDeskId, visibleReplyParts } from "./visible-reply-parts";
+import {
+  latestHelpDeskId,
+  repliesClosed,
+  visibleReplyParts,
+} from "./visible-reply-parts";
 
 describe("visibleReplyParts", () => {
   it("omits inline help-desk actions while preserving the rest of the response", () => {
@@ -71,5 +75,46 @@ describe("visibleReplyParts", () => {
     ];
 
     expect(latestHelpDeskId([earlier, latest])).toBe("desk-admissions");
+  });
+});
+
+describe("repliesClosed", () => {
+  const oneWay: ChatReplyPart[] = [
+    {
+      type: "notification",
+      action: "notification",
+      content: "Campus is closed on Friday.",
+      allowReplies: false,
+    },
+  ];
+  const openNudge: ChatReplyPart[] = [
+    { type: "notification", action: "notification", content: "Need a hand?" },
+  ];
+  const answer: ChatReplyPart[] = [
+    { type: "text", action: "search_knowledge", text: "Here you go." },
+  ];
+
+  it("closes the composer for a one-way notification", () => {
+    expect(repliesClosed([oneWay])).toBe(true);
+  });
+
+  it("leaves it open for a notification that invites a reply", () => {
+    expect(repliesClosed([openNudge])).toBe(false);
+  });
+
+  it("only the newest reply decides", () => {
+    // An announcement earlier in the conversation must not lock a live chat.
+    expect(repliesClosed([oneWay, answer])).toBe(false);
+    expect(repliesClosed([answer, oneWay])).toBe(true);
+  });
+
+  it("is open for an ordinary conversation and for no replies at all", () => {
+    expect(repliesClosed([answer])).toBe(false);
+    expect(repliesClosed([])).toBe(false);
+    expect(repliesClosed([[]])).toBe(false);
+  });
+
+  it("stays open when the same reply also carries a repliable notification", () => {
+    expect(repliesClosed([[...oneWay, ...openNudge]])).toBe(false);
   });
 });

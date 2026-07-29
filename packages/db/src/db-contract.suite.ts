@@ -254,6 +254,39 @@ export function describeDbContract(
         expect((await db.listFlows(assistant.id)).at(-1)?.isDefault).toBe(true);
       });
 
+      it("round-trips a proactive trigger with its trigger-scoped settings", async () => {
+        const assistant = await newAssistant();
+        const created = await db.createFlow(assistant.id, {
+          name: "Dwell nudge",
+          trigger: "time_on_page",
+          triggerSettings: { timeOnPage: { minutes: 1, seconds: 30 } },
+          actions: ["notification"],
+          actionSettings: { notification: { content: "Still browsing?" } },
+        });
+        expect(created).toMatchObject({
+          trigger: "time_on_page",
+          triggerSettings: { timeOnPage: { minutes: 1, seconds: 30 } },
+        });
+
+        const patched = await db.updateFlow(created.id, {
+          triggerSettings: { timeOnPage: { seconds: 45 } },
+        });
+        expect(patched.triggerSettings).toEqual({ timeOnPage: { seconds: 45 } });
+        const reread = (await db.listFlows(assistant.id)).find(
+          (flow) => flow.id === created.id
+        );
+        expect(reread?.triggerSettings).toEqual({ timeOnPage: { seconds: 45 } });
+      });
+
+      it("defaults trigger settings to an empty object for a flow that has none", async () => {
+        const assistant = await newAssistant();
+        const flow = await db.createFlow(assistant.id, {
+          name: "Plain",
+          actions: ["custom_message"],
+        });
+        expect(flow.triggerSettings).toEqual({});
+      });
+
       // Conditions are one unconstrained JSONB column, which is why the
       // objective kinds (spec #550) needed no migration. This is the proof, for
       // both implementations at once.

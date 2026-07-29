@@ -53,7 +53,8 @@ describe("Db.getInsightsOverview (mock adapter)", () => {
       "options",
       "stats",
     ]);
-    expect(overview.chart.series.length).toBe(overview.chart.labels.length > 0 ? 13 : 0);
+    // 14 named series: the 13 original metrics plus Notifications (#546).
+    expect(overview.chart.series.length).toBe(overview.chart.labels.length > 0 ? 14 : 0);
     // No conversation/message object leaks into the payload.
     expect(JSON.stringify(overview)).not.toMatch(/"subjectId"|"metadata"|"conversationId"/);
   });

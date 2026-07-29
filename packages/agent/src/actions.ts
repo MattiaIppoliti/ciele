@@ -504,6 +504,51 @@ const sendEmail: ActionHandler = async ({ flow, assistant, message, emit }) => {
   };
 };
 
+/**
+ * The proactive nudge (#541): emitted verbatim, exactly as `custom_message` is,
+ * so a proactive turn makes no model call and meters no tokens. An empty
+ * Notification emits nothing rather than an apology — the editor refuses to save
+ * one, and a Visitor must never be interrupted to be told the nudge is unwritten.
+ */
+const notification: ActionHandler = async ({ flow, templateContext, emit }) => {
+  const settings = flow.actionSettings?.notification;
+  const ctx = templateContext ?? {};
+  const content = resolveTemplate(settings?.content ?? "", ctx).trim();
+  if (!content) return { parts: [] };
+  const title = resolveTemplate(settings?.title ?? "", ctx).trim();
+  const part: ChatReplyPart = {
+    type: "notification",
+    action: "notification",
+    ...(title ? { title } : {}),
+    content,
+    // Only the restrictive case travels: an absent flag means replies are on.
+    ...(settings?.allowReplies === false ? { allowReplies: false } : {}),
+  };
+  emit({ type: "part", part });
+  const parts: ChatReplyPart[] = [part];
+
+  // Buttons ride the same `button` part the Button action emits, so every chat
+  // surface renders and handles them through code that already exists.
+  for (const button of settings?.buttons ?? []) {
+    const label = resolveTemplate(button.label ?? "", ctx).trim();
+    const type = button.type ?? "external_link";
+    const url = button.url?.trim();
+    const text = resolveTemplate(button.text ?? "", ctx).trim();
+    // An incomplete button is dropped rather than rendered dead.
+    if (!label || (type === "external_link" ? !url : !text)) continue;
+    const buttonPart: ChatReplyPart = {
+      type: "button",
+      action: "notification",
+      label,
+      buttonType: type,
+      ...(type === "external_link" ? { url } : { text }),
+    };
+    emit({ type: "part", part: buttonPart });
+    parts.push(buttonPart);
+  }
+  return { parts };
+};
+
 /** The registry: FlowAction → Adapter. Complete (no fall-through). */
 export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   custom_message: customMessage,
@@ -516,6 +561,7 @@ export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   api_request: apiRequest,
   handover,
   send_email: sendEmail,
+  notification,
 };
 
 export type { ActionContext, ActionHandler };

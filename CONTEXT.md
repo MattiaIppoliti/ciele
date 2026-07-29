@@ -73,12 +73,20 @@ An Organization's configured way to reach an LLM. Current types are Platform pla
 _Avoid_: integration, LLM config
 
 **Flow**:
-A routing rule attached to an Assistant that matches an incoming user message and executes an ordered list of Flow Actions.
+A rule attached to an Assistant that starts on a **Flow Trigger** and executes an ordered list of Flow Actions. A message-triggered Flow is matched to an incoming user message by Intent Classification; a proactively-triggered one starts on a client event, with no message to match.
 _Avoid_: workflow, intent
 
+**Flow Trigger**:
+The event that starts a Flow: **User sends a message** (the reactive path) or one of the three **proactive** events — **On page load**, **Time on page** (after a configured dwell), **Chat opens**. Exactly one per Flow. A proactive Flow needs no Intent Classification and runs a single **Notification**.
+_Avoid_: event (alone), hook
+
 **Flow Action**:
-One step a matched Flow executes: search knowledge, custom message, suggest help desk, follow-up questions.
+One step a matched Flow executes: search knowledge, custom message, suggest help desk, follow-up questions, notification.
 _Avoid_: step, tool
+
+**Notification**:
+The proactive Flow Action: an unprompted in-widget message from the Assistant, delivered when a proactive Flow Trigger fires. Verbatim like a custom message, bounded by a delivery rule (once per Conversation / once per Visitor / every time), and the only action a proactive Flow may run. Distinct from an **Alert**, which is an operational health notice for admins — that term's `_Avoid_: notification` guidance is about not calling Alerts notifications, and does not reserve the word.
+_Avoid_: alert, push, banner
 
 **Default behavior**:
 The locked, always-last Flow that handles any message no other Flow matches.
@@ -137,7 +145,7 @@ _Avoid_: suggestion, recommendation, auto-fix
 - An **Organization** owns many **Assistants**; every Assistant belongs to exactly one Organization
 - An **Organization** has many **Members**, each with exactly one **Role** (Owner | Admin | Editor | Viewer); at least one Owner exists
 - An **Assistant** owns many **Flows**; exactly one of them is the **Default behavior**
-- A **Flow** executes one or more **Flow Actions** in order
+- A **Flow** starts on exactly one **Flow Trigger** and executes one or more **Flow Actions** in order
 - An **Assistant** owns many **Knowledge Collections**; a Collection contains **Sources** and the **Concepts** derived from them; chat can be anchored to one Collection
 - An **Organization** has many **Provider Connections**; each **Assistant** selects the provider+model it runs on
 - **Subscription** Provider Connection rows are retired. After an Organization owner opts in, a Member may use a personal Claude/ChatGPT subscription only for that Member's Preview through the local connector; published Widget traffic uses Platform, API-key, or Federated Provider Connections.
@@ -147,8 +155,8 @@ _Avoid_: suggestion, recommendation, auto-fix
 
 ## Runtime invariants
 
-- Flows are an **authoritative router**: Intent Classification picks the Flow, then its Flow Actions execute in order — the LLM never overrides them.
-- `custom_message` output is **verbatim** — never paraphrased by a model.
+- Flows are an **authoritative router**: Intent Classification picks the Flow, then its Flow Actions execute in order — the LLM never overrides them. A proactive **Flow Trigger** consults no model at all: the fired event selects the Flows.
+- `custom_message` and **Notification** output is **verbatim** — never paraphrased by a model.
 - Generative behavior (agent loop with knowledge/deep-search tools, Thinking Steps) lives **inside** `search_knowledge` and the Default behavior, not above the router.
 
 ## Example dialogue
@@ -161,6 +169,8 @@ _Avoid_: suggestion, recommendation, auto-fix
 **In:** Organizations + 4-role RBAC (Supabase Auth) · multi-provider agent runtime (authoritative Flow router + agent loop in `search_knowledge`/Default behavior, TypeScript, native tool-use) · Knowledge Collections as OKF bundles with pgvector RAG and Source citations · Conversations/History for anonymous Visitors with Context Hints · snapshot-based Publish with Website floater + iFrame · per-message 👍/👎 feedback · minimal Style (brand colors, logo, floater position) · Deep Search (knowledge-only).
 
 **Out (explicitly, for later phases):** AI Tutor · AI Feedback section · full Help Desks configuration (`suggest_help_desk` keeps a single configurable link) · widget Authentication/SSO · campus channels (Teams, SharePoint, MyDay, CampusGroups, Kaltura, Google, WordPress) · billing/plans · consumer subscription reuse in published Widgets (see ADR-0007).
+
+**Out within proactive Flow Triggers** (the rest of them ship): multiple triggers per Flow ("Add trigger") · conditions on a proactive Flow · Notification auto-delete · a separate notification inbox (a nudge lands in the Conversation; the launcher only badges itself) · delivery anywhere but in-widget.
 
 ## Flagged ambiguities
 

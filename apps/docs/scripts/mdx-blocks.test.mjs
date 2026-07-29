@@ -109,6 +109,26 @@ test('validate rejects a lost link target and a mangled fence', () => {
   assert.ok(validate(source, ['See [docs](/docs).', '```sh', 'pnpm i'].join('\n')).length > 0);
 });
 
+test('a CRLF document parses like an LF one', () => {
+  // A Windows checkout hands the parser CRLF. A carriage return left on a line
+  // used to hide the frontmatter fence from `indexOf('---')`, so the whole page
+  // parsed as body and title/description were re-wrapped into a paragraph — a
+  // failure Linux CI can never reproduce.
+  const lf = [
+    '---',
+    'title: Appearance',
+    'description: Match the widget to your brand.',
+    '---',
+    '',
+    'Body prose.',
+  ].join('\n');
+  const crlf = lf.replace(/\n/g, '\r\n');
+
+  assert.deepEqual(textsOf(toBlocks(crlf)), textsOf(toBlocks(lf)));
+  assert.equal(roundTrip(crlf), roundTrip(lf));
+  assert.deepEqual(validate(crlf, roundTrip(crlf)), []);
+});
+
 test('every English page round-trips without losing a word', async () => {
   const walk = async (dir) => {
     const out = [];

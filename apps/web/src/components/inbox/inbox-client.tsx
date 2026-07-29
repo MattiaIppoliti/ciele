@@ -225,6 +225,19 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
   if (part.type === "text") {
     return <ChatMarkdown text={part.text} className="max-w-[85%] text-sm" />;
   }
+  if (part.type === "notification") {
+    // A proactive nudge: the assistant spoke first, so the transcript marks it
+    // as such rather than showing it as an answer to something.
+    return (
+      <div className="max-w-[85%] space-y-1 rounded-2xl border-l-2 bg-muted/50 px-3.5 py-3 text-sm">
+        <p className="text-muted-foreground text-xs font-medium uppercase">
+          Notification
+        </p>
+        {part.title && <p className="font-medium">{part.title}</p>}
+        <ChatMarkdown text={part.content} className="text-sm" />
+      </div>
+    );
+  }
   if (part.type === "clarify") {
     return (
       <div className="max-w-[85%] rounded-2xl border border-dashed px-3.5 py-3 text-sm">
@@ -461,6 +474,7 @@ export function InboxClient({
       title: c.title,
       collection: c.collectionName ?? "",
       messages: c.messageCount,
+      notificationOnly: c.notificationOnly ? "yes" : "no",
       workflows: c.flowNames.join("; "),
       feedback: c.feedback === 1 ? "up" : c.feedback === -1 ? "down" : "",
       escalated: c.metadata.escalated ? "yes" : "no",
@@ -737,6 +751,13 @@ export function InboxClient({
                 <span className="text-muted-foreground block truncate text-xs">
                   {c.title || "Untitled conversation"}
                 </span>
+                {/* The assistant spoke first and nobody answered — a nudge, not a
+                    conversation. Marked so the queue isn't padded with these. */}
+                {c.notificationOnly && (
+                  <span className="text-muted-foreground mt-1 mr-1 inline-block max-w-full truncate rounded-full border border-dashed px-2 py-0.5 text-[11px] font-medium">
+                    Notification only
+                  </span>
+                )}
                 {c.collectionName && (
                   <span className="mt-1 inline-block max-w-full truncate rounded-full border px-2 py-0.5 text-[11px] font-medium">
                     {c.collectionName}

@@ -26,6 +26,7 @@ import type {
   FlowConditionLogic,
   FlowPatch,
   FlowTrigger,
+  FlowTriggerSettings,
   FlowTrust,
   FlowTrustEvent,
   HelpDesk,
@@ -87,6 +88,7 @@ import {
   estimateCostEur,
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
+  isProactiveMessage,
   normalizeChannelAvailability,
   shortId,
   sortFlows,
@@ -506,6 +508,7 @@ interface FlowRow {
   enabled: boolean;
   position: number;
   trigger_kind: FlowTrigger | null;
+  trigger_settings: FlowTriggerSettings | null;
   condition_logic: FlowConditionLogic | null;
   conditions: FlowCondition[] | null;
   actions: FlowAction[];
@@ -560,6 +563,7 @@ function toFlow(row: FlowRow): Flow {
     enabled: row.enabled,
     position: row.position,
     trigger: row.trigger_kind ?? "message",
+    triggerSettings: row.trigger_settings ?? {},
     conditionLogic: row.condition_logic ?? "any",
     conditions: row.conditions ?? [],
     actions: row.actions ?? [],
@@ -1137,6 +1141,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         enabled: true,
         position: count ?? 0,
         trigger_kind: input.trigger ?? "message",
+        trigger_settings: input.triggerSettings ?? {},
         condition_logic: input.conditionLogic ?? "any",
         conditions: input.conditions ?? [],
         actions: input.actions ?? ["search_knowledge"],
@@ -1159,6 +1164,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (patch.description !== undefined) row.description = patch.description;
       if (patch.enabled !== undefined) row.enabled = patch.enabled;
       if (patch.trigger !== undefined) row.trigger_kind = patch.trigger;
+      if (patch.triggerSettings !== undefined)
+        row.trigger_settings = patch.triggerSettings;
       if (patch.conditionLogic !== undefined)
         row.condition_logic = patch.conditionLogic;
       if (patch.conditions !== undefined) row.conditions = patch.conditions;
@@ -2327,7 +2334,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         client
           .from("conversations")
           .select(
-            "*, assistants!inner(title, organization_id), messages(flow_name, feedback)"
+            "*, assistants!inner(title, organization_id), messages(flow_name, feedback, proactive)"
           )
           .eq("assistants.organization_id", organizationId)
           .order("updated_at", { ascending: false }),
@@ -2339,7 +2346,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (convRes.error) throw convRes.error;
       type JoinedRow = ConversationRow & {
         assistants: { title: string };
-        messages: Array<{ flow_name: string | null; feedback: -1 | 0 | 1 }>;
+        messages: Array<{
+          flow_name: string | null;
+          feedback: -1 | 0 | 1;
+          proactive: boolean | null;
+        }>;
       };
       const rows = convRes.data as unknown as JoinedRow[];
 
@@ -2365,6 +2376,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
               messages.map((m) => m.flow_name).filter((n): n is string => !!n)
             ),
           ],
+          notificationOnly:
+            messages.length > 0 && messages.every((m) => m.proactive === true),
           feedback: messages.some((m) => m.feedback === 1)
             ? 1
             : messages.some((m) => m.feedback === -1)
@@ -2517,19 +2530,22 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const { data, error } = await client
         .from("messages")
         .select(
-          "conversation_id, role, feedback, created_at, conversations!inner(assistants!inner(organization_id))"
+          "conversation_id, role, feedback, created_at, proactive, conversations!inner(assistants!inner(organization_id))"
         )
         .eq("conversations.assistants.organization_id", organizationId);
       if (error) throw error;
       type Row = Pick<
         MessageRow,
         "conversation_id" | "role" | "feedback" | "created_at"
-      >;
+      > & { proactive: boolean | null };
       return (data as unknown as Row[]).map((row) => ({
         conversationId: row.conversation_id,
         role: row.role,
         feedback: row.feedback,
         createdAt: row.created_at,
+        // Derived by the database (a stored generated column), so it cannot drift
+        // from the content it describes.
+        proactive: row.proactive === true,
       }));
     },
 
@@ -2753,6 +2769,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
               transcript.map((m) => m.flowName).filter((n): n is string => !!n)
             ),
           ],
+          notificationOnly:
+            transcript.length > 0 &&
+            transcript.every((m) => isProactiveMessage(m.content)),
           feedback: transcript.some((m) => m.feedback === 1)
             ? 1
             : transcript.some((m) => m.feedback === -1)

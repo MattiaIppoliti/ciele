@@ -19,7 +19,9 @@ import {
   deleteCollectionAction,
   deleteSourceAction,
   dismissImprovementProposalAction,
+  duplicateAssistantAction,
   updateAssistantAction,
+  updateFlowAction,
 } from "./actions";
 
 /**
@@ -71,6 +73,123 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     expect(revalidatePathMock.mock.calls).toEqual([
       [`/assistants/${assistant.id}`, undefined],
     ]);
+  });
+
+  /**
+   * The trigger/action pairing (#541) is enforced server-side, not just offered
+   * by the builder: a stale client must not be able to store a flow the runtime
+   * would refuse to run.
+   */
+  it("createFlowAction refuses an action the trigger cannot run", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const before = (await db.listFlows(assistant.id)).length;
+
+    await expect(
+      createFlowAction(assistant.id, {
+        name: "Sneaky nudge",
+        trigger: "chat_open",
+        actions: ["search_knowledge"],
+      })
+    ).rejects.toThrow(/cannot run on the "chat_open" trigger/);
+    await expect(
+      createFlowAction(assistant.id, {
+        name: "Unprompted answer",
+        trigger: "message",
+        actions: ["notification"],
+      })
+    ).rejects.toThrow(/cannot run on the "message" trigger/);
+
+    expect(await db.listFlows(assistant.id)).toHaveLength(before);
+  });
+
+  it("createFlowAction accepts a proactive flow whose action is a notification", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+
+    await createFlowAction(assistant.id, {
+      name: "Welcome nudge",
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: { notification: { content: "Welcome!" } },
+    });
+
+    const stored = (await db.listFlows(assistant.id)).find(
+      (flow) => flow.name === "Welcome nudge"
+    );
+    expect(stored).toMatchObject({ trigger: "chat_open", actions: ["notification"] });
+  });
+
+  it("updateFlowAction validates the pair the patch would store", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const flow = await db.createFlow(assistant.id, {
+      name: "Nudge",
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: { notification: { content: "Hi" } },
+    });
+
+    // Patching only the actions still has to respect the *stored* trigger.
+    await expect(
+      updateFlowAction(assistant.id, flow.id, { actions: ["custom_message"] })
+    ).rejects.toThrow(/cannot run on the "chat_open" trigger/);
+    // Patching only the trigger has to respect the *stored* actions.
+    await expect(
+      updateFlowAction(assistant.id, flow.id, { trigger: "message" })
+    ).rejects.toThrow(/cannot run on the "message" trigger/);
+    // Moving both at once is how a flow legitimately changes kind.
+    await updateFlowAction(assistant.id, flow.id, {
+      trigger: "message",
+      actions: ["custom_message"],
+    });
+    expect(
+      (await db.listFlows(assistant.id)).find((f) => f.id === flow.id)
+    ).toMatchObject({ trigger: "message", actions: ["custom_message"] });
+  });
+
+  /**
+   * A duplicate has to *behave* like its original, so every field a proactive
+   * flow fires on must be copied — not just the ones that show in the list (#548).
+   */
+  it("duplicateAssistantAction copies a proactive flow whole", async () => {
+    const source = await db.createAssistant(DEMO_ORG.id, { title: "Original" });
+    await db.createFlow(source.id, {
+      name: "Dwell nudge",
+      trigger: "time_on_page",
+      triggerSettings: { timeOnPage: { minutes: 1, seconds: 15 } },
+      actions: ["notification"],
+      actionSettings: {
+        notification: {
+          title: "Still there?",
+          content: "Ask me anything about fees.",
+          deliveryRule: "visitor",
+          allowReplies: false,
+          buttons: [
+            { id: "b1", label: "Fees", type: "external_link", url: "https://x.test/fees" },
+          ],
+        },
+      },
+    });
+
+    const copy = await duplicateAssistantAction(source.id);
+
+    const copied = (await db.listFlows(copy.id)).find(
+      (flow) => flow.name === "Dwell nudge"
+    );
+    expect(copied).toMatchObject({
+      trigger: "time_on_page",
+      triggerSettings: { timeOnPage: { minutes: 1, seconds: 15 } },
+      actions: ["notification"],
+      actionSettings: {
+        notification: {
+          title: "Still there?",
+          content: "Ask me anything about fees.",
+          deliveryRule: "visitor",
+          allowReplies: false,
+          buttons: [
+            { id: "b1", label: "Fees", type: "external_link", url: "https://x.test/fees" },
+          ],
+        },
+      },
+    });
   });
 
   it("deleteSourceAction retires the source's Concepts from the graph when configured", async () => {

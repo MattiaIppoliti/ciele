@@ -59,6 +59,49 @@ export function userKey(c: InboxConversation): string {
   return c.metadata.userEmail ?? c.subjectId;
 }
 
+/**
+ * Whether a Conversation is nothing but proactive Notifications (#546).
+ *
+ * Such a Conversation is engagement the Assistant initiated and the Visitor never
+ * joined, so Insights does not count it as a Conversation — one reply of any kind
+ * makes it a real one. A Conversation with no messages at all is not "only"
+ * notifications, and keeps whatever treatment it had.
+ */
+export function isNotificationOnly(
+  conversationId: string,
+  messages: InsightsMessage[]
+): boolean {
+  let seen = false;
+  for (const message of messages) {
+    if (message.conversationId !== conversationId) continue;
+    seen = true;
+    if (!message.proactive) return false;
+  }
+  return seen;
+}
+
+/**
+ * Drops notification-only Conversations before anything else looks at them, which
+ * is where the SQL drops them too (`all_conversations`) — so total, resolution
+ * rate, unique users, the breakdowns and even the role filter options all inherit
+ * the rule from one place instead of restating it.
+ *
+ * The whole message history decides, not the filtered window: a conversation that
+ * only ever held a nudge is not engagement in any date range.
+ */
+export function engagedConversations(
+  conversations: InboxConversation[],
+  messages: InsightsMessage[]
+): InboxConversation[] {
+  const proactiveOnly = new Map<string, boolean>();
+  for (const message of messages) {
+    const previous = proactiveOnly.get(message.conversationId);
+    const stillOnly = (previous ?? true) && message.proactive === true;
+    proactiveOnly.set(message.conversationId, stillOnly);
+  }
+  return conversations.filter((c) => !proactiveOnly.get(c.id));
+}
+
 /** Applies the conversation-level filters (date range + segment facets). */
 export function filterConversations(
   conversations: InboxConversation[],
@@ -102,17 +145,33 @@ export function filterMessages(
   });
 }
 
-/** Overview KPI cards from the filtered conversations + messages. */
+/**
+ * Overview KPI cards from the filtered conversations + messages.
+ *
+ * `proactiveMessages` is counted separately and deliberately comes from a wider
+ * set: a nudge nobody replied to lives in a conversation that is *not* in the
+ * population (see `engagedConversations`), so counting notifications out of
+ * `filteredMessages` would report zero for exactly the case the KPI exists to
+ * show. Absent, it falls back to the notifications inside `filteredMessages`.
+ */
 export function computeInsightsStats(
   filtered: InboxConversation[],
-  filteredMessages: InsightsMessage[]
+  filteredMessages: InsightsMessage[],
+  proactiveMessages?: InsightsMessage[]
 ): InsightsStats {
   const total = filtered.length;
   const escalated = filtered.filter((c) => c.metadata.escalated).length;
   const positive = filteredMessages.filter((m) => m.feedback === 1).length;
   const negative = filteredMessages.filter((m) => m.feedback === -1).length;
-  const aiAnswers = filteredMessages.filter((m) => m.role === "assistant").length;
-  const userMessages = filteredMessages.length - aiAnswers;
+  // A Notification is not an answer (#546): nobody asked for it. It is reported on
+  // its own so turning proactive flows on stays visible without moving answer KPIs.
+  const notifications = (proactiveMessages ?? filteredMessages).filter(
+    (m) => m.proactive
+  ).length;
+  const aiAnswers = filteredMessages.filter(
+    (m) => m.role === "assistant" && !m.proactive
+  ).length;
+  const userMessages = filteredMessages.filter((m) => m.role === "user").length;
   const users = new Set(filtered.map(userKey));
   const languages = new Map<string, number>();
   for (const c of filtered) {
@@ -131,6 +190,7 @@ export function computeInsightsStats(
         ? Math.round((positive / (positive + negative)) * 100)
         : 0,
     aiAnswers,
+    notifications,
     userMessages,
     uniqueUsers: users.size,
     conversationsPerUser: users.size > 0 ? round1(total / users.size) : 0,
@@ -159,11 +219,18 @@ function bucketKeys(start: Date, end: Date, aggregate: ChartAggregate): string[]
   return keys;
 }
 
-/** Time-series metrics bucketed by day/week/month over the filtered data. */
+/**
+ * Time-series metrics bucketed by day/week/month over the filtered data.
+ *
+ * `proactiveMessages` widens the Notifications series the same way
+ * `computeInsightsStats` widens its KPI: a nudge nobody replied to belongs to a
+ * conversation outside the population, and it still happened.
+ */
 export function computeInsightsChart(
   filtered: InboxConversation[],
   filteredMessages: InsightsMessage[],
-  range: { from: string; to: string; aggregate: ChartAggregate }
+  range: { from: string; to: string; aggregate: ChartAggregate },
+  proactiveMessages?: InsightsMessage[]
 ): InsightsChartData {
   const start = new Date(`${range.from}T00:00:00`);
   const end = new Date(`${range.to}T00:00:00`);
@@ -184,6 +251,7 @@ export function computeInsightsChart(
   const convCount = zeros();
   const escalations = zeros();
   const aiAnswers = zeros();
+  const notifications = zeros();
   const userMessages = zeros();
   const positive = zeros();
   const negative = zeros();
@@ -199,16 +267,25 @@ export function computeInsightsChart(
   for (const m of filteredMessages) {
     const i = index.get(keyOf(m.createdAt));
     if (i === undefined) continue;
-    if (m.role === "assistant") aiAnswers[i] += 1;
+    if (m.proactive) {
+      // Counted below, from the wider proactive set — skip so it is not doubled.
+    } else if (m.role === "assistant") aiAnswers[i] += 1;
     else userMessages[i] += 1;
     if (m.feedback === 1) positive[i] += 1;
     if (m.feedback === -1) negative[i] += 1;
+  }
+  for (const m of proactiveMessages ?? filteredMessages) {
+    if (!m.proactive) continue;
+    const i = index.get(keyOf(m.createdAt));
+    if (i === undefined) continue;
+    notifications[i] += 1;
   }
 
   const values: Record<string, number[]> = {
     Conversations: convCount,
     Escalation: escalations,
     "AI answers": aiAnswers,
+    Notifications: notifications,
     "User messages": userMessages,
     "Unique users": users.map((s) => s.size),
     "Conversations / User": users.map((s, i) =>
@@ -335,8 +412,21 @@ export function computeInsightsOverview(
   channels: OrgWebsiteSource[],
   filters: InsightsFilter
 ): InsightsOverview {
-  const filtered = filterConversations(conversations, filters);
+  // #546: a Conversation the Visitor never joined is not a Conversation here.
+  // Applied first, so every aggregate below — including the role options — sees
+  // the same population the SQL does.
+  const engaged = engagedConversations(conversations, messages);
+  const filtered = filterConversations(engaged, filters);
   const filteredMessages = filterMessages(messages, filtered, filters.from, filters.to);
+  // Delivered nudges are counted over the same window but *without* the
+  // engagement rule — a nudge nobody answered still went out, and reporting zero
+  // for it would defeat the KPI's whole purpose.
+  const proactiveMessages = filterMessages(
+    messages,
+    filterConversations(conversations, filters),
+    filters.from,
+    filters.to
+  );
   const assistantTitleById = new Map(assistants.map((a) => [a.id, a.title]));
   const channelNameByHost = new Map<string, string>();
   for (const channel of channels) {
@@ -353,8 +443,8 @@ export function computeInsightsOverview(
     }, new Map<string, string>());
 
   return {
-    stats: computeInsightsStats(filtered, filteredMessages),
-    chart: computeInsightsChart(filtered, filteredMessages, range),
+    stats: computeInsightsStats(filtered, filteredMessages, proactiveMessages),
+    chart: computeInsightsChart(filtered, filteredMessages, range, proactiveMessages),
     assistantBreakdown: computeBreakdown(
       filtered,
       range,
@@ -370,7 +460,7 @@ export function computeInsightsOverview(
     options: {
       roles: [
         ...new Set(
-          conversations
+          engaged
             .map((conversation) => conversation.metadata.userRole)
             .filter((role): role is string => !!role)
         ),

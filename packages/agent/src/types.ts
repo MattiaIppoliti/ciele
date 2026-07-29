@@ -36,7 +36,8 @@ export type ChatReplyPart =
   | { type: "follow_ups"; action: "follow_up_questions"; questions: string[] }
   | {
       type: "button";
-      action: "show_button";
+      /** `notification` when the button came from a proactive nudge (#544). */
+      action: "show_button" | "notification";
       label: string;
       buttonType: "external_link" | "send_text" | "faq";
       url?: string;
@@ -68,6 +69,24 @@ export type ChatReplyPart =
       action: "search_knowledge";
       question: string;
       found?: string[];
+    }
+  /**
+   * A proactive nudge from a Flow whose trigger was a client event rather than a
+   * Visitor message (#541). Verbatim, like `custom_message` — the runtime never
+   * rewrites it, and producing one costs no model call.
+   */
+  | {
+      type: "notification";
+      action: "notification";
+      /** Optional heading rendered above the content. */
+      title?: string;
+      content: string;
+      /**
+       * Set to false when the flow made the nudge one-way: the chat disables its
+       * composer and says so, rather than letting the Visitor type into a dead
+       * end. Absent means replies are allowed.
+       */
+      allowReplies?: boolean;
     }
   | {
       type: "sources";

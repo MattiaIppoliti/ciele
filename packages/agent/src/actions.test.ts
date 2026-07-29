@@ -35,6 +35,7 @@ function makeFlow(overrides: Partial<Flow> = {}): Flow {
     enabled: true,
     position: 0,
     trigger: "message",
+    triggerSettings: {},
     conditionLogic: "any",
     conditions: [],
     actions: [],
@@ -120,6 +121,7 @@ const ALL_ACTIONS: FlowAction[] = [
   "send_email",
   "improvement",
   "handover",
+  "notification",
 ];
 
 describe("ACTION_HANDLERS registry", () => {
@@ -147,6 +149,124 @@ describe("custom_message", () => {
     const result = await ACTION_HANDLERS.custom_message(ctx);
     expect(result.parts[0]).toMatchObject({ type: "text" });
     expect((result.parts[0] as { text: string }).text).toContain("Greeting");
+  });
+});
+
+describe("notification", () => {
+  const proactive = (
+    notification: NonNullable<Flow["actionSettings"]["notification"]>
+  ) =>
+    makeFlow({
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: { notification },
+    });
+
+  it("emits the configured content verbatim", async () => {
+    const { ctx, events } = makeContext({
+      flow: proactive({ title: "Exams", content: "Results are out." }),
+    });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts).toEqual([
+      {
+        type: "notification",
+        action: "notification",
+        title: "Exams",
+        content: "Results are out.",
+      },
+    ]);
+    expect(events).toEqual([{ type: "part", part: result.parts[0] }]);
+  });
+
+  it("omits an absent title rather than emitting an empty one", async () => {
+    const { ctx } = makeContext({ flow: proactive({ content: "Just the body." }) });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts[0]).toEqual({
+      type: "notification",
+      action: "notification",
+      content: "Just the body.",
+    });
+  });
+
+  it("stays silent when no content is configured", async () => {
+    const { ctx, events } = makeContext({ flow: proactive({ title: "Only a title" }) });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts).toEqual([]);
+    expect(events).toEqual([]);
+  });
+
+  it("marks a one-way nudge, and says nothing when replies are allowed", async () => {
+    const closed = makeContext({
+      flow: proactive({ content: "Announcement.", allowReplies: false }),
+    });
+    expect(await ACTION_HANDLERS.notification(closed.ctx)).toMatchObject({
+      parts: [{ type: "notification", allowReplies: false }],
+    });
+
+    const open = makeContext({
+      flow: proactive({ content: "Announcement.", allowReplies: true }),
+    });
+    const result = await ACTION_HANDLERS.notification(open.ctx);
+    expect(result.parts[0]).not.toHaveProperty("allowReplies");
+  });
+
+  it("emits its buttons as ordinary button parts", async () => {
+    const { ctx } = makeContext({
+      flow: proactive({
+        content: "Results are out.",
+        buttons: [
+          { id: "b1", label: "See results", type: "external_link", url: "https://x.test/r" },
+          { id: "b2", label: "Explain", type: "send_text", text: "Explain my grade" },
+        ],
+      }),
+    });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts.slice(1)).toEqual([
+      {
+        type: "button",
+        action: "notification",
+        label: "See results",
+        buttonType: "external_link",
+        url: "https://x.test/r",
+      },
+      {
+        type: "button",
+        action: "notification",
+        label: "Explain",
+        buttonType: "send_text",
+        text: "Explain my grade",
+      },
+    ]);
+  });
+
+  it("drops an incomplete button rather than rendering a dead one", async () => {
+    const { ctx } = makeContext({
+      flow: proactive({
+        content: "Results are out.",
+        buttons: [
+          { id: "b1", label: "No destination", type: "external_link" },
+          { id: "b2", type: "send_text", text: "no label" },
+          { id: "b3", label: "Fine", type: "external_link", url: "https://x.test" },
+        ],
+      }),
+    });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts).toHaveLength(2);
+    expect(result.parts[1]).toMatchObject({ label: "Fine" });
+  });
+
+  it("resolves template variables in title and content", async () => {
+    const { ctx } = makeContext({
+      flow: proactive({ title: "Hi {{user.name}}", content: "Welcome, {{user.name}}." }),
+      templateContext: { "user.name": "Ada" },
+    });
+    const result = await ACTION_HANDLERS.notification(ctx);
+    expect(result.parts[0]).toEqual({
+      type: "notification",
+      action: "notification",
+      title: "Hi Ada",
+      content: "Welcome, Ada.",
+    });
   });
 });
 

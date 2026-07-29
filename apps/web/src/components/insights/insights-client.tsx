@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  BellRing,
   Calendar as CalendarIcon,
   Download,
   Info,
   ListFilter,
-  MousePointerClick,
   UserRound,
   X,
 } from "lucide-react";
@@ -533,6 +533,19 @@ export function InsightsClient({
           value={String(stats.aiAnswers)}
           className="col-span-12 sm:col-span-6 xl:col-span-4"
         />
+        {/* Proactive nudges are counted on their own, never as answers (#546):
+            switching proactive flows on must not move the answer KPIs. */}
+        <StatCard
+          icon={BellRing}
+          title="Notifications Sent"
+          subtitle={
+            stats.notifications === 0
+              ? "No proactive notifications delivered"
+              : `${stats.notifications} proactive message${stats.notifications === 1 ? "" : "s"} nobody had to ask for`
+          }
+          value={String(stats.notifications)}
+          className="col-span-12 sm:col-span-6 xl:col-span-4"
+        />
         <StatCard
           icon={UserRound}
           title="Unique Users"
@@ -551,20 +564,6 @@ export function InsightsClient({
         <StatCard
           title="Answers / Conversation"
           value={formatStat(stats.answersPerConversation)}
-          className="col-span-12 xl:col-span-6"
-        />
-
-        <StatCard
-          icon={MousePointerClick}
-          title="Shortcut button clicks"
-          subtitle="0 conversations started via shortcuts"
-          value="0"
-          className="col-span-12 xl:col-span-6"
-        />
-        <StatCard
-          title="CSAT Survey"
-          subtitle="Enable CSAT in assistant settings to collect survey data"
-          value="-"
           className="col-span-12 xl:col-span-6"
         />
 

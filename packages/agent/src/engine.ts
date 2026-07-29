@@ -214,6 +214,115 @@ async function dispatchActions(options: {
 }
 
 /**
+ * Runs already-selected proactive flows (#541): a client event fired, the
+ * trigger picked the flows, and each one's actions execute in order.
+ *
+ * Deliberately *not* `dispatchActions`: a proactive flow has no message to
+ * answer, so neither of that loop's message-turn courtesies applies — an
+ * unconfigured flow must stay silent rather than emit "this flow has no actions
+ * configured", and an empty built-in must not fall back to generative search. No
+ * model is resolved here at all, which is what makes a proactive turn free.
+ *
+ * The caller is responsible for having filtered the flows through
+ * `proactiveFlowCandidates` and the delivery rule; this function trusts that
+ * decision and only executes.
+ */
+export async function runProactiveFlows(options: {
+  assistant: Assistant;
+  platformPrompt?: string;
+  /** Flows to run, in order — already selected and cleared for delivery. */
+  flows: Flow[];
+  templateContext?: ActionContext["templateContext"];
+  session: TurnSession;
+  skills?: SkillSnapshot[];
+  emit: (e: RuntimeEvent) => void;
+  signal?: AbortSignal;
+  keyResolution?: KeyResolution;
+}): Promise<{
+  parts: ChatReplyPart[];
+  effects: ActionEffect[];
+  /** The first flow that produced output — the message's flow marker. */
+  flowId: string | null;
+  flowName: string;
+}> {
+  const {
+    assistant,
+    platformPrompt = "",
+    flows,
+    templateContext,
+    session,
+    skills = [],
+    emit,
+    signal,
+    keyResolution = {},
+  } = options;
+
+  const parts: ChatReplyPart[] = [];
+  const effects: ActionEffect[] = [];
+  const delivered: Flow[] = [];
+
+  // Same wire ordering as a message turn: the flow marker precedes its parts.
+  const leading = flows[0];
+  if (leading) {
+    emit({
+      type: "flow",
+      flowId: leading.id,
+      flowName: leading.name,
+      isDefault: false,
+    });
+  }
+
+  for (const flow of flows) {
+    if (signal?.aborted) break;
+    const before = parts.length;
+    const ctx: ActionContext = {
+      assistant,
+      platformPrompt,
+      flow,
+      // A proactive turn has no Visitor message and no history to ground in:
+      // the nudge is verbatim, so neither is needed.
+      message: "",
+      history: [],
+      templateContext: withWorkflowName(templateContext, flow.name),
+      chatModel: null,
+      session,
+      skills,
+      priorParts: parts,
+      emit,
+      signal,
+      previewSurface: keyResolution.surface === "preview",
+    };
+    for (const action of flow.actions) {
+      if (signal?.aborted) break;
+      const handler = ACTION_HANDLERS[action];
+      if (!handler) continue;
+      try {
+        const result = await handler(ctx);
+        parts.push(...result.parts);
+        if (result.effects) effects.push(...result.effects);
+        if (result.halt) break;
+      } catch (error) {
+        // One broken nudge must not suppress the others, and a Visitor is never
+        // shown an apology for a message they did not ask for.
+        console.error(
+          `[runtime] proactive action ${action} failed on flow ${flow.id}:`,
+          errorMessageOf(error)
+        );
+      }
+    }
+    if (parts.length > before) delivered.push(flow);
+  }
+
+  const first = delivered[0] ?? null;
+  return {
+    parts,
+    effects,
+    flowId: first?.id ?? null,
+    flowName: delivered.map((f) => f.name).join(" + "),
+  };
+}
+
+/**
  * Authoritative flow router + agent-in-the-actions (context.md runtime
  * invariants): the matched flow's actions execute in order via the
  * ACTION_HANDLERS registry (see actions.ts); custom_message is verbatim; only

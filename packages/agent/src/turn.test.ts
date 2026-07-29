@@ -364,6 +364,303 @@ describe("streamConversationTurn", () => {
   });
 });
 
+/**
+ * The proactive half of the turn (#541): a client event, not a message, starts
+ * it. Same module, same persistence and telemetry contract — but no user message,
+ * no classification, and no model, so a nudge costs nothing to deliver.
+ */
+describe("streamConversationTurn (proactive triggers)", () => {
+  async function proactiveFixture(overrides: Partial<Flow> = {}) {
+    const assistant = await db.createAssistant(DEMO_ORG.id, {
+      title: "Proactive Assistant",
+    });
+    const flow = await db.createFlow(assistant.id, {
+      name: "Welcome nudge",
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: {
+        notification: { title: "Welcome", content: "Exam results are out." },
+      },
+    });
+    const updated = { ...flow, ...overrides };
+    return { assistant, flows: [updated] };
+  }
+
+  async function runProactive(input: {
+    assistant: Assistant;
+    flows: Flow[];
+    trigger?: Flow["trigger"];
+    subjectId?: string;
+    conversationId?: string | null;
+    dbOverride?: Db;
+    elapsedSeconds?: number;
+  }): Promise<RuntimeEvent[]> {
+    const stream = await streamConversationTurn({
+      db: input.dbOverride ?? db,
+      assistant: input.assistant,
+      flows: input.flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "visitor",
+      subjectId: input.subjectId ?? "visitor-proactive",
+      conversationId: input.conversationId ?? null,
+      message: "",
+      trigger: input.trigger ?? "chat_open",
+      ...(input.elapsedSeconds !== undefined
+        ? { triggerContext: { elapsedSeconds: input.elapsedSeconds } }
+        : {}),
+      signal: new AbortController().signal,
+    });
+    const text = (await new Response(stream).text()).trim();
+    if (!text) return [];
+    return text.split("\n").map((line) => JSON.parse(line) as RuntimeEvent);
+  }
+
+  it("delivers the notification and persists it as an assistant message alone", async () => {
+    const { assistant, flows } = await proactiveFixture();
+    const events = await runProactive({ assistant, flows });
+
+    const parts = events
+      .filter((e) => e.type === "part")
+      .map((e) => (e as { part: ChatReplyPart }).part);
+    expect(parts).toEqual([
+      {
+        type: "notification",
+        action: "notification",
+        title: "Welcome",
+        content: "Exam results are out.",
+      },
+    ]);
+
+    const done = doneEvent(events);
+    const messages = await db.listMessages(done.conversationId);
+    // Nobody spoke, so nothing is persisted on the visitor's behalf.
+    expect(messages.map((m) => m.role)).toEqual(["assistant"]);
+    expect(messages[0]).toMatchObject({
+      flowId: flows[0].id,
+      flowName: "Welcome nudge",
+    });
+  });
+
+  it("delivers nothing and creates no conversation when no flow has the trigger", async () => {
+    const { assistant, flows } = await proactiveFixture({ trigger: "page_load" });
+    const visitorId = "visitor-no-trigger";
+    expect(await runProactive({ assistant, flows, subjectId: visitorId })).toEqual([]);
+    expect(
+      await db.listConversations(assistant.id, "visitor", visitorId)
+    ).toEqual([]);
+  });
+
+  it("suppresses a second delivery in the same conversation", async () => {
+    const { assistant, flows } = await proactiveFixture();
+    const first = doneEvent(await runProactive({ assistant, flows }));
+
+    const second = await runProactive({
+      assistant,
+      flows,
+      conversationId: first.conversationId,
+    });
+    expect(second).toEqual([]);
+    const messages = await db.listMessages(first.conversationId);
+    expect(messages).toHaveLength(1);
+  });
+
+  it("ignores a disabled flow", async () => {
+    const { assistant, flows } = await proactiveFixture({ enabled: false });
+    expect(await runProactive({ assistant, flows })).toEqual([]);
+  });
+
+  it("ignores stored actions the trigger may not run", async () => {
+    const { assistant, flows } = await proactiveFixture({
+      actions: ["search_knowledge"],
+    });
+    expect(await runProactive({ assistant, flows })).toEqual([]);
+  });
+
+  it("starts a fresh conversation when the given one belongs to another visitor", async () => {
+    const { assistant, flows } = await proactiveFixture();
+    const theirs = doneEvent(
+      await runProactive({ assistant, flows, subjectId: "visitor-a" })
+    );
+    const mine = doneEvent(
+      await runProactive({
+        assistant,
+        flows,
+        subjectId: "visitor-b",
+        conversationId: theirs.conversationId,
+      })
+    );
+    expect(mine.conversationId).not.toBe(theirs.conversationId);
+  });
+
+  it("honours the once-per-visitor rule across conversations", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, {
+      title: "Once Per Visitor Assistant",
+    });
+    const flow = await db.createFlow(assistant.id, {
+      name: "One-time announcement",
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: {
+        notification: { content: "Welcome aboard.", deliveryRule: "visitor" },
+      },
+    });
+    const flows = [flow];
+    const visitor = "visitor-once-ever";
+
+    const first = doneEvent(await runProactive({ assistant, flows, subjectId: visitor }));
+    // A brand-new conversation for the same visitor must not repeat it.
+    expect(
+      await runProactive({ assistant, flows, subjectId: visitor })
+    ).toEqual([]);
+    // A different visitor still gets it.
+    const other = doneEvent(
+      await runProactive({ assistant, flows, subjectId: "visitor-other" })
+    );
+    expect(other.conversationId).not.toBe(first.conversationId);
+  });
+
+  it("redelivers every time under the always rule", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, {
+      title: "Always Assistant",
+    });
+    const flow = await db.createFlow(assistant.id, {
+      name: "Repeat nudge",
+      trigger: "chat_open",
+      actions: ["notification"],
+      actionSettings: {
+        notification: { content: "Hello again.", deliveryRule: "always" },
+      },
+    });
+    const flows = [flow];
+
+    const first = doneEvent(
+      await runProactive({ assistant, flows, subjectId: "visitor-always" })
+    );
+    const again = await runProactive({
+      assistant,
+      flows,
+      subjectId: "visitor-always",
+      conversationId: first.conversationId,
+    });
+    expect(doneEvent(again).conversationId).toBe(first.conversationId);
+    expect(await db.listMessages(first.conversationId)).toHaveLength(2);
+  });
+
+  it("ignores the delivery rule on the preview surface", async () => {
+    // Preview is a demo surface, not a visitor session: an admin who restarts it
+    // expects to see the nudge again (#545).
+    const { assistant, flows } = await proactiveFixture();
+    const first = await streamConversationTurn({
+      db,
+      assistant,
+      flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "member",
+      subjectId: "member-preview",
+      message: "",
+      trigger: "chat_open",
+      keyResolution: { surface: "preview", memberId: "member-preview" },
+      signal: new AbortController().signal,
+    });
+    const firstEvents = (await new Response(first).text())
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as RuntimeEvent);
+    const conversationId = doneEvent(firstEvents).conversationId;
+
+    const again = await streamConversationTurn({
+      db,
+      assistant,
+      flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "member",
+      subjectId: "member-preview",
+      conversationId,
+      message: "",
+      trigger: "chat_open",
+      keyResolution: { surface: "preview", memberId: "member-preview" },
+      signal: new AbortController().signal,
+    });
+    const againText = (await new Response(again).text()).trim();
+    expect(againText).not.toBe("");
+    expect(await db.listMessages(conversationId)).toHaveLength(2);
+  });
+
+  it("re-checks the reported dwell instead of trusting it", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, {
+      title: "Dwell Assistant",
+    });
+    const flow = await db.createFlow(assistant.id, {
+      name: "Dwell nudge",
+      trigger: "time_on_page",
+      triggerSettings: { timeOnPage: { seconds: 45 } },
+      actions: ["notification"],
+      actionSettings: { notification: { content: "Need a hand?" } },
+    });
+    const flows = [flow];
+
+    // A client claiming less than the configured dwell gets nothing...
+    expect(
+      await runProactive({
+        assistant,
+        flows,
+        trigger: "time_on_page",
+        subjectId: "visitor-early",
+        elapsedSeconds: 10,
+      })
+    ).toEqual([]);
+    // ...and one that reports no measure at all gets nothing either.
+    expect(
+      await runProactive({
+        assistant,
+        flows,
+        trigger: "time_on_page",
+        subjectId: "visitor-unmeasured",
+      })
+    ).toEqual([]);
+
+    const events = await runProactive({
+      assistant,
+      flows,
+      trigger: "time_on_page",
+      subjectId: "visitor-lingered",
+      elapsedSeconds: 45,
+    });
+    expect(doneEvent(events).conversationId).toBeTruthy();
+  });
+
+  it("meters no tokens — a verbatim notification calls no model", async () => {
+    const { assistant, flows } = await proactiveFixture();
+    const captured: RuntimeEventInput[] = [];
+    let metered = 0;
+    const meteredDb: Db = {
+      ...db,
+      async recordAiUsage(events) {
+        metered += events.length;
+        return db.recordAiUsage(events);
+      },
+      async recordRuntimeEvent(event) {
+        captured.push(event);
+      },
+    };
+    await runProactive({ assistant, flows, dbOverride: meteredDb });
+
+    expect(metered).toBe(0);
+    expect(captured).toHaveLength(1);
+    expect(captured[0]).toMatchObject({
+      kind: "chat_turn",
+      status: "succeeded",
+      surface: "widget",
+      flowName: "Welcome nudge",
+      inputTokens: 0,
+      outputTokens: 0,
+    });
+  });
+});
+
 describe("chat_turn telemetry (ADR-0011)", () => {
   const captureDb = (captured: RuntimeEventInput[]): Db => ({
     ...db,

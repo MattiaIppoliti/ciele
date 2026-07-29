@@ -17,6 +17,8 @@ import type {
   FlowTrust,
   FlowUrlOperator,
   KeyValuePair,
+  NotificationButton,
+  NotificationDeliveryRule,
 } from "@agent-hub/core";
 
 import {
@@ -78,7 +80,13 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { FLOW_ACTION_PICKER, FLOW_ACTIONS } from "@/lib/flow-actions";
+import { DEFAULT_DWELL_SECONDS, isProactiveTrigger } from "@agent-hub/core";
+import {
+  FLOW_ACTION_PICKER,
+  FLOW_ACTIONS,
+  FLOW_TRIGGER_LABELS,
+  PROACTIVE_FLOW_ACTION_PICKER,
+} from "@/lib/flow-actions";
 import {
   cleanFlowConditions,
   FLOW_CONDITION_KINDS,
@@ -116,16 +124,24 @@ interface FaqOption {
   question: string;
 }
 
-const TRIGGER_LABELS: Record<FlowTrigger, string> = {
-  message: "User sends a message",
-  page_load: "On page load",
-  time_on_page: "Time on page",
-  chat_open: "Chat opens",
-};
+const TRIGGER_LABELS = FLOW_TRIGGER_LABELS;
 
 const TRIGGERS: Array<{ value: FlowTrigger; label: string }> = [
   { value: "message", label: TRIGGER_LABELS.message },
+  { value: "page_load", label: TRIGGER_LABELS.page_load },
+  { value: "time_on_page", label: TRIGGER_LABELS.time_on_page },
+  { value: "chat_open", label: TRIGGER_LABELS.chat_open },
 ];
+
+const NOTIFICATION_TITLE_LIMIT = 100;
+const NOTIFICATION_CONTENT_LIMIT = 5000;
+
+/** Order matters: the safe default comes first. */
+const DELIVERY_RULE_LABELS: Record<NotificationDeliveryRule, string> = {
+  session: "Once per conversation",
+  visitor: "Once per user",
+  always: "Every time it fires",
+};
 
 const NOTE_LIMIT = 1000;
 const BUTTON_TEMPLATE_FIELDS = [
@@ -1254,6 +1270,104 @@ function ApiRequestConfig({
   );
 }
 
+/**
+ * Buttons attached to a Notification: a link out, or a first message put into the
+ * chat. Help-desk and FAQ buttons are deliberately absent — they answer a question
+ * the visitor has not asked.
+ */
+function NotificationButtonsConfig({
+  buttons,
+  onChange,
+}: {
+  buttons: NotificationButton[];
+  onChange: (buttons: NotificationButton[]) => void;
+}) {
+  function patch(id: string, next: Partial<NotificationButton>) {
+    onChange(buttons.map((b) => (b.id === id ? { ...b, ...next } : b)));
+  }
+  return (
+    <div className="space-y-2">
+      <Label>Buttons</Label>
+      {buttons.map((button) => {
+        const type = button.type ?? "external_link";
+        return (
+          <div key={button.id} className="space-y-2 rounded-md border p-3">
+            <div className="flex items-center gap-2">
+              <Input
+                value={button.label ?? ""}
+                onChange={(e) => patch(button.id, { label: e.target.value })}
+                placeholder="Button name"
+                className="bg-background"
+              />
+              <Hint label="Remove button">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Remove button"
+                  onClick={() =>
+                    onChange(buttons.filter((b) => b.id !== button.id))
+                  }
+                >
+                  <AnimatedIcon icon={Trash2} size={16} />
+                </Button>
+              </Hint>
+            </div>
+            <div className="flex items-center rounded-lg border p-0.5">
+              {(
+                [
+                  { value: "external_link" as const, label: "Open a link" },
+                  { value: "send_text" as const, label: "Send text into chat" },
+                ]
+              ).map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  size="sm"
+                  variant={type === option.value ? "secondary" : "ghost"}
+                  className="h-7 px-2.5 text-xs"
+                  aria-pressed={type === option.value}
+                  onClick={() => patch(button.id, { type: option.value })}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+            {type === "external_link" ? (
+              <Input
+                value={button.url ?? ""}
+                onChange={(e) => patch(button.id, { url: e.target.value })}
+                placeholder="https://example.com/exam-results"
+                className="bg-background"
+              />
+            ) : (
+              <Input
+                value={button.text ?? ""}
+                onChange={(e) => patch(button.id, { text: e.target.value })}
+                placeholder="Tell me more about the exam results"
+                className="bg-background"
+              />
+            )}
+          </div>
+        );
+      })}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() =>
+          onChange([
+            ...buttons,
+            { id: `btn-${Date.now()}-${buttons.length}`, type: "external_link" },
+          ])
+        }
+      >
+        Add button <Plus className="size-4" />
+      </Button>
+    </div>
+  );
+}
+
 function FlowButtonConfig({
   settings,
   helpDesks,
@@ -1505,6 +1619,14 @@ export function FlowBuilder({
   const [trigger, setTrigger] = useState<FlowTrigger | null>(
     flow ? flow.trigger : null
   );
+  /** A trigger change awaiting confirmation because it discards configuration. */
+  const [pendingTrigger, setPendingTrigger] = useState<FlowTrigger | null>(null);
+  const [dwell, setDwell] = useState<{ minutes: number; seconds: number }>(() => {
+    const stored = flow?.triggerSettings?.timeOnPage;
+    const total =
+      (stored?.minutes ?? 0) * 60 + (stored?.seconds ?? 0) || DEFAULT_DWELL_SECONDS;
+    return { minutes: Math.floor(total / 60), seconds: total % 60 };
+  });
   const [conditionLogic, setConditionLogic] = useState<FlowConditionLogic>(
     flow?.conditionLogic ?? "any"
   );
@@ -1527,8 +1649,18 @@ export function FlowBuilder({
     setSettings((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }
 
-  const triggerOk = isDefaultFlow || trigger !== null;
+  const dwellSeconds = dwell.minutes * 60 + dwell.seconds;
+  // A zero dwell would make "Time on page" indistinguishable from "On page load",
+  // which is a trigger the admin could have picked instead.
+  const dwellOk = trigger !== "time_on_page" || dwellSeconds > 0;
+  const triggerOk = isDefaultFlow || (trigger !== null && dwellOk);
+  // A proactive trigger changes what the rest of the builder can offer: there is
+  // no conversation to gate on and no question to answer, so conditions fall away
+  // and the Response collapses to the one proactive action (#541).
+  const proactive = trigger !== null && isProactiveTrigger(trigger);
   const configuredActions = actions.every((action) => {
+    if (action === "notification")
+      return Boolean(settings.notification?.content?.trim());
     if (action === "custom_message") return customMessage.trim().length > 0;
     if (action === "show_button") {
       const button = settings.show_button;
@@ -1557,7 +1689,36 @@ export function FlowBuilder({
   const conditionsOk = flowConditionsSavable(conditions);
   const canSave = triggerOk && responseOk && nameOk && conditionsOk;
 
-  const disabledHint = !triggerOk
+  /**
+   * Picks a trigger, clearing configuration the new trigger cannot express.
+   * Crossing the reactive/proactive line invalidates the whole Response step (and
+   * any conditions), so the admin is asked first rather than losing work silently.
+   */
+  function chooseTrigger(next: FlowTrigger) {
+    const crossesKind =
+      trigger !== null && isProactiveTrigger(next) !== isProactiveTrigger(trigger);
+    const hasWork =
+      actions.length > 0 || conditions.length > 0 || customMessage.trim().length > 0;
+    if (crossesKind && hasWork) {
+      setPendingTrigger(next);
+      return;
+    }
+    setTrigger(next);
+  }
+
+  function applyPendingTrigger() {
+    if (pendingTrigger === null) return;
+    setTrigger(pendingTrigger);
+    setPendingTrigger(null);
+    setActions([]);
+    setConditions([]);
+    setCustomMessage("");
+    setSettings({});
+  }
+
+  const disabledHint = !dwellOk
+    ? "Set how long the user must stay on the page"
+    : !triggerOk
     ? `Set a trigger to enable ${isEdit ? "Save changes" : "Create flow"}`
     : actions.length === 0
       ? `Add a response action to enable ${isEdit ? "Save changes" : "Create flow"}`
@@ -1578,6 +1739,12 @@ export function FlowBuilder({
     const payload = {
       description: joined || flow?.description || "",
       trigger: trigger ?? ("message" as FlowTrigger),
+      // Only Time-on-page has trigger-scoped settings; every other trigger
+      // stores an empty object rather than a stale dwell from a previous choice.
+      triggerSettings:
+        trigger === "time_on_page"
+          ? { timeOnPage: { minutes: dwell.minutes, seconds: dwell.seconds } }
+          : {},
       conditionLogic,
       conditions: cleanedConditions,
       actions,
@@ -1688,7 +1855,7 @@ export function FlowBuilder({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setTrigger(t.value)}
+                    onClick={() => chooseTrigger(t.value)}
                   >
                     {t.label}
                   </Button>
@@ -1696,21 +1863,68 @@ export function FlowBuilder({
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-              <p className="text-sm font-semibold">
-                {TRIGGER_LABELS[trigger]}
-              </p>
-              <Hint label="Remove trigger">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remove trigger"
-                  onClick={() => setTrigger(null)}
-                >
-                  <AnimatedIcon icon={Trash2} size={16} />
-                </Button>
-              </Hint>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <p className="text-sm font-semibold">
+                  {TRIGGER_LABELS[trigger]}
+                </p>
+                <Hint label="Remove trigger">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remove trigger"
+                    onClick={() => setTrigger(null)}
+                  >
+                    <AnimatedIcon icon={Trash2} size={16} />
+                  </Button>
+                </Hint>
+              </div>
+              {trigger === "time_on_page" && (
+                <div className="space-y-1.5 rounded-md border p-3">
+                  <Label>How long before it fires</Label>
+                  <div className="flex items-end gap-3">
+                    {(
+                      [
+                        { key: "minutes" as const, label: "Minutes", max: 120 },
+                        { key: "seconds" as const, label: "Seconds", max: 59 },
+                      ]
+                    ).map((field) => (
+                      <div key={field.key} className="space-y-1">
+                        <span className="text-muted-foreground text-xs">
+                          {field.label}
+                        </span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={field.max}
+                          value={dwell[field.key]}
+                          onChange={(e) => {
+                            const raw = Number.parseInt(e.target.value, 10);
+                            const value = Number.isFinite(raw)
+                              ? Math.min(Math.max(raw, 0), field.max)
+                              : 0;
+                            setDwell((prev) => ({ ...prev, [field.key]: value }));
+                          }}
+                          className="bg-background w-24"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {!dwellOk && (
+                    <p className="text-destructive text-xs">
+                      Set at least one second — otherwise this is “On page load”.
+                    </p>
+                  )}
+                </div>
+              )}
+              {proactive && (
+                <p className="text-muted-foreground text-sm">
+                  This flow starts on its own, without the user asking anything —
+                  so it has no conditions, and its response is a single
+                  notification.
+                </p>
+              )}
             </div>
           )}
         </StepCard>
@@ -1730,6 +1944,12 @@ export function FlowBuilder({
           ) : trigger === null ? (
             <p className="text-base">
               Select a trigger to see the available conditions.
+            </p>
+          ) : proactive ? (
+            <p className="text-muted-foreground text-sm">
+              A conversation-context condition needs a conversation to read, and
+              this flow runs before the user has said anything — so there are no
+              conditions to set.
             </p>
           ) : (
             <div className="space-y-3">
@@ -2071,6 +2291,102 @@ export function FlowBuilder({
                     </div>
                   )}
 
+                  {action === "notification" && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label>Title</Label>
+                        <Input
+                          value={settings.notification?.title ?? ""}
+                          onChange={(e) =>
+                            patchSettings("notification", {
+                              title: e.target.value.slice(
+                                0,
+                                NOTIFICATION_TITLE_LIMIT
+                              ),
+                            })
+                          }
+                          placeholder="Exam results are out"
+                          className="bg-background"
+                        />
+                        <p className="text-muted-foreground text-right text-xs">
+                          {(settings.notification?.title ?? "").length}/
+                          {NOTIFICATION_TITLE_LIMIT}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Notification content</Label>
+                        <Textarea
+                          value={settings.notification?.content ?? ""}
+                          onChange={(e) =>
+                            patchSettings("notification", {
+                              content: e.target.value.slice(
+                                0,
+                                NOTIFICATION_CONTENT_LIMIT
+                              ),
+                            })
+                          }
+                          placeholder="The message the assistant sends on its own, without being asked"
+                          rows={4}
+                          className="bg-background"
+                        />
+                        <p className="text-muted-foreground text-right text-xs">
+                          {(settings.notification?.content ?? "").length}/
+                          {NOTIFICATION_CONTENT_LIMIT}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Delivery</Label>
+                        <Select
+                          value={
+                            settings.notification?.deliveryRule ?? "session"
+                          }
+                          onValueChange={(value) =>
+                            patchSettings("notification", {
+                              deliveryRule: value as NotificationDeliveryRule,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue>
+                              {DELIVERY_RULE_LABELS[
+                                settings.notification?.deliveryRule ?? "session"
+                              ]}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(
+                              Object.keys(DELIVERY_RULE_LABELS) as
+                                NotificationDeliveryRule[]
+                            ).map((rule) => (
+                              <SelectItem key={rule} value={rule}>
+                                {DELIVERY_RULE_LABELS[rule]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <SettingToggle
+                        title="Allow users to reply"
+                        description="Let the user answer this notification in the chat. Turn it off for a one-way announcement — the composer closes and says so."
+                        checked={settings.notification?.allowReplies ?? true}
+                        onCheckedChange={(allowReplies) =>
+                          patchSettings("notification", { allowReplies })
+                        }
+                      />
+                      <NotificationButtonsConfig
+                        buttons={settings.notification?.buttons ?? []}
+                        onChange={(buttons) =>
+                          patchSettings("notification", { buttons })
+                        }
+                      />
+                      <div className="text-muted-foreground flex items-center gap-2.5 rounded-lg border px-4 py-3 text-sm">
+                        <Info className="text-primary size-4 shrink-0" />
+                        Sent verbatim, and never more often than the delivery
+                        rule allows.
+                      </div>
+                    </div>
+                  )}
+
                   {action === "handover" && (
                     <div className="space-y-1.5">
                       <Label>Transfer to</Label>
@@ -2109,7 +2425,10 @@ export function FlowBuilder({
             <div>
               <p className="text-sm font-semibold">Add an action</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {FLOW_ACTION_PICKER.map((key) => {
+                {(proactive
+                  ? PROACTIVE_FLOW_ACTION_PICKER
+                  : FLOW_ACTION_PICKER
+                ).map((key) => {
                   const meta = FLOW_ACTIONS[key];
                   const Icon = meta.icon;
                   const added = actions.includes(key);
@@ -2147,13 +2466,52 @@ export function FlowBuilder({
         </StepCard>
       </div>
 
+      {/* Crossing the reactive/proactive line discards the Response step. */}
+      <Dialog
+        open={pendingTrigger !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingTrigger(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change the trigger?</DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            {pendingTrigger !== null && isProactiveTrigger(pendingTrigger)
+              ? "“" +
+                TRIGGER_LABELS[pendingTrigger] +
+                "” responds with a single notification, so this flow's current actions and conditions will be removed."
+              : "A message-triggered flow answers what the user asked, so this flow's notification will be removed."}
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingTrigger(null)}
+            >
+              Keep current trigger
+            </Button>
+            <Button type="button" onClick={applyPendingTrigger}>
+              Change and clear
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Status footer */}
       <div className="sticky bottom-2 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card/95 px-3 py-2 shadow-md backdrop-blur">
         <StatusItem ok={triggerOk} required label="Trigger set" />
         <StatusItem
-          ok={conditions.length > 0}
+          ok={proactive || conditions.length > 0}
           required={false}
-          label={conditions.length > 0 ? "Conditions added" : "No conditions added"}
+          label={
+            proactive
+              ? "No conditions for this trigger"
+              : conditions.length > 0
+                ? "Conditions added"
+                : "No conditions added"
+          }
         />
         <StatusItem ok={responseOk} required label="Response added" />
         <div className="ml-auto flex items-center gap-4">

@@ -14,6 +14,26 @@ export function visibleReplyParts(
   );
 }
 
+/**
+ * Whether the composer should be closed: the newest assistant reply is a one-way
+ * Notification (#544).
+ *
+ * Only the last reply decides. A one-way announcement earlier in the conversation
+ * must not lock a chat the Visitor has since been invited back into — and an
+ * ordinary answer after it means the conversation is live again.
+ */
+export function repliesClosed(
+  replies: readonly (readonly ChatReplyPart[])[]
+): boolean {
+  const last = replies.at(-1);
+  if (!last || last.length === 0) return false;
+  const notifications = last.filter((part) => part.type === "notification");
+  if (notifications.length === 0) return false;
+  return notifications.every(
+    (part) => part.type === "notification" && part.allowReplies === false
+  );
+}
+
 /** Find the most recent desk recommendation without rendering its inline action. */
 export function latestHelpDeskId(
   replies: readonly (readonly ChatReplyPart[])[]

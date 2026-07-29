@@ -23,6 +23,7 @@ function makeFlow(overrides: Partial<Flow> = {}): Flow {
     enabled: true,
     position: 1,
     trigger: "message",
+    triggerSettings: {},
     conditionLogic: "any",
     conditions: [],
     actions: ["custom_message"],

@@ -63,6 +63,7 @@ import {
 } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
+import type { ReportableTrigger } from "@/lib/widget-triggers";
 
 interface UserMsg {
   role: "user";
@@ -144,6 +145,14 @@ function PartView({
     return (
       <div className="bg-muted max-w-[90%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm">
         <ChatMarkdown text={part.text} />
+      </div>
+    );
+  }
+  if (part.type === "notification") {
+    return (
+      <div className="bg-muted/60 max-w-[90%] space-y-1 rounded-2xl rounded-tl-sm border-l-2 px-3.5 py-2.5 text-sm">
+        {part.title && <p className="font-medium">{part.title}</p>}
+        <ChatMarkdown text={part.content} />
       </div>
     );
   }
@@ -411,6 +420,94 @@ export function PreviewPanel({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, pending]);
 
+  /**
+   * Proactive triggers in Preview (#545). The preview has no host page, so a
+   * preview run *is* the page: mounting or restarting it counts as the page load
+   * and the chat opening, and the dwell clock starts there. Which listeners to arm
+   * comes from the live flows — the whole point of Preview is unpublished work, so
+   * it cannot read the published config the embed reads.
+   */
+  const [previewRun, setPreviewRun] = useState(0);
+  const firePreviewTrigger = useCallback(
+    async (trigger: ReportableTrigger, elapsedSeconds?: number) => {
+      try {
+        const response = await fetch("/api/preview/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            assistantId: assistant.id,
+            conversationId: conversationIdRef.current,
+            collectionId: null,
+            trigger,
+            ...(elapsedSeconds !== undefined ? { elapsedSeconds } : {}),
+          }),
+        });
+        if (!response.ok || !response.body) return;
+        let appended = false;
+        await consumeTurnStream<BotMsg>(response.body, {
+          update: (apply) => {
+            if (!appended) {
+              appended = true;
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: "bot",
+                  id: null,
+                  flowName: null,
+                  steps: [],
+                  parts: [],
+                  streamingText: null,
+                  phase: "done",
+                  searchCount: 0,
+                  feedback: 0,
+                },
+              ]);
+            }
+            updateLastBot(apply);
+          },
+          onDone: ({ conversationId: id, messageId }) => {
+            conversationIdRef.current = id;
+            setConversationId(id);
+            if (appended) updateLastBot((bot) => ({ ...bot, id: messageId }));
+          },
+        });
+      } catch {
+        /* a preview nudge is best-effort, like the widget's */
+      }
+    },
+    [assistant.id]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    fetch(`/api/preview/trigger?assistantId=${assistant.id}`, {
+      cache: "no-store",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((config) => {
+        if (cancelled || !config) return;
+        const armed: string[] = config.proactiveTriggers ?? [];
+        if (armed.includes("page_load")) void firePreviewTrigger("page_load");
+        if (armed.includes("chat_open")) void firePreviewTrigger("chat_open");
+        if (armed.includes("time_on_page")) {
+          for (const seconds of config.proactiveDwellSeconds ?? []) {
+            timers.push(
+              setTimeout(
+                () => void firePreviewTrigger("time_on_page", seconds),
+                seconds * 1000
+              )
+            );
+          }
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      for (const timer of timers) clearTimeout(timer);
+    };
+  }, [assistant.id, previewRun, firePreviewTrigger]);
+
   function updateLastBot(update: (bot: BotMsg) => BotMsg) {
     setMessages((prev) => {
       const next = [...prev];
@@ -532,6 +629,8 @@ export function PreviewPanel({
     setMessages([]);
     conversationIdRef.current = null;
     setConversationId(null);
+    // A fresh preview conversation is a fresh page: proactive flows fire again.
+    setPreviewRun((run) => run + 1);
   }
 
   async function openHistory() {
@@ -708,7 +807,9 @@ export function PreviewPanel({
         <h2 className="text-lg font-semibold">Preview</h2>
         <div className="flex items-center gap-1">
           <Hint label="Refresh preview">
-            <RefreshButton />
+            {/* Refresh re-reads the assistant's config *and* restarts the
+                preview conversation, so proactive flows fire again. */}
+            <RefreshButton onRefresh={newChat} />
           </Hint>
           <Hint label="Hide preview">
             <Button

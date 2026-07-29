@@ -67,6 +67,7 @@ import {
   estimateCostEur,
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
+  isProactiveMessage,
   nextCrawlDue,
   okfActor,
   shortId,
@@ -288,6 +289,7 @@ function seedAssistant(
       assistantId: a.id,
       position: i,
       trigger: "message",
+      triggerSettings: {},
       conditionLogic: "any",
       conditions: [],
       actionSettings: {},
@@ -1271,10 +1273,16 @@ function getStore(): MockStore {
     }
   }
   for (const [id, flow] of store.flows) {
-    if (!flow.trigger || !flow.conditions || !flow.actionSettings) {
+    if (
+      !flow.trigger ||
+      !flow.conditions ||
+      !flow.actionSettings ||
+      !flow.triggerSettings
+    ) {
       store.flows.set(id, {
         ...flow,
         trigger: flow.trigger ?? "message",
+        triggerSettings: flow.triggerSettings ?? {},
         conditionLogic: flow.conditionLogic ?? "any",
         conditions: flow.conditions ?? [],
         actionSettings: flow.actionSettings ?? {},
@@ -1676,6 +1684,7 @@ export const mockDb: Db = {
         assistantId: assistant.id,
         position: i,
         trigger: "message",
+        triggerSettings: {},
         conditionLogic: "any",
         conditions: [],
         actionSettings: {},
@@ -1766,6 +1775,7 @@ export const mockDb: Db = {
       enabled: true,
       position: siblings.length,
       trigger: input.trigger ?? "message",
+      triggerSettings: input.triggerSettings ?? {},
       conditionLogic: input.conditionLogic ?? "any",
       conditions: input.conditions ?? [],
       actions: input.actions ?? ["search_knowledge"],
@@ -2673,6 +2683,8 @@ export const mockDb: Db = {
             : null,
           messageCount: own.length,
           flowNames,
+          notificationOnly:
+            own.length > 0 && own.every((m) => isProactiveMessage(m.content)),
           feedback,
         };
       })
@@ -2798,6 +2810,7 @@ export const mockDb: Db = {
         role: m.role,
         feedback: m.feedback,
         createdAt: m.createdAt,
+        proactive: isProactiveMessage(m.content),
       }));
   },
 
@@ -2954,6 +2967,8 @@ export const mockDb: Db = {
           flowNames: [
             ...new Set(own.map((m) => m.flowName).filter((n): n is string => !!n)),
           ],
+          notificationOnly:
+            own.length > 0 && own.every((m) => isProactiveMessage(m.content)),
           feedback: own.some((m) => m.feedback === 1)
             ? 1
             : own.some((m) => m.feedback === -1)

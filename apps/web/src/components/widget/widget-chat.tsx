@@ -17,8 +17,16 @@ import { ThinkingPanel } from "@/components/chat/thinking-panel";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
 import {
   latestHelpDeskId,
+  repliesClosed,
   visibleReplyParts,
 } from "@/components/chat/visible-reply-parts";
+import {
+  UNREAD_MESSAGE,
+  chatOpenFiresOnMount,
+  readTriggerMessage,
+  triggerReportKey,
+  type TriggerReport,
+} from "@/lib/widget-triggers";
 import type { WidgetConversationSummary } from "./widget-history";
 import {
   ArrowRight,
@@ -433,6 +441,79 @@ export function WidgetChat({
     }
   }
 
+  /**
+   * Reports a proactive trigger and renders whatever it delivers (#541).
+   *
+   * A trigger with nothing configured for it streams zero bytes, so the bot
+   * bubble is appended lazily — on the first event — and a silent turn leaves the
+   * conversation untouched rather than showing an empty message. Each trigger is
+   * reported once per mount; the delivery rule itself is enforced server-side.
+   */
+  const firedTriggers = useRef<Set<string>>(new Set());
+  const fireTrigger = useCallback(
+    async (report: TriggerReport) => {
+      const key = triggerReportKey(report);
+      if (firedTriggers.current.has(key)) return;
+      firedTriggers.current.add(key);
+      try {
+        const response = await fetch(`/api/widget/${assistantId}/trigger`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            visitorId: visitorId(),
+            conversationId,
+            collectionId: anchored?.id ?? null,
+            trigger: report.trigger,
+            ...(report.url ? { pageUrl: report.url } : {}),
+            ...(report.elapsedSeconds !== undefined
+              ? { elapsedSeconds: report.elapsedSeconds }
+              : {}),
+          }),
+        });
+        if (!response.ok || !response.body) return;
+        let appended = false;
+        await consumeTurnStream<BotMsg>(response.body, {
+          update: (apply) => {
+            if (!appended) {
+              appended = true;
+              setMessages((prev) => [...prev, { ...emptyBot(), phase: "done" }]);
+              // The host owns the launcher, so only it can badge itself — and
+              // only it knows whether the chat is currently on screen.
+              window.parent?.postMessage(UNREAD_MESSAGE, "*");
+            }
+            updateLastBot(apply);
+          },
+          onDone: ({ conversationId, messageId }) => {
+            setConversationId(conversationId);
+            if (appended) updateLastBot((bot) => ({ ...bot, id: messageId }));
+          },
+        });
+      } catch {
+        /* network error — a nudge is best-effort by nature */
+      }
+    },
+    // The report carries whichever conversation is current when the event fires;
+    // re-firing after it changes is a no-op thanks to the per-trigger guard.
+    [assistantId, anchored, conversationId]
+  );
+
+  // Proactive triggers. The floater script reports what only it can see — that
+  // the host page loaded, its URL, and that the chat was opened (the frame is
+  // warmed long before it is shown). Every other embed renders the chat visible
+  // immediately, so for those mounting is opening.
+  useEffect(() => {
+    if (gated) return;
+    if (chatOpenFiresOnMount(new URLSearchParams(searchParams.toString()))) {
+      void fireTrigger({ trigger: "chat_open" });
+    }
+    function onMessage(event: MessageEvent) {
+      const report = readTriggerMessage(event.data);
+      if (report) void fireTrigger(report);
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [gated, searchParams, fireTrigger]);
+
   async function refreshHistory() {
     try {
       // no-store: the browser otherwise serves a cached list for this stable
@@ -501,9 +582,13 @@ export function WidgetChat({
     window.parent?.postMessage("ciele:close", "*");
   }
 
-  const recommendedHelpDeskId = latestHelpDeskId(
-    messages.flatMap((message) => (message.role === "bot" ? [message.parts] : []))
+  const botReplies = messages.flatMap((message) =>
+    message.role === "bot" ? [message.parts] : []
   );
+  const recommendedHelpDeskId = latestHelpDeskId(botReplies);
+  // A one-way notification closes the composer rather than letting the visitor
+  // type into a dead end.
+  const composerClosed = repliesClosed(botReplies);
 
   function newChat() {
     abortRef.current?.abort();
@@ -692,6 +777,22 @@ export function WidgetChat({
                     </div>
                   );
                 }
+                if (part.type === "notification") {
+                  // Proactive nudge: set apart from an answer, since the visitor
+                  // did not ask for it (accent edge + optional heading).
+                  return (
+                    <div
+                      key={j}
+                      className="bg-muted/60 max-w-[90%] space-y-1 rounded-2xl rounded-tl-sm border-l-2 px-3.5 py-2.5 text-sm"
+                      style={{ borderLeftColor: brandColor }}
+                    >
+                      {part.title && (
+                        <p className="font-medium">{part.title}</p>
+                      )}
+                      <DeferredChatMarkdown text={part.content} />
+                    </div>
+                  );
+                }
                 if (part.type === "help_desk") {
                   return (
                     <button
@@ -862,6 +963,7 @@ export function WidgetChat({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (composerClosed) return;
             send(draft);
           }}
           className="rounded-xl border px-3 py-2"
@@ -871,8 +973,13 @@ export function WidgetChat({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onFocus={fireComposerPulse}
-              placeholder={`Ask ${nickname}...`}
-              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
+              disabled={composerClosed}
+              placeholder={
+                composerClosed
+                  ? "This message doesn't take replies"
+                  : `Ask ${nickname}...`
+              }
+              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
             />
             {pending ? (
               <button
@@ -887,7 +994,8 @@ export function WidgetChat({
               <button
                 type="submit"
                 aria-label="Send"
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white"
+                disabled={composerClosed}
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white disabled:opacity-40"
                 style={{ backgroundColor: brandColor }}
               >
                 <ArrowUp className="size-4" />

@@ -24,7 +24,13 @@ export type FlowAction =
   | "api_request"
   | "send_email"
   | "improvement"
-  | "handover";
+  | "handover"
+  /**
+   * The proactive-engagement primitive: an unprompted in-widget message. The
+   * only action a proactively-triggered Flow may run, and never available to a
+   * message-triggered one (see `actionAllowedForTrigger` in `engine.ts`).
+   */
+  | "notification";
 
 export type FlowButtonType =
   | "external_link"
@@ -42,8 +48,27 @@ export type FlowButtonIcon =
   | "external_link"
   | "headphones";
 
-/** The event that starts a flow. Legacy flows (no trigger stored) = "message". */
+/**
+ * The event that starts a flow. Legacy flows (no trigger stored) = "message".
+ *
+ * "message" drives Intent Classification; the other three are **proactive** —
+ * fired by a client event, with no Visitor message to classify. See
+ * `isProactiveTrigger` in `engine.ts`.
+ */
 export type FlowTrigger = "message" | "page_load" | "time_on_page" | "chat_open";
+
+/**
+ * Configuration owned by the *trigger* rather than by an action. Separate from
+ * `FlowActionSettings` because a dwell duration is a property of the event that
+ * starts the flow, not of what the flow then does.
+ */
+export interface FlowTriggerSettings {
+  /** "Time on page": how long the Visitor must linger before the flow fires. */
+  timeOnPage?: {
+    minutes?: number;
+    seconds?: number;
+  };
+}
 
 export type FlowConditionLogic = "any" | "all";
 
@@ -123,6 +148,29 @@ export type ApiRequestAuth =
   | { type: "bearer"; token?: string }
   | { type: "api_key"; header?: string; key?: string }
   | { type: "basic"; username?: string; password?: string };
+
+/**
+ * How often a Notification may reach the same Visitor.
+ * - `session` (default) — once per Conversation.
+ * - `visitor` — once ever, across all of that Visitor's Conversations.
+ * - `always` — every time the trigger fires.
+ */
+export type NotificationDeliveryRule = "session" | "visitor" | "always";
+
+/**
+ * One button attached to a Notification. A deliberate subset of
+ * `FlowButtonType`: a proactive nudge can send the Visitor somewhere or start a
+ * conversation, but help-desk and FAQ buttons answer a question nobody asked.
+ */
+export interface NotificationButton {
+  id: string;
+  label?: string;
+  type?: "external_link" | "send_text";
+  /** Destination for an `external_link` button. */
+  url?: string;
+  /** First message put into the chat by a `send_text` button. */
+  text?: string;
+}
 
 /** Per-action settings, keyed by action type (each type appears at most once). */
 export interface FlowActionSettings {
@@ -209,6 +257,30 @@ export interface FlowActionSettings {
     mode?: "ai_generated" | "manual";
     /** Fixed follow-up questions shown verbatim when `mode` is "manual". */
     questions?: string[];
+  };
+  /**
+   * The proactive nudge a proactively-triggered Flow delivers. Emitted
+   * **verbatim**, like `custom_message` — a Notification never passes through a
+   * model.
+   */
+  notification?: {
+    /** Optional heading shown above the content, max 100 chars in the UI. */
+    title?: string;
+    /** Rich-text body, max 5000 chars in the UI. Required for a valid Flow. */
+    content?: string;
+    /**
+     * How often the same Visitor may receive it. Absent reads as `session` —
+     * the safe default, so an announcement cannot re-fire on every page view of
+     * a long browsing session.
+     */
+    deliveryRule?: NotificationDeliveryRule;
+    /**
+     * Whether the Visitor may answer the nudge. Absent reads as `true` — an
+     * existing Notification is never silently muted.
+     */
+    allowReplies?: boolean;
+    /** Optional next steps offered under the nudge. */
+    buttons?: NotificationButton[];
   };
 }
 
@@ -1155,6 +1227,12 @@ export interface InboxConversation extends Conversation {
   messageCount: number;
   /** Distinct flow names that handled assistant replies. */
   flowNames: string[];
+  /**
+   * True when the Assistant spoke proactively and the Visitor never replied — a
+   * nudge, not a conversation. The Inbox marks it so a queue is not padded with
+   * non-conversations, and Insights leaves it out of its counts entirely (#546).
+   */
+  notificationOnly: boolean;
   /** 1 if any reply was voted up, -1 if any down, 0 otherwise (up wins). */
   feedback: -1 | 0 | 1;
 }
@@ -1177,6 +1255,12 @@ export interface InsightsMessage {
   role: "user" | "assistant";
   feedback: -1 | 0 | 1;
   createdAt: string;
+  /**
+   * True for a proactive Notification — an Assistant message nobody asked for.
+   * Counted separately from AI answers, and a Conversation made only of these is
+   * not counted as a Conversation at all (#546).
+   */
+  proactive?: boolean;
 }
 
 /** Crawled website source resolved org-wide (the Insights "Channels" filter). */
@@ -1226,6 +1310,8 @@ export interface InsightsStats {
   negative: number;
   answerRating: number;
   aiAnswers: number;
+  /** Proactive Notifications delivered — never folded into `aiAnswers` (#546). */
+  notifications: number;
   userMessages: number;
   uniqueUsers: number;
   conversationsPerUser: number;
@@ -1775,6 +1861,8 @@ export interface Flow {
   enabled: boolean;
   position: number;
   trigger: FlowTrigger;
+  /** Trigger-scoped configuration (the Time-on-page dwell). */
+  triggerSettings: FlowTriggerSettings;
   conditionLogic: FlowConditionLogic;
   conditions: FlowCondition[];
   actions: FlowAction[];
@@ -1818,6 +1906,7 @@ export interface FlowInput {
   name: string;
   description?: string;
   trigger?: FlowTrigger;
+  triggerSettings?: FlowTriggerSettings;
   conditionLogic?: FlowConditionLogic;
   conditions?: FlowCondition[];
   actions?: FlowAction[];
@@ -1832,6 +1921,7 @@ export type FlowPatch = Partial<
     | "description"
     | "enabled"
     | "trigger"
+    | "triggerSettings"
     | "conditionLogic"
     | "conditions"
     | "actions"

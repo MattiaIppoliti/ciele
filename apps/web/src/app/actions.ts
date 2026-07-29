@@ -9,9 +9,11 @@ import type {
   Concept,
   ConceptFrontmatter,
   Conversation,
+  FlowAction,
   FlowActionSettings,
   FlowInput,
   FlowPatch,
+  FlowTrigger,
   GoalExpectations,
   GoalStatus,
   GoogleVertexFederatedConfig,
@@ -37,6 +39,7 @@ import type {
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import {
+  actionAllowedForTrigger,
   buildPublicationConfig,
   okfActor,
   openSecret,
@@ -524,6 +527,7 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
       description: flow.description,
       enabled: flow.enabled,
       trigger: flow.trigger,
+      triggerSettings: flow.triggerSettings,
       conditionLogic: flow.conditionLogic,
       conditions: flow.conditions,
       actions: flow.actions,
@@ -546,6 +550,7 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
         name: flow.name,
         description: flow.description,
         trigger: flow.trigger,
+        triggerSettings: flow.triggerSettings,
         conditionLogic: flow.conditionLogic,
         conditions: flow.conditions,
         actions: flow.actions,
@@ -570,7 +575,30 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
 
 // --- Flows ------------------------------------------------------------------------
 
+/**
+ * The trigger/action pairing rule (#541), enforced where it can't be bypassed.
+ *
+ * The Flow Builder already only offers the actions a trigger allows, but the
+ * editor is UI: a stale client or a direct call must not be able to store a
+ * proactive flow that runs generative actions, or a message flow that answers with
+ * an unprompted notification.
+ */
+function assertTriggerActions(
+  trigger: FlowTrigger,
+  actions: FlowAction[] | undefined
+) {
+  const invalid = (actions ?? []).find(
+    (action) => !actionAllowedForTrigger(action, trigger)
+  );
+  if (invalid) {
+    throw new Error(
+      `The "${invalid}" action cannot run on the "${trigger}" trigger.`
+    );
+  }
+}
+
 export async function createFlowAction(assistantId: string, input: FlowInput) {
+  assertTriggerActions(input.trigger ?? "message", input.actions);
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
     ({ db }) => db.createFlow(assistantId, input)
@@ -584,7 +612,21 @@ export async function updateFlowAction(
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
-    ({ db }) => db.updateFlow(flowId, patch)
+    async ({ db }) => {
+      // A patch may move the trigger, the actions, or only one of the two — the
+      // rule applies to the pair that will be stored, so the stored flow supplies
+      // whichever half the patch leaves alone.
+      if (patch.trigger !== undefined || patch.actions !== undefined) {
+        const stored = (await db.listFlows(assistantId)).find(
+          (flow) => flow.id === flowId
+        );
+        assertTriggerActions(
+          patch.trigger ?? stored?.trigger ?? "message",
+          patch.actions ?? stored?.actions
+        );
+      }
+      return db.updateFlow(flowId, patch);
+    }
   );
 }
 

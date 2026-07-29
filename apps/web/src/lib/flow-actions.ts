@@ -1,6 +1,7 @@
-import type { FlowAction } from "@agent-hub/core";
+import type { FlowAction, FlowTrigger } from "@agent-hub/core";
 import {
   AtSign,
+  BellRing,
   ChartLine,
   CircleHelp,
   Headphones,
@@ -12,6 +13,17 @@ import {
   Webhook,
   type LucideIcon,
 } from "lucide-react";
+
+/**
+ * The four events that can start a Flow, as an admin reads them. Shared by the
+ * builder's Trigger step and the Flows list, so the two never drift.
+ */
+export const FLOW_TRIGGER_LABELS: Record<FlowTrigger, string> = {
+  message: "User sends a message",
+  page_load: "On page load",
+  time_on_page: "Time on page",
+  chat_open: "Chat opens",
+};
 
 export interface FlowActionMeta {
   label: string;
@@ -73,11 +85,22 @@ export const FLOW_ACTIONS: Record<FlowAction, FlowActionMeta> = {
     subtitle: "Offer the help-desk escalation button",
     icon: Headphones,
   },
+  notification: {
+    label: "Notification",
+    subtitle: "Send a proactive in-widget message",
+    icon: BellRing,
+  },
 };
 
 export const FLOW_ACTION_KEYS = Object.keys(FLOW_ACTIONS) as FlowAction[];
 
-/** Tiles offered in the builder's "Add an action" grid, in display order. */
+/**
+ * Tiles offered in the builder's "Add an action" grid for a message-triggered
+ * flow, in display order. A proactive trigger has its own single action (see
+ * `PROACTIVE_FLOW_ACTION_PICKER`) — the pairing rule itself lives in
+ * `actionAllowedForTrigger` (`@agent-hub/core`), which both the editor and the
+ * runtime consult.
+ */
 export const FLOW_ACTION_PICKER: FlowAction[] = [
   "custom_message",
   "show_button",
@@ -89,3 +112,6 @@ export const FLOW_ACTION_PICKER: FlowAction[] = [
   "improvement",
   "handover",
 ];
+
+/** The Response step's catalog for a proactively-triggered flow. */
+export const PROACTIVE_FLOW_ACTION_PICKER: FlowAction[] = ["notification"];

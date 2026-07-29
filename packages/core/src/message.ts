@@ -17,3 +17,14 @@ export function messageText(
     .filter(Boolean)
     .join(separator);
 }
+
+/**
+ * Whether a persisted message is a proactive Notification — the Assistant speaking
+ * unprompted (#546). Read from the parts rather than from a column: the parts are
+ * what the runtime emits and every chat surface renders, so there is no second
+ * source of truth to keep in step. The SQL Insights aggregate asks the same
+ * question with `content @> '[{"type": "notification"}]'`.
+ */
+export function isProactiveMessage(content: readonly unknown[]): boolean {
+  return content.some((p) => (p as { type?: string } | null)?.type === "notification");
+}

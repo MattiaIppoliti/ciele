@@ -344,6 +344,30 @@ request, with no db).
 
 ### 5.2 Conditions & triggers — what actually runs
 
+- **Triggers**: all four fire, through two mirror-image selectors in
+  `packages/core/src/engine.ts` — `messageFlowCandidates` (only `message` flows compete for a user
+  message) and `proactiveFlowCandidates` (only flows on the fired event, and *every* match runs, in
+  position order, because these are announcements rather than answers).
+  - The **client reports, the server decides**. `POST /api/widget/[assistantId]/trigger` (and
+    `/api/preview/trigger`) take a trigger name, the host page URL, and a reported dwell; flow
+    selection re-checks the dwell against each flow's own threshold and the delivery rule against the
+    Conversation's `sessionState`, so an under-reported or replayed event changes nothing. The widget
+    config advertises which triggers exist so an assistant with no proactive flows arms no listeners.
+  - A proactive turn is the same `streamConversationTurn` with a `trigger` discriminant — **no second
+    entry point**, so budget/plan gating, telemetry and persistence do not fork. It resolves no model
+    (a Notification is verbatim), persists no user message, and writes nothing until it knows something
+    will be delivered, so a page view on a site with no proactive flows mints no Conversation.
+  - A proactive flow's only permitted action is `notification`, and the reactive catalog is refused on
+    it; the pairing (`actionAllowedForTrigger`) is enforced in the flow server action **and** again at
+    dispatch. `flows.trigger_settings` holds trigger-scoped config (the Time-on-page dwell).
+  - **Insights accounting** (#546): a Notification is not an AI answer, and a Conversation of nothing
+    but Notifications is not a Conversation — dropped once, at the top of the population
+    (`engagedConversations` in the oracle, `all_conversations` in SQL), so total, resolution rate,
+    unique users, breakdowns and even the role filter options inherit it. Delivered nudges get their
+    own KPI and chart series instead. `messages.proactive` is a **stored generated column** over the
+    reply parts, so the flag cannot drift from the content it describes, and the Inbox list can ask
+    the question without shipping message bodies.
+  - Still **[target]**: multiple triggers per flow, and the Notification's auto-delete.
 - **Conditions** are two mechanisms, split by what each is good at (spec #550). `FlowCondition` is a
   discriminated union of three kinds:
   - **Semantic** — `conversation_context` (w/ few-shot examples) is **fed to the LLM classifier as
@@ -352,7 +376,9 @@ request, with no db).
     zone) are checkable facts, so they are **checked**: `flowConditionsAllowRouting`
     (`packages/core/src/flow-conditions.ts`) runs inside `messageFlowCandidates`, the one candidate
     filter both `matchFlow` and `classifyIntent` call, so a gated-out flow reaches neither engine and
-    the two cannot drift. Objective kinds are excluded from keyword scoring *and* from the classifier
+    the two cannot drift — and inside `proactiveFlowCandidates` as well, so a stored objective
+    condition binds on every funnel rather than only the reactive one. Objective kinds are excluded
+    from keyword scoring *and* from the classifier
     prompt. The gate is "cannot pass": under **all** one false verdict disqualifies; under **any** a
     flow is disqualified only when every condition returned a false verdict. A defective or
     unevaluatable condition (no page URL in context, uncompilable regex) yields no verdict and
@@ -362,9 +388,8 @@ request, with no db).
     not the visitor's page. Per-conversation, not per-turn.
   - **User role, External data, Course** remain **[target]** — shown greyed in the picker, absent
     from the model and the runtime.
-- **Triggers**: only `message`-triggered flows compete for user messages (`engine.ts:80`).
-  `page_load` / `time_on_page` / `chat_open` are stored on the flow but **not fired** by any runtime
-  path yet **[target]**.
+  - A **proactive** flow has no conditions at all: the editor offers none, since a
+    conversation-context condition has no conversation to read before the first message.
 
 ### 5.3 Runtime invariants (must hold; see context.md)
 

@@ -24,10 +24,15 @@ import { colorizeOverview } from "@agent-hub/core";
  * never copied here.
  */
 
-const MIGRATION_URL = new URL(
+/**
+ * Every migration that shapes the function, in apply order. A later one replaces
+ * the function wholesale, so the list must stay complete: leave one out and the
+ * harness silently tests an older read model than production ships.
+ */
+const MIGRATION_URLS = [
   "../../../../supabase/migrations/20260709205905_insights_sql_reporting.sql",
-  import.meta.url
-);
+  "../../../../supabase/migrations/20260729110000_insights_proactive_notifications.sql",
+].map((path) => new URL(path, import.meta.url));
 
 // Minimal schema: the columns get_insights_overview touches, nothing else.
 const SCHEMA_SQL = `
@@ -53,7 +58,9 @@ create table public.messages (
   conversation_id text not null,
   role text not null,
   feedback int not null default 0,
-  created_at timestamptz not null
+  created_at timestamptz not null,
+  -- The reply parts; the proactive flag is a generated column the migration adds.
+  content jsonb not null default '[]'::jsonb
 );
 create table public.sources (
   id text primary key,
@@ -64,12 +71,14 @@ create table public.sources (
 );
 `;
 
-/** Returns just the CREATE INDEX + CREATE FUNCTION prefix of the migration,
- *  dropping the trailing GRANT/REVOKE (they need roles PGlite lacks). */
+/** The migrations' DDL in order, minus the trailing GRANT/REVOKE (they need
+ *  roles PGlite lacks). */
 function functionDdl(): string {
-  const sql = readFileSync(fileURLToPath(MIGRATION_URL), "utf8");
-  const cut = sql.search(/^\s*revoke\s+execute/im);
-  return cut === -1 ? sql : sql.slice(0, cut);
+  return MIGRATION_URLS.map((url) => {
+    const sql = readFileSync(fileURLToPath(url), "utf8");
+    const cut = sql.search(/^\s*revoke\s+execute/im);
+    return cut === -1 ? sql : sql.slice(0, cut);
+  }).join("\n");
 }
 
 export interface SeedAssistant {
@@ -88,6 +97,8 @@ export interface SeedMessage {
   role: "user" | "assistant";
   feedback: -1 | 0 | 1;
   createdAt: string;
+  /** True to seed it as a proactive Notification's reply parts (#546). */
+  proactive?: boolean;
 }
 export interface SeedCollection {
   id: string;
@@ -157,8 +168,18 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
     }
     for (const m of seed.messages) {
       await db.query(
-        "insert into public.messages (conversation_id, role, feedback, created_at) values ($1, $2, $3, $4)",
-        [m.conversationId, m.role, m.feedback, m.createdAt]
+        "insert into public.messages (conversation_id, role, feedback, created_at, content) values ($1, $2, $3, $4, $5)",
+        [
+          m.conversationId,
+          m.role,
+          m.feedback,
+          m.createdAt,
+          JSON.stringify(
+            m.proactive
+              ? [{ type: "notification", action: "notification", content: "Nudge" }]
+              : [{ type: "text", action: "custom_message", text: "Body" }]
+          ),
+        ]
       );
     }
 

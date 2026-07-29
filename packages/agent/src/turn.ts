@@ -4,11 +4,18 @@ import type {
   ConversationMetadata,
   ConversationSubject,
   Flow,
+  FlowTrigger,
+  ProactiveTriggerContext,
   ProviderConnection,
   SkillSnapshot,
   TrustTier,
 } from "@agent-hub/core";
-import { messageText } from "@agent-hub/core";
+import {
+  messageText,
+  needsVisitorDeliveryHistory,
+  notificationDelivery,
+  proactiveFlowCandidates,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
 import type { ChatReplyPart } from "./types";
@@ -19,6 +26,7 @@ import { embedText } from "./embeddings";
 import { withGraphEngine } from "./graph-search";
 import {
   runAssistantChat,
+  runProactiveFlows,
   type HistoryMessage,
   type KnowledgeSearcher,
   type ProviderHealthEvent,
@@ -97,6 +105,20 @@ export interface ConversationTurnInput {
    * mechanisms. Hosted subscription Provider Connections are retired.
    */
   keyResolution?: KeyResolution;
+  /**
+   * The event that started this turn (#541). Absent or `"message"` is the
+   * Visitor-message turn every existing caller runs. A proactive trigger
+   * (`chat_open`, and later `page_load` / `time_on_page`) selects its flows by
+   * the trigger instead of Intent Classification, persists no user message, and
+   * calls no model — `message` is ignored and may be empty.
+   */
+  trigger?: FlowTrigger;
+  /**
+   * What the fired event knows about itself — today the dwell the client reports
+   * for `time_on_page`. Re-checked against each flow's configured threshold, so a
+   * short or replayed report cannot make a nudge fire early.
+   */
+  triggerContext?: ProactiveTriggerContext;
 }
 
 /** Response headers matching the stream framing below. */
@@ -266,10 +288,244 @@ export function turnConnectionKind(
   return resolved.credentialKind === "platform" ? "platform" : "byok";
 }
 
+/** A turn that decided there is nothing to say: no db writes, no wire events. */
+function silentTurn(): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      controller.close();
+    },
+  });
+}
+
+/**
+ * The proactive half of the Conversation Turn (#541): a client event fired, so
+ * the trigger selects the flows instead of Intent Classification.
+ *
+ * Three things make it cheaper than a message turn, and all three are load-bearing:
+ * it resolves **no model** (a Notification is verbatim, so the turn is free and
+ * meters nothing), it persists **no user message** (nobody spoke), and it touches
+ * the database **only once it knows something will be delivered** — otherwise every
+ * page view on a site with no proactive flows would mint a Conversation.
+ *
+ * The spend-based gates (daily budget, plan cap) do not apply to a turn that spends
+ * nothing. Activation does: an organization that is not yet a customer should not be
+ * messaging visitors unprompted.
+ */
+async function streamProactiveTurn(
+  input: ConversationTurnInput & { trigger: FlowTrigger }
+): Promise<ReadableStream<Uint8Array>> {
+  const { db, assistant, subjectType, subjectId, signal, trigger } = input;
+  const turnStart = Date.now();
+  const surface =
+    input.keyResolution?.surface === "preview" ? "preview" : "widget";
+
+  const candidates = proactiveFlowCandidates(input.flows, trigger, {
+    // The same objective facts the message funnel gates on (spec #550): the page
+    // the event was reported from, and the clock. A proactive flow has no
+    // conditions today, so this only matters if one is ever stored — better to
+    // bind it than to ignore it on this funnel alone.
+    url: input.metadata?.launchUrl,
+    now: new Date(),
+    ...(input.triggerContext ?? {}),
+  });
+  if (candidates.length === 0) return silentTurn();
+
+  let activation: ActivationState = { state: "active" };
+  try {
+    activation = await getEnterpriseCapabilities().activation.getActivation(
+      input.organizationId
+    );
+  } catch (error) {
+    console.error("[runtime] activation check failed (failing open):", error);
+  }
+  if (activation.state === "pending") return silentTurn();
+
+  let conversation = input.conversationId
+    ? await db.getConversation(input.conversationId)
+    : null;
+  if (
+    conversation &&
+    (conversation.subjectId !== subjectId ||
+      conversation.assistantId !== assistant.id)
+  ) {
+    conversation = null;
+  }
+
+  // The "once per Visitor" rule spans Conversations, so it needs the Visitor's
+  // other session states. Read only when a candidate actually asks for it, and
+  // fail narrow: if the read fails, that rule behaves like once-per-session
+  // rather than delivering again.
+  let visitorStates: Array<Record<string, unknown>> = [];
+  if (surface !== "preview" && needsVisitorDeliveryHistory(candidates)) {
+    try {
+      const others = await db.listConversations(
+        assistant.id,
+        subjectType,
+        subjectId
+      );
+      visitorStates = others
+        .filter((other) => other.id !== conversation?.id)
+        .map((other) => other.sessionState ?? {});
+    } catch (error) {
+      console.error("[runtime] visitor delivery history read failed:", error);
+    }
+  }
+
+  // The delivery rule is the server's decision, so a reopen loop or a replayed
+  // event report re-asks it and gets the same answer. Each surviving flow's patch
+  // folds into the working state, so two nudges on one trigger both get recorded.
+  let workingState: Record<string, unknown> = conversation?.sessionState ?? {};
+  const statePatches: Record<string, unknown> = {};
+  const deliverable: Flow[] = [];
+  for (const flow of candidates) {
+    // Preview is a demo surface, not a Visitor session (#545): an admin who hits
+    // Refresh expects to see the nudge again, so the delivery rule — which exists
+    // to protect a real Visitor from repetition — does not apply there.
+    if (surface === "preview") {
+      deliverable.push(flow);
+      continue;
+    }
+    const decision = notificationDelivery(flow, {
+      sessionState: workingState,
+      visitorStates,
+    });
+    if (!decision.deliver) continue;
+    deliverable.push(flow);
+    if (decision.sessionPatch) {
+      workingState = { ...workingState, ...decision.sessionPatch };
+      Object.assign(statePatches, decision.sessionPatch);
+    }
+  }
+  if (deliverable.length === 0) return silentTurn();
+
+  if (!conversation) {
+    conversation = await db.createConversation({
+      assistantId: assistant.id,
+      subjectType,
+      subjectId,
+      collectionId: input.collectionId ?? null,
+      title: deliverable[0].name.slice(0, 80),
+      metadata: input.metadata,
+    });
+  }
+
+  const conversationId = conversation.id;
+  const session = createTurnSession(conversationId, conversation.sessionState);
+  const platformPrompt = await getRuntimeHost().getPlatformSystemPrompt();
+  const encoder = new TextEncoder();
+
+  return new ReadableStream({
+    async start(controller) {
+      const emit = (event: RuntimeEvent) => {
+        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+      };
+      emit({ type: "turn", conversationId });
+      try {
+        const result = await runProactiveFlows({
+          assistant,
+          platformPrompt,
+          flows: deliverable,
+          templateContext: buildTemplateContext({
+            user: {
+              name: conversation.metadata.userName,
+              email: conversation.metadata.userEmail,
+              id: conversation.subjectId,
+            },
+            message: "",
+            history: [],
+            metadata: conversation.metadata,
+            conversationId,
+            appOrigin: platformAppOrigin(),
+          }),
+          session,
+          skills: input.skills,
+          emit,
+          signal,
+          keyResolution: input.keyResolution,
+        });
+        if (signal.aborted) {
+          throw new DOMException("Conversation turn aborted", "AbortError");
+        }
+        // A flow that produced nothing was never delivered, so its delivery must
+        // not be recorded either — the Visitor can still receive it later.
+        if (result.parts.length === 0) {
+          controller.close();
+          return;
+        }
+        const saved = await db.appendMessage({
+          conversationId,
+          role: "assistant",
+          content: result.parts,
+          flowId: result.flowId,
+          flowName: result.flowName,
+        });
+        for (const [key, value] of Object.entries(statePatches)) {
+          session.set(key, value);
+        }
+        if (session.dirty) {
+          try {
+            await db.updateConversationSessionState(
+              conversationId,
+              session.snapshot()
+            );
+          } catch (error) {
+            console.error("[runtime] session-state persist failed:", error);
+          }
+        }
+        if (result.effects.length > 0) {
+          await applyEffects(result.effects, {
+            db,
+            organizationId: input.organizationId,
+            messageId: saved.id,
+          });
+        }
+        emit({ type: "done", conversationId, messageId: saved.id });
+        await recordRuntimeEvent(db, {
+          organizationId: input.organizationId,
+          assistantId: assistant.id,
+          conversationId,
+          messageId: saved.id,
+          kind: "chat_turn",
+          status: "succeeded",
+          surface,
+          flowId: result.flowId,
+          flowName: result.flowName,
+          durationMs: Date.now() - turnStart,
+          inputTokens: 0,
+          outputTokens: 0,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        if (!signal.aborted) emit({ type: "error", message });
+        await recordRuntimeEvent(db, {
+          organizationId: input.organizationId,
+          assistantId: assistant.id,
+          conversationId,
+          kind: "chat_turn",
+          status: "failed",
+          surface,
+          durationMs: Date.now() - turnStart,
+          errorClass: errorClassOf(error),
+          errorMessage: message,
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}
+
 export async function streamConversationTurn(
   input: ConversationTurnInput
 ): Promise<ReadableStream<Uint8Array>> {
   const { db, assistant, message, subjectType, subjectId, signal } = input;
+
+  // A proactive trigger takes the same seam but a different path: no
+  // classification, no model, no user message (#541).
+  const trigger = input.trigger ?? "message";
+  if (trigger !== "message") {
+    return streamProactiveTurn({ ...input, trigger });
+  }
 
   // Runtime telemetry (ADR-0011): one `chat_turn` event per turn, attributed
   // to org/assistant/conversation and stamped with latency, tokens, tool

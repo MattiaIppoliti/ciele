@@ -5,9 +5,11 @@ import {
   computeInsightsChart,
   computeInsightsOverview,
   computeInsightsStats,
+  engagedConversations,
   filterConversations,
   filterMessages,
   hostOf,
+  isNotificationOnly,
 } from "./insights";
 import {
   ASSISTANTS,
@@ -182,6 +184,110 @@ describe("computeInsightsChart", () => {
 
 // --- Parity: assembled Overview equals the pure KPI functions ------------
 
+/**
+ * The proactive-Notification accounting rules (#546). Each is pinned separately,
+ * so changing one later is a deliberate edit rather than a drifting number — and
+ * `insights.parity.test.ts` holds the SQL to the same answers.
+ */
+describe("proactive Notifications in the read model", () => {
+  const nudge = (conversationId: string, createdAt = "2026-06-15T12:00:00.000Z") =>
+    msg({ conversationId, role: "assistant", proactive: true, createdAt });
+  const answer = (conversationId: string, createdAt = "2026-06-15T12:00:00.000Z") =>
+    msg({ conversationId, role: "assistant", createdAt });
+  const question = (conversationId: string, createdAt = "2026-06-15T12:00:00.000Z") =>
+    msg({ conversationId, role: "user", createdAt });
+
+  it("does not count a Notification as an AI answer", () => {
+    const c = conv({ id: "cx" });
+    const stats = computeInsightsStats(
+      [c],
+      [nudge("cx"), question("cx"), answer("cx")]
+    );
+    expect(stats.aiAnswers).toBe(1);
+    expect(stats.notifications).toBe(1);
+    expect(stats.userMessages).toBe(1);
+    // One answer to one conversation — the nudge does not inflate the ratio.
+    expect(stats.answersPerConversation).toBe(1);
+  });
+
+  it("recognises a conversation that never got past the nudge", () => {
+    expect(isNotificationOnly("cx", [nudge("cx")])).toBe(true);
+    expect(isNotificationOnly("cx", [nudge("cx"), question("cx")])).toBe(false);
+    // Nothing to be "only": an empty conversation keeps its old treatment.
+    expect(isNotificationOnly("cx", [])).toBe(false);
+  });
+
+  it("drops notification-only conversations from the population", () => {
+    const engaged = conv({ id: "engaged" });
+    const nudgedOnly = conv({ id: "nudged" });
+    expect(
+      engagedConversations(
+        [engaged, nudgedOnly],
+        [nudge("engaged"), question("engaged"), nudge("nudged")]
+      ).map((c) => c.id)
+    ).toEqual(["engaged"]);
+  });
+
+  it("keeps a notification-only conversation out of the resolution rate", () => {
+    const escalated = conv({ id: "c-esc", metadata: { escalated: true } });
+    const resolved = conv({ id: "c-ok" });
+    const nudgedOnly = conv({ id: "c-nudge" });
+    const messages = [
+      question("c-esc"),
+      answer("c-esc"),
+      question("c-ok"),
+      answer("c-ok"),
+      nudge("c-nudge"),
+    ];
+
+    const population = engagedConversations(
+      [escalated, resolved, nudgedOnly],
+      messages
+    );
+    const stats = computeInsightsStats(population, messages);
+    // 2 real conversations, 1 escalated → 50%. Counting the nudge would read 67%.
+    expect(stats.total).toBe(2);
+    expect(stats.resolutionRate).toBe(50);
+  });
+
+  it("still counts a nudge nobody replied to", () => {
+    // The case the KPI exists for. Its conversation is out of the population, so
+    // counting notifications from the population's messages would report zero —
+    // which is exactly what the first implementation did.
+    const nudgedOnly = conv({ id: "c-nudge" });
+    const engaged = conv({ id: "c-real" });
+    const all = [nudge("c-nudge"), question("c-real"), answer("c-real")];
+    const population = engagedConversations([nudgedOnly, engaged], all);
+    const populationMessages = all.filter((m) => m.conversationId === "c-real");
+
+    const stats = computeInsightsStats(population, populationMessages, all);
+    expect(stats.total).toBe(1);
+    expect(stats.notifications).toBe(1);
+
+    const chart = computeInsightsChart(
+      population,
+      populationMessages,
+      { from: "2026-06-15", to: "2026-06-15", aggregate: "daily" },
+      all
+    );
+    expect(
+      chart.series.find((s) => s.key === "Notifications")?.values
+    ).toEqual([1]);
+  });
+
+  it("charts Notifications as their own series", () => {
+    const c = conv({ id: "cx", createdAt: "2026-06-15T12:00:00.000Z" });
+    const chart = computeInsightsChart(
+      [c],
+      [nudge("cx"), question("cx"), answer("cx")],
+      { from: "2026-06-15", to: "2026-06-15", aggregate: "daily" }
+    );
+    const series = new Map(chart.series.map((s) => [s.key, s.values]));
+    expect(series.get("Notifications")).toEqual([1]);
+    expect(series.get("AI answers")).toEqual([1]);
+  });
+});
+
 describe("computeInsightsOverview parity with pure KPI functions", () => {
   const conversations = fixtureConversations();
   const messages = fixtureMessages(conversations);
@@ -196,18 +302,32 @@ describe("computeInsightsOverview parity with pure KPI functions", () => {
         CHANNELS,
         filters
       );
-      const filtered = filterConversations(conversations, filters);
+      // Same first step the oracle takes: notification-only conversations are
+      // out of the population before any filter runs (#546).
+      const filtered = filterConversations(
+        engagedConversations(conversations, messages),
+        filters
+      );
       const filteredMessages = filterMessages(
         messages,
         filtered,
         filters.from,
         filters.to
       );
+      // Delivered nudges are counted without the engagement rule (#546).
+      const proactiveMessages = filterMessages(
+        messages,
+        filterConversations(conversations, filters),
+        filters.from,
+        filters.to
+      );
       const range = { from: filters.from, to: filters.to, aggregate: filters.aggregate };
 
-      expect(overview.stats).toEqual(computeInsightsStats(filtered, filteredMessages));
+      expect(overview.stats).toEqual(
+        computeInsightsStats(filtered, filteredMessages, proactiveMessages)
+      );
       expect(overview.chart).toEqual(
-        computeInsightsChart(filtered, filteredMessages, range)
+        computeInsightsChart(filtered, filteredMessages, range, proactiveMessages)
       );
       const assistantTitle = new Map(ASSISTANTS.map((a) => [a.id, a.title]));
       expect(overview.assistantBreakdown).toEqual(

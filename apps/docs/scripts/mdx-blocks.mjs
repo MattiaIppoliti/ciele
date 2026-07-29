@@ -96,7 +96,12 @@ function jsxStaysOpen(line) {
  * @returns {Block[]}
  */
 export function toBlocks(source) {
-  const lines = source.split('\n');
+  // Split on either ending, and keep no `\r` in a block. A Windows checkout hands
+  // us CRLF, and a carriage return left on a line makes every structural probe
+  // here miss: `indexOf('---')` no longer finds the frontmatter fence, so the
+  // whole page parses as body and the frontmatter gets re-wrapped as prose. The
+  // written file is LF, which is what the repo stores anyway.
+  const lines = source.split(/\r?\n/);
   const { front, body } = splitFrontmatter(lines);
   const blocks = [...frontmatterBlocks(front)];
 

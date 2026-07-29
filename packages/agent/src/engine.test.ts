@@ -45,6 +45,7 @@ function makeFlow(overrides: Partial<Flow> = {}): Flow {
     enabled: true,
     position: 0,
     trigger: "message",
+    triggerSettings: {},
     conditionLogic: "any",
     conditions: [],
     actions: [],

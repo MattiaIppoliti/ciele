@@ -54,6 +54,9 @@ function seedFor(
       role: m.role,
       feedback: m.feedback,
       createdAt: m.createdAt,
+      // Seeded as real notification parts, so the SQL derives the flag itself
+      // rather than being handed the oracle's answer (#546).
+      proactive: m.proactive === true,
     })),
   };
 }
