@@ -1,10 +1,18 @@
 "use client";
 // badtz-ui.com/docs/buttons/swipe-button (adapted to theme tokens)
 
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import {
+  SWIPE_START,
+  maxSwipeFor,
+  swipeProgress,
+  swipeStateFor,
+  swipeStateForKey,
+  type SwipeState,
+} from "./swipe-progress";
 
 export interface SwipeButtonProps
   extends React.HTMLAttributes<HTMLDivElement> {
@@ -23,59 +31,93 @@ export function SwipeButton({
   validationDuration = 2000,
   ...props
 }: SwipeButtonProps) {
-  const [isSwiped, setIsSwiped] = useState(false);
   const [isValidated, setIsValidated] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [currentX, setCurrentX] = useState(0);
+  // Rendered mirror of `swipeRef`. Never read it back to decide anything: a burst of
+  // pointer events dispatched in one tick (Playwright's dragTo, any synthetic harness)
+  // all runs before React flushes, so the ref is the only source of truth mid-gesture.
+  const [swipe, setSwipe] = useState<SwipeState>(SWIPE_START);
+  const swipeRef = useRef<SwipeState>(SWIPE_START);
+  const dragRef = useRef<{ active: boolean; startX: number }>({
+    active: false,
+    startX: 0,
+  });
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const hintId = useId();
+
+  const applySwipe = (next: SwipeState) => {
+    swipeRef.current = next;
+    setSwipe(next);
+  };
+
+  const reset = () => {
+    dragRef.current = { active: false, startX: 0 };
+    applySwipe(SWIPE_START);
+    setIsDragging(false);
+  };
 
   useEffect(() => {
     if (isValidated) {
       const timer = setTimeout(() => {
         setIsValidated(false);
-        setIsSwiped(false);
-        setCurrentX(0);
-        setIsDragging(false);
+        reset();
       }, validationDuration);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset is stable enough (refs + setState)
   }, [isValidated, validationDuration]);
+
+  // Handlers need the live measurement; render needs the same number for `aria-valuenow`
+  // and may not read refs — so every measurement also lands in state. Measuring per
+  // interaction (rather than trusting one mount-time observation) keeps this correct when
+  // the host remounts or resizes the control, e.g. a modal animating open around it.
+  const [trackMax, setTrackMax] = useState(0);
+  const maxSwipe = () => {
+    const max = maxSwipeFor(
+      containerRef.current?.offsetWidth ?? 0,
+      buttonRef.current?.offsetWidth ?? 0,
+      gap,
+    );
+    setTrackMax(max);
+    return max;
+  };
+
+  const commit = () => {
+    setIsValidated(true);
+    applySwipe(SWIPE_START);
+    dragRef.current = { active: false, startX: 0 };
+    setIsDragging(false);
+    onSwipeComplete?.();
+  };
 
   const handleStart = (clientX: number) => {
     if (isValidated) return;
-    setStartX(clientX);
+    dragRef.current = { active: true, startX: clientX - swipeRef.current.offset };
     setIsDragging(true);
   };
 
   const handleMove = (clientX: number) => {
-    if (!buttonRef.current || !isDragging || isValidated) return;
-
-    const containerWidth = containerRef.current?.offsetWidth || 0;
-    const buttonWidth = buttonRef.current.offsetWidth;
-    const maxSwipe = containerWidth - buttonWidth - gap * 2;
-
-    let newX = clientX - startX;
-    newX = Math.max(0, Math.min(newX, maxSwipe));
-
-    setCurrentX(newX);
-    setIsSwiped(newX >= maxSwipe - 10);
+    if (isValidated || !dragRef.current.active || !buttonRef.current) return;
+    applySwipe(swipeStateFor(clientX - dragRef.current.startX, maxSwipe()));
   };
 
   const handleEnd = () => {
-    if (isValidated) return;
-
-    if (isSwiped) {
-      setIsValidated(true);
-      setCurrentX(0);
-      onSwipeComplete?.();
-    } else {
-      setCurrentX(0);
-      setIsSwiped(false);
-    }
-    setIsDragging(false);
+    if (isValidated || !dragRef.current.active) return;
+    if (swipeRef.current.atEnd) commit();
+    else reset();
   };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (isValidated) return;
+    const result = swipeStateForKey(event.key, swipeRef.current, maxSwipe());
+    if (!result.handled) return;
+    event.preventDefault();
+    if (result.commit) commit();
+    else applySwipe(result.state);
+  };
+
+  const progress = swipeProgress(swipe.offset, trackMax);
 
   return (
     <div
@@ -93,12 +135,11 @@ export function SwipeButton({
       onMouseMove={(e) => handleMove(e.clientX)}
       onMouseUp={handleEnd}
       onMouseLeave={handleEnd}
-      role="button"
-      aria-label="Swipe to publish"
       {...props}
     >
       <button
         ref={buttonRef}
+        type="button"
         className={cn(
           "absolute rounded-lg",
           "bg-primary text-primary-foreground",
@@ -116,10 +157,23 @@ export function SwipeButton({
           height: `calc(100% - ${gap * 2}px)`,
           left: `${gap}px`,
           top: `${gap}px`,
-          transform: isValidated ? "none" : `translateX(${currentX}px)`,
+          transform: isValidated ? "none" : `translateX(${swipe.offset}px)`,
           transition: isDragging ? "none" : "all 0.3s ease",
         }}
-        aria-label={isValidated ? "Validated" : "Swipe to publish"}
+        onKeyDown={handleKeyDown}
+        role="slider"
+        aria-label={text}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={isValidated ? 100 : progress}
+        aria-valuetext={
+          isValidated
+            ? "Confirmed"
+            : swipe.atEnd
+              ? "At the end — press Enter to confirm"
+              : `${progress}% of the way`
+        }
+        aria-describedby={hintId}
         disabled={isValidated}
       >
         {isValidated ? (
@@ -128,6 +182,10 @@ export function SwipeButton({
           <ChevronRight className="size-4" aria-hidden="true" />
         )}
       </button>
+      <p id={hintId} className="sr-only">
+        Drag the handle to the end, or press the Right Arrow key (or End) to move it
+        there, then press Enter to confirm. Escape returns it to the start.
+      </p>
       <div className="flex h-full w-full items-center justify-center">
         <span
           style={{ "--swipe-button-text-width": "130px" } as CSSProperties}
