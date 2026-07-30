@@ -78,7 +78,6 @@ export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions"
 // described?" is a fact about the catalogue — and a path it does not describe
 // must never reach the network.
 export {
-  apiCatalogFromCustomTools,
   apiCatalogSummary,
   apiEndpointDetail,
   endpointPathParams,
@@ -91,7 +90,6 @@ export type {
   CatalogPathMatch,
   CatalogPathRefusal,
   CatalogPathRejection,
-  CustomToolConversion,
 } from "./api-catalog";
 
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL

@@ -74,9 +74,11 @@ service-role client used by `lib/platform.ts` reaches it.
 Tools live in a registry (`runtime/tools.ts`, ADR-0006): a tool is a spec —
 description, zod input schema, human-readable step label, `execute` — and
 `buildToolset()` assembles the turn's ToolSet from the built-ins the
-assistant enables (`assistants.tools.builtIns`) plus its admin-defined
-**custom HTTP tools** (`assistants.tools.custom`, model-filled params → GET
-query string or POST JSON body). Built-ins: `searchKnowledge` (always on),
+assistant enables (`assistants.tools.builtIns`) plus, when the assistant has an
+**API integration** registered, the catalogue triad `getApiDetails` /
+`viewEndpointDetails` / `queryApi` over its described endpoints (spec #559 —
+these replaced the per-endpoint custom HTTP tools, which no longer exist).
+Built-ins: `searchKnowledge` (always on),
 `calculator`, `remember` (session memory), `fetchUrl` (opt-in; private hosts
 blocked). Every spec is wrapped by `instrument()`, which emits the
 `tool-start`/`tool-end` lifecycle events and contains errors — a throwing
@@ -151,8 +153,9 @@ their channels, availability computed per-channel in its own timezone
 ## 8. What MCP / plugins / CLI map onto here
 
 - **Tools** — add a spec to `runtime/tools.ts` (built-in capabilities), let
-  the org define a custom HTTP tool from Tools & Skills (no deploy), or add
-  an Adapter in `ACTION_HANDLERS` (admin-wired flow capabilities).
+  the org describe its API's endpoints in the API integration catalogue from
+  Tools & Skills (no deploy), or add an Adapter in `ACTION_HANDLERS`
+  (admin-wired flow capabilities).
 - **Skills** — the org-facing prompt-template surface: reusable playbooks
   attached per assistant, layered into the system prompt, snapshotted into
   Publications.

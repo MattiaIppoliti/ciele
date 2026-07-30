@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Assistant, KnowledgeSearchResult } from "@agent-hub/core";
+import type {
+  ApiIntegration,
+  Assistant,
+  KnowledgeSearchResult,
+} from "@agent-hub/core";
 
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 vi.mock("./pinned-fetch", () => ({
@@ -131,25 +135,23 @@ describe("buildToolset gating", () => {
     ]);
   });
 
-  it("adds valid custom tools and skips invalid names or built-in collisions", () => {
+  it("ignores a stored `custom` key left over from the per-endpoint tools", () => {
+    // The contract step of spec #559 removed them from the type, but a
+    // pre-existing `assistants.tools` row may still carry the key — reading it
+    // must register nothing rather than throw.
     const { ctx } = makeContext({
       assistant: makeAssistant({
         tools: {
           custom: [
-            { id: "1", name: "lookup_course", description: "", url: "https://x.it", method: "GET" },
-            { id: "2", name: "bad name!", description: "", url: "https://x.it", method: "GET" },
-            { id: "3", name: "no_url", description: "", url: "", method: "GET" },
-            { id: "4", name: "remember", description: "", url: "https://x.it", method: "GET" },
+            { id: "1", name: "lookup_account", url: "https://x.it", method: "GET" },
           ],
-        },
+        } as never,
       }),
     });
-    const names = Object.keys(buildToolset(ctx)).sort();
-    expect(names).toContain("lookup_course");
-    expect(names).not.toContain("bad name!");
-    expect(names).not.toContain("no_url");
-    // built-in wins the name collision
-    expect(names.filter((n) => n === "remember")).toHaveLength(1);
+    expect(Object.keys(buildToolset(ctx)).sort()).toEqual([
+      "remember",
+      "searchKnowledge",
+    ]);
   });
 });
 
@@ -486,64 +488,58 @@ describe("fetchUrl tool", () => {
   });
 });
 
-describe("custom HTTP tools", () => {
-  const assistant = makeAssistant({
-    tools: {
-      custom: [
-        {
-          id: "1",
-          name: "lookup_course",
-          description: "Look up a course",
-          url: "https://api.example.edu/courses",
-          method: "GET",
-          headers: [{ id: "h1", name: "x-api-key", value: "k" }],
-          params: [{ name: "code", description: "Course code", required: true }],
-        },
-        {
-          id: "2",
-          name: "open_ticket",
-          description: "",
-          url: "https://api.example.edu/tickets",
-          method: "POST",
-          params: [{ name: "subject", required: true }],
-        },
-      ],
-    },
-  });
+/**
+ * The API catalogue's query tool against the REAL egress guard (only DNS and the
+ * pinned transport are mocked). api-integration.security.test.ts stubs
+ * `egressFetch` to pin the catalogue-before-network ordering; these two cases
+ * are the other half — that a described, catalogue-approved endpoint is still
+ * subject to the guard. They came from the per-endpoint custom tools the
+ * contract step of spec #559 deleted; the properties outlived them.
+ */
+describe("API catalogue query — egress containment", () => {
+  const integration: ApiIntegration = {
+    assistantId: "assistant-1",
+    organizationId: "org-1",
+    name: "Service desk",
+    baseUrl: "https://api.example.com/v1",
+    authType: "none",
+    authHeaderName: "",
+    authUsername: "",
+    encryptedCredential: null,
+    endpoints: [
+      {
+        id: "comments",
+        name: "Ticket comments",
+        path: "/tickets/{ticketId}/comments",
+        method: "GET",
+        purpose: "The comments on one ticket.",
+      },
+    ],
+    createdAt: "2026-07-30T00:00:00Z",
+    updatedAt: "2026-07-30T00:00:00Z",
+  };
 
-  it("GET tools pass model params as query string with configured headers", async () => {
+  it("queries a described endpoint through the guard", async () => {
     requestMock.mockResolvedValueOnce(
-      pinnedResponse(200, {}, JSON.stringify({ name: "Marketing" }))
+      pinnedResponse(200, {}, JSON.stringify({ items: [] }))
     );
-    const { ctx } = makeContext({ assistant });
-    const output = await run(buildToolset(ctx), "lookup_course", { code: "ECO101" });
-    expect(output).toEqual({ data: { name: "Marketing" } });
-    const [target, options] = requestMock.mock.calls[0];
-    expect(target.url.toString()).toBe(
-      "https://api.example.edu/courses?code=ECO101"
+    const { ctx } = makeContext({ apiIntegration: integration });
+    const output = (await run(buildToolset(ctx), "queryApi", {
+      path: "/tickets/8317/comments",
+    })) as { status?: number; data?: unknown };
+    expect(output.status).toBe(200);
+    expect(requestMock.mock.calls[0][0].url.toString()).toBe(
+      "https://api.example.com/v1/tickets/8317/comments"
     );
-    expect(options.headers?.["x-api-key"]).toBe("k");
-    expect(options.method).toBe("GET");
-  });
-
-  it("POST tools send the params as a JSON body", async () => {
-    requestMock.mockResolvedValueOnce(pinnedResponse(200, {}, "ok"));
-    const { ctx } = makeContext({ assistant });
-    const output = await run(buildToolset(ctx), "open_ticket", { subject: "Help" });
-    expect(output).toEqual({ data: "ok" });
-    const [, options] = requestMock.mock.calls[0];
-    expect(options.method).toBe("POST");
-    expect(options.body).toBe(JSON.stringify({ subject: "Help" }));
-    expect(options.headers?.["content-type"]).toBe("application/json");
   });
 
   it("refuses an endpoint that resolves to a private address", async () => {
     lookupMock.mockResolvedValueOnce([
       { address: "10.0.0.5", family: 4 },
     ] as never);
-    const { ctx } = makeContext({ assistant });
-    const output = (await run(buildToolset(ctx), "lookup_course", {
-      code: "ECO101",
+    const { ctx } = makeContext({ apiIntegration: integration });
+    const output = (await run(buildToolset(ctx), "queryApi", {
+      path: "/tickets/8317/comments",
     })) as { error?: string };
     expect(output.error).toContain("not reachable");
     expect(requestMock).not.toHaveBeenCalled();
@@ -553,9 +549,9 @@ describe("custom HTTP tools", () => {
     requestMock.mockResolvedValueOnce(
       pinnedResponse(302, { location: "http://10.0.0.5/steal" })
     );
-    const { ctx } = makeContext({ assistant });
-    const output = (await run(buildToolset(ctx), "lookup_course", {
-      code: "ECO101",
+    const { ctx } = makeContext({ apiIntegration: integration });
+    const output = (await run(buildToolset(ctx), "queryApi", {
+      path: "/tickets/8317/comments",
     })) as { error?: string };
     expect(output.error).toContain("not reachable");
     expect(requestMock).toHaveBeenCalledOnce();

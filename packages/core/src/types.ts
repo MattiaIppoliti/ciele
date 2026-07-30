@@ -294,40 +294,19 @@ export type BuiltInToolName =
   | "fetchUrl"
   | "remember";
 
-/** One model-supplied parameter of a custom HTTP tool. */
-export interface CustomToolParam {
-  name: string;
-  description?: string;
-  required?: boolean;
-}
-
 /**
- * An admin-defined HTTP tool the agent loop may call: the model fills the
- * declared params, the runtime POSTs/GETs them to the configured endpoint
- * and feeds the response back to the model.
+ * Per-assistant tool configuration (assistants.tools jsonb).
  *
- * @deprecated Superseded by {@link ApiIntegration} — one integration with a
- * described endpoint catalogue instead of one registered tool per endpoint
- * (spec #559). Both forms run side by side during the expand step; this one is
- * removed once no configuration uses it.
+ * Held one shape smaller than the column: `custom` — one registered HTTP tool
+ * per endpoint — was superseded by {@link ApiIntegration} and removed in the
+ * contract step of spec #559. A pre-existing row may still carry the key; it is
+ * read by nothing and deliberately left in place rather than migrated away,
+ * because deleting a self-hoster's stored configuration is not this schema's
+ * call to make.
  */
-export interface CustomToolConfig {
-  id: string;
-  /** Tool-call name shown to the model (letters/digits/underscore). */
-  name: string;
-  description: string;
-  url: string;
-  method: "GET" | "POST";
-  headers?: KeyValuePair[];
-  params?: CustomToolParam[];
-}
-
-/** Per-assistant tool configuration (assistants.tools jsonb). */
 export interface AssistantTools {
   /** Built-in enablement overrides; unset = runtime default. */
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
-  /** @deprecated See {@link CustomToolConfig} — superseded by the API integration. */
-  custom?: CustomToolConfig[];
 }
 
 /** Declared type of a catalogued endpoint parameter, shown to the model. */
@@ -1011,7 +990,7 @@ export interface Assistant {
   style: WidgetStyle;
   allowedDomains: string[];
   helpDeskSettings: HelpDeskSettings;
-  /** Agent-loop tool configuration (built-in toggles + custom HTTP tools). */
+  /** Agent-loop tool configuration (built-in enablement overrides). */
   tools: AssistantTools;
   /**
    * Require visitors to sign in (via the org's SSO Connection) before the

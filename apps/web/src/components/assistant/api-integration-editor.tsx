@@ -2,11 +2,9 @@
 
 import { useState, useTransition } from "react";
 import {
-  apiCatalogFromCustomTools,
   endpointPathParams,
   type ApiEndpointSpec,
   type ApiIntegrationAuthType,
-  type CustomToolConfig,
 } from "@agent-hub/core";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -157,13 +155,10 @@ function toEndpoint(draft: EndpointDraft): ApiEndpointSpec {
 export function ApiIntegrationEditor({
   assistantId,
   integration,
-  customTools,
   canEdit,
 }: {
   assistantId: string;
   integration: ApiIntegrationView | null;
-  /** Legacy per-endpoint tools, offered as a one-click conversion. */
-  customTools: CustomToolConfig[];
   canEdit: boolean;
 }) {
   const [name, setName] = useState(integration?.name ?? "");
@@ -227,24 +222,6 @@ export function ApiIntegrationEditor({
     });
   }
 
-  function convertCustomTools() {
-    const converted = apiCatalogFromCustomTools(customTools);
-    if (!converted) {
-      toast.error("No custom tool has a usable URL to convert.");
-      return;
-    }
-    setBaseUrl((current) => current || converted.baseUrl);
-    setEndpoints((current) => [
-      ...current,
-      ...converted.endpoints.map(draftFrom),
-    ]);
-    toast.success(
-      converted.skipped.length
-        ? `Converted ${converted.endpoints.length} endpoint(s). Left behind (different host or a fixed query string): ${converted.skipped.join(", ")}.`
-        : `Converted ${converted.endpoints.length} endpoint(s). Re-enter the credential, then save.`
-    );
-  }
-
   return (
     <section>
       <div className="flex items-center justify-between gap-4">
@@ -261,13 +238,6 @@ export function ApiIntegrationEditor({
             is made.
           </p>
         </div>
-        {canEdit && customTools.length > 0 && (
-          <Hint label="Read your existing custom tools as one catalogue">
-            <Button variant="outline" size="sm" onClick={convertCustomTools}>
-              Convert custom tools
-            </Button>
-          </Hint>
-        )}
       </div>
 
       <div className="mt-4 space-y-4">

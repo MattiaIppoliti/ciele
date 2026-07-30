@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { AssistantTools, BuiltInToolName, CustomToolConfig, Skill } from "@agent-hub/core";
-import { Globe, Pencil, Plus, Trash2, Wrench } from "lucide-react";
+import type { AssistantTools, BuiltInToolName, Skill } from "@agent-hub/core";
+import { Globe, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   createSkillAction,
@@ -27,19 +27,12 @@ import {
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
 /**
  * Tools & Skills SETUP section: which built-in agent tools the assistant runs
- * with, its custom HTTP tools, and the org Skills (reusable prompt templates)
+ * with, its API catalogue integration, and the org Skills (reusable prompt templates)
  * attached to it. Everything here feeds the runtime's tool registry
  * (lib/runtime/tools.ts) and system-prompt skill layer.
  */
@@ -77,59 +70,6 @@ const BUILT_INS: Array<{
   },
 ];
 
-interface CustomToolDraft {
-  id: string | null;
-  name: string;
-  description: string;
-  url: string;
-  method: "GET" | "POST";
-  /** One per line: `name | description | required` */
-  params: string;
-}
-
-const EMPTY_TOOL: CustomToolDraft = {
-  id: null,
-  name: "",
-  description: "",
-  url: "",
-  method: "POST",
-  params: "",
-};
-
-function draftFromTool(tool: CustomToolConfig): CustomToolDraft {
-  return {
-    id: tool.id,
-    name: tool.name,
-    description: tool.description,
-    url: tool.url,
-    method: tool.method,
-    params: (tool.params ?? [])
-      .map(
-        (p) =>
-          `${p.name} | ${p.description ?? ""}${p.required ? " | required" : ""}`
-      )
-      .join("\n"),
-  };
-}
-
-function parseParams(text: string): CustomToolConfig["params"] {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [name = "", description = "", flag = ""] = line
-        .split("|")
-        .map((p) => p.trim());
-      return {
-        name,
-        description: description || undefined,
-        required: flag.toLowerCase() === "required",
-      };
-    })
-    .filter((p) => p.name);
-}
-
 interface SkillDraft {
   id: string | null;
   name: string;
@@ -158,7 +98,6 @@ export function ToolsClient({
   const [tools, setTools] = useState<AssistantTools>(initialTools);
   const [skills, setSkills] = useState<Skill[]>(initialSkills);
   const [attached, setAttached] = useState<string[]>(attachedSkillIds);
-  const [toolDraft, setToolDraft] = useState<CustomToolDraft | null>(null);
   const [skillDraft, setSkillDraft] = useState<SkillDraft | null>(null);
   const [, startTransition] = useTransition();
 
@@ -182,47 +121,6 @@ export function ToolsClient({
         builtIns: { ...latestTools.current.builtIns, [name]: on },
       },
       `${name} ${on ? "enabled" : "disabled"}`
-    );
-  }
-
-  function commitCustomTool(draft: CustomToolDraft) {
-    const name = draft.name.trim();
-    if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(name)) {
-      toast.error(
-        "Tool name must start with a letter and use only letters, digits, _ or -"
-      );
-      return;
-    }
-    if (!draft.url.trim()) {
-      toast.error("Endpoint URL is required");
-      return;
-    }
-    const config: CustomToolConfig = {
-      id: draft.id ?? crypto.randomUUID(),
-      name,
-      description: draft.description.trim(),
-      url: draft.url.trim(),
-      method: draft.method,
-      params: parseParams(draft.params),
-    };
-    const custom = latestTools.current.custom ?? [];
-    const next = draft.id
-      ? custom.map((t) => (t.id === draft.id ? config : t))
-      : [...custom, config];
-    saveTools(
-      { ...latestTools.current, custom: next },
-      draft.id ? "Tool updated" : "Tool added"
-    );
-    setToolDraft(null);
-  }
-
-  function removeCustomTool(id: string) {
-    saveTools(
-      {
-        ...latestTools.current,
-        custom: (latestTools.current.custom ?? []).filter((t) => t.id !== id),
-      },
-      "Tool removed"
     );
   }
 
@@ -290,8 +188,6 @@ export function ToolsClient({
     });
   }
 
-  const custom = tools.custom ?? [];
-
   return (
     <div className="mt-8 space-y-10">
       {/* Built-in tools */}
@@ -327,87 +223,8 @@ export function ToolsClient({
       <ApiIntegrationEditor
         assistantId={assistantId}
         integration={integration}
-        customTools={custom}
         canEdit={canEdit}
       />
-
-      {/* Custom tools — superseded by the integration above; both run side by
-          side until no assistant configures one (spec #559, expand-contract). */}
-      <section>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">
-              Custom tools{" "}
-              <span className="text-muted-foreground text-sm font-normal">
-                (legacy)
-              </span>
-            </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              One HTTP endpoint per tool — the older shape, still running. Prefer
-              the API integration above: it gives the model endpoint discovery,
-              path parameters and response paging, and every call it makes is
-              checked against the catalogue first.
-            </p>
-          </div>
-          {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => setToolDraft(EMPTY_TOOL)}>
-              <AnimatedIcon icon={Plus} size={16} /> Add tool
-            </Button>
-          )}
-        </div>
-        <div className="mt-4 space-y-2">
-          {custom.length === 0 && (
-            <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
-              No custom tools yet.
-            </p>
-          )}
-          {custom.map((tool) => (
-            <div
-              key={tool.id}
-              className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
-            >
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 font-medium">
-                  <AnimatedIcon
-                    icon={Wrench}
-                    size={16}
-                    iconClassName="text-muted-foreground"
-                    className="shrink-0"
-                  />
-                  {tool.name}
-                </p>
-                <p className="text-muted-foreground mt-0.5 truncate text-xs">
-                  {tool.method} {tool.url}
-                </p>
-              </div>
-              {canEdit && (
-                <div className="flex shrink-0 gap-1">
-                  <Hint label="Edit tool">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Edit tool"
-                      onClick={() => setToolDraft(draftFromTool(tool))}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                  </Hint>
-                  <Hint label="Delete tool">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Delete tool"
-                      onClick={() => removeCustomTool(tool.id)}
-                    >
-                      <AnimatedIcon icon={Trash2} size={16} />
-                    </Button>
-                  </Hint>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Skills */}
       <section>
@@ -486,91 +303,6 @@ export function ToolsClient({
           ))}
         </div>
       </section>
-
-      {/* Custom tool dialog */}
-      <Dialog open={toolDraft !== null} onOpenChange={(open) => !open && setToolDraft(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{toolDraft?.id ? "Edit tool" : "Add custom tool"}</DialogTitle>
-            <DialogDescription>
-              The assistant calls this endpoint during a turn; the response is
-              given back to the model.
-            </DialogDescription>
-          </DialogHeader>
-          {toolDraft && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="tool-name">Tool name</Label>
-                <Input
-                  id="tool-name"
-                  placeholder="lookup_account"
-                  value={toolDraft.name}
-                  onChange={(e) => setToolDraft({ ...toolDraft, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tool-description">Description (what it does, when to use it)</Label>
-                <Textarea
-                  id="tool-description"
-                  rows={2}
-                  value={toolDraft.description}
-                  onChange={(e) =>
-                    setToolDraft({ ...toolDraft, description: e.target.value })
-                  }
-                />
-              </div>
-              <div className="flex gap-3">
-                <div className="w-28 space-y-2">
-                  <Label>Method</Label>
-                  <Select
-                    value={toolDraft.method}
-                    onValueChange={(method) =>
-                      setToolDraft({ ...toolDraft, method: method as "GET" | "POST" })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GET">GET</SelectItem>
-                      <SelectItem value="POST">POST</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="tool-url">Endpoint URL</Label>
-                  <Input
-                    id="tool-url"
-                    placeholder="https://api.example.com/accounts"
-                    value={toolDraft.url}
-                    onChange={(e) => setToolDraft({ ...toolDraft, url: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tool-params">
-                  Parameters — one per line: name | description | required
-                </Label>
-                <Textarea
-                  id="tool-params"
-                  rows={3}
-                  placeholder={"accountId | The account identifier, e.g. ACME-123 | required\nregion | Optional region filter"}
-                  value={toolDraft.params}
-                  onChange={(e) => setToolDraft({ ...toolDraft, params: e.target.value })}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setToolDraft(null)}>
-              Cancel
-            </Button>
-            <Button onClick={() => toolDraft && commitCustomTool(toolDraft)}>
-              {toolDraft?.id ? "Save tool" : "Add tool"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Skill dialog */}
       <Dialog open={skillDraft !== null} onOpenChange={(open) => !open && setSkillDraft(null)}>

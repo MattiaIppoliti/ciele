@@ -11,8 +11,10 @@ import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
  *
  * Policy: docs/audits/api-request-egress-policy.md (issue #173). Consumers:
  * the website crawler (via `crawl-target.ts`), knowledge URL extraction
- * (`extract.ts`), the `fetchUrl` built-in and custom HTTP tools (`tools.ts`);
- * the `api_request` Flow Action executor (#177) is expected to join them.
+ * (`extract.ts`), the `fetchUrl` built-in (`tools.ts`), the API catalogue's
+ * query tool (`api-integration.ts` — which validates the path against the
+ * catalogue *before* reaching this gate, #559) and the `api_request` Flow
+ * Action executor (`api-request.ts`, #177).
  */
 
 export type EgressPolicyCode =

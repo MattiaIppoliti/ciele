@@ -2,7 +2,6 @@ import type {
   ApiEndpointParam,
   ApiEndpointSpec,
   ApiIntegration,
-  CustomToolConfig,
 } from "./types";
 
 /**
@@ -247,63 +246,3 @@ export function apiEndpointDetail(endpoint: ApiEndpointSpec): ApiEndpointDetail 
   };
 }
 
-/**
- * The migrate step of expand-migrate-contract: reads a set of per-endpoint
- * custom HTTP tools as one integration's catalogue.
- *
- * Only tools that share the converted origin come along — a catalogue is one
- * base URL by definition, so a second origin is not a conversion, it is a
- * second integration. A tool whose URL carries its own query string is skipped
- * too: the catalogue has no place for a fixed parameter value, and converting
- * it would quietly change the request that tool makes today. The caller is told
- * what was left behind rather than having it silently dropped; the credential
- * is not derivable from a custom tool's headers, so the admin re-enters it.
- */
-export interface CustomToolConversion {
-  baseUrl: string;
-  endpoints: ApiEndpointSpec[];
-  /** Names of tools on another origin, with a fixed query string, or no usable URL. */
-  skipped: string[];
-}
-
-export function apiCatalogFromCustomTools(
-  tools: CustomToolConfig[]
-): CustomToolConversion | null {
-  const usable: Array<{ tool: CustomToolConfig; url: URL }> = [];
-  const skipped: string[] = [];
-  for (const tool of tools) {
-    let url: URL;
-    try {
-      url = new URL(tool.url);
-    } catch {
-      skipped.push(tool.name);
-      continue;
-    }
-    usable.push({ tool, url });
-  }
-  if (usable.length === 0) return null;
-  const baseOrigin = usable[0].url.origin;
-  const endpoints: ApiEndpointSpec[] = [];
-  for (const { tool, url } of usable) {
-    if (url.origin !== baseOrigin || url.search !== "") {
-      skipped.push(tool.name);
-      continue;
-    }
-    endpoints.push({
-      id: tool.id,
-      name: tool.name,
-      path: url.pathname,
-      method: tool.method,
-      purpose: tool.description || `Call the ${tool.name} integration.`,
-      // A custom tool's params were all model-filled query/body values; none
-      // was ever a path placeholder, so they convert as query parameters.
-      params: (tool.params ?? []).map((param) => ({
-        name: param.name,
-        description: param.description,
-        in: "query" as const,
-        required: param.required === true,
-      })),
-    });
-  }
-  return { baseUrl: baseOrigin, endpoints, skipped };
-}

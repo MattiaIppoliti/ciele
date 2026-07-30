@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  apiCatalogFromCustomTools,
   apiCatalogSummary,
   apiEndpointDetail,
   resolveCatalogPath,
 } from "./api-catalog";
-import type { ApiEndpointSpec, CustomToolConfig } from "./types";
+import type { ApiEndpointSpec } from "./types";
 
 const COMMENTS: ApiEndpointSpec = {
   id: "e1",
@@ -168,74 +167,5 @@ describe("apiEndpointDetail", () => {
         description: "",
       },
     ]);
-  });
-});
-
-describe("apiCatalogFromCustomTools", () => {
-  const tool = (over: Partial<CustomToolConfig>): CustomToolConfig => ({
-    id: "t1",
-    name: "lookup",
-    description: "Look something up",
-    url: "https://api.example.com/lookup",
-    method: "GET",
-    ...over,
-  });
-
-  it("converts same-origin tools into one catalogue", () => {
-    const converted = apiCatalogFromCustomTools([
-      tool({}),
-      tool({
-        id: "t2",
-        name: "create",
-        url: "https://api.example.com/tickets",
-        method: "POST",
-        params: [{ name: "subject", required: true }],
-      }),
-    ]);
-    expect(converted).toEqual({
-      baseUrl: "https://api.example.com",
-      skipped: [],
-      endpoints: [
-        {
-          id: "t1",
-          name: "lookup",
-          path: "/lookup",
-          method: "GET",
-          purpose: "Look something up",
-          params: [],
-        },
-        {
-          id: "t2",
-          name: "create",
-          path: "/tickets",
-          method: "POST",
-          purpose: "Look something up",
-          params: [
-            { name: "subject", description: undefined, in: "query", required: true },
-          ],
-        },
-      ],
-    });
-  });
-
-  it("leaves a second origin, a fixed query string and an unparseable URL behind", () => {
-    const converted = apiCatalogFromCustomTools([
-      tool({}),
-      tool({ id: "t2", name: "other-host", url: "https://other.example/x" }),
-      tool({ id: "t3", name: "fixed-query", url: "https://api.example.com/x?k=1" }),
-      tool({ id: "t4", name: "broken", url: "not a url" }),
-    ]);
-    expect(converted?.baseUrl).toBe("https://api.example.com");
-    expect(converted?.endpoints.map((e) => e.name)).toEqual(["lookup"]);
-    expect(converted?.skipped.sort()).toEqual([
-      "broken",
-      "fixed-query",
-      "other-host",
-    ]);
-  });
-
-  it("returns null when nothing is convertible", () => {
-    expect(apiCatalogFromCustomTools([])).toBeNull();
-    expect(apiCatalogFromCustomTools([tool({ url: "" })])).toBeNull();
   });
 });

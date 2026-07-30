@@ -3,7 +3,6 @@ import { z } from "zod";
 import type {
   ApiIntegration,
   Assistant,
-  CustomToolConfig,
   KnowledgeSearchResult,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
@@ -31,10 +30,10 @@ import {
  * a human-readable step label, and an execute. `buildToolset` assembles the
  * turn's ToolSet from the built-ins (gated per assistant via
  * `assistant.tools.builtIns`), the assistant's API catalogue integration when
- * one is registered, its legacy custom HTTP tools, and the windowed knowledge
- * reader when a document reader is wired — wrapping every execute with the
- * tool-start/tool-end lifecycle events, so a new tool gets structured
- * Thinking-panel progress for free. The one exception is `searchKnowledge`,
+ * one is registered, and the windowed knowledge reader when a document reader is
+ * wired — wrapping every execute with the tool-start/tool-end lifecycle events,
+ * so a new tool gets structured Thinking-panel progress for free. The one
+ * exception is `searchKnowledge`,
  * whose lifecycle (and error containment for a throwing searcher) lives in the
  * shared search-pass primitive instead (agentic-search/, #204) so seeded and
  * model-driven passes cannot drift.
@@ -389,72 +388,6 @@ const BUILT_IN_DEFAULTS: Record<string, boolean> = {
   remember: true,
 };
 
-const TOOL_NAME_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
-
-/** Adapts one admin-defined HTTP tool (assistant.tools.custom) to a spec. */
-function customToolSpec(config: CustomToolConfig): RuntimeToolSpec | null {
-  if (!TOOL_NAME_RE.test(config.name) || !config.url) return null;
-  const params = config.params ?? [];
-  const shape: Record<string, z.ZodType> = {};
-  for (const param of params) {
-    if (!param.name) continue;
-    const field = z.string().describe(param.description ?? "");
-    shape[param.name] = param.required ? field : field.optional();
-  }
-  return {
-    name: config.name,
-    description: config.description || `Call the ${config.name} integration.`,
-    inputSchema: z.object(shape),
-    label: () => `Calling ${config.name}`,
-    summarize: (output) => {
-      const o = output as { error?: string };
-      return o?.error ?? "Done";
-    },
-    async execute(input, ctx) {
-      const method = config.method === "GET" ? "GET" : "POST";
-      const url = new URL(config.url);
-      const headers: Record<string, string> = {};
-      for (const header of config.headers ?? []) {
-        if (header.name) headers[header.name] = header.value;
-      }
-      let body: string | undefined;
-      if (method === "GET") {
-        for (const [key, value] of Object.entries(input)) {
-          if (value !== undefined) url.searchParams.set(key, String(value));
-        }
-      } else {
-        headers["content-type"] = "application/json";
-        body = JSON.stringify(input);
-      }
-      let res;
-      try {
-        ({ response: res } = await egressFetch(url.toString(), {
-          method,
-          headers,
-          body,
-          timeoutMs: FETCH_TIMEOUT_MS,
-          maxResponseBytes: FETCH_MAX_RESPONSE_BYTES,
-          signal: ctx.signal,
-        }));
-      } catch (error) {
-        if (error instanceof EgressPolicyError) {
-          return { error: EGRESS_BLOCKED_MESSAGE };
-        }
-        throw error;
-      }
-      const text = res.text.slice(0, FETCH_MAX_CHARS);
-      if (!res.ok) {
-        return { error: `Request failed with status ${res.status}`, body: text };
-      }
-      try {
-        return { data: JSON.parse(text) };
-      } catch {
-        return { data: text };
-      }
-    },
-  };
-}
-
 let callSeq = 0;
 
 /**
@@ -553,18 +486,12 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   }
   // The API catalogue triad + its response reader (spec #559). Registered only
   // with a described catalogue behind them: an assistant with no integration
-  // must not be told an API exists.
+  // must not be told an API exists. This is the ONLY way an org reaches its own
+  // HTTP API from a turn — the per-endpoint custom tools it replaced are gone.
   if (ctx.apiIntegration && ctx.apiIntegration.endpoints.length > 0) {
     for (const spec of API_CATALOG_SPECS) {
       toolset[spec.name] = instrument(spec, ctx);
     }
-  }
-  // Legacy per-endpoint custom HTTP tools. Superseded by the integration above
-  // and kept running side by side through the expand step (spec #559): an
-  // assistant with a working custom tool must not break while both exist.
-  for (const config of ctx.assistant.tools?.custom ?? []) {
-    const spec = customToolSpec(config);
-    if (spec && !toolset[spec.name]) toolset[spec.name] = instrument(spec, ctx);
   }
   // The terminal tool — mandatory when a turn has a terminal declaration to
   // make. Not instrumented: declaring you are done spends no iteration, and its

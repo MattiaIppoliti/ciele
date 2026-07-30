@@ -158,28 +158,6 @@ describe("registration", () => {
     }
   });
 
-  it("keeps a pre-existing custom HTTP tool alongside the integration", () => {
-    // The expand step: both forms run side by side (spec #559).
-    const { ctx } = makeContext({
-      assistant: makeAssistant({
-        tools: {
-          custom: [
-            {
-              id: "1",
-              name: "lookup_account",
-              description: "",
-              url: "https://legacy.example/lookup",
-              method: "GET",
-            },
-          ],
-        },
-      }),
-    });
-    const names = Object.keys(buildToolset(ctx));
-    expect(names).toContain("lookup_account");
-    expect(names).toContain("queryApi");
-  });
-
   it("registers readKnowledgeSource whenever a document reader is wired", () => {
     const { ctx } = makeContext({
       apiIntegration: null,

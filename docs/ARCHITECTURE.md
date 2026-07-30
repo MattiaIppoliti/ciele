@@ -263,7 +263,9 @@ only the OSS chain. Grouped:
   `improvement_messages` (M:N improvement↔message), `improvement_proposals` (the compost loop's
   own run records).
 - **Agentic layer** (ADR-0006): `skills` + `assistant_skills` (org-authored prompt playbooks,
-  attached per assistant), `assistants.tools` jsonb (built-in gating + custom HTTP tools),
+  attached per assistant), `assistants.tools` jsonb (built-in gating),
+  `assistant_api_integrations` (one API catalogue integration per assistant: base URL, sealed
+  credential, described endpoints — its own table so a credential can never reach a Publication),
   `conversations.session_state` jsonb (cross-turn tool state), `platform_settings.system_prompt`
   (owner-only; RLS enabled with **zero policies**, so only the service-role client reads it).
 - **Quality loop** (§5.5): `assistant_goals` + `assistant_goal_runs` (standing goals and their
@@ -407,8 +409,8 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
 
 - **Tool registry** (`tools.ts`): a tool is a spec (name, description, zod input schema, step label,
   `execute`); `buildToolset(ctx)` assembles the turn's AI-SDK ToolSet from the built-ins the
-  assistant enables (`assistants.tools.builtIns`) plus its admin-defined **custom HTTP tools**
-  (model-filled params → GET query string / POST JSON body). Built-ins: `searchKnowledge` (always
+  assistant enables (`assistants.tools.builtIns`) plus, when one is registered, the API catalogue
+  triad below. Built-ins: `searchKnowledge` (always
   on — grounding is an ADR-0002 invariant, and it is the one spec deliberately *not* routed through
   `instrument`: its lifecycle, coverage verdict and budget accounting live in the shared search-pass
   primitive so seeded and model-driven passes cannot drift), `remember` (default on), `fetchUrl`
@@ -425,7 +427,10 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   absolute URL, traversal or an encoded slash *before* a URL exists, and the resolved URL is
   re-checked against the configured origin and base path — then `egress.ts` applies unchanged.
   A queried endpoint contributes a synthetic Source, so an API-grounded answer cites its provenance.
-  Supersedes the per-endpoint custom HTTP tools, which keep running beside it (expand-contract).
+  This is the **only** way an org reaches its own HTTP API from a turn: the per-endpoint custom HTTP
+  tools it replaced (`CustomToolConfig` / `customToolSpec`) were deleted in the contract step. A
+  pre-existing `assistants.tools.custom` key is read by nothing and deliberately left in place — the
+  runtime ignores it rather than a migration destroying a self-hoster's stored configuration.
 - **Windowed reads** (`windowed-read.ts`): `readApiResponse(handle, from, to)` over a per-turn,
   in-memory response store and `readKnowledgeSource(sourceId, from, to)` over a whole knowledge
   document share one primitive. Each window carries the payload's **total length** and the next
@@ -659,7 +664,7 @@ states it.
 | **Flow condition kind** | Add the member to the `FlowCondition` union in `packages/core/src/types.ts`. **Objective kind** (a checkable fact): add its evaluator + completeness rule to `packages/core/src/flow-conditions.ts` — the gate in `messageFlowCandidates` and the Flow Builder's validation both read it, so there is one rule; if it needs a new input, extend `FlowRoutingContext` and thread it from `turn.ts`. **Semantic kind** (a judgement): teach `flowCatalogEntry` to render it. Then add the picker entry in `apps/web/src/lib/flow-conditions.ts` and a card branch in `flow-builder.tsx`. No migration — `flows.conditions` is unconstrained JSONB. |
 | **Trigger** | Add to `FlowTrigger` (`types.ts:16`); the *message* path only routes `message` flows — non-message triggers need a client event + a new runtime entry to fire them. |
 | **Knowledge source kind** | Add to `SourceKind` (`types.ts:358`) + a config shape; add one **Extractor** to `EXTRACTORS` (`packages/agent/src/extract.ts`) for its raw-input→text step; if it needs its own pipeline (like `website`), add an `IngestJob` kind (`packages/agent/src/jobs.ts`); add a server action; retrieval already flows through chunks. |
-| **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `packages/agent/src/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also add a **custom HTTP tool** from the console with no deploy; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |
+| **Tool** (agent-facing capability) | Add a `RuntimeToolSpec` in `packages/agent/src/tools.ts` and, if it should be gateable, a `BUILT_IN_DEFAULTS` entry + the Tools & Skills toggle. `instrument()` supplies the lifecycle events, error containment and Thinking-panel progress — no engine edit. An org can also reach its own HTTP API with no deploy by describing endpoints in its **API integration** catalogue; an MCP-style client would slot in as a tool *provider*, spreading its list into what `buildToolset` returns. |
 | **Provider** | Add to `Provider` union + `MODEL_CATALOG` (`catalog.ts`); wire the AI-SDK client in `buildModel` (`models.ts`) and, if the family has no fixed catalog, teach `configuredModelId` where its model id comes from (+ embeddings if available). |
 | **Runtime public capability** | The chat runtime is a **deep, gray-box module** (ADR-0005/ADR-0018): add the capability inside `packages/agent/src/` freely, then decide if it's public — if so, export it from the right barrel (`index.ts` server / `client.ts` client-safe / `local-providers.ts` provider CLIs) **and** update `interface.test.ts`. Consumers import one of those three specifiers; an internal (`@agent-hub/agent/<file>`) is not in the `exports` map, so it does not resolve. |
 | **A fact the runtime needs from Next** | Never import `next/*` into `packages/agent`. Add a port to `host.ts` with a default that keeps the runtime correct unwired, export `registerRuntimeHost`'s new field through the barrel, update `interface.test.ts`, and register the Next implementation in `apps/web/src/instrumentation.ts`. |
@@ -702,7 +707,8 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   fallback and a graph engine selector, Publications, Inbox, Insights overview, Improvements,
   Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
 - **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` always on, `remember` on,
-  `fetchUrl` opt-in, plus org-defined custom HTTP tools), org Skills layered into the prompt and
+  `fetchUrl` opt-in, plus the API catalogue triad and the two windowed readers when an integration
+  and a document reader are wired), org Skills layered into the prompt and
   snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
   search budget. **[target]** an MCP tool *provider* — the registry seam exists, the client does not.
 - **Quality loop** (§5.5): standing goals, the independent answer verifier, per-flow trust tiers, and

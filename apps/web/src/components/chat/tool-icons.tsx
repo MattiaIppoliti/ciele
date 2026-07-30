@@ -30,7 +30,7 @@ interface IconSpec {
  * The knowledge tools keep book-shaped icons (they ARE the knowledge lookup) and
  * the API catalogue triad reads as one family, so a row of chips shows at a
  * glance that a turn discovered, read a contract, then queried. Every other tool
- * call — built-in or custom HTTP tool — is a wrench.
+ * call is a wrench.
  */
 const TOOL_ICONS: Record<string, IconSpec> = {
   searchKnowledge: {
@@ -59,7 +59,7 @@ const TOOL_ICONS: Record<string, IconSpec> = {
   },
 };
 
-/** Any tool call without a more specific icon (custom HTTP tools, remember, …). */
+/** Any tool call without a more specific icon (remember, fetchUrl, …). */
 const TOOL_ICON: IconSpec = {
   icon: <Wrench className="size-3.5" />,
   name: "Tool call",

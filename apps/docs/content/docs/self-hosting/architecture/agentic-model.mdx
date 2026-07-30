@@ -143,12 +143,19 @@ search actually does.
 
 ### Reaching outward is a guarded act
 
-Fetching a URL and calling a custom HTTP tool both go through one egress gate,
-shared with the website crawler and knowledge extraction. It validates the target
-at DNS-resolution time, pins the connection to the addresses it validated so the
-target cannot change between check and connect, re-validates every redirect hop,
-and caps both time and response size. A blocked host and an unreachable host
-return the *same* message, so the tool cannot be used to map a private network.
+Fetching a URL and querying the organization's own API both go through one egress
+gate, shared with the website crawler and knowledge extraction. It validates the
+target at DNS-resolution time, pins the connection to the addresses it validated
+so the target cannot change between check and connect, re-validates every
+redirect hop, and caps both time and response size. A blocked host and an
+unreachable host return the *same* message, so the tool cannot be used to map a
+private network.
+
+An API query is checked twice. Before the gate sees anything, the path the model
+produced is matched against the endpoints an admin actually described: an
+undescribed path, an absolute URL, a `..` segment or an encoded slash is refused
+with no request made at all. Only then is the configured base URL prepended —
+the host is never the model's to choose.
 
 ## Autonomy is bounded by construction
 
