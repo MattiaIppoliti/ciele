@@ -117,6 +117,9 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
   const [answeringStyle, setAnsweringStyle] = useState(
     assistant.answeringStyle
   );
+  const [simplifiedThinking, setSimplifiedThinking] = useState(
+    assistant.simplifiedThinking
+  );
   const [modelProvider, setModelProvider] = useState<Provider>(
     assistant.modelProvider
   );
@@ -134,6 +137,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
     welcomeMessage !== assistant.welcomeMessage ||
     aiDisclaimer !== assistant.aiDisclaimer ||
     answeringStyle !== assistant.answeringStyle ||
+    simplifiedThinking !== assistant.simplifiedThinking ||
     modelProvider !== assistant.modelProvider ||
     modelId !== assistant.modelId ||
     knowledgeEngine !== (assistant.knowledgeEngine ?? "graph") ||
@@ -190,6 +194,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
           .map((b) => ({ ...b, label: b.label.trim() }))
           .filter((b) => b.label),
         answeringStyle,
+        simplifiedThinking,
         modelProvider,
         modelId,
         knowledgeEngine,
@@ -478,6 +483,44 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
           </p>
         </div>
       </div>
+
+      {/* Simplified thinking */}
+      <Card size="sm" className="gap-0 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold">Simplified thinking</h2>
+            <p className="text-muted-foreground mt-1 max-w-xl text-sm">
+              While the assistant works, narrate each step to the visitor in one
+              short line in their own language — &ldquo;Looking for the course
+              videos…&rdquo;. The lines appear as they happen and stay in the
+              transcript, so the Inbox shows what the visitor watched. Off, the
+              assistant works silently and only the answer is saved.
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <Badge
+              variant="outline"
+              className={
+                simplifiedThinking
+                  ? "gap-1.5 rounded-full bg-muted/50 text-foreground"
+                  : "gap-1.5 rounded-full"
+              }
+            >
+              <span
+                className={`size-1.5 rounded-full ${
+                  simplifiedThinking ? "bg-foreground" : "bg-muted-foreground/50"
+                }`}
+              />
+              {simplifiedThinking ? "On" : "Off"}
+            </Badge>
+            <Switch
+              checked={simplifiedThinking}
+              onCheckedChange={setSimplifiedThinking}
+              aria-label="Simplified thinking"
+            />
+          </div>
+        </div>
+      </Card>
 
       {/* Suggested questions */}
       <div className="space-y-3">

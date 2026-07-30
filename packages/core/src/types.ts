@@ -984,6 +984,15 @@ export interface Assistant {
    * platform rules.
    */
   answeringStyle: string;
+  /**
+   * Simplified thinking: with it on, every tool phase of a turn narrates itself
+   * to the Visitor in one short line, in their language ("Sto cercando i video
+   * nella sezione Video Prova del corso…"). The lines stream as they happen and
+   * are persisted as their own `progress` reply parts, so the Inbox transcript
+   * shows the same narration the Visitor saw. Off (the default) is the runtime's
+   * ordinary behaviour: the Thinking panel and nothing in the message.
+   */
+  simplifiedThinking: boolean;
   chatLauncherEnabled: boolean;
   modelProvider: Provider;
   modelId: string;
@@ -1019,6 +1028,7 @@ export interface PublicationConfig {
     | "suggestedQuestions"
     | "quickReplies"
     | "answeringStyle"
+    | "simplifiedThinking"
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
@@ -1267,6 +1277,33 @@ export interface ConversationMetadata {
   /** Free-text feedback sent from the chat's "Send feedback" action. */
   feedbackText?: string;
   feedbackAt?: string;
+
+  /**
+   * The reference platform's remaining Conversation fields (#561). Each is
+   * carried here because the Inbox export is a 29-field shape a parser written
+   * against the reference's own file must read unchanged — a field the producing
+   * feature has not shipped yet exports as an empty string, which is exactly what
+   * the reference does for a tenant that does not use it.
+   *
+   * `courseId` / `courseName` / `studentId` wait on the LMS integration (root
+   * CLAUDE.md §11); `csat*` waits on the satisfaction survey. The escalation and
+   * external-user-data fields are written by features that do exist.
+   */
+  /** LMS course the Conversation was launched inside. */
+  courseId?: string;
+  courseName?: string;
+  /** Institution-issued learner id, from the LMS launch or the IdP profile. */
+  studentId?: string;
+  /** End-of-chat satisfaction survey: 1–5 and its optional comment. */
+  csatScore?: number;
+  csatComment?: string;
+  /** Which help desk, and which of its channels, an escalation went to. */
+  escalationHelpDesk?: string;
+  escalationOption?: string;
+  /** Imported per-user fields exposed as personalization variables. */
+  externalUserData?: Record<string, string>;
+  /** Where those fields came from (CSV upload name, LMS, integration). */
+  externalUserDataSourceNames?: string[];
 }
 
 export interface Conversation {
@@ -1307,9 +1344,12 @@ export interface InboxConversation extends Conversation {
 }
 
 /**
- * Where a Thinking Step sits in the agent loop. The chat clients fold stages
- * into the status phase they display ("Deciding what to do…" / "Looking into
- * it…" / "Gathering info…" / "Cross-checking…").
+ * **Legacy.** Where a Thinking Step sat in the agent loop, back when the runtime
+ * emitted a generic phase machine alongside the real tool lifecycle (#560). The
+ * runtime no longer produces these — the tool-call rows, the reasoning thoughts
+ * and the Simplified-thinking narration carry what the stages stood in for — but
+ * traces persisted before the collapse still hold them, so the type survives for
+ * read-back and the UI keeps a stage icon for those rows.
  */
 export type StepStage = "classify" | "generate" | "search" | "found";
 
@@ -1327,11 +1367,19 @@ export type StepStage = "classify" | "generate" | "search" | "found";
 export interface TurnStep {
   /** tool-* steps carry the AI-SDK toolCallId; other kinds get a local id. */
   id: string;
-  kind: "step" | "thought" | "tool";
+  /**
+   * - `tool` — one instrumented tool call, with its input, outcome and duration.
+   * - `thought` — the model's own reasoning before a tool call (Role-gated).
+   * - `notice` — a runtime diagnostic worth telling an operator about (a provider
+   *   fallback, an unparseable API response, the flow that matched).
+   * - `step` — **legacy**: a row from the retired phase machine (see
+   *   {@link StepStage}). Never produced any more; still read back.
+   */
+  kind: "notice" | "thought" | "tool" | "step";
   label: string;
   /** Registry tool name, for `kind: "tool"`. */
   tool?: string;
-  /** Engine stage, for `kind: "step"` — lets the UI pick a stage-specific icon. */
+  /** Legacy engine stage, for `kind: "step"` — picks that row's icon. */
   stage?: StepStage;
   /** Tool calls run until their tool-end arrives; other kinds are done. */
   status: "running" | "done" | "error";
@@ -1393,6 +1441,15 @@ export const TRACE_MAX_INPUT_CHARS = 2_000;
  * retention matter rather than a nice-to-have.
  */
 export const TRACE_MAX_RESULT_CHARS = 8_000;
+
+/**
+ * Longest Simplified-thinking narration line (#560) — a sentence, not a
+ * paragraph. Here rather than in the runtime because two places must agree on it:
+ * the tool wrapper that clips the line, and the gather prompt that tells the model
+ * the limit. A drift between those two shows up as narration the Visitor sees cut
+ * mid-word, which is exactly the kind of mismatch a shared constant prevents.
+ */
+export const PROGRESS_MAX_CHARS = 200;
 
 export interface StoredMessage {
   id: string;
@@ -2054,6 +2111,7 @@ export type AssistantPatch = Partial<
     | "suggestedQuestions"
     | "quickReplies"
     | "answeringStyle"
+    | "simplifiedThinking"
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"

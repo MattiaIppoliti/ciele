@@ -464,7 +464,7 @@ export async function runAssistantChat(options: {
 
   if (resolved?.usedFallback) {
     emit({
-      type: "step",
+      type: "notice",
       label: `No ${PROVIDER_NAMES[assistant.modelProvider]} credential configured — answering with ${PROVIDER_NAMES[resolved.provider]} (${resolved.modelId}) instead`,
     });
   }
@@ -473,14 +473,9 @@ export async function runAssistantChat(options: {
   // wire events. search_knowledge still runs a real (lexical) search.
   if (!chatModel) {
     emit({
-      type: "step",
+      type: "notice",
       label:
         "No AI provider credential configured for this organization — using keyword matching (add a provider connection in Settings → AI)",
-    });
-    emit({
-      type: "step",
-      label: "Classifying intent (keyword matching)",
-      stage: "classify",
     });
     const flow = matchFlow(message, flows, routing);
     if (!flow) {
@@ -499,6 +494,7 @@ export async function runAssistantChat(options: {
         usage: [],
       };
     }
+    emit({ type: "notice", label: `Matched flow “${flow.name}” (keyword matching)` });
     emit({
       type: "flow",
       flowId: flow.id,
@@ -547,7 +543,6 @@ export async function runAssistantChat(options: {
     };
   }
 
-  emit({ type: "step", label: "Classifying intent", stage: "classify" });
   const flow = await classifyIntent(
     message,
     flows,
@@ -583,6 +578,10 @@ export async function runAssistantChat(options: {
     };
   }
 
+  // The routing decision, stated once the classifier has made it — the emitter
+  // knows which flow matched, so the trace row carries it directly instead of a
+  // later event patching an earlier row (#560).
+  emit({ type: "notice", label: "Classifying intent", detail: `Matched flow “${flow.name}”` });
   emit({
     type: "flow",
     flowId: flow.id,

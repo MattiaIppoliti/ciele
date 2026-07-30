@@ -177,9 +177,11 @@ flag per item:
 ### 2.5 Streaming client contract
 
 Both the widget (`WidgetChat`) and the admin `PreviewPanel` consume the **same ndjson event stream**
-(`RuntimeEvent`, `packages/agent/src/types.ts`): `turn` → `flow` → `step`* → (`text-start`/`text-delta`*/`text-end`)
-and/or `part`* → `done` | `error`. `step` events are the visible **Thinking Steps**; `part` events
-carry non-text reply parts (help-desk button, follow-ups, button, iframe, sources). The early `turn`
+(`RuntimeEvent`, `packages/agent/src/types.ts`): `turn` → `flow` → (`notice` | `thought` |
+`tool-start`/`tool-end`)* → (`text-start`/`text-delta`*/`text-end`) and/or `part`* → `done` | `error`.
+Those middle events are the visible **Thinking Steps**, folded into `TurnStep[]` by the one shared
+fold; `part` events carry non-text reply parts (help-desk button, follow-ups, button, iframe, sources,
+and the Simplified-thinking `progress` narration). The early `turn`
 event exposes the resolved conversation id before generation, allowing Preview to steer an active
 turn without forking a new conversation. Both clients
 decode and fold the stream through one client-safe module — **`consumeTurnStream`**
@@ -487,7 +489,7 @@ Route handler (app/api/widget/[assistantId]/chat/route.ts, maxDuration 300s, COR
 Conversation Turn module (packages/agent/src/turn.ts → streamConversationTurn)
   │  2. get/create conversation (reused only if subject+assistant match), append user message
   │  3. runAssistantChat({ assistant, flows, connections, message, history, searchKnowledge, emit })
-  │        emit → ndjson: turn, flow, step*, text-delta*, part*, done
+  │        emit → ndjson: turn, flow, notice*/thought*/tool-*, text-delta*, part*, done
   │  4. persist assistant message (content parts, flow_id/flow_name), applyEffects, emit done
   ▼
 Browser renders stream incrementally; feedback via POST /api/widget/{id}/feedback

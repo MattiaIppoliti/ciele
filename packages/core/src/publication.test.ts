@@ -23,6 +23,7 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     avatarUrl:
       "https://example.supabase.co/storage/v1/object/public/public-assets/org/org-1/avatars/assistant/as-1.png",
     answeringStyle: "Be warm and concise.",
+    simplifiedThinking: false,
     chatLauncherEnabled: true,
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
@@ -51,6 +52,7 @@ const EXPECTED_ASSISTANT_KEYS = [
   "quickReplies",
   "avatarUrl",
   "answeringStyle",
+  "simplifiedThinking",
   "chatLauncherEnabled",
   "modelProvider",
   "modelId",

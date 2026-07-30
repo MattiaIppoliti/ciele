@@ -595,6 +595,7 @@ describe("dispatchActions (model path shares the loop)", () => {
         suggestedQuestions: [],
         quickReplies: [],
         answeringStyle: "",
+        simplifiedThinking: false,
         chatLauncherEnabled: true,
         modelProvider: "anthropic",
         modelId: "claude-opus-4-8",

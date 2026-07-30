@@ -147,7 +147,7 @@ quiz 6215).
 |---|---|
 | Structured tool lifecycle | `RuntimeEvent` has `tool-start` / `tool-end` (callId, tool, label, input, ok, summary, durationMs) — `packages/agent/src/tools.ts` `instrument()` wraps *every* tool automatically |
 | Reasoning-before-tool as a visible thought | `{ type: "thought" }`, emitted by reclassifying the pre-tool-call text segment (`agentic-search/run.ts:401`) |
-| Engine stages | `{ type: "step", stage }` (`classify` / `generate` / `search` / `found`) |
+| Engine stages | ~~`{ type: "step", stage }`~~ — **retired in #560**. The nine-state phase machine and its label table were a stand-in for knowing what the agent was doing; the tool lifecycle, the reasoning thoughts and the Simplified-thinking narration now carry it, and `TurnPhase` is `running`/`done`. Genuine runtime diagnostics moved to `{ type: "notice" }`; `TurnStep.kind: "step"` survives for reading back traces written before the collapse |
 | The collapsible "API × N / Thought" panel | **already built** for live chat: `apps/web/src/components/chat/thinking-panel.tsx` (icon stack, `×N` count pill, "Thought for X.Xs", chevron) + `tool-calls-section.tsx` (timeline, per-tool expand → Input / Output / duration) |
 | Multi-pass search with a per-turn budget | `MAX_SEARCH_PASSES`, `searchBudgetExhausted`, coverage verdict per pass, seed→reformulate→widen (`agentic-search/`) |
 | Clarify instead of dead-ending | `ChatReplyPart` `clarify`, pre- and post-search, with the already-clarified anti-loop guard |
@@ -191,16 +191,16 @@ method/status/response surfaced for the Inbox card. Reaching the screenshot UI n
 **D. No source-window reader.** `searchKnowledge` returns chunk content; the model cannot ask for
 "characters 21858-23800 of source X" when a chunk is truncated mid-answer.
 
-**E. Inbox/export shape.** No per-message export (the JSON export is conversation-level only, no
-`Messages[]`, no trace), no per-message timestamp in the transcript, no `Workflow triggered`
-opening pill, no PDF export, no `Sources` disclosure grouping (parts render flat), and
-`ConversationMetadata` lacks `courseId` / `courseName` / `studentId` / `csatScore` /
-`csatComment` / `escalationHelpDesk` / `escalationOption` / `externalUserData`.
+**E. ~~Inbox/export shape.~~** *Closed by #561 — see T7 below.* The JSON export was
+conversation-level only (no `Messages[]`, no trace), the transcript had no per-message timestamp, no
+`Workflow triggered` opening pill, no PDF export and no `Sources` disclosure, and
+`ConversationMetadata` lacked the eight remaining reference fields. All shipped; the ones whose
+producing feature does not exist yet (LMS course, CSAT) export empty by design.
 
-**F. No Simplified thinking.** The reference persists short user-facing progress lines into the
-answer itself. Ciele streams phase labels (`"Looking into it…"`) that are generic and not
-persisted. (The toggle is listed as missing in §11 of the root guide; this is what it actually
-does.)
+**F. ~~No Simplified thinking.~~** *Closed by #560 — see T6 below.* The reference persists short
+user-facing progress lines into the answer itself; Ciele streamed generic phase labels
+(`"Looking into it…"`) that were never persisted. Both halves changed: the narration is real and
+persisted, and the phase labels are gone.
 
 **G. Multi-query search.** `searchKnowledge` takes one `query: string`; the reference issues a
 list per call, which is why its traces reach useful coverage inside 6 iterations.
@@ -298,25 +298,37 @@ lifecycle wrapper with everything else.
 label rendered as the reference's bulleted list. Back-compat: accept a bare string. Touches
 `search-pass.ts` and the pass ledger.
 
-### T6 — Simplified thinking (persisted progress lines)
+### T6 — Simplified thinking (persisted progress lines) — **shipped (#560)**
 
-Per-assistant toggle (General). When on, each tool phase emits a one-line, user-language rewrite
-of what it is about to do; the lines are streamed *and* prepended to the persisted answer content
-as their own `text` parts (not string-concatenated — we keep them structurally separable, unlike
-the reference). Off = today's behaviour exactly.
+Per-assistant toggle (General, `assistants.simplified_thinking`). When on, every tool's input schema
+grows an optional `progress` argument the model fills with one short user-language line saying what it
+is about to do; the registry hands it to the turn, which streams it and keeps it as its own
+`{ type: "progress" }` reply part ahead of the answer — separable for the transcript, the export and
+analytics, unlike the reference's string concatenation. Zero extra model calls, and a narration line
+can never describe a phase that did not run. Off = the previous behaviour exactly, down to there being
+no schema field for the model to fill.
 
-### T7 — Inbox/export parity
+Shipped with it: the **removal** the ticket paired with it — `TurnPhase` collapsed to `running`/`done`,
+the `step`/`stage` wire event replaced by `{ type: "notice" }` for genuine diagnostics, and the panel's
+live label now read off the newest Thinking Step instead of a label table.
 
-- **T7.1 — Message-level export.** JSON export gains `Messages[]` with
-  `Sender / Timestamp / Content / Feedback / AgenticTrace`, where `AgenticTrace` is the reference's
-  flat bracketed string **serialized from our structured trace** — drop-in compatible with the
-  attached file. Conversation fields extended to the 29-field shape.
-- **T7.2 — Metadata fields.** `ConversationMetadata` += `courseId`, `courseName`, `studentId`,
-  `csatScore`, `csatComment`, `escalationHelpDesk`, `escalationOption`, `externalUserData`.
-  Schema-only for the ones whose producing feature does not exist yet (LMS, CSAT) — the export
-  emits empty strings, exactly as the reference does for this tenant.
-- **T7.3 — Transcript polish.** `Sources` as a disclosure (chips hidden until opened), PDF export
-  of a transcript.
+### T7 — Inbox/export parity — **shipped (#561)**
+
+- **T7.1 — Message-level export.** `apps/web/src/lib/inbox/conversation-export.ts` builds the
+  reference's 29-field record, `Messages[]` and all; `packages/core/src/agentic-trace.ts` owns
+  `serializeAgenticTrace` / `parseAgenticTrace`, and the round trip is tested both ways (including
+  against a hand-written reference-shaped string it did not produce). The flat string exists **only**
+  at export time. `Content` is likewise flattened on the way out — narration joined with `...`, then
+  the answer, then one inline `[Source: …]` marker per citation. Assembled in a server action, where
+  the reasoning gate is *enforced* rather than requested: an export leaves the console.
+- **T7.2 — Metadata fields.** All eight landed on `ConversationMetadata` (jsonb — no migration).
+  `escalationHelpDesk` / `escalationOption` are written for real by `escalateConversation` and shown in
+  the Inbox rail; `courseId`/`courseName`/`studentId`/`csat*`/`externalUserData*` wait on LMS sync and
+  the CSAT survey and export as empty strings, exactly as the reference does for this tenant.
+- **T7.3 — Transcript polish.** `CitationList` gained a `collapsible` mode (the transcript uses it, the
+  chat does not — citations are the point of a grounded answer). PDF export goes through the browser's
+  own print pipeline (`transcript-print.ts` renders a standalone document into a hidden iframe), which
+  is what makes a long transcript paginate rather than get cut off.
 
 ### Order and dependencies
 

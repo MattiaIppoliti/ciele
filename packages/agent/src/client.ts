@@ -33,6 +33,17 @@ export { canEmbedWithConnection } from "./embedding-capability";
 // Static model catalog for editor UI (provider labels + model lists).
 export { MODEL_CATALOG, PROVIDER_NAMES } from "./catalog";
 
+// The agent loop's iteration budget — the number the model is TOLD about (#558).
+// Public because the Inbox export re-states it in the reference platform's
+// `[System note]` ("iteration 2 out of 6"), and that note has to quote the same
+// budget the turn actually ran under.
+//
+// Imported from `loop-budget` directly, NOT through the `agentic-search` barrel:
+// that barrel value-exports `runAgenticSearch`, so routing through it would pull
+// `streamText` — the whole AI SDK — into every client bundle. `loop-budget.ts`
+// has no imports at all, which is what makes the constant client-safe.
+export { MAX_AGENT_ITERATIONS } from "./agentic-search/loop-budget";
+
 // Template-variable catalog for the Flow Builder's picker + docs modal. Pure
 // static data derived from the same source the runtime resolves against.
 export { TEMPLATE_VARIABLES } from "./template";

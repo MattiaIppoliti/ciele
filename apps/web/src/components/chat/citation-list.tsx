@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 
 /**
  * The Sources citation list rendered under a grounded AI answer. RAG
@@ -10,6 +10,12 @@ import { ExternalLink } from "lucide-react";
  * When a citation carries the concept's original page URL (OKF `resource`),
  * the chip is a link that opens the page in a new tab; the full title is the
  * hover tooltip (the chip itself truncates).
+ *
+ * `collapsible` hides the chips behind a disclosure, which is how the Inbox
+ * transcript shows them (#561): a reviewer scanning a long conversation wants the
+ * turns, and opens the provenance for the turn they are questioning. In the chat
+ * itself the citations are the point of a grounded answer, so they stay visible.
+ * A native `<details>` keeps it keyboard- and screen-reader-operable for free.
  */
 
 export interface Citation {
@@ -22,17 +28,15 @@ export interface Citation {
 export function CitationList({
   sources,
   className,
+  collapsible = false,
 }: {
   sources: Citation[];
   className?: string;
+  collapsible?: boolean;
 }) {
-  return (
-    <div className={className}>
-      <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
-        <span className="rounded-full border px-2 py-0.5">Sources</span>
-      </p>
-      <div className="flex flex-col gap-1.5">
-        {sources.map((s, i) => {
+  const chips = (
+    <div className="flex flex-col gap-1.5">
+      {sources.map((s, i) => {
           const tooltip =
             s.conceptTitle +
             (s.collectionName || s.sourceName
@@ -65,7 +69,29 @@ export function CitationList({
             </span>
           );
         })}
-      </div>
+    </div>
+  );
+
+  const label = `Sources${sources.length > 1 ? ` (${sources.length})` : ""}`;
+
+  if (collapsible) {
+    return (
+      <details className={`group ${className ?? ""}`}>
+        <summary className="text-muted-foreground hover:text-foreground inline-flex w-fit cursor-pointer list-none items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold transition-colors">
+          <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+          {label}
+        </summary>
+        <div className="mt-1.5">{chips}</div>
+      </details>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold">
+        <span className="rounded-full border px-2 py-0.5">{label}</span>
+      </p>
+      {chips}
     </div>
   );
 }

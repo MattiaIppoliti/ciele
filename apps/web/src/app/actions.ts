@@ -93,7 +93,14 @@ import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { invalidatePublication } from "@/lib/widget-db";
-import { canChangeRoles, canManageMembers } from "@/lib/rbac";
+import { canChangeRoles, canManageMembers, canViewReasoning } from "@/lib/rbac";
+import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
+import {
+  INBOX_EXPORT_MAX_CONVERSATIONS,
+  INBOX_EXPORT_READ_BATCH,
+  conversationExportRows,
+  type ConversationExportRow,
+} from "@/lib/inbox/conversation-export";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createSupabaseServiceClient,
@@ -2035,6 +2042,53 @@ export async function getConversationMessagesAction(
 ): Promise<StoredMessage[]> {
   const { db } = await requireMember();
   return db.listMessages(conversationId);
+}
+
+/**
+ * The reference-parity Inbox export (#561): the 29-field Conversation records
+ * with their full `Messages[]` transcripts and serialized `AgenticTrace`.
+ *
+ * Server-side because the transcripts are not on the client (the Inbox loads one
+ * at a time) and because the reasoning gate has to be *enforced*, not asked for —
+ * an export leaves the console, so a Member below the gate must not be able to
+ * request the chain-of-thought by passing a flag.
+ *
+ * Bounded twice over, because one click here turns into one transcript read per
+ * Conversation: the id list is capped, and the reads run in fixed-size batches
+ * rather than one `Promise.all` over the whole selection — 500 concurrent reads
+ * would be a self-inflicted load spike on the tenant's own database. RLS re-scopes
+ * every id on the way through, so a forged id returns nothing.
+ */
+export async function exportInboxConversationsAction(
+  conversationIds: string[]
+): Promise<ConversationExportRow[]> {
+  const { db, session } = await requireMember();
+  const wanted = new Set(conversationIds.slice(0, INBOX_EXPORT_MAX_CONVERSATIONS));
+  if (wanted.size === 0) return [];
+  const conversations = (
+    await db.listInboxConversations(session.organization.id)
+  ).filter((c) => wanted.has(c.id));
+
+  const inputs: Array<{
+    conversation: (typeof conversations)[number];
+    messages: StoredMessage[];
+  }> = [];
+  for (let i = 0; i < conversations.length; i += INBOX_EXPORT_READ_BATCH) {
+    const batch = conversations.slice(i, i + INBOX_EXPORT_READ_BATCH);
+    inputs.push(
+      ...(await Promise.all(
+        batch.map(async (conversation) => ({
+          conversation,
+          messages: await db.listMessages(conversation.id),
+        }))
+      ))
+    );
+  }
+
+  return conversationExportRows(inputs, {
+    includeReasoning: canViewReasoning(session.role),
+    iterationLimit: MAX_AGENT_ITERATIONS,
+  });
 }
 
 export async function deleteConversationAction(conversationId: string) {

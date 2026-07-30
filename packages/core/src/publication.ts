@@ -34,6 +34,7 @@ export function buildPublicationConfig(
       suggestedQuestions: assistant.suggestedQuestions,
       quickReplies: assistant.quickReplies,
       answeringStyle: assistant.answeringStyle,
+      simplifiedThinking: assistant.simplifiedThinking,
       chatLauncherEnabled: assistant.chatLauncherEnabled,
       modelProvider: assistant.modelProvider,
       modelId: assistant.modelId,

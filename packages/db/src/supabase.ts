@@ -122,6 +122,7 @@ interface AssistantRow {
   suggested_questions: string[];
   quick_replies: QuickReplyButton[] | null;
   answering_style: string | null;
+  simplified_thinking: boolean | null;
   chat_launcher_enabled: boolean;
   model_provider: Provider;
   model_id: string;
@@ -578,6 +579,7 @@ function toAssistant(row: AssistantRow): Assistant {
     suggestedQuestions: row.suggested_questions ?? [],
     quickReplies: row.quick_replies ?? [],
     answeringStyle: row.answering_style ?? "",
+    simplifiedThinking: row.simplified_thinking ?? false,
     chatLauncherEnabled: row.chat_launcher_enabled,
     modelProvider: row.model_provider ?? "anthropic",
     modelId: row.model_id ?? "claude-opus-4-8",
@@ -705,6 +707,8 @@ function assistantPatchToRow(patch: AssistantPatch): Record<string, unknown> {
     row.require_sign_in = patch.requireSignIn;
   if (patch.knowledgeEngine !== undefined)
     row.knowledge_engine = patch.knowledgeEngine;
+  if (patch.simplifiedThinking !== undefined)
+    row.simplified_thinking = patch.simplifiedThinking;
   return row;
 }
 

@@ -279,12 +279,30 @@ const searchKnowledgeHandler: ActionHandler = async ({
       }
     : undefined;
   if (!chatModel) {
+    // The deterministic path searches for real, so it reports a real tool call
+    // rather than a phase label: same panel row, same ×N counter, same icon as
+    // the model-driven search it stands in for (#560).
+    const callId = `keyword-search-${Date.now()}`;
+    const startedAt = Date.now();
     emit({
-      type: "step",
+      type: "tool-start",
+      callId,
+      tool: "searchKnowledge",
       label: `Searching knowledge for “${message.slice(0, 60)}”`,
-      stage: "search",
+      input: { queries: [message] },
     });
     const results = searchKnowledge ? await searchKnowledge(message) : [];
+    emit({
+      type: "tool-end",
+      callId,
+      tool: "searchKnowledge",
+      ok: true,
+      summary:
+        results.length > 0
+          ? `Found ${results.length} relevant concept${results.length > 1 ? "s" : ""}`
+          : "No matching knowledge found",
+      durationMs: Date.now() - startedAt,
+    });
     if (results.length > 0) {
       const textPart: ChatReplyPart = {
         type: "text",
@@ -351,7 +369,14 @@ const searchKnowledgeHandler: ActionHandler = async ({
     alreadyClarified,
     flowStyle,
     contactLabel: contactLabel(assistant),
-    buildTools: ({ searchPasses, usedSources, loop, terminal, writeTimeStyle }) =>
+    buildTools: ({
+      searchPasses,
+      usedSources,
+      loop,
+      terminal,
+      writeTimeStyle,
+      narrate,
+    }) =>
       buildToolset({
         assistant,
         session,
@@ -366,6 +391,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
         loop,
         terminal,
         writeTimeStyle,
+        narrate,
         emit,
         signal,
       }),
@@ -425,7 +451,7 @@ const apiRequest: ActionHandler = async ({
 }) => {
   const settings = flow.actionSettings?.api_request;
   if (!settings?.url) return { parts: [] };
-  emit({ type: "step", label: "Calling external API" });
+  emit({ type: "notice", label: "Calling external API" });
 
   // The runtime falls the empty body back to the triggering message; feed it
   // through the shared `workflow.message` slot the core reads.
@@ -440,10 +466,14 @@ const apiRequest: ActionHandler = async ({
   // Extraction misses are flagged for the admin (never fail the HTTP outcome).
   for (const item of extracted) {
     if (item.missed) {
-      emit({ type: "step", label: `API response had no value for ${item.variable}` });
+      emit({
+        type: "notice",
+        label: `API response had no value for ${item.variable}`,
+      });
     }
   }
-  if (parseFailed) emit({ type: "step", label: "API response was not valid JSON" });
+  if (parseFailed)
+    emit({ type: "notice", label: "API response was not valid JSON" });
   const templatePatch =
     extracted.length > 0
       ? Object.fromEntries(extracted.map((e) => [e.variable, e.value]))

@@ -236,6 +236,7 @@ function seedAssistant(
     | "helpDeskSettings"
     | "quickReplies"
     | "answeringStyle"
+    | "simplifiedThinking"
     | "aiDisclaimer"
     | "tools"
     | "requireSignIn"
@@ -253,6 +254,7 @@ function seedAssistant(
         | "helpDeskSettings"
         | "quickReplies"
         | "answeringStyle"
+        | "simplifiedThinking"
         | "aiDisclaimer"
         | "tools"
         | "requireSignIn"
@@ -276,6 +278,7 @@ function seedAssistant(
     helpDeskSettings: {},
     quickReplies: [],
     answeringStyle: "",
+    simplifiedThinking: false,
     aiDisclaimer: DEFAULT_AI_DISCLAIMER,
     tools: {},
     requireSignIn: false,
@@ -1749,6 +1752,7 @@ export const mockDb: Db = {
       suggestedQuestions: [],
       quickReplies: [],
       answeringStyle: "",
+      simplifiedThinking: false,
       chatLauncherEnabled: true,
       modelProvider: "google",
       modelId: "gemini-3.5-flash",

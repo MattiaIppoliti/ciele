@@ -1,6 +1,7 @@
 import { streamText, stepCountIs } from "ai";
 import type { LanguageModel, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
+import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "../session";
 import type {
   ChatReplyPart,
@@ -168,6 +169,12 @@ export function buildSystemPrompt(
             : undefined,
           searchGuidelines &&
             `Search guidelines for this flow (apply them when calling searchKnowledge):\n${searchGuidelines}`,
+          // Simplified thinking (#560): the narration rides the tool call it
+          // describes, so it costs nothing and can never describe a phase that
+          // did not run. The schema field only exists while the toggle is on.
+          assistant.simplifiedThinking
+            ? `Every tool call MUST also set \`progress\`: one short sentence, in the user's own language, telling them what you are about to do — e.g. "Sto cercando i video nella sezione Video Prova del corso…". The user reads it while the call runs, so write it for them, keep it under ${PROGRESS_MAX_CHARS} characters, and never put reasoning, tool names or internal detail in it.`
+            : undefined,
           "When the user shares a durable fact worth carrying into later turns (their role, product, account, or preference), save it with the remember tool.",
         ]
       : [
@@ -243,6 +250,12 @@ export interface AgenticSearchTurnInput {
     terminal: TerminalState;
     /** Answering style, late-bound onto the terminal tool's result (#558). */
     writeTimeStyle: WriteTimeStyle;
+    /**
+     * Simplified-thinking sink (#560), or undefined when the toggle is off. The
+     * registry calls it as each tool phase starts; the turn turns the line into a
+     * streamed and persisted `progress` part.
+     */
+    narrate: ((text: string) => void) | undefined;
   }) => ToolSet;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
@@ -293,9 +306,8 @@ export async function runAgenticSearch(
   } = input;
 
   emit({
-    type: "step",
+    type: "notice",
     label: "Generating answer",
-    stage: "generate",
     detail:
       typeof chatModel === "string"
         ? `Model: ${chatModel}`
@@ -328,12 +340,30 @@ export async function runAgenticSearch(
   });
   const retrievalContext = describeContextFrame(frame);
 
+  // Simplified thinking (#560): the narration lines the tool phases produce.
+  // Streamed the moment each phase starts, and returned with the reply so the
+  // saved message — and the Inbox transcript — carry the same narration the
+  // Visitor watched. Their own parts, never concatenated onto the answer text.
+  const progressParts: ChatReplyPart[] = [];
+  const narrate = assistant.simplifiedThinking
+    ? (text: string) => {
+        const part: ChatReplyPart = {
+          type: "progress",
+          action: "search_knowledge",
+          text,
+        };
+        progressParts.push(part);
+        emit({ type: "part", part });
+      }
+    : undefined;
+
   const tools = buildTools({
     searchPasses,
     usedSources,
     loop,
     terminal,
     writeTimeStyle: { answeringStyle, alreadyClarified },
+    narrate,
   });
 
   // ── Phase 1: gather ────────────────────────────────────────────────────────
@@ -425,7 +455,11 @@ export async function runAgenticSearch(
     };
     emit({ type: "part", part: refusalPart });
     emit({ type: "part", part: helpPart });
-    return { parts: [refusalPart, helpPart], grounded: false, terminal: true };
+    return {
+      parts: [...progressParts, refusalPart, helpPart],
+      grounded: false,
+      terminal: true,
+    };
   }
 
   // ── Phase 2: write ─────────────────────────────────────────────────────────
@@ -497,7 +531,7 @@ export async function runAgenticSearch(
       question,
     };
     emit({ type: "part", part });
-    return { parts: [part], grounded: false, terminal: true };
+    return { parts: [...progressParts, part], grounded: false, terminal: true };
   }
 
   // The write phase produced nothing — never leave the Visitor with an empty
@@ -514,7 +548,11 @@ export async function runAgenticSearch(
     });
   }
 
+  // The narration comes first, in the order the phases ran — the same order the
+  // Visitor saw it stream, and the same place the reference platform puts it
+  // (there, glued onto the front of the answer string; here, still separable).
   const parts: ChatReplyPart[] = [
+    ...progressParts,
     { type: "text", action: "search_knowledge", text },
   ];
   // Output-limit truncation: say so instead of pretending nothing was found.

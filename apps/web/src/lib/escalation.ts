@@ -109,6 +109,9 @@ export async function escalateConversation(input: {
   // through the transport seam; API-endpoint channels POST the payload to
   // the configured endpoint through the egress guard (#315).
   let emailOutcome: { delivered: boolean; fallbackAddress: string | null } | undefined;
+  // Which channel the Visitor actually took, recorded on the Conversation so the
+  // Inbox rail and the export can say more than "escalated" (#561).
+  let escalationOption: string | undefined;
   if (channelId) {
     const channel = (await db.listSupportChannels(helpDeskId)).find(
       (c) => c.id === channelId
@@ -122,6 +125,7 @@ export async function escalateConversation(input: {
     if (!channel || !channel.enabled || !submittable) {
       return { kind: "not_found" };
     }
+    escalationOption = channel.name;
     const values = input.request.fields ?? {};
     const missing = missingRequiredFields(channel, values);
     if (missing.length > 0) {
@@ -176,7 +180,11 @@ export async function escalateConversation(input: {
 
   const alreadyEscalated = conversation?.metadata?.escalated === true;
   if (conversation) {
-    await db.updateConversationMetadata(conversation.id, { escalated: true });
+    await db.updateConversationMetadata(conversation.id, {
+      escalated: true,
+      escalationHelpDesk: desk.name,
+      ...(escalationOption ? { escalationOption } : {}),
+    });
   }
 
   // Help-desk "Answer Improvements": flag the last AI answer for review.

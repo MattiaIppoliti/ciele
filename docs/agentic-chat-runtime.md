@@ -113,24 +113,39 @@ RuntimeEvents** (producer: `turn.ts`; consumer: `stream.ts` — the only two
 files that know the wire format):
 
 ```
-flow | step | tool-start | tool-end | thought | part | text-start | text-delta | text-end | done | error
+flow | notice | tool-start | tool-end | thought | part | text-start | text-delta | text-end | done | error
 ```
 
-`tool-start`/`tool-end` are the structured tool lifecycle (`StepStage`):
-callId (the AI-SDK toolCallId), tool name, label, the model's input, then
-ok/summary/duration on completion. The client folds them into `TurnStep[]`
-(`kind: step | thought | tool`, `status: running | done | error`), so both
+`tool-start`/`tool-end` are the structured tool lifecycle: callId (the AI-SDK
+toolCallId), tool name, label, the model's input, then ok/summary/duration on
+completion. The client folds them into `TurnStep[]`
+(`kind: notice | thought | tool`, `status: running | done | error`), so both
 chat UIs show a live per-tool progress line — "Searching knowledge for
 'fees'… — Found 3 relevant concepts" — instead of an append-only string list.
+`notice` is the runtime speaking for itself: the flow that matched, a provider
+fallback, an API response that would not parse. It replaced a nine-state phase
+machine whose labels ("Deciding what to do…") only described where the loop
+was; the panel's live label now reads off the newest step, and `TurnPhase` is
+just `running`/`done` (#560).
 
 The other interesting one is `thought`. Models often narrate before calling a tool
 ("Cerco per te le informazioni…"). With a naive `textStream` that narration
 concatenates into the answer. The runtime instead consumes the `fullStream`:
 text deltas stream live as usual, but when a `tool-call` chunk arrives, the
 text streamed so far is reclassified with a `thought` event — the client
-moves it out of the answer bubble into the **Thinking panel** ("Looking into
-it…" → "Thought for 12.0s") and the answer restarts clean after the tool
-runs. One event type buys the whole reasoning-UI without a second model call.
+moves it out of the answer bubble into the **Thinking panel** and the answer
+restarts clean after the tool runs. One event type buys the whole reasoning-UI
+without a second model call.
+
+**Simplified thinking** (a per-assistant toggle, #560) is the visitor-facing
+counterpart. A `thought` is the model's private reasoning, Role-gated in the
+Inbox; with the toggle on, every tool's input schema also carries an optional
+`progress` argument the model fills with one short line *for the visitor*, in
+their language — "Sto cercando i video nella sezione Video Prova del corso…".
+Riding the tool call costs no extra model call and makes it structurally
+impossible to narrate a phase that did not run. Each line streams as a
+`progress` reply part and is persisted with the answer, so the Inbox transcript
+shows what the visitor watched happen. Off, the schema field does not exist.
 
 ## 6. Effects: act after commit
 

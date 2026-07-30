@@ -52,6 +52,7 @@ import {
 import { ChatHeader } from "@/components/chat/chat-header";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { CitationList } from "@/components/chat/citation-list";
+import { ProgressLine } from "@/components/chat/progress-line";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
@@ -147,6 +148,9 @@ function PartView({
         <ChatMarkdown text={part.text} />
       </div>
     );
+  }
+  if (part.type === "progress") {
+    return <ProgressLine text={part.text} />;
   }
   if (part.type === "notification") {
     return (
@@ -543,7 +547,7 @@ export function PreviewPanel({
         steps: [],
         parts: [],
         streamingText: null,
-        phase: "starting",
+        phase: "running",
         searchCount: 0,
         feedback: 0,
       },

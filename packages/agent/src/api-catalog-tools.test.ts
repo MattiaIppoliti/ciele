@@ -48,6 +48,7 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     suggestedQuestions: [],
     quickReplies: [],
     answeringStyle: "",
+    simplifiedThinking: false,
     chatLauncherEnabled: true,
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",

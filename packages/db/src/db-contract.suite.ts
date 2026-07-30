@@ -220,6 +220,22 @@ export function describeDbContract(
         expect(back.knowledgeEngine).toBe("graph");
       });
 
+      it("defaults Simplified thinking off and round-trips the toggle", async () => {
+        // Off is load-bearing: turning it on changes what a Visitor sees, so an
+        // assistant created before the toggle existed must read as off (#560).
+        const assistant = await newAssistant();
+        expect(assistant.simplifiedThinking).toBe(false);
+        const on = await db.updateAssistant(assistant.id, {
+          simplifiedThinking: true,
+        });
+        expect(on.simplifiedThinking).toBe(true);
+        expect((await db.getAssistant(assistant.id))?.simplifiedThinking).toBe(true);
+        const off = await db.updateAssistant(assistant.id, {
+          simplifiedThinking: false,
+        });
+        expect(off.simplifiedThinking).toBe(false);
+      });
+
       it("scopes listAssistants to the organization", async () => {
         const assistant = await newAssistant();
         const listed = await db.listAssistants(ctx.organizationId);

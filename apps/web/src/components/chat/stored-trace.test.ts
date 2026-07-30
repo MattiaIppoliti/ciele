@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { StoredTurnTrace } from "@agent-hub/core";
-import { storedTraceLabel, visibleTraceSteps } from "./stored-trace";
+import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
+import { liveTraceLabel, storedTraceLabel, visibleTraceSteps } from "./stored-trace";
 
 const trace: StoredTurnTrace = {
   searchCount: 2,
   truncated: true,
   steps: [
+    // A legacy `kind: "step"` row: traces persisted before the phase machine was
+    // retired (#560) still hold them, and must still render.
     { id: "s1", kind: "step", label: "Classifying intent", stage: "classify", status: "done" },
     { id: "t1", kind: "thought", label: "The visitor means the 2025 intake.", status: "done" },
     {
@@ -90,11 +92,100 @@ describe("storedTraceLabel", () => {
       {
         searchCount: 0,
         steps: [
-          { id: "s1", kind: "step", label: "Classifying intent", status: "done" },
+          { id: "s1", kind: "notice", label: "Classifying intent", status: "done" },
         ],
       },
       { canViewReasoning: true }
     )!;
     expect(storedTraceLabel(visible)).toBe("Thought");
+  });
+});
+
+describe("liveTraceLabel", () => {
+  it("names the running tool", () => {
+    expect(liveTraceLabel(trace.steps)).toBe("Searching knowledge…");
+  });
+
+  it("never puts reasoning or an operator diagnostic in the header", () => {
+    // A thought's label is raw model reasoning and a notice's is addressed to an
+    // admin; neither belongs in a collapsed header a Visitor is watching. Both
+    // still appear as rows in the expanded panel.
+    expect(
+      liveTraceLabel([
+        { id: "n1", kind: "notice", label: "Classifying intent", status: "done" },
+        {
+          id: "n2",
+          kind: "notice",
+          label:
+            "No AI provider credential configured for this organization — add one in Settings → AI",
+          status: "done",
+        },
+        { id: "t1", kind: "thought", label: "The visitor probably means…", status: "done" },
+      ])
+    ).toBe("Thinking…");
+  });
+
+  it("keeps naming the tool when reasoning follows it", () => {
+    // The model narrates after a call returns; the header should still say what
+    // ran, not quote the narration.
+    expect(
+      liveTraceLabel([
+        {
+          id: "c1",
+          kind: "tool",
+          tool: "searchKnowledge",
+          label: "Searching knowledge",
+          status: "done",
+        },
+        { id: "t1", kind: "thought", label: "Nothing useful — try again.", status: "done" },
+      ])
+    ).toBe("Searching knowledge…");
+  });
+
+  it("keeps only the first line of a multi-line tool label", () => {
+    // A batched knowledge search lists its queries; the header is one line, and
+    // the expanded timeline carries the rest.
+    expect(
+      liveTraceLabel([
+        {
+          id: "c1",
+          kind: "tool",
+          tool: "searchKnowledge",
+          label: "Searching knowledge for:\n- fees\n- deadlines",
+          status: "running",
+        },
+      ])
+    ).toBe("Searching knowledge for:");
+  });
+
+  it("clips a long label and keeps existing terminal punctuation", () => {
+    const tool = (label: string): TurnStep => ({
+      id: "c1",
+      kind: "tool",
+      tool: "searchKnowledge",
+      label,
+      status: "running",
+    });
+    const long = liveTraceLabel([tool("a".repeat(200))]);
+    expect(long.length).toBeLessThanOrEqual(66);
+    expect(long.endsWith("…")).toBe(true);
+    expect(liveTraceLabel([tool("Already ends in an ellipsis…")])).toBe(
+      "Already ends in an ellipsis…"
+    );
+  });
+
+  it("falls back to Thinking… before the first tool call", () => {
+    expect(liveTraceLabel([])).toBe("Thinking…");
+    expect(
+      liveTraceLabel([
+        {
+          id: "c1",
+          kind: "tool",
+          tool: "searchKnowledge",
+          label: "   ",
+          status: "running",
+        },
+      ])
+    ).toBe("Thinking…");
   });
 });

@@ -91,6 +91,8 @@ describe("runtime public interface", () => {
   it("client barrel exports exactly its declared surface", () => {
     expect(valueKeys(client)).toEqual([
       "EMPTY_TURN_TRACE",
+      // The iteration budget the Inbox export quotes back in its `[System note]`.
+      "MAX_AGENT_ITERATIONS",
       "MODEL_CATALOG",
       "PROVIDER_NAMES",
       "TEMPLATE_VARIABLES",
@@ -99,6 +101,57 @@ describe("runtime public interface", () => {
       "decodeRuntimeEvents",
       "foldTraceEvent",
     ]);
+  });
+
+  /**
+   * The client barrel's *other* contract, which the export list above cannot
+   * express: nothing reachable from it may import the AI SDK or a Node built-in
+   * (`client.ts`: "either type-only or pure static data, so importing it from a
+   * client component never drags in the AI SDK or other server-only code").
+   *
+   * It is easy to break by accident and invisible when you do — a client-safe
+   * constant re-exported through a *barrel* that happens to also export a
+   * server function pulls that function's whole dependency tree into the browser
+   * bundle. `MAX_AGENT_ITERATIONS` did exactly that until it was pointed at
+   * `agentic-search/loop-budget` instead of `agentic-search`.
+   *
+   * So this walks the static import graph rather than trusting the barrel: only
+   * type-only imports (erased) and relative modules are followed.
+   */
+  it("client barrel reaches no server-only module", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const { dirname, resolve } = await import("node:path");
+    const { fileURLToPath } = await import("node:url");
+    const here = dirname(fileURLToPath(import.meta.url));
+
+    const BANNED = /^(ai|next|node:|@ai-sdk\/|@supabase\/)/;
+    const seen = new Set<string>();
+    const offenders: string[] = [];
+
+    const walk = async (file: string): Promise<void> => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      const source = await readFile(file, "utf8");
+      // `import type` / `export type` erase at runtime, so they cannot pull a
+      // bundle — everything else is a real edge.
+      const edges = [
+        ...source.matchAll(/^(?:import|export)\s+(?!type\s)[^;]*?from\s+"([^"]+)"/gm),
+        ...source.matchAll(/^import\s+"([^"]+)"/gm),
+      ].map((m) => m[1]);
+      for (const specifier of edges) {
+        if (BANNED.test(specifier)) {
+          offenders.push(`${file.slice(here.length + 1)} → ${specifier}`);
+          continue;
+        }
+        if (!specifier.startsWith(".")) continue;
+        await walk(resolve(dirname(file), `${specifier}.ts`));
+      }
+    };
+
+    await walk(resolve(here, "client.ts"));
+    expect(offenders).toEqual([]);
+    // Sanity: the walk actually traversed rather than silently finding no edges.
+    expect(seen.size).toBeGreaterThan(3);
   });
 
   // The local provider-CLI surface (ADR-0015) is its own barrel so the server

@@ -21,7 +21,7 @@ barrels (ADR-0005: still only `@/lib/runtime` and `@/lib/runtime/client`).
    `buildSystemPrompt` injects them as a "Session memory" layer, so state survives across turns
    without bloating the transcript.
 3. **Structured tool lifecycle events**. The wire gains `tool-start` / `tool-end`
-   (`StepStage`): callId (the AI-SDK toolCallId), tool name, label, model input, ok/summary/duration.
+   callId (the AI-SDK toolCallId), tool name, label, model input, ok/summary/duration.
    `consumeTurnStream` folds them into `TurnStep[]` (`kind: step | thought | tool`,
    `status: running | done | error`) — both chat UIs render live per-tool progress instead of an
    append-only string list. `step` and `thought` remain for one-shot notes and reclassified reasoning.

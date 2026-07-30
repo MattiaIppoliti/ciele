@@ -31,14 +31,18 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
+import { toast } from "@/lib/toast";
 import {
+  exportInboxConversationsAction,
   getConversationMessagesAction,
   listConversationAnswerVerdictsAction,
   listConversationImprovementLinksAction,
   setMessageFeedbackAction,
 } from "@/app/actions";
+import { transcriptDocument } from "@/lib/inbox/transcript-print";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { CitationList } from "@/components/chat/citation-list";
+import { ProgressLine } from "@/components/chat/progress-line";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ThinkingPanel } from "@/components/chat/thinking-panel";
 import { storedTraceLabel, visibleTraceSteps } from "@/components/chat/stored-trace";
@@ -270,6 +274,12 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
   if (part.type === "text") {
     return <ChatMarkdown text={part.text} className="max-w-[85%] text-sm" />;
   }
+  if (part.type === "progress") {
+    // The narration the Visitor watched stream, kept as its own part so the
+    // transcript shows exactly what they saw — and stays distinguishable from
+    // the answer itself (#560).
+    return <ProgressLine text={part.text} className="max-w-[85%]" />;
+  }
   if (part.type === "notification") {
     // A proactive nudge: the assistant spoke first, so the transcript marks it
     // as such rather than showing it as an answer to something.
@@ -307,7 +317,11 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
     );
   }
   if (part.type === "sources") {
-    return <CitationList sources={part.sources} className="max-w-[85%]" />;
+    // A disclosure in the transcript (#561): a reviewer scanning turns opens the
+    // provenance for the one they are questioning, and the chips still link out.
+    return (
+      <CitationList sources={part.sources} className="max-w-[85%]" collapsible />
+    );
   }
   if (part.type === "help_desk") {
     return (
@@ -387,6 +401,7 @@ export function InboxClient({
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
   const [verdicts, setVerdicts] = useState<AnswerVerdict[]>([]);
   const [improveMessageId, setImproveMessageId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const options = useMemo(() => {
     const unique = (values: Array<string | undefined>) =>
@@ -513,7 +528,39 @@ export function InboxClient({
     }
   }
 
-  function exportRows(format: "csv" | "json") {
+  function download(body: string, mime: string, filename: string) {
+    const url = URL.createObjectURL(new Blob([body], { type: mime }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * The reference-parity JSON export (#561): 29-field Conversation records with
+   * their full transcripts and a serialized `AgenticTrace` per message. Assembled
+   * server-side — the transcripts are not loaded in the browser, and the
+   * reasoning gate has to be enforced rather than requested.
+   */
+  async function exportParityJson() {
+    setExporting(true);
+    try {
+      const rows = await exportInboxConversationsAction(filtered.map((c) => c.id));
+      download(
+        JSON.stringify(rows, null, 2),
+        "application/json",
+        "conversations.json"
+      );
+    } catch {
+      toast.error("Export failed — please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  /** The flat conversation-list CSV: one row per Conversation, no transcripts. */
+  function exportCsv() {
     const rows = filtered.map((c) => ({
       id: c.id,
       assistant: c.assistantTitle,
@@ -534,26 +581,41 @@ export function InboxClient({
       ip: c.metadata.ip ?? "",
       createdAt: c.createdAt,
     }));
-    let blob: Blob;
-    if (format === "json") {
-      blob = new Blob([JSON.stringify(rows, null, 2)], {
-        type: "application/json",
-      });
-    } else {
-      const headers = Object.keys(rows[0] ?? { id: "" });
-      const escape = (v: unknown) => `"${String(v).replaceAll('"', '""')}"`;
-      const csv = [
-        headers.join(","),
-        ...rows.map((r) => headers.map((h) => escape(r[h as keyof typeof r])).join(",")),
-      ].join("\n");
-      blob = new Blob([csv], { type: "text/csv" });
+    const headers = Object.keys(rows[0] ?? { id: "" });
+    const escape = (v: unknown) => `"${String(v).replaceAll('"', '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => escape(r[h as keyof typeof r])).join(",")),
+    ].join("\n");
+    download(csv, "text/csv", "conversations.csv");
+  }
+
+  /**
+   * PDF export of the open transcript (#561). The browser's own print pipeline
+   * does the rendering, which is what makes a long transcript paginate instead of
+   * being cut off; a hidden iframe keeps the Inbox on screen behind the dialog.
+   */
+  function printTranscript() {
+    if (!selected || !messages) return;
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+    document.body.appendChild(frame);
+    const doc = frame.contentDocument;
+    if (!doc || !frame.contentWindow) {
+      frame.remove();
+      toast.error("Could not open the print view.");
+      return;
     }
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `conversations.${format}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    doc.open();
+    doc.write(transcriptDocument({ conversation: selected, messages }));
+    doc.close();
+    const win = frame.contentWindow;
+    // The frame must outlive print() — the dialog is modal but asynchronous, and
+    // removing the frame while it is open cancels the job.
+    win.addEventListener("afterprint", () => frame.remove());
+    win.focus();
+    win.print();
   }
 
   const meta = selected?.metadata;
@@ -587,12 +649,22 @@ export function InboxClient({
               <Download className="size-4" /> Exports
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => exportRows("csv")}>
+              <DropdownMenuItem onClick={exportCsv}>
                 Export CSV ({filtered.length})
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportRows("json")}>
-                Export JSON ({filtered.length})
+              <DropdownMenuItem
+                onClick={() => void exportParityJson()}
+                disabled={exporting}
+              >
+                {exporting
+                  ? "Preparing JSON…"
+                  : `Export JSON with transcripts (${filtered.length})`}
               </DropdownMenuItem>
+              {selected && (
+                <DropdownMenuItem onClick={printTranscript} disabled={!messages}>
+                  Export this transcript as PDF
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -1041,6 +1113,12 @@ export function InboxClient({
                 label="Status"
                 value={meta?.escalated ? "Escalated" : "Not escalated"}
               />
+              {meta?.escalated && (
+                <div className="grid grid-cols-2 gap-3">
+                  <DetailRow label="Help desk" value={meta.escalationHelpDesk} />
+                  <DetailRow label="Option" value={meta.escalationOption} />
+                </div>
+              )}
               {meta?.feedbackText && (
                 <div>
                   <p className="text-muted-foreground text-xs">User feedback</p>

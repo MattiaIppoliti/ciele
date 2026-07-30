@@ -10,7 +10,6 @@ import type {
   KnowledgeSearchResult,
   Provider,
   SkillSnapshot,
-  StepStage,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
@@ -90,6 +89,18 @@ export type ChatReplyPart =
        */
       allowReplies?: boolean;
     }
+  /**
+   * Simplified thinking (#560): one short, user-facing line per tool phase, in
+   * the Visitor's language, saying what the assistant is about to do. Produced
+   * by the model as the `progress` argument of the tool call it is about to
+   * make, so it costs no extra model call and always describes the phase that
+   * actually ran.
+   *
+   * A part rather than a prefix on the answer text (which is what the reference
+   * platform does): same rendering, but still separable afterwards for the
+   * transcript, the export and analytics.
+   */
+  | { type: "progress"; action: "search_knowledge"; text: string }
   | {
       type: "sources";
       action: "search_knowledge";
@@ -139,9 +150,10 @@ export interface KnowledgeDocument {
 }
 
 /**
- * Where a Thinking Step sits in the agent loop. Owned by the domain package
- * because a Thinking Step is persisted with the answer it explains (ADR-0019);
- * re-exported here so the wire contract reads in one place.
+ * A Thinking Step, owned by the domain package because it is persisted with the
+ * answer it explains (ADR-0019); re-exported here so the wire contract reads in
+ * one place. {@link StepStage} comes with it for the legacy `kind: "step"` rows
+ * traces persisted before the phase machine was retired still hold (#560).
  */
 export type { StepStage, TurnStep } from "@agent-hub/core";
 
@@ -149,8 +161,16 @@ export type { StepStage, TurnStep } from "@agent-hub/core";
 export type RuntimeEvent =
   | { type: "turn"; conversationId: string }
   | { type: "flow"; flowId: string | null; flowName: string; isDefault: boolean }
-  /** `detail` is an optional expandable annotation ("Model: gpt-4o-mini"). */
-  | { type: "step"; label: string; stage?: StepStage; detail?: string }
+  /**
+   * A runtime diagnostic worth telling an operator about: the flow that matched,
+   * a provider fallback, an API response that would not parse. `detail` is an
+   * optional expandable annotation ("Model: gpt-4o-mini").
+   *
+   * Replaces the retired `step` event (#560). A notice states a fact the runtime
+   * observed; the phase labels it replaced ("Deciding what to do…") only
+   * described where the loop was, which the tool lifecycle now shows directly.
+   */
+  | { type: "notice"; label: string; detail?: string }
   /**
    * Tool-invocation lifecycle start. `callId` pairs it with its `tool-end`;
    * `input` is the model-supplied arguments, already safe to show (query

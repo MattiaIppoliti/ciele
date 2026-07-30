@@ -3,6 +3,7 @@ import {
   BookOpen,
   Brain,
   FileText,
+  Info,
   List,
   Palette,
   Plug,
@@ -99,6 +100,15 @@ function iconSpecFor(step: TurnStep): IconSpec {
     return (step.tool && TOOL_ICONS[step.tool]) || TOOL_ICON;
   }
   if (step.kind === "thought") return THOUGHT_ICON;
+  if (step.kind === "notice") {
+    // One glyph for every runtime diagnostic, but the *name* stays the notice's
+    // own — it is the tooltip and the header pill's screen-reader text, so a
+    // generic "Runtime notice" would drop what the retired stage icons used to
+    // say ("Routing to a flow", "Generating answer").
+    return { icon: <Info className="size-3.5" />, name: step.label };
+  }
+  // Legacy `kind: "step"` rows from traces persisted before the phase machine
+  // was retired (#560) keep their stage icon.
   return (step.stage && STAGE_ICONS[step.stage]) || DEFAULT_STEP_ICON;
 }
 

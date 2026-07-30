@@ -358,7 +358,7 @@ describe("escalateConversation — email", () => {
 });
 
 describe("escalateConversation — escalated flag and auto-Improvements", () => {
-  it("marks the conversation escalated", async () => {
+  it("marks the conversation escalated and records which desk took it", async () => {
     const { assistant, desk, conversation } = await fixture();
     await run(assistant, {
       visitorId: "visitor-1",
@@ -367,6 +367,24 @@ describe("escalateConversation — escalated flag and auto-Improvements", () => 
     });
     const updated = await db.getConversation(conversation.id);
     expect(updated?.metadata?.escalated).toBe(true);
+    // The Inbox rail and the export say more than "escalated" (#561).
+    expect(updated?.metadata?.escalationHelpDesk).toBe("IT Desk");
+    // No channel was submitted, so there is no option to name.
+    expect(updated?.metadata?.escalationOption).toBeUndefined();
+  });
+
+  it("records the channel the visitor actually took", async () => {
+    const { assistant, desk, channel, conversation } = await fixture();
+    await run(assistant, {
+      visitorId: "visitor-1",
+      conversationId: conversation.id,
+      helpDeskId: desk.id,
+      channelId: channel.id,
+      fields: FILLED,
+    });
+    const updated = await db.getConversation(conversation.id);
+    expect(updated?.metadata?.escalationHelpDesk).toBe("IT Desk");
+    expect(updated?.metadata?.escalationOption).toBe("Email us");
   });
 
   it("raises an Improvement from the last AI answer on the first escalation only", async () => {

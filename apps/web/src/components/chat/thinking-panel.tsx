@@ -5,17 +5,22 @@ import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
 import { ToolCallsSection } from "./tool-calls-section";
+import { liveTraceLabel } from "./stored-trace";
 
 /**
  * The agentic status panel both chat UIs (Widget + admin Preview) render above
- * a reply: a phase label with a spinner while the agent works ("Thinking…" →
- * "Deciding what to do…" → "Preparing to search…" → "Looking into it…" →
- * "Gathering info…" → "Cross-checking…"), a stacked-icon pill showing the
- * distinct step/tool kinds seen so far (tool-icons.tsx — never one icon
- * reused for everything) plus a search-count badge (×N once the agent has
- * searched more than once), and a collapsible ToolCallsSection timeline of
+ * a reply: a live label with a spinner while the agent works, a stacked-icon
+ * pill showing the distinct step/tool kinds seen so far (tool-icons.tsx — never
+ * one icon reused for everything) plus a search-count badge (×N once the agent
+ * has searched more than once), and a collapsible ToolCallsSection timeline of
  * the reasoning/tool steps. When the answer lands it collapses to
  * "Thought for X.Xs".
+ *
+ * The live label used to come from a nine-state phase table ("Deciding what to
+ * do…", "Cross-checking…"), which was a stand-in for knowing what the agent was
+ * actually doing. It now reads the newest step instead (#560) — the tool it just
+ * reached for, the routing decision it just made — which is strictly more
+ * specific, and falls back to "Thinking…" only before the first step arrives.
  */
 
 /** De-dupes steps by "kind" so the header pill shows each distinct icon once. */
@@ -26,9 +31,9 @@ function distinctStepKinds(steps: TurnStep[]): TurnStep[] {
     const key =
       step.kind === "tool"
         ? `tool:${step.tool}`
-        : step.kind === "thought"
-          ? "thought"
-          : `stage:${step.stage ?? "step"}`;
+        : step.kind === "step"
+          ? `stage:${step.stage ?? "step"}`
+          : step.kind;
     if (seen.has(key)) continue;
     seen.add(key);
     result.push(step);
@@ -36,17 +41,6 @@ function distinctStepKinds(steps: TurnStep[]): TurnStep[] {
   return result;
 }
 
-const PHASE_LABELS: Record<TurnPhase, string> = {
-  starting: "Thinking…",
-  deciding: "Deciding what to do…",
-  preparing: "Preparing to search…",
-  thinking: "Thinking…",
-  searching: "Looking into it…",
-  crosschecking: "Cross-checking…",
-  reading: "Gathering info…",
-  answering: "Thinking…", // unused while finished; safe fallback
-  done: "Thinking…",
-};
 
 export function ThinkingPanel({
   steps,
@@ -78,7 +72,7 @@ export function ThinkingPanel({
     if (startRef.current === null) startRef.current = Date.now();
   }, []);
 
-  const finished = !active || phase === "answering" || phase === "done";
+  const finished = !active || phase === "done";
 
   // Stamp "Thought for X.Xs" the first time the turn reaches its answer.
   useEffect(() => {
@@ -134,7 +128,7 @@ export function ThinkingPanel({
           ) : (
             <span className="inline-flex items-center gap-1.5">
               <span className="thinking-label-glow">
-                {PHASE_LABELS[phase]}
+                {liveTraceLabel(steps)}
               </span>
               <LoaderCircle className="size-3.5 animate-spin" />
             </span>

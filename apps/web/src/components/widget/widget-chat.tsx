@@ -9,6 +9,7 @@ import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { CitationList } from "@/components/chat/citation-list";
+import { ProgressLine } from "@/components/chat/progress-line";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -182,7 +183,7 @@ function emptyBot(): BotMsg {
     steps: [],
     parts: [],
     streamingText: null,
-    phase: "starting",
+    phase: "running",
     searchCount: 0,
     feedback: 0,
   };
@@ -776,6 +777,9 @@ export function WidgetChat({
                       <DeferredChatMarkdown text={part.text} />
                     </div>
                   );
+                }
+                if (part.type === "progress") {
+                  return <ProgressLine key={j} text={part.text} />;
                 }
                 if (part.type === "notification") {
                   // Proactive nudge: set apart from an answer, since the visitor

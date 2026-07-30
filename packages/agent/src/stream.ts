@@ -5,7 +5,7 @@ import type { RuntimeEvent } from "./types";
 /**
  * The RuntimeEvent wire contract's consumer side (one JSON event per line,
  * emitted by the Conversation Turn module). Everything derived from a turn's
- * step/thought/tool-* events is folded by {@link foldTraceEvent} — the SINGLE
+ * notice/thought/tool-* events is folded by {@link foldTraceEvent} — the SINGLE
  * folding rule, shared by all three consumers: the public Widget, the admin
  * Preview, and turn.ts itself, which folds the events it is emitting in order
  * to persist the trace. A second fold would be a second source of truth for
@@ -20,27 +20,24 @@ import type { RuntimeEvent } from "./types";
 export type { TurnStep };
 
 /**
- * Where the turn currently is in the agent loop; the chat UIs map this to the
- * status label ("Thinking…" → "Deciding what to do…" → "Preparing to search…"
- * → "Looking into it…" → "Gathering info…" → "Cross-checking…" → "Thought for
- * X.Xs"). Folded here from the step stages so both UIs agree.
+ * Whether the turn is still working or has reached its answer — the only phase
+ * distinction a chat UI needs, since it decides whether the Thinking panel spins
+ * and stays open or collapses to its summary.
+ *
+ * It used to be a nine-state machine whose labels ("Deciding what to do…",
+ * "Preparing to search…", "Cross-checking…") stood in for knowing what the agent
+ * was actually doing. It no longer has to guess: the tool lifecycle names the
+ * tool, the reasoning thoughts say why, and Simplified thinking narrates the
+ * phase in the Visitor's own words (#560). The panel reads its live label off the
+ * newest step instead, which is strictly more specific than any label table.
  */
-export type TurnPhase =
-  | "starting"
-  | "deciding"
-  | "preparing"
-  | "thinking"
-  | "searching"
-  | "crosschecking"
-  | "reading"
-  | "answering"
-  | "done";
+export type TurnPhase = "running" | "done";
 
 /**
  * Everything {@link foldTraceEvent} derives from a turn's events: the Thinking
  * Steps, which Flow handled the turn, the search counter behind the ×N pill,
- * and the display phase. {@link TurnView} is a superset, so a client folds by
- * spreading the result over its view.
+ * and whether the turn is still running. {@link TurnView} is a superset, so a
+ * client folds by spreading the result over its view.
  */
 export interface TurnTrace {
   flowName: string | null;
@@ -54,7 +51,7 @@ export interface TurnTrace {
 export const EMPTY_TURN_TRACE: TurnTrace = {
   flowName: null,
   steps: [],
-  phase: "starting",
+  phase: "running",
   searchCount: 0,
 };
 
@@ -63,71 +60,28 @@ export const EMPTY_TURN_TRACE: TurnTrace = {
  * care about returns the trace unchanged) and append-only on `steps`, which is
  * what makes `steps.length` a safe id for the kinds that have no call id.
  *
- * The phase transitions live here rather than in the clients so the status
- * label, the panel contents and the persisted trace can never disagree about
- * what the agent was doing.
+ * The running/done transition lives here rather than in the clients so the panel
+ * contents and the persisted trace can never disagree about what the agent did.
  */
 export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace {
   switch (event.type) {
     case "flow":
-      // Annotate the classify step that produced this decision, so its
-      // Thinking-panel row can expand to show which flow matched.
-      return {
-        ...trace,
-        flowName: event.flowName,
-        steps: trace.steps.map((step, i) =>
-          i === trace.steps.length - 1 &&
-          step.kind === "step" &&
-          step.stage === "classify" &&
-          !step.detail
-            ? { ...step, detail: `Matched flow “${event.flowName}”` }
-            : step
-        ),
-      };
-    case "step": {
-      let phase = trace.phase;
-      let searchCount = trace.searchCount;
-      switch (event.stage) {
-        case "classify":
-          phase = "deciding";
-          break;
-        case "generate":
-          phase = "preparing";
-          break;
-        case "search":
-          searchCount += 1;
-          phase = searchCount > 1 ? "crosschecking" : "searching";
-          break;
-        case "found":
-          phase = "reading";
-          break;
-      }
+      return { ...trace, flowName: event.flowName };
+    case "notice":
       return {
         ...trace,
         steps: [
           ...trace.steps,
           {
             id: `step-${trace.steps.length + 1}`,
-            kind: "step",
+            kind: "notice",
             label: event.label,
-            stage: event.stage,
             status: "done",
             detail: event.detail,
           },
         ],
-        phase,
-        searchCount,
       };
-    }
     case "tool-start": {
-      // The knowledge tool drives the same searching/crosschecking phase
-      // the deterministic engine's "search" step stage used to.
-      let phase = trace.phase;
-      let searchCount = trace.searchCount;
-      if (event.tool === "searchKnowledge") {
-        searchCount += 1;
-        phase = searchCount > 1 ? "crosschecking" : "searching";
-      }
       return {
         ...trace,
         steps: [
@@ -142,8 +96,12 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             iteration: event.iteration,
           },
         ],
-        phase,
-        searchCount,
+        // The ×N pill counts knowledge searches specifically — that is the
+        // number an operator reads as "how hard did this turn look".
+        searchCount:
+          event.tool === "searchKnowledge"
+            ? trace.searchCount + 1
+            : trace.searchCount,
       };
     }
     case "tool-end":
@@ -160,7 +118,6 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
               }
             : step
         ),
-        phase: event.tool === "searchKnowledge" ? "reading" : trace.phase,
       };
     case "thought":
       // Reasoning that led into a tool call: what was streaming as answer
@@ -176,18 +133,13 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             status: "done",
           },
         ],
-        phase: "thinking",
       };
     case "text-start":
-      // After a search, streamed text is the answer ("Thought for X.Xs");
-      // before any search it may still be pre-tool reasoning, so the phase
-      // stays "thinking" until a thought/tool call or text-end resolves it.
-      return {
-        ...trace,
-        phase: trace.searchCount > 0 ? "answering" : "thinking",
-      };
+      // After a search, streamed text is the answer, so the panel settles into
+      // its summary; before any search it may still be pre-tool reasoning that a
+      // `thought` event will reclassify, so the turn stays running.
+      return trace.searchCount > 0 ? { ...trace, phase: "done" } : trace;
     case "text-end":
-      return { ...trace, phase: "answering" };
     case "done":
       return { ...trace, phase: "done" };
     default:

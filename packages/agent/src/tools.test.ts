@@ -14,6 +14,7 @@ vi.mock("./pinned-fetch", () => ({
 import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 import { createTurnSession } from "./session";
+import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import {
   MAX_QUERIES_PER_SEARCH,
   buildToolset,
@@ -68,6 +69,7 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     suggestedQuestions: [],
     quickReplies: [],
     answeringStyle: "",
+    simplifiedThinking: false,
     chatLauncherEnabled: true,
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
@@ -94,6 +96,21 @@ function makeContext(overrides: Partial<ToolRuntimeContext> = {}) {
     ...overrides,
   };
   return { ctx, events };
+}
+
+/**
+ * The argument names a toolset entry offers the model. Reaching into the zod
+ * object's shape is the point: what the model is *offered* is the thing under
+ * test, and the SDK's Tool type erases it back to an opaque schema.
+ */
+function schemaFields(
+  toolset: ReturnType<typeof buildToolset>,
+  name: string
+): string[] {
+  const entry = toolset[name] as unknown as {
+    inputSchema: { shape: Record<string, unknown> };
+  };
+  return Object.keys(entry.inputSchema.shape);
 }
 
 /** Runs a toolset entry the way the AI SDK would. */
@@ -177,6 +194,63 @@ describe("tool lifecycle events", () => {
       summary: "Saved",
     });
     expect((events[1] as { durationMs: number }).durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("keeps the progress field out of the schema when Simplified thinking is off", () => {
+    // Off must be identical to the behaviour before the feature existed: no
+    // schema field means the model is never even asked to narrate (#560).
+    const { ctx } = makeContext();
+    const toolset = buildToolset(ctx);
+    for (const name of ["remember", "searchKnowledge"]) {
+      expect(schemaFields(toolset, name)).not.toContain("progress");
+    }
+  });
+
+  it("narrates a tool phase and keeps the line out of the tool's arguments", async () => {
+    const narrated: string[] = [];
+    const { ctx, events } = makeContext({ narrate: (t) => narrated.push(t) });
+    const toolset = buildToolset(ctx);
+    expect(schemaFields(toolset, "remember")).toContain("progress");
+
+    const output = await run(toolset, "remember", {
+      fact: "Student of Marketing",
+      progress: "  Mi segno che studi Marketing…  ",
+    });
+    expect(output).toEqual({ saved: true });
+    expect(narrated).toEqual(["Mi segno che studi Marketing…"]);
+    // The narration is display copy, not an argument: a tool that forwards its
+    // arguments (queryApi puts them on the request) would otherwise send the
+    // narration to the tenant's API as a parameter.
+    expect(events[0]).toMatchObject({
+      type: "tool-start",
+      input: { fact: "Student of Marketing" },
+    });
+    expect((events[0] as { input: Record<string, unknown> }).input).not.toHaveProperty(
+      "progress"
+    );
+  });
+
+  it("narrates a knowledge search too, and caps the line", async () => {
+    const narrated: string[] = [];
+    const { ctx } = makeContext({
+      narrate: (t) => narrated.push(t),
+      searchKnowledge: async () => [],
+    });
+    await run(buildToolset(ctx), "searchKnowledge", {
+      queries: ["fees"],
+      progress: "x".repeat(500),
+    });
+    expect(narrated).toHaveLength(1);
+    expect(narrated[0]).toHaveLength(PROGRESS_MAX_CHARS);
+  });
+
+  it("narrates nothing when the model omits or blanks the line", async () => {
+    const narrated: string[] = [];
+    const { ctx } = makeContext({ narrate: (t) => narrated.push(t) });
+    const toolset = buildToolset(ctx);
+    await run(toolset, "remember", { fact: "a" });
+    await run(toolset, "remember", { fact: "b", progress: "   " });
+    expect(narrated).toEqual([]);
   });
 
   it("contains a throwing execute: error result for the model, ok:false event", async () => {

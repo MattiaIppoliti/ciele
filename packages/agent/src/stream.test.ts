@@ -34,7 +34,7 @@ const collect = async (body: ReadableStream<Uint8Array>) => {
 
 describe("decodeRuntimeEvents", () => {
   const events: RuntimeEvent[] = [
-    { type: "step", label: "Classifying" },
+    { type: "notice", label: "Classifying" },
     { type: "text-delta", delta: "Hello" },
     { type: "done", conversationId: "c1", messageId: "m1" },
   ];
@@ -65,7 +65,7 @@ describe("consumeTurnStream", () => {
       steps: [],
       parts: [],
       streamingText: null,
-      phase: "starting",
+      phase: "running",
       searchCount: 0,
     };
     let done: { conversationId: string; messageId: string | null } | null =
@@ -98,8 +98,20 @@ describe("consumeTurnStream", () => {
   it("folds a full turn: flow, steps, streamed text, parts, done", async () => {
     const { view, done } = await runTurn([
       { type: "flow", flowId: "f1", flowName: "Default behavior", isDefault: true },
-      { type: "step", label: "Classifying", stage: "classify" },
-      { type: "step", label: "Searching", stage: "search" },
+      { type: "notice", label: "Classifying" },
+      {
+        type: "tool-start",
+        callId: "t1",
+        tool: "searchKnowledge",
+        label: "Searching",
+      },
+      {
+        type: "tool-end",
+        callId: "t1",
+        tool: "searchKnowledge",
+        ok: true,
+        durationMs: 5,
+      },
       { type: "text-start", action: "search_knowledge" },
       { type: "text-delta", delta: "Hel" },
       { type: "text-delta", delta: "lo" },
@@ -113,7 +125,7 @@ describe("consumeTurnStream", () => {
 
     expect(view.flowName).toBe("Default behavior");
     expect(view.steps.map((s) => s.label)).toEqual(["Classifying", "Searching"]);
-    expect(view.steps.every((s) => s.kind === "step" && s.status === "done")).toBe(true);
+    expect(view.steps.every((s) => s.status === "done")).toBe(true);
     expect(view.streamingText).toBeNull(); // solidified on text-end
     expect(view.parts).toEqual([
       { type: "text", action: "search_knowledge", text: "Hello" },
@@ -124,44 +136,45 @@ describe("consumeTurnStream", () => {
     expect(view.searchCount).toBe(1);
   });
 
-  it("folds step stages into the status phase the UIs display", async () => {
+  it("stays running until the turn reaches its answer", async () => {
     const phases = async (events: RuntimeEvent[]) => (await runTurn(events)).view.phase;
+    const search = (callId: string): RuntimeEvent => ({
+      type: "tool-start",
+      callId,
+      tool: "searchKnowledge",
+      label: "Searching",
+    });
 
-    expect(await phases([{ type: "step", label: "x", stage: "classify" }])).toBe("deciding");
-    expect(await phases([{ type: "step", label: "x", stage: "generate" }])).toBe("preparing");
-    expect(await phases([{ type: "step", label: "x", stage: "search" }])).toBe("searching");
-    // A second search reads as cross-checking, with the count carried in view.
-    const { view } = await runTurn([
-      { type: "step", label: "s1", stage: "search" },
-      { type: "step", label: "f1", stage: "found" },
-      { type: "step", label: "s2", stage: "search" },
-    ]);
-    expect(view.phase).toBe("crosschecking");
+    // Work in flight — the panel spins and stays open.
+    expect(await phases([{ type: "notice", label: "Classifying" }])).toBe("running");
+    expect(await phases([search("t1")])).toBe("running");
+    expect(await phases([{ type: "thought", text: "hmm" }])).toBe("running");
+
+    // Only knowledge searches feed the ×N pill.
+    const { view } = await runTurn([search("t1"), search("t2")]);
     expect(view.searchCount).toBe(2);
-    // Text streamed after a search is the answer; before one it may still be
-    // pre-tool reasoning.
     expect(
-      await phases([
-        { type: "step", label: "s1", stage: "search" },
-        { type: "text-start", action: "search_knowledge" },
-      ])
-    ).toBe("answering");
-    expect(await phases([{ type: "text-start", action: "search_knowledge" }])).toBe("thinking");
+      (await runTurn([{ type: "tool-start", callId: "t3", tool: "remember", label: "Saving" }]))
+        .view.searchCount
+    ).toBe(0);
+
+    // Text streamed after a search is the answer, so the turn is done; before
+    // one it may still be pre-tool reasoning a `thought` event reclassifies.
+    expect(
+      await phases([search("t1"), { type: "text-start", action: "search_knowledge" }])
+    ).toBe("done");
+    expect(await phases([{ type: "text-start", action: "search_knowledge" }])).toBe(
+      "running"
+    );
+    expect(await phases([{ type: "text-end" }])).toBe("done");
   });
 
-  it("annotates the classify step with the matched flow", async () => {
+  it("carries a notice event's detail into the step", async () => {
     const { view } = await runTurn([
-      { type: "step", label: "Classifying intent", stage: "classify" },
-      { type: "flow", flowId: "f1", flowName: "Billing", isDefault: false },
+      { type: "notice", label: "Classifying intent", detail: "Matched flow “Billing”" },
     ]);
+    expect(view.steps[0].kind).toBe("notice");
     expect(view.steps[0].detail).toBe("Matched flow “Billing”");
-  });
-
-  it("carries a step event's detail into the step", async () => {
-    const { view } = await runTurn([
-      { type: "step", label: "Generating answer", stage: "generate", detail: "Model: gpt-4o-mini" },
-    ]);
-    expect(view.steps[0].detail).toBe("Model: gpt-4o-mini");
   });
 
   it("keeps streamingText live between deltas", async () => {
@@ -175,13 +188,18 @@ describe("consumeTurnStream", () => {
 
   it("folds a thought: streamed reasoning moves into steps, answer restarts", async () => {
     const { view } = await runTurn([
-      { type: "step", label: "Classifying" },
+      { type: "notice", label: "Classifying" },
       // The agent starts "answering", then decides to call a tool: the
       // streamed text was reasoning and must move to the Thinking panel.
       { type: "text-start", action: "search_knowledge" },
       { type: "text-delta", delta: "I'll look that up." },
       { type: "thought", text: "I'll look that up." },
-      { type: "step", label: "Searching knowledge" },
+      {
+        type: "tool-start",
+        callId: "t1",
+        tool: "searchKnowledge",
+        label: "Searching knowledge",
+      },
       { type: "text-start", action: "search_knowledge" },
       { type: "text-delta", delta: "Here is the answer." },
       { type: "text-end" },

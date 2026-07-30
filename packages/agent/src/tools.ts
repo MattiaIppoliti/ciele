@@ -5,6 +5,7 @@ import type {
   Assistant,
   KnowledgeSearchResult,
 } from "@agent-hub/core";
+import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { KnowledgeDocument, KnowledgeSearcher, RuntimeEvent } from "./types";
 import {
@@ -32,11 +33,11 @@ import {
  * `assistant.tools.builtIns`), the assistant's API catalogue integration when
  * one is registered, and the windowed knowledge reader when a document reader is
  * wired — wrapping every execute with the tool-start/tool-end lifecycle events,
- * so a new tool gets structured Thinking-panel progress for free. The one
- * exception is `searchKnowledge`,
- * whose lifecycle (and error containment for a throwing searcher) lives in the
- * shared search-pass primitive instead (agentic-search/, #204) so seeded and
- * model-driven passes cannot drift.
+ * so a new tool gets structured Thinking-panel progress, and (when the
+ * assistant's Simplified thinking toggle is on) a user-facing narration line,
+ * for free. The one exception is `searchKnowledge`, whose lifecycle (and error
+ * containment for a throwing searcher) lives in the shared search-pass primitive
+ * instead (agentic-search/, #204) so seeded and model-driven passes cannot drift.
  *
  * Built-in defaults: `searchKnowledge` is always on (grounding is a runtime
  * invariant, ADR-0002); `remember` defaults on; `fetchUrl` defaults OFF
@@ -92,6 +93,18 @@ export interface ToolRuntimeContext {
   terminal?: TerminalState;
   /** Answering-style instructions, late-bound onto the terminal tool's result. */
   writeTimeStyle?: WriteTimeStyle;
+  /**
+   * Simplified thinking (#560). Present = the assistant's toggle is on: every
+   * tool's input schema grows an optional `progress` line, and whatever the model
+   * writes there is handed here before the call runs — the runtime turns it into
+   * a streamed, persisted reply part. Absent = the toggle is off, and neither the
+   * schema field nor the narration exists.
+   *
+   * A callback rather than a boolean because the *collector* belongs to the turn
+   * (agentic-search/run.ts), which owns the reply parts; the registry only knows
+   * when a phase starts.
+   */
+  narrate?: (text: string) => void;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
 }
@@ -100,8 +113,7 @@ export interface ToolRuntimeContext {
 export interface RuntimeToolSpec {
   name: string;
   description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  inputSchema: z.ZodType<any>;
+  inputSchema: z.ZodObject<z.ZodRawShape>;
   label: (input: Record<string, unknown>) => string;
   /** Short outcome line for the tool-end event. */
   summarize?: (output: unknown) => string | undefined;
@@ -116,6 +128,34 @@ const FETCH_MAX_CHARS = 6_000;
 const FETCH_MAX_RESPONSE_BYTES = 1024 * 1024;
 /** One message for every egress-policy block — "blocked" must be indistinguishable from "down". */
 const EGRESS_BLOCKED_MESSAGE = "This host is not reachable from the assistant";
+
+/**
+ * The Simplified-thinking narration field (#560), spliced onto every tool's input
+ * schema while the toggle is on. It is an *argument* rather than a separate model
+ * call because that makes the line free, and makes it structurally impossible for
+ * the narration to describe a phase that did not run.
+ */
+const PROGRESS_FIELD = z
+  .string()
+  .optional()
+  .describe(
+    "One short sentence, in the user's own language, saying what you are about to do. It is shown to the user while this call runs, so write it for them, not for yourself."
+  );
+
+/**
+ * Splits a tool call's arguments into the narration line and the arguments the
+ * tool itself was defined with. Stripping matters: `progress` is display copy, and
+ * a tool that forwards its arguments — `queryApi` puts them on the request —
+ * would otherwise send the narration to the tenant's API as a parameter.
+ */
+function takeProgress(input: Record<string, unknown>): {
+  progress: string | null;
+  args: Record<string, unknown>;
+} {
+  const { progress, ...args } = input;
+  const line = typeof progress === "string" ? progress.trim() : "";
+  return { progress: line ? line.slice(0, PROGRESS_MAX_CHARS) : null, args };
+}
 
 /** Crude tag-stripper so HTML pages come back as readable text. */
 function htmlToText(html: string): string {
@@ -187,11 +227,17 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
         .string()
         .optional()
         .describe("A single search query; prefer `queries`"),
+      ...(ctx.narrate ? { progress: PROGRESS_FIELD } : {}),
     }),
-    execute: async (input: { queries?: unknown; query?: unknown }, options) => {
+    execute: async (
+      input: { queries?: unknown; query?: unknown; progress?: unknown },
+      options
+    ) => {
       // One call is one iteration however many queries it batches — that is the
       // whole incentive for batching.
       ctx.loop?.spend();
+      const { progress } = takeProgress(input as Record<string, unknown>);
+      if (progress) ctx.narrate?.(progress);
       const queries = normalizeSearchQueries(input);
       const budget = ctx.searchBudget ?? MAX_SEARCH_PASSES;
       if (queries.length === 0) {
@@ -407,11 +453,17 @@ let callSeq = 0;
 function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
   return tool({
     description: spec.description,
-    inputSchema: spec.inputSchema,
-    execute: async (input: Record<string, unknown>, options) => {
+    inputSchema: ctx.narrate
+      ? spec.inputSchema.extend({ progress: PROGRESS_FIELD })
+      : spec.inputSchema,
+    execute: async (rawInput: Record<string, unknown>, options) => {
       const callId = options?.toolCallId ?? `call-${++callSeq}`;
       const startedAt = Date.now();
       ctx.loop?.spend();
+      // Narrate before the call, not after: the line says what is *about* to
+      // happen, and the Visitor is watching it happen.
+      const { progress, args: input } = takeProgress(rawInput);
+      if (progress) ctx.narrate?.(progress);
       ctx.emit({
         type: "tool-start",
         callId,

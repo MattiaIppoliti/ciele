@@ -63,6 +63,7 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     suggestedQuestions: [],
     quickReplies: [],
     answeringStyle: "",
+    simplifiedThinking: false,
     chatLauncherEnabled: true,
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
@@ -1133,6 +1134,149 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
     expect(
       events.some((e) => e.type === "part" && e.part.type === "sources")
     ).toBe(true);
+  });
+
+  /**
+   * Simplified thinking (#560): the narration the model writes onto each tool
+   * call streams as it happens AND survives in the reply parts, so the Inbox
+   * transcript shows the same narration the Visitor watched. Off is the runtime's
+   * ordinary behaviour, down to there being no `progress` field to fill.
+   */
+  describe("Simplified thinking", () => {
+    /** A search step whose call carries the user-facing narration line. */
+    function narratedSearchStep(id: string, query: string, progress: string) {
+      const input = JSON.stringify({ queries: [query], progress });
+      return {
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start" as const, warnings: [] },
+            { type: "tool-input-start" as const, id, toolName: "searchKnowledge" },
+            { type: "tool-input-delta" as const, id, delta: input },
+            { type: "tool-input-end" as const, id },
+            {
+              type: "tool-call" as const,
+              toolCallId: id,
+              toolName: "searchKnowledge",
+              input,
+            },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "tool-calls" as const, raw: "tool_calls" },
+              usage: mockUsage(),
+            },
+          ],
+        }),
+      };
+    }
+
+    function narratedTurn(assistant: Assistant) {
+      const model = scriptedModel(
+        () =>
+          narratedSearchStep(
+            "call-1",
+            "video prova",
+            "Sto cercando i video nella sezione Video Prova del corso…"
+          ),
+        declareStep(),
+        writeStep(["Ecco i video del corso."])
+      );
+      const events: RuntimeEvent[] = [];
+      const { ctx } = makeContext({
+        assistant,
+        chatModel: model as unknown as LanguageModel,
+        searchKnowledge: vi.fn(async () => [strongResult]),
+        message: "dove trovo i video?",
+        emit: (e) => events.push(e),
+      });
+      return { ctx, events };
+    }
+
+    it("streams the line and keeps it as its own part, ahead of the answer", async () => {
+      const { ctx, events } = narratedTurn(
+        makeAssistant({ simplifiedThinking: true })
+      );
+      const result = await ACTION_HANDLERS.search_knowledge(ctx);
+
+      // Its own part, in phase order, before the answer text — never
+      // string-concatenated onto it (the reference platform's one flaw here).
+      expect(result.parts.map((p) => p.type)).toEqual([
+        "progress",
+        "text",
+        "sources",
+      ]);
+      expect(result.parts[0]).toEqual({
+        type: "progress",
+        action: "search_knowledge",
+        text: "Sto cercando i video nella sezione Video Prova del corso…",
+      });
+      expect((result.parts[1] as { text: string }).text).toBe(
+        "Ecco i video del corso."
+      );
+
+      // Streamed as it happened: the part reached the wire before the answer.
+      const wireParts = events.filter(
+        (e): e is Extract<RuntimeEvent, { type: "part" }> => e.type === "part"
+      );
+      expect(wireParts[0].part.type).toBe("progress");
+      const firstDelta = events.findIndex((e) => e.type === "text-delta");
+      const firstProgress = events.findIndex(
+        (e) => e.type === "part" && e.part.type === "progress"
+      );
+      expect(firstProgress).toBeLessThan(firstDelta);
+
+      // The narration is display copy, not a search argument.
+      const toolStart = events.find(
+        (e): e is Extract<RuntimeEvent, { type: "tool-start" }> =>
+          e.type === "tool-start"
+      );
+      expect(toolStart?.input).toEqual({ queries: ["video prova"] });
+    });
+
+    it("off: no narration part, no wire event, no prompt instruction", async () => {
+      const { ctx, events } = narratedTurn(
+        makeAssistant({ simplifiedThinking: false })
+      );
+      const result = await ACTION_HANDLERS.search_knowledge(ctx);
+
+      expect(result.parts.map((p) => p.type)).toEqual(["text", "sources"]);
+      expect(events.some((e) => e.type === "part" && e.part.type === "progress")).toBe(
+        false
+      );
+      expect(
+        buildSystemPrompt("P", makeAssistant({ simplifiedThinking: false }), makeFlow())
+      ).not.toContain("`progress`");
+    });
+
+    it("on: the gather prompt asks for the line in the user's language", () => {
+      const prompt = buildSystemPrompt(
+        "P",
+        makeAssistant({ simplifiedThinking: true }),
+        makeFlow()
+      );
+      expect(prompt).toContain("`progress`");
+      expect(prompt).toContain("in the user's own language");
+      // The write phase has no tools, so it has nothing to narrate.
+      expect(
+        buildSystemPrompt(
+          "P",
+          makeAssistant({ simplifiedThinking: true }),
+          makeFlow(),
+          { phase: "write" }
+        )
+      ).not.toContain("`progress`");
+    });
+
+    it("a turn that calls no tools narrates nothing and still answers", async () => {
+      const model = scriptedModel(declareStep(), writeStep(["Posso aiutarti."]));
+      const { ctx } = makeContext({
+        assistant: makeAssistant({ simplifiedThinking: true }),
+        chatModel: model as unknown as LanguageModel,
+        message: "ciao",
+      });
+      const result = await ACTION_HANDLERS.search_knowledge(ctx);
+      expect(result.parts.map((p) => p.type)).toEqual(["text"]);
+      expect((result.parts[0] as { text: string }).text).toBe("Posso aiutarti.");
+    });
   });
 });
 

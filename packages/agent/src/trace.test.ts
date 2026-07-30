@@ -150,7 +150,11 @@ describe("prepareTraceForStorage", () => {
     // visitor watched happen, not a second reconstruction of it.
     let trace = EMPTY_TURN_TRACE;
     for (const event of [
-      { type: "step", label: "Classifying intent", stage: "classify" },
+      {
+        type: "notice",
+        label: "Classifying intent",
+        detail: "Matched flow “Default behavior”",
+      },
       { type: "flow", flowId: "f1", flowName: "Default behavior", isDefault: true },
       { type: "thought", text: "They mean the 2025 intake." },
       {
@@ -173,7 +177,7 @@ describe("prepareTraceForStorage", () => {
     }
     const stored = prepareTraceForStorage(trace);
     expect(stored?.searchCount).toBe(1);
-    expect(stored?.steps.map((s) => s.kind)).toEqual(["step", "thought", "tool"]);
+    expect(stored?.steps.map((s) => s.kind)).toEqual(["notice", "thought", "tool"]);
     expect(stored?.steps[0].detail).toBe("Matched flow “Default behavior”");
     expect(stored?.steps[2]).toMatchObject({
       status: "done",

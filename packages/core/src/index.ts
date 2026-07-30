@@ -119,6 +119,16 @@ export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
 // message is a proactive Notification (the Insights accounting rule, #546).
 export { isProactiveMessage, messageText } from "./message";
 
+// `AgenticTrace` — the reference platform's flat bracketed turn trace, produced
+// only at export time from the structured Thinking Steps we actually store, and
+// read back by the round-trip test that keeps the two representations honest.
+export { parseAgenticTrace, serializeAgenticTrace } from "./agentic-trace";
+export type {
+  AgenticTraceMarker,
+  AgenticTraceSegment,
+  SerializeAgenticTraceInput,
+} from "./agentic-trace";
+
 // Per-model token prices and the cost estimate derived from them.
 export { estimateCostEur } from "./pricing";
 
