@@ -544,6 +544,152 @@ describe("dispatchActions (via runAssistantChat, no-model path)", () => {
 });
 
 /**
+ * The courtesy short-circuit (#566). The saving it exists for is *not* observable
+ * as latency, so it is asserted as absence: no "Classifying intent" notice, no
+ * classify usage entry, and no notice events at all — the trace is folded from
+ * notices (#560), so none of them is what makes the stored trace null.
+ *
+ * The short-circuit sits ABOVE the chat-model branch on purpose, so both engines
+ * share one decision. Both are covered here.
+ */
+describe("Basic Interaction short-circuit (#566)", () => {
+  const courtesy = makeFlow({
+    id: "courtesy",
+    name: "Basic Interaction",
+    builtIn: true,
+    position: -1,
+    actions: ["basic_reply"],
+  });
+  const exams = makeFlow({
+    id: "exams",
+    name: "Exam dates",
+    description: "questions about exam schedules",
+    position: 1,
+  });
+
+  function assistant(): Assistant {
+    return {
+      id: "assistant-1",
+      organizationId: "org-1",
+      title: "Campus Assistant",
+      nickname: "Campus AI",
+      description: "",
+      welcomeMessage: "",
+      aiDisclaimer: "",
+      suggestedQuestions: [],
+      quickReplies: [],
+      answeringStyle: "",
+      chatLauncherEnabled: true,
+      modelProvider: "anthropic",
+      modelId: "claude-opus-4-8",
+      style: {},
+      allowedDomains: [],
+      helpDeskSettings: {},
+      tools: {},
+      requireSignIn: false,
+      knowledgeEngine: "graph",
+      simplifiedThinking: false,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    } as Assistant;
+  }
+
+  async function chat(message: string) {
+    const events: RuntimeEvent[] = [];
+    const result = await runAssistantChat({
+      assistant: assistant(),
+      flows: [courtesy, exams, defaultFlow],
+      connections: [],
+      message,
+      history: [],
+      session: createTurnSession("conv-1", {}),
+      emit: (e) => events.push(e),
+    });
+    return { result, events };
+  }
+
+  beforeEach(() => {
+    mocked.handlers = {
+      basic_reply: async () => ({
+        parts: [{ type: "text", action: "basic_reply", text: "Hi there!" }],
+      }),
+      search_knowledge: async () => ({
+        parts: [{ type: "text", action: "search_knowledge", text: "grounded" }],
+      }),
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("routes courtesy to the built-in flow with no notice events at all", async () => {
+    const { result, events } = await chat("ciao");
+    expect(result.flowId).toBe("courtesy");
+    // Notices are what the trace is folded from (#560), so none of them means
+    // prepareTraceForStorage returns null and no empty Thinking panel renders.
+    expect(events.filter((e) => e.type === "notice")).toEqual([]);
+    expect(result.usage).toEqual([]);
+  });
+
+  it("still narrates routing for a real question", async () => {
+    // The control: the offline engine's honest "no provider" + "matched flow"
+    // notices are still emitted for anything that is not courtesy.
+    const { result, events } = await chat("when is the marketing exam");
+    expect(result.flowId).not.toBe("courtesy");
+    expect(events.filter((e) => e.type === "notice").length).toBeGreaterThan(0);
+  });
+
+  it("skips Intent Classification on the model path too", async () => {
+    // A resolvable classifier plus real candidates: classifying WOULD cost a
+    // call here, so its absence is the whole point. Asserted as the two things
+    // the classifier cannot run without producing.
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
+    const { result, events } = await chat("grazie mille");
+
+    expect(result.flowId).toBe("courtesy");
+    expect(
+      events.some(
+        (e) => e.type === "notice" && e.label === "Classifying intent"
+      )
+    ).toBe(false);
+    expect(result.usage.some((u) => u.stage === "classify")).toBe(false);
+  });
+
+  it("hands the courtesy handler the resolved chat model", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
+    let seen: unknown = "unset";
+    mocked.handlers["basic_reply"] = async (ctx) => {
+      seen = ctx.chatModel;
+      return { parts: [{ type: "text", action: "basic_reply", text: "Ciao!" }] };
+    };
+    await chat("ciao");
+    expect(seen).not.toBeNull();
+    expect(seen).not.toBe("unset");
+  });
+
+  it("leaves a courtesy-prefixed question to normal routing", async () => {
+    const { result } = await chat("ciao, quando e la scadenza");
+    expect(result.flowId).not.toBe("courtesy");
+  });
+
+  it("does not fire when the courtesy flow is disabled", async () => {
+    const events: RuntimeEvent[] = [];
+    const result = await runAssistantChat({
+      assistant: assistant(),
+      flows: [{ ...courtesy, enabled: false }, defaultFlow],
+      connections: [],
+      message: "ciao",
+      history: [],
+      session: createTurnSession("conv-1", {}),
+      emit: (e) => events.push(e),
+    });
+    expect(result.flowId).not.toBe("courtesy");
+    expect(events.some((e) => e.type === "notice")).toBe(true);
+  });
+});
+
+/**
  * Ticket #327's core claim: the model path runs the SAME dispatch loop as the
  * no-model path. A platform env key selects the model path; with only the
  * default flow there are no classifier candidates, so no network call is ever

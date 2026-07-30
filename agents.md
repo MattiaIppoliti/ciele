@@ -13,7 +13,8 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 >   offline/demo path (ADR-0003).
 > - **`search_knowledge` is a real agent loop** (`streamText` + a knowledge tool, ≤5 steps, cited
 >   Sources).
-> - **Live actions**: `custom_message` (verbatim), `search_knowledge`, `suggest_help_desk`
+> - **Live actions**: `custom_message` (verbatim), `basic_reply` (one call, no retrieval — §4.3),
+>   `search_knowledge`, `suggest_help_desk`
 >   (with AI desk recommendation when enabled), `follow_up_questions`, `show_button`, `iframe`,
 >   `api_request` (full config), `send_email` (Resend transport; honest copy when unconfigured),
 >   `improvement`, `notification` (verbatim, proactive-only — see §4.2). **[partial]**: `handover`
@@ -138,6 +139,7 @@ Actions run **in order**; multiple per flow, reorderable.
 | Action | Generative? | Behavior |
 |--------|:-----------:|----------|
 | **Message** | no | Emit configured text **verbatim** (never paraphrased by a model). |
+| **Basic reply** | yes (one call) | Answer conversational courtesy — greeting, thanks, farewell — with **no retrieval, no tools and no citations**. See §4.3. |
 | **Button** | no | Render a clickable button/link (label + target). |
 | **Search knowledge** | **yes** | Run the RAG + agent loop over the assistant's knowledge; return an answer **with Source citations** and Thinking Steps. |
 | **Follow-ups** | partial | Suggest predictive follow-up questions to click. |
@@ -208,6 +210,74 @@ chart series. The Inbox still shows those Conversations, marked "Notification on
 padded with non-conversations. One reply of any kind makes it a real conversation again, counted
 normally from then on. The rules live in `packages/core/src/insights.ts` and are mirrored by the SQL
 aggregate, which the parity test holds to the same answers (ADR-0010).
+
+### 4.3 Basic reply — the courtesy turn
+
+Not every message is a question. A Visitor who types `ciao` has an intent, but not an information
+need, and answering it through the retrieval pipeline is the worst of both worlds: several seconds, a
+Thinking panel full of machinery that found nothing, three or more model calls, and sometimes an
+empty Sources panel with an escalation chip underneath. So courtesy is its own intent, with its own
+built-in Flow — **Basic Interaction**, first in priority — and its own action.
+
+**Basic reply** is one `streamText` call. No tools, no knowledge searcher, no gather phase, no second
+write phase, and — deliberately — **no `notice`, `thought` or tool events at all**, which makes the
+stored trace null and leaves the widget and the Inbox with no Thinking panel to render (the same
+treatment a verbatim Message gets). Its prompt carries only the platform layer, the assistant's
+identity and the organization's answering style: retrieval context, Skills and session memory cannot
+inform "hello", so paying prompt tokens for them would buy nothing. The one hard instruction is the
+honesty rule — a turn that looked nothing up must assert nothing about the organization.
+
+Setting a message on the action pins the exact wording and skips the model entirely, on the same
+invariant as Message. That same string is what answers when no chat model resolves at all, so an
+offline or unconfigured deployment still greets coherently rather than apologising.
+
+**How it counts.** A courtesy reply *is* an AI answer — a Visitor spoke and the assistant answered —
+so it counts as one. What it is not is a *graded* answer: the verifier and the flow trust ledger both
+select on the `search_knowledge` action, so a reply that cites nothing is never sent to a grader that
+would have nothing to grade it against. For the same reason the watch-tier escalation rule passes it
+by: "Contact support" under "Hello!" reads as an assistant that has already given up.
+
+**Selection** is two-tier, and both tiers land on the same Flow, so the Inbox marker reads the same
+either way.
+
+*Tier 1* is `basicInteractionFlow` in `packages/core/src/basic-interaction.ts`, consulted from **one**
+call site in `runAssistantChat` that sits **above** the chat-model branch — so the LLM path and the
+offline keyword path share one decision and cannot drift. A hit skips Intent Classification outright:
+**zero** model calls to route, one to answer. It fires only when all three of these hold, each of
+which can only ever *prevent* the shortcut:
+
+1. An **enabled** Flow exists that is `builtIn` and carries `basic_reply`. Structural, never by name —
+   an admin may rename the Flow and keep the behaviour, and disabling it is the supported off switch.
+2. `isCourtesyOnly` holds: every word is courtesy or filler, at least one is courtesy, the message is
+   short and question-mark-free, and the assistant's own last turn did not ask something — a bare
+   `ok` after a clarification is an *answer*, not a greeting. That last rule reads the text's
+   trailing `?`, plus an explicit `askedQuestion` flag for the case the text cannot show: a
+   clarification is persisted as a `clarify` part with no text part, so it flattens to `""`. The
+   Conversation Turn, which can see the parts, sets the flag and restores the question into the
+   history the model sees.
+3. Nothing positioned **ahead** of it clears the keyword router's match threshold. Flow priority stays
+   authoritative: an admin's own higher-priority Flow that matches a greeting wins, and the turn
+   classifies normally. Note the direction — the keyword router is consulted about *other* Flows
+   here; it carries no courtesy vocabulary of its own, because a second additive copy scored
+   "ciao grazie dove trovo il programma" as a greeting.
+
+*Tier 2* is the classifier, as a backstop: the Flow is an ordinary catalogue entry, so anything Tier 1
+misses still reaches it for one classify call — still skipping retrieval and the write phase.
+
+The asymmetry of the two failure modes is what makes Tier 1 safe to keep conservative. A **miss**
+costs one classify call. A **false positive** costs the Visitor their answer. So `ciao, quando è la
+scadenza?` is a question with a greeting stuck on the front, and the "at least one courtesy word"
+clause exists because without it a message of pure stopwords (`the`, `is it`) would qualify by having
+nothing left over. Selection goes through `messageFlowCandidates`, so URL/Schedule conditions gate
+this funnel exactly as they gate the other two.
+
+The courtesy vocabulary is **data, per locale** (EN · IT · ES · FR · DE · NL · PT-BR), so adding a
+language is a list plus a test row and never a change to the rules. Two things stay out of it in
+every locale: **bare affirmatives** (`yes` / `sì` / `oui` / `ja` / `sim`), because after the assistant
+asks a question those are the Visitor's *answer* — keeping them out means the last-turn guard is a
+second line of defence rather than the only one — and **words that also read as a topic** (`fine` is
+courtesy in English and "the end" in Italian). Each locale carries at least one negative test: a
+short same-language message that looks courteous but carries a question or a content word.
 
 ---
 

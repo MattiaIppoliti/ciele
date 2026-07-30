@@ -81,8 +81,12 @@ The event that starts a Flow: **User sends a message** (the reactive path) or on
 _Avoid_: event (alone), hook
 
 **Flow Action**:
-One step a matched Flow executes: search knowledge, custom message, suggest help desk, follow-up questions, notification.
+One step a matched Flow executes: search knowledge, custom message, basic reply, suggest help desk, follow-up questions, notification.
 _Avoid_: step, tool
+
+**Basic Interaction**:
+The built-in Flow, first in priority, that answers conversational courtesy — a greeting, a thanks, a farewell, an acknowledgement — rather than an information need. Its single Flow Action, **Basic reply**, produces one generated sentence or two with no retrieval, no tools and no citations; a configured message pins the wording and skips the model. Counted as an AI answer, never graded (nothing was cited, so there is nothing to grade against).
+_Avoid_: small talk (in UI), chitchat, greeting flow
 
 **Notification**:
 The proactive Flow Action: an unprompted in-widget message from the Assistant, delivered when a proactive Flow Trigger fires. Verbatim like a custom message, bounded by a delivery rule (once per Conversation / once per Visitor / every time), and the only action a proactive Flow may run. Distinct from an **Alert**, which is an operational health notice for admins — that term's `_Avoid_: notification` guidance is about not calling Alerts notifications, and does not reserve the word.

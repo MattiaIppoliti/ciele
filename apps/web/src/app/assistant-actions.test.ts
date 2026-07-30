@@ -118,6 +118,39 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     expect(stored).toMatchObject({ trigger: "chat_open", actions: ["notification"] });
   });
 
+  /**
+   * Basic Interaction's one admin control (#565): a verbatim courtesy reply. The
+   * editor writes it into `actionSettings`, so what matters is that it survives
+   * the round trip — a pinned wording that silently reverts to a generated one is
+   * worse than no control at all.
+   */
+  it("round-trips the Basic Interaction verbatim message through save/reload", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const courtesy = (await db.listFlows(assistant.id)).find((flow) =>
+      flow.actions.includes("basic_reply")
+    );
+    expect(courtesy, "the built-in Basic Interaction flow ships by default").toBeTruthy();
+
+    await updateFlowAction(assistant.id, courtesy!.id, {
+      actionSettings: { basic_reply: { message: "Ciao! Come posso aiutarti?" } },
+    });
+
+    const reloaded = (await db.listFlows(assistant.id)).find(
+      (flow) => flow.id === courtesy!.id
+    );
+    expect(reloaded?.actionSettings.basic_reply?.message).toBe(
+      "Ciao! Come posso aiutarti?"
+    );
+    // Clearing it is how an admin goes back to a generated reply.
+    await updateFlowAction(assistant.id, courtesy!.id, {
+      actionSettings: { basic_reply: { message: "" } },
+    });
+    expect(
+      (await db.listFlows(assistant.id)).find((f) => f.id === courtesy!.id)
+        ?.actionSettings.basic_reply?.message
+    ).toBe("");
+  });
+
   it("updateFlowAction validates the pair the patch would store", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
     const flow = await db.createFlow(assistant.id, {

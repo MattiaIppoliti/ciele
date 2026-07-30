@@ -26,6 +26,13 @@ export type FlowAction =
   | "improvement"
   | "handover"
   /**
+   * The courtesy primitive (Basic Interaction, #565): one conversational reply
+   * with no retrieval, no tools and no second write phase. What answers a
+   * greeting, a thanks or a farewell — a message that carries no information
+   * need, so searching the knowledge base for it can only cost latency.
+   */
+  | "basic_reply"
+  /**
    * The proactive-engagement primitive: an unprompted in-widget message. The
    * only action a proactively-triggered Flow may run, and never available to a
    * message-triggered one (see `actionAllowedForTrigger` in `engine.ts`).
@@ -195,6 +202,17 @@ export interface FlowActionSettings {
      * style for this flow; when false (default) it is appended to it.
      */
     overrideAnsweringStyle?: boolean;
+  };
+  basic_reply?: {
+    /**
+     * Pins the courtesy reply's exact wording. Set = emitted verbatim with no
+     * model call (the Message action's invariant, for the same reason: an
+     * admin's own words are never model-rewritten). Unset = generated in the
+     * Visitor's language from the assistant's identity and answering style.
+     * Doubles as the reply when no chat model resolves at all. Supports
+     * template variables.
+     */
+    message?: string;
   };
   show_button?: {
     label?: string;

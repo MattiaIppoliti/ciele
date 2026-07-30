@@ -51,6 +51,13 @@ select
 from public.assistants a
 cross join (
   values
+    -- Position -1 mirrors the backfill migration's `min(position) - 1`: first in
+    -- priority without renumbering the flows below it.
+    ('Basic Interaction',
+     'User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer — conversational courtesy that asks no question and carries no information need',
+     true, true, -1, array['basic_reply'],
+     '',
+     false),
     ('Assistant Information',
      'User is asking about the assistant''s capabilities, features, identity, purpose, or what services it provides',
      true, true, 0, array['custom_message'],

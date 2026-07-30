@@ -171,7 +171,22 @@ export function describeDbContract(
         // Exactly one Default behavior, sorted last (context.md invariant).
         expect(flows.filter((f) => f.isDefault)).toHaveLength(1);
         expect(flows.at(-1)?.isDefault).toBe(true);
-        expect(flows.every((flow) => flow.actions.length === 0)).toBe(true);
+        // Basic Interaction (#565) is the one built-in that ships configured:
+        // its behaviour IS its action, and an empty built-in would fall through
+        // to generative search — the opposite of a courtesy fast path.
+        const courtesy = flows.filter((f) => f.actions.includes("basic_reply"));
+        expect(courtesy).toHaveLength(1);
+        expect(courtesy[0]).toMatchObject({ builtIn: true, enabled: true });
+        expect(courtesy[0].actions).toEqual(["basic_reply"]);
+        // It sorts first: recognising courtesy late means paying retrieval to
+        // answer "hello".
+        expect(flows[0]?.id).toBe(courtesy[0].id);
+        // Every other shipped flow starts unconfigured.
+        expect(
+          flows
+            .filter((f) => f.id !== courtesy[0].id)
+            .every((flow) => flow.actions.length === 0)
+        ).toBe(true);
         expect(flows.every((flow) => flow.customMessage === "")).toBe(true);
       });
 
@@ -2808,6 +2823,16 @@ export function describeDbContract(
           role: "assistant",
           content: [{ type: "text", text: "Fixed greeting." }],
         });
+        // Nor is a Basic Interaction courtesy reply (#565): it is generated, but
+        // it cites nothing, so there is nothing to grade it against. This
+        // exclusion is load-bearing for that feature, not incidental.
+        const courtesy = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [
+            { type: "text", text: "Hi! What would you like to know?", action: "basic_reply" },
+          ],
+        });
 
         const first = await db.claimUnverifiedAnswers({
           limit: 1000,
@@ -2821,6 +2846,7 @@ export function describeDbContract(
           question: "What does parking cost?",
         });
         expect(first.some((c) => c.messageId === verbatim.id)).toBe(false);
+        expect(first.some((c) => c.messageId === courtesy.id)).toBe(false);
 
         // The fresh claim blocks a second tick from double-grading.
         const second = await db.claimUnverifiedAnswers({

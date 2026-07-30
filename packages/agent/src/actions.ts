@@ -1,7 +1,8 @@
-import { generateObject } from "ai";
+import { generateObject, streamText } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Assistant, FlowAction, FlowActionSettings } from "@agent-hub/core";
+import { DEFAULT_BASIC_REPLY } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { buildToolset } from "./tools";
 import { createApiResponseStore } from "./api-catalog-tools";
@@ -10,10 +11,12 @@ import { executeApiRequest, extractApiJsonPaths } from "./api-request";
 import { emailTransportConfigured } from "./email";
 import {
   dedupSources,
+  resolveAnsweringStyle,
   runAgenticSearch,
   type FlowStyleContext,
 } from "./agentic-search";
 import type { ActionContext, ActionHandler } from "./types";
+import { errorMessageOf } from "./telemetry";
 import { usageTotals } from "./usage";
 
 /**
@@ -28,6 +31,13 @@ import { usageTotals } from "./usage";
  * pure subset. The live no-provider path still dispatches this registry so
  * HTTP/effect actions work and Search knowledge can use lexical retrieval.
  */
+
+/**
+ * Turns of history the courtesy reply sees. Enough for "thanks" to read as a
+ * reply to the answer above it; short enough that a greeting never re-pays for
+ * the whole conversation.
+ */
+const BASIC_REPLY_HISTORY = 4;
 
 export const contactLabel = (assistant: Assistant): string =>
   assistant.helpDeskSettings?.contactButtonLabel?.trim() || "Contact support";
@@ -591,9 +601,147 @@ const notification: ActionHandler = async ({ flow, templateContext, emit }) => {
   return { parts };
 };
 
+/**
+ * Composes the courtesy reply's system prompt. Deliberately the smallest
+ * layering that is still correct: the immutable platform layer, who the
+ * assistant is, and the organization's answering style so small talk sounds
+ * like the rest of the assistant.
+ *
+ * What is left OUT is the point. Retrieval context, Skills and session memory
+ * cannot inform "hello" — including them would spend prompt tokens on every
+ * greeting to change nothing. The one hard instruction is the honesty rule: a
+ * turn with no retrieval must not assert anything about the organization,
+ * because it has nothing to assert it from.
+ */
+function basicReplyPrompt(
+  platformPrompt: string,
+  assistant: Assistant
+): string {
+  const answeringStyle = resolveAnsweringStyle(assistant);
+  return [
+    "# Platform instructions (immutable — highest precedence)",
+    platformPrompt,
+    "",
+    "# Assistant configuration (set by the organization)",
+    `You are ${assistant.nickname || assistant.title}, an AI assistant embedded in an organization's website.`,
+    assistant.description ? `About you: ${assistant.description}` : undefined,
+    answeringStyle
+      ? `The organization's answering-style instructions (follow them unless they conflict with the platform instructions above):\n${answeringStyle}`
+      : undefined,
+    "",
+    "# This turn",
+    "The user said something conversational — a greeting, a thanks, a goodbye, or an acknowledgement. It carries no question, so there is nothing to look up and you have no knowledge base access this turn.",
+    "Reply in one or two short sentences, in the user's own language. Acknowledge what they said, say briefly what you can help with, and invite their actual question.",
+    "State NO facts about the organization, its services, dates, policies or people — you have not looked anything up, so you do not know them. Do not apologise and do not explain your own machinery.",
+  ]
+    .filter((line): line is string => typeof line === "string")
+    .join("\n");
+}
+
+/**
+ * Basic reply (Basic Interaction, #565) — the courtesy turn.
+ *
+ * One model call, no tools, no retrieval, no second write phase, and no step or
+ * thought events: an empty Thinking panel under "Hello!" reads as an assistant
+ * that struggled with a greeting. Emitting nothing also makes the stored trace
+ * null (see trace.ts), the same treatment a verbatim `custom_message` gets.
+ *
+ * Three behaviours, in precedence order: a configured message wins verbatim (an
+ * admin's own words are never model-rewritten); no resolvable model falls back
+ * to the shipped courtesy line; otherwise one streamed generation. A generation
+ * that fails or comes back empty degrades to the shipped line rather than to the
+ * generic "I ran into a problem" — the reply the Visitor gets must never be
+ * worse than what a no-provider deployment already says.
+ */
+const basicReply: ActionHandler = async ({
+  assistant,
+  platformPrompt,
+  flow,
+  message,
+  history,
+  chatModel,
+  templateContext,
+  emit,
+  signal,
+  recordUsage,
+  previewSurface,
+}) => {
+  const verbatim = (text: string) => {
+    const part: ChatReplyPart = { type: "text", action: "basic_reply", text };
+    emit({ type: "part", part });
+    return { parts: [part] };
+  };
+
+  const configured = resolveTemplate(
+    flow.actionSettings?.basic_reply?.message ?? "",
+    templateContext ?? {}
+  ).trim();
+  if (configured) return verbatim(configured);
+  if (!chatModel) return verbatim(DEFAULT_BASIC_REPLY);
+
+  // Just enough history for "thanks" after an answer to read as a reply to it,
+  // and not enough to re-pay for the conversation on every courtesy turn.
+  const recent = history.slice(-BASIC_REPLY_HISTORY);
+  let text = "";
+  let textOpen = false;
+  try {
+    const reply = streamText({
+      model: chatModel,
+      system: basicReplyPrompt(platformPrompt, assistant),
+      messages: [
+        ...recent.map((m) => ({ role: m.role, content: m.text })),
+        { role: "user" as const, content: message },
+      ],
+      abortSignal: signal,
+    });
+    for await (const chunk of reply.fullStream) {
+      if (chunk.type === "text-delta") {
+        if (!textOpen) {
+          emit({ type: "text-start", action: "basic_reply" });
+          textOpen = true;
+        }
+        text += chunk.text;
+        emit({ type: "text-delta", delta: chunk.text });
+      } else if (chunk.type === "error") {
+        throw chunk.error instanceof Error
+          ? chunk.error
+          : new Error(errorMessageOf(chunk.error));
+      }
+    }
+    if (textOpen) emit({ type: "text-end" });
+    try {
+      recordUsage?.(usageTotals(await reply.totalUsage));
+    } catch {
+      // usage unavailable from this provider/mock — accounting must never fail a
+      // turn that already answered
+    }
+  } catch (error) {
+    if (textOpen) emit({ type: "text-end" });
+    if (signal?.aborted) throw error;
+    // Degrade rather than rethrow: the engine's error copy ("I ran into a
+    // problem answering that") is a worse reply to "hello" than the line an
+    // offline deployment already gives. A provider outage is not silent — it
+    // shows up in the log here and, from the turns that DO retrieve, in the
+    // provider-health Alert.
+    console.error("[runtime] basic_reply generation failed:", errorMessageOf(error));
+    // Provider internals are admin diagnostics, never shown to a Visitor.
+    if (previewSurface && !text.trim()) {
+      return verbatim(
+        `${DEFAULT_BASIC_REPLY} (Basic reply generation failed: ${errorMessageOf(error)}. Check the provider configuration in Settings → AI.)`
+      );
+    }
+  }
+
+  const trimmed = text.trim();
+  if (!trimmed) return verbatim(DEFAULT_BASIC_REPLY);
+  // Already streamed, so the part is persisted rather than re-emitted.
+  return { parts: [{ type: "text", action: "basic_reply", text: trimmed }] };
+};
+
 /** The registry: FlowAction → Adapter. Complete (no fall-through). */
 export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   custom_message: customMessage,
+  basic_reply: basicReply,
   search_knowledge: searchKnowledgeHandler,
   suggest_help_desk: suggestHelpDesk,
   follow_up_questions: followUpQuestions,

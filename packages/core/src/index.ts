@@ -72,6 +72,14 @@ export {
 } from "./flow-conditions";
 export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
 
+// Basic Interaction's deterministic tier (#566): recognise conversational
+// courtesy with no model call, and pick the Flow that answers it.
+export { basicInteractionFlow, isCourtesyOnly } from "./basic-interaction";
+export type {
+  CourtesyHistoryTurn,
+  CourtesyRoutingContext,
+} from "./basic-interaction";
+
 // The API catalogue (spec #559): what the model is told an API integration can
 // do, and whether a path it produced is one the catalogue describes. The
 // validation is here rather than in the runtime because "is this path
@@ -99,7 +107,9 @@ export { computeInsightsOverview, colorizeOverview, isoDay } from "./insights";
 
 // Shipped defaults for a new Assistant and for support-channel availability.
 export {
+  BASIC_INTERACTION_FLOW_NAME,
   DEFAULT_AI_DISCLAIMER,
+  DEFAULT_BASIC_REPLY,
   DEFAULT_FLOWS,
   DEFAULT_WELCOME_MESSAGE,
   defaultChannelAvailability,

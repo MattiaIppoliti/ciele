@@ -11,7 +11,11 @@ import type {
   SkillSnapshot,
   TrustTier,
 } from "@agent-hub/core";
-import { matchFlow, messageFlowCandidates } from "@agent-hub/core";
+import {
+  basicInteractionFlow,
+  matchFlow,
+  messageFlowCandidates,
+} from "@agent-hub/core";
 import { z } from "zod";
 
 import type { ChatReplyPart } from "./types";
@@ -462,7 +466,21 @@ export async function runAssistantChat(options: {
     },
   });
 
-  if (resolved?.usedFallback) {
+  // Basic Interaction (#566): courtesy is recognised deterministically, before
+  // anything is spent. Deliberately ABOVE the chat-model branch — both engines
+  // consult one decision from one call site, so they cannot drift. A hit skips
+  // Intent Classification entirely and emits no notices, which is what leaves
+  // the turn with a null trace and the Visitor with no Thinking panel.
+  const courtesyFlow = basicInteractionFlow(message, flows, {
+    ...routing,
+    history,
+  });
+
+  // Above the courtesy check would put one notice on a turn that must have none
+  // — and which provider answered a greeting is not worth a Thinking panel. The
+  // fallback is still recorded where it matters: the usage ledger names the
+  // provider that actually ran.
+  if (resolved?.usedFallback && !courtesyFlow) {
     emit({
       type: "notice",
       label: `No ${PROVIDER_NAMES[assistant.modelProvider]} credential configured — answering with ${PROVIDER_NAMES[resolved.provider]} (${resolved.modelId}) instead`,
@@ -471,7 +489,7 @@ export async function runAssistantChat(options: {
 
   // No LLM configured anywhere → deterministic demo engine (ADR-0003), same
   // wire events. search_knowledge still runs a real (lexical) search.
-  if (!chatModel) {
+  if (!chatModel && !courtesyFlow) {
     emit({
       type: "notice",
       label:
@@ -543,23 +561,25 @@ export async function runAssistantChat(options: {
     };
   }
 
-  const flow = await classifyIntent(
-    message,
-    flows,
-    classifier?.model ?? null,
-    assistant.nickname || assistant.title,
-    (usage) => {
-      if (!classifier) return;
-      usageEvents.push({
-        stage: "classify",
-        provider: classifier.provider,
-        modelId: classifier.modelId,
-        credentialKind: classifier.credentialKind,
-        ...usageTotals(usage),
-      });
-    },
-    routing
-  );
+  const flow =
+    courtesyFlow ??
+    (await classifyIntent(
+      message,
+      flows,
+      classifier?.model ?? null,
+      assistant.nickname || assistant.title,
+      (usage) => {
+        if (!classifier) return;
+        usageEvents.push({
+          stage: "classify",
+          provider: classifier.provider,
+          modelId: classifier.modelId,
+          credentialKind: classifier.credentialKind,
+          ...usageTotals(usage),
+        });
+      },
+      routing
+    ));
 
   if (!flow) {
     const part: ChatReplyPart = {
@@ -580,8 +600,16 @@ export async function runAssistantChat(options: {
 
   // The routing decision, stated once the classifier has made it — the emitter
   // knows which flow matched, so the trace row carries it directly instead of a
-  // later event patching an earlier row (#560).
-  emit({ type: "notice", label: "Classifying intent", detail: `Matched flow “${flow.name}”` });
+  // later event patching an earlier row (#560). Skipped for a courtesy turn:
+  // no classification happened, and the one notice would be the only thing
+  // standing between that turn and a null trace (#566).
+  if (!courtesyFlow) {
+    emit({
+      type: "notice",
+      label: "Classifying intent",
+      detail: `Matched flow “${flow.name}”`,
+    });
+  }
   emit({
     type: "flow",
     flowId: flow.id,
@@ -617,7 +645,9 @@ export async function runAssistantChat(options: {
     previewSurface: keyResolution.surface === "preview",
     recommendHelpDesk,
     // Pre-bound with the turn's resolved chat model so handlers only report
-    // token totals; `resolved` is non-null whenever a handler runs.
+    // token totals. Null-guarded rather than assumed: a courtesy turn reaches
+    // this path with no resolvable model (the handler answers verbatim), and a
+    // handler that made no call has nothing to meter anyway.
     recordUsage: (usage) => {
       if (!resolved) return;
       usageEvents.push({

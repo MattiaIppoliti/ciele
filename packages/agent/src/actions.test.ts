@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Assistant, Flow, FlowAction, KnowledgeSearchResult } from "@agent-hub/core";
+import { DEFAULT_BASIC_REPLY } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { simulateReadableStream } from "ai";
 import type { LanguageModel } from "ai";
@@ -119,6 +120,7 @@ function mockModel(text: string) {
 const ALL_ACTIONS: FlowAction[] = [
   "search_knowledge",
   "custom_message",
+  "basic_reply",
   "suggest_help_desk",
   "follow_up_questions",
   "show_button",
@@ -155,6 +157,121 @@ describe("custom_message", () => {
     const result = await ACTION_HANDLERS.custom_message(ctx);
     expect(result.parts[0]).toMatchObject({ type: "text" });
     expect((result.parts[0] as { text: string }).text).toContain("Greeting");
+  });
+});
+
+describe("basic_reply", () => {
+  const basicFlow = (message?: string) =>
+    makeFlow({
+      name: "Basic Interaction",
+      builtIn: true,
+      actions: ["basic_reply"],
+      actionSettings: message === undefined ? {} : { basic_reply: { message } },
+    });
+
+  it("emits a configured message verbatim, with no model call", async () => {
+    const model = scriptedModel(writeStep(["generated instead"]));
+    const { ctx, events } = makeContext({
+      flow: basicFlow("Ciao! Come posso aiutarti?"),
+      chatModel: model as unknown as LanguageModel,
+    });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    expect(result.parts).toEqual([
+      { type: "text", action: "basic_reply", text: "Ciao! Come posso aiutarti?" },
+    ]);
+    expect(model.doStreamCalls).toHaveLength(0);
+    expect(events).toEqual([{ type: "part", part: result.parts[0] }]);
+  });
+
+  it("falls back to the shipped courtesy line when no model resolves", async () => {
+    const { ctx } = makeContext({ flow: basicFlow() });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    expect(result.parts).toEqual([
+      { type: "text", action: "basic_reply", text: DEFAULT_BASIC_REPLY },
+    ]);
+  });
+
+  it("streams one generated reply and meters it once", async () => {
+    const model = scriptedModel(writeStep(["Hello! ", "How can I help?"]));
+    const usage: Array<{ inputTokens: number; outputTokens: number }> = [];
+    const { ctx, events } = makeContext({
+      flow: basicFlow(),
+      chatModel: model as unknown as LanguageModel,
+      recordUsage: (u) => usage.push(u),
+    });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    // One call: no classify, no gather, no second write phase.
+    expect(model.doStreamCalls).toHaveLength(1);
+    expect(usage).toEqual([{ inputTokens: 10, outputTokens: 5 }]);
+    expect(result.parts).toEqual([
+      { type: "text", action: "basic_reply", text: "Hello! How can I help?" },
+    ]);
+    // Streamed, so the text arrives as deltas and is NOT re-emitted as a part.
+    expect(events.map((e) => e.type)).toEqual([
+      "text-start",
+      "text-delta",
+      "text-delta",
+      "text-end",
+    ]);
+  });
+
+  it("produces no notice, thought or tool events (so the stored trace stays null)", async () => {
+    const model = scriptedModel(writeStep(["Hi there."]));
+    const { ctx, events } = makeContext({
+      flow: basicFlow(),
+      chatModel: model as unknown as LanguageModel,
+    });
+    await ACTION_HANDLERS.basic_reply(ctx);
+
+    // These four are exactly what foldTraceEvent builds a trace from (#560).
+    expect(
+      events.filter((e) =>
+        ["notice", "thought", "tool-start", "tool-end"].includes(e.type)
+      )
+    ).toEqual([]);
+  });
+
+  it("never cites knowledge or offers escalation", async () => {
+    const model = scriptedModel(writeStep(["Hi there."]));
+    const { ctx } = makeContext({
+      flow: basicFlow(),
+      chatModel: model as unknown as LanguageModel,
+    });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    expect(result.parts.map((p) => p.type)).toEqual(["text"]);
+    expect(result.effects ?? []).toEqual([]);
+  });
+
+  it("degrades to the shipped line when the generation comes back empty", async () => {
+    const model = scriptedModel(writeStep([]));
+    const { ctx } = makeContext({
+      flow: basicFlow(),
+      chatModel: model as unknown as LanguageModel,
+    });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    expect((result.parts[0] as { text: string }).text).toBe(DEFAULT_BASIC_REPLY);
+  });
+
+  it("degrades to the shipped line when the provider errors", async () => {
+    const model = new MockLanguageModelV3({
+      doStream: async () => {
+        throw new Error("provider exploded");
+      },
+    });
+    const { ctx } = makeContext({
+      flow: basicFlow(),
+      chatModel: model as unknown as LanguageModel,
+    });
+    const result = await ACTION_HANDLERS.basic_reply(ctx);
+
+    // Not the generic "I ran into a problem" the engine would produce from a
+    // throw: a greeting must never be answered worse than offline mode answers it.
+    expect((result.parts[0] as { text: string }).text).toBe(DEFAULT_BASIC_REPLY);
   });
 });
 

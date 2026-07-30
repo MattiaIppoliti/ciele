@@ -31,6 +31,8 @@ pnpm --filter @agent-hub/core typecheck   # tsc --noEmit
 | `types.ts` | ~150 domain types. The nouns, with no data-access concept in them. |
 | `okf.ts` | Open Knowledge Format v0.2 vocabulary + the read-time derivations (`trustTier`, `conceptStatus`, `isStale`, `lastVerifiedAt`, `okfActor`). Zero imports. |
 | `engine.ts` | The deterministic keyword router — the offline/no-model `matchFlow` half of the two-engine runtime (ADR-0003). Routing only. |
+| `text.ts` | The shared normaliser + stopwords + stemmer both deterministic engines compare with. Moved out of `engine.ts` when a second consumer appeared — there must be exactly one normaliser. |
+| `basic-interaction.ts` | Basic Interaction's deterministic tier (#566): `isCourtesyOnly` + `basicInteractionFlow`. Fails closed by design — a false positive costs a Visitor their answer, a miss costs one classify call. |
 | `insights.ts` | The Insights read model as pure TS. Doubles as the **oracle** the SQL `get_insights_overview` is checked against (ADR-0010). |
 | `defaults.ts` | Shipped defaults for a new Assistant and for channel availability. |
 | `publication.ts` | Which Assistant fields freeze into an immutable Publication. |

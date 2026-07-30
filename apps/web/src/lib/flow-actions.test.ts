@@ -72,6 +72,14 @@ describe("the pickers only offer actions their trigger allows", () => {
     expect(actionsFitTrigger(PROACTIVE_FLOW_ACTION_PICKER, "page_load")).toBe(true);
   });
 
+  it("keeps basic_reply out of the reactive picker but still describes it", () => {
+    // It belongs to the built-in Basic Interaction flow, not to arbitrary flows:
+    // "Message + Basic reply" has no coherent meaning. The metadata entry is
+    // still required — the Flows list and the builder render the chip.
+    expect(FLOW_ACTION_PICKER).not.toContain("basic_reply");
+    expect(FLOW_ACTIONS.basic_reply.label).toBeTruthy();
+  });
+
   it("describes every action it can offer", () => {
     for (const action of [...FLOW_ACTION_PICKER, ...PROACTIVE_FLOW_ACTION_PICKER]) {
       expect(FLOW_ACTIONS[action]?.label, action).toBeTruthy();

@@ -687,10 +687,26 @@ export async function streamConversationTurn(
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
   const session = createTurnSession(conversation.id, conversation.sessionState);
-  const history: HistoryMessage[] = stored.map((m) => ({
-    role: m.role,
-    text: messageText(m.content),
-  }));
+  const clarifyQuestion = (content: readonly unknown[]): string | null => {
+    for (const part of content) {
+      const p = part as { type?: string; question?: string };
+      if (p?.type === "clarify") return p.question ?? "";
+    }
+    return null;
+  };
+  // A clarification is persisted as a `clarify` part with no text part, so
+  // `messageText` flattens it to "" — which would hand the model an empty
+  // assistant turn and hide from the courtesy detector that a question was
+  // asked (#566). Recovered here rather than by widening `messageText`, whose
+  // "text parts only" contract every other consumer relies on.
+  const history: HistoryMessage[] = stored.map((m) => {
+    const text = messageText(m.content);
+    if (text || m.role !== "assistant") return { role: m.role, text };
+    const question = clarifyQuestion(m.content);
+    return question === null
+      ? { role: m.role, text }
+      : { role: m.role, text: question, askedQuestion: true };
+  });
   // The anti-loop guarantee (#558): a clarify part is persisted in a prior
   // assistant message's content parts, so no schema is needed to know this
   // conversation already asked the Visitor to rephrase. Asking twice is a loop

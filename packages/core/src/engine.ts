@@ -2,6 +2,7 @@ import {
   flowConditionsAllowRouting,
   type FlowRoutingContext,
 } from "./flow-conditions";
+import { normalize, stem, tokenize } from "./text";
 import type {
   Flow,
   FlowAction,
@@ -13,26 +14,25 @@ import type {
  * The deterministic keyword router (ADR-0003): the offline/no-model fallback
  * for Intent Classification. Routing only — rendering a matched Flow's
  * actions is owned by the LLM runtime's action handlers (spec #194).
+ *
+ * The normaliser, stopword list and stemmer it compares with live in `text.ts`
+ * — shared with the courtesy detector rather than duplicated (#566).
  */
 
-const STOPWORDS = new Set([
-  // en
-  "a", "an", "the", "is", "are", "am", "was", "were", "be", "been", "do",
-  "does", "did", "can", "could", "will", "would", "should", "may", "might",
-  "i", "me", "my", "you", "your", "we", "our", "it", "its", "this", "that",
-  "to", "of", "in", "on", "for", "with", "about", "and", "or", "not", "no",
-  "how", "what", "when", "where", "who", "which", "why", "there", "please",
-  "user", "users", "asking", "asks", "ask", "wants", "want", "explicitly",
-  "otherwise", "them", "they", "their",
-  // it
-  "il", "lo", "la", "i", "gli", "le", "un", "uno", "una", "di", "da", "che",
-  "chi", "come", "cosa", "quando", "dove", "perche", "per", "con", "su",
-  "sono", "sei", "ho", "hai", "ha", "posso", "puoi", "vorrei", "voglio",
-  "mi", "ti", "si", "e", "o", "non", "del", "della", "dei", "delle", "al",
-  "alla", "ai", "alle", "quale", "quali", "questo", "questa", "fare",
-]);
-
-/** Extra trigger phrases/tokens for the built-in flows. */
+/**
+ * Extra trigger phrases/tokens for the built-in flows.
+ *
+ * Deliberately **no entry for Basic Interaction**. Courtesy is recognised by
+ * `basicInteractionFlow` (basic-interaction.ts), which the runtime consults above
+ * the chat-model branch — so the offline path reaches that Flow through the same
+ * decision the LLM path uses, and this table does not need a second, weaker copy
+ * of the courtesy vocabulary. It had one briefly (#565) and the copy earned its
+ * deletion twice over: keyword scoring is additive, so two courtesy words
+ * anywhere cleared the threshold and "ciao grazie dove trovo il programma" was
+ * answered as a greeting; and keying on `normalize(flow.name)` meant renaming the
+ * Flow silently changed its routing, which is exactly what identifying it
+ * structurally exists to prevent.
+ */
 const BUILT_IN_TRIGGERS: Record<
   string,
   { phrases: string[]; tokens: string[] }
@@ -74,27 +74,6 @@ const BUILT_IN_TRIGGERS: Record<
     tokens: ["human", "operator", "person", "support", "umano", "operatore", "persona", "supporto"],
   },
 };
-
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Crude stemmer: compare tokens by their first 6 characters. */
-function stem(token: string): string {
-  return token.slice(0, 6);
-}
-
-function tokenize(text: string): string[] {
-  return normalize(text)
-    .split(" ")
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
-}
 
 function scoreFlow(message: string, messageStems: Set<string>, flow: Flow): number {
   let score = 0;
@@ -153,6 +132,22 @@ function scoreFlow(message: string, messageStems: Set<string>, flow: Flow): numb
 }
 
 const MATCH_THRESHOLD = 3;
+
+/**
+ * Whether the keyword router considers this one Flow a match for the message,
+ * ignoring priority and every other Flow.
+ *
+ * Exported for the courtesy selection rule (#566), which has to answer a
+ * narrower question than `matchFlow` does: "would anything positioned ahead of
+ * Basic Interaction have claimed this message?" `matchFlow` cannot answer it —
+ * it returns the Default behavior when nothing clears the threshold, so a null
+ * result would be indistinguishable from a match on the default.
+ */
+export function flowKeywordMatches(message: string, flow: Flow): boolean {
+  const normalized = normalize(message);
+  const messageStems = new Set(tokenize(message).map(stem));
+  return scoreFlow(normalized, messageStems, flow) >= MATCH_THRESHOLD;
+}
 
 /**
  * Enabled message flows in the exact priority order used by every router.

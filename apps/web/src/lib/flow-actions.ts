@@ -10,6 +10,7 @@ import {
   PanelTop,
   Route,
   Search,
+  Smile,
   SquareArrowOutUpRight,
   Webhook,
   type LucideIcon,
@@ -39,6 +40,11 @@ export const FLOW_ACTIONS: Record<FlowAction, FlowActionMeta> = {
     label: "Message",
     subtitle: "Send a custom text reply",
     icon: MessageSquare,
+  },
+  basic_reply: {
+    label: "Basic reply",
+    subtitle: "Reply to greetings without a knowledge lookup",
+    icon: Smile,
   },
   show_button: {
     label: "Button",
@@ -101,6 +107,11 @@ export const FLOW_ACTION_KEYS = Object.keys(FLOW_ACTIONS) as FlowAction[];
  * `PROACTIVE_FLOW_ACTION_PICKER`) — the pairing rule itself lives in
  * `actionAllowedForTrigger` (`@agent-hub/core`), which both the editor and the
  * runtime consult.
+ *
+ * `basic_reply` is deliberately absent: it exists to make the built-in Basic
+ * Interaction flow's behaviour explicit and storable, not to be composed into
+ * arbitrary flows ("Message + Basic reply" has no coherent meaning). The
+ * omission is asserted in `flow-actions.test.ts` so it reads as a decision.
  */
 export const FLOW_ACTION_PICKER: FlowAction[] = [
   "custom_message",

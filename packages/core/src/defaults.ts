@@ -18,8 +18,37 @@ export interface DefaultFlowSpec {
   isDefault: boolean;
 }
 
+/**
+ * The name the Basic Interaction built-in Flow ships with. Nothing routes on it
+ * — the Flow is identified structurally, by being built-in and carrying the
+ * `basic_reply` action, so an admin may rename it freely — but the migration
+ * that backfills the Flow and the demo seed both need the same string.
+ */
+export const BASIC_INTERACTION_FLOW_NAME = "Basic Interaction";
+
+/**
+ * The courtesy reply used when nothing better is available: no verbatim message
+ * configured *and* no chat model resolves (no Provider Connection). Deliberately
+ * generic — it must be true for every assistant, since it is what an
+ * unconfigured or offline deployment says to "hello".
+ */
+export const DEFAULT_BASIC_REPLY =
+  "Hi! What would you like to know? Ask me a question and I'll look it up for you.";
+
 /** Flows every new assistant starts with, mirroring the built-in set. */
 export const DEFAULT_FLOWS: DefaultFlowSpec[] = [
+  {
+    // First in priority on purpose: courtesy is the cheapest thing to recognise,
+    // and recognising it late means paying for retrieval to answer "hello".
+    name: BASIC_INTERACTION_FLOW_NAME,
+    description:
+      "User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer — conversational courtesy that asks no question and carries no information need",
+    builtIn: true,
+    enabled: true,
+    actions: ["basic_reply"],
+    customMessage: "",
+    isDefault: false,
+  },
   {
     name: "Assistant Information",
     description:

@@ -61,6 +61,16 @@ describe("needsWatchEscalation (runtime behavior rule)", () => {
   it("non-generative answers are untouched even on watch", () => {
     expect(needsWatchEscalation([verbatim], "watch")).toBe(false);
   });
+  it("a courtesy reply never gets the escalation offer stapled to it", () => {
+    // Basic Interaction (#565) is generated, but it grounds nothing and answers
+    // no question — "Contact support" under "Hello!" reads as a broken assistant.
+    const courtesy: ChatReplyPart = {
+      type: "text",
+      action: "basic_reply",
+      text: "Hi! What would you like to know?",
+    };
+    expect(needsWatchEscalation([courtesy], "watch")).toBe(false);
+  });
 });
 
 describe("runTrustMaterialization", () => {

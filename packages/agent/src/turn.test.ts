@@ -365,6 +365,101 @@ describe("streamConversationTurn", () => {
 });
 
 /**
+ * Basic Interaction (#565) end-to-end: courtesy is its own intent, answered
+ * without retrieval. These run on the no-provider path, so they pin what the
+ * turn does around the handler — the flow marker, the persisted part, and the
+ * fact that nothing is metered or searched.
+ */
+describe("streamConversationTurn (Basic Interaction)", () => {
+  it("answers a greeting from the built-in courtesy flow, citing nothing", async () => {
+    const { assistant, flows } = await fixture();
+    const basic = flows.find((f) => f.actions.includes("basic_reply"));
+    expect(basic, "the built-in Basic Interaction flow ships by default").toBeTruthy();
+
+    const events = await runTurn({ assistant, flows, message: "ciao" });
+    expect(events.find((e) => e.type === "flow")).toMatchObject({
+      flowId: basic!.id,
+      isDefault: false,
+    });
+
+    const parts = events
+      .filter((e) => e.type === "part")
+      .map((e) => (e as { part: ChatReplyPart }).part);
+    expect(parts.map((p) => p.type)).toEqual(["text"]);
+    expect(parts[0]).toMatchObject({ action: "basic_reply" });
+    // No sources, no escalation chip, no follow-ups under "hello".
+    expect(parts.some((p) => p.type === "sources")).toBe(false);
+    expect(parts.some((p) => p.type === "help_desk")).toBe(false);
+
+    const done = doneEvent(events);
+    const messages = await db.listMessages(done.conversationId);
+    expect(messages.at(-1)?.flowName).toBe(basic!.name);
+    // The deterministic short-circuit (#566) skips classification outright, so
+    // the turn emits no notices at all and stores no trace — which is what
+    // leaves the widget and the Inbox with no empty Thinking panel to render.
+    expect(events.some((e) => e.type === "notice")).toBe(false);
+    expect(messages.at(-1)?.trace).toBeNull();
+  });
+
+  it("meters nothing and searches nothing for a courtesy turn", async () => {
+    const { assistant, flows } = await fixture();
+    let searches = 0;
+    let metered = 0;
+    const watchedDb: Db = {
+      ...db,
+      async searchChunks(...args) {
+        searches += 1;
+        return db.searchChunks(...args);
+      },
+      async recordAiUsage(events) {
+        metered += events.length;
+        return db.recordAiUsage(events);
+      },
+    };
+    const stream = await streamConversationTurn({
+      db: watchedDb,
+      assistant,
+      flows,
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "visitor",
+      subjectId: "visitor-courtesy",
+      message: "grazie mille",
+      signal: new AbortController().signal,
+    });
+    await new Response(stream).text();
+
+    expect(searches).toBe(0);
+    expect(metered).toBe(0);
+  });
+
+  it("leaves a courtesy-prefixed question to the knowledge path", async () => {
+    const { assistant, flows } = await fixture();
+    const basic = flows.find((f) => f.actions.includes("basic_reply"));
+    const events = await runTurn({
+      assistant,
+      flows,
+      message: "ciao, quando è la scadenza?",
+    });
+    const flowEvent = events.find((e) => e.type === "flow");
+    expect(flowEvent).toMatchObject({ isDefault: true });
+    expect((flowEvent as { flowId: string | null }).flowId).not.toBe(basic!.id);
+  });
+
+  it("falls back to the knowledge path when the courtesy flow is disabled", async () => {
+    const { assistant, flows } = await fixture();
+    const basic = flows.find((f) => f.actions.includes("basic_reply"))!;
+    const without = flows.map((f) =>
+      f.id === basic.id ? { ...f, enabled: false } : f
+    );
+    const events = await runTurn({ assistant, flows: without, message: "ciao" });
+    expect(events.find((e) => e.type === "flow")).toMatchObject({
+      isDefault: true,
+    });
+  });
+});
+
+/**
  * The proactive half of the turn (#541): a client event, not a message, starts
  * it. Same module, same persistence and telemetry contract — but no user message,
  * no classification, and no model, so a nudge costs nothing to deliver.

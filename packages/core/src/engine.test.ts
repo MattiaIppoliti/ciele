@@ -53,6 +53,39 @@ describe("matchFlow", () => {
     );
   });
 
+  describe("Basic Interaction is NOT this router's job (#566)", () => {
+    // Courtesy routing belongs to `basicInteractionFlow`, consulted above the
+    // chat-model branch so both engines share one decision. This router keeps no
+    // courtesy vocabulary of its own — a second, additive copy mis-fired.
+    const basic = () =>
+      makeFlow({
+        name: "Basic Interaction",
+        builtIn: true,
+        position: -1,
+        actions: ["basic_reply"],
+      });
+
+    it.each([
+      // The regression the duplicate copy caused: keyword scoring is additive, so
+      // two courtesy words anywhere cleared the threshold and a real question was
+      // answered as a greeting.
+      "ciao grazie dove trovo il programma",
+      "hello thanks where is the exam room",
+      "ciao, quando è la scadenza?",
+      "hi, what are the opening hours",
+    ])("never steals a question containing courtesy words (%s)", (message) => {
+      const flow = basic();
+      const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+      expect(matchFlow(message, [flow, defaultFlow])).toBe(defaultFlow);
+    });
+
+    it("does not keyword-boost the flow for a bare greeting either", () => {
+      const flow = basic();
+      const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });
+      expect(matchFlow("ciao", [flow, defaultFlow])).toBe(defaultFlow);
+    });
+  });
+
   it("falls back to the default flow when nothing clears the threshold", () => {
     const niche = makeFlow({ name: "Library opening hours" });
     const defaultFlow = makeFlow({ name: "Default behavior", isDefault: true });

@@ -223,6 +223,13 @@ export type RuntimeEvent =
 export interface HistoryMessage {
   role: "user" | "assistant";
   text: string;
+  /**
+   * Set when this turn put a question to the Visitor but its text cannot show
+   * it — a clarification is persisted as a `clarify` part with no text part, so
+   * it flattens to "". Read by the courtesy detector, which must not treat the
+   * Visitor's `ok` answer as small talk (#566). The model prompts ignore it.
+   */
+  askedQuestion?: boolean;
 }
 
 /**

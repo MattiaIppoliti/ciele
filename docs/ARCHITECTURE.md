@@ -330,6 +330,7 @@ degrades to a fallback part instead of killing the turn.
 | Action | Behavior |
 |--------|----------|
 | `custom_message` | `flow.customMessage` **verbatim** (never model-rewritten) |
+| `basic_reply` | The courtesy turn (Basic Interaction, #565): **one** `streamText` call, no tools, no searcher, no second phase, and no `notice`/`thought`/tool events — so `prepareTraceForStorage` returns null and no Thinking panel renders. `actionSettings.basic_reply.message` pins it verbatim (no model call) and doubles as the no-model reply; an empty or failed generation degrades to `DEFAULT_BASIC_REPLY` rather than the engine's generic error copy. Its `text` part is tagged `basic_reply`, which is what keeps it out of the verifier/trust candidate queries and out of `needsWatchEscalation` |
 | `search_knowledge` | Generative retrieval turn — the whole loop lives in `agentic-search/` (`runAgenticSearch`): context frame → query understanding → pre-search clarify → deterministic seed/reformulate passes → the model loop over the per-turn toolset → post-search clarify / best-effort caveat → dedup'd `sources`. `escalatePrompt` adds a help-desk button when nothing grounded the answer |
 | `suggest_help_desk` | Help-desk button (`helpDeskSettings.contactButtonLabel`) |
 | `follow_up_questions` | Up to 3 `suggestedQuestions` |
@@ -725,10 +726,21 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
 - **Ingestion**: extraction behind the `EXTRACTORS` registry (cheerio HTML→text, PDF, DOCX, plain
   text) and the pipeline running off the request path as **Ingestion Jobs** (in-process `after()`
   adapter; queue adapter is a later swap). The Knowledge UI polls Source status while processing.
-- **Flow Actions** — all 10 now dispatch through the handler registry (`actions.ts`): `improvement`
+- **Flow Actions** — all 11 now dispatch through the handler registry (`actions.ts`): `improvement`
   (creates + links an Improvement, via a deferred effect), `api_request` (full config: auth/headers/
   query/body/JSON-path/template-vars, egress-guarded), `handover` (acknowledge + halt),
   `send_email` (deferred effect via the **Resend** email transport; honest copy when unconfigured).
+- **Basic Interaction** (#565): a built-in Flow, first in priority, whose one action `basic_reply`
+  answers conversational courtesy in a single model call — no retrieval, no tools, no trace, so no
+  Thinking panel. Ships in `DEFAULT_FLOWS` and is backfilled onto existing Assistants at
+  `min(position) - 1` (no existing row is touched). Counted as an AI answer; excluded from the
+  verifier, the trust ledger and watch-tier escalation because it cites nothing. Selection is
+  two-tier: `basicInteractionFlow` (`packages/core/src/basic-interaction.ts`) short-circuits Intent
+  Classification from **one** call site above the chat-model branch, so both engines share the
+  decision and a courtesy turn costs **zero** routing calls; the classifier catalogue backstops
+  whatever the predicate misses. The predicate's shared normaliser/stopwords live in
+  `packages/core/src/text.ts` — moved out of the keyword router rather than duplicated.
+  Live widgets pick it up on the next **Publication** — snapshots are immutable by design.
 - **Escalation & desks**: the escalation email channel sends for real and reports non-delivery to
   the widget (mailto fallback); **"AI recommended help desk"** is live — the turn resolves the
   selected desks and a cached classifier pick attaches `helpDeskId` to escalation chips.

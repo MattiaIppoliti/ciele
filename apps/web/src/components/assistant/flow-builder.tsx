@@ -2139,6 +2139,18 @@ export function FlowBuilder({
                     />
                   )}
 
+                  {action === "basic_reply" && (
+                    <Textarea
+                      value={settings.basic_reply?.message ?? ""}
+                      onChange={(e) =>
+                        patchSettings("basic_reply", { message: e.target.value })
+                      }
+                      placeholder="Leave empty to generate a short reply in the visitor's language — or pin the exact wording here"
+                      rows={2}
+                      className="bg-background"
+                    />
+                  )}
+
                   {action === "search_knowledge" && (
                     <div className="space-y-3">
                       <SettingToggle

@@ -59,7 +59,10 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 - Inside `src/`, files compose across internals freely — the boundary applies to consumers, and it is
   enforced by the `exports` map (a deep import does not resolve), not by a lint rule.
 - `custom_message` (the Message action) is **verbatim**. Generative behaviour belongs in
-  `search_knowledge` and the Default behavior flow only (see `agents.md`).
+  `search_knowledge`, the Default behavior flow, and `basic_reply` — and nowhere else (see
+  `agents.md`). `basic_reply` is the deliberate third: it generates, but it is the *only* generative
+  action that never retrieves, so it must never assert a fact about the organization. A new action
+  that wants to generate needs an argument for why it is not one of these three.
 - Citations resolve to a Concept → Source, never an opaque chunk (ADR-0002).
 - Published widget traffic runs only on Platform/API-key Provider Connections; Subscription
   connections are preview-only (ADR-0001).
