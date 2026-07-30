@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import {
   BookOpen,
   Brain,
+  FileText,
+  List,
   Palette,
+  Plug,
   Search,
   Workflow,
   Wrench,
@@ -24,13 +27,35 @@ interface IconSpec {
 }
 
 /**
- * The knowledge-search tool keeps the book icon (it IS the knowledge lookup);
- * every other tool call — built-in or custom HTTP tool — is a wrench.
+ * The knowledge tools keep book-shaped icons (they ARE the knowledge lookup) and
+ * the API catalogue triad reads as one family, so a row of chips shows at a
+ * glance that a turn discovered, read a contract, then queried. Every other tool
+ * call — built-in or custom HTTP tool — is a wrench.
  */
 const TOOL_ICONS: Record<string, IconSpec> = {
   searchKnowledge: {
     icon: <BookOpen className="size-3.5" />,
     name: "Knowledge search",
+  },
+  readKnowledgeSource: {
+    icon: <FileText className="size-3.5" />,
+    name: "Reading a source",
+  },
+  getApiDetails: {
+    icon: <List className="size-3.5" />,
+    name: "API endpoint catalogue",
+  },
+  viewEndpointDetails: {
+    icon: <FileText className="size-3.5" />,
+    name: "Endpoint details",
+  },
+  queryApi: {
+    icon: <Plug className="size-3.5" />,
+    name: "API query",
+  },
+  readApiResponse: {
+    icon: <Plug className="size-3.5" />,
+    name: "Reading an API response",
   },
 };
 

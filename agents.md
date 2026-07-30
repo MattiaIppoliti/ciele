@@ -296,6 +296,12 @@ latest Claude models (see the API reference skill for current model IDs).
    loop for Search knowledge / Study Mode / H5P.
 4. `searchKnowledge(query, collection)` — pgvector + lexical over OKF Concepts, Deep-Search hops,
    Source citations, Thinking Steps.
+4b. The **API catalogue triad** — `getApiDetails` / `viewEndpointDetails` / `queryApi` over one
+   registered integration per Assistant (base URL + sealed credential + described endpoints), with
+   path parameters substituted by the model and every path validated against the catalogue before
+   egress. Plus the windowed readers `readApiResponse(handle, from, to)` and
+   `readKnowledgeSource(sourceId, from, to)`, which return the window **and the total length** so a
+   large payload is walked rather than truncated. A queried endpoint is a citable Source.
 5. Provider abstraction with the three Provider-Connection types and the preview-only subscription
    boundary.
 6. Escalation runtime: desk selection, channel form → conversation-data attach → ticket/email/API.

@@ -13,6 +13,28 @@ import { StepIcon, formatToolName } from "./tool-icons";
  * arguments and outcome summary (both already deemed safe to show client-side
  * by runtime/tools.ts — never raw secrets).
  */
+
+/**
+ * An HTTP status on a tool result, as a pass/fail badge. A refused call records
+ * the string `"failed"` instead of a number — it never reached the network, so
+ * inventing a status would be a lie the badge cannot tell.
+ */
+function StatusBadge({ value }: { value: unknown }) {
+  const status = typeof value === "number" ? value : null;
+  const ok = status !== null && status >= 200 && status < 300;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs ${
+        ok
+          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          : "bg-destructive/10 text-destructive"
+      }`}
+    >
+      {ok ? "✅" : "⚠️"} {status ?? String(value)}
+    </span>
+  );
+}
+
 export function ToolCallsSection({
   steps,
   className,
@@ -90,17 +112,28 @@ export function ToolCallsSection({
                     </div>
                   )}
                   {/* A structured result reads as labelled rows — Endpoint,
-                      Method, Status, Response — rather than a JSON blob. */}
+                      Method, Status, Response — rather than a JSON blob.
+                      `status` gets a pass/fail badge and `response` scrolls in
+                      place, because a response body is the one row that can run
+                      to thousands of characters (spec #559). */}
                   {resultRows.map(([key, value]) => (
                     <div key={key} className="flex gap-2">
                       <p className="w-20 shrink-0 text-muted-foreground/80 capitalize">
                         {key}
                       </p>
-                      <pre className="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-                        {typeof value === "string"
-                          ? value
-                          : JSON.stringify(value, null, 2)}
-                      </pre>
+                      {key === "status" ? (
+                        <StatusBadge value={value} />
+                      ) : (
+                        <pre
+                          className={`min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground ${
+                            key === "response" ? "max-h-48 overflow-y-auto" : ""
+                          }`}
+                        >
+                          {typeof value === "string"
+                            ? value
+                            : JSON.stringify(value, null, 2)}
+                        </pre>
+                      )}
                     </div>
                   ))}
                   {step.detail &&

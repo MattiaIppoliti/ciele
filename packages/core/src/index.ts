@@ -72,6 +72,28 @@ export {
 } from "./flow-conditions";
 export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
 
+// The API catalogue (spec #559): what the model is told an API integration can
+// do, and whether a path it produced is one the catalogue describes. The
+// validation is here rather than in the runtime because "is this path
+// described?" is a fact about the catalogue — and a path it does not describe
+// must never reach the network.
+export {
+  apiCatalogFromCustomTools,
+  apiCatalogSummary,
+  apiEndpointDetail,
+  endpointPathParams,
+  endpointQueryParams,
+  resolveCatalogPath,
+} from "./api-catalog";
+export type {
+  ApiCatalogSummary,
+  ApiEndpointDetail,
+  CatalogPathMatch,
+  CatalogPathRefusal,
+  CatalogPathRejection,
+  CustomToolConversion,
+} from "./api-catalog";
+
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL
 // aggregate `get_insights_overview` is checked against (ADR-0010); the seven
 // helpers it composes stay internal, and its tests reach them directly.

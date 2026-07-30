@@ -2631,6 +2631,89 @@ export function describeDbContract(
       });
     });
 
+    describe("API integration (sealed credential, one per assistant)", () => {
+      it("upserts, reads back, keeps the credential across a catalogue edit, and deletes", async () => {
+        const assistant = await newAssistant();
+        expect(await db.getApiIntegration(assistant.id)).toBeNull();
+
+        const endpoints = [
+          {
+            id: "e1",
+            name: "Ticket comments",
+            path: "/tickets/{ticketId}/comments",
+            method: "GET" as const,
+            purpose: "The comments on one ticket.",
+            params: [{ name: "ticketId", in: "path" as const, type: "string" as const }],
+            responseKeys: ["items"],
+          },
+        ];
+        const saved = await db.setApiIntegration({
+          assistantId: assistant.id,
+          organizationId: ctx.organizationId,
+          name: "Service desk API",
+          baseUrl: "https://api.example.com/v1",
+          authType: "bearer",
+          encryptedCredential: "sealed:desk-token", // pre-sealed by the caller
+          endpoints,
+        });
+        expect(saved).toMatchObject({
+          assistantId: assistant.id,
+          organizationId: ctx.organizationId,
+          name: "Service desk API",
+          baseUrl: "https://api.example.com/v1",
+          authType: "bearer",
+          // Stored verbatim — this seam never seals and never unseals.
+          encryptedCredential: "sealed:desk-token",
+          authHeaderName: "",
+          authUsername: "",
+        });
+        expect(saved.endpoints).toEqual(endpoints);
+
+        const read = await db.getApiIntegration(assistant.id);
+        expect(read?.encryptedCredential).toBe("sealed:desk-token");
+        expect(read?.endpoints[0].path).toBe("/tickets/{ticketId}/comments");
+
+        // Editing the catalogue with no credential field keeps the stored one,
+        // so an admin never has to re-enter a secret to add an endpoint.
+        const edited = await db.setApiIntegration({
+          assistantId: assistant.id,
+          organizationId: ctx.organizationId,
+          name: "Service desk API",
+          baseUrl: "https://api.example.com/v1",
+          authType: "bearer",
+          endpoints: [
+            ...endpoints,
+            {
+              id: "e2",
+              name: "Ticket attachments",
+              path: "/tickets/{ticketId}/attachments",
+              method: "GET" as const,
+              purpose: "The files attached to one ticket.",
+            },
+          ],
+        });
+        expect(edited.encryptedCredential).toBe("sealed:desk-token");
+        expect(edited.endpoints).toHaveLength(2);
+        // One integration per assistant: the upsert replaced, never duplicated.
+        expect((await db.getApiIntegration(assistant.id))?.endpoints).toHaveLength(2);
+
+        // An explicit null clears the credential.
+        const cleared = await db.setApiIntegration({
+          assistantId: assistant.id,
+          organizationId: ctx.organizationId,
+          name: "Service desk API",
+          baseUrl: "https://api.example.com/v1",
+          authType: "none",
+          encryptedCredential: null,
+          endpoints,
+        });
+        expect(cleared.encryptedCredential).toBeNull();
+
+        await db.deleteApiIntegration(assistant.id);
+        expect(await db.getApiIntegration(assistant.id)).toBeNull();
+      });
+    });
+
     describe("due goal claims", () => {
       it("claims due active goals once, stamping the lease, and respects the due time", async () => {
         const assistant = await newAssistant();

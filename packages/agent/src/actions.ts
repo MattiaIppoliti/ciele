@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Assistant, FlowAction, FlowActionSettings } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { buildToolset } from "./tools";
+import { createApiResponseStore } from "./api-catalog-tools";
 import { resolveTemplate } from "./template";
 import { executeApiRequest, extractApiJsonPaths } from "./api-request";
 import { emailTransportConfigured } from "./email";
@@ -250,6 +251,8 @@ const searchKnowledgeHandler: ActionHandler = async ({
   collectionId,
   chatModel,
   searchKnowledge,
+  readKnowledgeDocument,
+  apiIntegration,
   session,
   skills,
   alreadyClarified = false,
@@ -333,6 +336,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   // The generative retrieval turn lives behind the AgenticSearch entrypoint
   // (#206); this adapter only wires the tool registry in and applies flow
   // policy to the outcome below.
+  const apiResponses = createApiResponseStore();
   const outcome = await runAgenticSearch({
     assistant,
     platformPrompt,
@@ -352,6 +356,11 @@ const searchKnowledgeHandler: ActionHandler = async ({
         assistant,
         session,
         searchKnowledge,
+        readKnowledgeDocument,
+        apiIntegration,
+        // One response store per turn, created here because the toolset is
+        // rebuilt per model call and a handle must survive across calls.
+        apiResponses,
         usedSources,
         searchPasses,
         loop,

@@ -44,7 +44,7 @@ import {
   type UsageOutcome,
 } from "./ee";
 import { resolveChatModel, type KeyResolution } from "./models";
-import type { UsageEvent } from "./types";
+import type { KnowledgeDocument, UsageEvent } from "./types";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
 
@@ -639,10 +639,51 @@ export async function streamConversationTurn(
     },
   });
 
-  const stored = await db.listRecentMessages(
-    conversation.id,
-    RECENT_HISTORY_LIMIT
-  );
+  /**
+   * The windowed knowledge reader (spec #559): a search returns the matching
+   * chunk, this returns the whole document behind it so the model can walk it by
+   * character range.
+   *
+   * The assistant's own Collections are the boundary. The widget's Db is
+   * service-role (it bypasses RLS by design), so an id the model produced is
+   * checked against this assistant's Collections before anything is read — a
+   * Visitor's turn must never be able to read another tenant's Concept by
+   * guessing an id. The Collection list is loaded at most once, and only if the
+   * model actually reads.
+   */
+  const documentReaderFor = (assistantId: string) => {
+    let collectionIds: Set<string> | null = null;
+    return async (id: string): Promise<KnowledgeDocument | null> => {
+      const documentId = id.trim();
+      if (!documentId) return null;
+      if (collectionIds === null) {
+        const collections = await db.listCollections(assistantId);
+        collectionIds = new Set(collections.map((c) => c.id));
+      }
+      const concept = await db.getConcept(documentId);
+      if (!concept || !collectionIds.has(concept.collectionId)) return null;
+      const source = concept.sourceId
+        ? await db.getSource(concept.sourceId).catch(() => null)
+        : null;
+      return {
+        id: concept.id,
+        title: concept.frontmatter.title || concept.path,
+        sourceName: source?.name ?? null,
+        text: concept.body,
+      };
+    };
+  };
+  const readKnowledgeDocument = documentReaderFor(assistant.id);
+
+  // The API catalogue integration (spec #559). One read per turn, in parallel
+  // with the history load: the toolset has to know whether an integration exists
+  // before the model runs. A read failure leaves the catalogue tools
+  // unregistered rather than failing a turn that can still answer from
+  // knowledge.
+  const [stored, apiIntegration] = await Promise.all([
+    db.listRecentMessages(conversation.id, RECENT_HISTORY_LIMIT),
+    db.getApiIntegration(assistant.id).catch(() => null),
+  ]);
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
   const session = createTurnSession(conversation.id, conversation.sessionState);
@@ -851,6 +892,8 @@ export async function streamConversationTurn(
             now: new Date(),
           },
           searchKnowledge,
+          readKnowledgeDocument,
+          apiIntegration,
           collectionId,
           session,
           alreadyClarified,
@@ -914,6 +957,13 @@ export async function streamConversationTurn(
                 message,
                 history,
                 searchKnowledge: targetSearch,
+                // The continuation runs inside the target Assistant, so it gets
+                // the target's own integration and document boundary — never
+                // the originating assistant's.
+                readKnowledgeDocument: documentReaderFor(target.id),
+                apiIntegration: await db
+                  .getApiIntegration(target.id)
+                  .catch(() => null),
                 collectionId: null,
                 session,
                 alreadyClarified,

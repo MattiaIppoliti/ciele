@@ -305,6 +305,11 @@ export interface CustomToolParam {
  * An admin-defined HTTP tool the agent loop may call: the model fills the
  * declared params, the runtime POSTs/GETs them to the configured endpoint
  * and feeds the response back to the model.
+ *
+ * @deprecated Superseded by {@link ApiIntegration} — one integration with a
+ * described endpoint catalogue instead of one registered tool per endpoint
+ * (spec #559). Both forms run side by side during the expand step; this one is
+ * removed once no configuration uses it.
  */
 export interface CustomToolConfig {
   id: string;
@@ -321,7 +326,92 @@ export interface CustomToolConfig {
 export interface AssistantTools {
   /** Built-in enablement overrides; unset = runtime default. */
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
+  /** @deprecated See {@link CustomToolConfig} — superseded by the API integration. */
   custom?: CustomToolConfig[];
+}
+
+/** Declared type of a catalogued endpoint parameter, shown to the model. */
+export type ApiParamType = "string" | "number" | "boolean";
+
+/**
+ * One parameter of a catalogued endpoint. `in` says where it goes: a `path`
+ * parameter is the `{name}` placeholder the model substitutes from what it
+ * learned in the conversation; a `query` parameter is appended.
+ */
+export interface ApiEndpointParam {
+  name: string;
+  description?: string;
+  type?: ApiParamType;
+  in?: "path" | "query";
+  required?: boolean;
+}
+
+/**
+ * One endpoint of an {@link ApiIntegration}'s catalogue: what it is for, the
+ * parameters it takes, and the keys a successful response carries. This
+ * description is the whole contract the model discovers and reads — it is also
+ * the allow-list every outbound path is validated against before egress.
+ */
+export interface ApiEndpointSpec {
+  id: string;
+  /** Short human label; also the synthetic Source name an answer cites. */
+  name: string;
+  /** Path relative to the integration's base URL, e.g. `/tickets/{ticketId}/comments`. */
+  path: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  /** What the endpoint answers, in the admin's own words. */
+  purpose: string;
+  params?: ApiEndpointParam[];
+  /** Keys present in a successful response body. */
+  responseKeys?: string[];
+}
+
+export type ApiIntegrationAuthType = "none" | "bearer" | "api_key" | "basic";
+
+/**
+ * The API integration registered on an Assistant (spec #559): a base URL,
+ * one sealed credential, and a catalogue of described endpoints. The model
+ * reaches it through three generic tools — catalogue summary, per-endpoint
+ * detail, query — rather than one registered tool per endpoint.
+ *
+ * `encryptedCredential` is sealed app-side (see `sealSecret`) and lives in its
+ * own table precisely so it is never part of `AssistantTools`, and therefore
+ * never travels into a Publication snapshot or down to a widget client.
+ */
+export interface ApiIntegration {
+  assistantId: string;
+  organizationId: string;
+  /** Display name; the citation reads as `<endpoint.name>` under this collection. */
+  name: string;
+  /** Absolute https origin (+ optional base path) every relative path resolves against. */
+  baseUrl: string;
+  authType: ApiIntegrationAuthType;
+  /** Header the API key goes in (`api_key` auth only). */
+  authHeaderName: string;
+  /** Username (`basic` auth only); the password is the sealed credential. */
+  authUsername: string;
+  /** Sealed bearer token / API key / basic password; null when unset. */
+  encryptedCredential: string | null;
+  endpoints: ApiEndpointSpec[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * What an admin submits when saving an integration. `encryptedCredential`
+ * omitted keeps the stored credential (so an edit never has to round-trip a
+ * secret through the browser); null clears it.
+ */
+export interface ApiIntegrationInput {
+  assistantId: string;
+  organizationId: string;
+  name: string;
+  baseUrl: string;
+  authType: ApiIntegrationAuthType;
+  authHeaderName?: string;
+  authUsername?: string;
+  encryptedCredential?: string | null;
+  endpoints: ApiEndpointSpec[];
 }
 
 /**

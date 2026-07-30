@@ -3,6 +3,8 @@
 import type {
   AnswerVerdict,
   AnthropicWifFederatedConfig,
+  ApiEndpointSpec,
+  ApiIntegrationAuthType,
   Assistant,
   AssistantPatch,
   AzureOpenAiFederatedConfig,
@@ -950,6 +952,110 @@ export async function setAssistantSkillsAction(
   await orgMutation(
     { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
     ({ db }) => db.setAssistantSkills(assistantId, skillIds)
+  );
+}
+
+// --- API catalogue integration (spec #559) ---------------------------------
+
+/**
+ * The integration as the browser may see it: everything except the credential,
+ * which is replaced by "is one set". A secret that is never sent to the client
+ * cannot leak from the client, and the editor does not need it — saving without
+ * a new credential keeps the stored one.
+ */
+export interface ApiIntegrationView {
+  name: string;
+  baseUrl: string;
+  authType: ApiIntegrationAuthType;
+  authHeaderName: string;
+  authUsername: string;
+  hasCredential: boolean;
+  endpoints: ApiEndpointSpec[];
+}
+
+export async function getApiIntegrationAction(
+  assistantId: string
+): Promise<ApiIntegrationView | null> {
+  const { db } = await requireMember();
+  const integration = await db.getApiIntegration(assistantId);
+  if (!integration) return null;
+  return {
+    name: integration.name,
+    baseUrl: integration.baseUrl,
+    authType: integration.authType,
+    authHeaderName: integration.authHeaderName,
+    authUsername: integration.authUsername,
+    hasCredential: integration.encryptedCredential !== null,
+    endpoints: integration.endpoints,
+  };
+}
+
+/**
+ * Saves the assistant's one API integration. The credential is sealed here and
+ * only here — the browser posts it in the clear over TLS exactly once, the same
+ * way every other credential in the console is set, and never reads it back.
+ * `credential: undefined` leaves the stored one alone; `""` clears it.
+ */
+export async function setApiIntegrationAction(
+  assistantId: string,
+  input: {
+    name: string;
+    baseUrl: string;
+    authType: ApiIntegrationAuthType;
+    authHeaderName?: string;
+    authUsername?: string;
+    credential?: string;
+    endpoints: ApiEndpointSpec[];
+  }
+): Promise<{ error?: string }> {
+  return orgMutation(
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+      revalidateIf: (result) => !result.error,
+    },
+    async ({ db, session }) => {
+      // An https base URL is the boundary every catalogued path resolves inside,
+      // so it is validated before anything is stored rather than at query time.
+      let base: URL;
+      try {
+        base = new URL(input.baseUrl.trim());
+      } catch {
+        return { error: "Enter a valid base URL, e.g. https://api.example.com" };
+      }
+      if (base.protocol !== "https:") {
+        return { error: "The base URL must use https." };
+      }
+      const endpoints = input.endpoints.filter((e) => e.path.trim());
+      if (endpoints.length === 0) {
+        return { error: "Describe at least one endpoint." };
+      }
+      await db.setApiIntegration({
+        assistantId,
+        organizationId: session.organization.id,
+        name: input.name.trim() || base.hostname,
+        baseUrl: base.toString().replace(/\/$/, ""),
+        authType: input.authType,
+        authHeaderName: input.authHeaderName?.trim() ?? "",
+        authUsername: input.authUsername?.trim() ?? "",
+        ...(input.credential === undefined
+          ? {}
+          : {
+              encryptedCredential: input.credential
+                ? sealSecret(input.credential)
+                : null,
+            }),
+        endpoints,
+      });
+      return {};
+    }
+  );
+}
+
+export async function deleteApiIntegrationAction(assistantId: string) {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    ({ db }) => db.deleteApiIntegration(assistantId)
   );
 }
 

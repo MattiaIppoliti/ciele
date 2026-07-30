@@ -10,7 +10,9 @@ import {
   setAssistantSkillsAction,
   updateAssistantAction,
   updateSkillAction,
+  type ApiIntegrationView,
 } from "@/app/actions";
+import { ApiIntegrationEditor } from "./api-integration-editor";
 import { Button } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -142,12 +144,15 @@ export function ToolsClient({
   tools: initialTools,
   skills: initialSkills,
   attachedSkillIds,
+  integration,
   canEdit,
 }: {
   assistantId: string;
   tools: AssistantTools;
   skills: Skill[];
   attachedSkillIds: string[];
+  /** The assistant's API integration, credential redacted (spec #559). */
+  integration: ApiIntegrationView | null;
   canEdit: boolean;
 }) {
   const [tools, setTools] = useState<AssistantTools>(initialTools);
@@ -318,14 +323,30 @@ export function ToolsClient({
         </div>
       </section>
 
-      {/* Custom tools */}
+      {/* API integration (spec #559) */}
+      <ApiIntegrationEditor
+        assistantId={assistantId}
+        integration={integration}
+        customTools={custom}
+        canEdit={canEdit}
+      />
+
+      {/* Custom tools — superseded by the integration above; both run side by
+          side until no assistant configures one (spec #559, expand-contract). */}
       <section>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Custom tools</h2>
+            <h2 className="text-lg font-semibold">
+              Custom tools{" "}
+              <span className="text-muted-foreground text-sm font-normal">
+                (legacy)
+              </span>
+            </h2>
             <p className="text-muted-foreground mt-1 text-sm">
-              HTTP endpoints the assistant may call as tools — the model fills
-              the parameters, the response feeds back into the answer.
+              One HTTP endpoint per tool — the older shape, still running. Prefer
+              the API integration above: it gives the model endpoint discovery,
+              path parameters and response paging, and every call it makes is
+              checked against the catalogue first.
             </p>
           </div>
           {canEdit && (

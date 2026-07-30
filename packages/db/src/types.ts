@@ -19,6 +19,8 @@ import type {
   AlertType,
   AnswerVerdict,
   AnswerVerdictInput,
+  ApiIntegration,
+  ApiIntegrationInput,
   Assistant,
   AssistantAccessEntry,
   AssistantAccessRole,
@@ -243,6 +245,15 @@ export interface Db {
     status: SsoValidationStatus
   ): Promise<SsoConnection>;
   clearSsoConnection(organizationId: string): Promise<void>;
+
+  // API integrations (one per Assistant, spec #559). The endpoint catalogue and
+  // base URL are ordinary config; `encryptedCredential` is sealed by the caller
+  // before `setApiIntegration` (this seam never seals) and lives in this table
+  // rather than `assistants.tools` precisely so it can never travel into a
+  // Publication snapshot or down to a widget client.
+  getApiIntegration(assistantId: string): Promise<ApiIntegration | null>;
+  setApiIntegration(input: ApiIntegrationInput): Promise<ApiIntegration>;
+  deleteApiIntegration(assistantId: string): Promise<void>;
 
   // Provider connections
   listProviderConnections(organizationId: string): Promise<ProviderConnection[]>;

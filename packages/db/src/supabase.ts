@@ -3,6 +3,9 @@ import type {
   Alert,
   AlertStatus,
   AlertType,
+  ApiEndpointSpec,
+  ApiIntegration,
+  ApiIntegrationAuthType,
   Assistant,
   AssistantAccessEntry,
   AssistantAccessRole,
@@ -500,6 +503,37 @@ function toSsoConnection(row: SsoConnectionRow): SsoConnection {
     validationStatus: row.validation_status,
     validatedAt: row.validated_at,
     connectedAt: row.connected_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+interface ApiIntegrationRow {
+  assistant_id: string;
+  organization_id: string;
+  name: string;
+  base_url: string;
+  auth_type: ApiIntegrationAuthType;
+  auth_header_name: string | null;
+  auth_username: string | null;
+  encrypted_credential: string | null;
+  /** `not null default '[]'` in the schema; a legacy null reads as empty. */
+  endpoints: ApiEndpointSpec[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function toApiIntegration(row: ApiIntegrationRow): ApiIntegration {
+  return {
+    assistantId: row.assistant_id,
+    organizationId: row.organization_id,
+    name: row.name,
+    baseUrl: row.base_url,
+    authType: row.auth_type,
+    authHeaderName: row.auth_header_name ?? "",
+    authUsername: row.auth_username ?? "",
+    encryptedCredential: row.encrypted_credential,
+    endpoints: row.endpoints ?? [],
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -1449,6 +1483,54 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("sso_connections")
         .delete()
         .eq("organization_id", organizationId);
+      if (error) throw error;
+    },
+
+    // --- API integrations (spec #559) ------------------------------------
+
+    async getApiIntegration(assistantId) {
+      const { data, error } = await client
+        .from("assistant_api_integrations")
+        .select("*")
+        .eq("assistant_id", assistantId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toApiIntegration(data as ApiIntegrationRow) : null;
+    },
+
+    async setApiIntegration(input) {
+      // One integration per assistant: upsert on assistant_id. An omitted
+      // `encryptedCredential` keeps whatever is stored, so editing the
+      // catalogue never has to round-trip the secret through the browser;
+      // an explicit null clears it.
+      const row: Record<string, unknown> = {
+        assistant_id: input.assistantId,
+        organization_id: input.organizationId,
+        name: input.name,
+        base_url: input.baseUrl,
+        auth_type: input.authType,
+        auth_header_name: input.authHeaderName ?? "",
+        auth_username: input.authUsername ?? "",
+        endpoints: input.endpoints,
+        updated_at: new Date().toISOString(),
+      };
+      if (input.encryptedCredential !== undefined) {
+        row.encrypted_credential = input.encryptedCredential;
+      }
+      const { data, error } = await client
+        .from("assistant_api_integrations")
+        .upsert(row, { onConflict: "assistant_id" })
+        .select()
+        .single();
+      if (error) throw error;
+      return toApiIntegration(data as ApiIntegrationRow);
+    },
+
+    async deleteApiIntegration(assistantId) {
+      const { error } = await client
+        .from("assistant_api_integrations")
+        .delete()
+        .eq("assistant_id", assistantId);
       if (error) throw error;
     },
 

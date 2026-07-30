@@ -2,6 +2,7 @@ import type {
   AiUsageInput,
   Alert,
   AnswerVerdictInput,
+  ApiIntegration,
   Assistant,
   AssistantAccessEntry,
   AssistantAccessRole,
@@ -139,6 +140,8 @@ interface MockStore {
   embeddingConnections: Map<string, string>;
   /** Widget SSO connections, keyed by organizationId (one per org). */
   ssoConnections: Map<string, SsoConnection>;
+  /** assistantId → its one API integration (spec #559). */
+  apiIntegrations: Map<string, ApiIntegration>;
   conversations: Map<string, Conversation>;
   messages: Map<string, StoredMessage>;
   improvements: Map<string, Improvement>;
@@ -362,6 +365,7 @@ function emptyStore(): MockStore {
     connections: new Map(),
     embeddingConnections: new Map(),
     ssoConnections: new Map(),
+    apiIntegrations: new Map(),
     conversations: new Map(),
     messages: new Map(),
     improvements: new Map(),
@@ -2082,6 +2086,42 @@ export const mockDb: Db = {
 
   async clearSsoConnection(organizationId) {
     getStore().ssoConnections.delete(organizationId);
+  },
+
+  // --- API integrations (spec #559) --------------------------------------
+
+  async getApiIntegration(assistantId) {
+    return getStore().apiIntegrations.get(assistantId) ?? null;
+  },
+
+  async setApiIntegration(input) {
+    const store = getStore();
+    const now = new Date().toISOString();
+    const existing = store.apiIntegrations.get(input.assistantId);
+    const integration: ApiIntegration = {
+      assistantId: input.assistantId,
+      organizationId: input.organizationId,
+      name: input.name,
+      baseUrl: input.baseUrl,
+      authType: input.authType,
+      authHeaderName: input.authHeaderName ?? "",
+      authUsername: input.authUsername ?? "",
+      // Omitted keeps the stored credential (matches the SQL upsert, which
+      // leaves the column out of the row entirely); null clears it.
+      encryptedCredential:
+        input.encryptedCredential === undefined
+          ? (existing?.encryptedCredential ?? null)
+          : input.encryptedCredential,
+      endpoints: input.endpoints,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    store.apiIntegrations.set(input.assistantId, integration);
+    return integration;
+  },
+
+  async deleteApiIntegration(assistantId) {
+    getStore().apiIntegrations.delete(assistantId);
   },
 
   // --- Provider connections ---------------------------------------------

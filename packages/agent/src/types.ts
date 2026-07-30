@@ -2,6 +2,7 @@ import type { LanguageModel } from "ai";
 import type {
   AiCredentialKind,
   AiUsageStage,
+  ApiIntegration,
   Assistant,
   Flow,
   FlowAction,
@@ -124,6 +125,20 @@ export type KnowledgeSearcher = (
 ) => Promise<KnowledgeSearchResult[]>;
 
 /**
+ * One knowledge document read whole, for the windowed `readKnowledgeSource`
+ * tool (spec #559). A search returns the matching *chunk*; this is the document
+ * that chunk came from, so the model can walk it by character range instead of
+ * being handed a chunk cut off mid-answer with no way to ask for more.
+ */
+export interface KnowledgeDocument {
+  id: string;
+  title: string;
+  /** The Source the document belongs to, for the reader's own citation line. */
+  sourceName: string | null;
+  text: string;
+}
+
+/**
  * Where a Thinking Step sits in the agent loop. Owned by the domain package
  * because a Thinking Step is persisted with the answer it explains (ADR-0019);
  * re-exported here so the wire contract reads in one place.
@@ -232,6 +247,16 @@ export interface ActionContext {
   /** Null in the deterministic fallback; generative handlers require a model. */
   chatModel: LanguageModel | null;
   searchKnowledge?: KnowledgeSearcher;
+  /**
+   * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
+   * tool. Absent leaves that tool unregistered (spec #559).
+   */
+  readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
+  /**
+   * The Assistant's API catalogue integration, credential still sealed. Absent
+   * or empty leaves the three catalogue tools unregistered (spec #559).
+   */
+  apiIntegration?: ApiIntegration | null;
   /** Persistent cross-turn session state (see session.ts). */
   session: TurnSession;
   /**

@@ -415,6 +415,23 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   (default **off** — egress is opt-in). `instrument()` gives every other tool its
   `tool-start`/`tool-end` events, duration, and **error containment**: a throwing tool returns
   `{error}` to the model and never aborts the turn.
+- **The API catalogue integration** (`api-catalog-tools.ts` + `api-integration.ts`, spec #559):
+  one integration per assistant — base URL, sealed credential, described endpoint catalogue in
+  `assistant_api_integrations` — exposed as **three generic tools** rather than one registered tool
+  per endpoint: `getApiDetails` (the catalogue), `viewEndpointDetails` (one contract, described as
+  parallel-callable), `queryApi` (a *relative* path, base URL prepended server-side). The model
+  substitutes path parameters (`{courseId}`) from the conversation. **The catalogue is the
+  allow-list**: `resolveCatalogPath` (`@agent-hub/core`, pure) refuses an undescribed path, an
+  absolute URL, traversal or an encoded slash *before* a URL exists, and the resolved URL is
+  re-checked against the configured origin and base path — then `egress.ts` applies unchanged.
+  A queried endpoint contributes a synthetic Source, so an API-grounded answer cites its provenance.
+  Supersedes the per-endpoint custom HTTP tools, which keep running beside it (expand-contract).
+- **Windowed reads** (`windowed-read.ts`): `readApiResponse(handle, from, to)` over a per-turn,
+  in-memory response store and `readKnowledgeSource(sourceId, from, to)` over a whole knowledge
+  document share one primitive. Each window carries the payload's **total length** and the next
+  offset, so a 200k response or a long Source is walked deliberately instead of silently truncated.
+  The document reader is scoped to the assistant's own Collections — the widget's Db is service-role,
+  so an id the model produced is checked before anything is read.
 - **Layered system prompt** (`buildSystemPrompt`, `agentic-search/run.ts`), highest precedence
   first: platform (`platform_settings.system_prompt`, owner-only) → assistant identity +
   `answering_style` → attached Skills → session memory → the turn's retrieval context → flow routing

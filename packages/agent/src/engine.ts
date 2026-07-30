@@ -1,6 +1,7 @@
 import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import type {
+  ApiIntegration,
   Assistant,
   Flow,
   FlowAction,
@@ -31,6 +32,7 @@ import type {
   ActionContext,
   ActionEffect,
   HistoryMessage,
+  KnowledgeDocument,
   KnowledgeSearcher,
   RunResult,
   RuntimeEvent,
@@ -347,6 +349,18 @@ export async function runAssistantChat(options: {
   routing?: FlowRoutingContext;
   searchKnowledge?: KnowledgeSearcher;
   /**
+   * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
+   * tool (spec #559). Absent leaves that tool unregistered — an unwired caller
+   * keeps exactly the previous behaviour.
+   */
+  readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
+  /**
+   * The Assistant's API catalogue integration, credential still sealed (spec
+   * #559). Absent or with an empty catalogue leaves the three catalogue tools
+   * unregistered.
+   */
+  apiIntegration?: ApiIntegration | null;
+  /**
    * Active Knowledge Collection anchor (see the #53 audit). Scopes retrieval
    * upstream and seeds the Agentic Search context frame; null/absent degrades
    * to assistant-wide.
@@ -390,6 +404,8 @@ export async function runAssistantChat(options: {
     templateContext,
     routing = {},
     searchKnowledge,
+    readKnowledgeDocument,
+    apiIntegration,
     collectionId = null,
     session,
     alreadyClarified = false,
@@ -591,6 +607,8 @@ export async function runAssistantChat(options: {
     templateContext: withWorkflowName(templateContext, flow.name),
     chatModel,
     searchKnowledge,
+    readKnowledgeDocument,
+    apiIntegration,
     session,
     alreadyClarified,
     skills,

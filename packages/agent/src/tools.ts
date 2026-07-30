@@ -1,8 +1,13 @@
 import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
-import type { Assistant, CustomToolConfig, KnowledgeSearchResult } from "@agent-hub/core";
+import type {
+  ApiIntegration,
+  Assistant,
+  CustomToolConfig,
+  KnowledgeSearchResult,
+} from "@agent-hub/core";
 import type { TurnSession } from "./session";
-import type { KnowledgeSearcher, RuntimeEvent } from "./types";
+import type { KnowledgeDocument, KnowledgeSearcher, RuntimeEvent } from "./types";
 import {
   MAX_SEARCH_PASSES,
   readyToAnswerTool,
@@ -14,18 +19,25 @@ import {
   type WriteTimeStyle,
 } from "./agentic-search";
 import { EgressPolicyError, egressFetch } from "./egress";
+import {
+  API_CATALOG_SPECS,
+  READ_KNOWLEDGE_SOURCE_SPEC,
+  type ApiResponseStore,
+} from "./api-catalog-tools";
 
 /**
  * Runtime Tool Registry — the pluggable tool surface of the agent loop
  * (tau-style "tools"). A tool is a spec: name, description, zod input schema,
  * a human-readable step label, and an execute. `buildToolset` assembles the
  * turn's ToolSet from the built-ins (gated per assistant via
- * `assistant.tools.builtIns`) plus the assistant's custom HTTP tools, and
- * wraps every execute with the tool-start/tool-end lifecycle events — so a
- * new tool gets structured Thinking-panel progress for free. The one
- * exception is `searchKnowledge`, whose lifecycle (and error containment for
- * a throwing searcher) lives in the shared search-pass primitive instead
- * (agentic-search/, #204) so seeded and model-driven passes cannot drift.
+ * `assistant.tools.builtIns`), the assistant's API catalogue integration when
+ * one is registered, its legacy custom HTTP tools, and the windowed knowledge
+ * reader when a document reader is wired — wrapping every execute with the
+ * tool-start/tool-end lifecycle events, so a new tool gets structured
+ * Thinking-panel progress for free. The one exception is `searchKnowledge`,
+ * whose lifecycle (and error containment for a throwing searcher) lives in the
+ * shared search-pass primitive instead (agentic-search/, #204) so seeded and
+ * model-driven passes cannot drift.
  *
  * Built-in defaults: `searchKnowledge` is always on (grounding is a runtime
  * invariant, ADR-0002); `remember` defaults on; `fetchUrl` defaults OFF
@@ -36,6 +48,27 @@ export interface ToolRuntimeContext {
   assistant: Assistant;
   session: TurnSession;
   searchKnowledge?: KnowledgeSearcher;
+  /**
+   * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
+   * reader. A port rather than a `Db` handle, like `searchKnowledge` — absent
+   * leaves the reader unregistered (nothing to read from).
+   */
+  readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
+  /**
+   * The Assistant's API catalogue integration (spec #559), credential still
+   * sealed. Absent/empty leaves the three catalogue tools unregistered — an
+   * assistant with no integration should not be told an API exists.
+   */
+  apiIntegration?: ApiIntegration | null;
+  /** Per-turn store of fetched API responses, read in windows by handle. */
+  apiResponses?: ApiResponseStore;
+  /**
+   * Records the structured result this tool call wants on the transcript, as
+   * labelled rows rather than a one-line summary (the API card's
+   * endpoint/method/status/response). Bound per call by {@link instrument}; a
+   * spec calls it, never the other way round.
+   */
+  recordResult?: (result: Record<string, unknown>) => void;
   /** Collector the reply's Sources part is built from (see actions.ts). */
   usedSources: KnowledgeSearchResult[];
   /**
@@ -65,7 +98,7 @@ export interface ToolRuntimeContext {
 }
 
 /** One registry entry; `execute` returns the value handed back to the model. */
-interface RuntimeToolSpec {
+export interface RuntimeToolSpec {
   name: string;
   description: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -260,6 +293,10 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
             collection: r.collectionName,
             source: r.sourceName,
             content: r.content,
+            // The handle `readKnowledgeSource` reads by: a search returns the
+            // matching chunk, and this is how the model asks for the rest of
+            // the document that chunk came from.
+            ...(ctx.readKnowledgeDocument ? { sourceId: r.conceptId } : {}),
           })),
           ...(exhausted
             ? {
@@ -426,6 +463,13 @@ let callSeq = 0;
  * outcome summary, duration) instead of label-only steps. A throwing execute
  * becomes an `{ error }` result for the model plus an `ok: false` tool-end —
  * one broken tool never aborts the turn.
+ *
+ * A spec that wants more than a one-line summary on the transcript (the API
+ * card's endpoint/method/status/response) calls `ctx.recordResult`. The recorder
+ * is bound to THIS call on a cloned context, because tools genuinely run
+ * concurrently — the endpoint-detail tool is described as parallel-callable, and
+ * one step's parallel calls cost one iteration by design — so a shared slot
+ * would attribute one call's result to another.
  */
 function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
   return tool({
@@ -443,8 +487,15 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
         input,
         iteration: ctx.loop?.iteration,
       });
+      let recorded: Record<string, unknown> | undefined;
+      const callCtx: ToolRuntimeContext = {
+        ...ctx,
+        recordResult: (result) => {
+          recorded = result;
+        },
+      };
       try {
-        const output = await spec.execute(input, ctx);
+        const output = await spec.execute(input, callCtx);
         const failed =
           typeof output === "object" &&
           output !== null &&
@@ -456,6 +507,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
           tool: spec.name,
           ok: !failed,
           summary: spec.summarize?.(output),
+          result: recorded,
           durationMs: Date.now() - startedAt,
         });
         return withBudgetNote(output, ctx.loop);
@@ -468,6 +520,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
           tool: spec.name,
           ok: false,
           summary: message,
+          result: recorded,
           durationMs: Date.now() - startedAt,
         });
         return withBudgetNote({ error: message }, ctx.loop);
@@ -490,6 +543,25 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
       BUILT_IN_DEFAULTS[spec.name];
     if (enabled) toolset[spec.name] = instrument(spec, ctx);
   }
+  // Windowed knowledge reads: available whenever the host wired a document
+  // reader, integration or not — a long Source is a knowledge concern.
+  if (ctx.readKnowledgeDocument) {
+    toolset[READ_KNOWLEDGE_SOURCE_SPEC.name] = instrument(
+      READ_KNOWLEDGE_SOURCE_SPEC,
+      ctx
+    );
+  }
+  // The API catalogue triad + its response reader (spec #559). Registered only
+  // with a described catalogue behind them: an assistant with no integration
+  // must not be told an API exists.
+  if (ctx.apiIntegration && ctx.apiIntegration.endpoints.length > 0) {
+    for (const spec of API_CATALOG_SPECS) {
+      toolset[spec.name] = instrument(spec, ctx);
+    }
+  }
+  // Legacy per-endpoint custom HTTP tools. Superseded by the integration above
+  // and kept running side by side through the expand step (spec #559): an
+  // assistant with a working custom tool must not break while both exist.
   for (const config of ctx.assistant.tools?.custom ?? []) {
     const spec = customToolSpec(config);
     if (spec && !toolset[spec.name]) toolset[spec.name] = instrument(spec, ctx);

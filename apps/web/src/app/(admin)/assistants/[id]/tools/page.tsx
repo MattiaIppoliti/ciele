@@ -9,9 +9,10 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
   const { role, db } = await requirePageMember();
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
-  const [skills, attachedSkills] = await Promise.all([
+  const [skills, attachedSkills, integration] = await Promise.all([
     db.listSkills(assistant.organizationId),
     db.listAssistantSkills(id),
+    db.getApiIntegration(id),
   ]);
 
   return (
@@ -26,6 +27,21 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
         tools={assistant.tools}
         skills={skills}
         attachedSkillIds={attachedSkills.map((skill) => skill.id)}
+        // Everything but the credential: the sealed value never reaches the
+        // browser, only whether one is set (spec #559).
+        integration={
+          integration
+            ? {
+                name: integration.name,
+                baseUrl: integration.baseUrl,
+                authType: integration.authType,
+                authHeaderName: integration.authHeaderName,
+                authUsername: integration.authUsername,
+                hasCredential: integration.encryptedCredential !== null,
+                endpoints: integration.endpoints,
+              }
+            : null
+        }
         canEdit={canEdit(role)}
       />
     </div>
