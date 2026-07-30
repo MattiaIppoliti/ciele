@@ -53,11 +53,21 @@ export function ThinkingPanel({
   phase,
   searchCount,
   active,
+  summaryLabel,
+  note,
 }: {
   steps: TurnStep[];
   phase: TurnPhase;
   searchCount: number;
   active: boolean;
+  /**
+   * Header text for a finished turn, replacing "Thought for X.Xs". The Inbox
+   * passes one because a trace read back from the database has no elapsed-time
+   * clock to report (see `stored-trace.ts`).
+   */
+  summaryLabel?: string;
+  /** Footer caveat — withheld reasoning, or a trace clipped on write. */
+  note?: string;
 }) {
   const [userOpen, setUserOpen] = useState(false);
   const startRef = useRef<number | null>(null);
@@ -120,7 +130,7 @@ export function ThinkingPanel({
         </span>
         <span className="text-sm font-medium text-muted-foreground">
           {finished ? (
-            `Thought for ${seconds ?? "a few"}s`
+            (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)
           ) : (
             <span className="inline-flex items-center gap-1.5">
               <span className="thinking-label-glow">
@@ -140,6 +150,11 @@ export function ThinkingPanel({
       {open && (
         <div className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5">
           <ToolCallsSection steps={steps} />
+          {note && (
+            <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground/70">
+              {note}
+            </p>
+          )}
         </div>
       )}
     </div>

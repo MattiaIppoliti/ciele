@@ -28,8 +28,19 @@ import type { KnowledgeSearcher, RuntimeEvent, SearchScope } from "../types";
  * The clarify part is deliberately NOT here — that is slice #156.
  */
 
-/** How many `searchKnowledge` calls a single turn may make. */
-export const MAX_SEARCH_PASSES = 6;
+/**
+ * How many search PASSES (individual queries) a single turn may run.
+ *
+ * Not the loop gate — that is `MAX_AGENT_ITERATIONS`, the number the model is
+ * told and plans against, exactly as the reference platform does with search as
+ * one of its six tools. This is a retrieval COST ceiling underneath it: one tool
+ * call may batch several queries (#558), so six iterations can legitimately ask
+ * for more than six passes, and only a pathological batch should hit this.
+ *
+ * The two were briefly equal, which made them bind simultaneously and left a
+ * turn that searched six times with no iteration to do anything else.
+ */
+export const MAX_SEARCH_PASSES = 12;
 
 /**
  * The one budget gate: whether the turn's search-iteration budget is spent.
@@ -128,101 +139,12 @@ export interface SearchPass {
   scope?: SearchScope;
 }
 
-/** A reformulated next pass the {@link nextReformulation} policy asks for. */
-export interface Reformulation {
-  /** The rephrased query to search with. */
-  query: string;
-  /** The scope tier to search at — widened when there was a Collection to widen from. */
-  scope: SearchScope;
-}
-
-/**
- * Filler that carries no retrieval signal — stripped by {@link rephraseQuery}
- * so a reformulated pass hands flat retrieval a cleaner keyword core than the
- * conversational original ("what is the reading week schedule" → "reading week
- * schedule").
- */
-const QUERY_FILLER = new Set([
-  "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "is", "are",
-  "was", "were", "be", "do", "does", "did", "can", "could", "would", "should",
-  "what", "why", "how", "when", "where", "who", "which", "about", "tell", "me",
-  "explain", "please", "i", "im", "i'm", "you", "we", "my", "your", "there",
-  "some", "any", "more", "again", "just", "really", "know", "get", "give",
-]);
-
-/**
- * Rephrases a query for a reformulated pass — deterministically reduces it to
- * its salient content words (drops question words + filler), preserving order
- * and original casing. Falls back to the original when stripping would leave
- * too little to search. Pure; the "rephrase" half of reformulation v1.
- */
-export function rephraseQuery(query: string): string {
-  const kept: string[] = [];
-  for (const raw of query.split(/\s+/)) {
-    const bare = raw.replace(/[^\p{L}\p{N}'-]/gu, "");
-    if (!bare) continue;
-    if (QUERY_FILLER.has(bare.toLowerCase())) continue;
-    kept.push(bare);
-  }
-  const rephrased = kept.join(" ").trim();
-  return rephrased.length >= 2 ? rephrased : query.trim();
-}
-
-/**
- * The reformulation policy: given the passes run so far, decides the next
- * reformulated pass — or `null` to stop and answer/hand off. Pure and
- * deterministic (no model call), so the gnarly "when do we search again" logic
- * is unit-testable in isolation. Policy for v1 (flat retrieval):
- *
- *  - Stop when there are no passes yet, the last pass is `sufficient`, or the
- *    budget is spent.
- *  - Otherwise, when a Collection was anchored and we have not yet widened,
- *    reformulate: rephrase the query AND widen the scope tier to assistant-wide
- *    (Collection → assistant). This is the one scope-tier the flat retrieval
- *    has to offer.
- *  - Once widened (or when nothing was anchored to widen from), stop — the
- *    deterministic phase yields to the model loop rather than rephrasing
- *    endlessly over the same flat index (richer multi-hop reformulation is the
- *    flagged OKF-graph follow-up, out of scope for v1).
- */
-export function nextReformulation(input: {
-  passes: readonly SearchPass[];
-  /** Whether the turn is anchored to a Knowledge Collection (a tier to widen from). */
-  collectionAnchored: boolean;
-  /** Total per-turn search budget (defaults to {@link MAX_SEARCH_PASSES}). */
-  budget?: number;
-}): Reformulation | null {
-  const { passes, collectionAnchored, budget = MAX_SEARCH_PASSES } = input;
-  const last = passes[passes.length - 1];
-  if (!last) return null;
-  if (last.verdict === "sufficient") return null;
-  if (passes.length >= budget) return null;
-  const alreadyWidened = passes.some((p) => p.scope === "assistant");
-  if (collectionAnchored && !alreadyWidened) {
-    return { query: rephraseQuery(last.query), scope: "assistant" };
-  }
-  return null;
-}
-
-/**
- * The caveated best-effort answer for a turn whose search loop ended without a
- * grounded answer (every pass empty, or the budget cut the loop before the
- * model synthesized). It names what was searched and what is missing, so a
- * dead-end is still honest and useful — never a bare "no sources found".
- */
-export function bestEffortCaveat(passes: readonly SearchPass[]): string {
-  const queries = Array.from(
-    new Set(passes.map((p) => p.query.trim()).filter(Boolean))
-  ).slice(0, 3);
-  const searched =
-    queries.length > 0
-      ? ` I looked for ${queries.map((q) => `“${q}”`).join(", ")}, but`
-      : " I searched the knowledge base, but";
-  return (
-    `I couldn't find anything about that in the knowledge base.${searched} nothing relevant came back. ` +
-    "I don't want to guess, so this may be outside the material I have — try rephrasing or narrowing the question, or reach out to support."
-  );
-}
+// The deterministic reformulation policy (`nextReformulation`, `rephraseQuery`,
+// the Collection → assistant-wide scope ladder) and the `bestEffortCaveat` used
+// to live here. They are gone (#558): the model reformulates by batching queries
+// within an iteration budget it is told about, and it declares its own dead ends
+// through the terminal tool. What is left is the ledger, the budget gate, the
+// coverage verdict recorded per pass for the transcript, and the primitive.
 
 // ── The search-pass primitive (#204) ─────────────────────────────────────────
 
@@ -279,18 +201,30 @@ export async function runSearchPass(
     /** Pairs start/end (the model's toolCallId); generated when absent. */
     callId?: string;
     onError?: "record-empty" | "report";
+    /**
+     * Set false when the CALLER owns the panel row. One model tool call may run
+     * several queries (#558); the batch is one row with a bulleted label, so the
+     * per-pass lifecycle would turn one decision into N rows. The ledger,
+     * coverage gate and Sources collection are unaffected — this is only about
+     * who emits the events.
+     */
+    emitLifecycle?: boolean;
   } = {}
 ): Promise<SearchPassOutcome> {
   const callId = opts.callId ?? `search-${++passSeq}`;
   const startedAt = Date.now();
-  ctx.emit({
-    type: "tool-start",
-    callId,
-    tool: "searchKnowledge",
-    label: `Searching knowledge for “${query}”`,
-    input: { query, scope },
-  });
-  const end = (ok: boolean, summary: string) =>
+  const lifecycle = opts.emitLifecycle ?? true;
+  if (lifecycle) {
+    ctx.emit({
+      type: "tool-start",
+      callId,
+      tool: "searchKnowledge",
+      label: `Searching knowledge for “${query}”`,
+      input: { query, scope },
+    });
+  }
+  const end = (ok: boolean, summary: string) => {
+    if (!lifecycle) return;
     ctx.emit({
       type: "tool-end",
       callId,
@@ -299,6 +233,7 @@ export async function runSearchPass(
       summary,
       durationMs: Date.now() - startedAt,
     });
+  };
 
   if (searchBudgetExhausted(ctx.passes, ctx.budget)) {
     // Budget internals are never leaked to visitors: a refused pass reads in

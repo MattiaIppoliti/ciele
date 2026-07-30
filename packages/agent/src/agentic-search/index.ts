@@ -17,20 +17,22 @@
 
 // The retrieval turn: one entrypoint, plus the Sources projection the
 // no-model fallback shares and the prompt composer (exported for its tests).
-export { buildSystemPrompt, dedupSources, runAgenticSearch } from "./run";
+export {
+  buildSystemPrompt,
+  dedupSources,
+  resolveAnsweringStyle,
+  runAgenticSearch,
+} from "./run";
 export type {
   AgenticSearchOutcome,
   AgenticSearchTurnInput,
   FlowStyleContext,
 } from "./run";
 
-// The search-pass ledger, budget, coverage, reformulation, and the primitive.
+// The search-pass ledger, budget, coverage, and the primitive.
 export {
   DEFAULT_COVERAGE_THRESHOLDS,
   MAX_SEARCH_PASSES,
-  bestEffortCaveat,
-  nextReformulation,
-  rephraseQuery,
   runSearchPass,
   scoreCoverage,
   searchBudgetExhausted,
@@ -38,24 +40,34 @@ export {
 export type {
   CoverageThresholds,
   CoverageVerdict,
-  Reformulation,
   SearchPass,
   SearchPassOutcome,
   SearchPassRuntime,
 } from "./search-pass";
 
-// Query understanding — the context frame and the resolved search intent.
-export {
-  buildContextFrame,
-  describeSearchIntent,
-  understandQuery,
-} from "./query-understanding";
-export type { ContextFrame, SearchIntent } from "./query-understanding";
+// The turn's context frame — the live retrieval signals, stated for the model.
+export { buildContextFrame, describeContextFrame } from "./query-understanding";
+export type { ContextFrame } from "./query-understanding";
 
-// The terminal clarify decision (pre-search and post-search).
-export { decideClarify } from "./clarify";
+// The terminal declaration: the model says it is done, and in what state (#558).
+export {
+  createTerminalState,
+  readyToAnswerTool,
+  resolveTerminalStatus,
+  writeTimeInstructions,
+} from "./ready-to-answer";
 export type {
-  ClarifyDecision,
-  ClarifyInput,
-  ClarifyPhase,
-} from "./clarify";
+  TerminalState,
+  TerminalStatus,
+  WriteTimeStyle,
+} from "./ready-to-answer";
+
+// The agent loop's iteration budget — and the note that tells the model about
+// it, carried on every tool result (#558).
+export {
+  MAX_AGENT_ITERATIONS,
+  createLoopBudget,
+  iterationNote,
+  withBudgetNote,
+} from "./loop-budget";
+export type { LoopBudget } from "./loop-budget";

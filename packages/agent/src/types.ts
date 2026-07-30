@@ -9,6 +9,7 @@ import type {
   KnowledgeSearchResult,
   Provider,
   SkillSnapshot,
+  StepStage,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
@@ -123,11 +124,11 @@ export type KnowledgeSearcher = (
 ) => Promise<KnowledgeSearchResult[]>;
 
 /**
- * Where a Thinking Step sits in the agent loop. The client folds stages into
- * the status phase the chat UIs display ("Deciding what to do…" /
- * "Looking into it…" / "Gathering info…" / "Cross-checking…").
+ * Where a Thinking Step sits in the agent loop. Owned by the domain package
+ * because a Thinking Step is persisted with the answer it explains (ADR-0019);
+ * re-exported here so the wire contract reads in one place.
  */
-export type StepStage = "classify" | "generate" | "search" | "found";
+export type { StepStage, TurnStep } from "@agent-hub/core";
 
 /** Wire events streamed to the chat client (ndjson). */
 export type RuntimeEvent =
@@ -146,6 +147,11 @@ export type RuntimeEvent =
       tool: string;
       label: string;
       input?: Record<string, unknown>;
+      /**
+       * Which agent-loop iteration this call spent (#558). Absent when the turn
+       * runs without a budget (the deterministic no-model path).
+       */
+      iteration?: number;
     }
   /**
    * Tool-invocation lifecycle end. `summary` is a short human-readable
@@ -158,6 +164,12 @@ export type RuntimeEvent =
       tool: string;
       ok: boolean;
       summary?: string;
+      /**
+       * Structured outcome for tools whose result reads as labelled rows rather
+       * than a one-line summary (an API call's endpoint/method/status/response).
+       * Must already be safe to show — the runtime caps and redacts it on write.
+       */
+      result?: Record<string, unknown>;
       durationMs: number;
     }
   /**
@@ -223,11 +235,10 @@ export interface ActionContext {
   /** Persistent cross-turn session state (see session.ts). */
   session: TurnSession;
   /**
-   * Whether an earlier turn in THIS conversation already emitted a clarify
-   * part (derived from the persisted message history/parts upstream). The
-   * Agentic Search anti-loop guardrail (#156): the runtime never re-clarifies a
-   * message it already clarified — it gives a best-effort caveated answer
-   * instead. Absent/false on a first-clarify or a fresh conversation.
+   * Whether an earlier turn in THIS conversation already asked the Visitor to
+   * clarify. The anti-loop guarantee (#558): the terminal tool coerces a second
+   * clarification request into a best-effort answer, because asking twice is a
+   * loop and reads as refusing to try.
    */
   alreadyClarified?: boolean;
   /** Skills attached to the assistant, layered into the system prompt. */

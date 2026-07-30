@@ -1237,6 +1237,94 @@ export interface InboxConversation extends Conversation {
   feedback: -1 | 0 | 1;
 }
 
+/**
+ * Where a Thinking Step sits in the agent loop. The chat clients fold stages
+ * into the status phase they display ("Deciding what to do…" / "Looking into
+ * it…" / "Gathering info…" / "Cross-checking…").
+ */
+export type StepStage = "classify" | "generate" | "search" | "found";
+
+/**
+ * One Thinking Step: a single row of the Thinking panel, folded from the
+ * runtime's step/thought/tool-* wire events. Lives in the domain rather than
+ * the runtime because it is **persisted** with the answer it explains — the
+ * Inbox reads it back to show how a reply was reached.
+ *
+ * Deliberately structured rather than the flat bracketed string the reference
+ * platform stores: the chat clients already render this shape, so the Inbox
+ * reuses their panel unchanged and the flat string stays an export-time
+ * serialization (see docs/audits/reference-agent-trace-parity.md).
+ */
+export interface TurnStep {
+  /** tool-* steps carry the AI-SDK toolCallId; other kinds get a local id. */
+  id: string;
+  kind: "step" | "thought" | "tool";
+  label: string;
+  /** Registry tool name, for `kind: "tool"`. */
+  tool?: string;
+  /** Engine stage, for `kind: "step"` — lets the UI pick a stage-specific icon. */
+  stage?: StepStage;
+  /** Tool calls run until their tool-end arrives; other kinds are done. */
+  status: "running" | "done" | "error";
+  /** Model-supplied call arguments (already safe to show — never secrets). */
+  input?: Record<string, unknown>;
+  /** Outcome summary from the tool-end event ("3 concepts found"). */
+  detail?: string;
+  /**
+   * Structured outcome, for tools whose result is worth showing as labelled rows
+   * rather than a one-line summary — an API call's endpoint, method, status and
+   * response body, say. `detail` stays the one-liner; this is what the transcript
+   * expands into.
+   *
+   * Only ever what the runtime deemed safe to show: capped and redacted on write
+   * like every other stored string (see TRACE_MAX_RESULT_CHARS).
+   */
+  result?: Record<string, unknown>;
+  durationMs?: number;
+  /**
+   * Which agent-loop iteration this tool call spent, out of the turn's budget.
+   * The transcript shows it so an operator can see a turn that ran out of room
+   * rather than one that chose to stop.
+   */
+  iteration?: number;
+}
+
+/**
+ * A persisted turn trace: the Thinking Steps plus the counters the panel header
+ * needs, and a truncation flag so a clipped trace reads as clipped rather than
+ * as a turn that did less work than it did.
+ */
+export interface StoredTurnTrace {
+  steps: TurnStep[];
+  /** Knowledge searches run this turn (the ×N pill). */
+  searchCount: number;
+  /** True when caps dropped steps or clipped text (see TRACE_* limits). */
+  truncated?: boolean;
+}
+
+/**
+ * Trace storage caps. Reasoning text is unbounded by nature — a single turn in
+ * the reference export ran to 108k characters — and a Conversation holds many
+ * turns, so the trace is clipped on write, never on read.
+ */
+export const TRACE_MAX_STEPS = 60;
+/** Per-step text cap; a thought's whole body is its label. */
+export const TRACE_MAX_LABEL_CHARS = 4_000;
+/** Per-step cap for the tool outcome summary. */
+export const TRACE_MAX_DETAIL_CHARS = 2_000;
+/** Serialized cap for one step's model-supplied tool input. */
+export const TRACE_MAX_INPUT_CHARS = 2_000;
+/**
+ * Serialized cap for one step's structured result. Deliberately larger than the
+ * summary and input caps: a result worth showing as labelled rows is a response
+ * body, and 2k would clip every one of them into uselessness. Deliberately still
+ * a cap: response bodies carry more personal data than any other field on a
+ * trace — the reference platform's own API payloads contain student names and
+ * quiz grades verbatim — so this is the field that makes per-Organization trace
+ * retention matter rather than a nice-to-have.
+ */
+export const TRACE_MAX_RESULT_CHARS = 8_000;
+
 export interface StoredMessage {
   id: string;
   conversationId: string;
@@ -1246,6 +1334,13 @@ export interface StoredMessage {
   flowId: string | null;
   flowName: string | null;
   feedback: -1 | 0 | 1;
+  /**
+   * How this answer was reached — Thinking Steps captured as the turn streamed.
+   * Null for user messages, for verbatim turns that did no agentic work
+   * (a `custom_message` Flow Action, a proactive Notification), and for every
+   * message written before traces were persisted.
+   */
+  trace: StoredTurnTrace | null;
   createdAt: string;
 }
 

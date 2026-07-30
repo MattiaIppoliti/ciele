@@ -1064,6 +1064,7 @@ function seedInboxDemo(store: MockStore) {
       flowId: null,
       flowName: null,
       feedback: 0,
+      trace: null,
       createdAt: at(7, 44),
     },
     {
@@ -1074,6 +1075,7 @@ function seedInboxDemo(store: MockStore) {
       flowId: null,
       flowName: null,
       feedback: 0,
+      trace: null,
       createdAt: at(7, 45),
     },
     {
@@ -1096,6 +1098,38 @@ function seedInboxDemo(store: MockStore) {
       flowId: null,
       flowName: "Default behavior",
       feedback: 0,
+      // Demo trace: the Thinking panel has to have something to render in the
+      // Supabase-less demo build, which is where this feature gets reviewed.
+      trace: {
+        searchCount: 1,
+        steps: [
+          {
+            id: "step-1",
+            kind: "step",
+            label: "Classifying intent",
+            stage: "classify",
+            status: "done",
+            detail: "Matched flow “Default behavior”",
+          },
+          {
+            id: "step-2",
+            kind: "thought",
+            label:
+              "The visitor greeted me without asking anything specific. I should introduce what I can help with rather than searching for “ciao”, but a quick look at the knowledge base tells me which topics to offer.",
+            status: "done",
+          },
+          {
+            id: "call-demo-1",
+            kind: "tool",
+            tool: "searchKnowledge",
+            label: "Searching knowledge for “getting started”",
+            input: { query: "getting started" },
+            status: "done",
+            detail: "2 concepts found",
+            durationMs: 412,
+          },
+        ],
+      },
       createdAt: at(7, 45),
     },
   ];
@@ -1177,6 +1211,7 @@ function seedInboxDemo(store: MockStore) {
       flowId: null,
       flowName: null,
       feedback: 0,
+      trace: null,
       createdAt: at1(14, 30),
     },
     {
@@ -1204,6 +1239,53 @@ function seedInboxDemo(store: MockStore) {
       flowId: null,
       flowName: "Search knowledge",
       feedback: 1,
+      // A multi-search turn, so the demo also shows the ×N pill and a clipped
+      // reasoning step.
+      trace: {
+        searchCount: 2,
+        truncated: false,
+        steps: [
+          {
+            id: "step-1",
+            kind: "step",
+            label: "Generating answer",
+            stage: "generate",
+            status: "done",
+            detail: "Model: gpt-4o-mini",
+          },
+          {
+            id: "call-onb-1",
+            kind: "tool",
+            tool: "searchKnowledge",
+            label: "Searching knowledge for “onboarding checklist”",
+            input: { queries: ["onboarding checklist"] },
+            status: "done",
+            detail: "1 concept found",
+            durationMs: 388,
+            iteration: 1,
+          },
+          {
+            id: "step-2",
+            kind: "thought",
+            label:
+              "One concept came back and it is the checklist itself, but it does not say whether publishing the widget is part of it. One more search on “publish widget” before I answer.",
+            status: "done",
+          },
+          {
+            // A batched call: two queries, one iteration (#558).
+            id: "call-onb-2",
+            kind: "tool",
+            tool: "searchKnowledge",
+            label:
+              "Searching knowledge for:\n- publish widget\n- embed snippet",
+            input: { queries: ["publish widget", "embed snippet"] },
+            status: "done",
+            detail: "2 concepts found",
+            durationMs: 341,
+            iteration: 2,
+          },
+        ],
+      },
       createdAt: at1(14, 31),
     },
   ];
@@ -2773,6 +2855,7 @@ export const mockDb: Db = {
       flowId: input.flowId ?? null,
       flowName: input.flowName ?? null,
       feedback: 0,
+      trace: input.trace ?? null,
       createdAt: new Date().toISOString(),
     };
     store.messages.set(message.id, message);

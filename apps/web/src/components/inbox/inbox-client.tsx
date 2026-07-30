@@ -14,6 +14,7 @@ import { isoDay, messageText } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
   Calendar as CalendarIcon,
+  CirclePlay,
   Download,
   ExternalLink,
   Headphones,
@@ -39,6 +40,8 @@ import {
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { CitationList } from "@/components/chat/citation-list";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
+import { ThinkingPanel } from "@/components/chat/thinking-panel";
+import { storedTraceLabel, visibleTraceSteps } from "@/components/chat/stored-trace";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Calendar } from "@agent-hub/ui";
@@ -103,6 +106,48 @@ function defaultFilters(): Filters {
 
 function dayLabel(iso: string): string {
   return new Date(iso).toDateString();
+}
+
+/**
+ * Per-message time in the transcript. The conversation header already carries
+ * the date, so a turn only needs its clock time — and reviewing a transcript
+ * means reading the gaps between turns.
+ */
+function MessageTime({ iso }: { iso: string }) {
+  return (
+    <time
+      dateTime={iso}
+      title={formatDateTime(iso)}
+      className="text-muted-foreground/70 mt-1 block text-[11px]"
+    >
+      {new Date(iso).toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}
+    </time>
+  );
+}
+
+/**
+ * The Thinking panel's footer caveat. Says out loud when the stored trace is
+ * not the whole turn — reasoning withheld by the Role gate, or steps the
+ * runtime clipped on write — so a short panel is never mistaken for a turn that
+ * did little work.
+ */
+function traceNote(trace: {
+  hiddenThoughts: number;
+  truncated: boolean;
+}): string | undefined {
+  const notes: string[] = [];
+  if (trace.hiddenThoughts > 0) {
+    notes.push(
+      `${trace.hiddenThoughts} reasoning ${
+        trace.hiddenThoughts === 1 ? "step is" : "steps are"
+      } visible to admins only`
+    );
+  }
+  if (trace.truncated) notes.push("this trace was shortened when it was saved");
+  return notes.length > 0 ? `${notes.join("; ")}.` : undefined;
 }
 
 /** Parse a yyyy-mm-dd string to a local Date (no timezone shift). */
@@ -318,10 +363,13 @@ export function InboxClient({
   conversations,
   assistants,
   canEdit = false,
+  canViewReasoning = false,
 }: {
   conversations: InboxConversation[];
   assistants: AssistantOption[];
   canEdit?: boolean;
+  /** Admins and above see the model's own reasoning in the trace (#557). */
+  canViewReasoning?: boolean;
 }) {
   const searchParams = useSearchParams();
   // Deep link from an improvement's "View message in conversation context".
@@ -815,27 +863,46 @@ export function InboxClient({
                 </p>
               )}
 
-              {messages?.map((m) =>
-                m.role === "user" ? (
-                  <div key={m.id} className="flex items-start gap-2.5">
-                    <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
-                      {subjectInitials(selected)}
-                    </span>
-                    <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed">
-                      {messageText(m.content)}
+              {messages?.map((m) => {
+                if (m.role === "user") {
+                  return (
+                    <div key={m.id} className="flex items-start gap-2.5">
+                      <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
+                        {subjectInitials(selected)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed">
+                          {messageText(m.content)}
+                        </div>
+                        <MessageTime iso={m.createdAt} />
+                      </div>
                     </div>
-                  </div>
-                ) : (
+                  );
+                }
+                // How this answer was reached, replayed from the persisted
+                // Thinking Steps through the same panel the live chat renders.
+                const trace = visibleTraceSteps(m.trace, { canViewReasoning });
+                return (
                   <div key={m.id} className="space-y-2 pl-10">
                     {m.flowName && (
                       <div className="flex items-center justify-center gap-2 py-1">
                         <span className="bg-border h-px flex-1" />
                         <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
-                          <SquareCheck className="size-3.5 text-red-400" />
-                          Workflow ended: {m.flowName}
+                          <CirclePlay className="size-3.5 text-emerald-500" />
+                          Workflow triggered: {m.flowName}
                         </span>
                         <span className="bg-border h-px flex-1" />
                       </div>
+                    )}
+                    {trace && (
+                      <ThinkingPanel
+                        steps={trace.steps}
+                        phase="done"
+                        searchCount={trace.searchCount}
+                        active={false}
+                        summaryLabel={storedTraceLabel(trace)}
+                        note={traceNote(trace)}
+                      />
                     )}
                     {(m.content as ChatReplyPart[]).map((part, i) => (
                       <MessagePart key={i} part={part} />
@@ -919,9 +986,20 @@ export function InboxClient({
                         </button>
                       </div>
                     </div>
+                    <MessageTime iso={m.createdAt} />
+                    {m.flowName && (
+                      <div className="flex items-center justify-center gap-2 py-1">
+                        <span className="bg-border h-px flex-1" />
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium">
+                          <SquareCheck className="size-3.5 text-red-400" />
+                          Workflow ended: {m.flowName}
+                        </span>
+                        <span className="bg-border h-px flex-1" />
+                      </div>
+                    )}
                   </div>
-                )
-              )}
+                );
+              })}
             </div>
           )}
         </section>

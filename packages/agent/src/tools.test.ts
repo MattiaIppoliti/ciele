@@ -10,7 +10,13 @@ vi.mock("./pinned-fetch", () => ({
 import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 import { createTurnSession } from "./session";
-import { buildToolset, type ToolRuntimeContext } from "./tools";
+import {
+  MAX_QUERIES_PER_SEARCH,
+  buildToolset,
+  normalizeSearchQueries,
+  type ToolRuntimeContext,
+} from "./tools";
+import { createLoopBudget } from "./agentic-search";
 import type { RuntimeEvent } from "./types";
 
 // HTTP-egress seams (the fetchUrl + custom tools route through the shared
@@ -227,6 +233,158 @@ describe("searchKnowledge tool", () => {
     })) as { results: unknown[]; note: string };
     expect(output.results).toEqual([]);
     expect(output.note).toContain("No matching knowledge");
+  });
+});
+
+describe("searchKnowledge multi-query batching (#558)", () => {
+  const hit = (title: string): KnowledgeSearchResult => ({
+    conceptId: title,
+    conceptTitle: title,
+    conceptPath: `${title}.md`,
+    collectionId: "col1",
+    collectionName: "General",
+    sourceName: "Website",
+    resourceUrl: null,
+    content: `About ${title}`,
+    similarity: 0.9,
+  });
+
+  it("normalizes both input shapes, dedupes and caps the batch", () => {
+    expect(normalizeSearchQueries({ queries: ["a", "b"] })).toEqual(["a", "b"]);
+    // A model that sends the single-query form must not lose its search: schema
+    // validation runs before execute, so a rejection costs a whole iteration.
+    expect(normalizeSearchQueries({ query: "a" })).toEqual(["a"]);
+    expect(normalizeSearchQueries({ queries: "a" })).toEqual(["a"]);
+    expect(normalizeSearchQueries({ queries: ["a", " a ", "", "b"] })).toEqual([
+      "a",
+      "b",
+    ]);
+    expect(
+      normalizeSearchQueries({ queries: ["a", "b", "c", "d", "e", "f"] })
+    ).toHaveLength(MAX_QUERIES_PER_SEARCH);
+    expect(normalizeSearchQueries({})).toEqual([]);
+  });
+
+  it("runs one pass per query but reports them as one panel row", async () => {
+    const searchKnowledge = vi.fn(async (query: string) => [hit(query)]);
+    const loop = createLoopBudget(6);
+    const { ctx, events } = makeContext({ searchKnowledge, loop });
+
+    const output = (await run(buildToolset(ctx), "searchKnowledge", {
+      queries: ["fees", "deadlines"],
+    })) as { results?: unknown[]; systemNote?: string };
+
+    // Two passes on the ledger, so the budget and coverage gates still see the
+    // real work — but one model decision, so one row in the Thinking panel.
+    expect(searchKnowledge).toHaveBeenCalledTimes(2);
+    expect(ctx.searchPasses).toHaveLength(2);
+    expect(events.filter((e) => e.type === "tool-start")).toHaveLength(1);
+    expect(events.filter((e) => e.type === "tool-end")).toHaveLength(1);
+    const start = events.find((e) => e.type === "tool-start")!;
+    expect(start.label).toContain("- fees");
+    expect(start.label).toContain("- deadlines");
+    expect(output.results).toHaveLength(2);
+
+    // One call is one iteration, however many queries it batched — that is the
+    // whole incentive to batch.
+    expect(loop.iteration).toBe(1);
+    expect(output.systemNote).toContain("iteration 1 out of 6");
+  });
+
+  it("keeps the queries that worked when one of them throws", async () => {
+    const searchKnowledge = vi.fn(async (query: string) => {
+      if (query === "broken") throw new Error("index down");
+      return [hit("fine")];
+    });
+    const { ctx } = makeContext({ searchKnowledge, loop: createLoopBudget(6) });
+    const output = (await run(buildToolset(ctx), "searchKnowledge", {
+      queries: ["broken", "fine"],
+    })) as { results?: unknown[]; error?: string };
+
+    expect(output.error).toBeUndefined();
+    expect(output.results).toHaveLength(1);
+  });
+
+  it("reports the failure when every query in the batch throws", async () => {
+    const { ctx } = makeContext({
+      searchKnowledge: async () => {
+        throw new Error("index down");
+      },
+      loop: createLoopBudget(6),
+    });
+    const output = (await run(buildToolset(ctx), "searchKnowledge", {
+      queries: ["a", "b"],
+    })) as { error?: string };
+    expect(output.error).toBe("index down");
+  });
+
+  it("errors without spending a search when no query came through", async () => {
+    const searchKnowledge = vi.fn(async () => []);
+    const { ctx } = makeContext({ searchKnowledge, loop: createLoopBudget(6) });
+    const output = (await run(buildToolset(ctx), "searchKnowledge", {})) as {
+      error?: string;
+    };
+    expect(output.error).toContain("No search query");
+    expect(searchKnowledge).not.toHaveBeenCalled();
+  });
+});
+
+describe("spoken iteration budget (#558)", () => {
+  it("tells the model its iteration on every instrumented tool result", async () => {
+    const loop = createLoopBudget(6);
+    const { ctx } = makeContext({ loop });
+    const toolset = buildToolset(ctx);
+
+    const first = (await run(toolset, "remember", { fact: "prefers email" })) as {
+      systemNote?: string;
+    };
+    expect(first.systemNote).toContain("iteration 1 out of 6");
+
+    // One charge per STEP — the loop closes each step between generations.
+    for (let i = 0; i < 4; i++) {
+      loop.endStep();
+      await run(toolset, "remember", { fact: `fact ${i}` });
+    }
+    loop.endStep();
+    const last = (await run(toolset, "remember", { fact: "last" })) as {
+      systemNote?: string;
+    };
+    // The last iteration says so in the strongest terms — being cut off is not
+    // the same as knowing the limit.
+    expect(loop.iteration).toBe(6);
+    expect(last.systemNote).toContain("CRITICAL");
+  });
+
+  it("charges one iteration for a step that calls several tools at once", async () => {
+    // The API-catalogue pattern (#559) fetches endpoint details in parallel on
+    // purpose; charging per call would spend the budget on discovery alone.
+    const loop = createLoopBudget(6);
+    const { ctx } = makeContext({ loop, searchKnowledge: async () => [] });
+    const toolset = buildToolset(ctx);
+    await Promise.all([
+      run(toolset, "remember", { fact: "a" }),
+      run(toolset, "remember", { fact: "b" }),
+      run(toolset, "searchKnowledge", { queries: ["c"] }),
+    ]);
+    expect(loop.iteration).toBe(1);
+  });
+
+  it("stamps the iteration on the tool-start event, for the transcript", async () => {
+    const loop = createLoopBudget(6);
+    const { ctx, events } = makeContext({ loop });
+    await run(buildToolset(ctx), "remember", { fact: "x" });
+    const start = events.find((e) => e.type === "tool-start")!;
+    expect(start.iteration).toBe(1);
+  });
+
+  it("leaves results untouched when no budget is wired", async () => {
+    // The deterministic no-model path and pure tests: the note is guidance,
+    // never load-bearing.
+    const { ctx } = makeContext({ searchKnowledge: async () => [] });
+    const output = (await run(buildToolset(ctx), "searchKnowledge", {
+      query: "x",
+    })) as Record<string, unknown>;
+    expect(output.systemNote).toBeUndefined();
   });
 });
 

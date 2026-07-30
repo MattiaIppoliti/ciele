@@ -70,6 +70,7 @@ import type {
   SsoProviderKind,
   SsoValidationStatus,
   StoredMessage,
+  StoredTurnTrace,
   SupportChannel,
   SupportChannelConfig,
   TicketingIntegration,
@@ -240,6 +241,7 @@ interface MessageRow {
   flow_id: string | null;
   flow_name: string | null;
   feedback: -1 | 0 | 1;
+  trace: StoredTurnTrace | null;
   created_at: string;
 }
 
@@ -290,6 +292,9 @@ function toStoredMessage(row: MessageRow): StoredMessage {
     flowId: row.flow_id,
     flowName: row.flow_name,
     feedback: row.feedback,
+    // Null on every message written before traces were persisted, so the
+    // transcript degrades to "no panel" rather than to an error.
+    trace: row.trace ?? null,
     createdAt: row.created_at,
   };
 }
@@ -2507,6 +2512,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           content: input.content,
           flow_id: input.flowId ?? null,
           flow_name: input.flowName ?? null,
+          trace: input.trace ?? null,
         })
         .select()
         .single();

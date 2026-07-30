@@ -355,9 +355,9 @@ export async function runAssistantChat(options: {
   /** Persistent cross-turn session state (see session.ts). */
   session: TurnSession;
   /**
-   * Whether an earlier turn in this conversation already emitted a clarify part
-   * (Agentic Search anti-loop guardrail, #156). Derived by the caller from the
-   * persisted history; false/absent for a fresh conversation.
+   * Whether an earlier turn in this conversation already asked the Visitor to
+   * clarify (#558 anti-loop guarantee). Derived by the caller from the persisted
+   * parts; false/absent for a fresh conversation.
    */
   alreadyClarified?: boolean;
   /** Skills attached to the assistant (live rows or a Publication snapshot). */

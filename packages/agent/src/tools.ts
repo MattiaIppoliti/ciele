@@ -3,7 +3,16 @@ import { z } from "zod";
 import type { Assistant, CustomToolConfig, KnowledgeSearchResult } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { KnowledgeSearcher, RuntimeEvent } from "./types";
-import { MAX_SEARCH_PASSES, runSearchPass, type SearchPass } from "./agentic-search";
+import {
+  MAX_SEARCH_PASSES,
+  readyToAnswerTool,
+  runSearchPass,
+  withBudgetNote,
+  type LoopBudget,
+  type SearchPass,
+  type TerminalState,
+  type WriteTimeStyle,
+} from "./agentic-search";
 import { EgressPolicyError, egressFetch } from "./egress";
 
 /**
@@ -37,6 +46,20 @@ export interface ToolRuntimeContext {
   searchPasses: SearchPass[];
   /** Max `searchKnowledge` calls this turn (defaults to MAX_SEARCH_PASSES). */
   searchBudget?: number;
+  /**
+   * The agent loop's iteration budget (#558). Every tool result carries its
+   * escalating note, so the model plans against the limit instead of being cut
+   * off by it. Absent in the deterministic no-model path and in pure tests.
+   */
+  loop?: LoopBudget;
+  /**
+   * The turn's terminal declaration (#558). Present makes `readyToAnswer`
+   * available and mandatory; absent leaves the toolset as a pure gather set
+   * (the deterministic no-model path, and tests that only exercise one tool).
+   */
+  terminal?: TerminalState;
+  /** Answering-style instructions, late-bound onto the terminal tool's result. */
+  writeTimeStyle?: WriteTimeStyle;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
 }
@@ -86,53 +109,166 @@ function htmlToText(html: string): string {
  * passes cannot drift. This adapter only maps the model's input and the
  * primitive's outcome to the model-facing return shape.
  */
+/** Queries one `searchKnowledge` call may batch (#558). */
+export const MAX_QUERIES_PER_SEARCH = 4;
+
+/**
+ * Normalizes what the model actually sent into a query list. The schema asks
+ * for an array, but models reliably send a bare string for a single query, and
+ * refusing it would spend an iteration on a validation error instead of a
+ * search. Empty entries are dropped; the batch is capped.
+ */
+export function normalizeSearchQueries(input: {
+  queries?: unknown;
+  query?: unknown;
+}): string[] {
+  const raw = input.queries ?? input.query;
+  const list = Array.isArray(raw) ? raw : [raw];
+  const seen = new Set<string>();
+  const queries: string[] = [];
+  for (const entry of list) {
+    const query = String(entry ?? "").trim();
+    if (!query || seen.has(query)) continue;
+    seen.add(query);
+    queries.push(query);
+    if (queries.length >= MAX_QUERIES_PER_SEARCH) break;
+  }
+  return queries;
+}
+
 function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
   return tool({
     description:
-      "Search the assistant's knowledge base for facts relevant to the user's question.",
-    inputSchema: z.object({ query: z.string().describe("What to search for") }),
-    execute: async (input: { query?: unknown }, options) => {
-      const query = String(input.query ?? "");
+      "Search the assistant's knowledge base for facts relevant to the user's question. Pass several queries at once when a question has several parts — they run together and cost one iteration.",
+    // Both shapes are accepted on purpose. Schema validation runs BEFORE
+    // execute, so a model that sends the single-query form — a stale cached
+    // prompt, or just a model that ignores the array — would otherwise spend a
+    // whole iteration on a validation error instead of a search.
+    inputSchema: z.object({
+      queries: z
+        .union([z.string(), z.array(z.string())])
+        .optional()
+        .describe(
+          `What to search for — up to ${MAX_QUERIES_PER_SEARCH} distinct queries in one call`
+        ),
+      query: z
+        .string()
+        .optional()
+        .describe("A single search query; prefer `queries`"),
+    }),
+    execute: async (input: { queries?: unknown; query?: unknown }, options) => {
+      // One call is one iteration however many queries it batches — that is the
+      // whole incentive for batching.
+      ctx.loop?.spend();
+      const queries = normalizeSearchQueries(input);
       const budget = ctx.searchBudget ?? MAX_SEARCH_PASSES;
-      const outcome = await runSearchPass(
-        query,
-        // The model's searches run at the turn's anchored tier; the searcher
-        // treats "collection" with no anchor as assistant-wide already.
-        "collection",
-        {
-          searchKnowledge: ctx.searchKnowledge ?? (async () => []),
-          passes: ctx.searchPasses,
-          usedSources: ctx.usedSources,
-          emit: ctx.emit,
-          budget,
-        },
-        { callId: options?.toolCallId, onError: "report" }
-      );
+      if (queries.length === 0) {
+        return withBudgetNote(
+          { error: "No search query was provided." },
+          ctx.loop
+        );
+      }
+      // The batch is ONE panel row (and one iteration): the model made one
+      // decision, so the pass primitive runs with its lifecycle suppressed and
+      // the label lists the queries the way the reference transcript does.
+      const callId = options?.toolCallId ?? `search-batch-${Date.now()}`;
+      const startedAt = Date.now();
+      ctx.emit({
+        type: "tool-start",
+        callId,
+        tool: "searchKnowledge",
+        label:
+          queries.length === 1
+            ? `Searching knowledge for “${queries[0]}”`
+            : `Searching knowledge for:\n${queries.map((q) => `- ${q}`).join("\n")}`,
+        input: { queries },
+        iteration: ctx.loop?.iteration,
+      });
+      const end = (ok: boolean, summary: string) =>
+        ctx.emit({
+          type: "tool-end",
+          callId,
+          tool: "searchKnowledge",
+          ok,
+          summary,
+          durationMs: Date.now() - startedAt,
+        });
+
+      const runtime = {
+        searchKnowledge: ctx.searchKnowledge ?? (async () => []),
+        passes: ctx.searchPasses,
+        usedSources: ctx.usedSources,
+        emit: ctx.emit,
+        budget,
+      };
+      const found: KnowledgeSearchResult[] = [];
+      let exhausted = false;
+      let failure: string | null = null;
+      for (const query of queries) {
+        const outcome = await runSearchPass(query, "collection", runtime, {
+          onError: "report",
+          emitLifecycle: false,
+        });
+        if (outcome.kind === "budget-exhausted") {
+          exhausted = true;
+          break;
+        }
+        // A throwing searcher reads to the model like any broken tool — but one
+        // failed query in a batch must not discard the ones that worked.
+        if (outcome.kind === "failed") {
+          failure = outcome.message;
+          continue;
+        }
+        found.push(...outcome.results);
+      }
+
+      if (failure && found.length === 0) {
+        end(false, failure);
+        return withBudgetNote({ error: failure }, ctx.loop);
+      }
       // Per-turn search-iteration budget: once spent, refuse further searches
       // so the model answers with what it has — never runs away with
       // cost/latency.
-      if (outcome.kind === "budget-exhausted") {
-        return {
-          results: [],
-          note: `Search budget reached (${budget} searches this turn). Do not search again — answer now with what you already found, and say honestly if it is not enough.`,
-        };
+      if (exhausted && found.length === 0) {
+        end(true, "No matching knowledge found");
+        return withBudgetNote(
+          {
+            results: [],
+            note: `Search budget reached (${budget} searches this turn). Do not search again — answer now with what you already found, and say honestly if it is not enough.`,
+          },
+          ctx.loop
+        );
       }
-      // A throwing searcher reads to the model like any broken tool.
-      if (outcome.kind === "failed") return { error: outcome.message };
-      if (outcome.results.length === 0) {
-        return {
-          results: [],
-          note: `No matching knowledge found in "${ctx.assistant.title}"'s knowledge base. Tell the user honestly if you cannot answer from it.`,
-        };
+      if (found.length === 0) {
+        end(true, "No matching knowledge found");
+        return withBudgetNote(
+          {
+            results: [],
+            note: `No matching knowledge found in "${ctx.assistant.title}"'s knowledge base. Tell the user honestly if you cannot answer from it.`,
+          },
+          ctx.loop
+        );
       }
-      return {
-        results: outcome.results.map((r) => ({
-          concept: r.conceptTitle,
-          collection: r.collectionName,
-          source: r.sourceName,
-          content: r.content,
-        })),
-      };
+      end(
+        true,
+        `Found ${found.length} relevant concept${found.length > 1 ? "s" : ""}`
+      );
+      return withBudgetNote(
+        {
+          results: found.map((r) => ({
+            concept: r.conceptTitle,
+            collection: r.collectionName,
+            source: r.sourceName,
+            content: r.content,
+          })),
+          ...(exhausted
+            ? {
+                note: `Search budget reached (${budget} searches this turn). Do not search again.`,
+              }
+            : {}),
+        },
+        ctx.loop
+      );
     },
   });
 }
@@ -298,12 +434,14 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
     execute: async (input: Record<string, unknown>, options) => {
       const callId = options?.toolCallId ?? `call-${++callSeq}`;
       const startedAt = Date.now();
+      ctx.loop?.spend();
       ctx.emit({
         type: "tool-start",
         callId,
         tool: spec.name,
         label: spec.label(input),
         input,
+        iteration: ctx.loop?.iteration,
       });
       try {
         const output = await spec.execute(input, ctx);
@@ -320,7 +458,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
           summary: spec.summarize?.(output),
           durationMs: Date.now() - startedAt,
         });
-        return output;
+        return withBudgetNote(output, ctx.loop);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Tool call failed";
@@ -332,7 +470,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
           summary: message,
           durationMs: Date.now() - startedAt,
         });
-        return { error: message };
+        return withBudgetNote({ error: message }, ctx.loop);
       }
     },
   });
@@ -355,6 +493,16 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   for (const config of ctx.assistant.tools?.custom ?? []) {
     const spec = customToolSpec(config);
     if (spec && !toolset[spec.name]) toolset[spec.name] = instrument(spec, ctx);
+  }
+  // The terminal tool — mandatory when a turn has a terminal declaration to
+  // make. Not instrumented: declaring you are done spends no iteration, and its
+  // result is the write-time instruction the model then acts on.
+  if (ctx.terminal) {
+    toolset.readyToAnswer = readyToAnswerTool(
+      ctx.terminal,
+      ctx.writeTimeStyle ?? {},
+      (label) => ctx.emit({ type: "thought", text: label })
+    );
   }
   return toolset;
 }

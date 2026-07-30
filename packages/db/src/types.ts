@@ -99,6 +99,7 @@ import type {
   SsoProviderKind,
   SsoValidationStatus,
   StoredMessage,
+  StoredTurnTrace,
   SupportChannel,
   SupportChannelInput,
   SupportChannelPatch,
@@ -505,6 +506,12 @@ export interface Db {
     content: unknown[];
     flowId?: string | null;
     flowName?: string | null;
+    /**
+     * The turn's Thinking Steps, already capped and redacted by the runtime.
+     * Absent (or null) for user messages and for turns that did no agentic
+     * work — the Inbox renders no panel for those.
+     */
+    trace?: StoredTurnTrace | null;
   }): Promise<StoredMessage>;
   setMessageFeedback(messageId: string, feedback: -1 | 0 | 1): Promise<void>;
 

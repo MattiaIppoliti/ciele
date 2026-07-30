@@ -7,26 +7,22 @@ import type {
   HistoryMessage,
   KnowledgeSearcher,
   RuntimeEvent,
-  SearchScope,
 } from "../types";
 import { usageTotals } from "../usage";
 import { errorMessageOf } from "../telemetry";
+import { searchBudgetExhausted, type SearchPass } from "./search-pass";
+import { buildContextFrame, describeContextFrame } from "./query-understanding";
 import {
-  MAX_SEARCH_PASSES,
-  bestEffortCaveat,
-  nextReformulation,
-  runSearchPass,
-  scoreCoverage,
-  searchBudgetExhausted,
-  type SearchPass,
-  type SearchPassRuntime,
-} from "./search-pass";
+  MAX_AGENT_ITERATIONS,
+  createLoopBudget,
+  type LoopBudget,
+} from "./loop-budget";
 import {
-  buildContextFrame,
-  describeSearchIntent,
-  understandQuery,
-} from "./query-understanding";
-import { decideClarify } from "./clarify";
+  createTerminalState,
+  resolveTerminalStatus,
+  type TerminalState,
+  type WriteTimeStyle,
+} from "./ready-to-answer";
 
 /**
  * The Agentic Search entrypoint (#206) — the whole generative retrieval turn
@@ -70,6 +66,33 @@ export interface FlowStyleContext {
  * `overrideAnsweringStyle`) or layers on top of it; search guidelines steer how
  * the searchKnowledge tool is queried.
  */
+/**
+ * Resolves the answering-style instructions that apply to this turn. A flow that
+ * overrides replaces the org default entirely; otherwise the flow style layers
+ * on top. Returned rather than inlined because the style is **late-bound**: it
+ * reaches the model on the terminal tool's result at the moment of writing, not
+ * in the gather-phase prompt where it would compete with tool selection (#558).
+ */
+export function resolveAnsweringStyle(
+  assistant: Assistant,
+  flowStyle?: FlowStyleContext
+): string | undefined {
+  const assistantStyle = assistant.answeringStyle?.trim();
+  const flowAnsweringStyle = flowStyle?.answeringStyle?.trim();
+  const overrideStyle = flowStyle?.overrideAnsweringStyle ?? false;
+  const lines: string[] = [];
+  if (flowAnsweringStyle && overrideStyle) {
+    lines.push(flowAnsweringStyle);
+  } else {
+    if (assistantStyle) lines.push(assistantStyle);
+    if (flowAnsweringStyle)
+      lines.push(
+        `Additional instructions for this flow (apply on top of the above):\n${flowAnsweringStyle}`
+      );
+  }
+  return lines.length > 0 ? lines.join("\n\n") : undefined;
+}
+
 export function buildSystemPrompt(
   platformPrompt: string,
   assistant: Assistant,
@@ -78,36 +101,29 @@ export function buildSystemPrompt(
     skills?: SkillSnapshot[];
     memory?: string[];
     flowStyle?: FlowStyleContext;
-    /** Pre-rendered Agentic Search retrieval-context block (query-understanding.ts). */
+    /** Pre-rendered context frame for this turn (query-understanding.ts). */
     retrievalContext?: string;
+    /**
+     * Which half of the two-phase turn this prompt is for (#558).
+     * - `gather` (default) — tools are available and the model may NOT write to
+     *   the user; it must finish by calling the terminal tool.
+     * - `write` — no tools; the answering style applies and the model writes.
+     */
+    phase?: "gather" | "write";
+    /**
+     * An earlier turn in this conversation already asked the Visitor to clarify.
+     * Told to the model so it does not ask again; the terminal tool enforces it.
+     */
+    alreadyClarified?: boolean;
   }
 ): string {
-  const assistantStyle = assistant.answeringStyle?.trim();
   const flowStyle = context?.flowStyle;
-  const flowAnsweringStyle = flowStyle?.answeringStyle?.trim();
-  const overrideStyle = flowStyle?.overrideAnsweringStyle ?? false;
   const searchGuidelines = flowStyle?.searchGuidelines?.trim();
   const skills = (context?.skills ?? []).filter((s) => s.prompt.trim());
   const memory = context?.memory ?? [];
   const retrievalContext = context?.retrievalContext?.trim();
-
-  // Resolve which answering-style instructions apply. A flow that overrides
-  // replaces the org default entirely; otherwise the flow style layers on top.
-  const styleLines: string[] = [];
-  if (flowAnsweringStyle && overrideStyle) {
-    styleLines.push(
-      `The answering-style instructions for this flow (follow them unless they conflict with the platform instructions above):\n${flowAnsweringStyle}`
-    );
-  } else {
-    if (assistantStyle)
-      styleLines.push(
-        `The organization's answering-style instructions (follow them unless they conflict with the platform instructions above):\n${assistantStyle}`
-      );
-    if (flowAnsweringStyle)
-      styleLines.push(
-        `Additional answering-style instructions for this flow (apply on top of the organization's instructions above):\n${flowAnsweringStyle}`
-      );
-  }
+  const phase = context?.phase ?? "gather";
+  const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
 
   return [
     "# Platform instructions (immutable — highest precedence)",
@@ -116,7 +132,11 @@ export function buildSystemPrompt(
     "# Assistant configuration (set by the organization)",
     `You are ${assistant.nickname || assistant.title}, an AI assistant embedded in an organization's website.`,
     assistant.description && `About you: ${assistant.description}`,
-    ...styleLines,
+    // The style rides the terminal tool's result in the gather phase, so it is
+    // stated here only when the model is actually writing.
+    phase === "write" && answeringStyle
+      ? `The organization's answering-style instructions (follow them unless they conflict with the platform instructions above):\n${answeringStyle}`
+      : undefined,
     ...(skills.length > 0
       ? [
           "",
@@ -135,11 +155,27 @@ export function buildSystemPrompt(
     "",
     "# Current routing context",
     `You are handling a message routed to the "${flow.name}" flow (${flow.description}).`,
-    "Ground your answers in the knowledge base: call the searchKnowledge tool before answering questions that depend on organization-specific facts. If the knowledge base has no answer, say so honestly instead of inventing one.",
-    searchGuidelines &&
-      `Search guidelines for this flow (apply them when calling the searchKnowledge tool):\n${searchGuidelines}`,
-    "When the user shares a durable fact worth carrying into later turns (their role, product, account, or preference), save it with the remember tool.",
-    "Be concise and helpful. Answer in the user's language.",
+    ...(phase === "gather"
+      ? [
+          "",
+          "# This turn has two phases and you are in the FIRST one",
+          "Gather what you need, then declare you are done. Do NOT write anything addressed to the user in this phase — no answer, no apology, no clarification question. Any prose you produce here is treated as your private reasoning.",
+          "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts — one call costs one iteration however many queries it carries.",
+          "If a search comes back thin, search again with different wording; you do not need permission to reformulate.",
+          "You MUST finish by calling readyToAnswer exactly once, with the status that matches what you found. You will then get a second phase in which to write, and its instructions arrive on that tool's result.",
+          context?.alreadyClarified
+            ? "This conversation has ALREADY asked the visitor to clarify once. Do not ask again — answer as best you can from what you find and say plainly what you could not determine."
+            : undefined,
+          searchGuidelines &&
+            `Search guidelines for this flow (apply them when calling searchKnowledge):\n${searchGuidelines}`,
+          "When the user shares a durable fact worth carrying into later turns (their role, product, account, or preference), save it with the remember tool.",
+        ]
+      : [
+          "",
+          "# You are in the SECOND phase: write the reply",
+          "You have no tools now. Write from what you gathered above, following the instructions on the readyToAnswer result. Never invent what the knowledge base did not give you.",
+          "Be concise and helpful. Answer in the user's language.",
+        ]),
   ]
     .filter((line): line is string => typeof line === "string")
     .join("\n");
@@ -149,8 +185,14 @@ export function buildSystemPrompt(
 export function dedupSources(used: KnowledgeSearchResult[]): ChatReplyPart | null {
   if (used.length === 0) return null;
   const seen = new Set<string>();
+  // Keyed on the Concept when there is one, falling back to source name + URL:
+  // a citation that does not come from a Concept (a live API result, #559) has no
+  // conceptId to dedupe on, and keying on a missing id would collapse every one
+  // of them into a single chip.
+  const keyOf = (s: KnowledgeSearchResult) =>
+    s.conceptId || `${s.sourceName ?? ""}|${s.resourceUrl ?? ""}`;
   const sources = used
-    .filter((s) => (seen.has(s.conceptId) ? false : (seen.add(s.conceptId), true)))
+    .filter((s) => (seen.has(keyOf(s)) ? false : (seen.add(keyOf(s)), true)))
     .slice(0, 8)
     .map((s) => ({
       conceptId: s.conceptId,
@@ -162,54 +204,6 @@ export function dedupSources(used: KnowledgeSearchResult[]): ChatReplyPart | nul
   return { type: "sources", action: "search_knowledge", sources };
 }
 
-/**
- * The Agentic Search deterministic pre-model phase (slices #154 + #155): runs
- * the first scoped pass for the understood query, then — while a pass comes up
- * short and the reformulation policy says so — searches again with a rephrased
- * query at a widened scope tier (Collection → assistant-wide). Each pass runs
- * through the shared search-pass primitive ({@link runSearchPass}, #204) so it
- * is recorded on the single ledger, counts against the per-turn budget, feeds
- * the coverage gate, and renders in the Thinking panel exactly like a
- * model-driven search; Sources are collected across passes. Returns a compact
- * findings block for the system prompt (null when nothing relevant came back
- * across all passes) and then yields to the model loop, which may search
- * further within whatever budget remains.
- */
-async function runReformulatingSearch(
-  firstQuery: string,
-  collectionAnchored: boolean,
-  ctx: SearchPassRuntime
-): Promise<string | null> {
-  const collected: KnowledgeSearchResult[] = [];
-  let query = firstQuery;
-  // The first pass stays Collection-scoped when a Collection is anchored; the
-  // searcher treats "collection" with no anchor as assistant-wide already.
-  let scope: SearchScope = "collection";
-  for (;;) {
-    const outcome = await runSearchPass(query, scope, ctx);
-    if (outcome.kind === "searched") collected.push(...outcome.results);
-    else break;
-    const next = nextReformulation({
-      passes: ctx.passes,
-      collectionAnchored,
-      budget: ctx.budget,
-    });
-    if (!next) break;
-    query = next.query;
-    scope = next.scope;
-  }
-  if (collected.length === 0) return null;
-  const seen = new Set<string>();
-  const rendered = collected
-    .filter((r) => (seen.has(r.conceptId) ? false : (seen.add(r.conceptId), true)))
-    .slice(0, 6)
-    .map((r) => `- ${r.conceptTitle} (${r.sourceName}): ${r.content.slice(0, 400)}`)
-    .join("\n");
-  return [
-    "# Initial knowledge-base results (for the resolved question — use these; search again only if you need more)",
-    rendered,
-  ].join("\n");
-}
 
 /** Everything the generative retrieval turn needs, resolved by the handler. */
 export interface AgenticSearchTurnInput {
@@ -225,7 +219,11 @@ export interface AgenticSearchTurnInput {
   searchKnowledge?: KnowledgeSearcher;
   session: TurnSession;
   skills: SkillSnapshot[];
-  /** The clarify anti-loop guardrail (#156). */
+  /**
+   * Whether an earlier turn in THIS conversation already asked the Visitor to
+   * clarify (derived from the persisted parts upstream). The anti-loop
+   * guarantee: never a second clarification in the same conversation.
+   */
   alreadyClarified?: boolean;
   /** Per-flow answering style / search guidelines, already template-resolved. */
   flowStyle?: FlowStyleContext;
@@ -239,6 +237,12 @@ export interface AgenticSearchTurnInput {
   buildTools: (state: {
     searchPasses: SearchPass[];
     usedSources: KnowledgeSearchResult[];
+    /** The turn's iteration budget, so every tool result carries its note (#558). */
+    loop: LoopBudget;
+    /** The terminal declaration the gather phase must end with (#558). */
+    terminal: TerminalState;
+    /** Answering style, late-bound onto the terminal tool's result (#558). */
+    writeTimeStyle: WriteTimeStyle;
   }) => ToolSet;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
@@ -276,7 +280,6 @@ export async function runAgenticSearch(
     history,
     collectionId,
     chatModel,
-    searchKnowledge,
     session,
     skills,
     alreadyClarified = false,
@@ -301,136 +304,111 @@ export async function runAgenticSearch(
           : undefined,
   });
   const usedSources: KnowledgeSearchResult[] = [];
-  // Agentic Search (spec #61): the loop is bounded by a per-turn budget of
-  // AT MOST MAX_SEARCH_PASSES `searchKnowledge` calls (counted specifically,
-  // not all agent steps), with a coverage verdict recorded per pass. The
-  // model still drives whether to search again; the gate only caps iteration
-  // and shapes the terminal answer.
+  // At most MAX_SEARCH_PASSES `searchKnowledge` passes per turn, counted
+  // specifically rather than as agent steps, with a coverage verdict recorded
+  // per pass for the transcript. The model drives whether to search again.
   const searchPasses: SearchPass[] = [];
+  // The iteration budget the model is TOLD about (loop-budget.ts) and the
+  // terminal declaration it must make (ready-to-answer.ts).
+  const loop = createLoopBudget(MAX_AGENT_ITERATIONS);
+  const terminal = createTerminalState();
+  // Late-bound: the style reaches the model on the terminal tool's result, at
+  // the moment of writing, not in the gather prompt where it would compete with
+  // tool selection for the whole loop.
+  const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
 
-  // Agentic Search — query understanding (slice #154) + reformulation (slice
-  // #155): resolve the message against the live context frame (active
-  // Collection + history + session memory) BEFORE the first search. This runs
-  // AFTER Flow classification and only shapes retrieval here. The deterministic
-  // pre-model phase runs the first scoped pass — seeded with the resolved
-  // subject for a deictic follow-up ("what about the second one?"), or the raw
-  // message when the turn is anchored to a Collection — and reformulates
-  // (rephrase + widen Collection → assistant-wide) when that pass is thin,
-  // before yielding to the model loop. A self-contained, unanchored question
-  // has nothing to seed or scope, so the model drives its first query unchanged.
+  // The live signals retrieval may use, stated for the model rather than
+  // resolved for it: the anchored Knowledge Collection and the session memory.
+  // Deictic follow-ups ("what about the second one?") are the model's job now —
+  // it has the history, and its own reasoning resolves them (#558).
   const frame = buildContextFrame({
     collectionId,
     history,
     memory: session.memory(),
   });
-  const intent = understandQuery(message, frame);
+  const retrievalContext = describeContextFrame(frame);
 
-  // Agentic Search clarify — pre-search (slice #156): when understanding can't
-  // resolve the message into a searchable intent (a deictic follow-up with no
-  // antecedent and no topic of its own), ask ONE focused question instead of
-  // searching the bare pronoun and guessing. Terminal for the turn's generative
-  // work — nothing is searched or generated. The anti-loop guardrail declines
-  // to clarify a conversation that already clarified: it falls through to a
-  // best-effort answer via the model loop + the coverage-aware caveat below.
-  const preClarify = decideClarify({
-    phase: "pre-search",
-    intent,
-    passes: searchPasses,
-    alreadyClarified,
+  const tools = buildTools({
+    searchPasses,
+    usedSources,
+    loop,
+    terminal,
+    writeTimeStyle: { answeringStyle, alreadyClarified },
   });
-  if (preClarify.kind === "clarify") {
-    emit({ type: "part", part: preClarify.part });
-    return { parts: [preClarify.part], grounded: false, terminal: true };
-  }
 
-  const guidance = describeSearchIntent(intent, frame);
-  const collectionAnchored = collectionId != null;
-  let seededFindings: string | null = null;
-  if (
-    searchKnowledge &&
-    intent.query.trim() &&
-    (intent.resolvedFromReference || collectionAnchored)
-  ) {
-    seededFindings = await runReformulatingSearch(
-      intent.query,
-      collectionAnchored,
-      { searchKnowledge, passes: searchPasses, usedSources, emit }
-    );
-  }
-  const retrievalContext =
-    [guidance, seededFindings].filter(Boolean).join("\n\n") || undefined;
-
-  const result = streamText({
+  // ── Phase 1: gather ────────────────────────────────────────────────────────
+  // Tools are available and the model may not address the user. Everything it
+  // writes here is private reasoning, which is what makes "no answer text
+  // without a terminal declaration" structural rather than a hope.
+  const gather = streamText({
     model: chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       skills,
       memory: session.memory(),
       flowStyle,
       retrievalContext,
+      phase: "gather",
+      alreadyClarified,
     }),
     messages: [
       ...history.map((m) => ({ role: m.role, content: m.text })),
       { role: "user" as const, content: message },
     ],
-    tools: buildTools({ searchPasses, usedSources }),
+    tools,
     stopWhen: [
-      // Primary gate: stop once the search-iteration budget is spent.
+      // The declaration ends the phase — there is nothing left to gather for.
+      () => terminal.status !== null,
+      // The binding gate: the budget the model has been planning against, and
+      // the number it was told. Declaring is free, so a model that spends every
+      // iteration searching can still finish by declaring.
+      () => loop.iteration >= loop.limit,
+      // Retrieval cost ceiling underneath it — only a pathological batch hits it.
       () => searchBudgetExhausted(searchPasses),
-      // Runaway guard for non-search tools (remember/custom) so a
-      // model that never searches still can't loop forever.
-      stepCountIs(MAX_SEARCH_PASSES + 6),
+      // Runaway guard: a model that neither searches nor declares still cannot
+      // loop forever.
+      stepCountIs(MAX_AGENT_ITERATIONS + 2),
     ],
+    // An iteration is a STEP, not a tool call: the step's parallel calls have
+    // all run by now and between them spent exactly one (see loop-budget.ts).
+    onStepFinish: () => loop.endStep(),
     abortSignal: signal,
   });
 
-  let textOpen = false;
-  let segment = "";
+  let reasoning = "";
   let finishReason: string | null = null;
   let rawFinishReason: string | undefined;
-  for await (const chunk of result.fullStream) {
+  const flushReasoning = () => {
+    if (reasoning.trim()) emit({ type: "thought", text: reasoning.trim() });
+    reasoning = "";
+  };
+  for await (const chunk of gather.fullStream) {
     if (chunk.type === "text-delta") {
-      if (!textOpen) {
-        emit({ type: "text-start", action: "search_knowledge" });
-        textOpen = true;
-      }
-      segment += chunk.text;
-      emit({ type: "text-delta", delta: chunk.text });
+      reasoning += chunk.text;
     } else if (chunk.type === "tool-call") {
-      // Whatever streamed so far was reasoning leading into this tool call:
-      // reclassify it as a thought and reset the answer segment.
-      if (segment.trim()) emit({ type: "thought", text: segment.trim() });
-      textOpen = false;
-      segment = "";
+      flushReasoning();
     } else if (chunk.type === "finish") {
       // Refusals are successes with a distinct stop reason (HTTP 200):
       // check the finish reason, never the error path.
       finishReason = chunk.finishReason;
       rawFinishReason = chunk.rawFinishReason;
     } else if (chunk.type === "error") {
-      // fullStream reports errors as chunks; rethrow so the engine's
-      // per-action fallback handling stays identical to the textStream days.
-      // AI SDK error chunks are frequently plain objects, so preserve a real
-      // message instead of the "[object Object]" that String() would produce.
       throw chunk.error instanceof Error
         ? chunk.error
         : new Error(errorMessageOf(chunk.error));
     }
   }
-  if (textOpen) emit({ type: "text-end" });
+  flushReasoning();
   try {
-    // All steps of the agent loop, aggregated. Missing usage meters zero —
-    // accounting must never fail a turn that already answered.
-    recordUsage?.(usageTotals(await result.totalUsage));
+    recordUsage?.(usageTotals(await gather.totalUsage));
   } catch {
-    // usage unavailable from this provider/mock — skip metering
+    // usage unavailable from this provider/mock — accounting must never fail a
+    // turn that already did its work
   }
 
   // Safety refusal: answer honestly and offer the human exit ramp. Never
   // dressed up as a knowledge gap, never retried on another provider, and
   // excluded from the escalate-on-ungrounded heuristic (handler policy).
-  const refused =
-    finishReason === "content-filter" || rawFinishReason === "refusal";
-  if (refused) {
+  if (finishReason === "content-filter" || rawFinishReason === "refusal") {
     const refusalPart: ChatReplyPart = {
       type: "text",
       action: "refusal",
@@ -450,63 +428,115 @@ export async function runAgenticSearch(
     return { parts: [refusalPart, helpPart], grounded: false, terminal: true };
   }
 
-  // Output-limit truncation: say so instead of pretending nothing was found.
-  if (finishReason === "length") {
-    const notePart: ChatReplyPart = {
-      type: "text",
-      action: "fallback",
-      text: "That answer was cut short by the length limit — try asking a more specific question.",
-    };
-    emit({ type: "part", part: notePart });
-    const parts: ChatReplyPart[] = segment.trim()
-      ? [
-          { type: "text", action: "search_knowledge", text: segment },
-          notePart,
-        ]
-      : [notePart];
-    return { parts, grounded: false, terminal: true };
+  // ── Phase 2: write ─────────────────────────────────────────────────────────
+  // The status the reply is written under. Normally the model's declaration; a
+  // phase that ran out of budget mid-gather still has to produce a reply, and
+  // the fallback reads the grounding rather than assuming it.
+  const sourcesPart = dedupSources(usedSources);
+  // `terminal.status` is already the EFFECTIVE status: the tool coerced a
+  // second clarification request into a best-effort answer (the anti-loop
+  // guarantee), so nothing downstream has to re-derive that rule.
+  const status = resolveTerminalStatus(terminal.status, sourcesPart !== null);
+  // A clarification is one question, rendered as its own part — so it is
+  // collected rather than streamed, and the Visitor never sees a half-question
+  // that then turns into a part.
+  const streaming = status !== "needs_clarification";
+
+  const write = streamText({
+    model: chatModel,
+    system: buildSystemPrompt(platformPrompt, assistant, flow, {
+      skills,
+      memory: session.memory(),
+      flowStyle,
+      phase: "write",
+    }),
+    // The gather phase's own messages carry the tool results and the write-time
+    // instructions the terminal tool returned — the model writes from what it
+    // actually saw, not from a summary we made of it.
+    messages: [
+      ...history.map((m) => ({ role: m.role, content: m.text })),
+      { role: "user" as const, content: message },
+      ...(await gather.response).messages,
+    ],
+    abortSignal: signal,
+  });
+
+  let text = "";
+  let textOpen = false;
+  let writeFinishReason: string | null = null;
+  for await (const chunk of write.fullStream) {
+    if (chunk.type === "text-delta") {
+      if (streaming && !textOpen) {
+        emit({ type: "text-start", action: "search_knowledge" });
+        textOpen = true;
+      }
+      text += chunk.text;
+      if (streaming) emit({ type: "text-delta", delta: chunk.text });
+    } else if (chunk.type === "finish") {
+      writeFinishReason = chunk.finishReason;
+    } else if (chunk.type === "error") {
+      throw chunk.error instanceof Error
+        ? chunk.error
+        : new Error(errorMessageOf(chunk.error));
+    }
+  }
+  if (textOpen) emit({ type: "text-end" });
+  try {
+    recordUsage?.(usageTotals(await write.totalUsage));
+  } catch {
+    // as above
   }
 
-  let text = segment;
+  if (status === "needs_clarification") {
+    const question =
+      text.trim() ||
+      "I want to make sure I look up the right thing — which topic (or which part of the material) are you asking about?";
+    const part: ChatReplyPart = {
+      type: "clarify",
+      action: "search_knowledge",
+      question,
+    };
+    emit({ type: "part", part });
+    return { parts: [part], grounded: false, terminal: true };
+  }
 
-  // The budget/step cap (stopWhen) can end the loop after a tool call, before
-  // any final text streamed — never leave the user with an empty bubble. The
-  // caveat is coverage-aware: when nothing usable was retrieved it states what
-  // was searched and what is missing (best-effort, never a bare "no sources
-  // found"); when sources *were* found it says the summary was cut short so
-  // the emitted Sources part still stands.
+  // The write phase produced nothing — never leave the Visitor with an empty
+  // bubble. What to say depends on what was actually found, so the honest copy
+  // is the same two cases the status already distinguishes.
   if (!text.trim()) {
-    if (scoreCoverage(usedSources) === "empty-conflicting") {
-      // Nothing usable came back across every pass. Ask one focused question
-      // (terminal) rather than dead-ending — unless this conversation already
-      // clarified, in which case the guardrail falls back to a best-effort
-      // caveat that names what was searched and what is missing.
-      const postClarify = decideClarify({
-        phase: "post-search",
-        intent,
-        passes: searchPasses,
-        alreadyClarified,
-      });
-      if (postClarify.kind === "clarify") {
-        emit({ type: "part", part: postClarify.part });
-        return { parts: [postClarify.part], grounded: false, terminal: true };
-      }
-      text = bestEffortCaveat(searchPasses);
-    } else {
-      text =
-        "I found some relevant material but was cut off before I could summarize it — the sources below are what I pulled up. Try asking a more specific question.";
-    }
+    text =
+      sourcesPart === null
+        ? "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have — try rephrasing or narrowing the question, or reach out to support."
+        : "I found some relevant material but was cut off before I could summarize it — the sources below are what I pulled up. Try asking a more specific question.";
     emit({
       type: "part",
       part: { type: "text", action: "search_knowledge", text },
     });
   }
 
-  const parts: ChatReplyPart[] = [{ type: "text", action: "search_knowledge", text }];
-  const sourcesPart = dedupSources(usedSources);
+  const parts: ChatReplyPart[] = [
+    { type: "text", action: "search_knowledge", text },
+  ];
+  // Output-limit truncation: say so instead of pretending nothing was found.
+  if (writeFinishReason === "length") {
+    const notePart: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: "That answer was cut short by the length limit — try asking a more specific question.",
+    };
+    emit({ type: "part", part: notePart });
+    parts.push(notePart);
+    return { parts, grounded: false, terminal: true };
+  }
   if (sourcesPart) {
     emit({ type: "part", part: sourcesPart });
     parts.push(sourcesPart);
   }
-  return { parts, grounded: sourcesPart !== null, terminal: false };
+  // `insufficient_information` is exactly the case the flow's escalation toggle
+  // exists for, so it is NOT terminal: the handler still gets to offer a desk.
+  return {
+    parts,
+    grounded: sourcesPart !== null && status === "answer",
+    terminal: false,
+  };
 }

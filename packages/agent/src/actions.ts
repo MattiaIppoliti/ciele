@@ -347,13 +347,16 @@ const searchKnowledgeHandler: ActionHandler = async ({
     alreadyClarified,
     flowStyle,
     contactLabel: contactLabel(assistant),
-    buildTools: ({ searchPasses, usedSources }) =>
+    buildTools: ({ searchPasses, usedSources, loop, terminal, writeTimeStyle }) =>
       buildToolset({
         assistant,
         session,
         searchKnowledge,
         usedSources,
         searchPasses,
+        loop,
+        terminal,
+        writeTimeStyle,
         emit,
         signal,
       }),

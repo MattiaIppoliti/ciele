@@ -5,7 +5,12 @@ import { simulateReadableStream } from "ai";
 import type { LanguageModel } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { ACTION_HANDLERS } from "./actions";
-import { MAX_SEARCH_PASSES, buildSystemPrompt } from "./agentic-search";
+import {
+  MAX_AGENT_ITERATIONS,
+  MAX_SEARCH_PASSES,
+  buildSystemPrompt,
+  type TerminalStatus,
+} from "./agentic-search";
 import { createTurnSession } from "./session";
 import type { ActionContext, RuntimeEvent } from "./types";
 
@@ -571,10 +576,13 @@ describe("handover", () => {
 
 describe("buildSystemPrompt (prompt layering)", () => {
   it("puts the platform layer first, above the assistant's answering style", () => {
+    // The style only appears in the WRITE phase — see the late-binding block
+    // below for why it is absent while the model is choosing tools.
     const prompt = buildSystemPrompt(
       "PLATFORM RULES",
       makeAssistant({ answeringStyle: "Always answer in haiku." }),
-      makeFlow({ name: "Default behavior" })
+      makeFlow({ name: "Default behavior" }),
+      { phase: "write" }
     );
     const platformIdx = prompt.indexOf("PLATFORM RULES");
     const styleIdx = prompt.indexOf("Always answer in haiku.");
@@ -583,6 +591,38 @@ describe("buildSystemPrompt (prompt layering)", () => {
     expect(styleIdx).toBeGreaterThan(platformIdx);
     expect(flowIdx).toBeGreaterThan(styleIdx);
     expect(prompt).toContain("immutable — highest precedence");
+  });
+
+  it("late-binds the answering style: absent while gathering, present when writing", () => {
+    // #558: in the gather phase the style would compete with tool-selection
+    // reasoning for the whole loop, so it rides the terminal tool's result
+    // instead and only enters the prompt once the model is actually writing.
+    const assistant = makeAssistant({ answeringStyle: "Always answer in haiku." });
+    const gather = buildSystemPrompt("P", assistant, makeFlow(), {
+      phase: "gather",
+    });
+    expect(gather).not.toContain("Always answer in haiku.");
+    expect(gather).toContain("you are in the FIRST one");
+    expect(gather).toContain("readyToAnswer exactly once");
+    // The gather phase must not let the model address the user at all.
+    expect(gather).toContain("Do NOT write anything addressed to the user");
+
+    const write = buildSystemPrompt("P", assistant, makeFlow(), {
+      phase: "write",
+    });
+    expect(write).toContain("Always answer in haiku.");
+    expect(write).toContain("SECOND phase");
+    expect(write).toContain("no tools now");
+  });
+
+  it("defaults to the gather phase", () => {
+    const prompt = buildSystemPrompt(
+      "P",
+      makeAssistant({ answeringStyle: "Always answer in haiku." }),
+      makeFlow()
+    );
+    expect(prompt).not.toContain("Always answer in haiku.");
+    expect(prompt).toContain("you are in the FIRST one");
   });
 
   it("omits the answering-style block when the org left it empty", () => {
@@ -600,6 +640,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
       makeAssistant({ answeringStyle: "Always answer in haiku." }),
       makeFlow({ name: "Default behavior" }),
       {
+        phase: "write",
         skills: [
           {
             id: "sk-1",
@@ -638,10 +679,13 @@ describe("buildSystemPrompt (prompt layering)", () => {
       "P",
       makeAssistant({ answeringStyle: "Always answer in haiku." }),
       makeFlow(),
-      { flowStyle: { answeringStyle: "Keep it under two sentences." } }
+      {
+        phase: "write",
+        flowStyle: { answeringStyle: "Keep it under two sentences." },
+      }
     );
     expect(prompt).toContain("Always answer in haiku.");
-    expect(prompt).toContain("Additional answering-style instructions for this flow");
+    expect(prompt).toContain("Additional instructions for this flow");
     expect(prompt).toContain("Keep it under two sentences.");
   });
 
@@ -651,6 +695,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
       makeAssistant({ answeringStyle: "Always answer in haiku." }),
       makeFlow(),
       {
+        phase: "write",
         flowStyle: {
           answeringStyle: "Reply only in formal French.",
           overrideAnsweringStyle: true,
@@ -659,7 +704,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
     );
     expect(prompt).toContain("Reply only in formal French.");
     expect(prompt).not.toContain("Always answer in haiku.");
-    expect(prompt).not.toContain("Additional answering-style instructions");
+    expect(prompt).not.toContain("Additional instructions for this flow");
   });
 
   it("adds flow search guidelines to the routing context", () => {
@@ -671,40 +716,88 @@ describe("buildSystemPrompt (prompt layering)", () => {
   });
 });
 
+/**
+ * The two-phase turn's model fixtures (#558). A turn is now TWO generative
+ * calls: phase 1 gathers and must end by calling `readyToAnswer`, phase 2 writes
+ * with no tools. So a fixture is a SCRIPT of steps, and each step has to hand
+ * back a fresh stream — `simulateReadableStream` yields a single-use stream, and
+ * a fixture that reuses one silently gives phase 2 an already-consumed body.
+ */
+const phaseUsage = () => ({
+  inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
+  outputTokens: { total: 5, text: 5, reasoning: undefined },
+});
+
+/** Phase 1's mandatory ending: the model declares what it found. */
+function declareStep(status: TerminalStatus = "answer") {
+  return () => ({
+    stream: simulateReadableStream({
+      chunks: [
+        { type: "stream-start" as const, warnings: [] },
+        {
+          type: "tool-call" as const,
+          toolCallId: `ready-${status}`,
+          toolName: "readyToAnswer",
+          input: JSON.stringify({ status }),
+        },
+        {
+          type: "finish" as const,
+          finishReason: { unified: "tool-calls" as const, raw: "tool_calls" },
+          usage: phaseUsage(),
+        },
+      ],
+    }),
+  });
+}
+
+/** Phase 2: the write. Deltas may be empty — that is the cut-off-before-writing case. */
+function writeStep(
+  deltas: string[] = [],
+  unified: "stop" | "length" | "content-filter" = "stop",
+  raw?: string
+) {
+  return () => ({
+    stream: simulateReadableStream({
+      chunks: [
+        { type: "stream-start" as const, warnings: [] },
+        { type: "text-start" as const, id: "1" },
+        ...deltas.map((delta) => ({
+          type: "text-delta" as const,
+          id: "1",
+          delta,
+        })),
+        { type: "text-end" as const, id: "1" },
+        {
+          type: "finish" as const,
+          finishReason: { unified, raw: raw ?? unified },
+          usage: phaseUsage(),
+        },
+      ],
+    }),
+  });
+}
+
+/**
+ * Runs the scripted steps in order; the last one repeats if the loop asks for
+ * more. The one cast is at the mock boundary: each step's stream is typed from
+ * its own chunk list, so the union does not unify with the SDK's part type.
+ */
+type ScriptedStep = () => { stream: unknown };
+
+function scriptedModel(...steps: ScriptedStep[]) {
+  let call = 0;
+  return new MockLanguageModelV3({
+    doStream: async () => steps[Math.min(call++, steps.length - 1)]() as any,
+  });
+}
+
 describe("search_knowledge finish reasons (refusal & truncation)", () => {
-  function streamingModel(input: {
-    deltas?: string[];
-    unified: "stop" | "length" | "content-filter";
-    raw?: string;
-  }) {
-    return new MockLanguageModelV3({
-      doStream: {
-        stream: simulateReadableStream({
-          chunks: [
-            { type: "stream-start" as const, warnings: [] },
-            { type: "text-start" as const, id: "1" },
-            ...(input.deltas ?? []).map((delta) => ({
-              type: "text-delta" as const,
-              id: "1",
-              delta,
-            })),
-            { type: "text-end" as const, id: "1" },
-            {
-              type: "finish" as const,
-              finishReason: { unified: input.unified, raw: input.raw ?? input.unified },
-              usage: {
-                inputTokens: { total: 10, noCache: 10, cacheRead: undefined, cacheWrite: undefined },
-                outputTokens: { total: 5, text: 5, reasoning: undefined },
-              },
-            },
-          ],
-        }),
-      },
-    });
-  }
+  /** A phase-1 model that refuses instead of gathering. */
+  const refusingModel = () =>
+    scriptedModel(writeStep([], "content-filter", "refusal"));
 
   it("answers a refusal honestly with the escalation offer (no retry)", async () => {
-    const model = streamingModel({ unified: "content-filter", raw: "refusal" });
+    const model = refusingModel();
     const { ctx } = makeContext({ chatModel: model as unknown as LanguageModel });
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
@@ -715,12 +808,13 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     // Never dressed up as a knowledge gap, no provider internals on the widget.
     expect(text.text).not.toContain("knowledge base");
     expect(text.text).not.toContain("refusal");
-    // Exactly one generative invocation: refusals are not shopped around.
+    // Exactly one generative invocation: a refusal while gathering is terminal,
+    // so the write phase never runs — and refusals are not shopped around.
     expect(model.doStreamCalls).toHaveLength(1);
   });
 
   it("shows the raw finish reason only on the preview surface", async () => {
-    const model = streamingModel({ unified: "content-filter", raw: "refusal" });
+    const model = refusingModel();
     const { ctx } = makeContext({
       chatModel: model as unknown as LanguageModel,
       previewSurface: true,
@@ -732,7 +826,9 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
   });
 
   it("labels a length-truncated answer instead of pretending nothing was found", async () => {
-    const model = streamingModel({ unified: "length", deltas: ["Partial ans"] });
+    // Truncation is a WRITE-phase concern now: a gather cut short still gets to
+    // write, but an answer cut short has to say so.
+    const model = scriptedModel(declareStep(), writeStep(["Partial ans"], "length"));
     const { ctx } = makeContext({ chatModel: model as unknown as LanguageModel });
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
@@ -743,8 +839,8 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     expect(result.parts.some((p) => p.type === "help_desk")).toBe(false);
   });
 
-  it("keeps the normal path unchanged and meters usage", async () => {
-    const model = streamingModel({ unified: "stop", deltas: ["All good."] });
+  it("keeps the normal path unchanged and meters BOTH phases", async () => {
+    const model = scriptedModel(declareStep(), writeStep(["All good."]));
     const usage: { inputTokens: number; outputTokens: number }[] = [];
     const { ctx } = makeContext({
       chatModel: model as unknown as LanguageModel,
@@ -756,7 +852,38 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
       action: "search_knowledge",
       text: "All good.",
     });
-    expect(usage).toEqual([{ inputTokens: 10, outputTokens: 5 }]);
+    // Two generative calls, two ledger entries. The two-phase turn genuinely
+    // costs two model calls and the AI usage ledger must show that rather than
+    // quietly under-reporting what the org is billed for.
+    expect(model.doStreamCalls).toHaveLength(2);
+    expect(usage).toEqual([
+      { inputTokens: 10, outputTokens: 5 },
+      { inputTokens: 10, outputTokens: 5 },
+    ]);
+  });
+
+  it("never writes to the user without a terminal declaration", async () => {
+    // Phase 1 prose is private reasoning, not an answer: a model that tries to
+    // reply during the gather phase has its text folded into the Thinking panel
+    // and the real reply still comes from phase 2.
+    const model = scriptedModel(
+      writeStep(["Let me just answer directly."]),
+      writeStep(["The deadline is 30 September."])
+    );
+    const events: RuntimeEvent[] = [];
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      emit: (e) => events.push(e),
+    });
+    const result = await ACTION_HANDLERS.search_knowledge(ctx);
+
+    expect(events.some((e) => e.type === "thought")).toBe(true);
+    expect(
+      events.find((e) => e.type === "thought")
+    ).toMatchObject({ text: "Let me just answer directly." });
+    expect((result.parts[0] as { text: string }).text).toBe(
+      "The deadline is 30 September."
+    );
   });
 
   it("preserves a structured provider error from the AI SDK stream", async () => {
@@ -784,7 +911,10 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
   });
 
   it("creates an improvement when an enabled knowledge search is ungrounded", async () => {
-    const model = streamingModel({ unified: "stop", deltas: ["I could not verify that."] });
+    const model = scriptedModel(
+      declareStep("insufficient_information"),
+      writeStep(["I could not verify that."])
+    );
     const { ctx } = makeContext({
       chatModel: model as unknown as LanguageModel,
       flow: makeFlow({
@@ -835,25 +965,6 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
     };
   }
 
-  /** A model step that streams a final answer and stops. */
-  function answerStep(text: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "text-start" as const, id: "t" },
-          { type: "text-delta" as const, id: "t", delta: text },
-          { type: "text-end" as const, id: "t" },
-          {
-            type: "finish" as const,
-            finishReason: { unified: "stop" as const, raw: "stop" },
-            usage: mockUsage(),
-          },
-        ],
-      }),
-    };
-  }
-
   const strongResult: KnowledgeSearchResult = {
     conceptId: "k1",
     conceptTitle: "Enrollment deadline",
@@ -866,49 +977,132 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
     similarity: 0.92,
   };
 
-  it("caps a keeps-finding-nothing turn at 6 searches, then a caveated answer (never empty)", async () => {
+  it("caps a keeps-finding-nothing turn at the iteration budget, then still writes", async () => {
     let seq = 0;
     // Always asks to search again with a fresh query — the budget, not the
-    // model, must terminate the loop.
+    // model, must terminate the gather phase. Then the write phase runs with
+    // nothing to write from, which is the honest dead-end path.
+    let gatherCalls = 0;
     const model = new MockLanguageModelV3({
-      doStream: async () => searchStep(`call-${++seq}`, `attempt ${seq}`),
+      doStream: async () => {
+        // Phase 1 keeps searching until a gate stops it; phase 2 has no tools,
+        // so it is scripted separately as an empty write.
+        if (gatherCalls++ < MAX_AGENT_ITERATIONS) {
+          return searchStep(`call-${++seq}`, `attempt ${seq}`);
+        }
+        return writeStep()();
+      },
     });
     const searchKnowledge = vi.fn(async () => [] as KnowledgeSearchResult[]);
-    // The conversation already clarified once, so the empty-conflicting dead-end
-    // takes the best-effort caveat path (not a second clarify — #156 guardrail).
     const { ctx } = makeContext({
       chatModel: model as unknown as LanguageModel,
       searchKnowledge,
       message: "something not in the knowledge base",
+    });
+
+    const result = await ACTION_HANDLERS.search_knowledge(ctx);
+
+    // The ITERATION budget ends it — one search per iteration here, so six —
+    // and the retrieval ceiling underneath is never reached.
+    expect(searchKnowledge).toHaveBeenCalledTimes(MAX_AGENT_ITERATIONS);
+    expect(MAX_AGENT_ITERATIONS).toBeLessThan(MAX_SEARCH_PASSES);
+
+    // A single text part — never a bare empty bubble, even when the model wrote
+    // nothing at all.
+    const textParts = result.parts.filter(
+      (p): p is Extract<ChatReplyPart, { type: "text" }> => p.type === "text"
+    );
+    expect(textParts).toHaveLength(1);
+    expect(textParts[0].text).toContain("couldn't find");
+    // Nothing grounded it, so no Sources part.
+    expect(result.parts.some((p) => p.type === "sources")).toBe(false);
+  });
+
+  it("a gather that never declares still writes, under the grounding-derived status", async () => {
+    // The declaration is mandatory, but a budget that runs out mid-gather cannot
+    // be allowed to produce silence: the status falls back to what the grounding
+    // actually supports.
+    let gatherCalls = 0;
+    const model = new MockLanguageModelV3({
+      doStream: async () => {
+        if (gatherCalls++ < MAX_AGENT_ITERATIONS) {
+          return searchStep(`c-${gatherCalls}`, `attempt ${gatherCalls}`);
+        }
+        return writeStep(["Here is what I found."])();
+      },
+    });
+    const searchKnowledge = vi.fn(async () => [strongResult]);
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      searchKnowledge,
+      message: "when does enrollment close?",
+    });
+
+    const result = await ACTION_HANDLERS.search_knowledge(ctx);
+    expect((result.parts[0] as { text: string }).text).toBe(
+      "Here is what I found."
+    );
+    // Sources were found, so the fallback status is `answer` and provenance
+    // still ships.
+    expect(result.parts.some((p) => p.type === "sources")).toBe(true);
+  });
+
+  it("asks one question when the model declares it needs clarification", async () => {
+    const model = scriptedModel(
+      declareStep("needs_clarification"),
+      writeStep(["Which intake year do you mean?"])
+    );
+    const events: RuntimeEvent[] = [];
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      message: "when does it close?",
+      emit: (e) => events.push(e),
+    });
+
+    const result = await ACTION_HANDLERS.search_knowledge(ctx);
+
+    // Rendered as a clarify part, not prose — and collected rather than
+    // streamed, so the Visitor never watches a half-question appear.
+    expect(result.parts).toHaveLength(1);
+    expect(result.parts[0]).toMatchObject({
+      type: "clarify",
+      question: "Which intake year do you mean?",
+    });
+    expect(events.some((e) => e.type === "text-delta")).toBe(false);
+  });
+
+  it("never clarifies twice in one conversation, even when the model asks to", async () => {
+    // The anti-loop guarantee: being asked to rephrase a second time reads as
+    // the assistant refusing to try, so the declaration is coerced to a
+    // best-effort answer and the write-time instructions say why.
+    const model = scriptedModel(
+      declareStep("needs_clarification"),
+      writeStep(["I could not pin down the year, but here is what I have."])
+    );
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      message: "when does it close?",
       alreadyClarified: true,
     });
 
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
-    // At most 6 searchKnowledge calls — and no 7th model generation.
-    expect(searchKnowledge).toHaveBeenCalledTimes(MAX_SEARCH_PASSES);
-    expect(model.doStreamCalls.length).toBe(MAX_SEARCH_PASSES);
-
-    // A single caveated best-effort text part — never a bare empty bubble.
-    const textParts = result.parts.filter(
-      (p): p is Extract<ChatReplyPart, { type: "text" }> => p.type === "text"
+    expect(result.parts.some((p) => p.type === "clarify")).toBe(false);
+    expect(result.parts[0]).toMatchObject({
+      type: "text",
+      action: "search_knowledge",
+    });
+    expect((result.parts[0] as { text: string }).text).toContain(
+      "could not pin down"
     );
-    expect(textParts).toHaveLength(1);
-    expect(textParts[0].text.trim().length).toBeGreaterThan(0);
-    expect(textParts[0].text).toContain("couldn't find");
-    // The caveat names what it actually searched for.
-    expect(textParts[0].text).toContain("attempt 1");
-    // Nothing grounded it, so no Sources part.
-    expect(result.parts.some((p) => p.type === "sources")).toBe(false);
   });
 
   it("stops as soon as a pass grounds the answer and still emits a deduped Sources part", async () => {
-    const model = new MockLanguageModelV3({
-      doStream: [
-        searchStep("call-1", "when does enrollment close"),
-        answerStep("Enrollment closes on 30 September."),
-      ],
-    });
+    const model = scriptedModel(
+      () => searchStep("call-1", "when does enrollment close"),
+      declareStep(),
+      writeStep(["Enrollment closes on 30 September."])
+    );
     const searchKnowledge = vi.fn(async () => [strongResult]);
     const events: RuntimeEvent[] = [];
     const { ctx } = makeContext({
@@ -939,426 +1133,6 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
     expect(
       events.some((e) => e.type === "part" && e.part.type === "sources")
     ).toBe(true);
-  });
-});
-
-describe("search_knowledge query understanding + context frame (Agentic Search #154)", () => {
-  const mockUsage = () => ({
-    inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
-    outputTokens: { total: 1, text: 1, reasoning: undefined },
-  });
-
-  function searchStep(id: string, query: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "tool-call" as const, toolCallId: id, toolName: "searchKnowledge", input: JSON.stringify({ query }) },
-          { type: "finish" as const, finishReason: { unified: "tool-calls" as const, raw: "tool_calls" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  function answerStep(text: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "text-start" as const, id: "t" },
-          { type: "text-delta" as const, id: "t", delta: text },
-          { type: "text-end" as const, id: "t" },
-          { type: "finish" as const, finishReason: { unified: "stop" as const, raw: "stop" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  const costPush: KnowledgeSearchResult = {
-    conceptId: "k2",
-    conceptTitle: "Cost-push inflation",
-    conceptPath: "inflation.md",
-    collectionId: "col-1",
-    collectionName: "Economics",
-    sourceName: "Macro notes",
-    resourceUrl: "https://example.edu/macro",
-    content: "Cost-push inflation happens when production costs rise.",
-    similarity: 0.9,
-  };
-
-  it("seeds the first searchKnowledge query with a deictic follow-up's resolved subject", async () => {
-    const searchKnowledge = vi.fn<(q: string) => Promise<KnowledgeSearchResult[]>>(async () => [costPush]);
-    // Model answers straight away (no tool call): the seeded pass is the only search.
-    const model = new MockLanguageModelV3({
-      doStream: [answerStep("Cost-push inflation is when production costs rise.")],
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what about the second one?",
-      collectionId: "col-1",
-      history: [
-        { role: "user", text: "What are the main causes of inflation?" },
-        {
-          role: "assistant",
-          text: "Causes:\n1. Demand-pull inflation\n2. Cost-push inflation\n3. Built-in inflation",
-        },
-      ],
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // The resolved subject (2nd list item), not the raw pronoun, drives the first search.
-    expect(searchKnowledge).toHaveBeenCalledTimes(1);
-    expect(searchKnowledge.mock.calls[0]![0].toLowerCase()).toContain("cost-push");
-
-    // Provenance unchanged: the seeded hit resolves Concept → Source.
-    const sources = result.parts.find(
-      (p): p is Extract<ChatReplyPart, { type: "sources" }> => p.type === "sources"
-    );
-    expect(sources?.sources[0]).toMatchObject({ conceptId: "k2", sourceName: "Macro notes" });
-
-    // The context frame reached the system prompt: Collection-first scope + seeded findings.
-    const sentToModel = JSON.stringify(model.doStreamCalls[0]);
-    expect(sentToModel).toContain("search that collection first");
-    expect(sentToModel).toContain("Initial knowledge-base results");
-  });
-
-  it("asks a focused question instead of searching a reference it cannot resolve (#156)", async () => {
-    // Slice #156 supersedes the earlier "degrade to the raw message" behavior:
-    // an unresolvable deictic message ("what about the second one?" with no
-    // antecedent) has nothing usable to search, so the turn clarifies rather
-    // than searching the bare pronoun and guessing.
-    const searchKnowledge = vi.fn<(q: string) => Promise<KnowledgeSearchResult[]>>(async () => [costPush]);
-    const model = new MockLanguageModelV3({
-      doStream: [answerStep("this should never run")],
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what about the second one?",
-      history: [],
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // Terminal, pre-search: nothing searched, nothing generated.
-    expect(searchKnowledge).not.toHaveBeenCalled();
-    expect(model.doStreamCalls).toHaveLength(0);
-    expect(result.parts).toHaveLength(1);
-    expect(result.parts[0]).toMatchObject({ type: "clarify", action: "search_knowledge" });
-  });
-
-  it("leaves a self-contained question's first search to the model (no seeding)", async () => {
-    const searchKnowledge = vi.fn<(q: string) => Promise<KnowledgeSearchResult[]>>(async () => [costPush]);
-    const model = new MockLanguageModelV3({
-      doStream: [searchStep("c1", "enrollment deadline"), answerStep("The deadline is 30 September.")],
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "When is the enrollment deadline?",
-      history: [{ role: "user", text: "Hi" }],
-    });
-
-    await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // Only the model's own tool query ran — the handler seeded nothing.
-    expect(searchKnowledge).toHaveBeenCalledTimes(1);
-    expect(searchKnowledge.mock.calls[0]![0]).toBe("enrollment deadline");
-  });
-});
-
-describe("search_knowledge reformulating passes (Agentic Search #155)", () => {
-  const mockUsage = () => ({
-    inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
-    outputTokens: { total: 1, text: 1, reasoning: undefined },
-  });
-
-  function searchStep(id: string, query: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "tool-call" as const, toolCallId: id, toolName: "searchKnowledge", input: JSON.stringify({ query }) },
-          { type: "finish" as const, finishReason: { unified: "tool-calls" as const, raw: "tool_calls" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  function answerStep(text: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "text-start" as const, id: "t" },
-          { type: "text-delta" as const, id: "t", delta: text },
-          { type: "text-end" as const, id: "t" },
-          { type: "finish" as const, finishReason: { unified: "stop" as const, raw: "stop" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  // A thin collection hit (below the strong-similarity bar → `insufficient`).
-  const thinCollectionHit: KnowledgeSearchResult = {
-    conceptId: "c-thin",
-    conceptTitle: "Reading week (partial)",
-    conceptPath: "reading-week.md",
-    collectionId: "col-1",
-    collectionName: "Marketing 101",
-    sourceName: "Course page",
-    resourceUrl: "https://example.edu/mkt/reading-week",
-    content: "Reading week is mentioned but the schedule isn't here.",
-    similarity: 0.5,
-  };
-  // A strong assistant-wide hit (surfaced only once the scope widens).
-  const strongWideHit: KnowledgeSearchResult = {
-    conceptId: "c-strong",
-    conceptTitle: "Reading week schedule",
-    conceptPath: "academic-calendar.md",
-    collectionId: "col-calendar",
-    collectionName: "Academic calendar",
-    sourceName: "Registrar",
-    resourceUrl: "https://example.edu/calendar",
-    content: "Reading week runs 10–14 November across all programmes.",
-    similarity: 0.94,
-  };
-
-  it("reformulates a thin scoped first pass into a rephrased, widened second pass", async () => {
-    // Collection-scoped pass is thin; the assistant-wide pass grounds it.
-    const searchKnowledge = vi.fn<
-      (q: string, opts?: { scope?: "collection" | "assistant" }) => Promise<KnowledgeSearchResult[]>
-    >(async (_q, opts) => (opts?.scope === "assistant" ? [strongWideHit] : [thinCollectionHit]));
-    // Model answers from the seeded findings (no tool call of its own).
-    const model = new MockLanguageModelV3({
-      doStream: [answerStep("Reading week runs 10–14 November.")],
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what is the reading week schedule?",
-      collectionId: "col-1",
-      history: [],
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // Exactly one reformulation: a Collection-scoped pass, then an assistant-wide one.
-    expect(searchKnowledge).toHaveBeenCalledTimes(2);
-    // First pass stays Collection-scoped, on the understood (raw) query.
-    expect(searchKnowledge.mock.calls[0]![0]).toBe("what is the reading week schedule?");
-    expect(searchKnowledge.mock.calls[0]![1]?.scope ?? "collection").toBe("collection");
-    // Second pass drops the collection scope AND rephrases the query.
-    expect(searchKnowledge.mock.calls[1]![1]?.scope).toBe("assistant");
-    expect(searchKnowledge.mock.calls[1]![0]).toBe("reading week schedule");
-
-    // A grounded answer after widening still cites Concept → Source.
-    const sources = result.parts.find(
-      (p): p is Extract<ChatReplyPart, { type: "sources" }> => p.type === "sources"
-    );
-    expect(sources?.sources.some((s) => s.conceptId === "c-strong")).toBe(true);
-  });
-
-  it("keeps total searches within the budget across reformulations, then a caveated answer", async () => {
-    // Everything is empty; a model that never stops searching must still be
-    // capped at MAX_SEARCH_PASSES across the deterministic + model passes.
-    let seq = 0;
-    const searchKnowledge = vi.fn<
-      (q: string, opts?: { scope?: "collection" | "assistant" }) => Promise<KnowledgeSearchResult[]>
-    >(async () => [] as KnowledgeSearchResult[]);
-    const model = new MockLanguageModelV3({
-      doStream: async () => searchStep(`m-${++seq}`, `model attempt ${seq}`),
-    });
-    // Already clarified once → the dead-end caveats rather than re-clarifying.
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "an obscure thing not in the knowledge base",
-      collectionId: "col-1",
-      history: [],
-      alreadyClarified: true,
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // Never more than the slice-1 budget, and the deterministic phase widened.
-    expect(searchKnowledge.mock.calls.length).toBeLessThanOrEqual(MAX_SEARCH_PASSES);
-    expect(searchKnowledge.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(searchKnowledge.mock.calls[0]![1]?.scope ?? "collection").toBe("collection");
-    expect(searchKnowledge.mock.calls[1]![1]?.scope).toBe("assistant");
-
-    // A single caveated best-effort text part — never a bare empty bubble, no sources.
-    const textParts = result.parts.filter(
-      (p): p is Extract<ChatReplyPart, { type: "text" }> => p.type === "text"
-    );
-    expect(textParts).toHaveLength(1);
-    expect(textParts[0].text).toContain("couldn't find");
-    expect(result.parts.some((p) => p.type === "sources")).toBe(false);
-  });
-});
-
-describe("search_knowledge terminal clarify + anti-loop guardrail (Agentic Search #156)", () => {
-  const mockUsage = () => ({
-    inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
-    outputTokens: { total: 1, text: 1, reasoning: undefined },
-  });
-
-  /** A model step that searches (drives the loop) — the model "keeps trying". */
-  function searchStep(id: string, query: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "tool-call" as const, toolCallId: id, toolName: "searchKnowledge", input: JSON.stringify({ query }) },
-          { type: "finish" as const, finishReason: { unified: "tool-calls" as const, raw: "tool_calls" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  function answerStep(text: string) {
-    return {
-      stream: simulateReadableStream({
-        chunks: [
-          { type: "stream-start" as const, warnings: [] },
-          { type: "text-start" as const, id: "t" },
-          { type: "text-delta" as const, id: "t", delta: text },
-          { type: "text-end" as const, id: "t" },
-          { type: "finish" as const, finishReason: { unified: "stop" as const, raw: "stop" }, usage: mockUsage() },
-        ],
-      }),
-    };
-  }
-
-  const clarifyParts = (parts: ChatReplyPart[]) =>
-    parts.filter((p): p is Extract<ChatReplyPart, { type: "clarify" }> => p.type === "clarify");
-
-  it("clarifies an underspecified message pre-search — never a fabricated answer", async () => {
-    const searchKnowledge = vi.fn(async () => [] as KnowledgeSearchResult[]);
-    const model = new MockLanguageModelV3({ doStream: [answerStep("should not run")] });
-    const events: RuntimeEvent[] = [];
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what about the third one?",
-      history: [],
-      emit: (e) => events.push(e),
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // No search, no generation, no guessed answer — exactly one clarify.
-    expect(searchKnowledge).not.toHaveBeenCalled();
-    expect(model.doStreamCalls).toHaveLength(0);
-    expect(clarifyParts(result.parts)).toHaveLength(1);
-    expect(result.parts).toHaveLength(1);
-    const clarify = clarifyParts(result.parts)[0];
-    expect(clarify.question.length).toBeGreaterThan(0);
-    // It reached the wire through the existing `part` event (no new event type).
-    expect(events.some((e) => e.type === "part" && e.part.type === "clarify")).toBe(true);
-  });
-
-  it("clarifies post-search when every pass is empty/conflicting, naming what it surfaced", async () => {
-    // A self-contained question; the model searches and only weak noise comes
-    // back (below the relevance floor → empty-conflicting), then it stops
-    // without answering.
-    const weak: KnowledgeSearchResult = {
-      conceptId: "w1",
-      conceptTitle: "Reading week (mention only)",
-      conceptPath: "x.md",
-      collectionId: "col",
-      collectionName: "Marketing",
-      sourceName: "Course page",
-      resourceUrl: null,
-      content: "reading week is referenced but not described",
-      similarity: 0.2,
-    };
-    const searchKnowledge = vi.fn(async () => [weak]);
-    // The model keeps searching (never synthesizes) — the budget ends the loop
-    // with no final text, so the empty-conflicting coverage gate clarifies.
-    let seq = 0;
-    const model = new MockLanguageModelV3({
-      doStream: async () => searchStep(`c-${++seq}`, `reading week ${seq}`),
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what is the reading week schedule?",
-      history: [],
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    const clarify = clarifyParts(result.parts);
-    expect(clarify).toHaveLength(1);
-    expect(clarify[0].found).toEqual(["Reading week (mention only)"]);
-    // No fabricated text answer, no sources on an empty-conflicting dead-end.
-    expect(result.parts.some((p) => p.type === "text")).toBe(false);
-    expect(result.parts.some((p) => p.type === "sources")).toBe(false);
-  });
-
-  it("guardrail: a second underspecified turn gives a caveated best-effort, not a 2nd clarify", async () => {
-    // The conversation already clarified once. A model that keeps finding
-    // nothing must terminate in a caveated best-effort answer — never a clarify.
-    let seq = 0;
-    const searchKnowledge = vi.fn(async () => [] as KnowledgeSearchResult[]);
-    const model = new MockLanguageModelV3({
-      doStream: async () => searchStep(`m-${++seq}`, `attempt ${seq}`),
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "what about the third one?",
-      history: [],
-      alreadyClarified: true,
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    // No clarify anywhere (pre- or post-search) — the guardrail held.
-    expect(clarifyParts(result.parts)).toHaveLength(0);
-    // A single caveated best-effort text part instead.
-    const textParts = result.parts.filter(
-      (p): p is Extract<ChatReplyPart, { type: "text" }> => p.type === "text"
-    );
-    expect(textParts).toHaveLength(1);
-    expect(textParts[0].text).toContain("couldn't find");
-    // The budget still capped the runaway search loop.
-    expect(searchKnowledge.mock.calls.length).toBeLessThanOrEqual(MAX_SEARCH_PASSES);
-  });
-
-  it("does not clarify a grounded answer — provenance stays Concept → Source", async () => {
-    const strong: KnowledgeSearchResult = {
-      conceptId: "s1",
-      conceptTitle: "Enrollment deadline",
-      conceptPath: "x.md",
-      collectionId: "col",
-      collectionName: "Admissions",
-      sourceName: "Handbook",
-      resourceUrl: "https://example.edu/handbook",
-      content: "Enrollment closes 30 September.",
-      similarity: 0.93,
-    };
-    const searchKnowledge = vi.fn(async () => [strong]);
-    const model = new MockLanguageModelV3({
-      doStream: [searchStep("c1", "enrollment deadline"), answerStep("Enrollment closes 30 September.")],
-    });
-    const { ctx } = makeContext({
-      chatModel: model as unknown as LanguageModel,
-      searchKnowledge,
-      message: "when is the enrollment deadline?",
-      history: [],
-    });
-
-    const result = await ACTION_HANDLERS.search_knowledge(ctx);
-
-    expect(clarifyParts(result.parts)).toHaveLength(0);
-    const sources = result.parts.find(
-      (p): p is Extract<ChatReplyPart, { type: "sources" }> => p.type === "sources"
-    );
-    expect(sources?.sources[0]).toMatchObject({ conceptId: "s1", sourceName: "Handbook" });
   });
 });
 

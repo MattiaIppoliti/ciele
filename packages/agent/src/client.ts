@@ -11,7 +11,17 @@
 
 // Parse the NDJSON turn stream the chat routes emit into view state.
 export { consumeTurnStream, decodeRuntimeEvents } from "./stream";
-export type { TurnView, TurnStep, TurnPhase, ConsumeTurnOptions } from "./stream";
+// The single fold from wire events to Thinking Steps, shared by the live chat
+// clients and by turn.ts (which persists what it folds) so the Inbox shows what
+// the visitor watched happen. `EMPTY_TURN_TRACE` seeds a fold.
+export { EMPTY_TURN_TRACE, foldTraceEvent } from "./stream";
+export type {
+  TurnView,
+  TurnStep,
+  TurnPhase,
+  TurnTrace,
+  ConsumeTurnOptions,
+} from "./stream";
 // The reply-part contract every chat surface renders (owned by the runtime,
 // spec #194); flows through the RuntimeEvent `part` event.
 export type { ChatReplyPart, RuntimeEvent, StepStage } from "./types";

@@ -29,8 +29,13 @@ export function ToolCallsSection({
         const hasInput = Boolean(
           step.input && Object.keys(step.input).length > 0
         );
+        const resultRows = Object.entries(step.result ?? {});
         const expandable =
-          hasInput || Boolean(step.detail) || step.durationMs !== undefined;
+          hasInput ||
+          resultRows.length > 0 ||
+          Boolean(step.detail) ||
+          step.durationMs !== undefined ||
+          step.iteration !== undefined;
         const open = openId === step.id;
 
         return (
@@ -84,6 +89,20 @@ export function ToolCallsSection({
                       </pre>
                     </div>
                   )}
+                  {/* A structured result reads as labelled rows — Endpoint,
+                      Method, Status, Response — rather than a JSON blob. */}
+                  {resultRows.map(([key, value]) => (
+                    <div key={key} className="flex gap-2">
+                      <p className="w-20 shrink-0 text-muted-foreground/80 capitalize">
+                        {key}
+                      </p>
+                      <pre className="min-w-0 flex-1 overflow-x-auto font-mono text-xs whitespace-pre-wrap text-muted-foreground">
+                        {typeof value === "string"
+                          ? value
+                          : JSON.stringify(value, null, 2)}
+                      </pre>
+                    </div>
+                  ))}
                   {step.detail &&
                     (step.kind === "tool" ? (
                       <div>
@@ -97,9 +116,16 @@ export function ToolCallsSection({
                         {step.detail}
                       </p>
                     ))}
-                  {step.durationMs !== undefined && (
+                  {(step.durationMs !== undefined ||
+                    step.iteration !== undefined) && (
                     <p className="text-muted-foreground/60">
-                      {step.durationMs}ms
+                      {[
+                        step.iteration !== undefined &&
+                          `iteration ${step.iteration}`,
+                        step.durationMs !== undefined && `${step.durationMs}ms`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   )}
                 </div>

@@ -35,6 +35,8 @@ import {
 import { applyEffects } from "./effects";
 import { buildTemplateContext } from "./template";
 import { createTurnSession } from "./session";
+import { EMPTY_TURN_TRACE, foldTraceEvent, type TurnTrace } from "./stream";
+import { prepareTraceForStorage } from "./trace";
 import { alertKeys, signalHealth } from "./health";
 import {
   getEnterpriseCapabilities,
@@ -648,10 +650,11 @@ export async function streamConversationTurn(
     role: m.role,
     text: messageText(m.content),
   }));
-  // Agentic Search anti-loop guardrail (#156): a clarify part is persisted in a
-  // prior assistant message's content parts (no schema migration). If this
-  // conversation already asked for clarification, the runtime must not clarify
-  // again — it gives a best-effort caveated answer instead.
+  // The anti-loop guarantee (#558): a clarify part is persisted in a prior
+  // assistant message's content parts, so no schema is needed to know this
+  // conversation already asked the Visitor to rephrase. Asking twice is a loop
+  // and reads as the assistant refusing to try, so the terminal tool coerces a
+  // second request into a best-effort answer.
   const alreadyClarified = stored.some(
     (m) =>
       m.role === "assistant" &&
@@ -672,8 +675,13 @@ export async function streamConversationTurn(
   return new ReadableStream({
     async start(controller) {
       let toolCalls = 0;
+      // The turn folds the events it is emitting through the SAME fold the
+      // chat clients use (stream.ts), so what the Inbox reads back later is
+      // what the visitor watched happen — not a second reconstruction of it.
+      let trace: TurnTrace = EMPTY_TURN_TRACE;
       const emit = (event: RuntimeEvent) => {
         if (event.type === "tool-start") toolCalls += 1;
+        trace = foldTraceEvent(trace, event);
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       };
       emit({ type: "turn", conversationId });
@@ -699,6 +707,9 @@ export async function streamConversationTurn(
           content: turn.parts,
           flowId: turn.flowId,
           flowName: turn.flowName,
+          // Null for a turn that did no agentic work (a verbatim message, a
+          // proactive Notification, a pre-engine gate) — see trace.ts.
+          trace: prepareTraceForStorage(trace),
         });
         await turn.afterPersist?.(saved.id);
         emit({ type: "done", conversationId, messageId: saved.id });

@@ -20,6 +20,17 @@ export function canManageMembers(role: Role | null): boolean {
   return roleRank(role) >= 3;
 }
 
+/**
+ * Admins and above can read a stored turn's raw reasoning in the Inbox. The
+ * Thinking panel itself — which tools ran, with what input and outcome — stays
+ * visible to everyone who can open the Inbox; only the model's own
+ * chain-of-thought is gated, because it quotes the Visitor's message and
+ * whatever the knowledge base returned back verbatim (#557).
+ */
+export function canViewReasoning(role: Role | null): boolean {
+  return roleRank(role) >= 3;
+}
+
 /** Editors and above can view the member roster (managing it stays admin+). */
 export function canViewMembers(role: Role | null): boolean {
   return roleRank(role) >= 2;

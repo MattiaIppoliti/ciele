@@ -90,12 +90,14 @@ describe("runtime public interface", () => {
 
   it("client barrel exports exactly its declared surface", () => {
     expect(valueKeys(client)).toEqual([
+      "EMPTY_TURN_TRACE",
       "MODEL_CATALOG",
       "PROVIDER_NAMES",
       "TEMPLATE_VARIABLES",
       "canEmbedWithConnection",
       "consumeTurnStream",
       "decodeRuntimeEvents",
+      "foldTraceEvent",
     ]);
   });
 

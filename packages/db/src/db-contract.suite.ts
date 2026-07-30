@@ -982,6 +982,67 @@ export function describeDbContract(
         ).toEqual(["message 2", "message 3", "message 4"]);
       });
 
+      it("round-trips a turn trace and defaults it to null", async () => {
+        const assistant = await newAssistant();
+        const conversation = await newConversation(assistant.id);
+        const withTrace = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [{ type: "text", text: "traced answer" }],
+          flowName: "Default behavior",
+          trace: {
+            searchCount: 2,
+            truncated: true,
+            steps: [
+              {
+                id: "step-1",
+                kind: "step",
+                label: "Classifying intent",
+                stage: "classify",
+                status: "done",
+                detail: "Matched flow “Default behavior”",
+              },
+              {
+                id: "call-1",
+                kind: "tool",
+                tool: "searchKnowledge",
+                label: "Searching knowledge",
+                input: { query: "opening hours" },
+                status: "done",
+                detail: "3 concepts found",
+                durationMs: 120,
+              },
+            ],
+          },
+        });
+        // A turn that did no agentic work stores nothing rather than an empty
+        // trace, so the Inbox renders no panel for it.
+        const withoutTrace = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [{ type: "text", text: "verbatim answer" }],
+        });
+
+        expect(withTrace.trace?.searchCount).toBe(2);
+        expect(withTrace.trace?.truncated).toBe(true);
+        expect(withoutTrace.trace).toBeNull();
+
+        // The transcript read is what the Inbox actually renders from.
+        const messages = await db.listMessages(conversation.id);
+        const reread = messages.find((m) => m.id === withTrace.id);
+        expect(reread?.trace?.steps).toHaveLength(2);
+        expect(reread?.trace?.steps[1]).toMatchObject({
+          id: "call-1",
+          kind: "tool",
+          tool: "searchKnowledge",
+          input: { query: "opening hours" },
+          durationMs: 120,
+        });
+        expect(
+          messages.find((m) => m.id === withoutTrace.id)?.trace
+        ).toBeNull();
+      });
+
       it("toggles pinned", async () => {
         const assistant = await newAssistant();
         const conversation = await newConversation(assistant.id);
