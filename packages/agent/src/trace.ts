@@ -75,7 +75,18 @@ export function prepareTraceForStorage(trace: TurnTrace): StoredTurnTrace | null
     return next;
   });
 
-  return { steps, searchCount: trace.searchCount, truncated };
+  return {
+    steps,
+    searchCount: trace.searchCount,
+    truncated,
+    // The loop counters and the terminal declaration (#574) — copied only when
+    // the turn actually had them, so a no-budget turn stores no misleading 0/0.
+    ...(trace.iteration !== null ? { iteration: trace.iteration } : {}),
+    ...(trace.iterationLimit !== null
+      ? { iterationLimit: trace.iterationLimit }
+      : {}),
+    ...(trace.terminal !== null ? { terminal: trace.terminal } : {}),
+  };
 }
 
 /**

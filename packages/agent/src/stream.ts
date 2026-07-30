@@ -1,4 +1,4 @@
-import type { TurnStep } from "@agent-hub/core";
+import type { TurnStep, TurnTerminalStatus } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import type { RuntimeEvent } from "./types";
 
@@ -45,6 +45,14 @@ export interface TurnTrace {
   phase: TurnPhase;
   /** Knowledge searches run so far (the ×N pill in the Thinking panel). */
   searchCount: number;
+  /**
+   * The agent-loop iteration most recently spent, out of `iterationLimit`
+   * (#574). Both stay null on turns with no budget (verbatim/no-model paths).
+   */
+  iteration: number | null;
+  iterationLimit: number | null;
+  /** The terminal status the loop declared via ReadyToAnswer, once it has. */
+  terminal: TurnTerminalStatus | null;
 }
 
 /** A turn before any event has arrived. */
@@ -53,6 +61,9 @@ export const EMPTY_TURN_TRACE: TurnTrace = {
   steps: [],
   phase: "running",
   searchCount: 0,
+  iteration: null,
+  iterationLimit: null,
+  terminal: null,
 };
 
 /**
@@ -102,6 +113,10 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
           event.tool === "searchKnowledge"
             ? trace.searchCount + 1
             : trace.searchCount,
+        // Iterations only ever grow, and the budget rides along with them, so
+        // the panel can say `iteration N/M` (#574).
+        iteration: event.iteration ?? trace.iteration,
+        iterationLimit: event.iterationLimit ?? trace.iterationLimit,
       };
     }
     case "tool-end":
@@ -118,6 +133,14 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
               }
             : step
         ),
+        // The terminal tool's structured result carries the FINAL declared
+        // status (post any re-clarify coercion) — the fold reads it here so
+        // the persisted trace and the Inbox badge agree with the write phase.
+        terminal:
+          event.tool === "readyToAnswer" &&
+          typeof event.result?.status === "string"
+            ? (event.result.status as TurnTerminalStatus)
+            : trace.terminal,
       };
     case "thought":
       // Reasoning that led into a tool call: what was streaming as answer

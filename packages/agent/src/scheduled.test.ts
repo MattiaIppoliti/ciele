@@ -21,6 +21,7 @@ import {
   RECRAWL_SWEEP_BATCH_SIZE,
   finalizeDueCrawls,
   sweepDueRecrawls,
+  sweepExpiredTraces,
 } from "./scheduled";
 
 /**
@@ -240,5 +241,75 @@ describe("finalizeDueCrawls", () => {
         }),
       ]),
     });
+  });
+});
+
+describe("sweepExpiredTraces", () => {
+  it("computes each org's cutoff from its own window and reports totals", async () => {
+    const now = new Date("2026-07-30T12:00:00.000Z");
+    const clearExpiredTraces = vi
+      .fn()
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(0);
+    const db = stubDb({
+      listTraceRetentionPolicies: async () => [
+        { organizationId: "org-30", retentionDays: 30 },
+        { organizationId: "org-7", retentionDays: 7 },
+      ],
+      clearExpiredTraces,
+    });
+
+    const report = await sweepExpiredTraces({ db }, { now });
+
+    expect(clearExpiredTraces).toHaveBeenCalledWith(
+      "org-30",
+      "2026-06-30T12:00:00.000Z"
+    );
+    expect(clearExpiredTraces).toHaveBeenCalledWith(
+      "org-7",
+      "2026-07-23T12:00:00.000Z"
+    );
+    expect(report.traces).toMatchObject({
+      organizations: 2,
+      cleared: 3,
+      results: expect.arrayContaining([
+        { organizationId: "org-30", retentionDays: 30, cleared: 3 },
+        { organizationId: "org-7", retentionDays: 7, cleared: 0 },
+      ]),
+    });
+  });
+
+  it("one org failing never aborts the rest of the tick", async () => {
+    const db = stubDb({
+      listTraceRetentionPolicies: async () => [
+        { organizationId: "boom", retentionDays: 30 },
+        { organizationId: "fine", retentionDays: 30 },
+      ],
+      clearExpiredTraces: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("db offline"))
+        .mockResolvedValueOnce(2),
+    });
+
+    const report = await sweepExpiredTraces({ db });
+
+    expect(report.traces.cleared).toBe(2);
+    expect(report.traces.results).toEqual(
+      expect.arrayContaining([
+        { organizationId: "boom", retentionDays: 30, error: "db offline" },
+        { organizationId: "fine", retentionDays: 30, cleared: 2 },
+      ])
+    );
+  });
+
+  it("does nothing when no organization opted into retention", async () => {
+    const clearExpiredTraces = vi.fn();
+    const db = stubDb({
+      listTraceRetentionPolicies: async () => [],
+      clearExpiredTraces,
+    });
+    const report = await sweepExpiredTraces({ db });
+    expect(clearExpiredTraces).not.toHaveBeenCalled();
+    expect(report.traces).toEqual({ organizations: 0, cleared: 0, results: [] });
   });
 });

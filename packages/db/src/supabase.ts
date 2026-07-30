@@ -796,7 +796,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
       let membership = client
         .from("organization_members")
-        .select("role, organizations (id, name, logo_url, created_at)")
+        .select(
+          "role, organizations (id, name, logo_url, trace_retention_days, created_at)"
+        )
         .eq("user_id", user.id);
       if (preferredOrgId) membership = membership.eq("organization_id", preferredOrgId);
       const { data, error } = await membership.limit(1).maybeSingle();
@@ -806,6 +808,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           id: string;
           name: string;
           logo_url: string | null;
+          trace_retention_days: number | null;
           created_at: string;
         };
         return {
@@ -813,6 +816,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
             id: org.id,
             name: org.name,
             logoUrl: org.logo_url,
+            traceRetentionDays: org.trace_retention_days,
             createdAt: org.created_at,
           },
           role: data.role as Role,
@@ -822,7 +826,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // No membership row for the requested org — a platform superuser
       // browsing an org they don't belong to. RLS still governs visibility:
       // this returns nothing for anyone who isn't actually a superuser.
-      let orgQuery = client.from("organizations").select("id, name, logo_url, created_at");
+      let orgQuery = client
+        .from("organizations")
+        .select("id, name, logo_url, trace_retention_days, created_at");
       orgQuery = preferredOrgId ? orgQuery.eq("id", preferredOrgId) : orgQuery;
       const { data: orgRow, error: orgError } = await orgQuery.limit(1).maybeSingle();
       if (orgError) throw orgError;
@@ -832,6 +838,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           id: orgRow.id as string,
           name: orgRow.name as string,
           logoUrl: orgRow.logo_url as string | null,
+          traceRetentionDays: orgRow.trace_retention_days as number | null,
           createdAt: orgRow.created_at as string,
         },
         role: "owner",
@@ -841,15 +848,22 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async listOrganizations() {
       const { data, error } = await client
         .from("organizations")
-        .select("id, name, logo_url, created_at")
+        .select("id, name, logo_url, trace_retention_days, created_at")
         .order("name", { ascending: true });
       if (error) throw error;
       return (
-        data as Array<{ id: string; name: string; logo_url: string | null; created_at: string }>
+        data as Array<{
+          id: string;
+          name: string;
+          logo_url: string | null;
+          trace_retention_days: number | null;
+          created_at: string;
+        }>
       ).map((org) => ({
         id: org.id,
         name: org.name,
         logoUrl: org.logo_url,
+        traceRetentionDays: org.trace_retention_days,
         createdAt: org.created_at,
       }));
     },
@@ -858,14 +872,22 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const row: Record<string, unknown> = {};
       if (patch.name !== undefined) row.name = patch.name;
       if (patch.logoUrl !== undefined) row.logo_url = patch.logoUrl;
+      if (patch.traceRetentionDays !== undefined)
+        row.trace_retention_days = patch.traceRetentionDays;
       const { data, error } = await client
         .from("organizations")
         .update(row)
         .eq("id", organizationId)
-        .select("id, name, logo_url, created_at")
+        .select("id, name, logo_url, trace_retention_days, created_at")
         .single();
       if (error) throw error;
-      return { id: data.id, name: data.name, logoUrl: data.logo_url, createdAt: data.created_at };
+      return {
+        id: data.id,
+        name: data.name,
+        logoUrl: data.logo_url,
+        traceRetentionDays: data.trace_retention_days,
+        createdAt: data.created_at,
+      };
     },
 
     async getProfile() {
@@ -2616,6 +2638,33 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .update({ feedback })
         .eq("id", messageId);
       if (error) throw error;
+    },
+
+    async listTraceRetentionPolicies() {
+      // Filtered in code rather than with `.not(... is null)`: the row set is
+      // one per organization, and this keeps the query inside the PostgREST
+      // subset the pglite contract shim implements.
+      const { data, error } = await client
+        .from("organizations")
+        .select("id, trace_retention_days");
+      if (error) throw error;
+      return (
+        data as Array<{ id: string; trace_retention_days: number | null }>
+      )
+        .filter((org) => org.trace_retention_days !== null)
+        .map((org) => ({
+          organizationId: org.id,
+          retentionDays: org.trace_retention_days as number,
+        }));
+    },
+
+    async clearExpiredTraces(organizationId, cutoffIso) {
+      const { data, error } = await client.rpc("clear_expired_traces", {
+        p_organization_id: organizationId,
+        p_cutoff: cutoffIso,
+      });
+      if (error) throw error;
+      return (data as number) ?? 0;
     },
 
     async listInsightsMessages(organizationId) {

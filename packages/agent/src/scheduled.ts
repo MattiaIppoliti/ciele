@@ -192,3 +192,58 @@ export async function finalizeDueCrawls(
     crawls: { swept: pending.length, settled, results },
   };
 }
+
+/** One organization's outcome in a trace-retention tick (#573). */
+export type SweptTraceResult =
+  | { organizationId: string; retentionDays: number; cleared: number }
+  | { organizationId: string; retentionDays: number; error: string };
+
+export interface SweepExpiredTracesReport {
+  traces: { organizations: number; cleared: number; results: SweptTraceResult[] };
+}
+
+/**
+ * Per-Organization trace-retention sweep (#573). For every org that opted into
+ * a retention window, strips the persisted Turn Trace from messages older than
+ * the window — the message itself (content, feedback, timestamps) stays, so
+ * the Inbox keeps the bubble and simply renders no Thinking panel.
+ *
+ * Idempotent by construction: a cleared trace is null and never matches again,
+ * so running the sweep twice in a window clears nothing the second time. One
+ * org failing never aborts the rest; the tick reports per-org outcomes the way
+ * the other drains do.
+ */
+export async function sweepExpiredTraces(
+  deps: ScheduledDeps,
+  options: { now?: Date } = {}
+): Promise<SweepExpiredTracesReport> {
+  const { db } = deps;
+  const now = options.now ?? new Date();
+  const policies = await db.listTraceRetentionPolicies();
+
+  const results = await Promise.all(
+    policies.map(
+      async ({ organizationId, retentionDays }): Promise<SweptTraceResult> => {
+        const cutoff = new Date(
+          now.getTime() - retentionDays * 24 * 60 * 60 * 1000
+        ).toISOString();
+        try {
+          const cleared = await db.clearExpiredTraces(organizationId, cutoff);
+          return { organizationId, retentionDays, cleared };
+        } catch (error) {
+          return {
+            organizationId,
+            retentionDays,
+            error: thrownMessage(error, "trace sweep failed"),
+          };
+        }
+      }
+    )
+  );
+
+  const cleared = results.reduce(
+    (sum, r) => sum + ("cleared" in r ? r.cleared : 0),
+    0
+  );
+  return { traces: { organizations: policies.length, cleared, results } };
+}

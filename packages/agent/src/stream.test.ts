@@ -67,6 +67,9 @@ describe("consumeTurnStream", () => {
       streamingText: null,
       phase: "running",
       searchCount: 0,
+      iteration: null,
+      iterationLimit: null,
+      terminal: null,
     };
     let done: { conversationId: string; messageId: string | null } | null =
       null;

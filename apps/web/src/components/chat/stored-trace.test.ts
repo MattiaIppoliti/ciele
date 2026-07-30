@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
-import { liveTraceLabel, storedTraceLabel, visibleTraceSteps } from "./stored-trace";
+import {
+  liveTraceLabel,
+  storedTraceLabel,
+  terminalBadge,
+  visibleTraceSteps,
+} from "./stored-trace";
 
 const trace: StoredTurnTrace = {
   searchCount: 2,
@@ -98,6 +103,37 @@ describe("storedTraceLabel", () => {
       { canViewReasoning: true }
     )!;
     expect(storedTraceLabel(visible)).toBe("Thought");
+  });
+
+  it("shows `iteration N/M` only when the stored trace knows both (#574)", () => {
+    const visible = visibleTraceSteps(
+      { ...trace, iteration: 4, iterationLimit: 6 },
+      { canViewReasoning: true }
+    )!;
+    expect(storedTraceLabel(visible)).toBe(
+      "Thought · 2 tool calls, 2 thoughts, iteration 4/6"
+    );
+    // A pre-#574 trace reads exactly as it always did.
+    const legacy = visibleTraceSteps(trace, { canViewReasoning: true })!;
+    expect(storedTraceLabel(legacy)).toBe("Thought · 2 tool calls, 2 thoughts");
+  });
+
+  it("keeps the loop counters and terminal status visible below the reasoning gate", () => {
+    const visible = visibleTraceSteps(
+      { ...trace, iteration: 2, iterationLimit: 6, terminal: "answer" },
+      { canViewReasoning: false }
+    )!;
+    expect(visible.iteration).toBe(2);
+    expect(visible.terminal).toBe("answer");
+  });
+});
+
+describe("terminalBadge", () => {
+  it("labels each declared status and stays silent on legacy traces", () => {
+    expect(terminalBadge("answer")).toBe("Answered");
+    expect(terminalBadge("needs_clarification")).toBe("Asked to clarify");
+    expect(terminalBadge("insufficient_information")).toBe("No answer found");
+    expect(terminalBadge(undefined)).toBeNull();
   });
 });
 

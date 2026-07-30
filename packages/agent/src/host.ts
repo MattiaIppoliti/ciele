@@ -1,11 +1,11 @@
 /**
- * Runtime host ports — the two facts this package needs from whatever process
+ * Runtime host ports — the facts this package needs from whatever process
  * hosts it (ADR-0018).
  *
  * The agent runtime is a package, not a Next.js folder: it must run under a
  * Next server, a cron worker, a test, or a future non-Next host without
- * changing. Two things it cannot know on its own are declared here as ports.
- * Both have defaults, so an unwired host still runs — but the two defaults are
+ * changing. What it cannot know on its own is declared here as ports.
+ * All have defaults, so an unwired host still runs — but the defaults are
  * NOT equally strong, and the difference matters:
  *
  * - `scheduleAfterResponse` is **fail-safe**. Dropping the work loses nothing,
@@ -17,6 +17,9 @@
  *   prompt. Nothing here can detect that, so the host is responsible for
  *   registering it: `apps/web` does so in `instrumentation.ts`, and
  *   `instrumentation.test.ts` asserts that it still does.
+ * - `allowRelaxedEgress` is **fail-safe in the security direction** (#577): an
+ *   unwired host keeps the strict production posture for tenant-configured
+ *   outbound requests; only an explicit registration relaxes it for dev/preview.
  *
  * Deliberately the same process-level registry idiom as the enterprise
  * capability seam in `ee.ts`: wired once at startup, then read wherever needed.
@@ -53,6 +56,20 @@ export interface RuntimeHost {
    * lose work the ledger would otherwise have to recover.
    */
   scheduleAfterResponse(work: () => unknown): void;
+
+  /**
+   * Whether tenant-configured outbound requests (the API request action, the
+   * API catalogue query) may relax the egress posture — plain-HTTP targets and
+   * loopback addresses — because the deployment is a dev/preview environment
+   * where the tenant's API is a local mock. Which environment this process is
+   * running in is a fact only the host knows (#577); apps/web registers
+   * `VERCEL_ENV !== "production"`.
+   *
+   * Default: **false**, the strict production posture. Fail-safe in the
+   * security direction — an unwired host refuses plain HTTP and loopback, it
+   * never silently permits them.
+   */
+  allowRelaxedEgress(): boolean;
 }
 
 /**
@@ -80,6 +97,8 @@ const DEFAULTS: RuntimeHost = {
   // Dropped on purpose. See the port's contract: the durable ledger is what
   // guarantees the work happens.
   scheduleAfterResponse() {},
+  // Strict by default: only a host that KNOWS it is dev/preview relaxes.
+  allowRelaxedEgress: () => false,
 };
 
 let current: RuntimeHost = DEFAULTS;

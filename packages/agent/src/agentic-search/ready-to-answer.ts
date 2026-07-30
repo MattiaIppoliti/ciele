@@ -1,5 +1,7 @@
 import { tool, type Tool } from "ai";
 import { z } from "zod";
+import type { TurnTerminalStatus } from "@agent-hub/core";
+import type { RuntimeEvent } from "../types";
 
 /**
  * The terminal tool (#558). The model does not merely stop when it is done — it
@@ -19,10 +21,7 @@ import { z } from "zod";
  * answer, and it says so, in one place, once.
  */
 
-export type TerminalStatus =
-  | "answer"
-  | "needs_clarification"
-  | "insufficient_information";
+export type TerminalStatus = TurnTerminalStatus;
 
 /** What the model declared, collected per turn. */
 export interface TerminalState {
@@ -89,13 +88,15 @@ export function writeTimeInstructions(
  *
  * Deliberately NOT routed through the tool registry's `instrument` wrapper: it
  * spends no iteration (declaring you are done is not a step of work) and its
- * "outcome" is the instruction text, which belongs in the trace as a thought
- * the model then acts on, not as a tool output to be summarized.
+ * result is the write-time instruction text, which the model acts on rather
+ * than reads as an outcome. It still emits the normal tool lifecycle (#574) —
+ * a `thought` would be hidden from Roles below the reasoning gate, and the
+ * terminal declaration is operational fact every Inbox reader may see.
  */
 export function readyToAnswerTool(
   state: TerminalState,
   style: WriteTimeStyle,
-  emit?: (label: string) => void
+  emit?: (event: RuntimeEvent) => void
 ): Tool {
   return tool({
     description:
@@ -107,7 +108,7 @@ export function readyToAnswerTool(
           "answer = you can answer from what you found; needs_clarification = the question is ambiguous and you must ask one question first; insufficient_information = the knowledge base does not contain the answer"
         ),
     }),
-    execute: async (input: { status?: unknown }) => {
+    execute: async (input: { status?: unknown }, options) => {
       const declared = normalizeStatus(input.status);
       // The anti-loop guarantee: a conversation that already clarified cannot
       // clarify again, so the declaration is coerced to a best-effort answer and
@@ -123,7 +124,32 @@ export function readyToAnswerTool(
         state.status = status;
         state.reClarifyBlocked = reClarifyBlocked;
       }
-      emit?.("Getting ready to answer…");
+      const callId = options?.toolCallId ?? `ready-${state.calls}`;
+      emit?.({
+        type: "tool-start",
+        callId,
+        tool: "readyToAnswer",
+        label: "Getting ready to answer…",
+        input: { status: declared },
+      });
+      emit?.({
+        type: "tool-end",
+        callId,
+        tool: "readyToAnswer",
+        ok: true,
+        summary:
+          state.status === "needs_clarification"
+            ? "Will ask one clarifying question"
+            : state.status === "insufficient_information"
+              ? "No answer found in the knowledge base"
+              : reClarifyBlocked
+                ? "Answering best-effort (already clarified once)"
+                : "Ready to answer",
+        // Structured so the fold — and the Inbox — read the FINAL status, after
+        // the re-clarify coercion, not the raw declaration.
+        result: { status: state.status },
+        durationMs: 0,
+      });
       return {
         acknowledged: true,
         instructions: writeTimeInstructions(state.status, style, {

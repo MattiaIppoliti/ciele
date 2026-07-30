@@ -36,16 +36,33 @@ beforeEach(() => {
 });
 
 describe("instrumentation register()", () => {
-  it("registers both runtime host ports", async () => {
+  it("registers every runtime host port", async () => {
     await register();
 
     expect(mocks.registerRuntimeHost).toHaveBeenCalledOnce();
     const [ports] = mocks.registerRuntimeHost.mock.calls[0]!;
-    // Both, by name: a partial registration silently keeps a shipped default.
+    // All of them, by name: a partial registration silently keeps a shipped default.
     expect(Object.keys(ports).sort()).toEqual([
+      "allowRelaxedEgress",
       "getPlatformSystemPrompt",
       "scheduleAfterResponse",
     ]);
+  });
+
+  it("relaxes egress only outside Vercel production", async () => {
+    const previous = process.env.VERCEL_ENV;
+    try {
+      await register();
+      const [ports] = mocks.registerRuntimeHost.mock.calls[0]!;
+
+      process.env.VERCEL_ENV = "production";
+      expect(ports.allowRelaxedEgress()).toBe(false);
+      process.env.VERCEL_ENV = "preview";
+      expect(ports.allowRelaxedEgress()).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.VERCEL_ENV;
+      else process.env.VERCEL_ENV = previous;
+    }
   });
 
   it("wires the platform prompt port to the app's cached reader, not the default", async () => {

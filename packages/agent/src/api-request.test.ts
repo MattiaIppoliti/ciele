@@ -7,6 +7,7 @@ vi.mock("./egress", async (importOriginal) => ({
 
 import { egressFetch, EgressPolicyError } from "./egress";
 import { testApiRequest } from "./api-request";
+import { registerRuntimeHost, resetRuntimeHost } from "./host";
 
 const egressFetchMock = vi.mocked(egressFetch);
 
@@ -46,6 +47,27 @@ describe("testApiRequest", () => {
     expect(result.excerpt).toBe('{"data":{"id":"42"}}');
     expect(result.extracted).toEqual([{ variable: "id", value: "42", missed: false }]);
     expect(result.error).toBeNull();
+  });
+
+  it("defaults to the strict egress posture — no HTTP, no loopback — unless the host relaxes it", async () => {
+    // The environment is a host fact behind the `allowRelaxedEgress` port
+    // (#577): unwired means strict, and only an explicit registration relaxes.
+    try {
+      await testApiRequest({ method: "GET", url: "https://api.example.com/" });
+      expect(egressFetchMock.mock.calls[0][1]).toMatchObject({
+        allowHttp: false,
+        allowLoopback: false,
+      });
+
+      registerRuntimeHost({ allowRelaxedEgress: () => true });
+      await testApiRequest({ method: "GET", url: "https://api.example.com/" });
+      expect(egressFetchMock.mock.calls[1][1]).toMatchObject({
+        allowHttp: true,
+        allowLoopback: true,
+      });
+    } finally {
+      resetRuntimeHost();
+    }
   });
 
   it("never returns the auth secret in the result", async () => {

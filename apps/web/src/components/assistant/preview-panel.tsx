@@ -463,6 +463,9 @@ export function PreviewPanel({
                   streamingText: null,
                   phase: "done",
                   searchCount: 0,
+                  iteration: null,
+                  iterationLimit: null,
+                  terminal: null,
                   feedback: 0,
                 },
               ]);
@@ -549,6 +552,9 @@ export function PreviewPanel({
         streamingText: null,
         phase: "running",
         searchCount: 0,
+        iteration: null,
+        iterationLimit: null,
+        terminal: null,
         feedback: 0,
       },
     ]);
@@ -723,6 +729,9 @@ export function PreviewPanel({
           streamingText: null,
           phase: "done",
           searchCount: 0,
+          iteration: null,
+          iterationLimit: null,
+          terminal: null,
           feedback: m.feedback,
         };
       })

@@ -525,6 +525,19 @@ export interface Db {
     trace?: StoredTurnTrace | null;
   }): Promise<StoredMessage>;
   setMessageFeedback(messageId: string, feedback: -1 | 0 | 1): Promise<void>;
+  /**
+   * Organizations that opted into a trace-retention window (#573), for the
+   * cron sweep. Orgs with the keep-forever default are not returned.
+   */
+  listTraceRetentionPolicies(): Promise<
+    Array<{ organizationId: string; retentionDays: number }>
+  >;
+  /**
+   * Strips the stored Turn Trace from this organization's messages older than
+   * the cutoff; content, feedback and timestamps stay. Idempotent — a cleared
+   * trace never matches again. Returns how many messages were swept.
+   */
+  clearExpiredTraces(organizationId: string, cutoffIso: string): Promise<number>;
 
   // Insights (org-wide analytics)
   /** All messages across the organization's assistants, trimmed for metrics. */

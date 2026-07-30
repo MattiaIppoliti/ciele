@@ -5,6 +5,7 @@ import {
   resolveTerminalStatus,
   writeTimeInstructions,
 } from './ready-to-answer';
+import type { RuntimeEvent } from '../types';
 
 const call = async (tool: unknown, input: Record<string, unknown>) =>
   (tool as { execute: (i: unknown, o: unknown) => Promise<unknown> }).execute(input, {
@@ -93,14 +94,31 @@ describe('readyToAnswerTool', () => {
     expect(state.reClarifyBlocked).toBe(false);
   });
 
-  it('emits a thought so the declaration shows in the Thinking panel', async () => {
-    const labels: string[] = [];
+  it('emits the tool lifecycle so the declaration shows for every Inbox reader', async () => {
+    // A `thought` would be hidden below the reasoning Role gate; the terminal
+    // declaration is operational fact, so it rides the tool lifecycle (#574).
+    const events: RuntimeEvent[] = [];
     const state = createTerminalState();
     await call(
-      readyToAnswerTool(state, {}, (label) => labels.push(label)),
-      { status: 'answer' }
+      readyToAnswerTool(state, { alreadyClarified: true }, (event) =>
+        events.push(event)
+      ),
+      { status: 'needs_clarification' }
     );
-    expect(labels).toEqual(['Getting ready to answer…']);
+    expect(events.map((e) => e.type)).toEqual(['tool-start', 'tool-end']);
+    expect(events[0]).toMatchObject({
+      tool: 'readyToAnswer',
+      label: 'Getting ready to answer…',
+      // The raw declaration, so the trace shows what the model actually said…
+      input: { status: 'needs_clarification' },
+    });
+    // …and the structured result carries the FINAL status after coercion,
+    // which is what the fold persists and the Inbox badge shows.
+    expect(events[1]).toMatchObject({
+      tool: 'readyToAnswer',
+      ok: true,
+      result: { status: 'answer' },
+    });
   });
 });
 

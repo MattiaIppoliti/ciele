@@ -252,10 +252,11 @@ export interface AgenticSearchTurnInput {
     writeTimeStyle: WriteTimeStyle;
     /**
      * Simplified-thinking sink (#560), or undefined when the toggle is off. The
-     * registry calls it as each tool phase starts; the turn turns the line into a
-     * streamed and persisted `progress` part.
+     * registry calls it as each tool phase starts — naming the tool being
+     * narrated (#576) — and the turn turns the line into a streamed and
+     * persisted `progress` part.
      */
-    narrate: ((text: string) => void) | undefined;
+    narrate: ((text: string, tool: string) => void) | undefined;
   }) => ToolSet;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
@@ -346,10 +347,14 @@ export async function runAgenticSearch(
   // Visitor watched. Their own parts, never concatenated onto the answer text.
   const progressParts: ChatReplyPart[] = [];
   const narrate = assistant.simplifiedThinking
-    ? (text: string) => {
+    ? (text: string, tool: string) => {
         const part: ChatReplyPart = {
           type: "progress",
-          action: "search_knowledge",
+          // The knowledge search keeps its flow-action name (also the value
+          // every part persisted before #576 carries); other phases carry the
+          // registry tool name, so export/analytics can tell an API-catalogue
+          // line from a search line.
+          action: tool === "searchKnowledge" ? "search_knowledge" : tool,
           text,
         };
         progressParts.push(part);

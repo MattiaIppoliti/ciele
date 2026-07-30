@@ -34,6 +34,57 @@ describe("prepareTraceForStorage", () => {
     expect(stored?.truncated).toBe(false);
   });
 
+  it("persists the loop counters and terminal status, and omits them when unknown (#574)", () => {
+    const stored = prepareTraceForStorage({
+      ...traceOf([tool()]),
+      iteration: 4,
+      iterationLimit: 6,
+      terminal: "answer",
+    });
+    expect(stored).toMatchObject({
+      iteration: 4,
+      iterationLimit: 6,
+      terminal: "answer",
+    });
+    // A no-budget turn (the deterministic path) stores none of them, so an old
+    // or verbatim trace never reads as `iteration 0/0`.
+    const bare = prepareTraceForStorage(traceOf([tool()]));
+    expect(bare).not.toHaveProperty("iteration");
+    expect(bare).not.toHaveProperty("iterationLimit");
+    expect(bare).not.toHaveProperty("terminal");
+  });
+
+  it("folds the budget from tool-start and the terminal status from ReadyToAnswer's tool-end", () => {
+    let trace = foldTraceEvent(EMPTY_TURN_TRACE, {
+      type: "tool-start",
+      callId: "c1",
+      tool: "searchKnowledge",
+      label: "Searching",
+      iteration: 2,
+      iterationLimit: 6,
+    });
+    expect(trace.iteration).toBe(2);
+    expect(trace.iterationLimit).toBe(6);
+    trace = foldTraceEvent(trace, {
+      type: "tool-start",
+      callId: "c2",
+      tool: "readyToAnswer",
+      label: "Getting ready to answer…",
+      input: { status: "needs_clarification" },
+    });
+    trace = foldTraceEvent(trace, {
+      type: "tool-end",
+      callId: "c2",
+      tool: "readyToAnswer",
+      ok: true,
+      result: { status: "answer" },
+      durationMs: 0,
+    });
+    // The FINAL status (post coercion) from the structured result, not the raw
+    // declaration on the input.
+    expect(trace.terminal).toBe("answer");
+  });
+
   it("caps the step count and flags the trace, keeping the earliest steps", () => {
     const many = Array.from({ length: TRACE_MAX_STEPS + 10 }, (_, i) =>
       tool({ id: `call-${i}`, label: `step ${i}` })

@@ -5,6 +5,7 @@
 #
 # min hour dom mon dow  command
 0 2 * * *   /usr/local/bin/run-job.sh /api/cron/rollup-usage
+30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-traces
 0 3 * * *   /usr/local/bin/run-job.sh /api/cron/finalize-crawls
 0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
 0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports

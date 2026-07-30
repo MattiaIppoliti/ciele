@@ -5,6 +5,7 @@ import {
   EgressPolicyError,
   sanitizeHeaderValue,
 } from "./egress";
+import { getRuntimeHost } from "./host";
 import {
   TEMPLATE_VARIABLES,
   resolveTemplate,
@@ -152,8 +153,8 @@ export async function executeApiRequest(
       timeoutMs: API_REQUEST_TIMEOUT_MS,
       maxResponseBytes: API_REQUEST_MAX_BYTES,
       signal,
-      allowHttp: process.env.VERCEL_ENV !== "production",
-      allowLoopback: process.env.VERCEL_ENV !== "production",
+      allowHttp: getRuntimeHost().allowRelaxedEgress(),
+      allowLoopback: getRuntimeHost().allowRelaxedEgress(),
     });
     return {
       ok: response.ok,
@@ -245,8 +246,8 @@ export async function sendEscalationApiRequest(
       timeoutMs: API_REQUEST_TIMEOUT_MS,
       maxResponseBytes: API_REQUEST_MAX_BYTES,
       signal,
-      allowHttp: process.env.VERCEL_ENV !== "production",
-      allowLoopback: process.env.VERCEL_ENV !== "production",
+      allowHttp: getRuntimeHost().allowRelaxedEgress(),
+      allowLoopback: getRuntimeHost().allowRelaxedEgress(),
     });
     return {
       ok: response.ok,

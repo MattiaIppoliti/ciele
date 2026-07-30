@@ -6,15 +6,18 @@ Read `src/index.ts`, `src/client.ts` and `src/local-providers.ts` first — thei
 *are* the module overview, and every export is annotated with why it is public. Only open internals
 when you are changing behaviour.
 
-**Framework-free by contract.** Nothing here imports `next/*`. The two facts the runtime needs from
+**Framework-free by contract.** Nothing here imports `next/*`. The facts the runtime needs from
 its host are ports in `src/host.ts`, registered once at startup (apps/web does it from
-`src/instrumentation.ts`) and both defaulted so the runtime stays correct unwired:
+`src/instrumentation.ts`) and all defaulted so the runtime stays correct unwired:
 
 - `getPlatformSystemPrompt()` — default: the shipped `DEFAULT_PLATFORM_PROMPT`. apps/web registers a
   tagged, cached, service-role read of the owner's stored override.
 - `scheduleAfterResponse(work)` — default: **drop it**. Every caller has already written a durable
   job-ledger row and cron drains it, so an unregistered host costs first-response latency, never
   work. apps/web registers Next's `after()`.
+- `allowRelaxedEgress()` — default: **false** (strict: no plain HTTP, no loopback for
+  tenant-configured outbound requests). apps/web registers `VERCEL_ENV !== "production"` so dev and
+  preview can hit local mocks.
 
 ## Commands
 

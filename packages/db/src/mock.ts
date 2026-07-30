@@ -1644,6 +1644,9 @@ export const mockDb: Db = {
       ...store.organization,
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.logoUrl !== undefined ? { logoUrl: patch.logoUrl } : {}),
+      ...(patch.traceRetentionDays !== undefined
+        ? { traceRetentionDays: patch.traceRetentionDays }
+        : {}),
     };
     return store.organization;
   },
@@ -2917,6 +2920,32 @@ export const mockDb: Db = {
     const store = getStore();
     const message = store.messages.get(messageId);
     if (message) store.messages.set(messageId, { ...message, feedback });
+  },
+
+  async listTraceRetentionPolicies() {
+    const store = getStore();
+    const retentionDays = store.organization.traceRetentionDays;
+    return retentionDays
+      ? [{ organizationId: store.organization.id, retentionDays }]
+      : [];
+  },
+
+  async clearExpiredTraces(organizationId, cutoffIso) {
+    const store = getStore();
+    const cutoff = Date.parse(cutoffIso);
+    let cleared = 0;
+    for (const [id, message] of store.messages) {
+      if (!message.trace) continue;
+      if (Date.parse(message.createdAt) >= cutoff) continue;
+      const conversation = store.conversations.get(message.conversationId);
+      const assistant = conversation
+        ? store.assistants.get(conversation.assistantId)
+        : undefined;
+      if (assistant?.organizationId !== organizationId) continue;
+      store.messages.set(id, { ...message, trace: null });
+      cleared += 1;
+    }
+    return cleared;
   },
 
   async listInsightsMessages(organizationId) {

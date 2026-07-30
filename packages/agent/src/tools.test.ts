@@ -207,8 +207,10 @@ describe("tool lifecycle events", () => {
   });
 
   it("narrates a tool phase and keeps the line out of the tool's arguments", async () => {
-    const narrated: string[] = [];
-    const { ctx, events } = makeContext({ narrate: (t) => narrated.push(t) });
+    const narrated: Array<[string, string]> = [];
+    const { ctx, events } = makeContext({
+      narrate: (t, tool) => narrated.push([t, tool]),
+    });
     const toolset = buildToolset(ctx);
     expect(schemaFields(toolset, "remember")).toContain("progress");
 
@@ -217,7 +219,9 @@ describe("tool lifecycle events", () => {
       progress: "  Mi segno che studi Marketing…  ",
     });
     expect(output).toEqual({ saved: true });
-    expect(narrated).toEqual(["Mi segno che studi Marketing…"]);
+    // The sink learns WHICH phase the line narrates (#576), so the persisted
+    // part can carry it.
+    expect(narrated).toEqual([["Mi segno che studi Marketing…", "remember"]]);
     // The narration is display copy, not an argument: a tool that forwards its
     // arguments (queryApi puts them on the request) would otherwise send the
     // narration to the tenant's API as a parameter.
@@ -231,9 +235,9 @@ describe("tool lifecycle events", () => {
   });
 
   it("narrates a knowledge search too, and caps the line", async () => {
-    const narrated: string[] = [];
+    const narrated: Array<[string, string]> = [];
     const { ctx } = makeContext({
-      narrate: (t) => narrated.push(t),
+      narrate: (t, tool) => narrated.push([t, tool]),
       searchKnowledge: async () => [],
     });
     await run(buildToolset(ctx), "searchKnowledge", {
@@ -241,7 +245,8 @@ describe("tool lifecycle events", () => {
       progress: "x".repeat(500),
     });
     expect(narrated).toHaveLength(1);
-    expect(narrated[0]).toHaveLength(PROGRESS_MAX_CHARS);
+    expect(narrated[0][0]).toHaveLength(PROGRESS_MAX_CHARS);
+    expect(narrated[0][1]).toBe("searchKnowledge");
   });
 
   it("narrates nothing when the model omits or blanks the line", async () => {

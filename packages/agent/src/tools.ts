@@ -102,9 +102,12 @@ export interface ToolRuntimeContext {
    *
    * A callback rather than a boolean because the *collector* belongs to the turn
    * (agentic-search/run.ts), which owns the reply parts; the registry only knows
-   * when a phase starts.
+   * when a phase starts. `tool` names the phase being narrated (the registry
+   * tool name), so the persisted part can say *which* phase a line belongs to —
+   * export and analytics separate an API-catalogue line from a search line
+   * (#576).
    */
-  narrate?: (text: string) => void;
+  narrate?: (text: string, tool: string) => void;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
 }
@@ -237,7 +240,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       // whole incentive for batching.
       ctx.loop?.spend();
       const { progress } = takeProgress(input as Record<string, unknown>);
-      if (progress) ctx.narrate?.(progress);
+      if (progress) ctx.narrate?.(progress, "searchKnowledge");
       const queries = normalizeSearchQueries(input);
       const budget = ctx.searchBudget ?? MAX_SEARCH_PASSES;
       if (queries.length === 0) {
@@ -261,6 +264,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
             : `Searching knowledge for:\n${queries.map((q) => `- ${q}`).join("\n")}`,
         input: { queries },
         iteration: ctx.loop?.iteration,
+        iterationLimit: ctx.loop?.limit,
       });
       const end = (ok: boolean, summary: string) =>
         ctx.emit({
@@ -463,7 +467,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
       // Narrate before the call, not after: the line says what is *about* to
       // happen, and the Visitor is watching it happen.
       const { progress, args: input } = takeProgress(rawInput);
-      if (progress) ctx.narrate?.(progress);
+      if (progress) ctx.narrate?.(progress, spec.name);
       ctx.emit({
         type: "tool-start",
         callId,
@@ -471,6 +475,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
         label: spec.label(input),
         input,
         iteration: ctx.loop?.iteration,
+        iterationLimit: ctx.loop?.limit,
       });
       let recorded: Record<string, unknown> | undefined;
       const callCtx: ToolRuntimeContext = {
@@ -547,12 +552,14 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   }
   // The terminal tool — mandatory when a turn has a terminal declaration to
   // make. Not instrumented: declaring you are done spends no iteration, and its
-  // result is the write-time instruction the model then acts on.
+  // result is the write-time instruction the model then acts on. It emits the
+  // tool lifecycle itself (#574), so the declaration is visible to every Role
+  // that can read the Inbox, not just those above the reasoning gate.
   if (ctx.terminal) {
     toolset.readyToAnswer = readyToAnswerTool(
       ctx.terminal,
       ctx.writeTimeStyle ?? {},
-      (label) => ctx.emit({ type: "thought", text: label })
+      ctx.emit
     );
   }
   return toolset;

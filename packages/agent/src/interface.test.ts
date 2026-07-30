@@ -78,6 +78,8 @@ describe("runtime public interface", () => {
       "sessionMetadata",
       "streamConversationTurn",
       "sweepDueRecrawls",
+      // The trace-retention cron drain (#573) — a deliberate widening.
+      "sweepExpiredTraces",
       "testApiRequest",
       // "Test connection" for OpenAI-compatible endpoints — a deliberate
       // widening for the connection form (#436).

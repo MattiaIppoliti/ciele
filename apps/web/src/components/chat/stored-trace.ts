@@ -1,4 +1,8 @@
-import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
+import type {
+  StoredTurnTrace,
+  TurnStep,
+  TurnTerminalStatus,
+} from "@agent-hub/core";
 
 /**
  * Projects a persisted turn trace into what the Thinking panel should render
@@ -18,6 +22,10 @@ export interface VisibleTrace {
   truncated: boolean;
   /** Reasoning steps the Role gate removed. */
   hiddenThoughts: number;
+  /** Loop counters and terminal declaration (#574); absent on older traces. */
+  iteration?: number;
+  iterationLimit?: number;
+  terminal?: TurnTerminalStatus;
 }
 
 export function visibleTraceSteps(
@@ -35,7 +43,25 @@ export function visibleTraceSteps(
     searchCount: trace.searchCount,
     truncated: trace.truncated ?? false,
     hiddenThoughts: trace.steps.length - steps.length,
+    // Never Role-gated: how much budget a turn spent and how it declared
+    // itself done are operational facts, not reasoning.
+    iteration: trace.iteration,
+    iterationLimit: trace.iterationLimit,
+    terminal: trace.terminal,
   };
+}
+
+/**
+ * The Inbox badge for how the loop declared itself done (#574). Null when the
+ * trace predates the terminal declaration — no badge beats a guessed one.
+ */
+export function terminalBadge(
+  terminal: TurnTerminalStatus | undefined
+): string | null {
+  if (terminal === "answer") return "Answered";
+  if (terminal === "needs_clarification") return "Asked to clarify";
+  if (terminal === "insufficient_information") return "No answer found";
+  return null;
 }
 
 /**
@@ -50,6 +76,11 @@ export function storedTraceLabel(trace: VisibleTrace): string {
   if (tools > 0) parts.push(`${tools} ${tools === 1 ? "tool call" : "tool calls"}`);
   const thoughts = trace.steps.filter((step) => step.kind === "thought").length;
   if (thoughts > 0) parts.push(`${thoughts} ${thoughts === 1 ? "thought" : "thoughts"}`);
+  // `iteration 4/6` — only when the stored trace knows both numbers (#574),
+  // so a pre-#574 trace reads exactly as it always did.
+  if (trace.iteration !== undefined && trace.iterationLimit !== undefined) {
+    parts.push(`iteration ${trace.iteration}/${trace.iterationLimit}`);
+  }
   if (parts.length === 0) return "Thought";
   return `Thought · ${parts.join(", ")}`;
 }

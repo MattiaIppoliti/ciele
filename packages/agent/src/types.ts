@@ -99,8 +99,13 @@ export type ChatReplyPart =
    * A part rather than a prefix on the answer text (which is what the reference
    * platform does): same rendering, but still separable afterwards for the
    * transcript, the export and analytics.
+   *
+   * `action` names the tool phase the line narrated: `search_knowledge` for the
+   * knowledge search, otherwise the registry tool name (`queryApi`,
+   * `readKnowledgeSource`, …). Parts persisted before the identity was carried
+   * (#576) all say `search_knowledge`; rendering never discriminates on it.
    */
-  | { type: "progress"; action: "search_knowledge"; text: string }
+  | { type: "progress"; action: string; text: string }
   | {
       type: "sources";
       action: "search_knowledge";
@@ -187,6 +192,12 @@ export type RuntimeEvent =
        * runs without a budget (the deterministic no-model path).
        */
       iteration?: number;
+      /**
+       * The turn's whole iteration budget, so a consumer can show
+       * `iteration N/M` instead of a bare count (#574). Carried with the
+       * iteration rather than assumed, because the budget is per-turn state.
+       */
+      iterationLimit?: number;
     }
   /**
    * Tool-invocation lifecycle end. `summary` is a short human-readable

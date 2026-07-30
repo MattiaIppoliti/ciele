@@ -1081,6 +1081,75 @@ export function describeDbContract(
         await db.setConversationPinned(conversation.id, true);
         expect((await db.getConversation(conversation.id))?.pinned).toBe(true);
       });
+
+      it("sweeps expired traces per organization, keeping the message (#573)", async () => {
+        const assistant = await newAssistant();
+        const conversation = await newConversation(assistant.id);
+        const traced = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [{ type: "text", text: "traced answer" }],
+          trace: {
+            searchCount: 1,
+            steps: [
+              {
+                id: "call-1",
+                kind: "tool",
+                tool: "searchKnowledge",
+                label: "Searching knowledge",
+                status: "done",
+              },
+            ],
+          },
+        });
+        const futureCutoff = new Date(Date.now() + 86_400_000).toISOString();
+        try {
+          // Opting in surfaces the org to the cron sweep; keep-forever orgs
+          // are never returned.
+          await db.updateOrganization(ctx.organizationId, {
+            traceRetentionDays: 30,
+          });
+          expect(await db.listTraceRetentionPolicies()).toContainEqual({
+            organizationId: ctx.organizationId,
+            retentionDays: 30,
+          });
+
+          // One org's sweep never touches another's traces.
+          expect(
+            await db.clearExpiredTraces(ctx.foreignOrganizationId, futureCutoff)
+          ).toBe(0);
+          expect(
+            (await db.listMessages(conversation.id)).find(
+              (m) => m.id === traced.id
+            )?.trace
+          ).not.toBeNull();
+
+          const cleared = await db.clearExpiredTraces(
+            ctx.organizationId,
+            futureCutoff
+          );
+          expect(cleared).toBeGreaterThanOrEqual(1);
+          const reread = (await db.listMessages(conversation.id)).find(
+            (m) => m.id === traced.id
+          );
+          // Only the trace payload goes; the bubble survives the sweep.
+          expect(reread?.trace).toBeNull();
+          expect(reread?.content).toEqual([
+            { type: "text", text: "traced answer" },
+          ]);
+          expect(reread?.createdAt).toBe(traced.createdAt);
+
+          // Idempotent: a cleared trace never matches again.
+          expect(
+            await db.clearExpiredTraces(ctx.organizationId, futureCutoff)
+          ).toBe(0);
+        } finally {
+          await db.updateOrganization(ctx.organizationId, {
+            traceRetentionDays: null,
+          });
+        }
+        expect(await db.listTraceRetentionPolicies()).toEqual([]);
+      });
     });
 
     describe("improvements", () => {

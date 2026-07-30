@@ -9,7 +9,7 @@
 #   db        Postgres + auth + data API + storage + the gateway
 #   migrate   one-shot; applies pending migrations, then the app starts
 #   app       the web app (admin console + widget runtime)
-#   cron      the five scheduled jobs, no Vercel needed
+#   cron      the six scheduled jobs, no Vercel needed
 # and these two stay off until you ask for them:
 #   workers   graph + crawler (heavy: ~8 GiB RAM, browser runtime)
 #   studio    the database admin UI — a standing privileged surface

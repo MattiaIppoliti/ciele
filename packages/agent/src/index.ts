@@ -54,14 +54,17 @@ export { enqueueIngestJob, runDueIngestJobs } from "./jobs";
 export {
   sweepDueRecrawls,
   finalizeDueCrawls,
+  sweepExpiredTraces,
   RECRAWL_SWEEP_BATCH_SIZE,
   CRAWL_FINALIZE_BATCH_SIZE,
 } from "./scheduled";
 export type {
   SweepDueRecrawlsReport,
   FinalizeDueCrawlsReport,
+  SweepExpiredTracesReport,
   SweptRecrawlResult,
   FinalizedCrawlResult,
+  SweptTraceResult,
 } from "./scheduled";
 
 // Graph-sync ledger — keeps each Collection's derived Knowledge Graph in step

@@ -185,6 +185,9 @@ function emptyBot(): BotMsg {
     streamingText: null,
     phase: "running",
     searchCount: 0,
+    iteration: null,
+    iterationLimit: null,
+    terminal: null,
     feedback: 0,
   };
 }

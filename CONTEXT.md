@@ -246,6 +246,38 @@ A public, org-scoped HTTP API (base path `/analytics`) for pulling Insights data
 authenticated by **API keys** minted in Organization → API Keys.
 _Avoid_: export, webhook.
 
+**API Integration**:
+An Assistant's one configured external HTTP API: a base URL, one sealed credential, and an
+**Endpoint Catalogue**. The only way an Organization's own API is reachable from a Conversation
+Turn — the model discovers it, reads endpoint contracts, and queries relative paths that the
+runtime prepends to the base URL. Its own table, never part of `assistants.tools`, so the
+credential can never travel into a Publication snapshot.
+_Avoid_: custom tool (the retired per-endpoint shape), connector (reserved for knowledge
+Applications).
+
+**Endpoint Catalogue**:
+The admin-described list of endpoints inside an API Integration — each with its purpose, path
+(with `{placeholder}` path parameters), required/optional parameters and response keys. The
+catalogue is the egress allow-list: a model-substituted path is validated against it **before**
+any outbound request, and a path it does not describe never reaches the network. A queried
+endpoint is a citable Source.
+_Avoid_: schema (too generic), OpenAPI spec (it is hand-described, not imported).
+
+**Windowed Read**:
+Reading a large payload deliberately in character ranges instead of receiving a truncation: the
+model asks for `(from, to)` against a stored handle (an API response) or a Source id, and every
+window returns the total length plus the next offset so a long document is walked, never
+silently cut.
+_Avoid_: pagination (that's rows), chunking (that's the embedding layer).
+
+**Turn Trace**:
+The persisted, structured form of a Conversation Turn's Thinking Steps — reasoning thoughts and
+tool calls folded from runtime events by one shared function, stored on the assistant message
+(capped, redacted, truncation flagged rather than silent). Reasoning text is Role-gated;
+tool rows are visible to any Role that can read the Inbox. Always stored structured — the flat
+bracketed export string is a serialization produced at export time, never the storage format.
+_Avoid_: chain of thought (in UI), log, AgenticTrace (the export serialization only).
+
 **AI Usage Ledger**:
 One row per model call the runtime makes (stage `classify` / `generate` / `embed` / `verify` /
 `goal_eval` / `compost`), attributed to Organization, Assistant, Conversation, message and the

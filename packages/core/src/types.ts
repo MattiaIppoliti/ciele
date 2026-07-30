@@ -534,6 +534,14 @@ export interface Organization {
   /** Circular logo shown in the org switcher — same treatment as an
    * Assistant's avatarUrl (data URL, falls back to an initial letter). */
   logoUrl?: string | null;
+  /**
+   * How many days a message keeps its persisted Turn Trace before the cron
+   * sweep strips it (#573). Null (the default) keeps traces forever — an
+   * existing tenant's transcripts never start disappearing without an admin
+   * opting in. The sweep removes only the trace payload; the message, its
+   * content, feedback and timestamps stay.
+   */
+  traceRetentionDays?: number | null;
   createdAt: string;
 }
 
@@ -570,6 +578,8 @@ export interface ProfilePatch {
 export interface OrganizationPatch {
   name?: string;
   logoUrl?: string | null;
+  /** Trace retention window in days; null = keep forever (#573). */
+  traceRetentionDays?: number | null;
 }
 
 export interface Invite {
@@ -1425,6 +1435,17 @@ export interface TurnStep {
 }
 
 /**
+ * How the agent loop declared it was done (#558): `answer` = write the answer,
+ * `needs_clarification` = ask one focused question, `insufficient_information`
+ * = admit the knowledge base does not answer it. Declared by the mandatory
+ * terminal tool, never inferred.
+ */
+export type TurnTerminalStatus =
+  | "answer"
+  | "needs_clarification"
+  | "insufficient_information";
+
+/**
  * A persisted turn trace: the Thinking Steps plus the counters the panel header
  * needs, and a truncation flag so a clipped trace reads as clipped rather than
  * as a turn that did less work than it did.
@@ -1435,6 +1456,19 @@ export interface StoredTurnTrace {
   searchCount: number;
   /** True when caps dropped steps or clipped text (see TRACE_* limits). */
   truncated?: boolean;
+  /**
+   * Agent-loop iterations the turn spent, out of {@link iterationLimit} (#574).
+   * Both absent on traces persisted before they were recorded, and on turns
+   * that ran without a budget (the deterministic no-model path) — the panel
+   * shows `iteration N/M` only when it knows both.
+   */
+  iteration?: number;
+  iterationLimit?: number;
+  /**
+   * The terminal status the loop declared. Absent on pre-#574 traces; the
+   * Inbox shows it as a badge every Role that can read the Inbox sees.
+   */
+  terminal?: TurnTerminalStatus;
 }
 
 /**

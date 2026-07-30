@@ -45,7 +45,11 @@ import { CitationList } from "@/components/chat/citation-list";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ThinkingPanel } from "@/components/chat/thinking-panel";
-import { storedTraceLabel, visibleTraceSteps } from "@/components/chat/stored-trace";
+import {
+  storedTraceLabel,
+  terminalBadge,
+  visibleTraceSteps,
+} from "@/components/chat/stored-trace";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Calendar } from "@agent-hub/ui";
@@ -994,6 +998,11 @@ export function InboxClient({
                       ) && (
                         <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400 px-2 py-1 text-xs font-medium text-amber-700 dark:border-amber-600 dark:text-amber-400">
                           <ShieldAlert className="size-3.5" /> Refusal
+                        </span>
+                      )}
+                      {terminalBadge(trace?.terminal) && (
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium">
+                          {terminalBadge(trace?.terminal)}
                         </span>
                       )}
                       {verdicts

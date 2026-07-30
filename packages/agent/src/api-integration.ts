@@ -11,6 +11,7 @@ import {
   EgressPolicyError,
   sanitizeHeaderValue,
 } from "./egress";
+import { getRuntimeHost } from "./host";
 import { API_REQUEST_MAX_BYTES, API_REQUEST_TIMEOUT_MS } from "./api-request";
 
 /**
@@ -208,8 +209,8 @@ export async function queryApiEndpoint(
       timeoutMs: API_REQUEST_TIMEOUT_MS,
       maxResponseBytes: API_REQUEST_MAX_BYTES,
       signal,
-      allowHttp: process.env.VERCEL_ENV !== "production",
-      allowLoopback: process.env.VERCEL_ENV !== "production",
+      allowHttp: getRuntimeHost().allowRelaxedEgress(),
+      allowLoopback: getRuntimeHost().allowRelaxedEgress(),
     });
     return {
       // A 4xx/5xx is a completed request with a real status, not a refusal —
