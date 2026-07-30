@@ -27,7 +27,7 @@ const REVEAL_FINISH = `${100 + TRAIL_HALF_WIDTH}%`;
 
 export type ChromaticTextRevealProps = {
   /** Sentence fragment that remains fixed while the final word changes. */
-  prefix: string;
+  prefix?: string;
   /** Words revealed one after another after the fixed prefix. */
   words: string[];
   /** Punctuation glued to the active word so it travels with it. */
@@ -70,7 +70,7 @@ function composeChromaticGradient(colors: string[], foregroundColor: string) {
 }
 
 export function ChromaticTextReveal({
-  prefix,
+  prefix = "",
   words,
   suffix = "",
   colors = CHROMATIC_PALETTE,
@@ -136,10 +136,15 @@ export function ChromaticTextReveal({
 
   return (
     <span ref={ref} className={cn("inline-flex items-baseline", className)}>
-      <span className="whitespace-nowrap">
-        {prefix}
-        {hasWords ? " " : null}
-      </span>
+      {/* No prefix span when there is no prefix: an empty one still emits the
+          separating space, which would widen the gap to whatever sits before
+          the rotating word. */}
+      {prefix ? (
+        <span className="whitespace-nowrap">
+          {prefix}
+          {hasWords ? " " : null}
+        </span>
+      ) : null}
       {hasWords ? (
         <span className="relative inline-grid">
           {sizingWords.map((word) => (
