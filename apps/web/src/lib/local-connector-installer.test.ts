@@ -30,7 +30,7 @@ describe("connector release", () => {
   it("pins the digest of the versioned public runtime", () => {
     const runtime = readFileSync(
       new URL(
-        "../../public/connectors/ciele-local-connector-0.3.4.mjs",
+        "../../public/connectors/ciele-local-connector-0.3.5.mjs",
         import.meta.url
       )
     );

@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const CONNECTOR_VERSION = "0.3.4";
+const CONNECTOR_VERSION = "0.3.5";
 export const CONNECTOR_FILENAME = `ciele-local-connector-${CONNECTOR_VERSION}.mjs`;
 export const CONNECTOR_SHA256 =
-  "fb5f15566cf0b96c6fa6d56d34521f9f2c31f85bbf45e8005281f3d1c9290dbb";
+  "00a330c7a5353679de4bdac0908f6ce87e01b131049b00f51fcf15db13c67235";
 
 export function connectorInstallationScope(
   organizationId: string,

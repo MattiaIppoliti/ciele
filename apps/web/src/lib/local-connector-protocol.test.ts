@@ -57,7 +57,8 @@ describe("connectorNeedsUpgrade", () => {
     expect(connectorNeedsUpgrade("0.3.0")).toBe(true);
     expect(connectorNeedsUpgrade("0.3.1")).toBe(true);
     expect(connectorNeedsUpgrade("0.3.2")).toBe(true);
-    expect(connectorNeedsUpgrade("0.3.4")).toBe(false);
+    expect(connectorNeedsUpgrade("0.3.4")).toBe(true);
+    expect(connectorNeedsUpgrade("0.3.5")).toBe(false);
     expect(connectorNeedsUpgrade("unknown")).toBe(true);
   });
 });

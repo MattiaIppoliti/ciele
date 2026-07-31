@@ -133,7 +133,7 @@ process.exit(1);
   );
   const runtime = resolve(
     process.cwd(),
-    "public/connectors/ciele-local-connector-0.3.4.mjs"
+    "public/connectors/ciele-local-connector-0.3.5.mjs"
   );
   const child = spawn(
     process.execPath,
@@ -383,7 +383,7 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
       "utf8"
     );
     const status = await (await request("/v1/status")).json();
-    expect(status.version).toBe("0.3.4");
+    expect(status.version).toBe("0.3.5");
 
     expect(status.providers).toEqual(
       expect.arrayContaining([
