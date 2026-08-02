@@ -47,6 +47,23 @@ import {
   type ConnectorProviderStatus,
   type ConnectorStatus,
 } from "@/lib/local-connector-protocol";
+import type {
+  LocalSubscriptionProvider,
+  LocalSubscriptionStatus,
+} from "@agent-hub/agent/local-providers";
+
+/**
+ * Dev-only direct-CLI controls (the local-subscription test flag). When
+ * present they render inside the same "Local AI accounts" card as extra
+ * provider rows, so the terminal connector and the direct CLI flow never
+ * split into two boxes.
+ */
+export interface LocalTestControls {
+  statuses: LocalSubscriptionStatus[];
+  busy: boolean;
+  onConnect: (provider: LocalSubscriptionProvider) => void;
+  onDisconnect: (provider: LocalSubscriptionProvider, label: string) => void;
+}
 const PAIRING_STORAGE_KEY_PREFIX = "ciele.local-connector.pairing";
 
 function pairingStorageKey(scope: string): string {
@@ -212,8 +229,10 @@ function UsageIndicator({ provider }: { provider: ConnectorProviderStatus }) {
 
 export function LocalConnectorSettings({
   connectorScope,
+  localTest,
 }: {
   connectorScope: string;
+  localTest?: LocalTestControls;
 }) {
   const [pairing, setPairing] = useState<ConnectorPairing | null>(null);
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
@@ -524,6 +543,14 @@ export function LocalConnectorSettings({
             <div className="flex items-center gap-2">
               <PlugZap className="text-primary size-4" />
               <h2 className="text-base font-semibold">Local AI accounts</h2>
+              {localTest && (
+                <Badge
+                  variant="outline"
+                  className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                >
+                  Local test
+                </Badge>
+              )}
               {status && (
                 <Badge variant="outline" className="rounded-full">
                   <CheckCircle2 className="mr-1 size-3" /> Connector {status.version}
@@ -564,19 +591,82 @@ export function LocalConnectorSettings({
         )}
 
         {!status && !checking ? (
-          <div className="bg-muted/40 mt-4 flex items-start gap-3 rounded-xl border p-4">
-            <MonitorDown className="text-muted-foreground mt-0.5 size-5" />
-            <div>
-              <p className="text-sm font-medium">Connector not detected</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                Use <span className="font-medium">Authorize from Terminal</span> to
-                paste one command for your OS. It starts the connector and pairs
-                this Member and Organization automatically. Requires Node.js 18+,
-                runs per-user without administrator privileges, and needs no
-                Vercel or Supabase access.
-              </p>
+          localTest ? (
+            <div className="mt-4 divide-y rounded-xl border">
+              {localTest.statuses.map((subscription) => (
+                <div
+                  key={subscription.provider}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3"
+                >
+                  <ProviderBrandIcon
+                    provider={subscription.provider}
+                    className="text-muted-foreground size-6"
+                  />
+                  <div className="min-w-48 flex-1">
+                    <p className="font-medium">{subscription.label}</p>
+                    <p className="text-muted-foreground truncate text-xs">
+                      {subscription.connected
+                        ? [subscription.accountLabel, subscription.plan]
+                            .filter(Boolean)
+                            .join(" · ") ||
+                          "Authenticated through the provider CLI"
+                        : subscription.error ||
+                          (subscription.available
+                            ? "Ready to connect"
+                            : "CLI not found")}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="rounded-full">
+                    {subscription.connected
+                      ? "Connected"
+                      : subscription.connecting
+                        ? "Connecting"
+                        : subscription.available
+                          ? "Available"
+                          : "Unavailable"}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant={subscription.connected ? "ghost" : "outline"}
+                    disabled={
+                      (!subscription.available && !subscription.connected) ||
+                      localTest.busy
+                    }
+                    onClick={() =>
+                      subscription.connected
+                        ? localTest.onDisconnect(
+                            subscription.provider,
+                            subscription.label
+                          )
+                        : localTest.onConnect(subscription.provider)
+                    }
+                  >
+                    {subscription.connecting ? (
+                      <LoaderCircle className="size-4 animate-spin" />
+                    ) : subscription.connected ? (
+                      "Disconnect"
+                    ) : (
+                      "Connect"
+                    )}
+                  </Button>
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="bg-muted/40 mt-4 flex items-start gap-3 rounded-xl border p-4">
+              <MonitorDown className="text-muted-foreground mt-0.5 size-5" />
+              <div>
+                <p className="text-sm font-medium">Connector not detected</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Use <span className="font-medium">Authorize from Terminal</span> to
+                  paste one command for your OS. It starts the connector and pairs
+                  this Member and Organization automatically. Requires Node.js 18+,
+                  runs per-user without administrator privileges, and needs no
+                  Vercel or Supabase access.
+                </p>
+              </div>
+            </div>
+          )
         ) : (
           <div className="mt-4 divide-y rounded-xl border">
             {status?.providers.map((providerStatus) => {

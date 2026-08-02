@@ -1,4 +1,7 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
+import { accessSync, constants as fsConstants, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { delimiter, join } from "node:path";
 
 export type LocalSubscriptionProvider = "openai" | "anthropic";
 
@@ -67,14 +70,16 @@ const processState =
     lastError: new Map(),
   });
 
+/**
+ * Direct-CLI test connections are a developer-machine capability: they need an
+ * explicit opt-in flag, a non-production build, and (at every call site) a
+ * loopback host. They work with either data layer — the in-memory demo db or a
+ * locally-run Supabase-backed instance with real Organization members — since
+ * the API route still requires a signed-in member of an org that allows
+ * personal subscriptions.
+ */
 export function isLocalSubscriptionTestEnabled(): boolean {
   if (process.env.NODE_ENV === "production") return false;
-  if (
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    return false;
-  }
   const flag = process.env.ENABLE_LOCAL_SUBSCRIPTION_TEST?.toLowerCase();
   return flag === "1" || flag === "true" || flag === "on";
 }
@@ -99,11 +104,61 @@ export function isLocalSubscriptionProvider(
   return provider === "openai" || provider === "anthropic";
 }
 
+/**
+ * Well-known install locations probed when the CLI is not on the server
+ * process's PATH. Desktop apps bundle the CLI without linking it anywhere
+ * (the ChatGPT app ships `codex` in its Resources; the retired Codex app did
+ * the same), and GUI-launched dev servers often miss Homebrew/npm bin dirs.
+ */
+function fallbackCommandPaths(provider: LocalSubscriptionProvider): string[] {
+  const home = homedir();
+  if (provider === "openai") {
+    return [
+      "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "/Applications/Codex.app/Contents/Resources/codex",
+      "/opt/homebrew/bin/codex",
+      "/usr/local/bin/codex",
+      join(home, ".local", "bin", "codex"),
+      join(home, ".npm-global", "bin", "codex"),
+    ];
+  }
+  return [
+    join(home, ".local", "bin", "claude"),
+    join(home, ".claude", "local", "claude"),
+    "/opt/homebrew/bin/claude",
+    "/usr/local/bin/claude",
+    join(home, ".npm-global", "bin", "claude"),
+  ];
+}
+
+function isExecutableFile(candidate: string): boolean {
+  try {
+    accessSync(candidate, fsConstants.X_OK);
+    return statSync(candidate).isFile();
+  } catch {
+    // Missing, dangling symlink, or not executable.
+    return false;
+  }
+}
+
+function isOnPath(command: string): boolean {
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (dir && isExecutableFile(join(dir, command))) return true;
+  }
+  return false;
+}
+
 export function localSubscriptionCommand(
   provider: LocalSubscriptionProvider
 ): string {
   const config = LOCAL_SUBSCRIPTION_PROVIDERS[provider];
-  return process.env[config.commandEnv]?.trim() || config.defaultCommand;
+  const override = process.env[config.commandEnv]?.trim();
+  if (override) return override;
+  if (isOnPath(config.defaultCommand)) return config.defaultCommand;
+  for (const candidate of fallbackCommandPaths(provider)) {
+    if (isExecutableFile(candidate)) return candidate;
+  }
+  return config.defaultCommand;
 }
 
 export function localSubscriptionCliEnvironment(): NodeJS.ProcessEnv {

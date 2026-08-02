@@ -37,10 +37,12 @@ conditions hold:
 
 1. Ciele is running outside `NODE_ENV=production`.
 2. `ENABLE_LOCAL_SUBSCRIPTION_TEST=1` (or `true` / `on`) is set.
-3. Ciele is using its in-memory demo data (Supabase environment variables are
-   unset) and is opened through a loopback host (`localhost`, `127.0.0.1`, or
-   `::1`). This prevents a machine-global CLI identity from crossing tenant or
-   remote-user boundaries.
+3. Ciele is opened through a loopback host (`localhost`, `127.0.0.1`, or
+   `::1`). Both data layers qualify — the in-memory demo db and a locally-run
+   Supabase-backed instance with real Organization members — because the API
+   route still requires a signed-in Member of an Organization that enabled
+   personal subscriptions, and the loopback restriction keeps a machine-global
+   CLI identity from crossing to remote users.
 4. The relevant official CLI is installed on the same machine as the Ciele web
    process: `codex` for ChatGPT or `claude` for Claude.
 5. The signed-in Ciele Member belongs to an Organization that enabled personal
@@ -187,9 +189,10 @@ loop, structured classification and streaming contract remain authoritative.
   a loopback request. The downloadable connector is available to authenticated Members;
   its local runtime subsequently trusts the installation's exact origin,
   member-and-organization scope, and random bearer secret.
-- The same-process test path is hard-disabled in production and whenever
-  Supabase-backed multi-user data is enabled. Production uses only the paired
-  connector relay after Organization owner opt-in.
+- The same-process test path is hard-disabled in production, opt-in via
+  `ENABLE_LOCAL_SUBSCRIPTION_TEST`, and loopback-only. It works against either
+  data layer on a developer machine; production uses only the paired connector
+  relay after Organization owner opt-in.
 - CLI credentials remain in the provider's local credential store.
 - Hosted-browser connector requests are restricted to IPv4 loopback, the exact
   Ciele origin, a member-and-organization installation scope, and a random

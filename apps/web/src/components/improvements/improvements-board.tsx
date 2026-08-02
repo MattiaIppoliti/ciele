@@ -219,7 +219,7 @@ export function ImprovementsBoard({
             return (
               <section
                 key={lane.value}
-                className="overflow-hidden rounded-xl border"
+                className="bg-card overflow-hidden rounded-xl border"
               >
                 <div className="bg-muted/40 flex items-center gap-2 px-4 py-2.5">
                   <button

@@ -69,21 +69,23 @@ export function CopyFeedbackIcon({
       data-copied={copied || undefined}
       className={cn("relative inline-grid shrink-0 place-items-center", className)}
     >
+      {/* The swap to the check is instant (no transition while copied), so the
+          success reads the moment of the click; only the return to the copy
+          icon fades, which is why the transition class lives on the un-copied
+          state alone. */}
       <Copy
         className={cn(
-          "col-start-1 row-start-1 size-full transition-[opacity,transform] duration-150 ease-in motion-reduce:transition-none",
+          "col-start-1 row-start-1 size-full",
           copied
-            ? "-rotate-12 scale-75 opacity-0"
-            : "rotate-0 scale-100 opacity-100"
+            ? "opacity-0"
+            : "opacity-100 transition-opacity duration-200 motion-reduce:transition-none"
         )}
       />
       <Check
         strokeWidth={2.75}
         className={cn(
-          "col-start-1 row-start-1 size-full text-emerald-500 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-          copied
-            ? "rotate-0 scale-100 opacity-100"
-            : "rotate-12 scale-75 opacity-0"
+          "col-start-1 row-start-1 size-full text-emerald-500",
+          copied ? "opacity-100" : "opacity-0"
         )}
       />
     </span>

@@ -164,7 +164,7 @@ export function OrganizationClient({
         </Select>
       </div>
 
-      <div className="bg-background/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
+      <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
         {dirty && <span className="text-muted-foreground text-sm">Unsaved changes</span>}
         <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
           {isPending ? "Saving..." : "Save changes"}

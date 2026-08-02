@@ -55,7 +55,7 @@ export default async function AdminLayout({
                 <Suspense fallback={null}>
                   <PendingActivationBanner organizationId={organizationId} />
                 </Suspense>
-                <main className="min-h-0 flex-1 overflow-hidden">
+                <main className="bg-content min-h-0 flex-1 overflow-hidden">
                   <StaticIcons>{children}</StaticIcons>
                 </main>
               </div>

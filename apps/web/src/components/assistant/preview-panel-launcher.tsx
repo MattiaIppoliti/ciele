@@ -71,7 +71,7 @@ export function PreviewPanelLauncher({
   }
 
   return (
-    <aside className="relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
+    <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
       <ResizeHandle
         resizing={false}
         onPointerDown={() => {

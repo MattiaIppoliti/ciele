@@ -77,7 +77,10 @@ export async function POST(request: NextRequest) {
       localSubscriptionRunner
     );
   }
-  if (personalSubscriptionsAllowed && !directLocal) {
+  // The paired Ciele Connector stays usable even when the direct local-CLI
+  // test path is enabled but has nothing connected (e.g. a CLI is missing on
+  // this machine and the Member authorized from Terminal instead).
+  if (personalSubscriptionsAllowed && localSubscriptionProviders.length === 0) {
     try {
       localSubscriptionProviders = await listActiveRelayProviders({
         organizationId: session.organization.id,

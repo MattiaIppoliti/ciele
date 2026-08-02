@@ -353,7 +353,7 @@ export function ImprovementDetail({
 
             {current && (
               <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-                <div className="min-w-0 rounded-xl border p-4">
+                <div className="bg-card min-w-0 rounded-xl border p-4">
                   <Transcript
                     transcript={current.transcript}
                     flaggedId={current.messageId}
@@ -387,7 +387,7 @@ export function ImprovementDetail({
                   </div>
                 </div>
 
-                <div className="rounded-xl border p-4">
+                <div className="bg-card rounded-xl border p-4">
                   <h3 className="mb-2 font-semibold">Sources</h3>
                   {messageSources(current.message.content).length === 0 ? (
                     <p className="text-muted-foreground text-sm">No sources</p>
@@ -455,7 +455,7 @@ export function ImprovementDetail({
         </div>
 
         {/* Side column: fields */}
-        <aside className="h-fit space-y-1 rounded-xl border p-4">
+        <aside className="bg-card h-fit space-y-1 rounded-xl border p-4">
           {/* Status */}
           <FieldPill label="Status">
             <Popover>

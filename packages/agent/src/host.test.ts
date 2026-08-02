@@ -76,6 +76,27 @@ describe("runtime host ports", () => {
     );
   });
 
+  it("shares one registry across duplicated module instances", async () => {
+    // Hosts bundle this package (`transpilePackages`), and the Next dev server
+    // compiles instrumentation.ts and each route entry as separate module
+    // graphs — so host.ts is instantiated several times per process. The
+    // registration made by one copy must be visible to every other copy, or
+    // the after-response accelerator silently degrades to the no-op default
+    // in dev. Two `vi.resetModules()` imports simulate exactly that split.
+    vi.resetModules();
+    const copyA = await import("./host");
+    vi.resetModules();
+    const copyB = await import("./host");
+    expect(copyB).not.toBe(copyA);
+
+    const scheduled: Array<() => unknown> = [];
+    copyA.registerRuntimeHost({
+      scheduleAfterResponse: (work) => scheduled.push(work),
+    });
+    copyB.getRuntimeHost().scheduleAfterResponse(() => "accelerated");
+    expect(scheduled).toHaveLength(1);
+  });
+
   it("ships a platform prompt that states the non-negotiable rules", () => {
     // The prompt itself is content, not behavior — pin only that the layer
     // exists and carries the precedence claim the two-layer model depends on.

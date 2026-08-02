@@ -39,7 +39,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Hint } from "@agent-hub/ui";
@@ -666,100 +665,20 @@ export function AiSettingsClient({
         </div>
       </Card>
 
-      {personalSubscriptionsOn && !localSubscriptionTestEnabled && (
+      {personalSubscriptionsOn && (
         <LocalConnectorSettings
           connectorScope={connectorScope}
+          localTest={
+            localSubscriptionTestEnabled
+              ? {
+                  statuses: localSubscriptionStatuses,
+                  busy: isPending,
+                  onConnect: openSubscriptionPopup,
+                  onDisconnect: handleLocalSubscriptionDisconnect,
+                }
+              : undefined
+          }
         />
-      )}
-
-      {personalSubscriptionsOn && localSubscriptionTestEnabled && (
-        <Card size="sm" data-animate-group className="gap-0 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <AnimatedIcon icon={User} size={16} iconClassName="text-primary" />
-                <h2 className="text-base font-semibold">AI subscriptions</h2>
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                >
-                  Local test
-                </Badge>
-              </div>
-              <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-                Connect a real ChatGPT or Claude subscription through the
-                official Codex or Claude Code CLI installed on this machine.
-                Credentials stay in the provider CLI&apos;s local credential store.
-              </p>
-            </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button size="sm" />}
-                >
-                  <AnimatedIcon icon={Plus} size={16} /> Connect
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel>Subscription</DropdownMenuLabel>
-                  {localSubscriptionStatuses.map((status) => (
-                    <DropdownMenuItem
-                      key={status.provider}
-                      className="items-start py-2"
-                      disabled={status.connected}
-                      onClick={() => openSubscriptionPopup(status.provider)}
-                    >
-                      <div>
-                        <p>{status.label}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {status.detail}
-                        </p>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-          </div>
-
-          <div className="mt-3 space-y-2">
-            {localSubscriptionStatuses.map((status) => (
-              <div
-                key={status.provider}
-                className="flex items-center gap-3 rounded-xl border px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{status.label}</p>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {status.connected
-                      ? [status.accountLabel, status.plan].filter(Boolean).join(" · ") ||
-                        "Authenticated through the provider CLI"
-                      : status.available
-                        ? status.error || "Not connected"
-                        : status.error || "Provider CLI unavailable"}
-                  </p>
-                </div>
-                <Badge variant="outline" className="rounded-full">
-                  {status.connected
-                    ? "Connected"
-                    : status.connecting
-                      ? "Connecting"
-                      : "Not connected"}
-                </Badge>
-                {status.connected && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Disconnect ${status.label}`}
-                    disabled={isPending}
-                    onClick={() =>
-                      handleLocalSubscriptionDisconnect(status.provider, status.label)
-                    }
-                  >
-                    <AnimatedIcon icon={Trash2} size={16} />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
       )}
 
       {legacySubscriptions.length > 0 && (

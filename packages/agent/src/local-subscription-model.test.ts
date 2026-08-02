@@ -1,6 +1,15 @@
 import { generateObject, stepCountIs, streamText, tool } from "ai";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+
+// Pin the resolved CLI commands so assertions don't depend on what happens to
+// be installed on the machine running the suite (command resolution probes
+// PATH and well-known install locations).
+beforeEach(() => {
+  vi.stubEnv("CODEX_CLI_PATH", "codex");
+  vi.stubEnv("CLAUDE_CLI_PATH", "claude");
+  return () => vi.unstubAllEnvs();
+});
 import {
   clearLocalSubscriptionReadinessProbe,
   createLocalCliRunner,

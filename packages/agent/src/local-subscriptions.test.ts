@@ -1,8 +1,12 @@
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   connectedLocalSubscriptionProviders,
   isLocalSubscriptionTestEnabled,
   isLoopbackHost,
+  localSubscriptionCommand,
   parseClaudeLoginStatus,
   parseCodexLoginStatus,
 } from "./local-subscriptions";
@@ -34,11 +38,28 @@ describe("isLocalSubscriptionTestEnabled", () => {
     expect(isLocalSubscriptionTestEnabled()).toBe(false);
   });
 
-  it("cannot be enabled against the multi-tenant Supabase data layer", () => {
+  it("stays enabled on a locally-run Supabase-backed instance", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", "1");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321");
-    expect(isLocalSubscriptionTestEnabled()).toBe(false);
+    expect(isLocalSubscriptionTestEnabled()).toBe(true);
+  });
+});
+
+describe("localSubscriptionCommand", () => {
+  it("prefers the explicit env override", () => {
+    vi.stubEnv("CODEX_CLI_PATH", "/custom/path/codex");
+    expect(localSubscriptionCommand("openai")).toBe("/custom/path/codex");
+  });
+
+  it("keeps the bare command when it resolves on PATH", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-"));
+    const binary = join(dir, "codex");
+    writeFileSync(binary, "#!/bin/sh\n");
+    chmodSync(binary, 0o755);
+    vi.stubEnv("CODEX_CLI_PATH", undefined);
+    vi.stubEnv("PATH", dir);
+    expect(localSubscriptionCommand("openai")).toBe("codex");
   });
 });
 

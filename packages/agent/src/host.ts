@@ -101,7 +101,23 @@ const DEFAULTS: RuntimeHost = {
   allowRelaxedEgress: () => false,
 };
 
-let current: RuntimeHost = DEFAULTS;
+/**
+ * The registry lives on `globalThis`, not in a module-level variable, because
+ * this package is bundled by its hosts (`transpilePackages`) and a bundler may
+ * instantiate this module once per compiled graph in a single process. The
+ * Next dev server does exactly that: `instrumentation.ts` and each route entry
+ * are separate graphs, so a module-level `current` would take the registration
+ * on the instrumentation copy while every route copy silently kept the
+ * defaults — dropping the after-response accelerator and the platform-prompt
+ * override, and pinning egress to the strict posture in dev. `Symbol.for`
+ * resolves through the process-wide symbol registry, so every copy of this
+ * module — however many graphs it is compiled into — shares the one slot.
+ * Same cell idiom as the enterprise capability registry in `ee.ts`.
+ */
+const HOST_SLOT = Symbol.for("@agent-hub/agent:runtime-host");
+type HostSlot = { current: RuntimeHost };
+const slots = globalThis as { [HOST_SLOT]?: HostSlot };
+const slot: HostSlot = (slots[HOST_SLOT] ??= { current: DEFAULTS });
 
 /**
  * Register host implementations. Shallow-merges over the current host so a
@@ -109,15 +125,15 @@ let current: RuntimeHost = DEFAULTS;
  * startup by the hosting app.
  */
 export function registerRuntimeHost(overrides: Partial<RuntimeHost>): void {
-  current = { ...current, ...overrides };
+  slot.current = { ...slot.current, ...overrides };
 }
 
 /** The active host — defaults unless the hosting app registered overrides. */
 export function getRuntimeHost(): RuntimeHost {
-  return current;
+  return slot.current;
 }
 
 /** Test-only: restore the defaults. Not exported through the barrel. */
 export function resetRuntimeHost(): void {
-  current = DEFAULTS;
+  slot.current = DEFAULTS;
 }

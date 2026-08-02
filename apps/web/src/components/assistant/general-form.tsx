@@ -697,7 +697,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
       </div>
 
       {/* Save bar */}
-      <div className="bg-background/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
+      <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
         {dirty && (
           <span className="text-muted-foreground text-sm">
             Unsaved changes

@@ -761,7 +761,7 @@ export function PreviewPanel({
   // fading in, and snaps to PANEL_MIN_WIDTH on release (Spotify-style).
   if (collapsed) {
     return (
-      <aside className="relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
+      <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
         <ResizeHandle
           resizing={resizing}
           onPointerDown={() => {
@@ -788,7 +788,7 @@ export function PreviewPanel({
     <aside
       ref={asideRef}
       style={{ width }}
-      className={`relative hidden shrink-0 flex-col border-l md:flex ${
+      className={`bg-background relative hidden shrink-0 flex-col border-l md:flex ${
         resizing ? "" : "transition-[width] duration-200 ease-out"
       }`}
     >
