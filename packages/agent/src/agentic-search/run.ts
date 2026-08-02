@@ -161,8 +161,13 @@ export function buildSystemPrompt(
           "",
           "# This turn has two phases and you are in the FIRST one",
           "Gather what you need, then declare you are done. Do NOT write anything addressed to the user in this phase — no answer, no apology, no clarification question. Any prose you produce here is treated as your private reasoning.",
+          // Streamed thinking (#584): the reasoning is watched live in the
+          // Thinking panel, so the model narrates every step of the loop in
+          // the Visitor's language — the reference's [Thinking:] cadence.
+          "Think out loud as you go — this is REQUIRED, not optional: NEVER emit a tool call without first writing one or two short sentences of reasoning in the user's own language, saying what you have learned so far and what you will do next. That includes your FIRST tool call and the final readyToAnswer call. The user watches this reasoning stream in a side panel while they wait, so keep it presentable; it is still reasoning, not the answer.",
           "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts — one call costs one iteration however many queries it carries.",
           "If a search comes back thin, search again with different wording; you do not need permission to reformulate.",
+          "The knowledge base is often written in a different language than the user's message. When the user writes in another language, include translated variants (English plus the organization's likely language) among the queries of the SAME call — retrieval matches the document's own words, so a query in the wrong language finds nothing even when the answer is there.",
           "You MUST finish by calling readyToAnswer exactly once, with the status that matches what you found. You will then get a second phase in which to write, and its instructions arrive on that tool's result.",
           context?.alreadyClarified
             ? "This conversation has ALREADY asked the visitor to clarify once. Do not ask again — answer as best you can from what you find and say plainly what you could not determine."
@@ -410,15 +415,29 @@ export async function runAgenticSearch(
   });
 
   let reasoning = "";
+  // Chars of `reasoning` already streamed as thought-deltas (#584). Deltas are
+  // withheld while the accumulation is pure whitespace, so a model that emits
+  // a stray newline never opens an empty thought in the panel.
+  let streamed = 0;
   let finishReason: string | null = null;
   let rawFinishReason: string | undefined;
   const flushReasoning = () => {
     if (reasoning.trim()) emit({ type: "thought", text: reasoning.trim() });
     reasoning = "";
+    streamed = 0;
   };
   for await (const chunk of gather.fullStream) {
     if (chunk.type === "text-delta") {
       reasoning += chunk.text;
+      // Stream the reasoning as it is written — the Visitor watches it build
+      // in the Thinking panel; the terminal `thought` on the next tool call
+      // stays the authoritative whole.
+      if (reasoning.trim()) {
+        const delta =
+          streamed === 0 ? reasoning.trimStart() : reasoning.slice(streamed);
+        if (delta) emit({ type: "thought-delta", delta });
+        streamed = reasoning.length;
+      }
     } else if (chunk.type === "tool-call") {
       flushReasoning();
     } else if (chunk.type === "finish") {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
 import {
+  chatVisibleSteps,
   liveTraceLabel,
   storedTraceLabel,
   terminalBadge,
@@ -223,5 +224,47 @@ describe("liveTraceLabel", () => {
         },
       ])
     ).toBe("Thinking…");
+  });
+});
+
+describe("chatVisibleSteps", () => {
+  const notice = (label: string, detail?: string): TurnStep => ({
+    id: label,
+    kind: "notice",
+    label,
+    detail,
+    status: "done",
+  });
+
+  it("drops the Generating answer bookkeeping notice", () => {
+    const steps = [
+      notice("Generating answer", "Model: gpt-5.1-mini"),
+      trace.steps[2],
+    ];
+    expect(chatVisibleSteps(steps)).toEqual([trace.steps[2]]);
+  });
+
+  it("drops the routing notice only when it landed on Default behavior", () => {
+    const routedDefault = notice(
+      "Classifying intent",
+      "Matched flow “Default behavior”"
+    );
+    const routedSpecific = notice(
+      "Classifying intent",
+      "Matched flow “Opening hours”"
+    );
+    expect(chatVisibleSteps([routedDefault, routedSpecific])).toEqual([
+      routedSpecific,
+    ]);
+  });
+
+  it("drops the keyword-matching notice for Default behavior too", () => {
+    const kwDefault = notice("Matched flow “Default behavior” (keyword matching)");
+    const kwSpecific = notice("Matched flow “Opening hours” (keyword matching)");
+    expect(chatVisibleSteps([kwDefault, kwSpecific])).toEqual([kwSpecific]);
+  });
+
+  it("keeps non-notice steps and other notices untouched", () => {
+    expect(chatVisibleSteps(trace.steps)).toEqual(trace.steps);
   });
 });

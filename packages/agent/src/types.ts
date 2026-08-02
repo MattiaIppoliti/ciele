@@ -219,8 +219,16 @@ export type RuntimeEvent =
       durationMs: number;
     }
   /**
-   * Model reasoning that preceded a tool call. The client folds the text it
-   * was streaming into the Thinking panel instead of the answer bubble —
+   * A live slice of the reasoning the model is writing right now (#584). The
+   * fold accumulates deltas into a `running` thought step so the Thinking
+   * panel streams the reasoning as it is generated, the way the answer text
+   * streams — the terminal `thought` event then finalizes that step.
+   */
+  | { type: "thought-delta"; delta: string }
+  /**
+   * Model reasoning that preceded a tool call, whole and authoritative. It
+   * finalizes the running thought step its deltas built (or appends one when
+   * none streamed — stored traces and older streams carry only this event) —
    * this is what turns "text… then a search" into a visible thought.
    */
   | { type: "thought"; text: string }
@@ -284,6 +292,13 @@ export interface ActionContext {
   templateContext?: TemplateContext;
   /** Null in the deterministic fallback; generative handlers require a model. */
   chatModel: LanguageModel | null;
+  /**
+   * The cheap/fast classifier-tier model (see CLASSIFIER_MODEL in models.ts),
+   * for light generation where latency dominates quality — follow-up chips
+   * render after the answer is already on screen, so every millisecond here is
+   * pure perceived lag. Null or absent falls back to `chatModel`.
+   */
+  fastModel?: LanguageModel | null;
   searchKnowledge?: KnowledgeSearcher;
   /**
    * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
@@ -322,6 +337,15 @@ export interface ActionContext {
    * that never touch the model don't need it.
    */
   recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
+  /**
+   * Like `recordUsage`, but pre-bound with the classifier-tier provider/model
+   * identity, so a handler that ran on `fastModel` meters the model that
+   * actually answered. Present exactly when `fastModel` is.
+   */
+  recordFastUsage?: (usage: {
+    inputTokens: number;
+    outputTokens: number;
+  }) => void;
   /**
    * True on the admin Preview surface, where provider internals (raw finish
    * reasons, error details) may be shown as diagnostics. Widget visitors

@@ -3,7 +3,6 @@ import {
   BookOpen,
   Brain,
   FileText,
-  Info,
   List,
   Palette,
   Plug,
@@ -35,7 +34,7 @@ interface IconSpec {
  */
 const TOOL_ICONS: Record<string, IconSpec> = {
   searchKnowledge: {
-    icon: <BookOpen className="size-3.5" />,
+    icon: <Search className="size-3.5" />,
     name: "Knowledge search",
   },
   readKnowledgeSource: {
@@ -101,11 +100,21 @@ function iconSpecFor(step: TurnStep): IconSpec {
   }
   if (step.kind === "thought") return THOUGHT_ICON;
   if (step.kind === "notice") {
-    // One glyph for every runtime diagnostic, but the *name* stays the notice's
-    // own — it is the tooltip and the header pill's screen-reader text, so a
-    // generic "Runtime notice" would drop what the retired stage icons used to
-    // say ("Routing to a flow", "Generating answer").
-    return { icon: <Info className="size-3.5" />, name: step.label };
+    // Routing notices get the Flow glyph; every other diagnostic falls back to
+    // the search lens (never a bare "info" glyph). The *name* stays the
+    // notice's own — it is the tooltip and the header pill's screen-reader
+    // text, so a generic "Runtime notice" would drop what it says.
+    const routing =
+      step.label.startsWith("Classifying intent") ||
+      step.label.startsWith("Matched flow");
+    return {
+      icon: routing ? (
+        <Workflow className="size-3.5" />
+      ) : (
+        <Search className="size-3.5" />
+      ),
+      name: step.label,
+    };
   }
   // Legacy `kind: "step"` rows from traces persisted before the phase machine
   // was retired (#560) keep their stage icon.

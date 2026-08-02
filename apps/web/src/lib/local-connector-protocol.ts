@@ -13,7 +13,7 @@ export function previewAiPreferencesKey(scope: string): string {
 
 /** Stable loopback discovery port used by the generic desktop packages. */
 export const CONNECTOR_BOOTSTRAP_PORT = 49_321;
-export const CURRENT_CONNECTOR_VERSION = "0.3.5";
+export const CURRENT_CONNECTOR_VERSION = "0.3.6";
 
 export function connectorNeedsUpgrade(version: string): boolean {
   const parse = (value: string) => {

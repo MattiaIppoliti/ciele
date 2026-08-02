@@ -38,7 +38,11 @@ async function executable(directory: string, name: string, source: string) {
 }
 
 async function startConnector(
-  options: { includeUsage?: boolean; origin?: string } = {}
+  options: {
+    includeUsage?: boolean;
+    origin?: string;
+    claudeUsageUrl?: string;
+  } = {}
 ) {
   const directory = await mkdtemp(join(tmpdir(), "ciele-connector-test-"));
   directories.push(directory);
@@ -133,7 +137,7 @@ process.exit(1);
   );
   const runtime = resolve(
     process.cwd(),
-    "public/connectors/ciele-local-connector-0.3.5.mjs"
+    "public/connectors/ciele-local-connector-0.3.6.mjs"
   );
   const child = spawn(
     process.execPath,
@@ -157,6 +161,10 @@ process.exit(1);
         CIELE_CONNECTOR_HOME: directory,
         CODEX_CLI_PATH: codex,
         CLAUDE_CLI_PATH: claude,
+        // Keep the suite hermetic: point the Claude credential lookup at the
+        // temp home and disable the usage endpoint unless a test serves one.
+        CLAUDE_CONFIG_DIR: directory,
+        CIELE_CLAUDE_USAGE_URL: options.claudeUsageUrl ?? "",
       },
       stdio: ["ignore", "pipe", "pipe"],
     }
@@ -352,6 +360,92 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
     });
   });
 
+  it("reports Claude usage windows from the OAuth usage endpoint", async () => {
+    const usageServer = createServer((_request, response) => {
+      response.setHeader("Content-Type", "application/json");
+      response.end(
+        JSON.stringify({
+          limits: [
+            {
+              kind: "session",
+              percent: 16,
+              resets_at: "2026-07-31T11:40:00.000000+00:00",
+            },
+            {
+              kind: "weekly_all",
+              percent: 78,
+              resets_at: "2026-08-01T13:59:59.000000+00:00",
+            },
+            {
+              kind: "weekly_scoped",
+              scope: { model: { id: null, display_name: "Fable" }, surface: null },
+              percent: 11,
+              resets_at: "2026-08-01T14:00:00.000000+00:00",
+            },
+            { kind: "broken", percent: null, resets_at: null },
+          ],
+        })
+      );
+    });
+    servers.push(usageServer);
+    await new Promise<void>((resolveListen) =>
+      usageServer.listen(0, "127.0.0.1", resolveListen)
+    );
+    const address = usageServer.address();
+    if (!address || typeof address === "string") throw new Error("No usage port");
+    const { request, directory } = await startConnector({
+      claudeUsageUrl: `http://127.0.0.1:${address.port}/api/oauth/usage`,
+    });
+    await writeFile(
+      join(directory, ".credentials.json"),
+      JSON.stringify({ claudeAiOauth: { accessToken: "sk-ant-oat-test" } }),
+      "utf8"
+    );
+
+    const status = await (await request("/v1/status")).json();
+    const anthropic = status.providers.find(
+      (provider: { provider: string }) => provider.provider === "anthropic"
+    );
+
+    expect(anthropic.connected).toBe(true);
+    expect(anthropic.usage).toEqual({
+      windows: [
+        {
+          label: "5-hour limit",
+          usedPercent: 16,
+          remainingPercent: 84,
+          resetsAt: Math.round(Date.parse("2026-07-31T11:40:00.000000+00:00") / 1_000),
+        },
+        {
+          label: "Weekly · all models",
+          usedPercent: 78,
+          remainingPercent: 22,
+          resetsAt: Math.round(Date.parse("2026-08-01T13:59:59.000000+00:00") / 1_000),
+        },
+        {
+          label: "Weekly · Fable",
+          usedPercent: 11,
+          remainingPercent: 89,
+          resetsAt: Math.round(Date.parse("2026-08-01T14:00:00.000000+00:00") / 1_000),
+        },
+      ],
+    });
+  });
+
+  it("reports no Claude usage when the CLI credentials are unreadable", async () => {
+    const { request } = await startConnector({
+      claudeUsageUrl: "http://127.0.0.1:9/api/oauth/usage",
+    });
+    const status = await (await request("/v1/status")).json();
+    const anthropic = status.providers.find(
+      (provider: { provider: string }) => provider.provider === "anthropic"
+    );
+
+    expect(anthropic.connected).toBe(true);
+    expect(anthropic.usage).toBeUndefined();
+    expect(anthropic.usageUnavailableReason).toContain("could not be read");
+  });
+
   it("keeps the Codex model catalog when no rate-limit window is reported", async () => {
     const { request } = await startConnector({ includeUsage: false });
     const status = await (await request("/v1/status")).json();
@@ -383,7 +477,7 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
       "utf8"
     );
     const status = await (await request("/v1/status")).json();
-    expect(status.version).toBe("0.3.5");
+    expect(status.version).toBe("0.3.6");
 
     expect(status.providers).toEqual(
       expect.arrayContaining([

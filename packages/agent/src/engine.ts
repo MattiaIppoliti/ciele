@@ -633,6 +633,7 @@ export async function runAssistantChat(options: {
     collectionId,
     templateContext: withWorkflowName(templateContext, flow.name),
     chatModel,
+    fastModel: classifier?.model ?? null,
     searchKnowledge,
     readKnowledgeDocument,
     apiIntegration,
@@ -655,6 +656,20 @@ export async function runAssistantChat(options: {
         provider: resolved.provider,
         modelId: resolved.modelId,
         credentialKind: resolved.credentialKind,
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+      });
+    },
+    // Metered against the classifier-tier model that actually ran, still as a
+    // `generate` event: the stage says what the call produced, the model id
+    // says who produced it.
+    recordFastUsage: (usage) => {
+      if (!classifier) return;
+      usageEvents.push({
+        stage: "generate",
+        provider: classifier.provider,
+        modelId: classifier.modelId,
+        credentialKind: classifier.credentialKind,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
       });

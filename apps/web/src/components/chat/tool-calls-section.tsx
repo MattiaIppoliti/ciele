@@ -15,12 +15,29 @@ import { StepIcon, formatToolName } from "./tool-icons";
  */
 
 /**
- * An HTTP status on a tool result, as a pass/fail badge. A refused call records
- * the string `"failed"` instead of a number — it never reached the network, so
- * inventing a status would be a lie the badge cannot tell.
+ * A `status` row on a tool result. Two kinds share the key: HTTP outcomes (a
+ * number, or the string `"failed"` a refused call records — it never reached
+ * the network, so inventing a status would be a lie) get a pass/fail badge;
+ * anything else is a declaration, not an outcome — the terminal tool's
+ * `answer` / `needs_clarification` / `insufficient_information` — where
+ * failure iconography would misread an honest "I'm ready to answer".
  */
 function StatusBadge({ value }: { value: unknown }) {
   const status = typeof value === "number" ? value : null;
+  if (status === null && value !== "failed") {
+    const answered = value === "answer";
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-mono text-xs ${
+          answered
+            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {answered && "✅"} {String(value)}
+      </span>
+    );
+  }
   const ok = status !== null && status >= 200 && status < 300;
   return (
     <span
@@ -52,6 +69,9 @@ export function ToolCallsSection({
           step.input && Object.keys(step.input).length > 0
         );
         const resultRows = Object.entries(step.result ?? {});
+        // A thought still being streamed (#584): text being written live.
+        const streamingThought =
+          step.kind === "thought" && step.status === "running";
         const expandable =
           hasInput ||
           resultRows.length > 0 ||
@@ -79,9 +99,18 @@ export function ToolCallsSection({
                 <p
                   className={`text-[13px] leading-relaxed text-muted-foreground ${
                     step.kind === "thought" ? "italic whitespace-pre-wrap" : ""
-                  } ${step.status === "running" ? "animate-pulse" : ""}`}
+                  } ${
+                    // A running tool label pulses; a streaming thought is text
+                    // being written — it gets a cursor, not a blink.
+                    step.status === "running" && !streamingThought
+                      ? "animate-pulse"
+                      : ""
+                  }`}
                 >
                   {step.label}
+                  {streamingThought && (
+                    <span className="animate-pulse not-italic">▍</span>
+                  )}
                   {step.status === "error" && (
                     <span className="text-destructive"> (failed)</span>
                   )}

@@ -76,13 +76,22 @@ const suggestHelpDesk: ActionHandler = async ({
 const GENERIC_FOLLOW_UPS = ["What else can you help me with?", "How do I get started?"];
 
 /**
+ * How much of the answer the follow-up prompt sees. Chips need the answer's
+ * topic and language, not its every detail — a bounded excerpt keeps the call
+ * fast on long RAG answers without un-grounding the questions.
+ */
+const FOLLOW_UP_ANSWER_EXCERPT = 2000;
+
+/**
  * Grounds follow-ups in the answer just given this turn (priorParts) instead
  * of guessing blind — a chip like "How do I get started?" after a factual RAG
- * answer reads as broken. Falls back to the generic pair when there's no
- * answer text yet to ground in, or the generation call errors.
+ * answer reads as broken. Runs on the classifier-tier model: the chips appear
+ * after the answer is already on screen, so this call is pure perceived
+ * latency and the flagship model buys nothing here. Falls back to the generic
+ * pair when there's no answer text yet to ground in, or the call errors.
  */
 async function generateContextualFollowUps(
-  chatModel: LanguageModel,
+  model: LanguageModel,
   message: string,
   priorParts: ChatReplyPart[],
   recordUsage?: ActionContext["recordUsage"]
@@ -96,11 +105,11 @@ async function generateContextualFollowUps(
 
   try {
     const { object, usage } = await generateObject({
-      model: chatModel,
+      model,
       schema: z.object({ questions: z.array(z.string()).min(2).max(3) }),
       system:
         "Suggest short, natural follow-up questions a chat user might ask next, grounded strictly in the assistant's answer below — never invent facts beyond it. Match the answer's language. Keep each under 12 words.",
-      prompt: `User asked: """${message}"""\n\nAssistant answered: """${answer}"""`,
+      prompt: `User asked: """${message}"""\n\nAssistant answered: """${answer.slice(0, FOLLOW_UP_ANSWER_EXCERPT)}"""`,
     });
     recordUsage?.(usageTotals(usage));
     return object.questions.slice(0, 3);
@@ -112,11 +121,13 @@ async function generateContextualFollowUps(
 const followUpQuestions: ActionHandler = async ({
   assistant,
   chatModel,
+  fastModel,
   flow,
   message,
   priorParts,
   emit,
   recordUsage,
+  recordFastUsage,
 }) => {
   const settings = flow.actionSettings?.follow_up_questions;
 
@@ -129,15 +140,16 @@ const followUpQuestions: ActionHandler = async ({
       .slice(0, 3);
     questions = manual.length > 0 ? manual : GENERIC_FOLLOW_UPS;
   } else {
+    const model = fastModel ?? chatModel;
     questions =
       assistant.suggestedQuestions.length > 0
         ? assistant.suggestedQuestions.slice(0, 3)
-        : chatModel
+        : model
           ? await generateContextualFollowUps(
-              chatModel,
+              model,
               message,
               priorParts,
-              recordUsage
+              fastModel ? recordFastUsage : recordUsage
             )
           : GENERIC_FOLLOW_UPS;
   }

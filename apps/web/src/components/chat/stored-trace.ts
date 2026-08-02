@@ -109,6 +109,25 @@ const LIVE_LABEL_MAX = 64;
  * A tool label may be multi-line (a batched knowledge search lists its queries),
  * so only its first line reaches the header; the expanded timeline has the rest.
  */
+/**
+ * What the chat UIs actually render out of a turn's steps. Drops the
+ * "Generating answer" bookkeeping notice (the Visitor sees the answer stream —
+ * naming the model adds nothing) and the routing notice when the classifier
+ * only landed on the Default behavior catch-all; routing is worth surfacing
+ * only when a specific flow matched.
+ */
+export function chatVisibleSteps(steps: TurnStep[]): TurnStep[] {
+  return steps.filter((step) => {
+    if (step.kind !== "notice") return true;
+    if (step.label === "Generating answer") return false;
+    const routedDefault =
+      (step.label === "Classifying intent" &&
+        step.detail?.includes("“Default behavior”")) ||
+      step.label.startsWith("Matched flow “Default behavior”");
+    return !routedDefault;
+  });
+}
+
 export function liveTraceLabel(steps: TurnStep[]): string {
   const newest = [...steps].reverse().find((step) => step.kind === "tool");
   const line = newest?.label.split("\n")[0].trim();

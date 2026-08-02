@@ -217,6 +217,63 @@ describe("parseAgenticTrace", () => {
     expect(reserialize(parsed)).toBe(source);
   });
 
+  it("round-trips a narrated turn: one [Thinking:] before every tool call (#584)", () => {
+    // Streamed thinking narrates in the Visitor's language before EACH tool
+    // call; the persisted steps must export as the reference's cadence —
+    // Thinking → Tool → Result → Thinking → Tool → Result — and read back.
+    const source = serializeAgenticTrace({
+      flowName: "Default behavior",
+      steps: [
+        {
+          id: "t1",
+          kind: "thought",
+          label:
+            "Cercherò nei documenti della base di conoscenza le informazioni sulle scadenze accademiche.",
+          status: "done",
+        },
+        {
+          id: "c1",
+          kind: "tool",
+          tool: "searchKnowledge",
+          label: "Searching knowledge for:\n- scadenze accademiche",
+          status: "done",
+          detail: "No matching knowledge found",
+          iteration: 1,
+        },
+        {
+          id: "t2",
+          kind: "thought",
+          label:
+            "Non ho trovato risultati: proverò parole chiave più ampie come \"calendario\" e \"piano\".",
+          status: "done",
+        },
+        {
+          id: "c2",
+          kind: "tool",
+          tool: "searchKnowledge",
+          label: "Searching knowledge for:\n- calendario\n- piano",
+          status: "done",
+          detail: "No matching knowledge found",
+          iteration: 2,
+        },
+      ],
+      iterationLimit: 6,
+    });
+    const parsed = parseAgenticTrace(source);
+    expect(parsed.map((s) => s.marker)).toEqual([
+      "workflow_started",
+      "thinking",
+      "tool",
+      "result",
+      "thinking",
+      "tool",
+      "result",
+      "workflow_completed",
+    ]);
+    expect(parsed[1].text).toContain("Cercherò nei documenti");
+    expect(reserialize(parsed)).toBe(source);
+  });
+
   it("round-trips a payload whose last character is a closing bracket", () => {
     // Serialize appends its own `]`, so the doubled bracket is unambiguous — the
     // parser strips exactly one.

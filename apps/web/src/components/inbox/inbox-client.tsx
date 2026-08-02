@@ -941,13 +941,18 @@ export function InboxClient({
 
               {messages?.map((m) => {
                 if (m.role === "user") {
+                  // Visitor messages sit on the right, assistant replies on the
+                  // left — the convention every messaging app trains readers on.
                   return (
-                    <div key={m.id} className="flex items-start gap-2.5">
+                    <div
+                      key={m.id}
+                      className="flex flex-row-reverse items-start gap-2.5"
+                    >
                       <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-bold">
                         {subjectInitials(selected)}
                       </span>
-                      <div className="min-w-0">
-                        <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed">
+                      <div className="flex min-w-0 flex-1 flex-col items-end">
+                        <div className="bg-primary text-primary-foreground max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed">
                           {messageText(m.content)}
                         </div>
                         <MessageTime iso={m.createdAt} />

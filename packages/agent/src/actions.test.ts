@@ -452,6 +452,28 @@ describe("follow_up_questions", () => {
     ]);
   });
 
+  it("prefers the fast classifier-tier model and meters it on the fast recorder", async () => {
+    const chatUsage: unknown[] = [];
+    const fastUsage: unknown[] = [];
+    const { ctx } = makeContext({
+      chatModel: mockModel(JSON.stringify({ questions: ["From", "the flagship"] })),
+      fastModel: mockModel(
+        JSON.stringify({ questions: ["Dove lavora Alex?", "Che laurea ha?"] })
+      ),
+      message: "Chi è Alex?",
+      priorParts: [textPart("Alex Bianchi lavora alla Acme Corp.")],
+      recordUsage: (u) => chatUsage.push(u),
+      recordFastUsage: (u) => fastUsage.push(u),
+    });
+    const result = await ACTION_HANDLERS.follow_up_questions(ctx);
+    expect((result.parts[0] as { questions: string[] }).questions).toEqual([
+      "Dove lavora Alex?",
+      "Che laurea ha?",
+    ]);
+    expect(fastUsage).toHaveLength(1);
+    expect(chatUsage).toHaveLength(0);
+  });
+
   it("falls back to the generic pair when generation fails", async () => {
     const failing = new MockLanguageModelV3({
       doGenerate: () => {
@@ -868,6 +890,38 @@ function declareStep(status: TerminalStatus = "answer") {
   });
 }
 
+/** Phase 1 with visible reasoning: the model thinks aloud, then declares. */
+function reasonThenDeclareStep(
+  deltas: string[],
+  status: TerminalStatus = "answer"
+) {
+  return () => ({
+    stream: simulateReadableStream({
+      chunks: [
+        { type: "stream-start" as const, warnings: [] },
+        { type: "text-start" as const, id: "1" },
+        ...deltas.map((delta) => ({
+          type: "text-delta" as const,
+          id: "1",
+          delta,
+        })),
+        { type: "text-end" as const, id: "1" },
+        {
+          type: "tool-call" as const,
+          toolCallId: `ready-${status}`,
+          toolName: "readyToAnswer",
+          input: JSON.stringify({ status }),
+        },
+        {
+          type: "finish" as const,
+          finishReason: { unified: "tool-calls" as const, raw: "tool_calls" },
+          usage: phaseUsage(),
+        },
+      ],
+    }),
+  });
+}
+
 /** Phase 2: the write. Deltas may be empty — that is the cut-off-before-writing case. */
 function writeStep(
   deltas: string[] = [],
@@ -908,6 +962,128 @@ function scriptedModel(...steps: ScriptedStep[]) {
     doStream: async () => steps[Math.min(call++, steps.length - 1)]() as any,
   });
 }
+
+describe("search_knowledge streamed thinking (#584)", () => {
+  it("streams gather reasoning live: deltas on the wire, then the terminal thought", async () => {
+    const model = scriptedModel(
+      reasonThenDeclareStep(["Sto cercando ", "i video del corso.\n"]),
+      writeStep(["Ecco i video."])
+    );
+    const events: RuntimeEvent[] = [];
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      emit: (e) => events.push(e),
+    });
+    await ACTION_HANDLERS.search_knowledge(ctx);
+
+    // Every reasoning slice reaches the wire as it is generated…
+    const deltas = events.filter(
+      (e): e is Extract<RuntimeEvent, { type: "thought-delta" }> =>
+        e.type === "thought-delta"
+    );
+    expect(deltas.map((d) => d.delta)).toEqual([
+      "Sto cercando ",
+      "i video del corso.\n",
+    ]);
+    // …and the terminal thought still follows, whole and trimmed, so stored
+    // traces and older clients keep working from it alone.
+    const thoughtIdx = events.findIndex((e) => e.type === "thought");
+    expect(events[thoughtIdx]).toMatchObject({
+      text: "Sto cercando i video del corso.",
+    });
+    expect(events.findIndex((e) => e.type === "thought-delta")).toBeLessThan(
+      thoughtIdx
+    );
+  });
+
+  it("narrates before EVERY tool call across a multi-search gather", async () => {
+    // The reference's cadence: Thinking → Tool → Result → Thinking → Tool —
+    // one reasoning burst ahead of each call, not one per turn.
+    const reasonThenSearch =
+      (deltas: string[], id: string, queries: string[]) => () => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start" as const, warnings: [] },
+            { type: "text-start" as const, id: "1" },
+            ...deltas.map((delta) => ({
+              type: "text-delta" as const,
+              id: "1",
+              delta,
+            })),
+            { type: "text-end" as const, id: "1" },
+            {
+              type: "tool-call" as const,
+              toolCallId: id,
+              toolName: "searchKnowledge",
+              input: JSON.stringify({ queries }),
+            },
+            {
+              type: "finish" as const,
+              finishReason: { unified: "tool-calls" as const, raw: "tool_calls" },
+              usage: phaseUsage(),
+            },
+          ],
+        }),
+      });
+    const model = scriptedModel(
+      reasonThenSearch(["Cerco i piani tariffari."], "s1", ["piani tariffari"]),
+      reasonThenDeclareStep(
+        ["Non ho trovato nulla: rispondo con quello che so."],
+        "insufficient_information"
+      ),
+      writeStep(["Non ho trovato informazioni sui piani."])
+    );
+    const events: RuntimeEvent[] = [];
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      emit: (e) => events.push(e),
+    });
+    await ACTION_HANDLERS.search_knowledge(ctx);
+
+    const cadence = events
+      .filter((e) => e.type === "thought" || e.type === "tool-start")
+      .map((e) => (e.type === "thought" ? "thought" : `tool:${e.tool}`));
+    expect(cadence).toEqual([
+      "thought",
+      "tool:searchKnowledge",
+      "thought",
+      "tool:readyToAnswer",
+    ]);
+    // And each burst streamed live before its whole arrived.
+    expect(
+      events.filter((e) => e.type === "thought-delta").length
+    ).toBeGreaterThanOrEqual(2);
+  });
+
+  it("whitespace-only gather prose streams nothing at all", async () => {
+    const model = scriptedModel(
+      reasonThenDeclareStep([" ", "\n"]),
+      writeStep(["Ecco."])
+    );
+    const events: RuntimeEvent[] = [];
+    const { ctx } = makeContext({
+      chatModel: model as unknown as LanguageModel,
+      emit: (e) => events.push(e),
+    });
+    await ACTION_HANDLERS.search_knowledge(ctx);
+    expect(
+      events.some((e) => e.type === "thought-delta" || e.type === "thought")
+    ).toBe(false);
+  });
+
+  it("the gather prompt requires thinking aloud in the user's language; the write prompt does not", () => {
+    const gather = buildSystemPrompt("P", makeAssistant(), makeFlow());
+    expect(gather).toContain("Think out loud");
+    expect(gather).toContain("user's own language");
+    expect(gather).toContain("NEVER emit a tool call without");
+    expect(gather).toContain("readyToAnswer call");
+
+    const write = buildSystemPrompt("P", makeAssistant(), makeFlow(), {
+      phase: "write",
+    });
+    expect(write).not.toContain("Think out loud");
+  });
+});
 
 describe("search_knowledge finish reasons (refusal & truncation)", () => {
   /** A phase-1 model that refuses instead of gathering. */

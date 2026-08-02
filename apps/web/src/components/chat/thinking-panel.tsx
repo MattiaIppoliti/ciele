@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
 import { ToolCallsSection } from "./tool-calls-section";
-import { liveTraceLabel } from "./stored-trace";
+import { chatVisibleSteps, liveTraceLabel } from "./stored-trace";
 
 /**
  * The agentic status panel both chat UIs (Widget + admin Preview) render above
@@ -43,7 +43,7 @@ function distinctStepKinds(steps: TurnStep[]): TurnStep[] {
 
 
 export function ThinkingPanel({
-  steps,
+  steps: rawSteps,
   phase,
   searchCount,
   active,
@@ -63,8 +63,10 @@ export function ThinkingPanel({
   /** Footer caveat — withheld reasoning, or a trace clipped on write. */
   note?: string;
 }) {
+  const steps = chatVisibleSteps(rawSteps);
   const [userOpen, setUserOpen] = useState(false);
   const startRef = useRef<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const [thoughtMs, setThoughtMs] = useState<number | null>(null);
 
   // Anchor the "Thought for X.Xs" timer at mount (i.e. when the turn starts).
@@ -81,6 +83,15 @@ export function ThinkingPanel({
     }
   }, [finished, thoughtMs, steps.length]);
 
+  // Follow the streaming reasoning (#584): the body is height-capped, so while
+  // the turn is live it tails its own bottom the way a terminal does —
+  // otherwise the newest words stream out of view exactly when they matter.
+  useEffect(() => {
+    if (!finished && bodyRef.current) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [finished, steps]);
+
   // Nothing to show: turn is over and produced no thinking activity
   // (e.g. a verbatim custom-message flow, or a history-loaded message).
   if (steps.length === 0 && finished) return null;
@@ -90,6 +101,9 @@ export function ThinkingPanel({
   const open = (userOpen || !finished) && steps.length > 0;
   const seconds = thoughtMs !== null ? (thoughtMs / 1000).toFixed(1) : null;
   const stack = distinctStepKinds(steps).slice(0, 4);
+  // One icon and no ×N badge: the pill hugs the icon symmetrically so the
+  // glyph sits centered in the border instead of floating in leftover padding.
+  const soloIcon = stack.length <= 1 && searchCount <= 1;
 
   return (
     <div className="max-w-[92%]">
@@ -99,7 +113,11 @@ export function ThinkingPanel({
         className="flex w-full items-center gap-2 text-left"
         aria-expanded={open}
       >
-        <span className="inline-flex items-center gap-1 rounded-full border bg-background py-1 pr-2 pl-1">
+        <span
+          className={`inline-flex items-center gap-1 rounded-full border bg-background ${
+            soloIcon ? "p-0.5" : "py-1 pr-2 pl-1"
+          }`}
+        >
           <span className="flex -space-x-1.5">
             {stack.length > 0 ? (
               stack.map((step) => (
@@ -142,7 +160,10 @@ export function ThinkingPanel({
           ))}
       </button>
       {open && (
-        <div className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5">
+        <div
+          ref={bodyRef}
+          className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5"
+        >
           <ToolCallsSection steps={steps} />
           {note && (
             <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground/70">

@@ -67,9 +67,44 @@ export const EMPTY_TURN_TRACE: TurnTrace = {
 };
 
 /**
+ * The one exception to append-only steps: the newest step, when it is the
+ * thought still being streamed (#584). Deltas rewrite its label in place and
+ * the terminal `thought` settles it; with no running thought (older streams,
+ * stored traces, the first delta of a burst) the thought is appended instead.
+ */
+function foldThought(
+  trace: TurnTrace,
+  status: "running" | "done",
+  label: (prev: string | null) => string
+): TurnTrace {
+  const last = trace.steps[trace.steps.length - 1];
+  if (last?.kind === "thought" && last.status === "running") {
+    return {
+      ...trace,
+      steps: trace.steps.map((step) =>
+        step === last ? { ...step, label: label(step.label), status } : step
+      ),
+    };
+  }
+  return {
+    ...trace,
+    steps: [
+      ...trace.steps,
+      {
+        id: `step-${trace.steps.length + 1}`,
+        kind: "thought",
+        label: label(null),
+        status,
+      },
+    ],
+  };
+}
+
+/**
  * Folds one wire event into the turn's trace. Pure, total (an event it does not
- * care about returns the trace unchanged) and append-only on `steps`, which is
- * what makes `steps.length` a safe id for the kinds that have no call id.
+ * care about returns the trace unchanged) and append-only on `steps` (except
+ * the streaming thought — see {@link foldThought}), which is what makes
+ * `steps.length` a safe id for the kinds that have no call id.
  *
  * The running/done transition lives here rather than in the clients so the panel
  * contents and the persisted trace can never disagree about what the agent did.
@@ -142,21 +177,19 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             ? (event.result.status as TurnTerminalStatus)
             : trace.terminal,
       };
+    case "thought-delta":
+      // Live reasoning (#584): deltas grow the newest running thought step in
+      // place, so the panel streams the text exactly where the finalized step
+      // will sit — interleaved with the tool cards, not in the answer bubble.
+      return foldThought(trace, "running", (prev) => (prev ?? "") + event.delta);
     case "thought":
-      // Reasoning that led into a tool call: what was streaming as answer
-      // text moves into the Thinking panel (the client resets its bubble).
-      return {
-        ...trace,
-        steps: [
-          ...trace.steps,
-          {
-            id: `step-${trace.steps.length + 1}`,
-            kind: "thought",
-            label: event.text,
-            status: "done",
-          },
-        ],
-      };
+      // Reasoning that led into a tool call, whole and authoritative: it
+      // finalizes the running step its deltas built, replacing the accumulated
+      // label with the trimmed text so a delta-built trace and a stored one
+      // hold the identical step. Without a running step (older streams, stored
+      // traces) it appends — what was streaming as answer text moves into the
+      // Thinking panel (the client resets its bubble).
+      return foldThought(trace, "done", () => event.text);
     case "text-start":
       // After a search, streamed text is the answer, so the panel settles into
       // its summary; before any search it may still be pre-tool reasoning that a

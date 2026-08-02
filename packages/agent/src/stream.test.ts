@@ -219,6 +219,64 @@ describe("consumeTurnStream", () => {
     expect(view.streamingText).toBeNull();
   });
 
+  it("streams a thought live: deltas build a running step the terminal thought finalizes", async () => {
+    // Mid-stream (deltas only): the reasoning is already a visible running step,
+    // so the Thinking panel shows it while the model is still writing it.
+    const streaming = await runTurn([
+      { type: "thought-delta", delta: "Sto cercando " },
+      { type: "thought-delta", delta: "i video del corso." },
+    ]);
+    expect(streaming.view.steps).toHaveLength(1);
+    expect(streaming.view.steps[0]).toMatchObject({
+      kind: "thought",
+      status: "running",
+      label: "Sto cercando i video del corso.",
+    });
+    expect(streaming.view.phase).toBe("running");
+
+    // The terminal thought reconciles that same step with the authoritative
+    // (trimmed) text instead of appending a duplicate.
+    const { view } = await runTurn([
+      { type: "thought-delta", delta: "Sto cercando " },
+      { type: "thought-delta", delta: "i video del corso.\n" },
+      { type: "thought", text: "Sto cercando i video del corso." },
+      { type: "tool-start", callId: "t1", tool: "searchKnowledge", label: "Searching" },
+    ]);
+    expect(view.steps.map((s) => [s.kind, s.status, s.label])).toEqual([
+      ["thought", "done", "Sto cercando i video del corso."],
+      ["tool", "running", "Searching"],
+    ]);
+  });
+
+  it("folds the same steps whether a thought arrives as deltas or terminal-only", async () => {
+    // Back-compat: stored traces and older streams carry only terminal thought
+    // events; both roads must produce the identical persisted step.
+    const fromDeltas = await runTurn([
+      { type: "thought-delta", delta: "Reformulating " },
+      { type: "thought-delta", delta: "the query." },
+      { type: "thought", text: "Reformulating the query." },
+    ]);
+    const terminalOnly = await runTurn([
+      { type: "thought", text: "Reformulating the query." },
+    ]);
+    expect(fromDeltas.view.steps).toEqual(terminalOnly.view.steps);
+  });
+
+  it("starts a new running thought after the previous one was finalized", async () => {
+    const { view } = await runTurn([
+      { type: "thought-delta", delta: "First." },
+      { type: "thought", text: "First." },
+      { type: "tool-start", callId: "t1", tool: "searchKnowledge", label: "Searching" },
+      { type: "tool-end", callId: "t1", tool: "searchKnowledge", ok: true, durationMs: 3 },
+      { type: "thought-delta", delta: "Second." },
+    ]);
+    expect(view.steps.map((s) => [s.kind, s.status])).toEqual([
+      ["thought", "done"],
+      ["tool", "done"],
+      ["thought", "running"],
+    ]);
+  });
+
   it("folds tool-start/tool-end into one step with lifecycle status", async () => {
     const running = await runTurn([
       {
