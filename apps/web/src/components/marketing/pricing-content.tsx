@@ -306,6 +306,27 @@ function PlanTilt({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * One CTA look for the whole page, in both themes: an outlined pill at rest that
+ * inverts to a filled one with a faint halo on hover.
+ *
+ * Every plan card carries the same button on purpose. Which plan we suggest is
+ * already said twice — the ring and the badge — and saying it a third time with
+ * a filled button made the other three cards' CTAs read as the disabled
+ * alternatives to it. The recommendation also *moves* with the answers slider
+ * while a variant chosen per tier cannot, so the filled button regularly
+ * disagreed with the ringed card.
+ *
+ * `text-foreground` is explicit rather than inherited: these buttons sit on a
+ * translucent card over the page's own gradient, and inheriting a muted colour
+ * from an ancestor is how the label ends up unreadable at rest. The hover half
+ * restates the `default` variant's invert so `outline` borrows it —
+ * tailwind-merge drops `outline`'s own `hover:bg-*`/`hover:text-*` in favour of
+ * these, which is why they stay a className rather than move into the variant.
+ */
+const CTA_CLASS =
+  "text-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_14px_rgba(0,0,0,0.18)] dark:hover:bg-none dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:shadow-[0_0_14px_rgba(255,255,255,0.28)]";
+
+/**
  * The open-source repository — where "View the source" goes and what the quick
  * start clones. Writing it out is deliberate: an install command a reader has to
  * fill in themselves is not an install command.
@@ -634,7 +655,7 @@ export function PricingContent({
                 {/* A same-page jump, so a plain anchor: next/link would push a
                     history entry for a hash the router does not own. */}
                 <Button
-                  className="h-9 w-full"
+                  className={cn("h-9 w-full", CTA_CLASS)}
                   variant="outline"
                   nativeButton={false}
                   render={<a href={`#${SELF_HOSTED.anchor}`} />}
@@ -745,8 +766,8 @@ export function PricingContent({
                       is a plain <a>: next/link would try to prefetch and soft-
                       navigate a route that only ever answers with a 303. */}
                   <Button
-                    className="h-9 w-full"
-                    variant={tier.recommended ? "default" : "outline"}
+                    className={cn("h-9 w-full", CTA_CLASS)}
+                    variant="outline"
                     nativeButton={false}
                     render={
                       billingEnabled && tier.checkoutPlan ? (
@@ -893,7 +914,8 @@ export function PricingContent({
               </ul>
               <div className="mt-6 flex flex-col gap-2">
                 <Button
-                  className="h-9 w-full"
+                  className={cn("h-9 w-full", CTA_CLASS)}
+                  variant="outline"
                   nativeButton={false}
                   render={
                     <a
@@ -906,7 +928,7 @@ export function PricingContent({
                   <span>Self-hosting docs</span>
                 </Button>
                 <Button
-                  className="h-9 w-full"
+                  className={cn("h-9 w-full", CTA_CLASS)}
                   variant="outline"
                   nativeButton={false}
                   render={
