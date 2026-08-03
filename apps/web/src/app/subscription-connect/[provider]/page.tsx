@@ -6,7 +6,7 @@ import { getDb } from "@/lib/data";
 import {
   LOCAL_SUBSCRIPTION_PROVIDERS,
   isLocalSubscriptionProvider,
-  isLocalSubscriptionTestEnabled,
+  isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
 } from "@agent-hub/agent/local-providers";
 
@@ -19,7 +19,7 @@ export default async function SubscriptionConnectPage({
 }) {
   const requestHeaders = await headers();
   if (
-    !isLocalSubscriptionTestEnabled() ||
+    !isLocalSubscriptionDirectEnabled() ||
     !isLoopbackHost(requestHeaders.get("host"))
   ) {
     notFound();

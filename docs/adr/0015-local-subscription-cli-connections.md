@@ -36,9 +36,15 @@ The direct, same-process development path is available only when all of these
 conditions hold:
 
 1. Ciele is running outside `NODE_ENV=production`.
-2. `ENABLE_LOCAL_SUBSCRIPTION_TEST=1` (or `true` / `on`) is set.
-3. Ciele is opened through a loopback host (`localhost`, `127.0.0.1`, or
-   `::1`). Both data layers qualify — the in-memory demo db and a locally-run
+2. `ENABLE_LOCAL_SUBSCRIPTION_TEST` is not set to `0` / `false` / `off`. The
+   capability is **on by default** on a local instance: a Member who completed
+   the terminal steps (`codex login`, `claude auth login --claudeai`) expects
+   their own sign-in to be used, and a second opt-in flag only produced silent
+   "no AI provider credential" fallbacks. The variable survives as an opt-out
+   for reproducing hosted behaviour locally.
+3. Ciele is opened through a loopback host — `localhost`, any `*.localhost`
+   label, `127.0.0.1`, or `::1`, with or without a port. Both data layers
+   qualify — the in-memory demo db and a locally-run
    Supabase-backed instance with real Organization members — because the API
    route still requires a signed-in Member of an Organization that enabled
    personal subscriptions, and the loopback restriction keeps a machine-global
@@ -50,6 +56,15 @@ conditions hold:
 
 The executable paths can be overridden with `CODEX_CLI_PATH` and
 `CLAUDE_CLI_PATH`.
+
+The direct path spawns the CLI without a shell on every platform. POSIX keeps
+`/usr/bin/env` as the launcher so a bare command still resolves through the
+sanitized PATH; Windows has no such launcher, so the CLI is resolved to an
+absolute runnable path first — `.exe` directly, an npm `.cmd` shim through the
+JS entrypoint it names (run under Ciele's own Node binary), and `.ps1`/`.bat`
+not at all, since executing those would require a shell and an execution-policy
+bypass. This mirrors the resolution the shipped connector already performs on
+the device side.
 
 For ChatGPT, Ciele runs `codex login`, then verifies `codex login status`
 reports **Logged in using ChatGPT**. For Claude, Ciele runs
@@ -149,7 +164,10 @@ provider tokens and therefore remains visible in the connector-local totals.
 Because provider login status can be stale, Ciele runs one minimal
 default-model inference probe before advertising the local capability; a
 failing provider is excluded so another verified personal subscription can
-answer the same Preview turn.
+answer the same Preview turn. The verdict is cached asymmetrically — a ready
+provider for minutes, a refusal for seconds — so completing the terminal login
+after the server started takes effect on the next turn instead of requiring a
+restart.
 
 The local default-model preference is source-qualified and persisted for the
 active Member-and-Organization pairing scope. The settings UI uses only the

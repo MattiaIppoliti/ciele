@@ -6,7 +6,7 @@ import {
   disconnectLocalSubscription,
   getLocalSubscriptionStatus,
   isLocalSubscriptionProvider,
-  isLocalSubscriptionTestEnabled,
+  isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
   startLocalSubscriptionLogin,
 } from "@agent-hub/agent/local-providers";
@@ -17,7 +17,7 @@ async function authorize(
   params: Promise<{ provider: string }>
 ) {
   if (
-    !isLocalSubscriptionTestEnabled() ||
+    !isLocalSubscriptionDirectEnabled() ||
     !isLoopbackHost(request.headers.get("host"))
   ) {
     return Response.json({ error: "not_found" }, { status: 404 });

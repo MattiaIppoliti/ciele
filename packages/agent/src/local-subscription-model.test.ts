@@ -39,6 +39,42 @@ describe("createLocalSubscriptionModel", () => {
     });
   });
 
+  /**
+   * A Member who signs in from their terminal after the dev server started must
+   * not have to restart it: the refusal is cached briefly, the success long.
+   */
+  it("re-probes a refused provider after its short TTL, and caches a ready one", async () => {
+    clearLocalSubscriptionReadinessProbe("openai");
+    clearLocalSubscriptionReadinessProbe("anthropic");
+    let loggedIn = false;
+    const run = vi.fn(async () => {
+      if (!loggedIn) throw new Error("Not logged in");
+      return { text: "OK" };
+    });
+    const start = 1_000_000;
+
+    await expect(
+      verifiedLocalSubscriptionProviders(["anthropic"], run, start)
+    ).resolves.toEqual([]);
+    // Same second: the refusal is reused, no second CLI call.
+    await expect(
+      verifiedLocalSubscriptionProviders(["anthropic"], run, start + 1_000)
+    ).resolves.toEqual([]);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    loggedIn = true; // `claude auth login --claudeai` in the terminal
+    await expect(
+      verifiedLocalSubscriptionProviders(["anthropic"], run, start + 30_000)
+    ).resolves.toEqual(["anthropic"]);
+    expect(run).toHaveBeenCalledTimes(2);
+
+    // A ready verdict then stands for minutes rather than re-probing per turn.
+    await expect(
+      verifiedLocalSubscriptionProviders(["anthropic"], run, start + 90_000)
+    ).resolves.toEqual(["anthropic"]);
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
   it("uses the authenticated provider CLI for structured model output", async () => {
     const run = vi.fn(async () => ({
       text: JSON.stringify({ matchingFlowIds: ["flow-admissions"] }),

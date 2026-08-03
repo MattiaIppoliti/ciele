@@ -12,7 +12,7 @@ import {
 } from "@agent-hub/agent/local-providers";
 import {
   connectedLocalSubscriptionProviders,
-  isLocalSubscriptionTestEnabled,
+  isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
   listLocalSubscriptionStatuses,
 } from "@agent-hub/agent/local-providers";
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   ]);
   const directLocal =
     personalSubscriptionsAllowed &&
-    isLocalSubscriptionTestEnabled() &&
+    isLocalSubscriptionDirectEnabled() &&
     isLoopbackHost(request.headers.get("host"));
   let localSubscriptionProviders = [] as ReturnType<
     typeof connectedLocalSubscriptionProviders

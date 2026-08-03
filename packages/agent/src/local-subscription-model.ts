@@ -15,6 +15,7 @@ import type {
 import {
   localSubscriptionCliEnvironment,
   localSubscriptionCommand,
+  localSubscriptionInvocation,
   type LocalSubscriptionProvider,
 } from "./local-subscriptions";
 
@@ -65,7 +66,8 @@ export const executeLocalCommand: LocalCommandExecutor = ({
   signal,
 }) =>
   new Promise((resolve, reject) => {
-    const child = spawn("/usr/bin/env", [command, ...args], {
+    const invocation = localSubscriptionInvocation(command, args);
+    const child = spawn(invocation.command, invocation.args, {
       env: localSubscriptionCliEnvironment(),
       stdio: ["pipe", "pipe", "pipe"],
       signal,
@@ -289,10 +291,23 @@ export function createLocalCliRunner(
   };
 }
 
-const readinessProbes = new Map<
-  LocalSubscriptionProvider,
-  Promise<boolean>
->();
+interface ReadinessProbe {
+  ready: Promise<boolean>;
+  startedAt: number;
+  /** Set when `ready` resolves, so age is only judged on a settled verdict. */
+  verdict?: boolean;
+}
+
+const readinessProbes = new Map<LocalSubscriptionProvider, ReadinessProbe>();
+
+/**
+ * A ready CLI stays ready for a while; a refusal must not stick, because the
+ * usual cause is a sign-in the Member is about to complete in their terminal —
+ * re-probing soon is how `codex login` / `claude auth login` takes effect
+ * without restarting the dev server.
+ */
+const READY_TTL_MS = 10 * 60_000;
+const NOT_READY_TTL_MS = 10_000;
 
 export function clearLocalSubscriptionReadinessProbe(
   provider: LocalSubscriptionProvider
@@ -302,26 +317,39 @@ export function clearLocalSubscriptionReadinessProbe(
 
 /**
  * `auth status` can be stale (Claude has been observed reporting logged-in
- * while `--print` returns “Not logged in”). Probe once with the CLI default
- * model before advertising a direct-local capability to Preview.
+ * while `--print` returns “Not logged in”). Probe with the CLI default model
+ * before advertising a direct-local capability to Preview, and cache the
+ * verdict for the TTL above.
  */
 export async function verifiedLocalSubscriptionProviders(
   providers: LocalSubscriptionProvider[],
-  run: LocalCliRunner = createLocalCliRunner()
+  run: LocalCliRunner = createLocalCliRunner(),
+  now: number = Date.now()
 ): Promise<LocalSubscriptionProvider[]> {
   const verified = await Promise.all(
     providers.map(async (provider) => {
-      let probe = readinessProbes.get(provider);
+      const cached = readinessProbes.get(provider);
+      // A probe still in flight is reused regardless of age; a settled one
+      // expires on the TTL for the verdict it reached.
+      const expired =
+        cached?.verdict !== undefined &&
+        now - cached.startedAt >
+          (cached.verdict ? READY_TTL_MS : NOT_READY_TTL_MS);
+      let probe = expired ? undefined : cached;
       if (!probe) {
-        probe = run({
-          provider,
-          prompt: "Reply with exactly OK.",
-        })
-          .then(() => true)
-          .catch(() => false);
+        const next: ReadinessProbe = {
+          startedAt: now,
+          ready: run({ provider, prompt: "Reply with exactly OK." })
+            .then(() => true)
+            .catch(() => false),
+        };
+        next.ready.then((verdict) => {
+          next.verdict = verdict;
+        });
+        probe = next;
         readinessProbes.set(provider, probe);
       }
-      return (await probe) ? provider : null;
+      return (await probe.ready) ? provider : null;
     })
   );
   return verified.filter(

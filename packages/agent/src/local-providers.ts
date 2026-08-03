@@ -24,8 +24,8 @@
 // environment, and the loopback guard the connect flow enforces.
 export {
   LOCAL_SUBSCRIPTION_PROVIDERS,
+  isLocalSubscriptionDirectEnabled,
   isLocalSubscriptionProvider,
-  isLocalSubscriptionTestEnabled,
   isLoopbackHost,
 } from "./local-subscriptions";
 export type {

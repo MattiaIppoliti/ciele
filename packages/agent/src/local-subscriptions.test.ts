@@ -1,14 +1,19 @@
-import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   connectedLocalSubscriptionProviders,
-  isLocalSubscriptionTestEnabled,
+  executableVariants,
+  isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
+  localSubscriptionCliEnvironment,
   localSubscriptionCommand,
+  localSubscriptionInvocation,
+  npmShimEntrypoint,
   parseClaudeLoginStatus,
   parseCodexLoginStatus,
+  resolveExecutableCandidate,
 } from "./local-subscriptions";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -19,30 +24,35 @@ function stubLocalDemoEnvironment() {
   vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", undefined);
 }
 
-describe("isLocalSubscriptionTestEnabled", () => {
-  it("is disabled by default", () => {
+describe("isLocalSubscriptionDirectEnabled", () => {
+  it("is enabled by default on a local instance — no opt-in flag", () => {
     stubLocalDemoEnvironment();
     vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", undefined);
-    expect(isLocalSubscriptionTestEnabled()).toBe(false);
+    expect(isLocalSubscriptionDirectEnabled()).toBe(true);
   });
 
-  it.each(["1", "true", "on"])("accepts the explicit value %s", (value) => {
+  it.each(["1", "true", "on"])("stays enabled with the legacy value %s", (value) => {
     stubLocalDemoEnvironment();
     vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", value);
-    expect(isLocalSubscriptionTestEnabled()).toBe(true);
+    expect(isLocalSubscriptionDirectEnabled()).toBe(true);
+  });
+
+  it.each(["0", "false", "off"])("can be opted out with %s", (value) => {
+    stubLocalDemoEnvironment();
+    vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", value);
+    expect(isLocalSubscriptionDirectEnabled()).toBe(false);
   });
 
   it("cannot be enabled in production", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", "1");
-    expect(isLocalSubscriptionTestEnabled()).toBe(false);
+    expect(isLocalSubscriptionDirectEnabled()).toBe(false);
   });
 
   it("stays enabled on a locally-run Supabase-backed instance", () => {
     vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", "1");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "http://127.0.0.1:54321");
-    expect(isLocalSubscriptionTestEnabled()).toBe(true);
+    expect(isLocalSubscriptionDirectEnabled()).toBe(true);
   });
 });
 
@@ -63,16 +73,112 @@ describe("localSubscriptionCommand", () => {
   });
 });
 
-describe("isLoopbackHost", () => {
-  it.each(["localhost", "localhost:3000", "127.0.0.1:3000", "[::1]:3000"])(
-    "accepts %s",
-    (host) => expect(isLoopbackHost(host)).toBe(true)
-  );
+describe("localSubscriptionCommand on Windows", () => {
+  it("resolves the runnable .exe variant to an absolute path", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-win-"));
+    writeFileSync(join(dir, "claude"), "#!/bin/sh\n"); // npm's POSIX shim
+    writeFileSync(join(dir, "claude.exe"), "MZ");
+    vi.stubEnv("CLAUDE_CLI_PATH", undefined);
+    vi.stubEnv("PATH", dir);
+    expect(localSubscriptionCommand("anthropic", "win32")).toBe(
+      join(dir, "claude.exe")
+    );
+  });
 
-  it.each([null, "192.168.1.6:3000", "ciele.example.com"])(
-    "rejects %s",
-    (host) => expect(isLoopbackHost(host)).toBe(false)
-  );
+  it("resolves an npm .cmd shim to the JS entrypoint it launches", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-shim-"));
+    const entrypoint = join(dir, "node_modules", "@openai", "codex", "bin");
+    mkdirSync(entrypoint, { recursive: true });
+    writeFileSync(join(entrypoint, "codex.js"), "#!/usr/bin/env node\n");
+    writeFileSync(
+      join(dir, "codex.cmd"),
+      '"%_prog%"  "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*\n'
+    );
+    vi.stubEnv("CODEX_CLI_PATH", undefined);
+    vi.stubEnv("PATH", dir);
+    expect(localSubscriptionCommand("openai", "win32")).toBe(
+      join(entrypoint, "codex.js")
+    );
+  });
+
+  it("skips shell-only shims rather than executing them", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-ps1-"));
+    writeFileSync(join(dir, "codex.ps1"), "#!/usr/bin/env pwsh\n");
+    expect(resolveExecutableCandidate(join(dir, "codex.ps1"), "win32")).toBeNull();
+    expect(executableVariants(join(dir, "codex"), "win32")).toEqual([
+      join(dir, "codex.exe"),
+      join(dir, "codex.cmd"),
+    ]);
+    expect(executableVariants("/usr/local/bin/codex", "darwin")).toEqual([
+      "/usr/local/bin/codex",
+    ]);
+  });
+
+  it("refuses a shim entrypoint that escapes the shim directory", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-escape-"));
+    writeFileSync(
+      join(dir, "codex.cmd"),
+      '"%_prog%"  "%dp0%\\node_modules\\..\\..\\evil.js" %*\n'
+    );
+    expect(npmShimEntrypoint(join(dir, "codex.cmd"), "win32")).toBeNull();
+  });
+});
+
+describe("localSubscriptionInvocation", () => {
+  it("keeps the POSIX env launcher so a bare command resolves on PATH", () => {
+    expect(localSubscriptionInvocation("codex", ["login"], "darwin")).toEqual({
+      command: "/usr/bin/env",
+      args: ["codex", "login"],
+    });
+  });
+
+  it("spawns a Windows executable directly — there is no /usr/bin/env", () => {
+    expect(
+      localSubscriptionInvocation("C:\\bin\\claude.exe", ["auth"], "win32")
+    ).toEqual({ command: "C:\\bin\\claude.exe", args: ["auth"] });
+  });
+
+  it("runs a resolved JS entrypoint under this process's Node", () => {
+    expect(
+      localSubscriptionInvocation("C:\\bin\\codex.js", ["exec"], "win32")
+    ).toEqual({ command: process.execPath, args: ["C:\\bin\\codex.js", "exec"] });
+  });
+});
+
+describe("localSubscriptionCliEnvironment", () => {
+  it("forwards the Windows variables the CLIs need to run at all", () => {
+    vi.stubEnv("USERPROFILE", "C:\\Users\\member");
+    vi.stubEnv("LOCALAPPDATA", "C:\\Users\\member\\AppData\\Local");
+    vi.stubEnv("SystemRoot", "C:\\Windows");
+    const environment = localSubscriptionCliEnvironment();
+    expect(environment.USERPROFILE).toBe("C:\\Users\\member");
+    expect(environment.LOCALAPPDATA).toBe("C:\\Users\\member\\AppData\\Local");
+    expect(environment.SystemRoot).toBe("C:\\Windows");
+  });
+});
+
+describe("isLoopbackHost", () => {
+  it.each([
+    "localhost",
+    "localhost:3000",
+    "127.0.0.1",
+    "127.0.0.1:3000",
+    "::1",
+    "[::1]",
+    "[::1]:3000",
+    // Any *.localhost label resolves to loopback, and dev servers use them.
+    "ciele.localhost:3000",
+    "app.staging.localhost",
+  ])("accepts %s", (host) => expect(isLoopbackHost(host)).toBe(true));
+
+  it.each([
+    null,
+    "192.168.1.6:3000",
+    "ciele.example.com",
+    // Not loopback: a registrable domain that merely ends in the same letters.
+    "notlocalhost:3000",
+    "localhost.attacker.example",
+  ])("rejects %s", (host) => expect(isLoopbackHost(host)).toBe(false));
 });
 
 describe("parseCodexLoginStatus", () => {

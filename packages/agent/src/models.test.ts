@@ -354,6 +354,27 @@ describe("resolveChatModel (cross-provider fallback)", () => {
     });
   });
 
+  it("picks the cheapest-to-spawn local CLI when the Member chose no model", () => {
+    // Every local model call spawns the CLI cold; Claude Code costs ~half of
+    // Codex per call, which a multi-step turn multiplies.
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
+
+    const resolved = resolveChatModel("google", "gemini-3.1-flash-lite", [], {
+      surface: "preview",
+      memberId: "member-1",
+      // Status order, which is how the routes report it.
+      localSubscriptionProviders: ["openai", "anthropic"],
+    });
+
+    expect(resolved).toMatchObject({
+      provider: "anthropic",
+      credentialKind: "local_subscription",
+      usedFallback: false,
+    });
+  });
+
   it("falls back to another keyed provider's cheap tier — never the keyword engine", () => {
     // The regression that motivated this: assistant set to Anthropic, but the
     // org only holds a Google key â†’ the turn must still run through an LLM so

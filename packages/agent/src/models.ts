@@ -353,6 +353,35 @@ export function getChatModel(
   return credential ? buildModel(provider, modelId, credential) : null;
 }
 
+/**
+ * Order the connected local CLIs answer in when the Member picked no model.
+ * Claude Code first, on measured cold-start cost alone: every model call spawns
+ * the CLI afresh (~8s for `claude --print` vs ~14–16s for `codex exec`, whose
+ * built-in prompt is ~24k tokens before ours), and a multi-step turn multiplies
+ * that difference. An explicit selection always outranks this order.
+ */
+const LOCAL_PROVIDER_ORDER: LocalSubscriptionProvider[] = [
+  "anthropic",
+  "openai",
+];
+
+export function orderedLocalProviders(
+  resolution: KeyResolution
+): LocalSubscriptionProvider[] {
+  const connected = resolution.localSubscriptionProviders ?? [];
+  const selected = resolution.localSubscriptionModel;
+  const byPreference = [
+    ...LOCAL_PROVIDER_ORDER.filter((provider) => connected.includes(provider)),
+    ...connected.filter((provider) => !LOCAL_PROVIDER_ORDER.includes(provider)),
+  ];
+  return selected && connected.includes(selected.provider)
+    ? [
+        selected.provider,
+        ...byPreference.filter((provider) => provider !== selected.provider),
+      ]
+    : byPreference;
+}
+
 export interface ResolvedChatModel {
   model: LanguageModel;
   provider: Provider;
@@ -385,12 +414,8 @@ export function resolveChatModel(
   // the first connected one: with both CLIs connected, choosing a Claude model
   // while OpenAI happened to be `localSubscriptionProviders[0]` used to resolve
   // to OpenAI's fallback tier (gpt-5.1-mini) and ignore the selection entirely.
-  const selectedLocal = resolution.localSubscriptionModel;
-  const localProvider =
-    selectedLocal &&
-    resolution.localSubscriptionProviders?.includes(selectedLocal.provider)
-      ? selectedLocal.provider
-      : resolution.localSubscriptionProviders?.[0];
+  // Absent a selection, `orderedLocalProviders` picks the cheapest CLI to spawn.
+  const localProvider = orderedLocalProviders(resolution)[0];
   if (localProvider && localProvider !== preferredProvider) {
     const localCredential = resolveProviderCredential(
       localProvider,
@@ -433,7 +458,7 @@ export function resolveChatModel(
     };
   }
   const fallbackOrder = [
-    ...(resolution.localSubscriptionProviders ?? []),
+    ...orderedLocalProviders(resolution),
     ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]),
   ].filter(
     (provider, index, providers) =>
@@ -478,7 +503,7 @@ export function getClassifierModel(
 ): ResolvedClassifierModel | null {
   const order: Provider[] = [
     preferredProvider,
-    ...(resolution.localSubscriptionProviders ?? []),
+    ...orderedLocalProviders(resolution),
     ...(["google", "anthropic", "openai", "openai_compatible"] as Provider[]).filter(
       (p) => p !== preferredProvider
     ),

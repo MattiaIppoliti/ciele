@@ -12,7 +12,7 @@ import { canChangeRoles } from "@/lib/rbac";
 import { connectorInstallationScope } from "@/lib/local-connector-installer";
 import { DEFAULT_PLATFORM_PROMPT, providerAvailability } from "@agent-hub/agent";
 import {
-  isLocalSubscriptionTestEnabled,
+  isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
   listLocalSubscriptionStatuses,
 } from "@agent-hub/agent/local-providers";
@@ -30,7 +30,7 @@ export default async function AiSettingsPage() {
   const canManage = canManageMembers(role);
   const requestHeaders = await headers();
   const localSubscriptionTestEnabled =
-    isLocalSubscriptionTestEnabled() &&
+    isLocalSubscriptionDirectEnabled() &&
     isLoopbackHost(requestHeaders.get("host"));
   const personalSubscriptionsAllowed =
     await db.getPersonalAiSubscriptionsAllowed(organizationId);
