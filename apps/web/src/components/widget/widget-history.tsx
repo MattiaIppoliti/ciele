@@ -1,6 +1,7 @@
 "use client";
 
-import { SquarePen } from "lucide-react";
+import { MessageSquareText, SquarePen } from "lucide-react";
+import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 
 export interface WidgetConversationSummary {
   id: string;
@@ -27,10 +28,10 @@ function historyDayLabel(iso: string): string {
 }
 
 /**
- * Full-panel conversation history — the same surface the editor preview shows
- * (a "My conversations" tab, date-grouped rows, a New chat footer) so the
- * widget and preview read identically. Replaces the chat body while open
- * rather than stacking a list above it.
+ * Full-panel conversation history — the beui AI Sidebar showing only the
+ * visitor's conversations (date-grouped folders, most recent first), with the
+ * same "My conversations" framing and New chat footer as before. Replaces the
+ * chat body while open rather than stacking a list above it.
  *
  * For anonymous visitors this history is whatever the current browser holds
  * (keyed by the per-browser visitor id) — there is no cross-device sync.
@@ -49,13 +50,23 @@ export function WidgetHistory({
   const sorted = [...conversations].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1
   );
-  const groups: Array<{ label: string; items: WidgetConversationSummary[] }> =
-    [];
+  const groups: SidebarResource[] = [];
   for (const c of sorted) {
     const label = historyDayLabel(c.updatedAt);
+    const row: SidebarResource = {
+      id: c.id,
+      label: c.title || "Untitled conversation",
+      kind: "file",
+    };
     const last = groups[groups.length - 1];
-    if (last && last.label === label) last.items.push(c);
-    else groups.push({ label, items: [c] });
+    if (last && last.label === label) last.children?.push(row);
+    else
+      groups.push({
+        id: `day:${label}`,
+        label,
+        kind: "folder",
+        children: [row],
+      });
   }
 
   return (
@@ -65,31 +76,31 @@ export function WidgetHistory({
           My conversations
         </span>
       </div>
-      <div className="no-scrollbar flex-1 overflow-y-auto pb-2">
-        {groups.length === 0 && (
+      <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
+        {groups.length === 0 ? (
           <p className="text-muted-foreground px-4 py-8 text-center text-sm">
             No previous conversations yet
           </p>
+        ) : (
+          <AISidebar
+            items={groups}
+            activeId={activeId}
+            defaultExpandedIds={groups.map((group) => group.id)}
+            onActiveChange={(id) => {
+              // Day-group folders toggle; only conversation rows navigate.
+              if (!id.startsWith("day:")) onSelect(id);
+            }}
+            renderIcon={(item) =>
+              item.kind === "file" ? (
+                <MessageSquareText className="size-4" />
+              ) : undefined
+            }
+            ariaLabel="My conversations"
+            // Conversations only: no per-row actions menu in the widget (the
+            // sidebar component has no prop to turn its rename menu off).
+            className='w-full [&_button[aria-label^="Actions for"]]:hidden'
+          />
         )}
-        {groups.map((group) => (
-          <div key={group.label}>
-            <p className="text-muted-foreground flex items-center gap-2 px-4 pt-4 pb-1.5 text-sm">
-              {group.label} <span className="bg-border h-px flex-1" />
-            </p>
-            {group.items.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onSelect(c.id)}
-                className={`block w-full truncate px-4 py-3 text-left text-[15px] transition-colors ${
-                  activeId === c.id ? "bg-primary/5" : "hover:bg-muted"
-                }`}
-              >
-                {c.title || "Untitled conversation"}
-              </button>
-            ))}
-          </div>
-        ))}
       </div>
       <div className="flex justify-center border-t px-4 py-3">
         <button

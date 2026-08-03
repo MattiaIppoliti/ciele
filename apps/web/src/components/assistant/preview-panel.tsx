@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Assistant, Conversation } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
-  ArrowUp,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
@@ -30,11 +29,6 @@ import {
 import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@agent-hub/ui";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import {
   completeFollowUp,
@@ -51,7 +45,6 @@ import {
 } from "@/lib/local-connector-protocol";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
-import { CitationList } from "@/components/chat/citation-list";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -65,6 +58,32 @@ import {
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
+import {
+  Message,
+  MessageBubble,
+  MessageBubbleContent,
+  MessageContent,
+  MessageScroller,
+} from "@/components/agents/message";
+import { PromptInput } from "@/components/agents/prompt-input";
+import { StreamingResponse } from "@/components/agents/streaming-response";
+import { Citations, type CitationItem } from "@/components/agents/citations";
+import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
+import { MessageSquareText } from "lucide-react";
+
+type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
+
+/** Concept→Source citations, shaped for the beui citation components. */
+function toCitationItems(sources: SourcesPart["sources"]): CitationItem[] {
+  return sources.map((source, index) => ({
+    id: source.conceptId ?? `source-${index}`,
+    title: source.conceptTitle,
+    domain: source.sourceName
+      ? `${source.collectionName} · ${source.sourceName}`
+      : source.collectionName,
+    url: source.url ?? undefined,
+  }));
+}
 
 interface UserMsg {
   role: "user";
@@ -89,20 +108,6 @@ const PANEL_RAIL_WIDTH = 48;
 const PANEL_COLLAPSE_THRESHOLD = 180;
 /** History shows this many recent conversations; pinned ones always stay. */
 const HISTORY_RECENT_LIMIT = 10;
-
-function historyDateTime(iso: string): string {
-  const date = new Date(iso);
-  const day = date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const time = date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${day} ${time}`;
-}
 
 function historyDayLabel(iso: string): string {
   const date = new Date(iso);
@@ -142,13 +147,8 @@ function PartView({
   onSend: (text: string) => void;
   onOpenSupport: (helpDeskId?: string) => void;
 }) {
-  if (part.type === "text") {
-    return (
-      <div className="bg-muted max-w-[90%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm">
-        <ChatMarkdown text={part.text} />
-      </div>
-    );
-  }
+  // `text` and `sources` parts are rendered by the message body itself (a
+  // beui StreamingResponse with the sources disclosure folded in), not here.
   if (part.type === "progress") {
     return <ProgressLine text={part.text} />;
   }
@@ -201,9 +201,6 @@ function PartView({
         )}
       </div>
     );
-  }
-  if (part.type === "sources") {
-    return <CitationList sources={part.sources} className="max-w-[90%]" />;
   }
   if (part.type === "button") {
     if (part.buttonType === "send_text" || part.buttonType === "faq") {
@@ -396,7 +393,6 @@ export function PreviewPanel({
   const abortWhenStartedRef = useRef(false);
   const conversationIdRef = useRef<string | null>(null);
   const followUpStateRef = useRef(initialFollowUpState());
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const readPreferences = () => {
@@ -418,11 +414,6 @@ export function PreviewPanel({
     window.addEventListener("storage", readPreferences);
     return () => window.removeEventListener("storage", readPreferences);
   }, [connectorScope]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, pending]);
 
   /**
    * Proactive triggers in Preview (#545). The preview has no host page, so a
@@ -887,7 +878,8 @@ export function PreviewPanel({
           />
         )}
 
-        {/* History: full-panel list of previous conversations. */}
+        {/* History: full-panel beui AI Sidebar showing only conversations
+            (date-grouped, pinned first) with Pin/Delete in the row menu. */}
         {!supportOpen && historyOpen && (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="border-b px-4">
@@ -895,71 +887,87 @@ export function PreviewPanel({
                 My conversations
               </span>
             </div>
-            <div className="no-scrollbar flex-1 overflow-y-auto pb-2">
-              {historyGroups.length === 0 && (
+            <div className="no-scrollbar flex-1 overflow-y-auto px-2 py-2">
+              {historyGroups.length === 0 ? (
                 <p className="text-muted-foreground px-4 py-8 text-center text-sm">
                   No previous conversations yet
                 </p>
-              )}
-              {historyGroups.map((group) => (
-                <div key={group.label}>
-                  <p className="text-muted-foreground flex items-center gap-2 px-4 pt-4 pb-1.5 text-sm">
-                    {group.label} <span className="bg-border h-px flex-1" />
-                  </p>
-                  {group.items.map((c) => (
-                    <Tooltip key={c.id}>
-                      <TooltipTrigger
-                        render={
-                          <div
-                            className={`group/history flex w-full items-center transition-colors ${
-                              conversationId === c.id ? "bg-primary/5" : "hover:bg-muted"
-                            }`}
-                          />
-                        }
-                      >
+              ) : (
+                <AISidebar
+                  items={historyGroups.map(
+                    (group): SidebarResource => ({
+                      id: `day:${group.label}`,
+                      label: group.label,
+                      kind: "folder",
+                      children: group.items.map((c) => ({
+                        id: c.id,
+                        label: c.title || "Untitled conversation",
+                        kind: "file",
+                      })),
+                    })
+                  )}
+                  activeId={conversationId}
+                  defaultExpandedIds={historyGroups.map(
+                    (group) => `day:${group.label}`
+                  )}
+                  onActiveChange={(id) => {
+                    if (id.startsWith("day:")) return;
+                    const conversation = conversations.find((c) => c.id === id);
+                    if (!conversation) return;
+                    void loadConversation(conversation);
+                    setHistoryOpen(false);
+                  }}
+                  renderIcon={(item) =>
+                    item.kind === "file" ? (
+                      conversations.find((c) => c.id === item.id)?.pinned ? (
+                        <Pin className="size-4 fill-current text-primary" />
+                      ) : (
+                        <MessageSquareText className="size-4" />
+                      )
+                    ) : undefined
+                  }
+                  renderMenu={(item, controls) => {
+                    const conversation = conversations.find(
+                      (c) => c.id === item.id
+                    );
+                    if (!conversation) return null;
+                    return (
+                      <>
                         <button
                           type="button"
                           onClick={() => {
-                            loadConversation(c);
-                            setHistoryOpen(false);
+                            controls.close();
+                            void togglePin(conversation);
                           }}
-                          className="min-w-0 flex-1 truncate px-4 py-3 text-left text-[15px]"
+                          className="flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs text-foreground outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          {c.title || "Untitled conversation"}
+                          <Pin className="size-3.5" />
+                          {conversation.pinned ? "Unpin" : "Pin"}
                         </button>
                         <button
                           type="button"
-                          aria-label={c.pinned ? "Unpin conversation" : "Pin conversation"}
-                          onClick={() => togglePin(c)}
-                          className={`shrink-0 rounded p-1.5 transition-colors ${
-                            c.pinned
-                              ? "text-primary"
-                              : "text-muted-foreground hover:text-foreground opacity-0 group-hover/history:opacity-100"
-                          }`}
-                        >
-                          <Pin className={`size-4 ${c.pinned ? "fill-current" : ""}`} />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Delete conversation"
                           onClick={async () => {
-                            await deleteConversationAction(c.id);
-                            setConversations((prev) => prev.filter((x) => x.id !== c.id));
-                            if (conversationId === c.id) newChat();
+                            controls.close();
+                            await deleteConversationAction(conversation.id);
+                            setConversations((prev) =>
+                              prev.filter((x) => x.id !== conversation.id)
+                            );
+                            if (conversationId === conversation.id) newChat();
                           }}
-                          className="text-muted-foreground hover:text-destructive mr-2 shrink-0 rounded p-1.5 opacity-0 transition-colors group-hover/history:opacity-100"
+                          className="hover:text-destructive flex h-8 w-full items-center gap-2 rounded-lg px-2.5 text-left text-xs text-foreground outline-none transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                          <AnimatedIcon icon={Trash2} size={16} />
+                          <AnimatedIcon icon={Trash2} size={14} />
+                          Delete
                         </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="start" className="block max-w-72">
-                        <p className="font-semibold">{historyDateTime(c.updatedAt)}</p>
-                        <p className="mt-0.5">{c.title || "Untitled conversation"}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              ))}
+                      </>
+                    );
+                  }}
+                  ariaLabel="My conversations"
+                  // Day-group folders take no actions; conversation rows get
+                  // the Pin/Delete menu from renderMenu above.
+                  className='w-full [&_[role=treeitem][aria-expanded]_button[aria-label^="Actions for"]]:hidden'
+                />
+              )}
             </div>
             <div className="flex justify-center border-t px-4 py-3">
               <Button
@@ -978,11 +986,14 @@ export function PreviewPanel({
         {/* Chat body */}
         {!supportOpen && !historyOpen && (
         <>
-        <div
-          ref={scrollRef}
-          className={`no-scrollbar flex-1 space-y-4 overflow-y-auto py-5 ${
+        <MessageScroller
+          className="min-h-0 flex-1"
+          busy={pending}
+          navigation="rail"
+          viewportClassName={`py-5 ${
             fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
           }`}
+          contentClassName="space-y-4"
         >
           {assistant.welcomeMessage && (
             <ChatMarkdown text={assistant.welcomeMessage} className="text-[15px]" />
@@ -1004,71 +1015,126 @@ export function PreviewPanel({
 
           {messages.map((msg, i) =>
             msg.role === "user" ? (
-              <div key={i} className="group relative flex justify-end">
-                <div className="bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-sm leading-relaxed">
-                  {msg.text}
-                </div>
-                {msg.sentAt && (
-                  <span className="text-muted-foreground/80 pointer-events-none absolute -bottom-4 right-1 text-[10px] whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                    {sentAtLabel(msg.sentAt)}
-                  </span>
-                )}
-              </div>
+              <Message key={i} from="user" animateIn className="group relative">
+                <MessageContent>
+                  <MessageBubble>
+                    <MessageBubbleContent className="max-w-[85%] text-primary-foreground [&>span[aria-hidden]]:bg-primary">
+                      {msg.text}
+                    </MessageBubbleContent>
+                  </MessageBubble>
+                  {msg.sentAt && (
+                    <span className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-[10px] whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                      {sentAtLabel(msg.sentAt)}
+                    </span>
+                  )}
+                </MessageContent>
+              </Message>
             ) : (
-              <div key={i} className="space-y-2">
-                {/* Flows are deliberately invisible to chat users — routing is
-                    audited in the Inbox transcript ("Workflow ended") only. */}
-                <ThinkingPanel
-                  steps={msg.steps}
-                  phase={msg.phase}
-                  searchCount={msg.searchCount}
-                  active={pending && i === messages.length - 1}
-                />
-                {visibleReplyParts(msg.parts, !hideEscalation).map((part, j) => (
-                  <PartView
-                    key={j}
-                    part={part}
-                    onSend={send}
-                    onOpenSupport={(helpDeskId) => {
-                      setSupportHelpDeskId(helpDeskId);
-                      setSupportOpen(true);
-                    }}
-                  />
-                ))}
-                {msg.streamingText !== null && (
-                  <div className="bg-muted max-w-[90%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm">
-                    <ChatMarkdown text={msg.streamingText} />
-                    <span className="animate-pulse">▍</span>
-                  </div>
-                )}
-                {msg.id && (
-                  <div className="flex gap-1">
-                    <Hint label="Good response">
-                      <button
-                        type="button"
-                        aria-label="Good response"
-                        onClick={() => vote(msg, 1)}
-                        className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        <ThumbsUp className="size-3.5" />
-                      </button>
-                    </Hint>
-                    <Hint label="Bad response">
-                      <button
-                        type="button"
-                        aria-label="Bad response"
-                        onClick={() => vote(msg, -1)}
-                        className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground"}`}
-                      >
-                        <ThumbsDown className="size-3.5" />
-                      </button>
-                    </Hint>
-                  </div>
-                )}
-              </div>
+              (() => {
+                const parts = visibleReplyParts(msg.parts, !hideEscalation);
+                const lastTextIndex = parts.reduce(
+                  (acc, part, index) => (part.type === "text" ? index : acc),
+                  -1
+                );
+                const citationItems = toCitationItems(
+                  parts.flatMap((part) =>
+                    part.type === "sources" ? part.sources : []
+                  )
+                );
+                const feedback =
+                  msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
+                return (
+                  <Message key={i} from="assistant">
+                    <MessageContent className="gap-2">
+                      {/* Flows are deliberately invisible to chat users — routing
+                          is audited in the Inbox transcript only. */}
+                      <ThinkingPanel
+                        steps={msg.steps}
+                        phase={msg.phase}
+                        searchCount={msg.searchCount}
+                        active={pending && i === messages.length - 1}
+                      />
+                      {parts.map((part, j) => {
+                        if (part.type === "text") {
+                          const isLast = j === lastTextIndex;
+                          return (
+                            <StreamingResponse
+                              key={j}
+                              status="complete"
+                              copyText={part.text}
+                              showActions={isLast && Boolean(msg.id)}
+                              sources={isLast ? citationItems : []}
+                              feedback={isLast ? feedback : null}
+                              onFeedbackChange={(next) => {
+                                if (next === "up") vote(msg, 1);
+                                else if (next === "down") vote(msg, -1);
+                                // Clearing = re-voting the active value.
+                                else vote(msg, msg.feedback === 1 ? 1 : -1);
+                              }}
+                            >
+                              <ChatMarkdown text={part.text} />
+                            </StreamingResponse>
+                          );
+                        }
+                        if (part.type === "sources") {
+                          if (lastTextIndex !== -1) return null;
+                          return (
+                            <Citations
+                              key={j}
+                              citations={toCitationItems(part.sources)}
+                              className="max-w-[90%]"
+                            />
+                          );
+                        }
+                        return (
+                          <PartView
+                            key={j}
+                            part={part}
+                            onSend={send}
+                            onOpenSupport={(helpDeskId) => {
+                              setSupportHelpDeskId(helpDeskId);
+                              setSupportOpen(true);
+                            }}
+                          />
+                        );
+                      })}
+                      {msg.streamingText !== null && (
+                        <StreamingResponse status="streaming">
+                          <ChatMarkdown text={msg.streamingText} />
+                          <span className="animate-pulse">▍</span>
+                        </StreamingResponse>
+                      )}
+                      {lastTextIndex === -1 && msg.id && parts.length > 0 && (
+                        <div className="flex gap-1">
+                          <Hint label="Good response">
+                            <button
+                              type="button"
+                              aria-label="Good response"
+                              onClick={() => vote(msg, 1)}
+                              className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              <ThumbsUp className="size-3.5" />
+                            </button>
+                          </Hint>
+                          <Hint label="Bad response">
+                            <button
+                              type="button"
+                              aria-label="Bad response"
+                              onClick={() => vote(msg, -1)}
+                              className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground"}`}
+                            >
+                              <ThumbsDown className="size-3.5" />
+                            </button>
+                          </Hint>
+                        </div>
+                      )}
+                    </MessageContent>
+                  </Message>
+                );
+              })()
             )
           )}
-        </div>
+        </MessageScroller>
 
         {/* Chat input */}
         <div
@@ -1099,79 +1165,43 @@ export function PreviewPanel({
           {(composerPulse || pending) && (
             <ComposerPulse color="var(--primary)" focus={composerPulse} loading={pending} />
           )}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              send(draft);
-            }}
-            className="focus-within:ring-ring/50 rounded-xl border px-3 py-2 focus-within:ring-2"
-          >
-            <div className="flex items-center gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onFocus={fireComposerPulse}
-              placeholder={`Ask ${nickname}...`}
-              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
-            />
-            {pending && (
-              <>
+          {/* Sending stays enabled while a reply streams — the preview's
+              follow-up scheduler queues or steers it — so the composer never
+              enters PromptInput's own `loading` mode; a Stop control rides in
+              the actions row instead. */}
+          <PromptInput
+            value={draft}
+            onValueChange={setDraft}
+            onSubmit={(value) => send(value)}
+            onFocus={fireComposerPulse}
+            minRows={1}
+            maxRows={6}
+            placeholder={`Ask ${nickname}...`}
+            aria-label={`Ask ${nickname}`}
+            leadingAction={
+              pending ? (
                 <Hint label="Stop generating and clear follow-ups" side="top">
                   <button
                     type="button"
                     aria-label="Stop generating and clear follow-ups"
                     onClick={stop}
-                    className="border-input hover:bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors"
+                    className="border-input hover:bg-muted flex size-8 shrink-0 items-center justify-center rounded-full border transition-colors"
                   >
-                    <Square className="size-3.5 fill-current" />
+                    <Square className="size-3 fill-current" />
                   </button>
                 </Hint>
-                <Hint
-                  label={
-                    followUpBehavior === "steer"
-                      ? "Steer current reply"
-                      : "Queue follow-up"
-                  }
-                  side="top"
-                >
-                  <button
-                    type="submit"
-                    aria-label={
-                      followUpBehavior === "steer"
-                        ? "Steer current reply"
-                        : "Queue follow-up"
-                    }
-                    disabled={!draft.trim()}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors disabled:opacity-40"
-                  >
-                    <ArrowUp className="size-4" />
-                  </button>
-                </Hint>
-              </>
-            )}
-            {!pending && (
-              <Hint label="Send message" side="top">
-                <button
-                  type="submit"
-                  aria-label="Send message"
-                  disabled={!draft.trim()}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors"
-                >
-                  <ArrowUp className="size-4" />
-                </button>
-              </Hint>
-            )}
-            </div>
-            {pending && (
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                {followUpBehavior === "steer"
-                  ? "New messages steer the current reply"
-                  : queuedCount > 0
-                    ? `${queuedCount} follow-up${queuedCount === 1 ? "" : "s"} queued`
-                    : "New messages wait in the queue"}
-              </p>
-            )}
-          </form>
+              ) : undefined
+            }
+          />
+          {pending && (
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              {followUpBehavior === "steer"
+                ? "New messages steer the current reply"
+                : queuedCount > 0
+                  ? `${queuedCount} follow-up${queuedCount === 1 ? "" : "s"} queued`
+                  : "New messages wait in the queue"}
+            </p>
+          )}
           </div>
           {assistant.aiDisclaimer && (
             <p className="text-muted-foreground mt-3 flex items-start gap-1.5 text-xs leading-snug">

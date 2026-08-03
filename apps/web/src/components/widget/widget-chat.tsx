@@ -8,14 +8,23 @@ import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
-import { CitationList } from "@/components/chat/citation-list";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { hasMarkdownSyntax } from "@/components/chat/markdown-detect";
-import { ThinkingPanel } from "@/components/chat/thinking-panel";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
+import { ThinkingPanel } from "@/components/chat/thinking-panel";
+import {
+  Message,
+  MessageBubble,
+  MessageBubbleContent,
+  MessageContent,
+  MessageScroller,
+} from "@/components/agents/message";
+import { PromptInput } from "@/components/agents/prompt-input";
+import { StreamingResponse } from "@/components/agents/streaming-response";
+import { Citations, type CitationItem } from "@/components/agents/citations";
 import {
   latestHelpDeskId,
   repliesClosed,
@@ -31,12 +40,10 @@ import {
 import type { WidgetConversationSummary } from "./widget-history";
 import {
   ArrowRight,
-  ArrowUp,
   ExternalLink,
   Headphones,
   HelpCircle,
   Maximize2,
-  Square,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -51,7 +58,7 @@ function DeferredChatMarkdown({ text, className }: { text: string; className?: s
   const plain = (
     <p className={`leading-relaxed whitespace-pre-wrap ${className ?? ""}`}>{text}</p>
   );
-  // Plain text never mounts the lazy component — React.lazy starts fetching
+  // Plain text never mounts the lazy component â€” React.lazy starts fetching
   // on first render, so gating here keeps the markdown chunk off the initial
   // load (e.g. an unformatted welcome message) until a message needs it.
   if (!hasMarkdownSyntax(text)) return plain;
@@ -135,6 +142,254 @@ function IframeReplyPart({
   );
 }
 
+type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
+
+/** Conceptâ†’Source citations, shaped for the beui citation components. */
+function toCitationItems(sources: SourcesPart["sources"]): CitationItem[] {
+  return sources.map((source, index) => ({
+    id: source.conceptId ?? `source-${index}`,
+    title: source.conceptTitle,
+    domain: source.sourceName
+      ? `${source.collectionName} Â· ${source.sourceName}`
+      : source.collectionName,
+    url: source.url ?? undefined,
+  }));
+}
+
+/**
+ * One assistant turn: the agent-activity stream, then each reply part. Text
+ * parts render as beui StreamingResponse prose â€” the last one carries the
+ * completion actions (copy, ðŸ‘/ðŸ‘Ž wired to message feedback) and the sources
+ * disclosure built from the turn's Conceptâ†’Source citations.
+ */
+function BotMessageView({
+  msg,
+  active,
+  hideEscalation,
+  brandColor,
+  onSend,
+  onOpenSupport,
+  onVote,
+}: {
+  msg: BotMsg;
+  active: boolean;
+  hideEscalation: boolean;
+  brandColor: string;
+  onSend: (text: string, options?: { faq?: boolean }) => void;
+  onOpenSupport: (helpDeskId?: string) => void;
+  onVote: (value: -1 | 1) => void;
+}) {
+  const parts = visibleReplyParts(msg.parts, !hideEscalation);
+  const lastTextIndex = parts.reduce(
+    (acc, part, index) => (part.type === "text" ? index : acc),
+    -1
+  );
+  const citationItems = toCitationItems(
+    parts.flatMap((part) => (part.type === "sources" ? part.sources : []))
+  );
+  const feedback =
+    msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
+
+  return (
+    <Message from="assistant">
+      <MessageContent className="gap-2">
+        <ThinkingPanel
+          steps={msg.steps}
+          phase={msg.phase}
+          searchCount={msg.searchCount}
+          active={active}
+        />
+        {parts.map((part, j) => {
+          if (part.type === "text") {
+            const isLast = j === lastTextIndex;
+            return (
+              <StreamingResponse
+                key={j}
+                status="complete"
+                copyText={part.text}
+                showActions={isLast && Boolean(msg.id)}
+                sources={isLast ? citationItems : []}
+                feedback={isLast ? feedback : null}
+                onFeedbackChange={(next) => {
+                  if (next === "up") onVote(1);
+                  else if (next === "down") onVote(-1);
+                  // Clearing = re-voting the active value; the server toggles.
+                  else onVote(msg.feedback === 1 ? 1 : -1);
+                }}
+              >
+                <DeferredChatMarkdown text={part.text} />
+              </StreamingResponse>
+            );
+          }
+          if (part.type === "progress") {
+            return <ProgressLine key={j} text={part.text} />;
+          }
+          if (part.type === "notification") {
+            // Proactive nudge: set apart from an answer, since the visitor
+            // did not ask for it (accent edge + optional heading).
+            return (
+              <MessageBubble key={j}>
+                <MessageBubbleContent
+                  className="max-w-[90%] space-y-1 border-l-2 bg-muted/60 [&>span[aria-hidden]]:bg-transparent"
+                  style={{ borderLeftColor: brandColor }}
+                >
+                  {part.title && <p className="font-medium">{part.title}</p>}
+                  <DeferredChatMarkdown text={part.content} />
+                </MessageBubbleContent>
+              </MessageBubble>
+            );
+          }
+          if (part.type === "help_desk") {
+            return (
+              <button
+                key={j}
+                type="button"
+                onClick={() => onOpenSupport(part.helpDeskId)}
+                className="flex max-w-[90%] items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors hover:bg-muted"
+              >
+                {part.showIcon !== false && (
+                  <FlowButtonIcon
+                    icon={part.icon}
+                    className="size-5"
+                    style={{ color: brandColor }}
+                  />
+                )}
+                <span className="text-sm font-medium">{part.label}</span>
+                <ArrowRight className="text-muted-foreground ml-auto size-4" />
+              </button>
+            );
+          }
+          if (part.type === "clarify") {
+            return (
+              <div
+                key={j}
+                className="bg-muted/40 max-w-[90%] rounded-2xl rounded-tl-sm border border-dashed px-3.5 py-2.5 text-sm"
+              >
+                <div className="text-muted-foreground flex items-center gap-1.5">
+                  <HelpCircle className="size-4" />
+                  <span className="text-xs font-medium">Quick question first</span>
+                </div>
+                <p className="mt-1.5">{part.question}</p>
+                {part.found && part.found.length > 0 && (
+                  <div className="text-muted-foreground mt-2 text-xs">
+                    <span>Here&apos;s what I did find:</span>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                      {part.found.map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          }
+          if (part.type === "sources") {
+            // Folded into the last text part's sources disclosure; only a
+            // sources-only reply (no text) renders the standalone list.
+            if (lastTextIndex !== -1) return null;
+            return (
+              <Citations
+                key={j}
+                citations={toCitationItems(part.sources)}
+                className="max-w-[90%]"
+              />
+            );
+          }
+          if (part.type === "button") {
+            if (part.buttonType === "send_text" || part.buttonType === "faq") {
+              return (
+                <button
+                  key={j}
+                  type="button"
+                  onClick={() =>
+                    onSend(part.text ?? "", { faq: part.buttonType === "faq" })
+                  }
+                  className="inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: brandColor }}
+                >
+                  {part.label}
+                  {part.showIcon !== false && (
+                    <FlowButtonIcon icon={part.icon} className="size-3.5" />
+                  )}
+                </button>
+              );
+            }
+            return (
+              <a
+                key={j}
+                href={part.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: brandColor }}
+              >
+                {part.label}
+                {part.showIcon !== false && (
+                  <FlowButtonIcon icon={part.icon} className="size-3.5" />
+                )}
+              </a>
+            );
+          }
+          if (part.type === "iframe") {
+            return <IframeReplyPart key={j} part={part} />;
+          }
+          if (part.type === "follow_ups") {
+            return (
+              <div key={j} className="w-full max-w-[92%] pt-1">
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground text-sm">
+                    Suggested questions
+                  </span>
+                  <hr className="flex-1" />
+                </div>
+                <div className="mt-2 space-y-2">
+                  {part.questions.map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => onSend(q)}
+                      className="w-full rounded-xl border bg-background px-4 py-3 text-left text-sm leading-snug transition-colors hover:bg-muted"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })}
+        {msg.streamingText !== null && (
+          <StreamingResponse status="streaming">
+            <DeferredChatMarkdown text={msg.streamingText} />
+            <span className="animate-pulse">â–</span>
+          </StreamingResponse>
+        )}
+        {lastTextIndex === -1 && msg.id && parts.length > 0 && (
+          <div className="flex gap-1">
+            <button
+              type="button"
+              aria-label="Vote up"
+              onClick={() => onVote(1)}
+              className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <ThumbsUp className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Vote down"
+              onClick={() => onVote(-1)}
+              className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <ThumbsDown className="size-3.5" />
+            </button>
+          </div>
+        )}
+      </MessageContent>
+    </Message>
+  );
+}
+
 const WidgetHistory = dynamic(
   () => import("./widget-history").then((module) => module.WidgetHistory)
 );
@@ -150,7 +405,7 @@ interface BotMsg extends TurnView {
 
 type Msg = { role: "user"; text: string; sentAt: string | null } | BotMsg;
 
-/** "07 Jul, 14:32" — the hover timestamp on a sent message. */
+/** "07 Jul, 14:32" â€” the hover timestamp on a sent message. */
 function sentAtLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -226,7 +481,7 @@ export function WidgetChat({
   const [history, setHistory] = useState<WidgetConversationSummary[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   // The ?c= Context Hint is resolved client-side so the page shell can stay
-  // static — one cached page per assistant, not per hint. Embeds can still
+  // static â€” one cached page per assistant, not per hint. Embeds can still
   // anchor a conversation to a collection via the URL; there is no in-chat tag
   // control.
   const searchParams = useSearchParams();
@@ -293,11 +548,10 @@ export function WidgetChat({
   const [supportHelpDeskId, setSupportHelpDeskId] = useState<string>();
   // Mirror of the preview panel's fullscreen: the layout centers in here,
   // and the embedding host (widget.js floater / docs drawer) is asked to
-  // expand the iframe via postMessage — the iframe can't resize itself.
+  // expand the iframe via postMessage â€” the iframe can't resize itself.
   const [fullscreen, setFullscreen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
   // Dia-style border pulse on the composer: plays every time the chat input
   // gains focus (ignored while a pulse is already running).
   const [composerPulse, setComposerPulse] = useState(false);
@@ -364,7 +618,7 @@ export function WidgetChat({
       window.location.href
     )}`;
     const popup = window.open(url, "ciele-sso-login", "width=480,height=680");
-    // Popup blocked → fall back to a top-level redirect (breaks out of the
+    // Popup blocked â†’ fall back to a top-level redirect (breaks out of the
     // iframe); the callback returns to `returnTo` with the gate cookie set.
     if (!popup || popup.closed) {
       (window.top ?? window).location.href = url;
@@ -378,11 +632,6 @@ export function WidgetChat({
     setComposerPulse(true);
     window.setTimeout(() => setComposerPulse(false), 1100);
   }
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, pending]);
 
   function updateLastBot(update: (bot: BotMsg) => BotMsg) {
     setMessages((prev) => {
@@ -420,7 +669,7 @@ export function WidgetChat({
           conversationId,
           collectionId: anchored?.id ?? null,
           message,
-          // The embedding page, forwarded by the launcher as `?u=` — the
+          // The embedding page, forwarded by the launcher as `?u=` â€” the
           // request's own referer is this iframe, not the host page. Gates URL
           // Flow Conditions server-side (spec #550).
           pageUrl: searchParams.get("u"),
@@ -449,7 +698,7 @@ export function WidgetChat({
    * Reports a proactive trigger and renders whatever it delivers (#541).
    *
    * A trigger with nothing configured for it streams zero bytes, so the bot
-   * bubble is appended lazily — on the first event — and a silent turn leaves the
+   * bubble is appended lazily â€” on the first event â€” and a silent turn leaves the
    * conversation untouched rather than showing an empty message. Each trigger is
    * reported once per mount; the delivery rule itself is enforced server-side.
    */
@@ -481,7 +730,7 @@ export function WidgetChat({
             if (!appended) {
               appended = true;
               setMessages((prev) => [...prev, { ...emptyBot(), phase: "done" }]);
-              // The host owns the launcher, so only it can badge itself — and
+              // The host owns the launcher, so only it can badge itself â€” and
               // only it knows whether the chat is currently on screen.
               window.parent?.postMessage(UNREAD_MESSAGE, "*");
             }
@@ -493,7 +742,7 @@ export function WidgetChat({
           },
         });
       } catch {
-        /* network error — a nudge is best-effort by nature */
+        /* network error â€” a nudge is best-effort by nature */
       }
     },
     // The report carries whichever conversation is current when the event fires;
@@ -501,7 +750,7 @@ export function WidgetChat({
     [assistantId, anchored, conversationId]
   );
 
-  // Proactive triggers. The floater script reports what only it can see — that
+  // Proactive triggers. The floater script reports what only it can see â€” that
   // the host page loaded, its URL, and that the chat was opened (the frame is
   // warmed long before it is shown). Every other embed renders the chat visible
   // immediately, so for those mounting is opening.
@@ -610,7 +859,7 @@ export function WidgetChat({
     );
   }, []);
 
-  // Escape exits fullscreen — same affordance as the editor preview.
+  // Escape exits fullscreen â€” same affordance as the editor preview.
   useEffect(() => {
     if (!fullscreen) return;
     function onKey(e: KeyboardEvent) {
@@ -641,7 +890,7 @@ export function WidgetChat({
     return true;
   }
 
-  // ── Escalation view ("How would you like to contact …?") ──────────────────
+  // â”€â”€ Escalation view ("How would you like to contact â€¦?") â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (view === "support") {
     return (
       <WidgetEscalation
@@ -658,7 +907,7 @@ export function WidgetChat({
     );
   }
 
-  // ── Chat view ──────────────────────────────────────────────────────────────
+  // â”€â”€ Chat view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div
       className="text-foreground relative flex h-screen flex-col bg-background"
@@ -672,7 +921,7 @@ export function WidgetChat({
           brandColor={brandColor}
         />
       )}
-      {/* Header — shared with the editor preview (chat-header.tsx). */}
+      {/* Header â€” shared with the editor preview (chat-header.tsx). */}
       <ChatHeader
         nickname={nickname}
         avatarUrl={avatarUrl}
@@ -691,7 +940,7 @@ export function WidgetChat({
         onSendFeedback={() => setFeedbackOpen(true)}
       />
 
-      {/* History — full panel, mirrors the editor preview (replaces the
+      {/* History â€” full panel, mirrors the editor preview (replaces the
           chat body while open rather than stacking a list above it). */}
       {historyOpen ? (
         <WidgetHistory
@@ -702,12 +951,16 @@ export function WidgetChat({
         />
       ) : (
       <>
-      {/* Body */}
-      <div
-        ref={scrollRef}
-        className={`flex-1 space-y-4 overflow-y-auto py-5 ${
+      {/* Body â€” beui MessageScroller: follows streamed output while the
+          visitor stays at the live edge, with a message navigation rail. */}
+      <MessageScroller
+        className="min-h-0 flex-1"
+        busy={pending}
+        navigation="rail"
+        viewportClassName={`py-5 ${
           fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
         }`}
+        contentClassName="space-y-4"
       >
         {welcomeMessage && (
           <DeferredChatMarkdown text={welcomeMessage} className="text-[15px]" />
@@ -752,199 +1005,34 @@ export function WidgetChat({
 
         {messages.map((msg, i) =>
           msg.role === "user" ? (
-            <div key={i} className="group relative flex justify-end">
-              <div
-                className="max-w-[85%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-sm leading-relaxed text-white"
-                style={{ backgroundColor: brandColor }}
-              >
-                {msg.text}
-              </div>
-              {msg.sentAt && (
-                <span className="text-muted-foreground/80 pointer-events-none absolute -bottom-4 right-1 text-[10px] whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                  {sentAtLabel(msg.sentAt)}
-                </span>
-              )}
-            </div>
+            <Message key={i} from="user" animateIn className="group relative">
+              <MessageContent>
+                <MessageBubble>
+                  <MessageBubbleContent className="max-w-[85%] text-white [&>span[aria-hidden]]:bg-(--brand)">
+                    {msg.text}
+                  </MessageBubbleContent>
+                </MessageBubble>
+                {msg.sentAt && (
+                  <span className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-[10px] whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+                    {sentAtLabel(msg.sentAt)}
+                  </span>
+                )}
+              </MessageContent>
+            </Message>
           ) : (
-            <div key={i} className="space-y-2">
-              <ThinkingPanel
-                steps={msg.steps}
-                phase={msg.phase}
-                searchCount={msg.searchCount}
-                active={pending && i === messages.length - 1}
-              />
-              {visibleReplyParts(msg.parts, !hideEscalation).map((part, j) => {
-                if (part.type === "text") {
-                  return (
-                    <div key={j} className="bg-muted max-w-[90%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm">
-                      <DeferredChatMarkdown text={part.text} />
-                    </div>
-                  );
-                }
-                if (part.type === "progress") {
-                  return <ProgressLine key={j} text={part.text} />;
-                }
-                if (part.type === "notification") {
-                  // Proactive nudge: set apart from an answer, since the visitor
-                  // did not ask for it (accent edge + optional heading).
-                  return (
-                    <div
-                      key={j}
-                      className="bg-muted/60 max-w-[90%] space-y-1 rounded-2xl rounded-tl-sm border-l-2 px-3.5 py-2.5 text-sm"
-                      style={{ borderLeftColor: brandColor }}
-                    >
-                      {part.title && (
-                        <p className="font-medium">{part.title}</p>
-                      )}
-                      <DeferredChatMarkdown text={part.content} />
-                    </div>
-                  );
-                }
-                if (part.type === "help_desk") {
-                  return (
-                    <button
-                      key={j}
-                      type="button"
-                      onClick={() => openSupport(part.helpDeskId)}
-                      className="flex max-w-[90%] items-center gap-3 rounded-2xl border px-3.5 py-3 text-left transition-colors hover:bg-muted"
-                    >
-                      {part.showIcon !== false && (
-                        <FlowButtonIcon
-                          icon={part.icon}
-                          className="size-5"
-                          style={{ color: brandColor }}
-                        />
-                      )}
-                      <span className="text-sm font-medium">{part.label}</span>
-                      <ArrowRight className="text-muted-foreground ml-auto size-4" />
-                    </button>
-                  );
-                }
-                if (part.type === "clarify") {
-                  return (
-                    <div
-                      key={j}
-                      className="bg-muted/40 max-w-[90%] rounded-2xl rounded-tl-sm border border-dashed px-3.5 py-2.5 text-sm"
-                    >
-                      <div className="text-muted-foreground flex items-center gap-1.5">
-                        <HelpCircle className="size-4" />
-                        <span className="text-xs font-medium">Quick question first</span>
-                      </div>
-                      <p className="mt-1.5">{part.question}</p>
-                      {part.found && part.found.length > 0 && (
-                        <div className="text-muted-foreground mt-2 text-xs">
-                          <span>Here&apos;s what I did find:</span>
-                          <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                            {part.found.map((f) => (
-                              <li key={f}>{f}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-                if (part.type === "sources") {
-                  return (
-                    <CitationList key={j} sources={part.sources} className="max-w-[90%]" />
-                  );
-                }
-                if (part.type === "button") {
-                  if (part.buttonType === "send_text" || part.buttonType === "faq") {
-                    return (
-                      <button
-                        key={j}
-                        type="button"
-                        onClick={() =>
-                          send(part.text ?? "", {
-                            faq: part.buttonType === "faq",
-                          })
-                        }
-                        className="inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                        style={{ backgroundColor: brandColor }}
-                      >
-                        {part.label}
-                        {part.showIcon !== false && (
-                          <FlowButtonIcon icon={part.icon} className="size-3.5" />
-                        )}
-                      </button>
-                    );
-                  }
-                  return (
-                    <a
-                      key={j}
-                      href={part.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: brandColor }}
-                    >
-                      {part.label}
-                      {part.showIcon !== false && (
-                        <FlowButtonIcon icon={part.icon} className="size-3.5" />
-                      )}
-                    </a>
-                  );
-                }
-                if (part.type === "iframe") {
-                  return <IframeReplyPart key={j} part={part} />;
-                }
-                if (part.type === "follow_ups") {
-                  return (
-                    <div key={j} className="max-w-[92%] pt-1">
-                      <div className="flex items-center gap-3">
-                        <span className="text-muted-foreground text-sm">
-                          Suggested questions
-                        </span>
-                        <hr className="flex-1" />
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        {part.questions.map((q) => (
-                          <button
-                            key={q}
-                            type="button"
-                            onClick={() => send(q)}
-                            className="w-full rounded-xl border bg-background px-4 py-3 text-left text-sm leading-snug transition-colors hover:bg-muted"
-                          >
-                            {q}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-                return null;
-              })}
-              {msg.streamingText !== null && (
-                <div className="bg-muted max-w-[90%] rounded-2xl rounded-tl-sm px-3.5 py-2.5 text-sm">
-                  <DeferredChatMarkdown text={msg.streamingText} />
-                  <span className="animate-pulse">▍</span>
-                </div>
-              )}
-              {msg.id && (
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    aria-label="Vote up"
-                    onClick={() => vote(msg, 1)}
-                    className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <ThumbsUp className="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Vote down"
-                    onClick={() => vote(msg, -1)}
-                    className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "bg-muted" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    <ThumbsDown className="size-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <BotMessageView
+              key={i}
+              msg={msg}
+              active={pending && i === messages.length - 1}
+              hideEscalation={hideEscalation}
+              brandColor={brandColor}
+              onSend={send}
+              onOpenSupport={openSupport}
+              onVote={(value) => vote(msg, value)}
+            />
           )
         )}
-      </div>
+      </MessageScroller>
 
       {/* Composer */}
       <div
@@ -967,49 +1055,25 @@ export function WidgetChat({
         {(composerPulse || pending) && (
           <ComposerPulse color={brandColor} focus={composerPulse} loading={pending} />
         )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (composerClosed) return;
-            send(draft);
+        <PromptInput
+          value={draft}
+          onValueChange={setDraft}
+          onSubmit={(value) => {
+            if (!composerClosed) send(value);
           }}
-          className="rounded-xl border px-3 py-2"
-        >
-          <div className="flex items-center gap-2">
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onFocus={fireComposerPulse}
-              disabled={composerClosed}
-              placeholder={
-                composerClosed
-                  ? "This message doesn't take replies"
-                  : `Ask ${nickname}...`
-              }
-              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
-            />
-            {pending ? (
-              <button
-                type="button"
-                aria-label="Stop"
-                onClick={() => abortRef.current?.abort()}
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-red-500 text-white"
-              >
-                <Square className="size-3.5 fill-current" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                aria-label="Send"
-                disabled={composerClosed}
-                className="flex size-8 shrink-0 items-center justify-center rounded-lg text-white disabled:opacity-40"
-                style={{ backgroundColor: brandColor }}
-              >
-                <ArrowUp className="size-4" />
-              </button>
-            )}
-          </div>
-        </form>
+          loading={pending}
+          onStop={() => abortRef.current?.abort()}
+          disabled={composerClosed}
+          minRows={1}
+          maxRows={6}
+          onFocus={fireComposerPulse}
+          placeholder={
+            composerClosed
+              ? "This message doesn't take replies"
+              : `Ask ${nickname}...`
+          }
+          aria-label={`Ask ${nickname}`}
+        />
         </div>
         {aiDisclaimer && (
           <p className="text-muted-foreground mt-3 text-xs leading-snug">
@@ -1020,7 +1084,7 @@ export function WidgetChat({
       </>
       )}
 
-      {/* Send feedback (chat-level, from the ⋯ menu) — shared dialog. */}
+      {/* Send feedback (chat-level, from the â‹¯ menu) â€” shared dialog. */}
       <FeedbackDialog
         open={feedbackOpen}
         onOpenChange={setFeedbackOpen}

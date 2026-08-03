@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
-import { ToolCallsSection } from "./tool-calls-section";
+import { ThinkingTimeline } from "./thinking-timeline";
+import { ThinkingShimmer } from "@/components/agents/loading-states/thinking-shimmer";
 import { chatVisibleSteps, liveTraceLabel } from "./stored-trace";
 
 /**
@@ -12,7 +13,7 @@ import { chatVisibleSteps, liveTraceLabel } from "./stored-trace";
  * a reply: a live label with a spinner while the agent works, a stacked-icon
  * pill showing the distinct step/tool kinds seen so far (tool-icons.tsx — never
  * one icon reused for everything) plus a search-count badge (×N once the agent
- * has searched more than once), and a collapsible ToolCallsSection timeline of
+ * has searched more than once), and a collapsible ThinkingTimeline of
  * the reasoning/tool steps. When the answer lands it collapses to
  * "Thought for X.Xs".
  *
@@ -145,9 +146,7 @@ export function ThinkingPanel({
             (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)
           ) : (
             <span className="inline-flex items-center gap-1.5">
-              <span className="thinking-label-glow">
-                {liveTraceLabel(steps)}
-              </span>
+              <ThinkingShimmer>{liveTraceLabel(steps)}</ThinkingShimmer>
               <LoaderCircle className="size-3.5 animate-spin" />
             </span>
           )}
@@ -164,7 +163,7 @@ export function ThinkingPanel({
           ref={bodyRef}
           className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5"
         >
-          <ToolCallsSection steps={steps} />
+          <ThinkingTimeline steps={steps} />
           {note && (
             <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground/70">
               {note}

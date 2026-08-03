@@ -11,9 +11,10 @@ import {
   Wrench,
 } from "lucide-react";
 import type { StepStage, TurnStep } from "@agent-hub/agent/client";
+import { FeatherIcon } from "@/components/ui/feather-icon";
 
 /**
- * Per-step icon lookup for the Thinking panel / ToolCallsSection. Every
+ * Per-step icon lookup for the Thinking panel / ThinkingTimeline. Every
  * Thinking Step gets the icon that matches what it is — flow (routing),
  * palette (generating the answer), search, book (knowledge), or wrench
  * (any tool call) — in the panel's muted monochrome palette, never one icon
@@ -33,6 +34,12 @@ interface IconSpec {
  * call is a wrench.
  */
 const TOOL_ICONS: Record<string, IconSpec> = {
+  // The terminal declaration — the last step before the answer is written.
+  // Never the generic tool wrench: it reads as "picking up the pen".
+  readyToAnswer: {
+    icon: <FeatherIcon size={14} className="flex items-center justify-center" />,
+    name: "Getting ready to answer",
+  },
   searchKnowledge: {
     icon: <Search className="size-3.5" />,
     name: "Knowledge search",

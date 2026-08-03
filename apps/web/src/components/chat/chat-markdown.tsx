@@ -2,7 +2,26 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CodeBlock } from "@/components/agents/code-block";
+import type { AgentCodeLanguage } from "@/components/agents/agent-code";
 import { cn } from "@/lib/utils";
+
+/** Languages the shared shiki highlighter bundles; everything else is plain. */
+const CODE_LANGUAGES: readonly AgentCodeLanguage[] = [
+  "bash",
+  "diff",
+  "json",
+  "tsx",
+  "typescript",
+];
+
+function codeLanguage(className: string | undefined): AgentCodeLanguage {
+  const match = /language-([\w-]+)/.exec(className ?? "");
+  const lang = match?.[1];
+  if (lang === "ts") return "typescript";
+  if (lang === "sh" || lang === "shell" || lang === "zsh") return "bash";
+  return CODE_LANGUAGES.find((known) => known === lang) ?? "text";
+}
 
 /**
  * Renders assistant markdown (bold, italic, links, lists, headings, code,
@@ -64,21 +83,25 @@ export function ChatMarkdown({
           hr: () => <hr className="border-current/15" />,
           code: ({ children, className: codeClassName }) => {
             // react-markdown marks fenced blocks with a language- class; bare
-            // inline code has none.
+            // inline code has none. Fenced blocks render through the beui
+            // CodeBlock (shiki highlighting, line numbers, copy feedback).
             const block = /language-/.test(codeClassName ?? "");
             return block ? (
-              <code className={codeClassName}>{children}</code>
+              <CodeBlock
+                code={String(children).replace(/\n$/, "")}
+                language={codeLanguage(codeClassName)}
+                showLineNumbers={false}
+                className="my-1 text-xs"
+              />
             ) : (
               <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-[0.85em]">
                 {children}
               </code>
             );
           },
-          pre: ({ children }) => (
-            <pre className="overflow-x-auto rounded-lg bg-black/10 p-3 font-mono text-xs leading-relaxed">
-              {children}
-            </pre>
-          ),
+          // Fenced blocks already carry their own surface via CodeBlock; the
+          // wrapping <pre> must not add a second box around it.
+          pre: ({ children }) => <>{children}</>,
           table: ({ children }) => (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">
