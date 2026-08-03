@@ -63,6 +63,12 @@
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
   --card-foreground: oklch(0.145 0 0);
+  /* Card sheen (see the .bg-card rule below). The light theme needs a fully
+     opaque white to read at all against #f1f1f1, and gets a faint bottom
+     shade so the card still reads as lit from above. */
+  --card-sheen-line: rgba(255, 255, 255, 1);
+  --card-sheen-glow: rgba(255, 255, 255, 0.7);
+  --card-sheen-shade: rgba(0, 0, 0, 0.045);
   --popover: #f1f1f1;
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
@@ -93,29 +99,32 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* Dark-mode card sheen: a soft light source just above the box, offset right
-   of center, plus a brighter top hairline under it. Targets the app's card
+/* Card sheen: a soft light source just above the box, offset right of center,
+   plus a brighter top hairline under it. Same geometry in both themes; only
+   the three sheen colors change. The light theme pushes the white to full
+   opacity (#f1f1f1 leaves little headroom) and adds the bottom shade layer,
+   which carries most of the "lit from above" read there; dark mode leaves that
+   layer transparent and relies on the white glow. Targets the app's card
    convention (bg-card + rounded-xl/2xl, incl. the shared <Card>) as layered
    background images, so it composes with the bg-card color and needs no
    pseudo-elements or position changes. */
-.dark :is(.bg-card.rounded-xl, .bg-card.rounded-2xl) {
+:is(.bg-card.rounded-xl, .bg-card.rounded-2xl) {
   background-image:
     linear-gradient(
       90deg,
       transparent 25%,
-      rgba(255, 255, 255, 0.16) 63%,
+      var(--card-sheen-line) 63%,
       transparent 92%
     ),
-    radial-gradient(
-      90% 55% at 63% -5%,
-      rgba(255, 255, 255, 0.07),
-      transparent 70%
-    );
+    radial-gradient(90% 55% at 63% -5%, var(--card-sheen-glow), transparent 70%),
+    linear-gradient(180deg, transparent 45%, var(--card-sheen-shade));
   background-size:
     100% 1px,
+    100% 100%,
     100% 100%;
   background-position:
     top,
+    center,
     center;
   background-repeat: no-repeat;
 }
@@ -126,6 +135,9 @@
   --foreground: oklch(0.985 0 0);
   --card: #191919;
   --card-foreground: oklch(0.985 0 0);
+  --card-sheen-line: rgba(255, 255, 255, 0.16);
+  --card-sheen-glow: rgba(255, 255, 255, 0.07);
+  --card-sheen-shade: transparent;
   --popover: #191919;
   --popover-foreground: oklch(0.985 0 0);
   --primary: oklch(0.922 0 0);
@@ -161,9 +173,13 @@
    (dark-mode) admin shell. */
 .light {
   --background: #f5f5f5;
+  --content: var(--background);
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
   --card-foreground: oklch(0.145 0 0);
+  --card-sheen-line: rgba(255, 255, 255, 1);
+  --card-sheen-glow: rgba(255, 255, 255, 0.7);
+  --card-sheen-shade: rgba(0, 0, 0, 0.045);
   --popover: #f1f1f1;
   --popover-foreground: oklch(0.145 0 0);
   --primary: oklch(0.205 0 0);
