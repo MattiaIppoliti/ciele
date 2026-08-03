@@ -4,8 +4,7 @@ import { Link } from "@/components/ui/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useActionState } from "react";
 import { Button } from "@agent-hub/ui";
-import { Input } from "@agent-hub/ui";
-import { Label } from "@agent-hub/ui";
+import { Input } from "@/components/motion/input";
 import { signInWithPasswordAction } from "@/app/auth/actions";
 import { EMPTY_AUTH_FORM_STATE } from "@/app/auth/form-state";
 
@@ -19,31 +18,31 @@ function LoginFormInner() {
   return (
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="next" value={searchParams.get("next") ?? ""} />
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="my@email.com"
-          className="bg-white"
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          className="bg-white"
-          required
-        />
-      </div>
-      {state.error && <p className="text-destructive text-sm">{state.error}</p>}
+      <Input
+        id="email"
+        name="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="my@email.com"
+        // The action reports one error for the pair — shake both fields, print
+        // the message once, under the password.
+        error={Boolean(state.error)}
+        classNames={{ field: "bg-white" }}
+        required
+      />
+      <Input
+        id="password"
+        name="password"
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        placeholder="••••••••"
+        error={state.error ?? undefined}
+        classNames={{ field: "bg-white" }}
+        required
+      />
+
       <Button type="submit" className="w-full" disabled={pending}>
         {pending ? "Logging in..." : "Log in"}
       </Button>
