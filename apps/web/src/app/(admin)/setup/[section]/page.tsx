@@ -20,8 +20,13 @@ export default async function SetupSectionPage({
   );
   if (!config) notFound();
 
-  const { reads } = await requirePageMember();
+  const { db, reads } = await requirePageMember();
   const assistants = await reads.assistants();
+  // "Active" = a Publication exists, i.e. the widget is live (same rule the
+  // assistant Overview's Status row uses).
+  const publications = await Promise.all(
+    assistants.map((assistant) => db.getLatestPublication(assistant.id))
+  );
   const Icon = config.icon;
 
   return (
@@ -39,10 +44,13 @@ export default async function SetupSectionPage({
         <div className="mt-8 w-full">
           <SetupPicker
             slug={config.slug}
-            assistants={assistants.map((assistant) => ({
+            assistants={assistants.map((assistant, index) => ({
               id: assistant.id,
               title: assistant.title,
               nickname: assistant.nickname,
+              avatarUrl: assistant.avatarUrl,
+              active: publications[index] !== null,
+              updatedAt: assistant.updatedAt,
             }))}
           />
         </div>

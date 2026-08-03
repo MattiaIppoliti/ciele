@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuzzyMatch, typoSubsequenceCost } from "./fuzzy";
+import { NO_MATCH, fuzzyFilter, fuzzyMatch, fuzzyScore, typoSubsequenceCost } from "./fuzzy";
 
 describe("typoSubsequenceCost", () => {
   it("costs nothing when the needle is a subsequence of the hay", () => {
@@ -35,5 +35,72 @@ describe("fuzzyMatch", () => {
 
   it("still rejects a name the needle cannot reach", () => {
     expect(fuzzyMatch("valeria", "Marco Iecher")).toBe(false);
+  });
+});
+
+describe("fuzzyScore", () => {
+  it("scores an empty needle as a neutral match", () => {
+    expect(fuzzyScore("", "Alex")).toBe(0);
+    expect(fuzzyScore("   ", "Alex")).toBe(0);
+  });
+
+  it("refuses out-of-order characters", () => {
+    expect(fuzzyScore("xela", "Alex")).toBe(NO_MATCH);
+  });
+
+  it("ranks word-start matches above scattered ones", () => {
+    expect(fuzzyScore("csa", "Ciele Support Assistant")).toBeGreaterThan(
+      fuzzyScore("csa", "Cambridge escalation area")
+    );
+  });
+
+  it("ranks a consecutive run above a split one", () => {
+    expect(fuzzyScore("sup", "Support desk")).toBeGreaterThan(
+      fuzzyScore("sup", "Sales unit planner")
+    );
+  });
+
+  it("ignores case and spaces in the needle", () => {
+    expect(fuzzyScore("SUP ASS", "Ciele Support Assistant")).toBeGreaterThan(0);
+  });
+});
+
+describe("fuzzyFilter", () => {
+  const assistants = [
+    { title: "Alex", nickname: "AlexAI" },
+    { title: "Ciele Support Assistant", nickname: "Ciele AI" },
+    { title: "Campus Wayfinder", nickname: "Wayfinder" },
+  ];
+  const text = (a: (typeof assistants)[number]) => `${a.title} ${a.nickname}`;
+
+  it("keeps the original order for an empty needle", () => {
+    expect(fuzzyFilter(assistants, "", text).map((a) => a.title)).toEqual([
+      "Alex",
+      "Ciele Support Assistant",
+      "Campus Wayfinder",
+    ]);
+  });
+
+  it("drops non-matches and ranks the best match first", () => {
+    expect(fuzzyFilter(assistants, "supp", text).map((a) => a.title)).toEqual([
+      "Ciele Support Assistant",
+    ]);
+  });
+
+  it("ranks by score, not input order", () => {
+    expect(fuzzyFilter(assistants, "ca", text).map((a) => a.title)[0]).toBe(
+      "Campus Wayfinder"
+    );
+  });
+
+  it("keeps a typo'd needle, ranked below the clean matches", () => {
+    // "campos" is one typo away from Campus; nothing else comes close.
+    expect(fuzzyFilter(assistants, "campos", text).map((a) => a.title)).toEqual([
+      "Campus Wayfinder",
+    ]);
+  });
+
+  it("returns nothing when no item matches", () => {
+    expect(fuzzyFilter(assistants, "zzz", text)).toEqual([]);
   });
 });
