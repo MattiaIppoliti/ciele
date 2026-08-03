@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   CheckCircle2,
   Check,
@@ -50,7 +50,7 @@ import {
 import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
-} from "@agent-hub/agent/local-providers";
+} from "@agent-hub/agent/client";
 
 /**
  * Dev-only direct-CLI controls (the local-subscription test flag). When
@@ -145,6 +145,67 @@ function ModelPicker({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// One provider row in the "Local AI accounts" card — the connector-reported
+// rows and the direct-CLI (local test) rows share this shape; only the detail
+// text, the disabled rule and the action wiring differ per caller.
+function ProviderRow({
+  provider,
+  label,
+  detail,
+  connected,
+  connecting,
+  available,
+  actionBusy,
+  actionDisabled,
+  onAction,
+  trailing,
+}: {
+  provider: ConnectorProvider | LocalSubscriptionProvider;
+  label: string;
+  detail: string;
+  connected: boolean;
+  connecting: boolean;
+  available: boolean;
+  actionBusy: boolean;
+  actionDisabled: boolean;
+  onAction: () => void;
+  trailing?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <ProviderBrandIcon provider={provider} className="text-muted-foreground size-6" />
+      <div className="min-w-48 flex-1">
+        <p className="font-medium">{label}</p>
+        <p className="text-muted-foreground truncate text-xs">{detail}</p>
+      </div>
+      <Badge variant="outline" className="rounded-full">
+        {connected
+          ? "Connected"
+          : connecting
+            ? "Connecting"
+            : available
+              ? "Available"
+              : "Unavailable"}
+      </Badge>
+      {trailing}
+      <Button
+        size="sm"
+        variant={connected ? "ghost" : "outline"}
+        disabled={actionDisabled}
+        onClick={onAction}
+      >
+        {actionBusy ? (
+          <LoaderCircle className="size-4 animate-spin" />
+        ) : connected ? (
+          "Disconnect"
+        ) : (
+          "Connect"
+        )}
+      </Button>
+    </div>
   );
 }
 
@@ -594,62 +655,38 @@ export function LocalConnectorSettings({
           localTest ? (
             <div className="mt-4 divide-y rounded-xl border">
               {localTest.statuses.map((subscription) => (
-                <div
+                <ProviderRow
                   key={subscription.provider}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
-                >
-                  <ProviderBrandIcon
-                    provider={subscription.provider}
-                    className="text-muted-foreground size-6"
-                  />
-                  <div className="min-w-48 flex-1">
-                    <p className="font-medium">{subscription.label}</p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {subscription.connected
-                        ? [subscription.accountLabel, subscription.plan]
-                            .filter(Boolean)
-                            .join(" · ") ||
-                          "Authenticated through the provider CLI"
-                        : subscription.error ||
-                          (subscription.available
-                            ? "Ready to connect"
-                            : "CLI not found")}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="rounded-full">
-                    {subscription.connected
-                      ? "Connected"
-                      : subscription.connecting
-                        ? "Connecting"
-                        : subscription.available
-                          ? "Available"
-                          : "Unavailable"}
-                  </Badge>
-                  <Button
-                    size="sm"
-                    variant={subscription.connected ? "ghost" : "outline"}
-                    disabled={
-                      (!subscription.available && !subscription.connected) ||
-                      localTest.busy
-                    }
-                    onClick={() =>
-                      subscription.connected
-                        ? localTest.onDisconnect(
-                            subscription.provider,
-                            subscription.label
-                          )
-                        : localTest.onConnect(subscription.provider)
-                    }
-                  >
-                    {subscription.connecting ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : subscription.connected ? (
-                      "Disconnect"
-                    ) : (
-                      "Connect"
-                    )}
-                  </Button>
-                </div>
+                  provider={subscription.provider}
+                  label={subscription.label}
+                  detail={
+                    subscription.connected
+                      ? [subscription.accountLabel, subscription.plan]
+                          .filter(Boolean)
+                          .join(" · ") ||
+                        "Authenticated through the provider CLI"
+                      : subscription.error ||
+                        (subscription.available
+                          ? "Ready to connect"
+                          : "CLI not found")
+                  }
+                  connected={subscription.connected}
+                  connecting={subscription.connecting}
+                  available={subscription.available}
+                  actionBusy={subscription.connecting}
+                  actionDisabled={
+                    (!subscription.available && !subscription.connected) ||
+                    localTest.busy
+                  }
+                  onAction={() =>
+                    subscription.connected
+                      ? localTest.onDisconnect(
+                          subscription.provider,
+                          subscription.label
+                        )
+                      : localTest.onConnect(subscription.provider)
+                  }
+                />
               ))}
             </div>
           ) : (
@@ -672,55 +709,33 @@ export function LocalConnectorSettings({
             {status?.providers.map((providerStatus) => {
               const busy = busyProvider === providerStatus.provider;
               return (
-                <div
+                <ProviderRow
                   key={providerStatus.provider}
-                  className="flex flex-wrap items-center gap-3 px-4 py-3"
-                >
-                  <ProviderBrandIcon
-                    provider={providerStatus.provider}
-                    className="text-muted-foreground size-6"
-                  />
-                  <div className="min-w-48 flex-1">
-                    <p className="font-medium">{providerStatus.label}</p>
-                    <p className="text-muted-foreground truncate text-xs">
-                      {providerStatus.connected
-                        ? [providerStatus.accountLabel, providerStatus.plan]
-                            .filter(Boolean)
-                            .join(" · ") ||
-                          (providerStatus.provider === "openai"
-                            ? "ChatGPT login detected; paid plan not verified"
-                            : "Claude account authenticated")
-                        : providerStatus.error ||
-                          (providerStatus.available ? "Ready to connect" : "CLI not found")}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="rounded-full">
-                    {providerStatus.connected
-                      ? "Connected"
-                      : providerStatus.connecting
-                        ? "Connecting"
-                        : providerStatus.available
-                          ? "Available"
-                          : "Unavailable"}
-                  </Badge>
-                  {providerStatus.connected && (
-                    <UsageIndicator provider={providerStatus} />
-                  )}
-                  <Button
-                    size="sm"
-                    variant={providerStatus.connected ? "ghost" : "outline"}
-                    disabled={!providerStatus.available || busy}
-                    onClick={() => void providerAction(providerStatus)}
-                  >
-                    {busy || providerStatus.connecting ? (
-                      <LoaderCircle className="size-4 animate-spin" />
-                    ) : providerStatus.connected ? (
-                      "Disconnect"
-                    ) : (
-                      "Connect"
-                    )}
-                  </Button>
-                </div>
+                  provider={providerStatus.provider}
+                  label={providerStatus.label}
+                  detail={
+                    providerStatus.connected
+                      ? [providerStatus.accountLabel, providerStatus.plan]
+                          .filter(Boolean)
+                          .join(" · ") ||
+                        (providerStatus.provider === "openai"
+                          ? "ChatGPT login detected; paid plan not verified"
+                          : "Claude account authenticated")
+                      : providerStatus.error ||
+                        (providerStatus.available ? "Ready to connect" : "CLI not found")
+                  }
+                  connected={providerStatus.connected}
+                  connecting={providerStatus.connecting}
+                  available={providerStatus.available}
+                  actionBusy={busy || providerStatus.connecting}
+                  actionDisabled={!providerStatus.available || busy}
+                  onAction={() => void providerAction(providerStatus)}
+                  trailing={
+                    providerStatus.connected ? (
+                      <UsageIndicator provider={providerStatus} />
+                    ) : undefined
+                  }
+                />
               );
             })}
           </div>

@@ -48,7 +48,7 @@ import { LocalConnectorSettings } from "@/components/settings/local-connector-se
 import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
-} from "@agent-hub/agent/local-providers";
+} from "@agent-hub/agent/client";
 import { Switch } from "@/components/ui/switch";
 
 const PROVIDER_LABELS: Record<Provider, string> = {

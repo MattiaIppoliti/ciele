@@ -5,7 +5,7 @@ import { Button, Card } from "@agent-hub/ui";
 import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
-} from "@agent-hub/agent/local-providers";
+} from "@agent-hub/agent/client";
 
 export function LocalSubscriptionConnect({
   provider,

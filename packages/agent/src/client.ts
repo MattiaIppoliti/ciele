@@ -55,3 +55,11 @@ export type {
   ApiRequestErrorCode,
   ExtractedVariable,
 } from "./api-request";
+
+// The local provider-CLI status shapes (ADR-0015). The Settings client
+// components render these; the value exports stay on `./local-providers`
+// because they spawn CLIs and read the filesystem — server-only.
+export type {
+  LocalSubscriptionProvider,
+  LocalSubscriptionStatus,
+} from "./local-subscriptions";
