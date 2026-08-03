@@ -11,7 +11,13 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { motion, useReducedMotion, type Transition } from "motion/react";
+import {
+  motion,
+  useAnimationControls,
+  useReducedMotion,
+  type PanInfo,
+  type Transition,
+} from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -22,6 +28,7 @@ import {
   type ReactNode,
 } from "react";
 import { ActionSwapText } from "@/components/motion/action-swap";
+import { shouldDismissSwipe } from "@/components/motion/swipe-dismiss";
 import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";
 import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
 import { cn } from "@/lib/utils";
@@ -56,6 +63,11 @@ export interface NotificationStackProps {
   /** Renders the top-right dismiss control; omit to hide it. */
   onClose?: () => void;
   closeLabel?: string;
+  /**
+   * Phone-style swipe-right-to-dismiss, which calls `onClose`. Needs `onClose`
+   * to do anything; pass `false` where the banner must not be swiped away.
+   */
+  swipeToDismiss?: boolean;
   maxVisible?: number;
   collapsedLabel?: string;
   expandedLabel?: string;
@@ -179,6 +191,7 @@ export function NotificationStack({
   onViewAll,
   onClose,
   closeLabel = "Close",
+  swipeToDismiss = true,
   maxVisible = 3,
   collapsedLabel = "Notifications",
   expandedLabel = "View all",
@@ -189,6 +202,10 @@ export function NotificationStack({
   const reduce = useReducedMotion();
   const canHover = useHoverCapable();
   const hasFocus = useRef(false);
+  const swipe = useAnimationControls();
+  // A drag ends with a click event on the stack button; this keeps the release
+  // from also expanding or "View all"-ing the banner on the way out.
+  const didDrag = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLSpanElement>(null);
   // The expanded stack grows upward out of the root's collapsed footprint, so
@@ -251,7 +268,38 @@ export function NotificationStack({
     event.currentTarget.blur();
   };
 
+  const canSwipe = Boolean(onClose && swipeToDismiss);
+
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
+    if (
+      !onClose ||
+      !shouldDismissSwipe({ offset: info.offset.x, velocity: info.velocity.x })
+    ) {
+      void swipe.start({ x: 0 }, reduce ? { duration: 0 } : SPRING_LAYOUT);
+      return;
+    }
+
+    // Follow the finger off the right edge, then hand over to the same
+    // dismissal the close control uses.
+    void swipe
+      .start(
+        { x: "115%", opacity: 0 },
+        reduce ? { duration: 0 } : { duration: 0.22, ease: EASE_OUT },
+      )
+      .then(() => {
+        // The banner usually unmounts here; reset anyway so a still-mounted
+        // stack (an alert that outlives the dismissal) is not left off-screen.
+        swipe.set({ x: 0, opacity: 1 });
+        onClose();
+      });
+  };
+
   const handleClick = () => {
+    if (didDrag.current) {
+      didDrag.current = false;
+      return;
+    }
+
     if (!isExpanded) {
       setIsExpanded(true);
       return;
@@ -268,8 +316,23 @@ export function NotificationStack({
   return (
     // The stack itself is one big button, so the dismiss control has to be a
     // sibling — a button inside a button is invalid markup.
-    <div
+    <motion.div
       ref={rootRef}
+      // Swipe right to dismiss, like a phone notification. Leftward travel is
+      // near-rigid slack that springs back, so the gesture reads one-way.
+      drag={canSwipe ? "x" : false}
+      dragDirectionLock
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0.05, right: 0.9, top: 0, bottom: 0 }}
+      dragMomentum={false}
+      animate={swipe}
+      onPointerDown={() => {
+        didDrag.current = false;
+      }}
+      onDragStart={() => {
+        didDrag.current = true;
+      }}
+      onDragEnd={handleDragEnd}
       // Hover lives here, not on the stack button: the dismiss control sits
       // outside that button's box, and chasing a control that collapses the
       // moment you reach for it is worse than no control.
@@ -279,7 +342,12 @@ export function NotificationStack({
       onPointerLeave={() => {
         if (canHover && !hasFocus.current) setIsExpanded(false);
       }}
-      className={cn("relative w-full max-w-[22rem]", className)}
+      className={cn(
+        "relative w-full max-w-[22rem]",
+        // touch-pan-y keeps vertical page scrolling working on the card.
+        canSwipe && "touch-pan-y",
+        className,
+      )}
     >
       {onClose ? (
         <button
@@ -439,6 +507,6 @@ export function NotificationStack({
           </motion.span>
         </span>
       </motion.button>
-    </div>
+    </motion.div>
   );
 }
