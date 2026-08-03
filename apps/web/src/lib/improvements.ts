@@ -1,30 +1,30 @@
-import type { ComponentType } from "react"
-import { ChartNoAxesColumnIncreasing, MoreHorizontal } from "lucide-react"
-import type { ImprovementPriority, ImprovementStatus } from "@agent-hub/core"
+import type { ComponentType } from "react";
+import { ChartNoAxesColumnIncreasing, MoreHorizontal } from "lucide-react";
+import type { ImprovementPriority, ImprovementStatus } from "@agent-hub/core";
 
-type IconType = ComponentType<{ className?: string }>
+type IconType = ComponentType<{ className?: string }>;
 
 /** Kanban lanes, in board order. */
 export const IMPROVEMENT_STATUSES: Array<{
-  value: ImprovementStatus
-  label: string
+  value: ImprovementStatus;
+  label: string;
 }> = [
   { value: "to_do", label: "To do" },
   { value: "in_progress", label: "In Progress" },
   { value: "in_review", label: "In Review" },
   { value: "done", label: "Done" },
   { value: "archived", label: "Archived" },
-]
+];
 
 export const IMPROVEMENT_PRIORITIES: Array<{
-  value: ImprovementPriority
-  label: string
+  value: ImprovementPriority;
+  label: string;
   /** Tailwind classes for the priority chip. */
-  chip: string
+  chip: string;
   /** Bar-graph icon (dots for "none"), matching the reference picker. */
-  icon: IconType
+  icon: IconType;
   /** Icon tint. */
-  iconColor: string
+  iconColor: string;
 }> = [
   {
     value: "high",
@@ -54,19 +54,39 @@ export const IMPROVEMENT_PRIORITIES: Array<{
     icon: MoreHorizontal,
     iconColor: "text-muted-foreground",
   },
-]
+];
+
+/**
+ * True when a click on an improvement link should stay a navigation (new tab,
+ * new window, download) instead of opening the drawer in place.
+ */
+export function keepsLinkNavigation(event: {
+  metaKey: boolean;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  button: number;
+}): boolean {
+  return (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  );
+}
 
 export function improvementKey(seq: number): string {
-  return `IMP-${seq}`
+  return `IMP-${seq}`;
 }
 
 export function statusLabel(status: ImprovementStatus): string {
-  return IMPROVEMENT_STATUSES.find((s) => s.value === status)?.label ?? status
+  return IMPROVEMENT_STATUSES.find((s) => s.value === status)?.label ?? status;
 }
 
 export function priorityMeta(priority: ImprovementPriority) {
   return (
     IMPROVEMENT_PRIORITIES.find((p) => p.value === priority) ??
     IMPROVEMENT_PRIORITIES[3]
-  )
+  );
 }

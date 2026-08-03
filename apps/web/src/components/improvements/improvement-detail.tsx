@@ -60,9 +60,11 @@ interface MemberOption {
   email: string;
 }
 
-function messageSources(
-  content: unknown[]
-): Array<{ conceptTitle: string; collectionName: string; sourceName: string | null }> {
+function messageSources(content: unknown[]): Array<{
+  conceptTitle: string;
+  collectionName: string;
+  sourceName: string | null;
+}> {
   for (const p of content) {
     const part = p as {
       type?: string;
@@ -89,7 +91,13 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 /** Left-labelled row whose value is a popover trigger pill. */
-function FieldPill({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldPill({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <span className="text-muted-foreground text-sm">{label}</span>
@@ -107,12 +115,18 @@ export function ImprovementDetail({
   members,
   proposal,
   canEdit,
+  variant = "page",
 }: {
   improvement: Improvement;
   associations: ImprovementAssociation[];
   members: MemberOption[];
   proposal: ImprovementProposal | null;
   canEdit: boolean;
+  /**
+   * "drawer" drops the breadcrumb (the drawer has its own header) — the columns
+   * need no flag, they respond to the container's width, not the viewport's.
+   */
+  variant?: "page" | "drawer";
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -204,25 +218,28 @@ export function ImprovementDetail({
   const filteredMembers = members.filter((m) =>
     memberDisplayName(m.email)
       .toLowerCase()
-      .includes(assigneeSearch.trim().toLowerCase())
+      .includes(assigneeSearch.trim().toLowerCase()),
   );
 
-  const current = associations[Math.min(page, Math.max(0, associations.length - 1))];
+  const current =
+    associations[Math.min(page, Math.max(0, associations.length - 1))];
   const pri = priorityMeta(priority);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className="@container flex h-full flex-col overflow-y-auto">
       {/* Header */}
       <header className="shrink-0 px-6 pt-5 pb-4">
-        <div className="mb-3 flex items-center gap-2">
-          <nav className="text-muted-foreground flex items-center gap-1.5 text-sm">
-            <Link href="/improvements" className="hover:text-foreground">
-              All Improvements
-            </Link>
-            <ChevronRight className="size-3.5" />
-            <span className="text-foreground">View Improvement Item</span>
-          </nav>
-        </div>
+        {variant === "page" && (
+          <div className="mb-3 flex items-center gap-2">
+            <nav className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <Link href="/improvements" className="hover:text-foreground">
+                All Improvements
+              </Link>
+              <ChevronRight className="size-3.5" />
+              <span className="text-foreground">View Improvement Item</span>
+            </nav>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -292,7 +309,7 @@ export function ImprovementDetail({
         </div>
       </header>
 
-      <div className="grid flex-1 gap-6 border-t px-6 py-5 lg:grid-cols-[1fr_320px]">
+      <div className="@4xl:grid-cols-[1fr_320px] grid flex-1 gap-6 border-t px-6 py-5">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
           <section>
@@ -352,7 +369,7 @@ export function ImprovementDetail({
             )}
 
             {current && (
-              <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+              <div className="@2xl:grid-cols-[1fr_220px] grid gap-4">
                 <div className="bg-card min-w-0 rounded-xl border p-4">
                   <Transcript
                     transcript={current.transcript}
@@ -416,13 +433,25 @@ export function ImprovementDetail({
             <section className="space-y-4">
               <h2 className="font-semibold">Details</h2>
               <DetailGroup title="User">
-                <DetailRow label="Name" value={current.conversation.metadata.userName} />
-                <DetailRow label="Role" value={current.conversation.metadata.userRole} />
-                <DetailRow label="Email" value={current.conversation.metadata.userEmail} />
+                <DetailRow
+                  label="Name"
+                  value={current.conversation.metadata.userName}
+                />
+                <DetailRow
+                  label="Role"
+                  value={current.conversation.metadata.userRole}
+                />
+                <DetailRow
+                  label="Email"
+                  value={current.conversation.metadata.userEmail}
+                />
                 <DetailRow label="Student ID" value={null} />
               </DetailGroup>
               <DetailGroup title="Conversation">
-                <DetailRow label="Assistant" value={current.conversation.assistantTitle} />
+                <DetailRow
+                  label="Assistant"
+                  value={current.conversation.assistantTitle}
+                />
                 <DetailRow
                   label="When"
                   value={formatDateTime(current.conversation.createdAt)}
@@ -443,12 +472,30 @@ export function ImprovementDetail({
                 />
               </DetailGroup>
               <DetailGroup title="Session">
-                <DetailRow label="Launch URL" value={current.conversation.metadata.launchUrl} />
-                <DetailRow label="IP address" value={current.conversation.metadata.ip} />
-                <DetailRow label="Browser" value={current.conversation.metadata.browser} />
-                <DetailRow label="OS" value={current.conversation.metadata.os} />
-                <DetailRow label="Resolution" value={current.conversation.metadata.resolution} />
-                <DetailRow label="Language" value={current.conversation.metadata.language} />
+                <DetailRow
+                  label="Launch URL"
+                  value={current.conversation.metadata.launchUrl}
+                />
+                <DetailRow
+                  label="IP address"
+                  value={current.conversation.metadata.ip}
+                />
+                <DetailRow
+                  label="Browser"
+                  value={current.conversation.metadata.browser}
+                />
+                <DetailRow
+                  label="OS"
+                  value={current.conversation.metadata.os}
+                />
+                <DetailRow
+                  label="Resolution"
+                  value={current.conversation.metadata.resolution}
+                />
+                <DetailRow
+                  label="Language"
+                  value={current.conversation.metadata.language}
+                />
               </DetailGroup>
             </section>
           )}
@@ -486,7 +533,9 @@ export function ImprovementDetail({
           <FieldPill label="Tags">
             <Popover>
               <PopoverTrigger className={PILL} disabled={!canEdit}>
-                {tags.length ? `${tags.length} tag${tags.length > 1 ? "s" : ""}` : "No tags"}
+                {tags.length
+                  ? `${tags.length} tag${tags.length > 1 ? "s" : ""}`
+                  : "No tags"}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-3">
                 <p className="mb-0.5 text-sm font-medium">Select or add tags</p>
@@ -621,7 +670,10 @@ export function ImprovementDetail({
                 {dueDate ? formatDay(`${dueDate}T00:00:00.000Z`) : "None"}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-auto p-3">
-                <Calendar value={dueDate} onSelect={(iso) => changeDueDate(iso)} />
+                <Calendar
+                  value={dueDate}
+                  onSelect={(iso) => changeDueDate(iso)}
+                />
                 {dueDate && (
                   <button
                     type="button"
@@ -694,7 +746,7 @@ function Transcript({
               {messageText(m.content)}
             </p>
           </div>
-        )
+        ),
       )}
     </div>
   );
@@ -725,8 +777,8 @@ function SuggestedFix({
       <section>
         <h2 className="mb-2 font-semibold">Suggested fix</h2>
         <p className="text-muted-foreground text-sm">
-          No suggested fix yet. A draft is generated automatically when an answer
-          is flagged.
+          No suggested fix yet. A draft is generated automatically when an
+          answer is flagged.
         </p>
       </section>
     );
@@ -762,15 +814,21 @@ function SuggestedFix({
       </div>
       <Card size="sm" className="gap-3 p-4">
         <div>
-          <p className="text-muted-foreground text-xs font-medium uppercase">Question</p>
+          <p className="text-muted-foreground text-xs font-medium uppercase">
+            Question
+          </p>
           <p className="text-sm font-medium">{payload.draftQuestion}</p>
         </div>
         <div>
-          <p className="text-muted-foreground text-xs font-medium uppercase">Answer</p>
+          <p className="text-muted-foreground text-xs font-medium uppercase">
+            Answer
+          </p>
           <p className="text-sm whitespace-pre-wrap">{payload.draftAnswer}</p>
         </div>
         {payload.rationale && (
-          <p className="text-muted-foreground text-sm italic">{payload.rationale}</p>
+          <p className="text-muted-foreground text-sm italic">
+            {payload.rationale}
+          </p>
         )}
         {payload.sources.length > 0 && (
           <p className="text-muted-foreground text-xs">
@@ -793,7 +851,12 @@ function SuggestedFix({
                   className="min-h-16"
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={dismiss} disabled={pending}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={dismiss}
+                    disabled={pending}
+                  >
                     Confirm dismiss
                   </Button>
                   <Button

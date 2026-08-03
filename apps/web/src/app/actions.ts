@@ -24,6 +24,7 @@ import type {
   ImprovementListItem,
   ImprovementMessageLink,
   ImprovementPatch,
+  ImprovementProposal,
   OpenAiCompatibleConfig,
   OrganizationPatch,
   ProfilePatch,
@@ -57,10 +58,7 @@ import {
   listEscalationDesks,
   type EscalationHelpDesk,
 } from "@/lib/escalation-desks";
-import {
-  improvementAssignedEmail,
-  improvementClosedEmail,
-} from "@/lib/notify";
+import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import {
   backfillCollectionToGraph,
   beginWebsiteCrawl,
@@ -156,13 +154,16 @@ export async function switchOrganizationAction(organizationId: string) {
 /** Org branding: name + circular logo. Admin+ (same gate as Members). */
 export async function updateOrganizationAction(patch: OrganizationPatch) {
   const { db, session } = await requireMember("manageMembers");
-  const organization = await db.updateOrganization(session.organization.id, patch);
+  const organization = await db.updateOrganization(
+    session.organization.id,
+    patch,
+  );
   revalidatePath("/", "layout");
   return organization;
 }
 
 export async function uploadOrganizationLogoAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ logoUrl?: string; error?: string }> {
   const { db, session } = await requireMember("manageMembers");
 
@@ -182,7 +183,9 @@ export async function uploadOrganizationLogoAction(
     file,
   });
 
-  await db.updateOrganization(session.organization.id, { logoUrl: uploaded.publicUrl });
+  await db.updateOrganization(session.organization.id, {
+    logoUrl: uploaded.publicUrl,
+  });
   revalidatePath("/", "layout");
   return { logoUrl: uploaded.publicUrl };
 }
@@ -201,23 +204,29 @@ export async function updateOrgBudgetAction(input: {
         throw new Error("The daily token limit must be a positive number.");
       }
       const euroLimit = input.dailyEuroLimit;
-      if (euroLimit != null && (!Number.isFinite(euroLimit) || euroLimit <= 0)) {
+      if (
+        euroLimit != null &&
+        (!Number.isFinite(euroLimit) || euroLimit <= 0)
+      ) {
         throw new Error("The daily euro limit must be a positive number.");
       }
       await db.setOrgBudget(session.organization.id, {
         dailyTokenLimit: limit == null ? null : Math.floor(limit),
-        dailyEuroLimit: euroLimit == null ? null : Math.round(euroLimit * 100) / 100,
+        dailyEuroLimit:
+          euroLimit == null ? null : Math.round(euroLimit * 100) / 100,
         enforcement: input.enforcement === "block" ? "block" : "notify",
       });
-    }
+    },
   );
 }
 
 /** Weekly self-improvement (compost) opt-out. Admin+ (same gate as the budget). */
-export async function updateCompostOptOutAction(optOut: boolean): Promise<void> {
+export async function updateCompostOptOutAction(
+  optOut: boolean,
+): Promise<void> {
   await orgMutation(
     { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
-    ({ db, session }) => db.setCompostOptOut(session.organization.id, optOut)
+    ({ db, session }) => db.setCompostOptOut(session.organization.id, optOut),
   );
 }
 
@@ -227,23 +236,23 @@ export async function updateCompostOptOutAction(optOut: boolean): Promise<void> 
  * not re-embed anything already stored — see the card's own warning.
  */
 export async function updateEmbeddingConnectionAction(
-  connectionId: string | null
+  connectionId: string | null,
 ): Promise<void> {
   await orgMutation(
     { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
     ({ db, session }) =>
-      db.setEmbeddingConnectionId(session.organization.id, connectionId)
+      db.setEmbeddingConnectionId(session.organization.id, connectionId),
   );
 }
 
 /** Owner opt-in for Member-owned, Preview-only local AI subscriptions. */
 export async function updatePersonalAiSubscriptionsAllowedAction(
-  allowed: boolean
+  allowed: boolean,
 ): Promise<void> {
   await orgMutation(
     { capability: "changeRoles", entities: [{ kind: "aiSettings" }] },
     ({ db, session }) =>
-      db.setPersonalAiSubscriptionsAllowed(session.organization.id, allowed)
+      db.setPersonalAiSubscriptionsAllowed(session.organization.id, allowed),
   );
 }
 
@@ -268,11 +277,12 @@ export async function joinDemoOrgAction() {
 async function assertMayManageMemberTier(
   ctx: MemberContext,
   userId: string,
-  targetRole?: Role
+  targetRole?: Role,
 ) {
   const { db, session } = ctx;
   if (canChangeRoles(session.role)) return;
-  if (targetRole === "owner") throw new Error("Only owners can grant ownership");
+  if (targetRole === "owner")
+    throw new Error("Only owners can grant ownership");
   const members = await db.listMembers(session.organization.id);
   const target = members.find((m) => m.userId === userId);
   if (target?.role === "owner")
@@ -285,7 +295,7 @@ export async function updateMemberRoleAction(userId: string, role: Role) {
     async (ctx) => {
       await assertMayManageMemberTier(ctx, userId, role);
       await ctx.db.updateMemberRole(ctx.session.organization.id, userId, role);
-    }
+    },
   );
 }
 
@@ -305,14 +315,14 @@ export async function removeMemberAction(userId: string) {
 export async function createInviteAction(role: Role, email?: string) {
   return orgMutation(
     { capability: "manageMembers", entities: [{ kind: "members" }] },
-    ({ db, session }) => db.createInvite(session.organization.id, role, email)
+    ({ db, session }) => db.createInvite(session.organization.id, role, email),
   );
 }
 
 export async function revokeInviteAction(inviteId: string) {
   await orgMutation(
     { capability: "manageMembers", entities: [{ kind: "members" }] },
-    ({ db }) => db.revokeInvite(inviteId)
+    ({ db }) => db.revokeInvite(inviteId),
   );
 }
 
@@ -328,7 +338,7 @@ export async function updateProfileAction(patch: ProfilePatch) {
 }
 
 export async function uploadProfileAvatarAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ avatarUrl?: string; error?: string }> {
   // Any Member may set their own photo; the object path is scoped to the
   // caller's active Organization prefix, matching the storage layout.
@@ -380,7 +390,7 @@ export async function createAssistantAction(input: {
 }) {
   const assistant = await orgMutation(
     { capability: "edit", entities: [{ kind: "assistantList" }] },
-    ({ db, session }) => db.createAssistant(session.organization.id, input)
+    ({ db, session }) => db.createAssistant(session.organization.id, input),
   );
   redirect(`/assistants/${assistant.id}`);
 }
@@ -388,7 +398,7 @@ export async function createAssistantAction(input: {
 export async function updateAssistantAction(id: string, patch: AssistantPatch) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "assistant", id }] },
-    ({ db }) => db.updateAssistant(id, patch)
+    ({ db }) => db.updateAssistant(id, patch),
   );
 }
 
@@ -400,7 +410,7 @@ export async function updateAssistantAction(id: string, patch: AssistantPatch) {
  * generic error — see api-request.ts).
  */
 export async function testApiRequestAction(
-  settings: NonNullable<FlowActionSettings["api_request"]>
+  settings: NonNullable<FlowActionSettings["api_request"]>,
 ): Promise<ApiRequestTestResult> {
   await requireMember("edit");
   return testApiRequest(settings);
@@ -408,7 +418,7 @@ export async function testApiRequestAction(
 
 export async function uploadAssistantAvatarAction(
   id: string,
-  formData: FormData
+  formData: FormData,
 ): Promise<{ avatarUrl?: string; error?: string }> {
   return orgMutation(
     {
@@ -438,12 +448,12 @@ export async function uploadAssistantAvatarAction(
           organizationId: session.organization.id,
           kind: "assistant",
           file,
-        }
+        },
       );
 
       await db.updateAssistant(id, { avatarUrl: uploaded.publicUrl });
       return { avatarUrl: uploaded.publicUrl };
-    }
+    },
   );
 }
 
@@ -460,9 +470,12 @@ export async function deleteAssistantAction(id: string) {
       const collections = await db.listCollections(id);
       await db.deleteAssistant(id);
       for (const collection of collections) {
-        await enqueueGraphSyncJob({ op: "purge", collectionId: collection.id }, { db });
+        await enqueueGraphSyncJob(
+          { op: "purge", collectionId: collection.id },
+          { db },
+        );
       }
-    }
+    },
   );
 }
 
@@ -472,13 +485,19 @@ export async function deleteAssistantAction(id: string) {
  * counterpart to `deleteAssistantAction`'s per-Collection purge. Inert on the
  * graph side without a worker.
  */
-export async function deleteCollectionAction(assistantId: string, collectionId: string) {
+export async function deleteCollectionAction(
+  assistantId: string,
+  collectionId: string,
+) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       await db.deleteCollection(collectionId);
       await enqueueGraphSyncJob({ op: "purge", collectionId }, { db });
-    }
+    },
   );
 }
 
@@ -518,7 +537,7 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
   if (attachedSkills.length > 0) {
     await db.setAssistantSkills(
       copy.id,
-      attachedSkills.map((s) => s.id)
+      attachedSkills.map((s) => s.id),
     );
   }
 
@@ -548,7 +567,7 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
         !consumed.has(f.id) &&
         f.name === flow.name &&
         f.builtIn === flow.builtIn &&
-        f.isDefault === flow.isDefault
+        f.isDefault === flow.isDefault,
     );
     if (seed) {
       consumed.add(seed.id);
@@ -594,14 +613,14 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
  */
 function assertTriggerActions(
   trigger: FlowTrigger,
-  actions: FlowAction[] | undefined
+  actions: FlowAction[] | undefined,
 ) {
   const invalid = (actions ?? []).find(
-    (action) => !actionAllowedForTrigger(action, trigger)
+    (action) => !actionAllowedForTrigger(action, trigger),
   );
   if (invalid) {
     throw new Error(
-      `The "${invalid}" action cannot run on the "${trigger}" trigger.`
+      `The "${invalid}" action cannot run on the "${trigger}" trigger.`,
     );
   }
 }
@@ -610,14 +629,14 @@ export async function createFlowAction(assistantId: string, input: FlowInput) {
   assertTriggerActions(input.trigger ?? "message", input.actions);
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
-    ({ db }) => db.createFlow(assistantId, input)
+    ({ db }) => db.createFlow(assistantId, input),
   );
 }
 
 export async function updateFlowAction(
   assistantId: string,
   flowId: string,
-  patch: FlowPatch
+  patch: FlowPatch,
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
@@ -627,32 +646,32 @@ export async function updateFlowAction(
       // whichever half the patch leaves alone.
       if (patch.trigger !== undefined || patch.actions !== undefined) {
         const stored = (await db.listFlows(assistantId)).find(
-          (flow) => flow.id === flowId
+          (flow) => flow.id === flowId,
         );
         assertTriggerActions(
           patch.trigger ?? stored?.trigger ?? "message",
-          patch.actions ?? stored?.actions
+          patch.actions ?? stored?.actions,
         );
       }
       return db.updateFlow(flowId, patch);
-    }
+    },
   );
 }
 
 export async function deleteFlowAction(assistantId: string, flowId: string) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
-    ({ db }) => db.deleteFlow(flowId)
+    ({ db }) => db.deleteFlow(flowId),
   );
 }
 
 export async function reorderFlowsAction(
   assistantId: string,
-  orderedIds: string[]
+  orderedIds: string[],
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "flows", assistantId }] },
-    ({ db }) => db.reorderFlows(assistantId, orderedIds)
+    ({ db }) => db.reorderFlows(assistantId, orderedIds),
   );
 }
 
@@ -664,7 +683,7 @@ export async function createHelpDeskAction(input: {
 }) {
   return orgMutation(
     { capability: "edit", entities: [{ kind: "helpDeskList" }] },
-    ({ db, session }) => db.createHelpDesk(session.organization.id, input)
+    ({ db, session }) => db.createHelpDesk(session.organization.id, input),
   );
 }
 
@@ -674,62 +693,62 @@ export async function updateHelpDeskAction(
     name?: string;
     description?: string;
     autoGenerateImprovements?: boolean;
-  }
+  },
 ) {
   await orgMutation(
     {
       capability: "edit",
       entities: [{ kind: "helpDeskList" }, { kind: "helpDesk", id }],
     },
-    ({ db }) => db.updateHelpDesk(id, patch)
+    ({ db }) => db.updateHelpDesk(id, patch),
   );
 }
 
 export async function deleteHelpDeskAction(id: string) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "helpDeskList" }] },
-    ({ db }) => db.deleteHelpDesk(id)
+    ({ db }) => db.deleteHelpDesk(id),
   );
 }
 
 export async function createSupportChannelAction(
   helpDeskId: string,
-  input: SupportChannelInput
+  input: SupportChannelInput,
 ) {
   return orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.createSupportChannel(helpDeskId, input)
+    ({ db }) => db.createSupportChannel(helpDeskId, input),
   );
 }
 
 export async function updateSupportChannelAction(
   helpDeskId: string,
   channelId: string,
-  patch: SupportChannelPatch
+  patch: SupportChannelPatch,
 ) {
   return orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.updateSupportChannel(channelId, patch)
+    ({ db }) => db.updateSupportChannel(channelId, patch),
   );
 }
 
 export async function deleteSupportChannelAction(
   helpDeskId: string,
-  channelId: string
+  channelId: string,
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.deleteSupportChannel(channelId)
+    ({ db }) => db.deleteSupportChannel(channelId),
   );
 }
 
 export async function reorderSupportChannelsAction(
   helpDeskId: string,
-  orderedIds: string[]
+  orderedIds: string[],
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.reorderSupportChannels(helpDeskId, orderedIds)
+    ({ db }) => db.reorderSupportChannels(helpDeskId, orderedIds),
   );
 }
 
@@ -742,7 +761,7 @@ export async function connectServiceNowIntegrationAction(
     clientSecret: string;
     username: string;
     password: string;
-  }
+  },
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
@@ -757,14 +776,14 @@ export async function connectServiceNowIntegrationAction(
           username: input.username.trim(),
           password: sealSecret(input.password),
         },
-      })
+      }),
   );
 }
 
 export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.clearTicketingIntegration(helpDeskId)
+    ({ db }) => db.clearTicketingIntegration(helpDeskId),
   );
 }
 
@@ -777,7 +796,12 @@ export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
 
 export async function setSsoConnectionAction(
   assistantId: string,
-  input: { provider: SsoProviderKind; clientId: string; tenantId: string; clientSecret: string }
+  input: {
+    provider: SsoProviderKind;
+    clientId: string;
+    tenantId: string;
+    clientSecret: string;
+  },
 ): Promise<{ error?: string }> {
   return orgMutation(
     {
@@ -793,7 +817,9 @@ export async function setSsoConnectionAction(
       const tenantId = input.tenantId.trim();
       const clientSecret = input.clientSecret.trim();
       if (!clientId || !tenantId || !clientSecret) {
-        return { error: "Client ID, Tenant ID and Client secret are all required." };
+        return {
+          error: "Client ID, Tenant ID and Client secret are all required.",
+        };
       }
       await db.setSsoConnection(session.organization.id, {
         provider: input.provider,
@@ -801,12 +827,12 @@ export async function setSsoConnectionAction(
         encryptedSecret: sealSecret(clientSecret),
       });
       return {};
-    }
+    },
   );
 }
 
 export async function validateSsoConnectionAction(
-  assistantId: string
+  assistantId: string,
 ): Promise<{ ok: boolean; error?: string }> {
   return orgMutation(
     {
@@ -815,7 +841,8 @@ export async function validateSsoConnectionAction(
     },
     async ({ db, session }) => {
       const connection = await db.getSsoConnection(session.organization.id);
-      if (!connection) return { ok: false, error: "No connection to validate." };
+      if (!connection)
+        return { ok: false, error: "No connection to validate." };
       const provider = getSsoProvider(connection.provider);
       if (!provider?.validate) {
         return { ok: false, error: "This provider can't be validated." };
@@ -828,10 +855,10 @@ export async function validateSsoConnectionAction(
       });
       await db.setSsoConnectionValidation(
         session.organization.id,
-        result.ok ? "valid" : "invalid"
+        result.ok ? "valid" : "invalid",
       );
       return result.ok ? { ok: true } : { ok: false, error: result.error };
-    }
+    },
   );
 }
 
@@ -841,17 +868,17 @@ export async function disconnectSsoConnectionAction(assistantId: string) {
       capability: "manageMembers",
       entities: [{ kind: "assistant", id: assistantId }],
     },
-    ({ db, session }) => db.clearSsoConnection(session.organization.id)
+    ({ db, session }) => db.clearSsoConnection(session.organization.id),
   );
 }
 
 export async function setAssistantRequireSignInAction(
   assistantId: string,
-  requireSignIn: boolean
+  requireSignIn: boolean,
 ) {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "assistant", id: assistantId }] },
-    ({ db }) => db.updateAssistant(assistantId, { requireSignIn })
+    ({ db }) => db.updateAssistant(assistantId, { requireSignIn }),
   );
 }
 
@@ -875,10 +902,14 @@ export async function getPreviewSsoGateAction(assistantId: string): Promise<{
   const cookieStore = await cookies();
   const authenticated = isGateValidForOrg(
     cookieStore.get(SSO_GATE_COOKIE)?.value,
-    orgId
+    orgId,
   );
   const connection = await db.getSsoConnectionPublic(orgId);
-  return { requireSignIn: true, authenticated, provider: connection?.provider ?? null };
+  return {
+    requireSignIn: true,
+    authenticated,
+    provider: connection?.provider ?? null,
+  };
 }
 
 /**
@@ -887,7 +918,7 @@ export async function getPreviewSsoGateAction(assistantId: string): Promise<{
  * the Preview reflects unsaved-but-applied Help Desks settings immediately.
  */
 export async function listEscalationDesksAction(
-  assistantId: string
+  assistantId: string,
 ): Promise<EscalationHelpDesk[]> {
   const { db, session } = await requireMember();
   const assistant = await db.getAssistant(assistantId);
@@ -897,7 +928,7 @@ export async function listEscalationDesksAction(
   return listEscalationDesks(
     db,
     session.organization.id,
-    assistant.helpDeskSettings?.selectedIds ?? []
+    assistant.helpDeskSettings?.selectedIds ?? [],
   );
 }
 
@@ -906,7 +937,7 @@ export async function listEscalationDesksAction(
 /** Creates an org Skill; when created from an assistant's page, attaches it too. */
 export async function createSkillAction(
   input: SkillInput,
-  attachToAssistantId?: string
+  attachToAssistantId?: string,
 ): Promise<Skill> {
   return orgMutation(
     {
@@ -929,36 +960,45 @@ export async function createSkillAction(
         ]);
       }
       return skill;
-    }
+    },
   );
 }
 
 export async function updateSkillAction(
   assistantId: string,
   skillId: string,
-  patch: SkillPatch
+  patch: SkillPatch,
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.updateSkill(skillId, patch)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.updateSkill(skillId, patch),
   );
 }
 
 export async function deleteSkillAction(assistantId: string, skillId: string) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.deleteSkill(skillId)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.deleteSkill(skillId),
   );
 }
 
 /** Replaces which org Skills this assistant runs with (ordered). */
 export async function setAssistantSkillsAction(
   assistantId: string,
-  skillIds: string[]
+  skillIds: string[],
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.setAssistantSkills(assistantId, skillIds)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.setAssistantSkills(assistantId, skillIds),
   );
 }
 
@@ -981,7 +1021,7 @@ export interface ApiIntegrationView {
 }
 
 export async function getApiIntegrationAction(
-  assistantId: string
+  assistantId: string,
 ): Promise<ApiIntegrationView | null> {
   const { db } = await requireMember();
   const integration = await db.getApiIntegration(assistantId);
@@ -1013,7 +1053,7 @@ export async function setApiIntegrationAction(
     authUsername?: string;
     credential?: string;
     endpoints: ApiEndpointSpec[];
-  }
+  },
 ): Promise<{ error?: string }> {
   return orgMutation(
     {
@@ -1028,7 +1068,9 @@ export async function setApiIntegrationAction(
       try {
         base = new URL(input.baseUrl.trim());
       } catch {
-        return { error: "Enter a valid base URL, e.g. https://api.example.com" };
+        return {
+          error: "Enter a valid base URL, e.g. https://api.example.com",
+        };
       }
       if (base.protocol !== "https:") {
         return { error: "The base URL must use https." };
@@ -1055,14 +1097,17 @@ export async function setApiIntegrationAction(
         endpoints,
       });
       return {};
-    }
+    },
   );
 }
 
 export async function deleteApiIntegrationAction(assistantId: string) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.deleteApiIntegration(assistantId)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.deleteApiIntegration(assistantId),
   );
 }
 
@@ -1070,7 +1115,10 @@ export async function deleteApiIntegrationAction(assistantId: string) {
 
 export async function publishAssistantAction(assistantId: string) {
   return orgMutation(
-    { capability: "publish", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "publish",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       const [assistant, flows, collections, skills] = await Promise.all([
         db.getAssistant(assistantId),
@@ -1081,29 +1129,38 @@ export async function publishAssistantAction(assistantId: string) {
       if (!assistant) throw new Error("Assistant not found");
       const publication = await db.createPublication(
         assistantId,
-        buildPublicationConfig(assistant, flows, collections, skills)
+        buildPublicationConfig(assistant, flows, collections, skills),
       );
       invalidatePublication(assistantId);
       return publication.version;
-    }
+    },
   );
 }
 
 export async function unpublishAssistantAction(assistantId: string) {
   await orgMutation(
-    { capability: "publish", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "publish",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       const assistant = await db.getAssistant(assistantId);
       if (!assistant) throw new Error("Assistant not found");
       await db.deletePublications(assistantId);
       invalidatePublication(assistantId);
-    }
+    },
   );
 }
 
-export async function republishAction(assistantId: string, publicationId: string) {
+export async function republishAction(
+  assistantId: string,
+  publicationId: string,
+) {
   return orgMutation(
-    { capability: "publish", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "publish",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       const old = await db.getPublication(publicationId);
       if (!old || old.assistantId !== assistantId)
@@ -1111,7 +1168,7 @@ export async function republishAction(assistantId: string, publicationId: string
       const publication = await db.createPublication(assistantId, old.config);
       invalidatePublication(assistantId);
       return publication.version;
-    }
+    },
   );
 }
 
@@ -1131,7 +1188,7 @@ const KNOWN_PROVIDERS: Provider[] = ["anthropic", "openai", "google"];
 export async function createProviderConnectionAction(
   provider: Provider,
   apiKey: string,
-  displayName?: string
+  displayName?: string,
 ): Promise<{ error?: string }> {
   return orgMutation(
     {
@@ -1142,13 +1199,15 @@ export async function createProviderConnectionAction(
     async ({ db, session }) => {
       // `provider` crosses a server-action boundary — validate before it ever
       // reaches the key probe or a DB write, rather than trusting the type.
-      if (!KNOWN_PROVIDERS.includes(provider)) return { error: "Unknown provider" };
+      if (!KNOWN_PROVIDERS.includes(provider))
+        return { error: "Unknown provider" };
       const trimmed = apiKey.trim();
       if (!trimmed) return { error: "API key is required" };
       try {
         await validateProviderApiKey(provider, trimmed);
       } catch (error) {
-        if (error instanceof InvalidProviderKeyError) return { error: error.message };
+        if (error instanceof InvalidProviderKeyError)
+          return { error: error.message };
         throw error;
       }
       await db.createProviderConnection(session.organization.id, {
@@ -1160,7 +1219,7 @@ export async function createProviderConnectionAction(
         createdBy: session.userId,
       });
       return {};
-    }
+    },
   );
 }
 
@@ -1168,7 +1227,7 @@ export async function createProviderConnectionAction(
 export async function createSubscriptionConnectionAction(
   _provider: Provider,
   _token: string,
-  _displayName?: string
+  _displayName?: string,
 ): Promise<{ error?: string }> {
   void _provider;
   void _token;
@@ -1213,14 +1272,15 @@ export async function createGoogleVertexFederatedConnectionAction(input: {
         type: "federated",
         provider: "google",
         displayName:
-          input.displayName?.trim() || `Google Vertex (${projectId}/${location})`,
+          input.displayName?.trim() ||
+          `Google Vertex (${projectId}/${location})`,
         encryptedKey: null,
         keyHint: "",
         createdBy: session.userId,
         config,
       });
       return {};
-    }
+    },
   );
 }
 
@@ -1259,7 +1319,7 @@ export async function createAnthropicWifFederatedConnectionAction(input: {
         config,
       });
       return {};
-    }
+    },
   );
 }
 
@@ -1297,14 +1357,15 @@ export async function createAzureOpenAiFederatedConnectionAction(input: {
       await db.createProviderConnection(session.organization.id, {
         type: "federated",
         provider: "azure_openai",
-        displayName: input.displayName?.trim() || `Azure OpenAI (${deployment})`,
+        displayName:
+          input.displayName?.trim() || `Azure OpenAI (${deployment})`,
         encryptedKey: null,
         keyHint: "",
         createdBy: session.userId,
         config,
       });
       return {};
-    }
+    },
   );
 }
 
@@ -1368,7 +1429,7 @@ export async function createOpenAiCompatibleConnectionAction(input: {
         config,
       });
       return {};
-    }
+    },
   );
 }
 
@@ -1398,11 +1459,13 @@ export async function deleteProviderConnectionAction(id: string) {
     async ({ db, session }) => {
       // Resolve within the caller's org so a foreign id can't be deleted, and
       // keep all org-owned Provider Connections admin-managed.
-      const connections = await db.listProviderConnections(session.organization.id);
+      const connections = await db.listProviderConnections(
+        session.organization.id,
+      );
       const connection = connections.find((c) => c.id === id);
       if (!connection) throw new Error("Connection not found");
       await db.deleteProviderConnection(id);
-    }
+    },
   );
 }
 
@@ -1422,7 +1485,7 @@ async function ingestNewSource(
   /** The fetched URL for a `url` Source — retained so the OKF `sources` entry
    *  its Concepts carry names a followable artifact rather than a descriptor
    *  (the Source `name` is the page *title*, which is not addressable). */
-  sourceUrl?: string
+  sourceUrl?: string,
 ) {
   const { db } = await requireMember("edit");
   const [assistant, collection] = await Promise.all([
@@ -1433,10 +1496,13 @@ async function ingestNewSource(
 
   let originalObjectPath: string | null = null;
   if (original && isSupabaseConfigured() && isSupabaseServiceConfigured()) {
-    const stored = await uploadKnowledgeOriginal(createSupabaseServiceClient(), {
-      organizationId: assistant.organizationId,
-      file: original,
-    });
+    const stored = await uploadKnowledgeOriginal(
+      createSupabaseServiceClient(),
+      {
+        organizationId: assistant.organizationId,
+        file: original,
+      },
+    );
     originalObjectPath = stored.path;
   }
 
@@ -1448,8 +1514,14 @@ async function ingestNewSource(
     ...(sourceUrl ? { config: { url: sourceUrl } } : {}),
   });
   await enqueueIngestJob(
-    { kind: "ingest_source", assistantId, collectionId, sourceId: source.id, rawText },
-    { db }
+    {
+      kind: "ingest_source",
+      assistantId,
+      collectionId,
+      sourceId: source.id,
+      rawText,
+    },
+    { db },
   );
   revalidatePath(`/assistants/${assistantId}`);
 }
@@ -1458,16 +1530,22 @@ export async function addTextSourceAction(
   assistantId: string,
   collectionId: string,
   name: string,
-  text: string
+  text: string,
 ) {
   const extracted = await extractSourceText({ kind: "text", name, text });
-  await ingestNewSource(assistantId, collectionId, extracted.name, "text", extracted.text);
+  await ingestNewSource(
+    assistantId,
+    collectionId,
+    extracted.name,
+    "text",
+    extracted.text,
+  );
 }
 
 export async function addUrlSourceAction(
   assistantId: string,
   collectionId: string,
-  url: string
+  url: string,
 ) {
   const extracted = await extractSourceText({ kind: "url", url });
   await ingestNewSource(
@@ -1477,7 +1555,7 @@ export async function addUrlSourceAction(
     "url",
     extracted.text,
     undefined,
-    url
+    url,
   );
 }
 
@@ -1488,14 +1566,17 @@ export async function addUrlSourceAction(
  * extractable text, etc.) from the admin.
  */
 export async function uploadFileSourceAction(
-  formData: FormData
+  formData: FormData,
 ): Promise<{ error: string } | void> {
   const assistantId = formData.get("assistantId") as string;
   const collectionId = formData.get("collectionId") as string;
   const file = formData.get("file") as File | null;
   if (!file) return { error: "No file" };
 
-  const validation = validateKnowledgeFile({ name: file.name, size: file.size });
+  const validation = validateKnowledgeFile({
+    name: file.name,
+    size: file.size,
+  });
   if (!validation.ok) return { error: validation.error };
 
   try {
@@ -1504,7 +1585,14 @@ export async function uploadFileSourceAction(
       name: file.name,
       bytes: await file.arrayBuffer(),
     });
-    await ingestNewSource(assistantId, collectionId, extracted.name, "file", extracted.text, file);
+    await ingestNewSource(
+      assistantId,
+      collectionId,
+      extracted.name,
+      "file",
+      extracted.text,
+      file,
+    );
   } catch (error) {
     return { error: thrownMessage(error, "Upload failed") };
   }
@@ -1520,14 +1608,15 @@ export async function uploadFileSourceAction(
 export async function reprocessSourceAction(
   assistantId: string,
   collectionId: string,
-  sourceId: string
+  sourceId: string,
 ) {
   const { db } = await requireMember("edit");
   const source = await db.getSource(sourceId);
-  if (!source || source.collectionId !== collectionId) throw new Error("Source not found");
+  if (!source || source.collectionId !== collectionId)
+    throw new Error("Source not found");
   if (!source.originalObjectPath) {
     throw new Error(
-      "This file was uploaded before originals were stored, so it can't be re-processed. Re-upload the file to enable re-processing."
+      "This file was uploaded before originals were stored, so it can't be re-processed. Re-upload the file to enable re-processing.",
     );
   }
   if (!isSupabaseConfigured() || !isSupabaseServiceConfigured()) {
@@ -1536,7 +1625,7 @@ export async function reprocessSourceAction(
 
   const bytes = await downloadKnowledgeOriginal(
     createSupabaseServiceClient(),
-    source.originalObjectPath
+    source.originalObjectPath,
   );
   const extracted = await extractSourceText({
     kind: "file",
@@ -1555,7 +1644,7 @@ export async function reprocessSourceAction(
       sourceId,
       rawText: extracted.text,
     },
-    { db }
+    { db },
   );
   revalidatePath(`/assistants/${assistantId}`);
 }
@@ -1563,11 +1652,12 @@ export async function reprocessSourceAction(
 export async function retrySourceIngestAction(
   assistantId: string,
   collectionId: string,
-  sourceId: string
+  sourceId: string,
 ) {
   const { db } = await requireMember("edit");
   const source = await db.getSource(sourceId);
-  if (!source || source.collectionId !== collectionId) throw new Error("Source not found");
+  if (!source || source.collectionId !== collectionId)
+    throw new Error("Source not found");
   if (source.kind === "website") {
     await recrawlWebsiteSourceAction(assistantId, collectionId, sourceId);
     return;
@@ -1602,7 +1692,7 @@ export async function retrySourceIngestAction(
       sourceId,
       rawText: payload.rawText,
     },
-    { db }
+    { db },
   );
   revalidatePath(`/assistants/${assistantId}`);
 }
@@ -1647,7 +1737,7 @@ function toWebsiteConfig(input: WebsiteFormInput) {
 export async function addWebsiteSourceAction(
   assistantId: string,
   collectionId: string,
-  input: WebsiteFormInput
+  input: WebsiteFormInput,
 ) {
   await orgMutation(
     {
@@ -1663,7 +1753,7 @@ export async function addWebsiteSourceAction(
       });
       // Start the crawl in the background; the client polls until it's ready.
       await beginWebsiteCrawl({ db, sourceId: source.id });
-    }
+    },
   );
 }
 
@@ -1671,17 +1761,20 @@ export async function addWebsiteSourceAction(
 export async function updateWebsiteSourceAction(
   assistantId: string,
   sourceId: string,
-  input: WebsiteFormInput
+  input: WebsiteFormInput,
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     ({ db }) =>
       updateWebsiteSourceConfiguration({
         db,
         sourceId,
         name: input.name.trim() || input.url,
         config: toWebsiteConfig(input),
-      })
+      }),
   );
 }
 
@@ -1689,11 +1782,14 @@ export async function updateWebsiteSourceAction(
 export async function setRecrawlScheduleAction(
   assistantId: string,
   sourceId: string,
-  schedule: RecrawlSchedule
+  schedule: RecrawlSchedule,
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.updateSource(sourceId, { recrawlSchedule: schedule })
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.updateSource(sourceId, { recrawlSchedule: schedule }),
   );
 }
 
@@ -1701,14 +1797,14 @@ export async function setRecrawlScheduleAction(
 export async function recrawlWebsiteSourceAction(
   assistantId: string,
   collectionId: string,
-  sourceId: string
+  sourceId: string,
 ) {
   await orgMutation(
     {
       capability: "edit",
       entities: [{ kind: "assistantEditor", assistantId }, { kind: "alerts" }],
     },
-    ({ db }) => restartWebsiteCrawl({ db, sourceId })
+    ({ db }) => restartWebsiteCrawl({ db, sourceId }),
   );
 }
 
@@ -1720,7 +1816,7 @@ export async function recrawlWebsiteSourceAction(
 export async function pollWebsiteCrawlAction(
   assistantId: string,
   collectionId: string,
-  sourceId: string
+  sourceId: string,
 ): Promise<SourceStatus> {
   return orgMutation(
     {
@@ -1728,7 +1824,8 @@ export async function pollWebsiteCrawlAction(
       entities: [{ kind: "assistantEditor", assistantId }],
       revalidateIf: (status: SourceStatus) => status !== "processing",
     },
-    ({ db }) => finalizeWebsiteCrawl({ db, assistantId, collectionId, sourceId })
+    ({ db }) =>
+      finalizeWebsiteCrawl({ db, assistantId, collectionId, sourceId }),
   );
 }
 
@@ -1736,10 +1833,13 @@ export async function pollWebsiteCrawlAction(
 export async function setPageExcludedAction(
   assistantId: string,
   conceptId: string,
-  excluded: boolean
+  excluded: boolean,
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db, session }) => {
       await db.setConceptExcluded(conceptId, excluded);
       if (excluded) {
@@ -1747,7 +1847,9 @@ export async function setPageExcludedAction(
       } else {
         const concept = await db.getConcept(conceptId);
         if (concept) {
-          const connections = await db.listProviderConnections(session.organization.id);
+          const connections = await db.listProviderConnections(
+            session.organization.id,
+          );
           await embedConcept({
             db,
             assistantId,
@@ -1759,7 +1861,7 @@ export async function setPageExcludedAction(
           });
         }
       }
-    }
+    },
   );
 }
 
@@ -1767,11 +1869,14 @@ export async function setPageExcludedAction(
 export async function setPageRecrawlScheduleAction(
   assistantId: string,
   conceptId: string,
-  schedule: RecrawlSchedule | null
+  schedule: RecrawlSchedule | null,
 ) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.setConceptRecrawlSchedule(conceptId, schedule)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.setConceptRecrawlSchedule(conceptId, schedule),
   );
 }
 
@@ -1799,8 +1904,11 @@ async function persistFaqConcept(args: {
 }): Promise<Concept> {
   const question = args.question.trim();
   const slug =
-    question.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) ||
-    "faq";
+    question
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "faq";
   return persistConcept({
     db: args.db,
     assistantId: args.assistantId,
@@ -1822,7 +1930,7 @@ export async function createFaqAction(
   assistantId: string,
   collectionId: string,
   question: string,
-  answer: string
+  answer: string,
 ) {
   const { db, session } = await requireMember("edit");
   const connections = await db.listProviderConnections(session.organization.id);
@@ -1836,7 +1944,10 @@ export async function createFaqAction(
     // Typed by a person in the FAQ editor: hand-authored, and the act of
     // writing it is not a verification event (§5.2 keeps those distinct).
     provenance: {
-      generated: { by: okfActor.human(session.userId), at: new Date().toISOString() },
+      generated: {
+        by: okfActor.human(session.userId),
+        at: new Date().toISOString(),
+      },
     },
   });
   revalidatePath(`/assistants/${assistantId}`);
@@ -1890,7 +2001,13 @@ export async function importFaqsAction(formData: FormData): Promise<{
         // Hand-authored content the member supplied in bulk — the person, not
         // the importer, is the author; the CSV is what it derives from (§5.1).
         generated: { by: okfActor.human(session.userId), at: stamp },
-        sources: [{ id: "faq-csv", resource: `upload "${file.name}"`, title: file.name }],
+        sources: [
+          {
+            id: "faq-csv",
+            resource: `upload "${file.name}"`,
+            title: file.name,
+          },
+        ],
       },
       body: row.answer,
       connections,
@@ -1905,7 +2022,7 @@ export async function updateFaqAction(
   assistantId: string,
   conceptId: string,
   question: string,
-  answer: string
+  answer: string,
 ) {
   const { db, session } = await requireMember("edit");
   const connections = await db.listProviderConnections(session.organization.id);
@@ -1921,7 +2038,10 @@ export async function updateFaqAction(
       type: "FAQ",
       title: question.trim(),
       description: answer.slice(0, 140),
-      generated: { by: okfActor.human(session.userId), at: new Date().toISOString() },
+      generated: {
+        by: okfActor.human(session.userId),
+        at: new Date().toISOString(),
+      },
     },
     body: answer,
   });
@@ -1967,9 +2087,15 @@ export async function reembedKnowledgeAction(assistantId: string) {
   return { pending: conceptIds.length, reembedded };
 }
 
-export async function deleteSourceAction(assistantId: string, sourceId: string) {
+export async function deleteSourceAction(
+  assistantId: string,
+  sourceId: string,
+) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       // Deleting a Source cascade-deletes its Concepts (FK on delete cascade),
       // so capture their ids first and retire their graph documents too — the
@@ -1986,17 +2112,23 @@ export async function deleteSourceAction(assistantId: string, sourceId: string) 
         for (const conceptId of conceptIds) {
           await enqueueGraphSyncJob(
             { op: "remove", collectionId: source.collectionId, conceptId },
-            { db }
+            { db },
           );
         }
       }
-    }
+    },
   );
 }
 
-export async function deleteConceptAction(assistantId: string, conceptId: string) {
+export async function deleteConceptAction(
+  assistantId: string,
+  conceptId: string,
+) {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     async ({ db }) => {
       // Capture the Collection before the delete so the graph document can be
       // retired too (ADR-0017). Inert without a graph worker.
@@ -2005,10 +2137,10 @@ export async function deleteConceptAction(assistantId: string, conceptId: string
       if (concept) {
         await enqueueGraphSyncJob(
           { op: "remove", collectionId: concept.collectionId, conceptId },
-          { db }
+          { db },
         );
       }
-    }
+    },
   );
 }
 
@@ -2020,25 +2152,28 @@ export async function deleteConceptAction(assistantId: string, conceptId: string
  */
 export async function backfillCollectionGraphAction(
   assistantId: string,
-  collectionId: string
+  collectionId: string,
 ): Promise<{ enqueued: number }> {
   return orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => backfillCollectionToGraph(collectionId, { db })
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => backfillCollectionToGraph(collectionId, { db }),
   );
 }
 
 // --- Conversations (preview history) ----------------------------------------------------
 
 export async function listConversationsAction(
-  assistantId: string
+  assistantId: string,
 ): Promise<Conversation[]> {
   const { db, session } = await requireMember();
   return db.listConversations(assistantId, "member", session.userId);
 }
 
 export async function getConversationMessagesAction(
-  conversationId: string
+  conversationId: string,
 ): Promise<StoredMessage[]> {
   const { db } = await requireMember();
   return db.listMessages(conversationId);
@@ -2060,10 +2195,12 @@ export async function getConversationMessagesAction(
  * every id on the way through, so a forged id returns nothing.
  */
 export async function exportInboxConversationsAction(
-  conversationIds: string[]
+  conversationIds: string[],
 ): Promise<ConversationExportRow[]> {
   const { db, session } = await requireMember();
-  const wanted = new Set(conversationIds.slice(0, INBOX_EXPORT_MAX_CONVERSATIONS));
+  const wanted = new Set(
+    conversationIds.slice(0, INBOX_EXPORT_MAX_CONVERSATIONS),
+  );
   if (wanted.size === 0) return [];
   const conversations = (
     await db.listInboxConversations(session.organization.id)
@@ -2080,8 +2217,8 @@ export async function exportInboxConversationsAction(
         batch.map(async (conversation) => ({
           conversation,
           messages: await db.listMessages(conversation.id),
-        }))
-      ))
+        })),
+      )),
     );
   }
 
@@ -2098,7 +2235,7 @@ export async function deleteConversationAction(conversationId: string) {
 
 export async function setConversationPinnedAction(
   conversationId: string,
-  pinned: boolean
+  pinned: boolean,
 ) {
   const { db } = await requireMember();
   await db.setConversationPinned(conversationId, pinned);
@@ -2106,7 +2243,7 @@ export async function setConversationPinnedAction(
 
 export async function sendConversationFeedbackAction(
   conversationId: string,
-  text: string
+  text: string,
 ) {
   const { db } = await requireMember();
   const trimmed = text.trim();
@@ -2119,7 +2256,7 @@ export async function sendConversationFeedbackAction(
 
 export async function setMessageFeedbackAction(
   messageId: string,
-  feedback: -1 | 0 | 1
+  feedback: -1 | 0 | 1,
 ) {
   const { db } = await requireMember();
   await db.setMessageFeedback(messageId, feedback);
@@ -2133,14 +2270,38 @@ export async function listImprovementsAction(): Promise<ImprovementListItem[]> {
 }
 
 export async function listImprovementMessagesAction(
-  improvementId: string
+  improvementId: string,
 ): Promise<ImprovementAssociation[]> {
   const { db } = await requireMember();
   return db.listImprovementMessages(improvementId);
 }
 
+/**
+ * The three reads the Improvement detail page does, in one round trip — so the
+ * Improvements drawer renders the same screen without a navigation.
+ * Returns null when the id is unknown or belongs to another Organization.
+ */
+export async function getImprovementDetailAction(
+  improvementId: string,
+): Promise<{
+  improvement: Improvement;
+  associations: ImprovementAssociation[];
+  proposal: ImprovementProposal | null;
+} | null> {
+  const { db, session } = await requireMember();
+  const improvement = await db.getImprovement(improvementId);
+  if (!improvement || improvement.organizationId !== session.organization.id) {
+    return null;
+  }
+  const [associations, proposal] = await Promise.all([
+    db.listImprovementMessages(improvement.id),
+    db.getImprovementProposal(improvement.id),
+  ]);
+  return { improvement, associations, proposal };
+}
+
 export async function listConversationImprovementLinksAction(
-  conversationId: string
+  conversationId: string,
 ): Promise<ImprovementMessageLink[]> {
   const { db } = await requireMember();
   return db.listConversationImprovementLinks(conversationId);
@@ -2148,7 +2309,7 @@ export async function listConversationImprovementLinksAction(
 
 /** Verifier verdicts for a conversation's messages (Inbox transcript badges). */
 export async function listConversationAnswerVerdictsAction(
-  conversationId: string
+  conversationId: string,
 ): Promise<AnswerVerdict[]> {
   const { db } = await requireMember();
   return db.listConversationAnswerVerdicts(conversationId);
@@ -2157,7 +2318,7 @@ export async function listConversationAnswerVerdictsAction(
 /** "Improve Answer" → Create New Improvement: makes an item + links the message. */
 export async function createImprovementFromMessageAction(
   messageId: string,
-  title: string
+  title: string,
 ): Promise<Improvement> {
   return orgMutation(
     {
@@ -2181,9 +2342,12 @@ export async function createImprovementFromMessageAction(
         text: title,
       });
       // Draft a Suggested Fix for the flagged answer (#390).
-      await enqueueDraftProposalJob({ improvementId: improvement.id, messageId }, { db });
+      await enqueueDraftProposalJob(
+        { improvementId: improvement.id, messageId },
+        { db },
+      );
       return improvement;
-    }
+    },
   );
 }
 
@@ -2193,7 +2357,7 @@ export async function createImprovementFromMessageAction(
  * created Concept on the proposal, and advance the Improvement to In Review.
  */
 export async function acceptImprovementProposalAction(
-  improvementId: string
+  improvementId: string,
 ): Promise<void> {
   await orgMutation(
     {
@@ -2213,9 +2377,13 @@ export async function acceptImprovementProposalAction(
         (await db.listCollections(targetAssistantId))[0]?.id ??
         null;
       if (!collectionId) {
-        throw new Error("The assistant has no Knowledge Collection to add the FAQ to");
+        throw new Error(
+          "The assistant has no Knowledge Collection to add the FAQ to",
+        );
       }
-      const connections = await db.listProviderConnections(session.organization.id);
+      const connections = await db.listProviderConnections(
+        session.organization.id,
+      );
       // The drafter's provenance, resolved to OKF v0.2 (§5.1): each Concept the
       // draft drew on becomes a bundle-relative `sources` entry, so the new FAQ
       // records its derivation instead of losing it at accept time. Concepts
@@ -2225,9 +2393,13 @@ export async function acceptImprovementProposalAction(
           proposal.payload.sources.map(async (s) => {
             const cited = await db.getConcept(s.conceptId).catch(() => null);
             return cited
-              ? { id: s.conceptId, resource: `/${cited.path}`, title: s.conceptTitle }
+              ? {
+                  id: s.conceptId,
+                  resource: `/${cited.path}`,
+                  title: s.conceptTitle,
+                }
               : null;
-          })
+          }),
         )
       ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
       const at = new Date().toISOString();
@@ -2257,14 +2429,14 @@ export async function acceptImprovementProposalAction(
       // The new FAQ lands in the target assistant's Knowledge — refresh it too
       // (orgMutation only revalidates the improvement/inbox entities).
       revalidatePath(`/assistants/${targetAssistantId}`);
-    }
+    },
   );
 }
 
 /** Dismiss a Suggested Fix with a reason (#390). Knowledge is never touched. */
 export async function dismissImprovementProposalAction(
   improvementId: string,
-  reason: string
+  reason: string,
 ): Promise<void> {
   await orgMutation(
     {
@@ -2278,14 +2450,14 @@ export async function dismissImprovementProposalAction(
         status: "dismissed",
         dismissReason: reason.trim().slice(0, 1000),
       });
-    }
+    },
   );
 }
 
 /** "Improve Answer" → Link Existing Improvement (also "Link to a different …"). */
 export async function linkMessageToImprovementAction(
   messageId: string,
-  improvementId: string
+  improvementId: string,
 ): Promise<void> {
   await orgMutation(
     {
@@ -2296,26 +2468,26 @@ export async function linkMessageToImprovementAction(
         { kind: "inbox" },
       ],
     },
-    ({ db }) => db.linkImprovementMessage(improvementId, messageId)
+    ({ db }) => db.linkImprovementMessage(improvementId, messageId),
   );
 }
 
 export async function unlinkImprovementMessageAction(
   improvementId: string,
-  messageId: string
+  messageId: string,
 ): Promise<void> {
   await orgMutation(
     {
       capability: "edit",
       entities: [{ kind: "improvement", id: improvementId }, { kind: "inbox" }],
     },
-    ({ db }) => db.unlinkImprovementMessage(improvementId, messageId)
+    ({ db }) => db.unlinkImprovementMessage(improvementId, messageId),
   );
 }
 
 export async function updateImprovementAction(
   id: string,
-  patch: ImprovementPatch
+  patch: ImprovementPatch,
 ): Promise<void> {
   await orgMutation(
     {
@@ -2324,54 +2496,55 @@ export async function updateImprovementAction(
     },
     async ({ db, session }) => {
       const before = await db.getImprovement(id);
-  const updated = await db.updateImprovement(id, patch);
+      const updated = await db.updateImprovement(id, patch);
 
-  // Fire the assignment / closure notifications (see notify.ts — logs for now).
-  if (before) {
-    const key = `IMP-${updated.seq}`;
-    const members = await db.listMembers(session.organization.id);
-    const emailOf = (userId: string | null) =>
-      userId ? (members.find((m) => m.userId === userId)?.email ?? null) : null;
+      // Fire the assignment / closure notifications (see notify.ts — logs for now).
+      if (before) {
+        const key = `IMP-${updated.seq}`;
+        const members = await db.listMembers(session.organization.id);
+        const emailOf = (userId: string | null) =>
+          userId
+            ? (members.find((m) => m.userId === userId)?.email ?? null)
+            : null;
 
-    if (
-      patch.assigneeId !== undefined &&
-      patch.assigneeId !== before.assigneeId &&
-      updated.assigneeId
-    ) {
-      const to = emailOf(updated.assigneeId);
-      if (to)
-        await sendEmail(
-          improvementAssignedEmail({
-            to,
-            key,
-            title: updated.title,
-            actorEmail: session.email,
-          })
-        );
-    }
+        if (
+          patch.assigneeId !== undefined &&
+          patch.assigneeId !== before.assigneeId &&
+          updated.assigneeId
+        ) {
+          const to = emailOf(updated.assigneeId);
+          if (to)
+            await sendEmail(
+              improvementAssignedEmail({
+                to,
+                key,
+                title: updated.title,
+                actorEmail: session.email,
+              }),
+            );
+        }
 
-    if (patch.status === "done" && before.status !== "done") {
-      const to = emailOf(updated.createdBy);
-      if (to)
-        await sendEmail(
-          improvementClosedEmail({
-            to,
-            key,
-            title: updated.title,
-            actorEmail: session.email,
-          })
-        );
-    }
-  }
-
-    }
+        if (patch.status === "done" && before.status !== "done") {
+          const to = emailOf(updated.createdBy);
+          if (to)
+            await sendEmail(
+              improvementClosedEmail({
+                to,
+                key,
+                title: updated.title,
+                actorEmail: session.email,
+              }),
+            );
+        }
+      }
+    },
   );
 }
 
 export async function deleteImprovementAction(id: string): Promise<void> {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "improvementList" }] },
-    ({ db }) => db.deleteImprovement(id)
+    ({ db }) => db.deleteImprovement(id),
   );
   redirect("/improvements");
 }
@@ -2392,10 +2565,13 @@ function sanitizeExpectations(input: GoalExpectations): GoalExpectations {
 
 export async function createGoalAction(
   assistantId: string,
-  input: { question: string; expectations: GoalExpectations }
+  input: { question: string; expectations: GoalExpectations },
 ): Promise<void> {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     ({ db }) => {
       const question = input.question.trim();
       if (!question) throw new Error("The goal question is required.");
@@ -2403,7 +2579,7 @@ export async function createGoalAction(
         question,
         expectations: sanitizeExpectations(input.expectations),
       });
-    }
+    },
   );
 }
 
@@ -2414,10 +2590,13 @@ export async function updateGoalAction(
     question?: string;
     expectations?: GoalExpectations;
     status?: GoalStatus;
-  }
+  },
 ): Promise<void> {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
     ({ db }) =>
       db.updateAssistantGoal(goalId, {
         question: patch.question?.trim() || undefined,
@@ -2425,17 +2604,20 @@ export async function updateGoalAction(
           ? sanitizeExpectations(patch.expectations)
           : undefined,
         status: patch.status,
-      })
+      }),
   );
 }
 
 export async function deleteGoalAction(
   assistantId: string,
-  goalId: string
+  goalId: string,
 ): Promise<void> {
   await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistantEditor", assistantId }] },
-    ({ db }) => db.deleteAssistantGoal(goalId)
+    {
+      capability: "edit",
+      entities: [{ kind: "assistantEditor", assistantId }],
+    },
+    ({ db }) => db.deleteAssistantGoal(goalId),
   );
 }
 
@@ -2445,6 +2627,6 @@ export async function deleteGoalAction(
 export async function resolveAlertAction(alertId: string): Promise<void> {
   await orgMutation(
     { capability: "edit", entities: [{ kind: "alerts" }] },
-    ({ db, session }) => db.resolveAlert(alertId, session.userId)
+    ({ db, session }) => db.resolveAlert(alertId, session.userId),
   );
 }
