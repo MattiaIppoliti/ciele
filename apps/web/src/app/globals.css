@@ -221,13 +221,18 @@
   .marketing-serif :is(h1, h2, h3, h4) {
     @apply font-heading;
   }
-  /* Highlighter-style selection that flips with the theme: black highlighter
-     in light mode, white highlighter in dark mode. Using the theme tokens
-     makes it invert automatically (foreground is near-black in light,
-     near-white in dark) and follow .light/.dark subtree overrides. */
+  /* One highlighter across every surface and both themes: a fixed dark grey
+     marker with white ink. Deliberately *not* theme tokens — the selection
+     used to invert with the theme, which read as two different brand
+     behaviours between the marketing pages and the app. Keep this value in
+     step with apps/docs and the staff console, which declare the same pair. */
   ::selection {
-    background: var(--foreground);
-    color: var(--background);
+    background: #333333;
+    color: #ffffff;
+  }
+  ::-moz-selection {
+    background: #333333;
+    color: #ffffff;
   }
 }
 /* Arc-style dark gray chrome behind the translucent rail: subtle light

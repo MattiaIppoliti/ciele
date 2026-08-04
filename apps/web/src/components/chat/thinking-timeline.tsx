@@ -1,9 +1,10 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { TurnStep } from "@agent-hub/agent/client";
 import { Hint } from "@agent-hub/ui";
-import { StepIcon, formatToolName } from "./tool-icons";
+import { AgentActivity } from "@/components/agents/agent-activity";
+import { StepIcon } from "./tool-icons";
 import {
   ToolResult,
   ToolResultOutput,
@@ -23,7 +24,9 @@ import {
  * - tool calls → a beui ToolResult disclosure (live status, roll-swapped
  *   labels, copy) whose body shows the call's Input / structured result /
  *   Output through the shared shiki AgentCode surface;
- * - reasoning thoughts → streamed italic text with a live cursor (#584);
+ * - reasoning thoughts → a beui Agent Activity block per segment: shimmering
+ *   "Thinking…" with the streamed text gliding while it writes (#584), then a
+ *   collapsed, expandable "Thought for Xs" once the segment completes;
  * - legacy plan stages (`kind: "step"` runs) → a beui Todo List with
  *   morphing status marks.
  *
@@ -173,12 +176,10 @@ function toolCopyText(step: TurnStep): string | undefined {
   return step.detail || undefined;
 }
 
+/** Header meta: just the seconds this call took, in grey — nothing else. */
 function toolMeta(step: TurnStep): string | undefined {
-  const parts = [
-    step.iteration !== undefined && `iteration ${step.iteration}`,
-    step.durationMs !== undefined && `${step.durationMs}ms`,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : undefined;
+  if (step.durationMs === undefined) return undefined;
+  return `${(step.durationMs / 1000).toFixed(1)}s`;
 }
 
 function ToolStepRow({ step }: { step: TurnStep }) {
@@ -194,9 +195,10 @@ function ToolStepRow({ step }: { step: TurnStep }) {
   const title = firstLine(step.label);
   return (
     <ToolResult
-      // The timeline column already carries the step's icon.
+      // The timeline column already carries the step's icon, and the title
+      // already names the work — no grey tool-name repeat in the header.
       icon={<span />}
-      tool={step.tool ? formatToolName(step.tool) : ""}
+      tool=""
       // The header truncates a long label; hovering it shows the whole line
       // through the same Hint tooltip the chat header buttons use.
       title={
@@ -212,6 +214,68 @@ function ToolStepRow({ step }: { step: TurnStep }) {
     >
       <ToolStepBody step={step} />
     </ToolResult>
+  );
+}
+
+/**
+ * One reasoning segment as a beui Agent Activity block: while the model is
+ * still writing it, a shimmering "Thinking…" label with the streamed text
+ * gliding underneath; once it completes it collapses to "Thought for Xs"
+ * (expandable), so every step of the chatbot's thinking is bracketed by its
+ * own elapsed clock — not just the turn-level header.
+ *
+ * The clock prefers the trace's own `durationMs`; a live turn that lacks one
+ * is timed from when the streaming row mounted. A stored trace with neither
+ * (read back from the database, never seen running) says just "Thought" —
+ * no clock beats a guessed one.
+ */
+function ThoughtRow({ step }: { step: TurnStep }) {
+  const running = step.status === "running";
+  // Same clock shape as the panel header's "Thought for X.Xs": anchor while
+  // the row streams, stamp once on the running→done transition. A stored row
+  // that was never seen running keeps no clock.
+  const startRef = useRef<number | null>(null);
+  const sawRunningRef = useRef(false);
+  const [measuredMs, setMeasuredMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!running) return;
+    sawRunningRef.current = true;
+    if (startRef.current === null) startRef.current = Date.now();
+  }, [running]);
+
+  useEffect(() => {
+    if (!running && sawRunningRef.current && measuredMs === null) {
+      setMeasuredMs(Date.now() - (startRef.current ?? Date.now()));
+    }
+  }, [running, measuredMs]);
+
+  const elapsedMs = step.durationMs ?? measuredMs;
+  const streamingCursor = running ? (
+    <span className="animate-pulse not-italic">▍</span>
+  ) : null;
+
+  return (
+    <AgentActivity
+      items={[
+        {
+          id: step.id,
+          type: "text",
+          content: (
+            <span className="text-[13px] italic whitespace-pre-wrap">
+              {step.label}
+              {streamingCursor}
+            </span>
+          ),
+        },
+      ]}
+      status={running ? "working" : "complete"}
+      duration={elapsedMs !== null ? elapsedMs / 1000 : 0}
+      activeLabel="Thinking…"
+      summary={elapsedMs === null ? "Thought" : undefined}
+      maxHeight={140}
+      className="-mt-1"
+    />
   );
 }
 
@@ -263,6 +327,8 @@ export function ThinkingTimeline({
           );
         } else if (entry.step.kind === "tool") {
           content = <ToolStepRow step={entry.step} />;
+        } else if (entry.step.kind === "thought") {
+          content = <ThoughtRow step={entry.step} />;
         } else {
           content = <PlainStepRow step={entry.step} />;
         }

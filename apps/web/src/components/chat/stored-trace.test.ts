@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
 import {
   chatVisibleSteps,
+  liveOrbState,
   liveTraceLabel,
   storedTraceLabel,
   terminalBadge,
@@ -266,5 +267,49 @@ describe("chatVisibleSteps", () => {
 
   it("keeps non-notice steps and other notices untouched", () => {
     expect(chatVisibleSteps(trace.steps)).toEqual(trace.steps);
+  });
+});
+
+describe("liveOrbState", () => {
+  const tool = (
+    toolName: string,
+    status: "running" | "done"
+  ): TurnStep => ({
+    id: `${toolName}-${status}`,
+    kind: "tool",
+    tool: toolName,
+    label: toolName,
+    status,
+  });
+
+  it("spins the searching globe for running knowledge lookups", () => {
+    expect(liveOrbState([tool("searchKnowledge", "running")])).toBe("searching");
+    expect(liveOrbState([tool("readKnowledgeSource", "running")])).toBe(
+      "searching"
+    );
+  });
+
+  it("wires the connecting constellation for API/DB traffic", () => {
+    expect(liveOrbState([tool("queryApi", "running")])).toBe("connecting");
+    expect(liveOrbState([tool("fetchUrl", "running")])).toBe("connecting");
+    expect(liveOrbState([tool("getApiDetails", "running")])).toBe("connecting");
+  });
+
+  it("orbits working once the terminal declaration has landed", () => {
+    expect(
+      liveOrbState([tool("searchKnowledge", "done"), tool("readyToAnswer", "done")])
+    ).toBe("working");
+  });
+
+  it("falls back to solving before any tool and between other tools", () => {
+    expect(liveOrbState([])).toBe("solving");
+    expect(liveOrbState([tool("searchKnowledge", "done")])).toBe("solving");
+    expect(liveOrbState([tool("remember", "running")])).toBe("solving");
+  });
+
+  it("tracks the newest tool, not the first", () => {
+    expect(
+      liveOrbState([tool("searchKnowledge", "done"), tool("queryApi", "running")])
+    ).toBe("connecting");
   });
 });

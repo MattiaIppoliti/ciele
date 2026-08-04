@@ -6,7 +6,8 @@ import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
 import { ThinkingTimeline } from "./thinking-timeline";
 import { ThinkingShimmer } from "@/components/agents/loading-states/thinking-shimmer";
-import { chatVisibleSteps, liveTraceLabel } from "./stored-trace";
+import { ThinkingOrb } from "@/components/orbs/thinking-orb";
+import { chatVisibleSteps, liveOrbState, liveTraceLabel } from "./stored-trace";
 
 /**
  * The agentic status panel both chat UIs (Widget + admin Preview) render above
@@ -146,8 +147,17 @@ export function ThinkingPanel({
             (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)
           ) : (
             <span className="inline-flex items-center gap-1.5">
+              {/* The thinking orb (vendored thinking-orbs) sits between the
+                  icon pill and the live label, its animation tracking what
+                  the agent is doing: searching for knowledge lookups,
+                  connecting for API/DB traffic, working while the answer is
+                  being written, solving otherwise. */}
+              <ThinkingOrb
+                state={liveOrbState(steps)}
+                size={20}
+                className="shrink-0"
+              />
               <ThinkingShimmer>{liveTraceLabel(steps)}</ThinkingShimmer>
-              <LoaderCircle className="size-3.5 animate-spin" />
             </span>
           )}
         </span>
@@ -158,19 +168,22 @@ export function ThinkingPanel({
             <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground/70" />
           ))}
       </button>
-      {open && (
-        <div
-          ref={bodyRef}
-          className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5"
-        >
-          <ThinkingTimeline steps={steps} />
-          {note && (
-            <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground/70">
-              {note}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Hidden, not unmounted, when collapsed: the timeline rows keep their
+          state across expand/collapse — a ToolResult stays open where the
+          reader left it, and each ThoughtRow's per-segment clock survives the
+          auto-collapse that lands with the answer. */}
+      <div
+        ref={bodyRef}
+        hidden={!open}
+        className="mt-2 max-h-56 overflow-y-auto rounded-2xl border bg-muted/40 px-3 py-2.5"
+      >
+        <ThinkingTimeline steps={steps} />
+        {note && (
+          <p className="mt-2 border-t pt-2 text-[11px] text-muted-foreground/70">
+            {note}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

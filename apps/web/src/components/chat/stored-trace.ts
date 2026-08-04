@@ -128,6 +128,39 @@ export function chatVisibleSteps(steps: TurnStep[]): TurnStep[] {
   });
 }
 
+/**
+ * Which thinking-orb animation matches what the agent is doing right now:
+ * knowledge lookups spin the `searching` globe, API/DB traffic wires the
+ * `connecting` constellation, writing the answer (the terminal readyToAnswer
+ * has landed) orbits `working`, and anything else scrambles `solving`.
+ */
+export type LiveOrbState = "searching" | "connecting" | "working" | "solving";
+
+const SEARCH_TOOLS = new Set(["searchKnowledge", "readKnowledgeSource"]);
+const CONNECT_TOOLS = new Set([
+  "queryApi",
+  "getApiDetails",
+  "viewEndpointDetails",
+  "readApiResponse",
+  "fetchUrl",
+]);
+
+export function liveOrbState(steps: TurnStep[]): LiveOrbState {
+  const newestTool = [...steps]
+    .reverse()
+    .find((step) => step.kind === "tool");
+  if (!newestTool?.tool) return "solving";
+  if (newestTool.status === "running") {
+    if (SEARCH_TOOLS.has(newestTool.tool)) return "searching";
+    if (CONNECT_TOOLS.has(newestTool.tool)) return "connecting";
+    return "solving";
+  }
+  // No tool in flight: after the terminal declaration the model is writing
+  // the answer itself.
+  if (newestTool.tool === "readyToAnswer") return "working";
+  return "solving";
+}
+
 export function liveTraceLabel(steps: TurnStep[]): string {
   const newest = [...steps].reverse().find((step) => step.kind === "tool");
   const line = newest?.label.split("\n")[0].trim();

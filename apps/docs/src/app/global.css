@@ -7,23 +7,17 @@
    render unstyled. Same declaration as apps/web's globals.css. */
 @source "../../../../packages/ui/src";
 
-/* Fully opaque, high-contrast selection colors: black on white in dark mode
-   and white on black in light mode. */
+/* One highlighter across every surface and both themes: a fixed dark grey
+   marker with white ink. It used to invert with the theme, which read as two
+   different brand behaviours between the docs and the product. Keep this value
+   in step with apps/web's globals.css, which declares the same pair. */
 ::selection {
-  background: #000;
-  color: #fff;
+  background: #333333;
+  color: #ffffff;
 }
 ::-moz-selection {
-  background: #000;
-  color: #fff;
-}
-.dark ::selection {
-  background: #fff;
-  color: #000;
-}
-.dark ::-moz-selection {
-  background: #fff;
-  color: #000;
+  background: #333333;
+  color: #ffffff;
 }
 
 /*
