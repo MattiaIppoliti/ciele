@@ -480,7 +480,17 @@ export async function runAssistantChat(options: {
   // — and which provider answered a greeting is not worth a Thinking panel. The
   // fallback is still recorded where it matters: the usage ledger names the
   // provider that actually ran.
-  if (resolved?.usedFallback && !courtesyFlow) {
+  //
+  // Preview only: naming the missing credential and the substitute model is an
+  // operator diagnostic addressed to an admin configuring the Assistant. A
+  // Visitor in an embedded widget must never see which provider keys the
+  // organization does or does not hold (same rule as the provider-error text
+  // below).
+  if (
+    resolved?.usedFallback &&
+    !courtesyFlow &&
+    keyResolution.surface === "preview"
+  ) {
     emit({
       type: "notice",
       label: `No ${PROVIDER_NAMES[assistant.modelProvider]} credential configured — answering with ${PROVIDER_NAMES[resolved.provider]} (${resolved.modelId}) instead`,
@@ -490,11 +500,17 @@ export async function runAssistantChat(options: {
   // No LLM configured anywhere → deterministic demo engine (ADR-0003), same
   // wire events. search_knowledge still runs a real (lexical) search.
   if (!chatModel && !courtesyFlow) {
-    emit({
-      type: "notice",
-      label:
-        "No AI provider credential configured for this organization — using keyword matching (add a provider connection in Settings → AI)",
-    });
+    // Preview only, for the same reason as the fallback notice above: "this
+    // organization has no provider credential, add one in Settings → AI" is an
+    // instruction to an admin. A Visitor can act on none of it, and it exposes
+    // the tenant's configuration state.
+    if (keyResolution.surface === "preview") {
+      emit({
+        type: "notice",
+        label:
+          "No AI provider credential configured for this organization — using keyword matching (add a provider connection in Settings → AI)",
+      });
+    }
     const flow = matchFlow(message, flows, routing);
     if (!flow) {
       const part: ChatReplyPart = {

@@ -50,6 +50,7 @@ import {
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
   improvementKey,
+  improvementKeyClass,
   priorityMeta,
   statusLabel,
 } from "@/lib/improvements";
@@ -244,7 +245,9 @@ export function ImprovementDetail({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="bg-muted/50 rounded-md border px-1.5 py-0.5 font-mono text-sm">
+              <span
+                className={`rounded-md border px-1.5 py-0.5 font-mono text-sm ${improvementKeyClass(status)}`}
+              >
                 {key}
               </span>
               {editingTitle ? (

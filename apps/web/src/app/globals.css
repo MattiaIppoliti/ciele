@@ -393,12 +393,19 @@
    chrome — used on the shell's left nav rail and the right widget-preview
    panel, where a gray scrollbar reads as a stray UI element next to their
    flush borders. */
-.no-scrollbar {
+/* `scrollbar-hide` is the name the vendored agent-chat kit (components/agents,
+   and the composer it puts in both the Preview panel and the widget) writes on
+   its scroll containers. It comes from a Tailwind plugin we do not install, so
+   without this alias every one of those elements shows OS scrollbar chrome —
+   most visibly as arrow buttons inside the chat composer on Windows. */
+.no-scrollbar,
+.scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
-.no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 

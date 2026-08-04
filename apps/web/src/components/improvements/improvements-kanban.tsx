@@ -9,6 +9,7 @@ import { memberDisplayName, memberInitials } from "@/lib/members";
 import {
   IMPROVEMENT_STATUSES,
   improvementKey,
+  improvementKeyClass,
   keepsLinkNavigation,
   priorityMeta,
 } from "@/lib/improvements";
@@ -81,7 +82,9 @@ function ImprovementCard({
           )}
 
           <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
-            <span className="bg-muted/50 rounded-md border px-1.5 py-0.5 font-mono text-[11px]">
+            <span
+              className={`rounded-md border px-1.5 py-0.5 font-mono text-[11px] ${improvementKeyClass(item.status)}`}
+            >
               {improvementKey(item.seq)}
             </span>
             <div className="flex items-center gap-2">

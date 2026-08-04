@@ -163,7 +163,15 @@ export function PublishClient({
           // edge has to override `ring-foreground/10` — a `border-*` class only
           // colours a border that is zero pixels wide.
           latest &&
-            "ring-emerald-500/40 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-500/15 dark:via-emerald-500/[0.06]"
+            "ring-emerald-500/40 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-500/15 dark:via-emerald-500/[0.06]",
+          // A lit top edge: a hairline that brightens in the middle and fades at
+          // both corners (`after`), over a soft bloom that spills a few pixels
+          // down into the card (`before`). `overflow-hidden` keeps both inside
+          // the rounded corners.
+          latest &&
+            "relative overflow-hidden " +
+              "before:pointer-events-none before:absolute before:inset-x-8 before:-top-6 before:h-12 before:rounded-[50%] before:bg-emerald-400/25 before:blur-xl before:content-[''] dark:before:bg-emerald-400/30 " +
+              "after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-[linear-gradient(to_right,transparent,var(--color-emerald-400)_50%,transparent)] after:opacity-70 after:content-[''] dark:after:opacity-90"
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -181,7 +189,7 @@ export function PublishClient({
             <div className="flex items-center gap-2">
               {latest && (
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   onClick={() => setConfirmView("unpublish")}
                   disabled={isPending}
                 >

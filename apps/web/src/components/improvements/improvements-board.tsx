@@ -35,6 +35,7 @@ import {
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
   improvementKey,
+  improvementKeyClass,
   keepsLinkNavigation,
   priorityMeta,
 } from "@/lib/improvements";
@@ -392,7 +393,9 @@ export function ImprovementsBoard({
                                   : ""
                               }`}
                             >
-                              <span className="bg-muted/50 shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-xs">
+                              <span
+                                className={`shrink-0 rounded-md border px-1.5 py-0.5 font-mono text-xs ${improvementKeyClass(i.status)}`}
+                              >
                                 {improvementKey(i.seq)}
                               </span>
                               <span className="min-w-0 flex-1 truncate text-sm font-medium">

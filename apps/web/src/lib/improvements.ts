@@ -80,6 +80,27 @@ export function improvementKey(seq: number): string {
   return `IMP-${seq}`;
 }
 
+/**
+ * Surface classes for the `IMP-n` key badge, tinted per status so the key alone
+ * says where the item stands — no need to find which lane the row sits in. Only
+ * "To do" stays neutral: it is the resting state, and tinting it would leave
+ * nothing for the others to contrast against.
+ */
+export function improvementKeyClass(status: ImprovementStatus): string {
+  switch (status) {
+    case "in_progress":
+      return "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400";
+    case "in_review":
+      return "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400";
+    case "done":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+    case "archived":
+      return "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-400";
+    default:
+      return "bg-muted/50";
+  }
+}
+
 export function statusLabel(status: ImprovementStatus): string {
   return IMPROVEMENT_STATUSES.find((s) => s.value === status)?.label ?? status;
 }

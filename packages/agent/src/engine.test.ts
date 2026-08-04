@@ -690,6 +690,114 @@ describe("Basic Interaction short-circuit (#566)", () => {
 });
 
 /**
+ * The cross-provider fallback notice is an operator diagnostic: it names which
+ * credential the organization is missing and which model answered instead.
+ * Preview (an admin configuring the Assistant) sees it; a Visitor in an embedded
+ * widget never does — same rule as the provider-error text.
+ */
+describe("cross-provider fallback notice is Preview-only", () => {
+  // Only the Default behavior: no classifier candidates, so the turn resolves a
+  // model (which is what raises the notice) without making a network call.
+  const flows = [defaultFlow];
+
+  function fallbackAssistant(): Assistant {
+    return {
+      id: "assistant-1",
+      organizationId: "org-1",
+      title: "Campus Assistant",
+      nickname: "Campus AI",
+      description: "",
+      welcomeMessage: "",
+      aiDisclaimer: "",
+      suggestedQuestions: [],
+      quickReplies: [],
+      answeringStyle: "",
+      chatLauncherEnabled: true,
+      // No Anthropic key is stubbed, so the Google platform key answers instead.
+      modelProvider: "anthropic",
+      modelId: "claude-opus-4-8",
+      style: {},
+      allowedDomains: [],
+      helpDeskSettings: {},
+      tools: {},
+      requireSignIn: false,
+      knowledgeEngine: "graph",
+      simplifiedThinking: false,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    } as Assistant;
+  }
+
+  async function chat(surface: "preview" | "published") {
+    const events: RuntimeEvent[] = [];
+    await runAssistantChat({
+      assistant: fallbackAssistant(),
+      flows,
+      connections: [],
+      message: "when is the marketing exam",
+      history: [],
+      session: createTurnSession("conv-1", {}),
+      keyResolution: { surface },
+      emit: (e) => events.push(e),
+    });
+    return events.filter(
+      (e) => e.type === "notice" && e.label.includes("answering with")
+    );
+  }
+
+  beforeEach(() => {
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "test-google-key");
+    mocked.handlers = {
+      search_knowledge: async () => ({
+        parts: [{ type: "text", action: "search_knowledge", text: "grounded" }],
+      }),
+    };
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("emits the fallback notice on the Preview surface", async () => {
+    expect(await chat("preview")).toHaveLength(1);
+  });
+
+  it("emits nothing on published widget traffic", async () => {
+    expect(await chat("published")).toEqual([]);
+  });
+
+  // Same rule for the no-credential-anywhere notice: it tells an admin to add a
+  // provider connection, which a Visitor can neither do nor need to know about.
+  describe("keyword-matching notice", () => {
+    async function keywordNotices(surface: "preview" | "published") {
+      vi.unstubAllEnvs();
+      const events: RuntimeEvent[] = [];
+      await runAssistantChat({
+        assistant: fallbackAssistant(),
+        flows,
+        connections: [],
+        message: "when is the marketing exam",
+        history: [],
+        session: createTurnSession("conv-1", {}),
+        keyResolution: { surface },
+        emit: (e) => events.push(e),
+      });
+      return events.filter(
+        (e) => e.type === "notice" && e.label.includes("using keyword matching")
+      );
+    }
+
+    it("emits on the Preview surface", async () => {
+      expect(await keywordNotices("preview")).toHaveLength(1);
+    });
+
+    it("emits nothing on published widget traffic", async () => {
+      expect(await keywordNotices("published")).toEqual([]);
+    });
+  });
+});
+
+/**
  * Ticket #327's core claim: the model path runs the SAME dispatch loop as the
  * no-model path. A platform env key selects the model path; with only the
  * default flow there are no classifier candidates, so no network call is ever
