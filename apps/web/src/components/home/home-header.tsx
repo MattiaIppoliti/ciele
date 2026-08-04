@@ -2,19 +2,380 @@
 
 import Link from "next/link";
 import React from "react";
-import { Moon, Plus, Sun } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  BookText,
+  ChevronDown,
+  Cloud,
+  Fingerprint,
+  Gauge,
+  LayoutGrid,
+  LifeBuoy,
+  Moon,
+  MousePointerClick,
+  Plus,
+  Rocket,
+  Server,
+  Sun,
+  Unplug,
+  Users,
+  Workflow,
+} from "lucide-react";
 import { Button, cn } from "@agent-hub/ui";
 import { GhostMark } from "@/components/auth/ghost-mark";
 import { Magnetic } from "@/components/core/magnetic";
 import { useTheme } from "@/components/theme-provider";
+import { AnimatedIcon } from "@/components/ui/animated-icon";
 
 // Only destinations that resolve from every page the header renders on.
 // "Features" was a bare #features anchor: it scrolled on the marketing home and
 // did nothing at all on /pricing, /security or the policy pages.
-const menuItems = [
-  { name: "Pricing", href: "/pricing" },
-  { name: "Docs", href: "https://docs.ciele.app", external: true },
+type MenuLink = { name: string; href: string; external?: boolean };
+/** A promo tile in a dropdown: label + title over an abstract visual. */
+type PanelCard = {
+  badge: string;
+  title: string;
+  href: string;
+  external?: boolean;
+  visual: "list" | "grid" | "waves";
+};
+type MenuItem = MenuLink & {
+  /* Present = the item is a dropdown trigger, not a link of its own. `href`
+     stays the group's own landing page so the mobile list (which has no
+     hover) and keyboard users still get somewhere to go. */
+  columns?: MenuLink[][];
+  /* Right-hand side of the panel: promo cards, or (Docs only) the icon grid. */
+  cards?: PanelCard[];
+  areaGrid?: boolean;
+};
+
+const DOCS = "https://docs.ciele.app";
+
+/** Every docs link is external and opens in a new tab — spelled once. */
+const doc = (name: string, path: string): MenuLink => ({
+  name,
+  href: `${DOCS}${path}`,
+  external: true,
+});
+
+const menuItems: MenuItem[] = [
+  {
+    name: "Features",
+    href: `${DOCS}/assistants`,
+    external: true,
+    columns: [
+      [
+        doc("Assistants", "/assistants"),
+        doc("Knowledge", "/knowledge"),
+        doc("Flows", "/flows"),
+        doc("Help desks", "/help-desks"),
+        doc("Publishing", "/publishing"),
+      ],
+      [
+        doc("Inbox", "/operations/inbox"),
+        doc("Improvements", "/operations/improvements"),
+        doc("Insights", "/operations/insights"),
+        doc("Alerts", "/operations/alerts"),
+        doc("Authentication", "/authentication"),
+      ],
+    ],
+    cards: [
+      {
+        badge: "Build",
+        title: "Assistant editor",
+        href: `${DOCS}/getting-started/create-an-assistant`,
+        external: true,
+        visual: "grid",
+      },
+      {
+        badge: "Run",
+        title: "Inbox & insights",
+        href: `${DOCS}/operations`,
+        external: true,
+        visual: "waves",
+      },
+    ],
+  },
+  {
+    name: "Enterprise",
+    href: "/enterprise",
+    columns: [
+      [
+        { name: "Enterprise governance", href: "/enterprise" },
+        { name: "Pricing", href: "/pricing" },
+        doc("Editions", "/editions"),
+        doc("Plans & billing", "/cloud/plans-and-billing"),
+        doc("Team & SSO", "/cloud/team-and-sso"),
+        { name: "Talk to sales", href: "/contact/sales" },
+      ],
+    ],
+    cards: [
+      {
+        badge: "New",
+        title: "Security & compliance",
+        href: "/security",
+        visual: "list",
+      },
+    ],
+  },
+  {
+    name: "Resources",
+    href: "/security",
+    columns: [
+      [
+        { name: "Security", href: "/security" },
+        { name: "Privacy", href: "/policies/privacy" },
+        { name: "Terms of Service", href: "/policies/terms-of-service" },
+        { name: "Cookies", href: "/policies/cookies" },
+        { name: "Talk to sales", href: "/contact/sales" },
+      ],
+    ],
+    cards: [
+      {
+        badge: "Self-host",
+        title: "Run it yourself",
+        href: `${DOCS}/self-hosting`,
+        external: true,
+        visual: "grid",
+      },
+    ],
+  },
+  {
+    name: "Docs",
+    href: DOCS,
+    external: true,
+    areaGrid: true,
+    columns: [
+      [
+        doc("Getting started", "/getting-started"),
+        doc("Core concepts", "/getting-started/core-concepts"),
+        doc("Create an assistant", "/getting-started/create-an-assistant"),
+        doc("Self-hosting", "/self-hosting"),
+        doc("Editions", "/editions"),
+      ],
+    ],
+  },
 ];
+
+/* The Docs panel's right half: one tile per top-level docs area, in the order
+   the docs sidebar uses (Start here → Build → Connect → Run → Cloud/self-host).
+   Icons, not vendor logos: the docs are product documentation, not an SDK
+   reference, so what belongs here is the shape of the manual. These are the
+   `@lucide-animated` icons, rendered through `AnimatedIcon` so the animation is
+   driven by the tile's own hover — the glyph is 19px inside a 44px target, and
+   the icon's built-in listeners would only fire on the glyph itself. */
+const docsAreas = [
+  { name: "Getting started", href: "/getting-started", Icon: Rocket },
+  { name: "Assistants", href: "/assistants", Icon: MousePointerClick },
+  { name: "Knowledge", href: "/knowledge", Icon: BookText },
+  { name: "Flows", href: "/flows", Icon: Workflow },
+  { name: "Help desks", href: "/help-desks", Icon: LifeBuoy },
+  { name: "Authentication", href: "/authentication", Icon: Fingerprint },
+  { name: "Publishing", href: "/publishing", Icon: Unplug },
+  { name: "Operations", href: "/operations", Icon: Gauge },
+  { name: "Organization", href: "/organization", Icon: Users },
+  { name: "Cloud", href: "/cloud", Icon: Cloud },
+  { name: "Self-hosting", href: "/self-hosting", Icon: Server },
+  { name: "Architecture", href: "/self-hosting/architecture", Icon: LayoutGrid },
+];
+
+/**
+ * The abstract artwork under a promo card's title. Decorative only (hence
+ * `aria-hidden`), drawn in `currentColor` so it inherits the card's muted tone
+ * and works in both themes without a second palette.
+ */
+function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
+  if (visual === "list") {
+    return (
+      <span className="bg-background/70 mt-3 block rounded-xl border p-2.5 shadow-sm">
+        <span className="text-muted-foreground block text-[0.625rem]">Controls</span>
+        <span className="mt-2 block space-y-2" aria-hidden>
+          {[0.9, 0.65, 0.8, 0.5].map((w, i) => (
+            <span key={i} className="flex items-center gap-2">
+              <span className="bg-muted-foreground/30 size-3 shrink-0 rounded-full" />
+              <span
+                className="bg-muted-foreground/20 h-1.5 rounded-full"
+                style={{ width: `${w * 100}%` }}
+              />
+            </span>
+          ))}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden
+      className="text-muted-foreground/40 group-hover/card:text-muted-foreground/70 mt-3 block h-20 overflow-hidden duration-300"
+    >
+      {visual === "grid" ? (
+        <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
+          {/* Faint graph paper with one routed path drawn over it. */}
+          <g strokeWidth="0.5" className="opacity-40">
+            {[0, 20, 40, 60, 80, 100, 120, 140, 160].map((x) => (
+              <line key={x} x1={x} y1="0" x2={x} y2="80" />
+            ))}
+            {[0, 20, 40, 60, 80].map((y) => (
+              <line key={y} x1="0" y1={y} x2="160" y2={y} />
+            ))}
+          </g>
+          <path d="M30 20v25a5 5 0 0 0 5 5h45" strokeWidth="1.5" />
+          <circle cx="30" cy="20" r="3" strokeWidth="1.5" />
+          <circle cx="80" cy="50" r="3" strokeWidth="1.5" />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
+          {/* Concentric arcs radiating from the corner — reach/broadcast. */}
+          {[20, 42, 64, 86, 108].map((r) => (
+            <circle key={r} cx="10" cy="78" r={r} strokeWidth="1" className="opacity-70" />
+          ))}
+        </svg>
+      )}
+    </span>
+  );
+}
+
+/**
+ * A dropdown's promo tile: badge + title over `CardVisual`. The whole card is
+ * one link, and the visual reacts to its hover.
+ */
+function DropdownCard({ card, onNavigate }: { card: PanelCard; onNavigate: () => void }) {
+  return (
+    <Link
+      href={card.href}
+      target={card.external ? "_blank" : undefined}
+      rel={card.external ? "noopener noreferrer" : undefined}
+      onClick={onNavigate}
+      className="group/card bg-muted/40 hover:bg-muted/70 relative block w-56 shrink-0 overflow-hidden rounded-2xl border p-4 duration-200"
+    >
+      <span className="text-muted-foreground text-xs">{card.badge}</span>
+      <span className="mt-0.5 block text-sm font-medium">{card.title}</span>
+      <CardVisual visual={card.visual} />
+    </Link>
+  );
+}
+
+/** The inside of one dropdown: link columns, then the grid or the promo cards. */
+function PanelContent({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+  return (
+    <div className="flex gap-2 p-2">
+      {item.columns?.map((column, columnIndex) => (
+        <ul key={columnIndex} className="w-44 shrink-0 py-1">
+          {column.map((child) => (
+            <li key={child.name}>
+              <Link
+                href={child.href}
+                target={child.external ? "_blank" : undefined}
+                rel={child.external ? "noopener noreferrer" : undefined}
+                onClick={onNavigate}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground block rounded-xl px-3 py-2 duration-150"
+              >
+                {child.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ))}
+      {item.areaGrid && <DocsAreaGrid onNavigate={onNavigate} />}
+      {item.cards?.map((card) => (
+        <DropdownCard key={card.title} card={card} onNavigate={onNavigate} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One panel shared by every dropdown (resend.com-style): it slides along the
+ * nav to sit under the open trigger and morphs to that panel's size, while the
+ * contents cross-slide — outgoing leaves toward the previous trigger, incoming
+ * enters from the new one. `direction` is +1 when moving right along the nav.
+ *
+ * `lastItem` keeps the closed panel rendering its final contents, so closing
+ * fades out rather than collapsing to nothing first.
+ */
+/** Breathing room the panel keeps from either edge of the viewport. */
+const MIN_PANEL_MARGIN = 16;
+
+function DropdownPanel({
+  item,
+  x,
+  direction,
+  open,
+  onNavigate,
+  cardRef,
+}: {
+  item: MenuItem | undefined;
+  x: number;
+  direction: number;
+  open: boolean;
+  onNavigate: () => void;
+  cardRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const reduceMotion = useReducedMotion();
+  const slide = reduceMotion ? 0 : 28 * direction;
+
+  return (
+    <motion.div
+      aria-hidden={!open}
+      data-nav-panel
+      className="absolute left-0 top-full z-30 pt-4"
+      initial={false}
+      animate={{ x, opacity: open ? 1 : 0, y: open ? 0 : -6 }}
+      transition={{
+        x: { type: "spring", stiffness: 420, damping: 40, mass: 0.7 },
+        default: { duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] },
+      }}
+      style={{ pointerEvents: open ? "auto" : "none" }}
+    >
+      <motion.div
+        ref={cardRef}
+        layout
+        transition={{ type: "spring", stiffness: 420, damping: 40, mass: 0.7 }}
+        className="bg-background/95 relative -translate-x-1/2 overflow-hidden rounded-3xl border shadow-2xl shadow-black/10 backdrop-blur-xl dark:shadow-black/40"
+      >
+        {/* popLayout pulls the outgoing panel out of flow, so the card resizes
+            to the incoming one instead of stretching to fit both. */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {item && (
+            <motion.div
+              key={item.name}
+              initial={{ opacity: 0, x: slide, filter: "blur(4px)" }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, x: -slide, filter: "blur(4px)" }}
+              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <PanelContent item={item} onNavigate={onNavigate} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function DocsAreaGrid({ onNavigate }: { onNavigate: () => void }) {
+  return (
+    /* Four columns of 44px tiles: three rows land at the same height as the
+       five-link column beside it, so the panel reads as one block. */
+    <div className="grid shrink-0 grid-cols-4 gap-1 self-center">
+      {docsAreas.map(({ name, href, Icon }) => (
+        <Link
+          key={href}
+          href={`${DOCS}${href}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={name}
+          onClick={onNavigate}
+          className="text-muted-foreground/70 hover:bg-muted hover:text-foreground flex size-11 items-center justify-center rounded-xl duration-150"
+        >
+          <AnimatedIcon icon={Icon} size={19} />
+          <span className="sr-only">{name}</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Blur + rise + fade reveal for the mobile menu items
@@ -64,6 +425,79 @@ export function HomeHeader({
   scrolled: boolean;
 }) {
   const [menuState, setMenuState] = React.useState(false);
+  // Which desktop dropdown is open (null = none). Hover-driven, click-toggled.
+  const [openMenu, setOpenMenu] = React.useState<string | null>(null);
+  // The last opened item stays rendered while the panel fades out, so closing
+  // doesn't collapse the card to zero before it disappears.
+  const [lastMenu, setLastMenu] = React.useState<string | null>(null);
+  // Where the shared panel sits (px from the nav list's left edge) and which
+  // way the contents should slide: +1 when the pointer moved right along it.
+  const [panelX, setPanelX] = React.useState(0);
+  const [direction, setDirection] = React.useState(0);
+  const listRef = React.useRef<HTMLUListElement>(null);
+  const cardRef = React.useRef<HTMLDivElement>(null);
+  const triggerRefs = React.useRef(new Map<string, HTMLElement>());
+
+  const measure = React.useCallback((name: string) => {
+    const trigger = triggerRefs.current.get(name);
+    const list = listRef.current;
+    if (!trigger || !list) return;
+    const triggerBox = trigger.getBoundingClientRect();
+    const listBox = list.getBoundingClientRect();
+    const center = triggerBox.left + triggerBox.width / 2;
+    // Keep the card on screen: the widest panel is ~840px, so centring it on an
+    // outer trigger would hang off the edge on a small laptop.
+    const half = (cardRef.current?.offsetWidth ?? 0) / 2;
+    const clamped = Math.min(
+      Math.max(center, MIN_PANEL_MARGIN + half),
+      window.innerWidth - MIN_PANEL_MARGIN - half
+    );
+    setPanelX(clamped - listBox.left);
+  }, []);
+
+  const openPanel = React.useCallback(
+    (name: string) => {
+      setOpenMenu((current) => {
+        if (current === name) return current;
+        const order = menuItems.map((entry) => entry.name);
+        const from = current ? order.indexOf(current) : -1;
+        setDirection(from === -1 ? 0 : Math.sign(order.indexOf(name) - from));
+        return name;
+      });
+      setLastMenu(name);
+      measure(name);
+    },
+    [measure]
+  );
+
+  /* The pill itself is still tweening its width when the panel opens during a
+     scroll morph, so one measurement at hover time can land under the wrong
+     spot. Re-measure for the length of that tween, then on every resize. */
+  React.useEffect(() => {
+    if (!openMenu) return;
+    let frame = 0;
+    const deadline = performance.now() + 600;
+    const track = () => {
+      measure(openMenu);
+      if (performance.now() < deadline) frame = requestAnimationFrame(track);
+    };
+    frame = requestAnimationFrame(track);
+    const onResize = () => measure(openMenu);
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [openMenu, measure]);
+
+  React.useEffect(() => {
+    if (!openMenu) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [openMenu]);
 
   return (
     <header>
@@ -88,12 +522,15 @@ export function HomeHeader({
             "mx-auto mt-2 max-w-6xl rounded-2xl border border-transparent px-6 transition-all duration-500 ease-in-out max-lg:rounded-[2.5rem] lg:px-12",
             // Collapse to a definite max-width (not max-w-fit): CSS reliably
             // tweens length→length everywhere, so the pill glides narrower
-            // instead of snapping. Sized per auth state so the two links sit
-            // an even ~32px from the logo and CTA at rest.
+            // instead of snapping. Sized per auth state to clear the widest the
+            // row can get — logo + the three nav items (two of them dropdown
+            // triggers, so they carry a chevron) + the CTA cluster. Too narrow
+            // and the row squeezes or wraps instead of gliding — the four nav
+            // items alone measure ~580px at rest.
             scrolled &&
               cn(
                 "bg-background/50 border-border backdrop-blur-lg lg:px-6",
-                authenticated ? "max-w-md" : "max-w-[34rem]"
+                authenticated ? "max-w-[43rem]" : "max-w-[49rem]"
               )
           )}
         >
@@ -106,7 +543,9 @@ export function HomeHeader({
               // animatable property (max-width), no layout-mode swap, no jump.
               // gap-0 on mobile keeps the closed pill slim (the menu card is
               // pulled out of flow — see home.css).
-              "relative flex flex-wrap items-center justify-between gap-0 py-3 transition-[padding] duration-500 ease-in-out lg:gap-0 lg:py-4",
+              // lg:flex-nowrap: on desktop the row is one line, always. Mobile
+              // still wraps — that is how the menu card drops below the pill.
+              "relative flex flex-wrap items-center justify-between gap-0 py-3 transition-[padding] duration-500 ease-in-out lg:flex-nowrap lg:gap-0 lg:py-4",
               scrolled && "lg:py-2.5"
             )}
           >
@@ -137,38 +576,107 @@ export function HomeHeader({
               </div>
             </div>
 
-            <div className="hidden size-fit lg:block">
-              <ul className="flex gap-8 text-sm">
-                {menuItems.map((item) => (
-                  <li key={item.name}>
-                    <Link
-                      href={item.href}
-                      target={item.external ? "_blank" : undefined}
-                      rel={item.external ? "noopener noreferrer" : undefined}
-                      className="text-muted-foreground hover:text-foreground block duration-150"
-                    >
-                      <span>{item.name}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="home-mobile-menu bg-background lg:in-data-[state=active]:flex mb-6 w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
-              {/* Mobile: large menu links, pinned to the top of the card */}
-              <ul className="mt-10 space-y-6 lg:hidden">
-                {menuItems.map((item, i) => (
-                  <li key={item.name}>
-                    <Reveal delay={0.05 + i * 0.08}>
+            {/* Hover opens; leaving the whole cluster (list *and* panel)
+                closes, so sliding sideways between triggers — or down into the
+                open panel — never flickers it shut. */}
+            <div
+              className="relative hidden size-fit lg:block"
+              onMouseLeave={() => setOpenMenu(null)}
+            >
+              <ul ref={listRef} className="flex gap-8 text-sm">
+                {menuItems.map((item) =>
+                  item.columns ? (
+                    <li key={item.name}>
+                      <button
+                        type="button"
+                        ref={(node) => {
+                          if (node) triggerRefs.current.set(item.name, node);
+                          else triggerRefs.current.delete(item.name);
+                        }}
+                        aria-expanded={openMenu === item.name}
+                        aria-haspopup="true"
+                        onMouseEnter={() => openPanel(item.name)}
+                        onFocus={() => openPanel(item.name)}
+                        onClick={() =>
+                          openMenu === item.name ? setOpenMenu(null) : openPanel(item.name)
+                        }
+                        className="group/trigger text-muted-foreground hover:text-foreground aria-expanded:text-foreground flex cursor-pointer items-center gap-1 duration-150"
+                      >
+                        <span>{item.name}</span>
+                        <ChevronDown className="size-3.5 duration-200 group-aria-expanded/trigger:rotate-180" />
+                      </button>
+                    </li>
+                  ) : (
+                    <li key={item.name}>
                       <Link
                         href={item.href}
                         target={item.external ? "_blank" : undefined}
                         rel={item.external ? "noopener noreferrer" : undefined}
-                        onClick={() => setMenuState(false)}
-                        className="text-muted-foreground hover:text-foreground block text-4xl font-light tracking-tight duration-150"
+                        onMouseEnter={() => setOpenMenu(null)}
+                        className="text-muted-foreground hover:text-foreground block duration-150"
                       >
                         <span>{item.name}</span>
                       </Link>
+                    </li>
+                  )
+                )}
+              </ul>
+
+              {/* One panel for the whole nav — it glides between triggers and
+                  morphs to each panel's size (see DropdownPanel). Sibling of
+                  the list, not a child: a <ul> may only contain <li>. */}
+              <DropdownPanel
+                item={menuItems.find((entry) => entry.name === (openMenu ?? lastMenu))}
+                x={panelX}
+                direction={direction}
+                open={openMenu !== null}
+                onNavigate={() => setOpenMenu(null)}
+                cardRef={cardRef}
+              />
+            </div>
+
+            <div className="home-mobile-menu bg-background lg:in-data-[state=active]:flex mb-6 w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
+              {/* Mobile: menu links pinned to the top of the card. Four groups
+                  of five outgrow the card, so the list scrolls on its own and
+                  stops short of the CTAs pinned to the bottom edge. */}
+              <ul className="mt-8 max-h-[calc(100dvh-16rem)] space-y-6 overflow-y-auto pb-6 pr-1 lg:hidden">
+                {menuItems.map((item, i) => (
+                  <li key={item.name}>
+                    <Reveal delay={0.05 + i * 0.08}>
+                      {/* No hover on touch: a group renders as a static label
+                          with its children listed under it, not a dropdown. */}
+                      {item.columns ? (
+                        <div>
+                          <span className="text-muted-foreground/70 block text-2xl font-light tracking-tight">
+                            {item.name}
+                          </span>
+                          <ul className="mt-2 space-y-1.5 pl-1">
+                            {item.columns.flat().map((child) => (
+                              <li key={child.name}>
+                                <Link
+                                  href={child.href}
+                                  target={child.external ? "_blank" : undefined}
+                                  rel={child.external ? "noopener noreferrer" : undefined}
+                                  onClick={() => setMenuState(false)}
+                                  className="text-muted-foreground hover:text-foreground block text-lg font-light duration-150"
+                                >
+                                  {child.name}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          target={item.external ? "_blank" : undefined}
+                          rel={item.external ? "noopener noreferrer" : undefined}
+                          onClick={() => setMenuState(false)}
+                          className="text-muted-foreground hover:text-foreground block text-4xl font-light tracking-tight duration-150"
+                        >
+                          <span>{item.name}</span>
+                        </Link>
+                      )}
                     </Reveal>
                   </li>
                 ))}

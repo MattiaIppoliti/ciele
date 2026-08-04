@@ -740,6 +740,28 @@ html[data-sky-transition="to-day"] .home-sun::after {
   animation: ghost-eyes-glance 3s ease-in-out infinite;
 }
 
+/* Metric lines for the Enterprise page's admin-dashboard visual: the series is
+   drawn twice, side by side, and the group slides one full width left before
+   snapping back — so the traces read as an endless right-to-left scroll. */
+@keyframes home-metric-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.home-metric-scroll {
+  animation: home-metric-scroll var(--metric-duration, 26s) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-metric-scroll {
+    animation: none;
+  }
+}
+
 /* Mobile nav menu (below lg) — Dia-style. The pill IS the menu: it stays a
    slim stadium when closed and, on open, its own bottom edge stretches down
    to cover almost the whole screen (one morphing component, no overlay). The

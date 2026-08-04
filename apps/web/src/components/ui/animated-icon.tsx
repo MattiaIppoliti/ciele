@@ -22,6 +22,7 @@ import {
   CircleCheck,
   CircleHelp,
   Clock,
+  Cloud,
   CloudCog,
   Compass,
   CloudUpload,
@@ -47,6 +48,7 @@ import {
   MessageSquareDashed,
   Mic,
   Monitor,
+  MousePointerClick,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -62,6 +64,7 @@ import {
   RotateCw,
   Route,
   Search,
+  Server,
   Settings,
   ShieldCheck,
   SlidersHorizontal,
@@ -99,10 +102,12 @@ import { CircleCheckIcon } from "@/components/ui/circle-check";
 import { CircleDashedIcon } from "@/components/ui/circle-dashed";
 import { CircleHelpIcon } from "@/components/ui/circle-help";
 import { ClockIcon } from "@/components/ui/clock";
+import { CloudBackupIcon } from "@/components/ui/cloud-backup";
 import { CloudCogIcon } from "@/components/ui/cloud-cog";
 import { CloudUploadIcon } from "@/components/ui/cloud-upload";
 import { CompassIcon } from "@/components/ui/compass";
 import { ConnectIcon } from "@/components/ui/connect";
+import { CursorClickIcon } from "@/components/ui/cursor-click";
 import { ChevronsUpDownIcon } from "@/components/ui/chevrons-up-down";
 import { CopyIcon } from "@/components/ui/copy";
 import { CornerDownLeftIcon } from "@/components/ui/corner-down-left";
@@ -141,6 +146,7 @@ import { RotateCCWIcon } from "@/components/ui/rotate-ccw";
 import { RotateCWIcon } from "@/components/ui/rotate-cw";
 import { RouteIcon } from "@/components/ui/route";
 import { SearchIcon } from "@/components/ui/search";
+import { ServerIcon } from "@/components/ui/server";
 import { SettingsIcon } from "@/components/ui/settings";
 import { ShieldCheckIcon } from "@/components/ui/shield-check";
 import { SlidersHorizontalIcon } from "@/components/ui/sliders-horizontal";
@@ -199,6 +205,7 @@ const ANIMATED = new Map<LucideIcon, AnimatedIconComponent>([
   [CircleCheck, CircleCheckIcon],
   [CircleDashed, CircleDashedIcon],
   [Compass, CompassIcon],
+  [Cloud, CloudBackupIcon],
   [CloudCog, CloudCogIcon],
   [CircleHelp, CircleHelpIcon],
   [Clock, ClockIcon],
@@ -226,6 +233,7 @@ const ANIMATED = new Map<LucideIcon, AnimatedIconComponent>([
   [Mic, MicIcon],
   [Monitor, ComputerDesktopIcon],
   [Moon, MoonIcon],
+  [MousePointerClick, CursorClickIcon],
   [PanelLeftClose, PanelLeftCloseIcon],
   [PanelLeftOpen, PanelLeftOpenIcon],
   [PenTool, PenToolIcon],
@@ -240,6 +248,7 @@ const ANIMATED = new Map<LucideIcon, AnimatedIconComponent>([
   [RotateCw, RotateCWIcon],
   [Route, RouteIcon],
   [Search, SearchIcon],
+  [Server, ServerIcon],
   [Settings, SettingsIcon],
   [ShieldCheck, ShieldCheckIcon],
   [SlidersHorizontal, SlidersHorizontalIcon],
