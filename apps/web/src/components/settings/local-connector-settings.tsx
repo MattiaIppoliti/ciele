@@ -11,6 +11,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import {
   Badge,
   Button,
@@ -299,6 +300,7 @@ export function LocalConnectorSettings({
   const [status, setStatus] = useState<ConnectorStatus | null>(null);
   const [checking, setChecking] = useState(true);
   const [busyProvider, setBusyProvider] = useState<ConnectorProvider | null>(null);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const statusRequestGeneration = useRef(0);
   const relayPairingInFlight = useRef(false);
   const preferenceMutationGeneration = useRef(0);
@@ -563,16 +565,23 @@ export function LocalConnectorSettings({
     });
   }
 
-  async function providerAction(providerStatus: ConnectorProviderStatus) {
-    const operation = providerStatus.connected ? "logout" : "login";
-    if (
-      operation === "logout" &&
-      !window.confirm(
-        `Disconnect ${providerStatus.label}? This signs its CLI out on this device.`
-      )
-    ) {
+  function providerAction(providerStatus: ConnectorProviderStatus) {
+    if (!providerStatus.connected) {
+      void runProviderAction(providerStatus, "login");
       return;
     }
+    confirmDelete({
+      title: `Disconnect ${providerStatus.label}?`,
+      description: "This signs its CLI out on this device.",
+      confirmLabel: "Disconnect",
+      onConfirm: () => runProviderAction(providerStatus, "logout"),
+    });
+  }
+
+  async function runProviderAction(
+    providerStatus: ConnectorProviderStatus,
+    operation: "login" | "logout"
+  ) {
     setBusyProvider(providerStatus.provider);
     statusRequestGeneration.current += 1;
     try {
@@ -820,6 +829,8 @@ export function LocalConnectorSettings({
           </Button>
         </div>
       )}
+
+      {confirmDeleteModal}
     </div>
   );
 }

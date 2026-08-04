@@ -35,6 +35,7 @@ import {
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { Button } from "@agent-hub/ui";
 import { Calendar } from "@/components/ui/calendar";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
@@ -131,6 +132,7 @@ export function ImprovementDetail({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const [title, setTitle] = useState(improvement.title);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -204,8 +206,13 @@ export function ImprovementDetail({
   }
 
   function remove() {
-    if (!confirm(`Delete improvement ${key}? This cannot be undone.`)) return;
-    startTransition(() => deleteImprovementAction(improvement.id));
+    confirmDelete({
+      title: <>Delete {key}?</>,
+      description:
+        "This permanently removes the improvement and cannot be undone.",
+      confirmLabel: "Delete improvement",
+      onConfirm: () => deleteImprovementAction(improvement.id),
+    });
   }
 
   function unlink(messageId: string) {
@@ -700,6 +707,8 @@ export function ImprovementDetail({
           router.refresh();
         }}
       />
+
+      {confirmDeleteModal}
     </div>
   );
 }

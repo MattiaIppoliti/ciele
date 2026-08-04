@@ -13,6 +13,7 @@ import type {
 } from "@agent-hub/core";
 import { CloudCog, Key, Plus, Server, Trash2, User } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import {
   createAnthropicWifFederatedConnectionAction,
@@ -150,6 +151,7 @@ export function AiSettingsClient({
     useState<OpenAiCompatibleTestResult | null>(null);
   const [isTestingCompat, startCompatTest] = useTransition();
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [personalSubscriptionsOn, setPersonalSubscriptionsOn] = useState(
     personalSubscriptionsAllowed
   );
@@ -206,27 +208,27 @@ export function AiSettingsClient({
     provider: LocalSubscriptionProvider,
     label: string
   ) {
-    if (
-      !window.confirm(
-        `Disconnect ${label}? This signs the provider CLI out on this machine.`
-      )
-    ) {
-      return;
-    }
-    startTransition(async () => {
-      try {
-        const response = await fetch(`/api/local-subscriptions/${provider}`, {
-          method: "DELETE",
-        });
-        const body = (await response.json()) as { error?: string };
-        if (!response.ok) throw new Error(body.error || "Disconnect failed.");
-        toast.success(`${label} disconnected`);
-        router.refresh();
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : `Couldn't disconnect ${label}`
-        );
-      }
+    confirmDelete({
+      title: `Disconnect ${label}?`,
+      description: "This signs the provider CLI out on this machine.",
+      confirmLabel: "Disconnect",
+      onConfirm: async () => {
+        try {
+          const response = await fetch(`/api/local-subscriptions/${provider}`, {
+            method: "DELETE",
+          });
+          const body = (await response.json()) as { error?: string };
+          if (!response.ok) throw new Error(body.error || "Disconnect failed.");
+          toast.success(`${label} disconnected`);
+          router.refresh();
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : `Couldn't disconnect ${label}`
+          );
+        }
+      },
     });
   }
 
@@ -1186,6 +1188,8 @@ export function AiSettingsClient({
           </form>
         </DialogContent>
       </Dialog>
+
+      {confirmDeleteModal}
     </div>
   );
 }

@@ -106,6 +106,7 @@ import { TEMPLATE_VARIABLES } from "@agent-hub/agent/client";
 import type { ApiRequestTestResult } from "@agent-hub/agent/client";
 import { cn } from "@/lib/utils";
 import { TrustBadge } from "@/components/assistant/trust-badge";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import {
   FlowButtonIcon,
   FLOW_BUTTON_ICON_OPTIONS,
@@ -1672,6 +1673,7 @@ export function FlowBuilder({
   );
   const [customMessage, setCustomMessage] = useState(flow?.customMessage ?? "");
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const flowsHref = `/assistants/${assistantId}/flows`;
 
@@ -1818,11 +1820,17 @@ export function FlowBuilder({
 
   function handleDelete() {
     if (!flow) return;
-    if (!window.confirm(`Delete flow "${flow.name}"?`)) return;
-    startTransition(async () => {
-      await deleteFlowAction(assistantId, flow.id);
-      toast.success("Flow deleted");
-      router.push(flowsHref);
+    const target = flow;
+    confirmDelete({
+      title: <>Delete &ldquo;{target.name}&rdquo;?</>,
+      description:
+        "This permanently removes the flow from this assistant and cannot be undone.",
+      confirmLabel: "Delete flow",
+      onConfirm: async () => {
+        await deleteFlowAction(assistantId, target.id);
+        toast.success("Flow deleted");
+        router.push(flowsHref);
+      },
     });
   }
 
@@ -2594,6 +2602,8 @@ export function FlowBuilder({
           </Button>
         </div>
       </div>
+
+      {confirmDeleteModal}
     </div>
   );
 }

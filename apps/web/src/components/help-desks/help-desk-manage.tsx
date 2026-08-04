@@ -32,6 +32,7 @@ import { Hint } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_KINDS, CHANNEL_KIND_ORDER } from "@/lib/support-channels";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 const AI_RECOGNITION_TARGET = 200;
 
@@ -50,6 +51,7 @@ export function HelpDeskManage({
   const [panel, setPanel] = useState<ChannelPanelState | null>(null);
   const [panelKey, setPanelKey] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const dirty = name !== desk.name || description !== desk.description;
 
@@ -171,20 +173,30 @@ export function HelpDeskManage({
   }
 
   function handleDelete() {
-    if (!window.confirm(`Delete help desk "${desk.name}"?`)) return;
-    startTransition(async () => {
-      await deleteHelpDeskAction(desk.id);
-      toast.success("Help desk deleted");
-      router.push("/help-desks");
+    confirmDelete({
+      title: <>Delete &ldquo;{desk.name}&rdquo;?</>,
+      description:
+        "This permanently removes the help desk and its escalation channels, and cannot be undone.",
+      confirmLabel: "Delete help desk",
+      onConfirm: async () => {
+        await deleteHelpDeskAction(desk.id);
+        toast.success("Help desk deleted");
+        router.push("/help-desks");
+      },
     });
   }
 
   function deleteChannel(channel: SupportChannel) {
-    if (!window.confirm(`Delete escalation channel "${channel.name}"?`)) return;
-    startTransition(async () => {
-      await deleteSupportChannelAction(desk.id, channel.id);
-      toast.success("Escalation option deleted");
-      router.refresh();
+    confirmDelete({
+      title: <>Delete &ldquo;{channel.name}&rdquo;?</>,
+      description:
+        "This permanently removes the escalation channel and cannot be undone.",
+      confirmLabel: "Delete channel",
+      onConfirm: async () => {
+        await deleteSupportChannelAction(desk.id, channel.id);
+        toast.success("Escalation option deleted");
+        router.refresh();
+      },
     });
   }
 
@@ -447,6 +459,8 @@ export function HelpDeskManage({
           onClose={() => setPanel(null)}
         />
       )}
+
+      {confirmDeleteModal}
     </div>
   );
 }

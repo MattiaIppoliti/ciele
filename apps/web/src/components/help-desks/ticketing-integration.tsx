@@ -27,6 +27,7 @@ import {
   TICKETING_PLATFORMS,
   TICKETING_PLATFORM_ORDER,
 } from "@/lib/ticketing-integrations";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 
 interface ServiceNowFormState {
   name: string;
@@ -72,6 +73,7 @@ export function TicketingIntegrationSection({
   const [query, setQuery] = useState("");
   const [form, setForm] = useState<ServiceNowFormState>(EMPTY_FORM);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   function openBrowseDialog() {
     setStep("list");
@@ -110,11 +112,16 @@ export function TicketingIntegrationSection({
   }
 
   function disconnect() {
-    if (!window.confirm("Disconnect this ticketing integration?")) return;
-    startTransition(async () => {
-      await disconnectTicketingIntegrationAction(helpDeskId);
-      toast.success("Integration disconnected");
-      router.refresh();
+    confirmDelete({
+      title: "Disconnect this ticketing integration?",
+      description:
+        "Escalations stop creating tickets, and the stored credentials are deleted.",
+      confirmLabel: "Disconnect",
+      onConfirm: async () => {
+        await disconnectTicketingIntegrationAction(helpDeskId);
+        toast.success("Integration disconnected");
+        router.refresh();
+      },
     });
   }
 
@@ -346,6 +353,8 @@ export function TicketingIntegrationSection({
           )}
         </DialogContent>
       </Dialog>
+
+      {confirmDeleteModal}
     </>
   );
 }

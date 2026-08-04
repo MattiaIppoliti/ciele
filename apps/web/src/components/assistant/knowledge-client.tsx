@@ -43,6 +43,7 @@ import {
   Unlink,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { toast } from "@/lib/toast";
 import {
   addWebsiteSourceAction,
@@ -720,6 +721,7 @@ function WebsitesTab({
   const [editing, setEditing] = useState<Source | null>(null);
   const [viewing, setViewing] = useState<Source | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const router = useRouter();
 
   const websiteSources = sources
@@ -974,12 +976,16 @@ function WebsitesTab({
                   variant="ghost"
                   size="icon-sm"
                   aria-label="Delete website"
-                  onClick={() => {
-                    if (!window.confirm(`Delete "${source.name}" and its pages?`)) return;
-                    startTransition(async () => {
-                      await deleteSourceAction(assistantId, source.id);
-                    });
-                  }}
+                  onClick={() =>
+                    confirmDelete({
+                      title: <>Delete &ldquo;{source.name}&rdquo;?</>,
+                      description:
+                        "This permanently removes the website and every page crawled from it, and cannot be undone.",
+                      confirmLabel: "Delete website",
+                      onConfirm: () =>
+                        deleteSourceAction(assistantId, source.id),
+                    })
+                  }
                 >
                   <AnimatedIcon icon={Trash2} size={14} />
                 </Button>
@@ -1010,6 +1016,8 @@ function WebsitesTab({
           apifyAvailable={apifyAvailable}
         />
       )}
+
+      {confirmDeleteModal}
     </div>
   );
 }
