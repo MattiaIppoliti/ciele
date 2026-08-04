@@ -102,6 +102,26 @@
     window.addEventListener("load", warmWhenIdle, { once: true });
   }
 
+  // Every frame geometry is written with the SAME properties — the launcher-side
+  // inset pair plus width/height — so card ↔ drawer ↔ full screen is one
+  // animatable set instead of three different layouts (the old code mixed
+  // bottom/right with inset:0, which cannot tween). An iframe is a replaced
+  // element, so its size must be width/height: stretching it between opposite
+  // insets does not work (auto falls back to the intrinsic 300×150).
+  // EASE overshoots slightly (easeOutBack) for the bouncy expand/contract; the
+  // frame is position:fixed, so an overshoot past the viewport adds no scrollbar.
+  var EASE = "cubic-bezier(.34,1.42,.64,1)";
+  var FRAME_TRANSITION =
+    "transition:width .42s " + EASE + ",height .42s " + EASE +
+    ",bottom .42s " + EASE + ",right .42s " + EASE + ",left .42s " + EASE +
+    ",border-radius .28s ease;";
+  function frameTransition() {
+    // Honour the visitor's reduced-motion preference — snap instead of bounce.
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? ""
+      : FRAME_TRANSITION;
+  }
+
   function applyStyles() {
     var side = position === "left" ? "left:24px;" : "right:24px;";
     button.style.cssText =
@@ -111,29 +131,36 @@
       ";color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .15s;";
     var bg = frameBackground();
     var display = "display:" + (state.open ? "block" : "none") + ";";
+    // The frame keeps ONE anchor (the launcher's own corner) in every state, so
+    // only width/height and that corner's offsets ever change.
+    var anchor = position === "left" ? "left:" : "right:";
+    var size;
+    var offset;
+    var chrome;
     if (state.fullscreen) {
       // The chat asked to go full screen (its header's ⋯ menu): cover the
       // whole viewport regardless of mode until it posts ciele:restore.
-      frame.style.cssText =
-        "position:fixed;inset:0;z-index:2147483000;width:100%;height:100%;" +
-        "border:none;border-radius:0;background:" + bg + ";" + display;
+      size = "width:100vw;height:100vh;";
+      offset = "bottom:0;" + anchor + "0;";
+      chrome = "border-radius:0;box-shadow:none;";
     } else if (mode === "drawer") {
       // Flush full-height side panel (like a docs "Ask AI" drawer).
-      var drawerSide = position === "left"
-        ? "left:0;border-right:1px solid rgba(0,0,0,.12);"
-        : "right:0;border-left:1px solid rgba(0,0,0,.12);";
-      frame.style.cssText =
-        "position:fixed;top:0;bottom:0;" + drawerSide +
-        "z-index:2147483000;width:min(400px,100vw);height:100vh;border-radius:0;" +
-        "box-shadow:0 8px 40px rgba(0,0,0,.28);background:" + bg + ";" + display;
+      size = "width:min(400px,100vw);height:100vh;";
+      offset = "bottom:0;" + anchor + "0;";
+      chrome = "border-radius:0;box-shadow:0 8px 40px rgba(0,0,0,.28);" +
+        (position === "left"
+          ? "border-right:1px solid rgba(0,0,0,.12);"
+          : "border-left:1px solid rgba(0,0,0,.12);");
     } else {
       // Floating rounded card above the launcher (default).
-      frame.style.cssText =
-        "position:fixed;bottom:92px;" + side +
-        "z-index:2147483000;width:380px;height:min(640px,calc(100vh - 120px));" +
-        "border:none;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.28);" +
-        "background:" + bg + ";" + display;
+      size = "width:min(380px,calc(100vw - 48px));height:min(640px,calc(100vh - 120px));";
+      offset = "bottom:92px;" + anchor + "24px;";
+      chrome = "border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.28);";
     }
+    frame.style.cssText =
+      "position:fixed;z-index:2147483000;border:none;" +
+      size + offset + chrome + frameTransition() +
+      "background:" + bg + ";" + display;
   }
 
   // Forward later host theme changes (a light/dark toggle on the embedding

@@ -44,6 +44,8 @@ import {
   type ConnectorPreferences,
 } from "@/lib/local-connector-protocol";
 import { ChatHeader } from "@/components/chat/chat-header";
+import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
+import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { IdentityGate } from "@/components/chat/identity-gate";
@@ -283,7 +285,9 @@ export function PreviewPanel({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  // Full screen grows the panel out of the flow (see use-fullscreen-grow).
+  const { fullscreen, setFullscreen, surfaceRef, animating, spacerRef } =
+    useFullscreenGrow();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
@@ -672,7 +676,7 @@ export function PreviewPanel({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fullscreen]);
+  }, [fullscreen, setFullscreen]);
 
   async function submitFeedback(text: string): Promise<boolean> {
     if (!conversationId) {
@@ -835,11 +839,15 @@ export function PreviewPanel({
         </p>
       )}
 
+      {/* While the panel grows it is out of flow, so this holds its slot — and
+          is what the collapse measures back down to. */}
+      {animating && <div ref={spacerRef} className="min-h-0 flex-1" />}
       <div
+        ref={surfaceRef}
         className={
           fullscreen
-            ? "fixed inset-0 z-50 flex flex-col bg-card"
-            : "bg-card flex min-h-0 flex-1 flex-col rounded-xl border"
+            ? "bg-card fixed inset-0 z-50 flex flex-col overflow-hidden"
+            : "bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
         }
       >
         {/* Escalation: replaces the whole chat surface, like the widget. */}
@@ -990,7 +998,7 @@ export function PreviewPanel({
           className="min-h-0 flex-1"
           busy={pending}
           navigation="rail"
-          viewportClassName={`py-5 ${
+          viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
             fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
           }`}
           contentClassName="space-y-4"
@@ -1138,11 +1146,11 @@ export function PreviewPanel({
 
         {/* Chat input */}
         <div
-          className={
+          className={`${WIDEN_TRANSITION} ${
             fullscreen
               ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6"
               : "px-4 pb-4"
-          }
+          }`}
         >
           {/* Always-available escalation button ("Contact Support Button
               Name"), hidden by the Help Desks "Hide Always Available

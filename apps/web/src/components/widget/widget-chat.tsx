@@ -8,6 +8,7 @@ import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
+import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
@@ -957,7 +958,7 @@ export function WidgetChat({
         className="min-h-0 flex-1"
         busy={pending}
         navigation="rail"
-        viewportClassName={`py-5 ${
+        viewportClassName={`py-5 ${WIDEN_TRANSITION} ${
           fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))]" : "px-4"
         }`}
         contentClassName="space-y-4"
@@ -1036,9 +1037,9 @@ export function WidgetChat({
 
       {/* Composer */}
       <div
-        className={
+        className={`${WIDEN_TRANSITION} ${
           fullscreen ? "px-[max(1.5rem,calc((100%-56rem)/2))] pb-6" : "px-4 pb-4"
-        }
+        }`}
       >
         {!hideEscalation && (
           <div className="flex justify-center pb-3">

@@ -134,7 +134,15 @@ export function CieleWidget() {
           role="dialog"
           aria-label="Ask AI"
           style={{ width: fullscreen ? '100vw' : width, maxWidth: '100vw' }}
-          className="fixed inset-y-0 right-0 z-50 flex h-dvh max-sm:!w-full flex-col border-l border-fd-border bg-fd-popover text-fd-popover-foreground shadow-2xl"
+          // The width tween is what makes drawer ↔ full screen read as one
+          // motion; easeOutBack gives it the small overshoot. Dropped while
+          // dragging the edge (the width must track the pointer) and under
+          // prefers-reduced-motion.
+          className={`fixed inset-y-0 right-0 z-50 flex h-dvh max-sm:!w-full flex-col border-l border-fd-border bg-fd-popover text-fd-popover-foreground shadow-2xl${
+            resizing
+              ? ''
+              : ' transition-[width] duration-[420ms] ease-[cubic-bezier(.34,1.42,.64,1)] motion-reduce:transition-none'
+          }`}
         >
           {/* Drag handle — same behavior/look as the app's preview panel. */}
           <div
