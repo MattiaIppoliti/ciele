@@ -10,6 +10,9 @@
     "backfill:assistant-avatars": "node scripts/backfill-assistant-avatars.mjs",
     "backfill:image-assets": "node scripts/backfill-image-assets.mjs",
     "lint": "eslint",
+    "measure:bundle": "node scripts/measure-bundle.mjs",
+    "analyze": "next experimental-analyze -o",
+    "attribute": "node scripts/attribute-bundle.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

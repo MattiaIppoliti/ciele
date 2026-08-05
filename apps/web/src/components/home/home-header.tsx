@@ -27,7 +27,7 @@ import { GhostMark } from "@/components/auth/ghost-mark";
 import { FolderVisual } from "@/components/home/folder-visual";
 import { Magnetic } from "@/components/core/magnetic";
 import { useTheme } from "@/components/theme-provider";
-import { AnimatedIcon } from "@/components/ui/animated-icon";
+import type { AnimatedIcon } from "@/components/ui/animated-icon";
 import { FEATURES, type FeatureEntry } from "@/components/marketing/feature-catalog";
 
 // Only destinations that resolve from every page the header renders on.
@@ -171,6 +171,49 @@ const docsAreas = [
   { name: "Self-hosting", href: "/self-hosting", Icon: Server },
   { name: "Architecture", href: "/self-hosting/architecture", Icon: LayoutGrid },
 ];
+
+/* The docs tiles are the only animated icons the marketing header draws, and
+   importing `animated-icon` eagerly is what put its whole barrel — ~75 animated
+   variants plus the ~80 lucide glyphs its lookup map keys on — into every public
+   page, for 12 tiles behind a hover. Measured at ~16-18 KB gzip per route on
+   /home, /pricing, /features/*, /security and /policies/*.
+
+   Same treatment the hero mock already gets in preview-panes.tsx: render the
+   plain lucide glyph, fetch the animated module on the first pointer into the
+   nav, then swap. The module survives DocsAreaGrid's remounts (the panel is
+   keyed per dropdown, so the grid unmounts whenever another one opens) by
+   living at module scope behind a store — `useSyncExternalStore` rather than
+   setState in an effect, which this repo's lint rules refuse. */
+type AnimatedIconRenderer = typeof AnimatedIcon;
+
+let animatedIcon: AnimatedIconRenderer | null = null;
+let animatedIconPending = false;
+const animatedIconListeners = new Set<() => void>();
+
+function loadAnimatedIcons() {
+  // Both entry points fire on pointer events, so this is called repeatedly
+  // while the first import is still in flight.
+  if (animatedIcon || animatedIconPending) return;
+  animatedIconPending = true;
+  void import("@/components/ui/animated-icon").then((module) => {
+    animatedIcon = module.AnimatedIcon;
+    for (const notify of animatedIconListeners) notify();
+  });
+}
+
+function useAnimatedIcon() {
+  return React.useSyncExternalStore(
+    (onChange) => {
+      animatedIconListeners.add(onChange);
+      return () => {
+        animatedIconListeners.delete(onChange);
+      };
+    },
+    () => animatedIcon,
+    // The server has no animated module either, so both renders agree.
+    () => null
+  );
+}
 
 /**
  * The abstract artwork under a promo card's title. Decorative only (hence
@@ -602,10 +645,18 @@ function MobileGroup({
 }
 
 function DocsAreaGrid({ onNavigate }: { onNavigate: () => void }) {
+  const Animated = useAnimatedIcon();
+
   return (
     /* Four columns of 44px tiles: three rows land at the same height as the
        five-link column beside it, so the panel reads as one block. */
-    <div className="grid shrink-0 grid-cols-4 gap-1 self-center">
+    <div
+      // Backstop for a pointer that reaches the grid before the nav-cluster
+      // preload has resolved (or never entered the cluster — keyboard focus
+      // opens the panel too).
+      onPointerEnter={loadAnimatedIcons}
+      className="grid shrink-0 grid-cols-4 gap-1 self-center"
+    >
       {docsAreas.map(({ name, href, Icon }) => (
         <Link
           key={href}
@@ -616,7 +667,11 @@ function DocsAreaGrid({ onNavigate }: { onNavigate: () => void }) {
           onClick={onNavigate}
           className="text-muted-foreground/70 hover:bg-muted hover:text-foreground flex size-11 items-center justify-center rounded-xl duration-150"
         >
-          <AnimatedIcon icon={Icon} size={19} />
+          {Animated ? (
+            <Animated icon={Icon} size={19} />
+          ) : (
+            <Icon size={19} />
+          )}
           <span className="sr-only">{name}</span>
         </Link>
       ))}
@@ -875,7 +930,13 @@ export function HomeHeader({
                 diagonally down into the open panel — never flickers it shut. */}
             <div
               className="relative hidden size-fit lg:block"
-              onMouseEnter={cancelClose}
+              onMouseEnter={() => {
+                cancelClose();
+                // Entering the nav is the earliest signal the Docs panel might
+                // open, so the animated module is usually there by the time a
+                // tile is hovered.
+                loadAnimatedIcons();
+              }}
               onMouseLeave={scheduleClose}
             >
               <ul ref={listRef} className="flex gap-8 text-sm">

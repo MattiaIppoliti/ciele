@@ -16,6 +16,15 @@ pnpm --filter @agent-hub/web lint        # eslint
 
 Single test file: `pnpm --filter @agent-hub/web exec vitest run src/lib/escalation.test.ts`.
 
+Bundle size (Next 16 prints none, and `@next/bundle-analyzer` does not work under Turbopack —
+see [`docs/runbooks/bundle-measurement.md`](../../docs/runbooks/bundle-measurement.md)):
+
+```bash
+pnpm --filter @agent-hub/web measure:bundle   # first-load gz per prerendered route (needs a build)
+pnpm --filter @agent-hub/web analyze          # next experimental-analyze -o
+pnpm --filter @agent-hub/web attribute home   # per-module buckets; ratios only, not absolute KB
+```
+
 Dev server: use the Browser pane (`preview_start` with `web`, or `web-demo` for the
 Supabase-less mock build) — see `.claude/launch.json`. Never `pnpm dev` in a shell.
 
