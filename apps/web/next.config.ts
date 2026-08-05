@@ -1,9 +1,18 @@
 import type { NextConfig } from "next";
 import { existsSync } from "node:fs";
+import { CONNECTOR_FILENAME } from "./src/lib/local-connector-installer";
 
-const connectorArtifacts = [
-  "./public/connectors/ciele-local-connector-0.3.4.mjs",
-].filter((path) => existsSync(path));
+// The filename comes from the same constant the runtime route reads, so a
+// connector bump can never leave the trace list pointing at a stale version.
+// A missing artifact fails the build here rather than shipping a standalone
+// image whose /api/local-connector/runtime returns 503 (dev and Vercel serve
+// public/ directly, so only the Docker build would notice).
+const connectorArtifact = `./public/connectors/${CONNECTOR_FILENAME}`;
+if (!existsSync(connectorArtifact)) {
+  throw new Error(
+    `Connector runtime missing: ${connectorArtifact}. Add the release artifact or update CURRENT_CONNECTOR_VERSION.`
+  );
+}
 
 const nextConfig: NextConfig = {
   // Self-contained server bundle for the Docker image (#439): `next build`
@@ -19,7 +28,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     // The runtime route reads this file at request time; trace it into the
     // standalone bundle. The terminal one-liner is served from here too.
-    "/api/local-connector/runtime": connectorArtifacts,
+    "/api/local-connector/runtime": [connectorArtifact],
   },
   experimental: {
     serverActions: {

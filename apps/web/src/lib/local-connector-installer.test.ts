@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  CONNECTOR_FILENAME,
   CONNECTOR_SHA256,
   connectorInstallationScope,
   normalizeConnectorOrigin,
@@ -27,6 +28,13 @@ describe("normalizeConnectorOrigin", () => {
 });
 
 describe("connector release", () => {
+  // The filename is derived from CURRENT_CONNECTOR_VERSION and consumed by
+  // next.config.ts's trace list; pinning it here makes a version bump without a
+  // matching artifact fail in tests, not only in the standalone Docker build.
+  it("derives the filename of the checked-in artifact", () => {
+    expect(CONNECTOR_FILENAME).toBe("ciele-local-connector-0.3.6.mjs");
+  });
+
   it("pins the digest of the versioned public runtime", () => {
     const runtime = readFileSync(
       new URL(
