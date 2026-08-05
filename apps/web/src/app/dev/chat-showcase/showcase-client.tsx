@@ -35,9 +35,9 @@ import { ChatHeader } from "@/components/chat/chat-header";
 
 const ANSWER_MARKDOWN = `Le tasse per il **MSc in Management** (a.y. 2026/27) sono **€ 15.200**, divise in tre rate.
 
-- Prima rata: **€ 6.000** — entro il 30 settembre
-- Seconda rata: **€ 5.000** — entro il 15 gennaio
-- Terza rata: **€ 4.200** — entro il 30 aprile
+- Prima rata: **€ 6.000**, entro il 30 settembre
+- Seconda rata: **€ 5.000**, entro il 15 gennaio
+- Terza rata: **€ 4.200**, entro il 30 aprile
 
 Il record recuperato dall'API studenti:
 
@@ -66,12 +66,12 @@ const SOURCES: CitationItem[] = [
   },
   {
     id: "c-scholarship",
-    title: "Borse di studio — riduzioni",
+    title: "Borse di studio, riduzioni",
     domain: "Regolamenti · dsu-guide.pdf",
   },
   {
     id: "c-web-fees",
-    title: "Fees — university website",
+    title: "Fees, university website",
     domain: "Sito ateneo",
     url: "https://example.edu/admissions/fees",
   },
@@ -164,7 +164,7 @@ function buildScript(api: {
         label: "Searching knowledge for “tuition fees MSc Management”",
         status: "done",
         input: { queries: ["tuition fees MSc Management", "piano rate 2026/27"] },
-        detail: "3 concepts matched — fees-2026.pdf, dsu-guide.pdf",
+        detail: "3 concepts matched, fees-2026.pdf, dsu-guide.pdf",
         durationMs: 128,
         iteration: 1,
       });
@@ -326,7 +326,7 @@ export function ChatShowcase() {
             contentClassName="space-y-4"
           >
             <ChatMarkdown
-              text="Ciao! Sono l'assistente demo — questa conversazione è **sceneggiata** per mostrare ogni componente della nuova chat."
+              text="Ciao! Sono l'assistente demo, questa conversazione è **sceneggiata** per mostrare ogni componente della nuova chat."
               className="text-[15px]"
             />
 
@@ -438,7 +438,7 @@ export function ChatShowcase() {
                       className="max-w-[90%] space-y-1 border-l-2 border-l-primary bg-muted/60 [&>span[aria-hidden]]:bg-transparent"
                     >
                       <p className="font-medium">Promemoria scadenza</p>
-                      <ChatMarkdown text="La **prima rata** scade il 30 settembre — mancano 12 giorni." />
+                      <ChatMarkdown text="La **prima rata** scade il 30 settembre, mancano 12 giorni." />
                     </MessageBubbleContent>
                   </MessageBubble>
                   {/* Clarify card (agentic search terminal question) */}
@@ -489,11 +489,11 @@ export function ChatShowcase() {
               }}
               minRows={1}
               maxRows={6}
-              placeholder="Scrivi qualsiasi cosa — la demo riparte…"
+              placeholder="Scrivi qualsiasi cosa, la demo riparte…"
               aria-label="Showcase composer"
             />
             <p className="text-muted-foreground mt-3 text-xs leading-snug">
-              Demo sceneggiata — nessun modello viene chiamato.
+              Demo sceneggiata, nessun modello viene chiamato.
             </p>
           </div>
         </>

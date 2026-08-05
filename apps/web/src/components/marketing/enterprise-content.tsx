@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { MousePointerClick } from "lucide-react";
-import { Button } from "@agent-hub/ui";
 import { AdminMetrics } from "@/components/marketing/admin-metrics";
+import { CtaSection } from "@/components/marketing/cta-section";
 import { GovernanceOrbit } from "@/components/marketing/governance-orbit";
 
 interface Column {
@@ -39,7 +38,7 @@ const DASHBOARD: Column[] = [
   },
   {
     title: "Insights",
-    body: "Resolution rate, answer ratings, escalations, languages, unique visitors — over any window, filtered to the assistants you care about.",
+    body: "Resolution rate, answer ratings, escalations, languages, unique visitors, over any window, filtered to the assistants you care about.",
   },
   {
     title: "Improvements",
@@ -66,7 +65,7 @@ function ColumnList({ columns }: { columns: Column[] }) {
 
 export function EnterpriseContent() {
   return (
-    <main className="relative px-4 pb-24 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+    <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
@@ -113,24 +112,12 @@ export function EnterpriseContent() {
           <ColumnList columns={DASHBOARD} />
         </section>
 
-        {/* CTA */}
-        <section className="border-border bg-background/40 mt-24 rounded-2xl border p-8 sm:p-12">
-          <h2 className="text-foreground text-2xl font-semibold tracking-tight">
-            Roll it out across the institution
-          </h2>
-          <p className="text-muted-foreground mt-3 max-w-2xl text-base leading-relaxed">
-            Tell us how your teams are organized and which systems the assistants need to
-            reach. We will walk you through the setup, the roles and the numbers.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button nativeButton={false} render={<Link href="/contact/sales" />}>
-              <span>Talk to sales</span>
-            </Button>
-            <Button variant="outline" nativeButton={false} render={<Link href="/pricing" />}>
-              <span>See pricing</span>
-            </Button>
-          </div>
-        </section>
+        <CtaSection
+          lead="One console."
+          trail="However many assistants."
+          primary={{ label: "Talk to sales", href: "/contact/sales" }}
+          secondary={{ label: "See pricing", href: "/pricing" }}
+        />
       </div>
     </main>
   );

@@ -51,7 +51,7 @@ export interface SsoGatePayload {
 function requireEncryptionKey(): void {
   if (!process.env.APP_ENCRYPTION_KEY) {
     throw new Error(
-      "APP_ENCRYPTION_KEY is required to issue SSO cookies — refusing to mint an unsigned cookie."
+      "APP_ENCRYPTION_KEY is required to issue SSO cookies, refusing to mint an unsigned cookie."
     );
   }
 }

@@ -152,7 +152,7 @@ export function buildEscalationEmail(
   const subjectField = fields.find((f) => f.label.trim().toLowerCase() === "subject");
   const subject =
     (subjectField && value(subjectField.id)) ||
-    `Support request — ${context.deskName}`;
+    `Support request, ${context.deskName}`;
 
   const replyToField = channel.form.find(
     (f) => f.useAsReplyTo && f.showInForm !== false
@@ -160,9 +160,9 @@ export function buildEscalationEmail(
   const replyTo = replyToField ? value(replyToField.id) || undefined : undefined;
 
   const lines = [
-    `New support request from "${context.assistantTitle}" — ${context.deskName} / ${channel.name}.`,
+    `New support request from "${context.assistantTitle}", ${context.deskName} / ${channel.name}.`,
     "",
-    ...fields.map((f) => `${f.label}: ${value(f.id) || "—"}`),
+    ...fields.map((f) => `${f.label}: ${value(f.id) || "N/A"}`),
   ];
   if (context.transcript) {
     lines.push("", "--- Conversation ---", context.transcript);

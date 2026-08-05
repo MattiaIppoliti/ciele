@@ -38,12 +38,12 @@ function detailRows(conversation: InboxConversation): Array<[string, string]> {
     ["Conversation ID", conversation.id],
     ["Assistant", conversation.assistantTitle],
     ["Started", conversation.createdAt],
-    ["Course", conversation.collectionName ?? "—"],
+    ["Course", conversation.collectionName ?? "N/A"],
     ["User", meta.userName ?? meta.userEmail ?? conversation.subjectId],
-    ["Role", meta.userRole ?? "—"],
-    ["Language", meta.language ?? "—"],
-    ["Location", [meta.city, meta.location].filter(Boolean).join(", ") || "—"],
-    ["Launch URL", meta.launchUrl ?? "—"],
+    ["Role", meta.userRole ?? "N/A"],
+    ["Language", meta.language ?? "N/A"],
+    ["Location", [meta.city, meta.location].filter(Boolean).join(", ") || "N/A"],
+    ["Launch URL", meta.launchUrl ?? "N/A"],
     [
       "Escalation",
       meta.escalated
@@ -137,7 +137,7 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
 <dl>${details}</dl>
 ${turns}
 <footer>${escapeHtml(
-    [input.organizationName, "Conversation transcript"].filter(Boolean).join(" — ")
+    [input.organizationName, "Conversation transcript"].filter(Boolean).join("N/A")
   )}</footer>
 </body>
 </html>`;

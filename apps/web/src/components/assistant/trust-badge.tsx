@@ -19,7 +19,7 @@ export function TrustBadge({ trust }: { trust: FlowTrust | null }) {
       <Badge
         variant="outline"
         className={`rounded-full ${TIER_STYLES.watch}`}
-        title="No graded answers yet — this flow behaves as watch (always offers escalation) until it earns history."
+        title="No graded answers yet, this flow behaves as watch (always offers escalation) until it earns history."
       >
         watch · no history
       </Badge>

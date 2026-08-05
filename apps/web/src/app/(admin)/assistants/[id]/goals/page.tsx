@@ -16,7 +16,7 @@ export default async function GoalsPage({ params }: { params: Promise<{ id: stri
       <h1 className="text-2xl font-semibold">Goals</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Standing golden questions, re-verified on a schedule. A goal that stops
-        passing raises an Alert — nothing that worked once goes unwatched.
+        passing raises an Alert, nothing that worked once goes unwatched.
       </p>
       <GoalsClient
         assistantId={id}

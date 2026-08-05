@@ -63,7 +63,7 @@ export function AlertsList({
         <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
       </header>
       <p className="text-muted-foreground px-6 text-sm">
-        Operational issues that need attention — failing integrations, crawls,
+        Operational issues that need attention, failing integrations, crawls,
         and AI providers. Alerts clear when you resolve them or the underlying
         issue recovers.
       </p>
@@ -91,7 +91,7 @@ export function AlertsList({
             <CircleCheck className="size-8 text-emerald-500" />
             {tab === "resolved"
               ? "No resolved alerts yet."
-              : "All clear — no alerts need attention."}
+              : "All clear, no alerts need attention."}
           </div>
         ) : (
           <div className="border-border overflow-hidden rounded-xl border">
@@ -120,7 +120,7 @@ export function AlertsList({
                   {formatDateTime(alert.detectedAt)}
                 </span>
                 <span className="text-muted-foreground text-xs">
-                  {alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "—"}
+                  {alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"}
                 </span>
                 <span>
                   {alert.status === "active" ? (

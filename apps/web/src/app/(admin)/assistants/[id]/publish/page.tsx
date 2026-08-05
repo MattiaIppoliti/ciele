@@ -19,7 +19,7 @@ export default async function PublishPage({
     <div className="mx-auto max-w-3xl px-8 py-8">
       <h1 className="text-2xl font-semibold">Publish</h1>
       <p className="text-muted-foreground mt-1 text-sm">
-        Publish creates an immutable snapshot — the live widget always serves
+        Publish creates an immutable snapshot, the live widget always serves
         the latest one. Edits stay in Preview until you publish again.
       </p>
       <PublishClient

@@ -116,7 +116,7 @@ export function DailyBudgetCard({
       <CardHeader>
         <CardTitle>Daily budget</CardTitle>
         <CardDescription>
-          Your own ceiling, set in AI settings — independent of any plan
+          Your own ceiling, set in AI settings, independent of any plan
         </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center gap-4">
@@ -160,7 +160,7 @@ export function UsageLimitsBlock({
       </div>
       <p className="text-muted-foreground mt-1 text-sm">
         Each meter is capped for the billing period and, more tightly, for each
-        week of it — so a busy few days cannot spend the whole period. Only
+        week of it, so a busy few days cannot spend the whole period. Only
         platform-funded work counts.
       </p>
 
@@ -241,7 +241,7 @@ export function UnmeteredNotice({ plan }: { plan?: string }) {
         <CardDescription>
           {plan
             ? `The ${plan} plan is running without caps on this organization`
-            : "This deployment is unmetered — nothing here is capped"}
+            : "This deployment is unmetered, nothing here is capped"}
         </CardDescription>
       </CardHeader>
       <CardContent className="text-muted-foreground space-y-2 text-sm">
@@ -250,7 +250,7 @@ export function UnmeteredNotice({ plan }: { plan?: string }) {
             Every meter is currently uncapped, so assistants answer, index and
             crawl without a ceiling. That is either a deliberate exemption on
             your organization or a temporary state while billing details catch
-            up — your billing page has the plan itself.
+            up, your billing page has the plan itself.
           </p>
         ) : (
           <p>

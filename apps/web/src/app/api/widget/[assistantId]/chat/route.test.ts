@@ -62,7 +62,7 @@ afterAll(() => {
   else process.env.APP_ENCRYPTION_KEY = priorKey;
 });
 
-describe("widget chat route — SSO gate enforcement", () => {
+describe("widget chat route, SSO gate enforcement", () => {
   beforeEach(() => mocks.resolveWidgetContext.mockReset());
 
   it("401s an enforced assistant when no gate cookie is present", async () => {
@@ -111,7 +111,7 @@ describe("widget chat route — SSO gate enforcement", () => {
  * The embedding page the launcher forwards. Without it, URL Flow Conditions
  * would be evaluated against the chat iframe's own origin (spec #550).
  */
-describe("widget chat route — reported page URL", () => {
+describe("widget chat route, reported page URL", () => {
   beforeEach(() => {
     mocks.resolveWidgetContext.mockReset();
     vi.mocked(sessionMetadata).mockClear();

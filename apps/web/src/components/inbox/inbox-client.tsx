@@ -268,7 +268,7 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
     <div className="min-w-0">
       <p className="text-muted-foreground text-xs">{label}</p>
       <p className="truncate text-sm" title={value ?? undefined}>
-        {value || "—"}
+        {value || "N/A"}
       </p>
     </div>
   );
@@ -557,7 +557,7 @@ export function InboxClient({
         "conversations.json"
       );
     } catch {
-      toast.error("Export failed — please try again.");
+      toast.error("Export failed, please try again.");
     } finally {
       setExporting(false);
     }
@@ -738,7 +738,7 @@ export function InboxClient({
                     onChange={(from) => setFilters({ ...filters, from })}
                     className="h-10 flex-1"
                   />
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">, </span>
                   <DateField
                     value={filters.to}
                     onChange={(to) => setFilters({ ...filters, to })}
@@ -850,7 +850,7 @@ export function InboxClient({
             <h2 className="text-sm font-semibold">Conversation log</h2>
             <span className="text-muted-foreground text-sm">{filtered.length}</span>
           </div>
-          <p className="text-muted-foreground px-4 pb-2 text-xs">Everything else —</p>
+          <p className="text-muted-foreground px-4 pb-2 text-xs">Everything else,</p>
           {filtered.length === 0 && (
             <p className="text-muted-foreground px-4 py-8 text-center text-sm">
               No conversations match the current filters.

@@ -5,7 +5,7 @@ import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Ciele",
+  title: "Terms of Service | Ciele",
   description:
     "The terms that govern your use of the Ciele platform and AI assistants.",
 };

@@ -46,7 +46,7 @@ export function IdentityGate({
           </button>
         ) : (
           <p className="text-muted-foreground mt-6 text-sm">
-            Sign-in isn&apos;t available yet — please check back soon.
+            Sign-in isn&apos;t available yet, please check back soon.
           </p>
         )}
       </div>

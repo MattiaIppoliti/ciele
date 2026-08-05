@@ -108,7 +108,7 @@ export function ImprovementContextMenu({
     startTransition(async () => {
       try {
         await updateImprovementAction(item.id, patch);
-        toast.success(`${key} — ${done}`);
+        toast.success(`${key}, ${done}`);
       } catch {
         toast.error(`Could not update ${key}. Please try again.`);
       }
@@ -230,7 +230,7 @@ export function ImprovementContextMenu({
                 inset
               >
                 <span className="text-muted-foreground">
-                  …{hiddenMemberCount} more — search by name
+                  …{hiddenMemberCount} more, search by name
                 </span>
               </ContextMenuItem>
             )}

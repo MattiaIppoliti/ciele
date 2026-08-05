@@ -210,7 +210,7 @@ export function WidgetEscalation({
         setConfirmation({
           text:
             activeChannel.form.confirmationMessage.trim() ||
-            "Thanks! Your request has been sent — our team will get back to you.",
+            "Thanks! Your request has been sent, our team will get back to you.",
         });
       }
     } catch {
@@ -367,7 +367,7 @@ export function WidgetEscalation({
                       )}
                       {!actionable && (
                         <p className="text-muted-foreground mt-1.5 text-sm">
-                          Not yet available in chat — ask the team about this
+                          Not yet available in chat, ask the team about this
                           option.
                         </p>
                       )}

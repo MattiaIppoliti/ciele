@@ -185,7 +185,7 @@ describe("consent is recorded, time-boxed and revocable", () => {
       "preview-panel-collapsed",
       "ciele.local-connector.pairing.abc",
       "ciele.preview.ai-preferences.abc",
-      "theme", // strictly necessary — must survive a functional withdrawal
+      "theme", // strictly necessary, must survive a functional withdrawal
       "unrelated-key",
     ];
     expect(withdrawableKeys("functional", present).sort()).toEqual([

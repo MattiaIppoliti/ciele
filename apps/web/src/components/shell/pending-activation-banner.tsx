@@ -45,8 +45,8 @@ export async function PendingActivationBanner({
       </span>
       <span className="text-muted-foreground">
         {selfServe
-          ? "Build your assistants now — they start answering as soon as you pick a plan."
-          : "Build your assistants now — they start answering once we activate your organization."}
+          ? "Build your assistants now, they start answering as soon as you pick a plan."
+          : "Build your assistants now, they start answering once we activate your organization."}
       </span>
       <Link
         href="/settings/billing"

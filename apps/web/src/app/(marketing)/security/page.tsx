@@ -5,7 +5,7 @@ import { HomeShell } from "@/components/home/home-shell";
 import { SecurityContent } from "@/components/marketing/security-content";
 
 export const metadata: Metadata = {
-  title: "Security — Ciele",
+  title: "Security | Ciele",
   description:
     "How Ciele keeps your data safe: tenant isolation, role-based access, encryption, grounded answers, and our SOC 2 and GDPR compliance programs.",
 };

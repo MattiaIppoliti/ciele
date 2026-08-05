@@ -40,7 +40,7 @@ export function CitationList({
           const tooltip =
             s.conceptTitle +
             (s.collectionName || s.sourceName
-              ? ` — ${[s.collectionName, s.sourceName].filter(Boolean).join(" · ")}`
+              ? `, ${[s.collectionName, s.sourceName].filter(Boolean).join(" · ")}`
               : "");
           const inner = (
             <>

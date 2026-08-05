@@ -473,7 +473,7 @@ export function AiSettingsClient({
           )}
         </div>
         <p className="text-muted-foreground mt-1 text-sm">
-          Point Ciele at any server speaking the OpenAI chat/embeddings API —
+          Point Ciele at any server speaking the OpenAI chat/embeddings API, 
           Ollama, vLLM, LM Studio, or a gateway. Works with or without an API
           key, including fully local models.
         </p>
@@ -1129,7 +1129,7 @@ export function AiSettingsClient({
                 )}
                 {compatTestResult.embedding === null ? (
                   <p className="text-muted-foreground">
-                    Embeddings: not configured — knowledge search stays lexical
+                    Embeddings: not configured, knowledge search stays lexical
                   </p>
                 ) : compatTestResult.embedding.ok ? (
                   <p className="text-emerald-600 dark:text-emerald-400">

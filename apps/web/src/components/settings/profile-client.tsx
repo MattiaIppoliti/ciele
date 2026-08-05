@@ -90,7 +90,7 @@ export function ProfileClient({
     <div className="space-y-10 pt-8 pb-24">
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
-          Demo mode — changes only last for this session
+          Demo mode, changes only last for this session
         </Badge>
       )}
 
@@ -133,7 +133,7 @@ export function ProfileClient({
       <div className="space-y-3">
         <FieldHeader
           title="Username"
-          hint="Starts as the part of your email before the @ — change it to whatever you like."
+          hint="Starts as the part of your email before the @, change it to whatever you like."
         />
         <Input
           value={username}

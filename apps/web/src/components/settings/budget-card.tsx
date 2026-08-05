@@ -117,7 +117,7 @@ export function BudgetCard({
         </CardTitle>
         <CardDescription>
           Cap how many model tokens and/or estimated euros your assistants may
-          use per day (UTC) — either limit crossing today&apos;s usage
+          use per day (UTC), either limit crossing today&apos;s usage
           triggers enforcement. Used today: {usedToday.toLocaleString("en-US")}{" "}
           tokens (~€{usedTodayEur.toFixed(2)}). Leave a limit empty for
           unmetered usage on that dimension.

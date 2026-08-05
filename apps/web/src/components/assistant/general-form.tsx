@@ -465,7 +465,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
       <div className="space-y-3">
         <FieldHeader
           title="Answering style"
-          hint="System instructions for this assistant: persona, tone, format, and behavior. Applied on top of the platform rules — it cannot override them."
+          hint="System instructions for this assistant: persona, tone, format, and behavior. Applied on top of the platform rules, it cannot override them."
         />
         <div>
           <Textarea
@@ -491,7 +491,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
             <h2 className="text-base font-semibold">Simplified thinking</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
               While the assistant works, narrate each step to the visitor in one
-              short line in their own language — &ldquo;Looking for the course
+              short line in their own language, &ldquo;Looking for the course
               videos…&rdquo;. The lines appear as they happen and stay in the
               transcript, so the Inbox shows what the visitor watched. Off, the
               assistant works silently and only the answer is saved.
@@ -570,7 +570,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
       <div className="space-y-3">
         <FieldHeader
           title="Quick reply buttons"
-          hint="Typed starter buttons shown above the suggested questions — pre-fill a message, escalate to support, or open a link."
+          hint="Typed starter buttons shown above the suggested questions, pre-fill a message, escalate to support, or open a link."
         />
         <div className="space-y-2">
           {quickReplies.map((button, i) => {

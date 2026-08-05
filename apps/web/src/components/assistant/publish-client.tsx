@@ -100,7 +100,7 @@ export function PublishClient({
           .map((d) => d.trim())
           .filter(Boolean),
       });
-      toast.success("Allowed domains saved — publish to make them live");
+      toast.success("Allowed domains saved, publish to make them live");
     });
   }
 
@@ -108,7 +108,7 @@ export function PublishClient({
     setConfirmView(null);
     startTransition(async () => {
       const version = await publishAssistantAction(assistant.id);
-      toast.success(`Published v${version} — the widget now serves this snapshot`);
+      toast.success(`Published v${version}, the widget now serves this snapshot`);
     });
   }
 
@@ -116,7 +116,7 @@ export function PublishClient({
     setConfirmView(null);
     startTransition(async () => {
       await unpublishAssistantAction(assistant.id);
-      toast.success("Unpublished — the widget is offline until the next publish");
+      toast.success("Unpublished, the widget is offline until the next publish");
     });
   }
 
@@ -226,7 +226,7 @@ export function PublishClient({
                     onClick={() =>
                       startTransition(async () => {
                         const version = await republishAction(assistant.id, p.id);
-                        toast.success(`Rolled back — republished as v${version}`);
+                        toast.success(`Rolled back, republished as v${version}`);
                       })
                     }
                   >
@@ -243,17 +243,17 @@ export function PublishClient({
       <Card size="sm" className="gap-0 p-4">
         <h2 className="text-base font-semibold">Website &amp; embed</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Add the floating chat button to any page — opening as a floating
-          rounded card or as a flush full-height side drawer — or embed the
+          Add the floating chat button to any page, opening as a floating
+          rounded card or as a flush full-height side drawer, or embed the
           chat inline.
         </p>
         <div className="mt-4 space-y-5">
           <CopyBlock
-            label="Website — floating card (launcher opens a rounded panel)"
+            label="Website, floating card (launcher opens a rounded panel)"
             code={scriptSnippet}
           />
           <CopyBlock
-            label="Website — side drawer (launcher opens a flush full-height panel)"
+            label="Website, side drawer (launcher opens a flush full-height panel)"
             code={drawerSnippet}
           />
           <CopyBlock label="iFrame (inline)" code={iframeSnippet} />

@@ -91,7 +91,7 @@ export function LocalTerminalSetupGuide({
                 <p className="text-sm font-medium">Connect with one command</p>
                 <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                   Paste the command for your OS. Requires Node.js 18+. Keep the
-                  window open — this page detects the connector and pairs
+                  window open, this page detects the connector and pairs
                   automatically. No administrator rights needed.
                 </p>
               </div>

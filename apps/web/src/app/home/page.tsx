@@ -6,7 +6,7 @@ import { HomeSectionRail } from "@/components/home/home-section-rail";
 import { HomeShell } from "@/components/home/home-shell";
 
 export const metadata: Metadata = {
-  title: "Ciele — AI assistants for your business",
+  title: "Ciele, AI assistants for your business",
   description:
     "Build, test and publish AI assistants that answer from your organization's own knowledge.",
 };

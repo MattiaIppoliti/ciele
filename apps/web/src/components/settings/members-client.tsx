@@ -83,8 +83,8 @@ export function MembersClient({
     startTransition(async () => {
       const invite = await createInviteAction(inviteRole, inviteEmail || undefined);
       const copied = await copyText(invite.id, inviteUrl(invite.token));
-      if (copied) toast.success("Invite created — link copied to clipboard");
-      else toast.success("Invite created — use Copy link to copy it");
+      if (copied) toast.success("Invite created, link copied to clipboard");
+      else toast.success("Invite created, use Copy link to copy it");
       setInviteEmail("");
     });
   }
@@ -229,7 +229,7 @@ export function MembersClient({
     <div className={`mt-8 space-y-8 ${isPending ? "opacity-70" : ""}`}>
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
-          Demo mode — members are not persisted
+          Demo mode, members are not persisted
         </Badge>
       )}
 

@@ -342,7 +342,7 @@ export function InsightsClient({
                   >
                     <span className="flex items-center gap-2">
                       <CalendarIcon className="text-muted-foreground size-4 shrink-0" />
-                      {filters.from || "…"} — {filters.to || "…"}
+                      {filters.from || "…"}, {filters.to || "…"}
                     </span>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-3" align="start">
@@ -450,7 +450,7 @@ export function InsightsClient({
       {/* Date range chip */}
       <div className="shrink-0 px-6 pb-4">
         <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
-          Date Range: {filters.from || "…"} — {filters.to || "…"}
+          Date Range: {filters.from || "…"}, {filters.to || "…"}
           <Hint label="Metrics cover conversations started in this range.">
             <Info className="size-3.5" />
           </Hint>
@@ -461,7 +461,7 @@ export function InsightsClient({
       <div className="grid grid-cols-12 gap-4 border-t px-6 pt-5 pb-6">
         <StatCard
           title="AI Resolution Rate"
-          value={stats.resolutionRate === null ? "—" : `${stats.resolutionRate} %`}
+          value={stats.resolutionRate === null ? "N/A" : `${stats.resolutionRate} %`}
           valueClass="text-green-600"
           className="col-span-12 sm:col-span-6 xl:col-span-3"
         />

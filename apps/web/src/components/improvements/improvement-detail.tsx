@@ -426,7 +426,7 @@ export function ImprovementDetail({
                           className="text-foreground/80 inline-flex items-center gap-1.5 truncate rounded-md border px-2.5 py-1 text-xs"
                         >
                           <span className="truncate">
-                            {s.collectionName ? `${s.collectionName} — ` : ""}
+                            {s.collectionName ? `${s.collectionName}, ` : ""}
                             {s.conceptTitle}
                           </span>
                           <ExternalLink className="text-muted-foreground size-3 shrink-0" />

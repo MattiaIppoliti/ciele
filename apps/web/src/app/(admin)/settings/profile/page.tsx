@@ -10,7 +10,7 @@ export default async function ProfilePage() {
   return (
     <SettingsPanel
       title="Profile"
-      description={`Your name, username, and photo — shown to the rest of ${session.organization.name}.`}
+      description={`Your name, username, and photo, shown to the rest of ${session.organization.name}.`}
     >
       <ProfileClient
         email={session.email}

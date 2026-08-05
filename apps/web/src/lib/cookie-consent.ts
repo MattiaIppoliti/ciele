@@ -103,7 +103,7 @@ export const CONSENT_CATEGORIES: ConsentCategory[] = [
     title: "Strictly necessary",
     essential: true,
     description:
-      "Required to run the site and keep it secure — signing you in, keeping your session on the right organization, and remembering this cookie choice. They set no advertising or cross-site identifiers, so they stay on and cannot be switched off. Blocking them in your browser will break parts of the product.",
+      "Required to run the site and keep it secure, signing you in, keeping your session on the right organization, and remembering this cookie choice. They set no advertising or cross-site identifiers, so they stay on and cannot be switched off. Blocking them in your browser will break parts of the product.",
     items: [
       {
         name: "sb-<project>-auth-token",
@@ -141,7 +141,7 @@ export const CONSENT_CATEGORIES: ConsentCategory[] = [
         name: CONSENT_COOKIE_NAME,
         provider: "Ciele",
         purpose:
-          "Stores the choice you make here: the categories you allowed, when you chose, and a random consent id. We also keep our own copy of that record on our servers so we can show what you agreed to — see “Our record of your choice” below.",
+          "Stores the choice you make here: the categories you allowed, when you chose, and a random consent id. We also keep our own copy of that record on our servers so we can show what you agreed to, see “Our record of your choice” below.",
         duration: `${CONSENT_COOKIE_DAYS} days`,
         kind: "Cookie",
         localStorageKeys: [],
@@ -170,7 +170,7 @@ export const CONSENT_CATEGORIES: ConsentCategory[] = [
     title: "Functional",
     essential: false,
     description:
-      "Remember optional choices and let an embedded Ciele assistant pick a conversation back up where you left it. Turning these off does not stop you using the site — an assistant will simply start fresh each time, and some layout choices will not stick.",
+      "Remember optional choices and let an embedded Ciele assistant pick a conversation back up where you left it. Turning these off does not stop you using the site, an assistant will simply start fresh each time, and some layout choices will not stick.",
     items: [
       {
         name: "ciele-visitor",
@@ -212,7 +212,7 @@ export const CONSENT_CATEGORIES: ConsentCategory[] = [
         name: "No cookie set",
         provider: "Vercel Web Analytics",
         purpose:
-          "Counts page views and referrers in aggregate. Cookieless by design — it stores nothing on your device — but we still ask first and load it only if you allow this category.",
+          "Counts page views and referrers in aggregate. Cookieless by design, it stores nothing on your device, but we still ask first and load it only if you allow this category.",
         duration: "Not stored on your device",
         kind: "Cookie",
       },
@@ -351,7 +351,7 @@ export function buildConsentConfig(): CookieConsentConfig {
             label: "Cookie notice",
             title: "Cookies on ciele.app",
             description:
-              "We use strictly necessary cookies to run this site. We would also like to set optional cookies to measure performance and remember your choices — only if you agree.",
+              "We use strictly necessary cookies to run this site. We would also like to set optional cookies to measure performance and remember your choices, only if you agree.",
             acceptAllBtn: "Accept all",
             acceptNecessaryBtn: "Reject all",
             showPreferencesBtn: "Manage preferences",
@@ -382,11 +382,11 @@ export function buildConsentConfig(): CookieConsentConfig {
               })),
               {
                 title: "Our record of your choice",
-                description: `Whichever way you decide, we keep a record of it on our servers — the categories you picked, the version of the notice you were shown and when — so we can demonstrate what you agreed to. It holds a random consent id rather than your identity, and no IP address. <a href="${COOKIE_NOTICE_PATH}#consent-record">What the record contains</a>.`,
+                description: `Whichever way you decide, we keep a record of it on our servers, the categories you picked, the version of the notice you were shown and when, so we can demonstrate what you agreed to. It holds a random consent id rather than your identity, and no IP address. <a href="${COOKIE_NOTICE_PATH}#consent-record">What the record contains</a>.`,
               },
               {
                 title: "More information",
-                description: `Full detail — including how to control cookies in your browser — is in our <a href="${COOKIE_NOTICE_PATH}">Cookie Notice</a>. For anything else, email <a href="mailto:privacy@ciele.app">privacy@ciele.app</a>.`,
+                description: `Full detail, including how to control cookies in your browser, is in our <a href="${COOKIE_NOTICE_PATH}">Cookie Notice</a>. For anything else, email <a href="mailto:privacy@ciele.app">privacy@ciele.app</a>.`,
               },
             ],
           },

@@ -5,7 +5,7 @@ import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Ciele",
+  title: "Privacy Policy | Ciele",
   description:
     "How Ciele collects, uses, shares and protects personal data across its AI assistant platform.",
 };
@@ -99,8 +99,8 @@ const SECTIONS: LegalSection[] = [
             Our website and admin console use a small number of cookies.
             Strictly necessary cookies keep you signed in and remember your
             interface preferences, such as light or dark theme. Optional
-            cookies — including the privacy-respecting analytics we use to
-            understand aggregate usage — are set only if you allow them, and
+            cookies, including the privacy-respecting analytics we use to
+            understand aggregate usage, are set only if you allow them, and
             you can change or withdraw that choice at any time from the cookie
             preferences link in our footer. Our{" "}
             <a

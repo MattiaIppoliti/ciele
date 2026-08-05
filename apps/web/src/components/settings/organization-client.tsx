@@ -108,7 +108,7 @@ export function OrganizationClient({
     <div className="space-y-10 pt-8 pb-24">
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
-          Demo mode — changes only last for this session
+          Demo mode, changes only last for this session
         </Badge>
       )}
 

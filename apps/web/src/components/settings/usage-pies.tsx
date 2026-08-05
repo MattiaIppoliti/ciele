@@ -75,7 +75,7 @@ function Donut({
         {total === 0 ? (
           // An empty ring would read as a real split of nothing.
           <p className="text-muted-foreground py-8 text-sm">
-            Nothing to split yet — this fills in as soon as an assistant answers,
+            Nothing to split yet, this fills in as soon as an assistant answers,
             indexes knowledge, or crawls a page.
           </p>
         ) : (

@@ -733,7 +733,7 @@ export function ChannelPanel({
     const meta = CHANNEL_KINDS[kind];
     if (meta.requiresTicketing) {
       toast.info(
-        `${meta.label} requires the ticketing integration — coming in a later iteration.`
+        `${meta.label} requires the ticketing integration, coming in a later iteration.`
       );
       return;
     }
@@ -1117,7 +1117,7 @@ export function ChannelPanel({
                       onChange={(e) =>
                         patchChannel({ confirmationMessage: e.target.value })
                       }
-                      placeholder="Thanks! Your request has been sent — we'll get back to you soon."
+                      placeholder="Thanks! Your request has been sent, we'll get back to you soon."
                       rows={3}
                       className="mt-2"
                     />

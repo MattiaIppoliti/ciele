@@ -451,7 +451,7 @@ function InsightsPane() {
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold">Conversations per day</span>
           <span className="text-muted-foreground ml-auto text-xs">
-            Jun 18 – Jul 17
+            Jun 18, Jul 17
           </span>
         </div>
         <div

@@ -834,7 +834,7 @@ export function PreviewPanel({
 
       {!assistant.chatLauncherEnabled && (
         <p className="text-muted-foreground bg-muted mb-3 rounded-lg px-3 py-2 text-xs">
-          Chat launcher is disabled — users won&apos;t see the chat button, but
+          Chat launcher is disabled, users won&apos;t see the chat button, but
           you can still test the assistant here.
         </p>
       )}

@@ -63,7 +63,7 @@ export function ExportsClient({ rows }: { rows: ExportRow[] }) {
       </header>
       <p className="text-muted-foreground px-6 text-sm">
         Report exports are generated in the background and appear here with a
-        download link. Large reports never block or time out — request one and
+        download link. Large reports never block or time out, request one and
         come back when it is ready.
       </p>
 
@@ -93,7 +93,7 @@ export function ExportsClient({ rows }: { rows: ExportRow[] }) {
                   </p>
                   <p className="text-muted-foreground truncate text-xs">
                     Requested {formatDateTime(row.createdAt)}
-                    {row.status === "error" && row.error ? ` — ${row.error}` : ""}
+                    {row.status === "error" && row.error ? `, ${row.error}` : ""}
                   </p>
                 </div>
                 <StatusBadge status={row.status} />

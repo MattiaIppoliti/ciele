@@ -770,7 +770,7 @@ function WebsitesTab({
     startTransition(async () => {
       try {
         await addWebsiteSourceAction(assistantId, collectionId, form);
-        toast.success("Crawl started — pages will appear as they're indexed");
+        toast.success("Crawl started, pages will appear as they're indexed");
         setForm(websiteFormDefaults());
         setShowAdd(false);
       } catch (error) {
@@ -844,7 +844,7 @@ function WebsitesTab({
         </div>
         {websiteSources.length === 0 && (
           <p className="text-muted-foreground px-4 py-6 text-center text-sm">
-            No websites yet — add your organization&apos;s site to start.
+            No websites yet, add your organization&apos;s site to start.
           </p>
         )}
         {websiteSources.map((source) => {
@@ -1219,7 +1219,7 @@ function ReprocessSourceButton({
 }) {
   const [isPending, startTransition] = useTransition();
   const unavailableReason =
-    "Original file not stored — re-upload this file to enable re-processing";
+    "Original file not stored, re-upload this file to enable re-processing";
   return (
     <Button
       variant="ghost"
@@ -1508,7 +1508,7 @@ function ImportFaqsDialog({
       return;
     }
     if (candidate.size > FAQ_CSV_MAX_BYTES) {
-      toast.error("File is too large — the maximum supported size is 10 MB");
+      toast.error("File is too large, the maximum supported size is 10 MB");
       return;
     }
     setFile(candidate);
@@ -1531,8 +1531,8 @@ function ImportFaqsDialog({
         } else {
           toast.error(
             skipped.length > 0
-              ? `Nothing imported — ${skipped[0]}`
-              : "Nothing imported — the file has no valid rows"
+              ? `Nothing imported, ${skipped[0]}`
+              : "Nothing imported, the file has no valid rows"
           );
         }
         if (imported > 0) onClose();
@@ -1724,7 +1724,7 @@ function FaqsTab({
           <span />
         </div>
         {filtered.length === 0 && (
-          <p className="text-muted-foreground px-4 py-6 text-center text-sm">No FAQs yet — add one to fine-tune answers.</p>
+          <p className="text-muted-foreground px-4 py-6 text-center text-sm">No FAQs yet, add one to fine-tune answers.</p>
         )}
         {filtered.map((faq) => {
           const trust = conceptProvenanceView(faq.frontmatter);
@@ -2004,7 +2004,7 @@ export function KnowledgeClient({
               {/* Reader-facing copy: no internal vocabulary, no ADR numbers. */}
               <p className="text-muted-foreground text-sm">
                 {nonFaqConcepts.length} concept document
-                {nonFaqConcepts.length === 1 ? "" : "s"} — the pieces of
+                {nonFaqConcepts.length === 1 ? "" : "s"}, the pieces of
                 knowledge an answer can cite, each one traceable to the source
                 it came from.
               </p>

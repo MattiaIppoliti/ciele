@@ -20,7 +20,7 @@ const DATE_LOCALE = "en-GB";
 const DATE_ZONE = "UTC";
 
 /** What an empty value prints as, everywhere on the tab. */
-export const EMPTY_FIELD = "—";
+export const EMPTY_FIELD = "N/A";
 
 /** "28 Jul 2026", or the em dash when there is no date. */
 export function formatBillingDate(iso: string | null): string {

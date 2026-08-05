@@ -47,7 +47,7 @@ export function AvatarUpload({
       return;
     }
     if (file.size > AVATAR_MAX_BYTES) {
-      toast.error("Image is too large — the maximum supported size is 2 MB");
+      toast.error("Image is too large, the maximum supported size is 2 MB");
       return;
     }
     onFile(file);

@@ -121,7 +121,7 @@ export function PlanSummaryCard({
         <CardDescription>
           {comped ? (
             <>
-              An evaluation grant with {name}-sized limits — nothing is being
+              An evaluation grant with {name}-sized limits, nothing is being
               charged yet.
             </>
           ) : /* A sales-led tier's published price is a floor, not what this
@@ -147,7 +147,7 @@ export function PlanSummaryCard({
               ))}
             </div>
             <p className="text-muted-foreground text-sm">
-              Each ring shows whichever window is closest to its cap — the one
+              Each ring shows whichever window is closest to its cap, the one
               that would pause this kind of work next.{" "}
               <Link
                 href="/settings/usage"
@@ -249,7 +249,7 @@ export function PlanUpgradeCard({
               {/* No `capitalize` here: the tier name arrives capitalized, and
                   the class would also title-case "/ month". */}
               <p className="font-medium">
-                {tier.name} — <TierPrice tier={tier} />
+                {tier.name}, <TierPrice tier={tier} />
               </p>
               <ul className="text-muted-foreground mt-2 space-y-1 text-xs">
                 {tier.volumes.map((line) => (
@@ -300,10 +300,10 @@ export type CheckoutOutcome = "success" | "cancelled" | "error";
 export function CheckoutNotice({ outcome }: { outcome: CheckoutOutcome }) {
   const copy: Record<CheckoutOutcome, string> = {
     success:
-      "Payment received — thank you. Your plan and its allowance are below; if they are not there yet, refresh in a few seconds.",
+      "Payment received, thank you. Your plan and its allowance are below; if they are not there yet, refresh in a few seconds.",
     cancelled: "Checkout cancelled. Nothing was charged and your plan is unchanged.",
     error:
-      "We could not start checkout. Nothing was charged — try again, or talk to us and we will set it up with you.",
+      "We could not start checkout. Nothing was charged, try again, or talk to us and we will set it up with you.",
   };
   const tone =
     outcome === "error"

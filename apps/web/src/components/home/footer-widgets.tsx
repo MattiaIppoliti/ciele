@@ -22,7 +22,7 @@ export function FooterClock({ className }: { className?: string }) {
   const time = React.useSyncExternalStore(
     subscribe,
     () => romeTime.format(new Date()),
-    () => "—:—",
+    () => ", :,",
   );
   return (
     <span className={className}>
@@ -43,7 +43,7 @@ export function FooterNewsletter() {
         Newsletter
       </p>
       {subscribed ? (
-        <p className="text-foreground text-sm">Thanks — we&apos;ll be in touch.</p>
+        <p className="text-foreground text-sm">Thanks, we&apos;ll be in touch.</p>
       ) : (
         <form
           onSubmit={(event) => {

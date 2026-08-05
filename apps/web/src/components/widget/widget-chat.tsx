@@ -363,7 +363,7 @@ function BotMessageView({
         {msg.streamingText !== null && (
           <StreamingResponse status="streaming">
             <DeferredChatMarkdown text={msg.streamingText} />
-            <span className="animate-pulse">â–</span>
+            <span className="animate-pulse">â, </span>
           </StreamingResponse>
         )}
         {lastTextIndex === -1 && msg.id && parts.length > 0 && (

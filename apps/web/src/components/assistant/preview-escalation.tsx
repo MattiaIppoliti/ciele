@@ -123,7 +123,7 @@ export function PreviewEscalation({
                 e.preventDefault();
                 setConfirmation(
                   activeChannel.form!.confirmationMessage.trim() ||
-                    "Thanks! Your request has been sent — our team will get back to you."
+                    "Thanks! Your request has been sent, our team will get back to you."
                 );
               }}
             >

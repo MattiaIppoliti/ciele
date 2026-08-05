@@ -48,7 +48,7 @@ describe("isAtEnd", () => {
 });
 
 describe("swipeProgress", () => {
-  it("reports 0–100 for aria-valuenow", () => {
+  it("reports 0 to 100 for aria-valuenow", () => {
     expect(swipeProgress(0, MAX)).toBe(0);
     expect(swipeProgress(MAX / 2, MAX)).toBe(50);
     expect(swipeProgress(MAX, MAX)).toBe(100);
@@ -120,7 +120,7 @@ describe("swipeStateForKey", () => {
 });
 
 describe("swipeStateFor", () => {
-  it("is the only builder of a state — clamps and derives atEnd together", () => {
+  it("is the only builder of a state, clamps and derives atEnd together", () => {
     expect(swipeStateFor(-10, MAX)).toEqual({ offset: 0, atEnd: false });
     expect(swipeStateFor(MAX + 500, MAX)).toEqual({ offset: MAX, atEnd: true });
   });

@@ -170,7 +170,7 @@ export function SwipeButton({
           isValidated
             ? "Confirmed"
             : swipe.atEnd
-              ? "At the end — press Enter to confirm"
+              ? "At the end, press Enter to confirm"
               : `${progress}% of the way`
         }
         aria-describedby={hintId}

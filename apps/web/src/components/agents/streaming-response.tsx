@@ -1,14 +1,10 @@
 "use client";
 // beui.dev/components/agents/streaming-response
 
-import {
-  Check,
-  ChevronDown,
-  Copy,
-  RotateCcw,
-  ThumbsDown,
-  ThumbsUp,
-} from "lucide-react";
+import { ChevronDown, RotateCcw, ThumbsDown, ThumbsUp } from "lucide-react";
+// Icon data for the copy mark, which reshapes into the check on click.
+import { Check as CheckData, Copy as CopyData } from "lucide";
+import { MorphIcon } from "morphicons/react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
@@ -190,11 +186,7 @@ export function StreamingResponse({
                   label={copied ? "Copied" : "Copy response"}
                   onClick={handleCopy}
                 >
-                  {copied ? (
-                    <Check className="size-3.5" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
+                  <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
                 </ResponseAction>
               ) : null}
               {onRetry ? (

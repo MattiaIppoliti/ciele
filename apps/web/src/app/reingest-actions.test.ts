@@ -20,7 +20,7 @@ import { retrySourceIngestAction } from "./actions";
  * the re-ingest job is pending and survives a failing job. Asserted as
  * observable Db state, never as internal call ordering.
  */
-describe("retrySourceIngestAction — no destructive pre-delete", () => {
+describe("retrySourceIngestAction, no destructive pre-delete", () => {
   const requireMemberMock = vi.mocked(requireMember);
   let db: Db;
 

@@ -13,7 +13,7 @@ const SECTIONS: PreviewRailItem[] = [
     id: "overview",
     label: "Overview",
     href: "#overview",
-    description: "AI assistants for your business — above the clouds.",
+    description: "AI assistants for your business, above the clouds.",
   },
   {
     id: "preview",

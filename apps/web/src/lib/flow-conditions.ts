@@ -78,17 +78,17 @@ export const FLOW_URL_OPERATORS: Array<{
   {
     value: "matches",
     label: "Matches",
-    hint: "Triggers only when the entire URL matches exactly, including https:// and any ?query parameters — e.g. https://site.com/courses does not match https://site.com/courses/psychology.",
+    hint: "Triggers only when the entire URL matches exactly, including https:// and any ?query parameters, e.g. https://site.com/courses does not match https://site.com/courses/psychology.",
   },
   {
     value: "contains",
     label: "Contains",
-    hint: "Triggers on any page whose URL contains this text, including subpages — e.g. site.com/courses also matches site.com/courses/psychology.",
+    hint: "Triggers on any page whose URL contains this text, including subpages, e.g. site.com/courses also matches site.com/courses/psychology.",
   },
   {
     value: "regex",
     label: "Regex",
-    hint: "Triggers on URLs matching a regular expression — e.g. .*/courses/.* matches any course page.",
+    hint: "Triggers on URLs matching a regular expression, e.g. .*/courses/.* matches any course page.",
   },
 ];
 

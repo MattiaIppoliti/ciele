@@ -50,7 +50,7 @@ const BUILT_INS: Array<{
     name: "searchKnowledge",
     title: "Search knowledge",
     description:
-      "RAG over the assistant's Knowledge Collections with Source citations. Core grounding tool — always enabled.",
+      "RAG over the assistant's Knowledge Collections with Source citations. Core grounding tool, always enabled.",
     defaultOn: true,
     locked: true,
   },

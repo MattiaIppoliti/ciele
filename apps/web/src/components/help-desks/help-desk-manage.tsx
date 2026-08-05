@@ -153,7 +153,7 @@ export function HelpDeskManage({
     const meta = CHANNEL_KINDS[kind];
     if (meta.requiresTicketing) {
       toast.info(
-        `${meta.label} requires the ticketing integration — coming in a later iteration.`
+        `${meta.label} requires the ticketing integration, coming in a later iteration.`
       );
       return;
     }

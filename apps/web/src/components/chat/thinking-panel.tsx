@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
+// Icon *data* for the morphing chevron, not components: morphicons samples the
+// paths and springs between them.
+import { ChevronDown, ChevronUp } from "lucide";
+import { MorphIcon } from "morphicons/react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
 import { StepIcon, stepIconName } from "./tool-icons";
 import { ThinkingTimeline } from "./thinking-timeline";
@@ -161,12 +165,15 @@ export function ThinkingPanel({
             </span>
           )}
         </span>
-        {steps.length > 0 &&
-          (open ? (
-            <ChevronUp className="ml-auto size-4 shrink-0 text-muted-foreground/70" />
-          ) : (
-            <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground/70" />
-          ))}
+        {steps.length > 0 && (
+          // The chevron flips by morphing between the two glyphs rather than
+          // swapping one for the other (morphicons.com).
+          <MorphIcon
+            icon={open ? ChevronUp : ChevronDown}
+            size={16}
+            className="text-muted-foreground/70 ml-auto shrink-0"
+          />
+        )}
       </button>
       {/* Hidden, not unmounted, when collapsed: the timeline rows keep their
           state across expand/collapse — a ToolResult stays open where the

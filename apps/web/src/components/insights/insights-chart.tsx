@@ -188,7 +188,7 @@ export function UsageCard({
         <CardTitle className="text-lg font-semibold">Usage</CardTitle>
         <CardDescription>
           {tab === "metrics"
-            ? "Conversation activity over time — click a metric to toggle it."
+            ? "Conversation activity over time, click a metric to toggle it."
             : `Conversations split by ${tab === "assistants" ? "assistant" : "channel"}.`}
         </CardDescription>
       </CardHeader>

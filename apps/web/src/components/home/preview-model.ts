@@ -57,7 +57,7 @@ export const ASSISTANTS: PreviewAssistant[] = [
     title: "Acme Helpdesk",
     nickname: "Ace",
     description:
-      "Front-line IT assistant for Acme employees — resolves access issues, password resets and software questions straight from the internal knowledge base.",
+      "Front-line IT assistant for Acme employees, resolves access issues, password resets and software questions straight from the internal knowledge base.",
     id: "aK3mPqR7xT2w",
     wide: true,
   },
@@ -79,7 +79,7 @@ export const ASSISTANTS: PreviewAssistant[] = [
     title: "Onboarding Guide",
     nickname: "Scout",
     description:
-      "Walks new hires through their first 30 days — accounts, tools, required training and who to ask for what.",
+      "Walks new hires through their first 30 days, accounts, tools, required training and who to ask for what.",
     id: "dR2vAyE9nJ4f",
   },
   {
@@ -93,7 +93,7 @@ export const ASSISTANTS: PreviewAssistant[] = [
     title: "Acme Intranet",
     nickname: "Atlas",
     description:
-      "Answers questions from Acme's intranet — company news, internal policies, org charts and workplace services.",
+      "Answers questions from Acme's intranet, company news, internal policies, org charts and workplace services.",
     id: "fT4xCzO6pN1h",
   },
 ];

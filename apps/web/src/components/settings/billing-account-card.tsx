@@ -77,7 +77,7 @@ export function BillingAccountCard({
             </p>
           ) : (
             <p className="text-muted-foreground">
-              No payment method on file — Stripe will ask for one on the next
+              No payment method on file, Stripe will ask for one on the next
               invoice.
             </p>
           )}

@@ -127,7 +127,7 @@ export function AuthenticationClient({
       setClientId("");
       setTenantId("");
       setClientSecret("");
-      toast.success("Connection saved — validate it to confirm the credentials.");
+      toast.success("Connection saved, validate it to confirm the credentials.");
       router.refresh();
     });
 
@@ -297,7 +297,7 @@ export function AuthenticationClient({
         </div>
         {enforceableWithoutValid && (
           <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-            Sign-in is required but there is no validated connection yet —
+            Sign-in is required but there is no validated connection yet, 
             visitors won&apos;t be able to get past the gate until you connect
             and validate a provider.
           </p>

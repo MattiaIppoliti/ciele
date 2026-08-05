@@ -95,7 +95,7 @@ const FILLED = {
   description: "It drops every few minutes.",
 };
 
-describe("escalateConversation — validation", () => {
+describe("escalateConversation, validation", () => {
   it("rejects a request without a visitor", async () => {
     const { assistant, desk, conversation } = await fixture();
     expect(
@@ -196,7 +196,7 @@ describe("escalateConversation — validation", () => {
   });
 });
 
-describe("escalateConversation — email", () => {
+describe("escalateConversation, email", () => {
   it("composes the escalation email from the configured form", async () => {
     const { assistant, desk, channel, conversation } = await fixture();
     const sent: EmailMessage[] = [];
@@ -357,7 +357,7 @@ describe("escalateConversation — email", () => {
   });
 });
 
-describe("escalateConversation — escalated flag and auto-Improvements", () => {
+describe("escalateConversation, escalated flag and auto-Improvements", () => {
   it("marks the conversation escalated and records which desk took it", async () => {
     const { assistant, desk, conversation } = await fixture();
     await run(assistant, {

@@ -47,7 +47,10 @@ export function HomeFooter() {
   return (
     <footer
       id="contact"
-      className="home-below-fold home-sky-footer relative scroll-mt-24 overflow-hidden px-4 pt-36 sm:px-8 sm:pt-48 lg:px-12"
+      /* The sky above the footer card used to run for 12rem before anything
+         appeared, which left every page ending in a field of empty gradient.
+         Enough for the sun and the birds, no more. */
+      className="home-below-fold home-sky-footer relative scroll-mt-24 overflow-hidden px-4 pt-16 sm:px-8 sm:pt-24 lg:px-12"
     >
       {/* Light-mode top seam: the white section above blends gradually down
           into the sky over a tall band, so the two never meet on a hard edge

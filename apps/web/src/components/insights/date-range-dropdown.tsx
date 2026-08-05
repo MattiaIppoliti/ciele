@@ -45,7 +45,7 @@ export function DateRangeDropdown({
     setOpen(false);
   }
 
-  const label = presetLabel(from, to) ?? (from && to ? `${from} – ${to}` : "Date range");
+  const label = presetLabel(from, to) ?? (from && to ? `${from}, ${to}` : "Date range");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

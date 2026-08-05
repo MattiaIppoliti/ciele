@@ -154,7 +154,7 @@ export default async function BillingPage({
             </p>
             <p>
               You can also run Ciele yourself, free and forever, on the same
-              open-source core —{" "}
+              open-source core. See the{" "}
               <a
                 className="underline underline-offset-4"
                 href="https://ciele.app/docs/self-hosting"

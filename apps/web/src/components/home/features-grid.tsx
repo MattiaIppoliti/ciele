@@ -74,19 +74,19 @@ const FEATURES: Feature[] = [
   },
   {
     title: "Publish everywhere",
-    body: "One assistant, many channels: your website, internal portals and a shareable embed — edited live with an instant preview.",
+    body: "One assistant, many channels: your website, internal portals and a shareable embed, edited live with an instant preview.",
     visual: () => <PublishVisual />,
     details: [
       "Edit your assistant side-by-side with a live preview of the widget, then publish the same assistant to every channel you need: a floating launcher on your website, an embedded iframe, or internal portals.",
-      "Appearance is fully yours — colors, launcher icon, position and typography — so the widget feels native wherever it lives.",
+      "Appearance is fully yours, colors, launcher icon, position and typography, so the widget feels native wherever it lives.",
     ],
   },
   {
     title: "Insights, not guesswork",
-    body: "Track resolution rate, answer ratings and conversation trends — see how your assistants perform and where to improve.",
+    body: "Track resolution rate, answer ratings and conversation trends, see how your assistants perform and where to improve.",
     visual: () => <InsightsVisual />,
     details: [
-      "A live dashboard surfaces the metrics that matter: AI resolution rate, thumbs-up/down ratings, escalations, unique users and CSAT — all filterable by assistant, channel and date range.",
+      "A live dashboard surfaces the metrics that matter: AI resolution rate, thumbs-up/down ratings, escalations, unique users and CSAT, all filterable by assistant, channel and date range.",
       "Generate AI trend reports over any window and export the underlying data, so you always know which answers to improve next.",
     ],
   },
@@ -138,7 +138,7 @@ function FeatureCard({
             ) : (
               <MorphingDialogImage
                 src={feature.image ?? ""}
-                alt={`${feature.title} — Ciele`}
+                alt={`${feature.title} | Ciele`}
                 className="h-44 w-full border-b object-cover object-top"
               />
             )}
@@ -175,7 +175,7 @@ function FeatureCard({
           ) : (
             <MorphingDialogImage
               src={feature.image ?? ""}
-              alt={`${feature.title} — Ciele`}
+              alt={`${feature.title} | Ciele`}
               className="w-full border-b object-cover"
             />
           )}

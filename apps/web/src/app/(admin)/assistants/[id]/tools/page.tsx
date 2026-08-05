@@ -19,7 +19,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
     <div className="mx-auto max-w-3xl px-8 py-8">
       <h1 className="text-2xl font-semibold">Tools &amp; Skills</h1>
       <p className="text-muted-foreground mt-1 text-sm">
-        The agent&apos;s tool registry and reusable prompt skills — what it can
+        The agent&apos;s tool registry and reusable prompt skills, what it can
         do while answering, beyond generating text.
       </p>
       <ToolsClient

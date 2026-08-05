@@ -106,7 +106,7 @@ export default async function UsageSettingsPage() {
       description={
         <>
           {session.organization.name}&apos;s usage over the last{" "}
-          {USAGE_WINDOW_DAYS} days — every model call and crawled page, split by
+          {USAGE_WINDOW_DAYS} days, every model call and crawled page, split by
           the credential that funded it. Credits are estimated cost: one credit
           is a cent of what the work cost to run.
         </>
@@ -245,20 +245,20 @@ export default async function UsageSettingsPage() {
                         {CREDENTIAL_LABELS[r.credentialKind]}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {r.modelId || r.provider || "—"}
+                        {r.modelId || r.provider || "N/A"}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatCount(r.calls)}
                       </TableCell>
                       <TableCell className="text-right">
                         {r.kind === "crawl"
-                          ? "—"
+                          ? "N/A"
                           : `${formatCount(r.inputTokens)} · ${formatCount(
                               r.outputTokens
                             )}`}
                       </TableCell>
                       <TableCell className="text-right">
-                        {r.kind === "crawl" ? formatCount(r.units) : "—"}
+                        {r.kind === "crawl" ? formatCount(r.units) : "N/A"}
                       </TableCell>
                     </TableRow>
                   ))}

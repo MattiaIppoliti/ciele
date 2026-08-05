@@ -176,7 +176,7 @@ export function DayRow({
                     label={`${label} window opens`}
                     onChange={(m) => setOpens(r.id, m)}
                   />
-                  <span className="text-muted-foreground">–</span>
+                  <span className="text-muted-foreground">, </span>
                   <TimeSelect
                     value={closesMinutes(r)}
                     options={options}

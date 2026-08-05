@@ -162,7 +162,7 @@ const SELF_HOSTED = {
   ],
   burdensLabel: "What you take on:",
   burdens: [
-    "Your own provider keys, or a local model server — and their bill",
+    "Your own provider keys, or a local model server, and their bill",
     "The servers, the upgrades and the backups; support is the community",
   ],
   /** Anchor of the install section rendered below the comparison grid. */
@@ -372,7 +372,7 @@ pnpm dev`,
   {
     label: ".env.local",
     language: "bash",
-    code: `# Database — set all three and the app leaves demo mode
+    code: `# Database, set all three and the app leaves demo mode
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
@@ -473,7 +473,7 @@ export function PricingContent({
       : { label: tier.salesCta, href: "/contact/sales" };
 
   return (
-    <main className="relative px-4 pb-24 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+    <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
         <div className="max-w-3xl">
@@ -484,8 +484,8 @@ export function PricingContent({
             Pricing that scales with your usage
           </h1>
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Every plan includes the whole product — assistants, knowledge, flows,
-            inbox and insights — for as many members as you like. What changes is
+            Every plan includes the whole product, assistants, knowledge, flows,
+            inbox and insights, for as many members as you like. What changes is
             how much AI work the plan funds each month, and how deeply Ciele
             plugs into your existing systems.
           </p>
@@ -528,7 +528,7 @@ export function PricingContent({
               </div>
               <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
                 {recommended
-                  ? `${recommended.name} funds about that much answering — it is marked below. Crawling and indexing draw on the same allowance, so a heavy indexing month leaves less for answers.`
+                  ? `${recommended.name} funds about that much answering, it is marked below. Crawling and indexing draw on the same allowance, so a heavy indexing month leaves less for answers.`
                   : "That is more than the published plans fund. Enterprise is sized in a conversation, so tell us the number and we will quote it."}
               </p>
             </div>
@@ -552,8 +552,8 @@ export function PricingContent({
               </span>
               , the lightest model on the platform. Which model your assistants
               run is your choice and it moves this a lot: on{" "}
-              {basis.frontierModel} — the usual step up when you want a stronger
-              answer — one answer costs roughly {basis.frontierFactor}× more, so
+              {basis.frontierModel}, the usual step up when you want a stronger
+              answer, one answer costs roughly {basis.frontierFactor}× more, so
               the same allowance covers proportionally fewer.
             </p>
           ) : null}
@@ -597,14 +597,14 @@ export function PricingContent({
                     this one does not, and a 16px offset would carry down into
                     every row below it. */}
                 <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
-                  AGPL-3.0 — no plan, no allowance
+                  AGPL-3.0, no plan, no allowance
                 </p>
                 <div className="border-border/60 mt-4 min-h-38 rounded-lg border border-dashed px-3 py-2.5">
                   <p className="text-foreground text-xs font-semibold">
                     Included each month:
                   </p>
                   <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-                    Nothing — the AI work is billed to your own provider account,
+                    Nothing, the AI work is billed to your own provider account,
                     or runs on a model server you host.
                   </p>
                 </div>
@@ -813,7 +813,7 @@ export function PricingContent({
           </h2>
           <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed">
             Ciele is open source under the AGPL, so running it yourself is
-            always an option — you bring the infrastructure and the model
+            always an option, you bring the infrastructure and the model
             account, and you keep the whole product.
           </p>
 
@@ -862,7 +862,7 @@ export function PricingContent({
                       ) : cell === false ? (
                         <>
                           <span aria-hidden="true" className="opacity-40">
-                            —
+                            ·
                           </span>
                           <span className="sr-only">Not included</span>
                         </>
@@ -944,7 +944,7 @@ export function PricingContent({
               </div>
               <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
                 AGPL-3.0. Hosting, upgrades, backups, plan billing and support
-                are the managed edition&rsquo;s job — everything else is in the
+                are the managed edition&rsquo;s job, everything else is in the
                 repository.
               </p>
             </div>
@@ -980,13 +980,13 @@ const FAQ_ITEMS: BouncyAccordionItem[] = [
     id: "allowance",
     title: "What does the included allowance actually cover?",
     description:
-      "The AI work the platform funds for you: answering questions, crawling your sites and indexing your documents. Each plan states that as volumes — answers, pages, documents — and all three draw on the same monthly allowance, so a month spent indexing a large site leaves less for answering, and the other way round. Your Usage page shows the split as it happens.",
+      "The AI work the platform funds for you: answering questions, crawling your sites and indexing your documents. Each plan states that as volumes, answers, pages, documents, and all three draw on the same monthly allowance, so a month spent indexing a large site leaves less for answering, and the other way round. Your Usage page shows the split as it happens.",
   },
   {
     id: "why-not-tokens",
     title: "Why volumes instead of tokens?",
     description:
-      "Because tokens are our unit, not yours. A plan's allowance is denominated in cost, which we then restate as the volumes that cost funds — so the plan means the same thing whichever model your assistants run. A frontier model spends the allowance faster and covers proportionally fewer answers; it never quietly costs you more than the plan.",
+      "Because tokens are our unit, not yours. A plan's allowance is denominated in cost, which we then restate as the volumes that cost funds, so the plan means the same thing whichever model your assistants run. A frontier model spends the allowance faster and covers proportionally fewer answers; it never quietly costs you more than the plan.",
   },
   {
     id: "run-out",
@@ -1004,7 +1004,7 @@ const FAQ_ITEMS: BouncyAccordionItem[] = [
     id: "byok",
     title: "Can we bring our own models?",
     description:
-      "Yes, from Business up. Connect your own Anthropic, OpenAI or Google key, or any OpenAI-compatible endpoint including a self-hosted one. Enterprise adds keyless federated access — Google Vertex, Anthropic workload identity or Azure OpenAI — so no long-lived key is ever stored with us.",
+      "Yes, from Business up. Connect your own Anthropic, OpenAI or Google key, or any OpenAI-compatible endpoint including a self-hosted one. Enterprise adds keyless federated access, Google Vertex, Anthropic workload identity or Azure OpenAI, so no long-lived key is ever stored with us.",
   },
   {
     id: "switch",
@@ -1016,12 +1016,12 @@ const FAQ_ITEMS: BouncyAccordionItem[] = [
     id: "self-hosted",
     title: "What is the difference between self-hosted and a paid plan?",
     description:
-      "The product is the same — self-hosting gives you the whole open-source core under the AGPL. What a paid plan adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, plan billing and usage controls, and support. Self-hosted, all of that is your side of the line.",
+      "The product is the same, self-hosting gives you the whole open-source core under the AGPL. What a paid plan adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, plan billing and usage controls, and support. Self-hosted, all of that is your side of the line.",
   },
   {
     id: "education",
     title: "Do you offer education or non-profit pricing?",
     description:
-      "We do. Ciele is built for institutions, and we quote academic and non-profit rollouts case by case — get in touch and we will work it out with you.",
+      "We do. Ciele is built for institutions, and we quote academic and non-profit rollouts case by case, get in touch and we will work it out with you.",
   },
 ];

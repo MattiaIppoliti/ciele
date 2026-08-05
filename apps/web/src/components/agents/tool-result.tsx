@@ -14,6 +14,9 @@ import {
   SquareTerminal,
   Wrench,
 } from "lucide-react";
+// Icon data for the copy mark, which reshapes into the check on click.
+import { Check as CheckData, Copy as CopyData } from "lucide";
+import { MorphIcon } from "morphicons/react";
 import { motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
@@ -326,11 +329,7 @@ export function ToolResult({
                   label={copied ? "Copied" : "Copy result"}
                   onClick={handleCopy}
                 >
-                  {copied ? (
-                    <Check className="size-3.5" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
+                  <MorphIcon icon={copied ? CheckData : CopyData} size={14} />
                 </ToolResultAction>
               ) : null}
               {onRetry ? (

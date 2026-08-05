@@ -1971,7 +1971,7 @@ export async function importFaqsAction(formData: FormData): Promise<{
     throw new Error("Missing assistant, collection, or file");
   }
   if (file.size > FAQ_CSV_MAX_BYTES) {
-    throw new Error("File is too large — the maximum supported size is 10 MB");
+    throw new Error("File is too large, the maximum supported size is 10 MB");
   }
 
   const { rows, skipped } = parseFaqCsv(await file.text());

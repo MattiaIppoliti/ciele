@@ -111,7 +111,7 @@ export function LegalDoc({
   sections: LegalSection[];
 }) {
   return (
-    <main className="relative px-4 pb-24 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+    <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
         <div className="max-w-3xl">

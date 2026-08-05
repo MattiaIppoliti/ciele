@@ -47,7 +47,7 @@ export function StyleForm({
       await updateAssistantAction(assistant.id, {
         style: { brandColor, position },
       });
-      toast.success("Widget style saved — publish to make it live");
+      toast.success("Widget style saved, publish to make it live");
     });
   }
 

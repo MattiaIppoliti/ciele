@@ -181,7 +181,7 @@ function ringView(meter: UsageMeterSnapshot, now: string): MeterRingView {
     window: meter.window.name,
     label: WINDOW_COPY[meter.window.name],
     fraction: uncapped ? 0 : fraction,
-    percentLabel: uncapped ? "—" : percentLabel(fraction),
+    percentLabel: uncapped ? "N/A" : percentLabel(fraction),
     tone: toneOf(fraction, uncapped),
     usedLabel: formatNumber(meter.usedCredits),
     capLabel: uncapped ? NO_LIMIT : formatNumber(meter.cap ?? 0),
@@ -208,7 +208,7 @@ export function usageLimitsView(
       ...RESOURCE_COPY[resource],
       rings,
       tone: worstTone(rings.map((r) => r.tone)),
-      leadPercent: lead ? lead.percentLabel : "—",
+      leadPercent: lead ? lead.percentLabel : "N/A",
     };
   });
 
@@ -231,7 +231,7 @@ export function usageLimitsView(
       usedLabel: formatNumber(used),
       capLabel: uncapped ? NO_LIMIT : formatNumber(cap),
       fraction: totalFraction,
-      percentLabel: uncapped ? "—" : percentLabel(totalFraction),
+      percentLabel: uncapped ? "N/A" : percentLabel(totalFraction),
       // Deliberately no tone: no cap exists on the sum of the three meters, so
       // colouring this amber would warn about a limit that cannot be reached.
       uncapped,

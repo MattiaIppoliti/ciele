@@ -64,7 +64,7 @@ export function DownloadCta() {
             </h2>
 
             <p className="max-w-md text-base leading-[160%] text-zinc-300">
-              Bring your assistants to the desktop — build, test and publish from
+              Bring your assistants to the desktop, build, test and publish from
               a native app. Join the list and we&apos;ll send your download link
               as soon as your spot opens up.
             </p>
@@ -84,7 +84,7 @@ export function DownloadCta() {
                   <Check className="size-5" />
                 </div>
                 <p className="text-sm leading-[150%] text-zinc-300">
-                  Shape the roadmap — early testers help decide what ships next.
+                  Shape the roadmap, early testers help decide what ships next.
                 </p>
               </div>
             </div>
@@ -170,9 +170,9 @@ export function DownloadCta() {
                     <option value="" disabled>
                       Select
                     </option>
-                    <option value="1-50">1–50</option>
-                    <option value="50-500">50–500</option>
-                    <option value="500-5000">500–5000</option>
+                    <option value="1-50">1 to 50</option>
+                    <option value="50-500">50 to 500</option>
+                    <option value="500-5000">500 to 5000</option>
                     <option value="5000+">5000+</option>
                   </select>
                 </div>

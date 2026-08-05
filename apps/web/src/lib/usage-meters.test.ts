@@ -65,7 +65,7 @@ describe("resetLabel", () => {
   });
 });
 
-describe("usageLimitsView — tones", () => {
+describe("usageLimitsView, tones", () => {
   const toneAt = (usedCredits: number, cap = 100): MeterTone =>
     usageLimitsView(snapshot([meter({ cap, usedCredits })]), NOW).cards[0].rings[0]
       .tone;
@@ -110,7 +110,7 @@ describe("usageLimitsView — tones", () => {
   });
 });
 
-describe("usageLimitsView — shape", () => {
+describe("usageLimitsView, shape", () => {
   it("lists the three meters in plan order, whatever order they arrive in", () => {
     const view = usageLimitsView(
       snapshot([

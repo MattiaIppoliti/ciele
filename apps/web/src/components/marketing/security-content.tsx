@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
+import { CtaSection } from "@/components/marketing/cta-section";
 
 interface Capability {
   icon: LucideIcon;
@@ -105,7 +106,7 @@ function StatusBadge({ label }: { label: string }) {
 
 export function SecurityContent() {
   return (
-    <main className="relative px-4 pb-24 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+    <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
         <div className="max-w-3xl">
@@ -244,6 +245,13 @@ export function SecurityContent() {
             security@ciele.app
           </a>
         </div>
+
+        <CtaSection
+          lead="Grounded, isolated, traceable."
+          trail="See it on your own content."
+          primary={{ label: "Request a demo", href: "/contact/sales" }}
+          secondary={{ label: "Read the docs", href: "https://docs.ciele.app" }}
+        />
       </div>
     </main>
   );

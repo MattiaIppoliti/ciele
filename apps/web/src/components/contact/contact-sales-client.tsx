@@ -30,7 +30,7 @@ const COUNTRIES = [
   "Other",
 ];
 
-const COMPANY_SIZES = ["1–500", "501–2,000", "2,001–10,000", "10,001–30,000", "30,000+"];
+const COMPANY_SIZES = ["1 to 500", "501 to 2,000", "2,001 to 10,000", "10,001 to 30,000", "30,000+"];
 
 const PRODUCT_INTERESTS = [
   "Customer support assistants",
@@ -142,7 +142,7 @@ export function ContactSalesClient() {
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
                   <h2 className="text-2xl font-semibold">Thank you!</h2>
                   <p className="text-muted-foreground max-w-sm text-sm">
-                    Your request has been received — the Ciele team will get
+                    Your request has been received, the Ciele team will get
                     back to you shortly.
                   </p>
                   <Link

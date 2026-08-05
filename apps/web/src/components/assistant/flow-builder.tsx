@@ -1900,7 +1900,7 @@ export function FlowBuilder({
         >
           {isDefaultFlow ? (
             <p className="text-muted-foreground text-sm">
-              The default flow runs whenever no other flow matches — it needs no
+              The default flow runs whenever no other flow matches, it needs no
               trigger.
             </p>
           ) : trigger === null ? (
@@ -1971,14 +1971,14 @@ export function FlowBuilder({
                   </div>
                   {!dwellOk && (
                     <p className="text-destructive text-xs">
-                      Set at least one second — otherwise this is “On page load”.
+                      Set at least one second, otherwise this is “On page load”.
                     </p>
                   )}
                 </div>
               )}
               {proactive && (
                 <p className="text-muted-foreground text-sm">
-                  This flow starts on its own, without the user asking anything —
+                  This flow starts on its own, without the user asking anything, 
                   so it has no conditions, and its response is a single
                   notification.
                 </p>
@@ -2006,7 +2006,7 @@ export function FlowBuilder({
           ) : proactive ? (
             <p className="text-muted-foreground text-sm">
               A conversation-context condition needs a conversation to read, and
-              this flow runs before the user has said anything — so there are no
+              this flow runs before the user has said anything, so there are no
               conditions to set.
             </p>
           ) : (
@@ -2153,7 +2153,7 @@ export function FlowBuilder({
                       onChange={(e) =>
                         patchSettings("basic_reply", { message: e.target.value })
                       }
-                      placeholder="Leave empty to generate a short reply in the visitor's language — or pin the exact wording here"
+                      placeholder="Leave empty to generate a short reply in the visitor's language, or pin the exact wording here"
                       rows={2}
                       className="bg-background"
                     />
@@ -2424,7 +2424,7 @@ export function FlowBuilder({
                       </div>
                       <SettingToggle
                         title="Allow users to reply"
-                        description="Let the user answer this notification in the chat. Turn it off for a one-way announcement — the composer closes and says so."
+                        description="Let the user answer this notification in the chat. Turn it off for a one-way announcement, the composer closes and says so."
                         checked={settings.notification?.allowReplies ?? true}
                         onCheckedChange={(allowReplies) =>
                           patchSettings("notification", { allowReplies })

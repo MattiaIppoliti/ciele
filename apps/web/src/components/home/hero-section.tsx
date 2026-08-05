@@ -68,7 +68,7 @@ export function HeroSection() {
             className="bg-background/60 hover:bg-background group mx-auto flex w-fit items-center gap-3 rounded-full border p-1 pl-4 shadow-md shadow-zinc-950/5 backdrop-blur transition-colors duration-300"
           >
             <span className="text-foreground text-sm">
-              Introducing Ciele — AI Teammates for your business
+              Introducing Ciele, AI Teammates for your business
             </span>
             <span className="bg-background flex size-6 items-center justify-center rounded-full duration-300 group-hover:translate-x-0.5">
               <ArrowRight className="size-3" />

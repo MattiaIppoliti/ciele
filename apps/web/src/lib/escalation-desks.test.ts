@@ -15,7 +15,7 @@ const FORM = [
   },
 ];
 
-describe("listEscalationDesks — channel projection", () => {
+describe("listEscalationDesks, channel projection", () => {
   it("hides an email channel saved without a destination address", async () => {
     const desk = await db.createHelpDesk(DEMO_ORG.id, { name: "Projection Desk" });
     await db.createSupportChannel(desk.id, {

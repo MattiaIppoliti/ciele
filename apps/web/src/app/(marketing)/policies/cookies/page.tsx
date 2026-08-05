@@ -13,7 +13,7 @@ import {
 } from "@/lib/cookie-consent";
 
 export const metadata: Metadata = {
-  title: "Cookie Notice — Ciele",
+  title: "Cookie Notice | Ciele",
   description:
     "Which cookies and similar technologies Ciele uses, what each one is for, how long it lasts, and how to change or withdraw your choice.",
 };
@@ -30,7 +30,7 @@ function categorySection(category: ConsentCategory): LegalSection {
     {
       type: "table",
       caption: category.essential
-        ? "Always active — these cannot be switched off."
+        ? "Always active, these cannot be switched off."
         : "Set only if you allow this category.",
       headers: [
         COOKIE_TABLE_HEADERS.name,
@@ -63,7 +63,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Cookies are small text files placed on your computer or phone when you visit a site. They hold information a web server in the issuing domain can read back later — which is how a site remembers that you are signed in, or which settings you picked.",
+        text: "Cookies are small text files placed on your computer or phone when you visit a site. They hold information a web server in the issuing domain can read back later, which is how a site remembers that you are signed in, or which settings you picked.",
       },
       {
         type: "p",
@@ -89,7 +89,7 @@ const SECTIONS: LegalSection[] = [
       },
       {
         type: "p",
-        text: "Everything else is optional and off until you turn it on. We do not set optional cookies on the strength of you continuing to browse, and rejecting them takes exactly one click — the same as accepting.",
+        text: "Everything else is optional and off until you turn it on. We do not set optional cookies on the strength of you continuing to browse, and rejecting them takes exactly one click, the same as accepting.",
       },
       {
         type: "table",
@@ -98,7 +98,7 @@ const SECTIONS: LegalSection[] = [
         rows: CONSENT_CATEGORIES.map((category) => [
           category.title,
           category.essential
-            ? "Always active — required to deliver the service"
+            ? "Always active, required to deliver the service"
             : "Off until you allow it; can be withdrawn at any time",
           Array.from(new Set(category.items.map((item) => item.provider))).join(", "),
         ]),
@@ -113,7 +113,7 @@ const SECTIONS: LegalSection[] = [
       {
         type: "ul",
         items: [
-          "We set no advertising cookies and run no advertising or cross-site tracking pixels. That is why this notice has no “marketing” category — there is nothing to disclose. If that ever changes, this notice and the consent banner will change with it, and we will ask you again before setting anything.",
+          "We set no advertising cookies and run no advertising or cross-site tracking pixels. That is why this notice has no “marketing” category, there is nothing to disclose. If that ever changes, this notice and the consent banner will change with it, and we will ask you again before setting anything.",
           "We do not sell personal data, and we do not share it for cross-context behavioural advertising.",
           "We do not use the conversations that flow through our customers' assistants to train foundation models.",
         ],
@@ -133,7 +133,7 @@ const SECTIONS: LegalSection[] = [
         text: (
           <>
             You can change or withdraw your choice at any time, and it is no
-            harder than making it in the first place — open{" "}
+            harder than making it in the first place, open{" "}
             <CookiePreferencesButton className={LINK_CLASS} /> and switch any
             category off. The same link sits in the footer of every page on this
             site. Withdrawing consent stops the affected scripts immediately and
@@ -151,7 +151,7 @@ const SECTIONS: LegalSection[] = [
       },
       {
         type: "p",
-        text: "Every major browser also lets you block or delete cookies for a site, independently of us. You will still be able to read this site, but blocking strictly necessary cookies will stop you signing in and will break parts of the product. How to do it differs by browser, so check its help pages — the settings are usually under Privacy.",
+        text: "Every major browser also lets you block or delete cookies for a site, independently of us. You will still be able to read this site, but blocking strictly necessary cookies will stop you signing in and will break parts of the product. How to do it differs by browser, so check its help pages, the settings are usually under Privacy.",
       },
       {
         type: "p",
@@ -189,7 +189,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Data protection law requires us to be able to demonstrate that you consented, not merely to assert it. The cookie on your device is not enough for that on its own — it is yours, and you can clear it at any time — so when you make or change a choice we also store a record of it on our servers.",
+        text: "Data protection law requires us to be able to demonstrate that you consented, not merely to assert it. The cookie on your device is not enough for that on its own, it is yours, and you can clear it at any time, so when you make or change a choice we also store a record of it on our servers.",
       },
       {
         type: "table",
@@ -206,7 +206,7 @@ const SECTIONS: LegalSection[] = [
           ],
           [
             "Notice version",
-            "Which version of this notice you were shown — consent to an older version does not evidence consent to a newer one.",
+            "Which version of this notice you were shown, consent to an older version does not evidence consent to a newer one.",
           ],
           [
             "When",
@@ -228,7 +228,7 @@ const SECTIONS: LegalSection[] = [
       },
       {
         type: "p",
-        text: "Each decision is added as a new entry rather than overwriting the last, so withdrawing consent is itself recorded — that history is what makes the record meaningful. We keep these entries for as long as we may need to evidence the choice, and no longer. Our legal basis is our legitimate interest in meeting the accountability duty the law places on us, not your consent — so this record exists whether you accept or refuse, and refusing everything still produces one.",
+        text: "Each decision is added as a new entry rather than overwriting the last, so withdrawing consent is itself recorded, that history is what makes the record meaningful. We keep these entries for as long as we may need to evidence the choice, and no longer. Our legal basis is our legitimate interest in meeting the accountability duty the law places on us, not your consent, so this record exists whether you accept or refuse, and refusing everything still produces one.",
       },
     ],
   },
@@ -264,7 +264,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "We will update this notice when the cookies we use change, or for operational, legal or regulatory reasons. The date at the top of the page tells you when it last changed. When a change is material we do not rely on you noticing — we reset the consent banner so everyone is asked again.",
+        text: "We will update this notice when the cookies we use change, or for operational, legal or regulatory reasons. The date at the top of the page tells you when it last changed. When a change is material we do not rely on you noticing, we reset the consent banner so everyone is asked again.",
       },
     ],
   },
@@ -301,7 +301,7 @@ export default async function CookieNoticePage() {
         eyebrow="Legal"
         title="Cookie Notice"
         lastUpdated={COOKIE_NOTICE_LAST_UPDATED}
-        intro="This notice explains how Ciele uses cookies, local storage and similar technologies on ciele.app, in the Ciele console, and across the assistants our customers publish — what each one is for, how long it lasts, and how to change or withdraw your choice. The tables below are generated from the same declaration that drives our consent banner, so what you see here is what we actually set."
+        intro="This notice explains how Ciele uses cookies, local storage and similar technologies on ciele.app, in the Ciele console, and across the assistants our customers publish, what each one is for, how long it lasts, and how to change or withdraw your choice. The tables below are generated from the same declaration that drives our consent banner, so what you see here is what we actually set."
         sections={SECTIONS}
       />
       <HomeFooter />

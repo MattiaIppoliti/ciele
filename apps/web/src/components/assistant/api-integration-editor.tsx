@@ -234,7 +234,7 @@ export function ApiIntegrationEditor({
             <strong className="font-medium">
               Only a described endpoint can be reached
             </strong>{" "}
-            — a path this catalogue does not cover is refused before any request
+, a path this catalogue does not cover is refused before any request
             is made.
           </p>
         </div>
@@ -320,7 +320,7 @@ export function ApiIntegrationEditor({
                 autoComplete="off"
                 placeholder={
                   hasCredential
-                    ? "•••••••• stored — type to replace"
+                    ? "•••••••• stored, type to replace"
                     : "Paste the credential"
                 }
                 value={credential ?? ""}
@@ -350,7 +350,7 @@ export function ApiIntegrationEditor({
 
         {endpoints.length === 0 && (
           <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
-            No endpoints described yet — the assistant has no API to query.
+            No endpoints described yet, the assistant has no API to query.
           </p>
         )}
 
@@ -381,7 +381,7 @@ export function ApiIntegrationEditor({
                 </Select>
               </div>
               <div className="flex-1 space-y-2">
-                <Label>Path — put path parameters in {"{braces}"}</Label>
+                <Label>Path, put path parameters in {"{braces}"}</Label>
                 <Input
                   placeholder="/tickets/{ticketId}/comments"
                   value={draft.path}
@@ -423,7 +423,7 @@ export function ApiIntegrationEditor({
                 />
               </div>
               <div className="flex-1 space-y-2">
-                <Label>Purpose — what it answers</Label>
+                <Label>Purpose, what it answers</Label>
                 <Input
                   placeholder="The comments on one ticket"
                   value={draft.purpose}
@@ -436,7 +436,7 @@ export function ApiIntegrationEditor({
             </div>
             <div className="space-y-2">
               <Label>
-                Parameters — one per line: name | path or query | string, number
+                Parameters, one per line: name | path or query | string, number
                 or boolean | description | required
               </Label>
               <Textarea
@@ -452,7 +452,7 @@ export function ApiIntegrationEditor({
               />
             </div>
             <div className="space-y-2">
-              <Label>Response keys — comma separated</Label>
+              <Label>Response keys, comma separated</Label>
               <Input
                 placeholder="items, total"
                 value={draft.responseKeys}

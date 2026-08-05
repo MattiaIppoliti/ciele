@@ -83,7 +83,7 @@ export function TopBar({ demo }: { demo: boolean }) {
         {mounted && topBarActions}
         {demo && (
           <Badge variant="secondary" className="text-muted-foreground">
-            Demo data — Supabase not configured
+            Demo data, Supabase not configured
           </Badge>
         )}
       </div>

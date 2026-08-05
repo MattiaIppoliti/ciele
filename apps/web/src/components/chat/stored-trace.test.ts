@@ -25,7 +25,7 @@ const trace: StoredTurnTrace = {
       status: "done",
       input: { query: "intake dates" },
     },
-    { id: "t2", kind: "thought", label: "Nothing on fees — search again.", status: "done" },
+    { id: "t2", kind: "thought", label: "Nothing on fees, search again.", status: "done" },
     {
       id: "c2",
       kind: "tool",
@@ -155,7 +155,7 @@ describe("liveTraceLabel", () => {
           id: "n2",
           kind: "notice",
           label:
-            "No AI provider credential configured for this organization — add one in Settings → AI",
+            "No AI provider credential configured for this organization, add one in Settings → AI",
           status: "done",
         },
         { id: "t1", kind: "thought", label: "The visitor probably means…", status: "done" },
@@ -175,7 +175,7 @@ describe("liveTraceLabel", () => {
           label: "Searching knowledge",
           status: "done",
         },
-        { id: "t1", kind: "thought", label: "Nothing useful — try again.", status: "done" },
+        { id: "t1", kind: "thought", label: "Nothing useful, try again.", status: "done" },
       ])
     ).toBe("Searching knowledge…");
   });

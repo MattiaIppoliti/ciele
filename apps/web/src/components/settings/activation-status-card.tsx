@@ -55,13 +55,13 @@ export function ActivationStatusCard({
           <CardDescription>
             {selfServe ? (
               <>
-                Your assistants do not answer yet. Everything else is open —
+                Your assistants do not answer yet. Everything else is open, 
                 pick a plan and they start answering as soon as the payment
                 clears.
               </>
             ) : (
               <>
-                Your assistants do not answer yet. Everything else is open —
+                Your assistants do not answer yet. Everything else is open, 
                 build them now and they start working the moment we activate
                 you.
               </>
@@ -117,7 +117,7 @@ export function ActivationStatusCard({
             Active
           </CardTitle>
           <CardDescription>
-            This organization is running with no managed subscription — the
+            This organization is running with no managed subscription, the
             usual state for a self-hosted deployment.
           </CardDescription>
         </CardHeader>
@@ -139,7 +139,7 @@ export function ActivationStatusCard({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CircleCheck className="size-4 text-emerald-500" />
-          {comped ? "Active — evaluation" : "Active"}
+          {comped ? "Active, evaluation" : "Active"}
         </CardTitle>
         <CardDescription>
           {comped ? (
@@ -166,7 +166,7 @@ export function ActivationStatusCard({
         {subscription.status === "past_due" && (
           <p className="text-sm text-amber-600 dark:text-amber-400">
             A payment did not go through. Your assistants keep answering while
-            we retry — update your card from the billing portal to avoid an
+            we retry, update your card from the billing portal to avoid an
             interruption.
           </p>
         )}

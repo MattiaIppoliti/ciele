@@ -15,13 +15,17 @@ import {
   Map as MapIcon,
   MessageCircle,
   MessageCircleQuestion,
-  PanelLeftClose,
-  PanelLeftOpen,
   Search,
   Settings,
   Ticket,
   type LucideIcon,
 } from "lucide-react";
+// Icon data, not components: the collapse arrow reshapes between the two.
+import {
+  PanelLeftClose as PanelLeftCloseData,
+  PanelLeftOpen as PanelLeftOpenData,
+} from "lucide";
+import { MorphIcon } from "morphicons/react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { signOutAction, switchOrganizationAction } from "@/app/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -387,8 +391,11 @@ function SidebarContent({
         onClick={onToggle}
         className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors"
       >
-        <AnimatedIcon
-          icon={expandsOnToggle ? PanelLeftOpen : PanelLeftClose}
+        {/* The arrow reverses by reshaping, not by swapping one glyph for
+            the other (morphicons.com), so the direction the sidebar is about
+            to move is legible mid-animation. */}
+        <MorphIcon
+          icon={expandsOnToggle ? PanelLeftOpenData : PanelLeftCloseData}
           size={16}
         />
       </button>
@@ -530,7 +537,7 @@ function SidebarContent({
               return (
                 <Hint
                   key={section.slug}
-                  label={`${section.label} — coming soon`}
+                  label={`${section.label}, coming soon`}
                   side="right"
                 >
                   {disabled}
@@ -675,7 +682,7 @@ function SidebarContent({
             <DropdownMenuLabel>
               <p className="truncate font-semibold">{profileDisplayName(profile, email)}</p>
               <p className="text-muted-foreground truncate text-xs font-normal">
-                {demo ? "Demo mode — no login" : email}
+                {demo ? "Demo mode, no login" : email}
                 {role ? ` · ${role}` : ""}
               </p>
             </DropdownMenuLabel>

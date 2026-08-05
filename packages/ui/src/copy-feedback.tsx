@@ -1,6 +1,9 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+// Icon data, not components: morphicons samples these paths and springs
+// between them, so the copy mark reshapes into the check.
+import { Check as CheckData, Copy as CopyData } from "lucide";
+import { MorphIcon } from "morphicons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
 
@@ -55,38 +58,34 @@ export function useCopyFeedback<Key>(resetDelay = DEFAULT_RESET_DELAY) {
   };
 }
 
-/** Animated Copy → success Check icon with a stable footprint. */
+/**
+ * Copy → success Check, as one mark that reshapes.
+ *
+ * It used to be two stacked glyphs cross-fading, which meant the success read
+ * as a different icon arriving. Morphing the paths (morphicons.com) keeps it a
+ * single object changing state, and drops the stacking grid: the footprint is
+ * whatever `size` says, in both states.
+ */
 export function CopyFeedbackIcon({
   copied,
   className,
+  size = 16,
 }: {
   copied: boolean;
   className?: string;
+  size?: number;
 }) {
   return (
     <span
       aria-hidden="true"
       data-copied={copied || undefined}
-      className={cn("relative inline-grid shrink-0 place-items-center", className)}
+      className={cn("inline-grid shrink-0 place-items-center", className)}
     >
-      {/* The swap to the check is instant (no transition while copied), so the
-          success reads the moment of the click; only the return to the copy
-          icon fades, which is why the transition class lives on the un-copied
-          state alone. */}
-      <Copy
-        className={cn(
-          "col-start-1 row-start-1 size-full",
-          copied
-            ? "opacity-0"
-            : "opacity-100 transition-opacity duration-200 motion-reduce:transition-none"
-        )}
-      />
-      <Check
-        strokeWidth={2.75}
-        className={cn(
-          "col-start-1 row-start-1 size-full text-emerald-500",
-          copied ? "opacity-100" : "opacity-0"
-        )}
+      <MorphIcon
+        icon={copied ? CheckData : CopyData}
+        size={size}
+        strokeWidth={copied ? 2.75 : 2}
+        className={copied ? "text-emerald-500" : undefined}
       />
     </span>
   );

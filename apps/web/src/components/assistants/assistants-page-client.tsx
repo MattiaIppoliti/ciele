@@ -165,7 +165,7 @@ export function AssistantsPageClient({
         {filtered.length === 0 && (
           <p className="text-muted-foreground mt-16 text-center text-sm">
             {assistants.length === 0
-              ? "No assistants yet — create your first one."
+              ? "No assistants yet, create your first one."
               : `No assistants match “${query}”.`}
           </p>
         )}

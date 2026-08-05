@@ -40,7 +40,7 @@ export function OnboardingForm() {
         {isPending ? "Creating..." : "Create organization"}
       </Button>
       <p className="text-muted-foreground text-center text-xs">
-        Got an invite link instead? Just open it — you&apos;ll join that
+        Got an invite link instead? Just open it, you&apos;ll join that
         organization automatically.
       </p>
     </form>

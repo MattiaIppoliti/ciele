@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
     ? `Cloud plans from €${entry.priceEur.toLocaleString("en-US")} a month.`
     : "Ciele Cloud plans start with a conversation.";
   return {
-    title: "Pricing — Ciele",
+    title: "Pricing | Ciele",
     description: `Ciele pricing: self-hosted, Go, Business and Enterprise. Self-hosting is free under AGPL-3.0; every managed plan includes the whole product for unlimited members. ${managed}`,
   };
 }

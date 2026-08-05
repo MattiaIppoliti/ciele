@@ -51,7 +51,7 @@ export default async function KnowledgePage({
     <div className="mx-auto max-w-4xl px-8 py-8">
       <h1 className="text-2xl font-semibold">Knowledge</h1>
       <p className="text-muted-foreground mt-1 text-sm">
-        OKF collections powering this assistant&apos;s answers — sources are
+        OKF collections powering this assistant&apos;s answers, sources are
         enriched into concept documents and indexed for retrieval.
       </p>
       <KnowledgeClient

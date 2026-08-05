@@ -213,9 +213,9 @@ export function SetupPicker({
         {filteredActive.length === 0 && (
           <p className="text-muted-foreground py-8 text-center text-sm">
             {assistants.length === 0
-              ? "No assistants yet — create one first."
+              ? "No assistants yet, create one first."
               : active.length === 0
-                ? "No published assistants — open the directory below."
+                ? "No published assistants, open the directory below."
                 : `No active assistants match “${query}”.`}
           </p>
         )}
@@ -269,7 +269,7 @@ export function SetupPicker({
           ) : (
             <button
               type="button"
-              aria-label={`Open the assistants directory — see all ${assistants.length}`}
+              aria-label={`Open the assistants directory, see all ${assistants.length}`}
               onClick={(event) => {
                 event.stopPropagation();
                 revealSearch();
@@ -338,7 +338,7 @@ export function SetupPicker({
             {isExpanded && filteredAll.length === 0 && (
               <p className="text-muted-foreground py-8 text-center text-sm">
                 {assistants.length === 0
-                  ? "No assistants yet — create one first."
+                  ? "No assistants yet, create one first."
                   : `No assistants match “${directoryQuery}”.`}
               </p>
             )}
