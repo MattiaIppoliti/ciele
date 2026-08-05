@@ -32,6 +32,9 @@ const COLUMNS: Array<{
     title: "Legal",
     links: [
       { name: "Security", href: "/security" },
+      { name: "GDPR", href: "/security/gdpr" },
+      { name: "DPA", href: "/policies/dpa" },
+      { name: "Subprocessors", href: "/policies/subprocessors" },
       { name: "Privacy Policy", href: "/policies/privacy" },
       { name: "Cookie Notice", href: "/policies/cookies" },
       { name: "Terms of Service", href: "/policies/terms-of-service" },
