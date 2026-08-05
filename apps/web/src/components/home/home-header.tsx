@@ -319,17 +319,67 @@ function DropdownCard({ card, onNavigate }: { card: PanelCard; onNavigate: () =>
   );
 }
 
+/* Motion values of the directional-hover-header the panel's movement is copied
+   from: the contents cross-slide by CONTENT_X, every row inside enters from
+   ITEM_X and the rows fire STAGGER_STEP apart — front-to-back when the pointer
+   moved left along the nav, back-to-front when it moved right. */
+const PANEL_EASE = [0.16, 1, 0.3, 1] as const;
+const CONTENT_X = 84;
+const ITEM_X = 18;
+const STAGGER_STEP = 0.038;
+/** Panel height tween (open, close and every swap between two panels). */
+const HEIGHT_DURATION = 0.28;
+
+/**
+ * The stagger schedule for one panel's rows: `total` rows, played in reverse
+ * when the pointer travelled right (`direction` +1), so the wave always runs
+ * against the pointer's own travel. `direction` 0 (first open) keeps the
+ * natural order.
+ */
+function useRowMotion(total: number, direction: number) {
+  const reduceMotion = useReducedMotion();
+  const dx = reduceMotion ? 0 : direction > 0 ? ITEM_X : -ITEM_X;
+
+  return (index: number) => ({
+    initial: { opacity: 0, x: dx, y: reduceMotion ? 0 : 5 },
+    animate: { opacity: 1, x: 0, y: 0 },
+    transition: reduceMotion
+      ? { duration: 0 }
+      : {
+          duration: 0.18,
+          ease: "easeOut" as const,
+          delay: (direction > 0 ? total - 1 - index : index) * STAGGER_STEP,
+        },
+  });
+}
+
 /** The inside of one dropdown: link columns, then the grid or the promo cards. */
-function PanelContent({ item, onNavigate }: { item: MenuItem; onNavigate: () => void }) {
+function PanelContent({
+  item,
+  direction,
+  onNavigate,
+}: {
+  item: MenuItem;
+  direction: number;
+  onNavigate: () => void;
+}) {
+  /* One flat row index across the whole panel — the link columns first, then
+     the docs grid (counted as one row) or the promo cards. */
+  const columns = item.columns ?? [];
+  const links = columns.reduce((sum, column) => sum + column.length, 0);
+  const total = links + (item.areaGrid ? 1 : 0) + (item.cards?.length ?? 0);
+  const row = useRowMotion(total, direction);
+  let cursor = 0;
+
   return (
     <div className="flex gap-2 p-2">
       {/* Each column is sized to its longest label (with a floor) rather than
           a fixed width: the one-column Enterprise panel was wrapping
           "Enterprise governance" onto two lines. */}
-      {item.columns?.map((column, columnIndex) => (
+      {columns.map((column, columnIndex) => (
         <ul key={columnIndex} className="w-max min-w-44 shrink-0 py-1">
           {column.map((child) => (
-            <li key={child.name}>
+            <motion.li key={child.name} {...row(cursor++)}>
               <Link
                 href={child.href}
                 target={child.external ? "_blank" : undefined}
@@ -339,13 +389,19 @@ function PanelContent({ item, onNavigate }: { item: MenuItem; onNavigate: () => 
               >
                 {child.name}
               </Link>
-            </li>
+            </motion.li>
           ))}
         </ul>
       ))}
-      {item.areaGrid && <DocsAreaGrid onNavigate={onNavigate} />}
+      {item.areaGrid && (
+        <motion.div className="shrink-0 self-center" {...row(cursor++)}>
+          <DocsAreaGrid onNavigate={onNavigate} />
+        </motion.div>
+      )}
       {item.cards?.map((card) => (
-        <DropdownCard key={card.title} card={card} onNavigate={onNavigate} />
+        <motion.div key={card.title} className="shrink-0" {...row(cursor++)}>
+          <DropdownCard card={card} onNavigate={onNavigate} />
+        </motion.div>
       ))}
     </div>
   );
@@ -382,7 +438,26 @@ function DropdownPanel({
   cardRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const reduceMotion = useReducedMotion();
-  const slide = reduceMotion ? 0 : 28 * direction;
+  /* Cross-slide the way the reference header does it: moving right along the
+     nav (direction +1) brings the new panel in from the right and pushes the
+     old one out to the left. */
+  const slide = reduceMotion ? 0 : CONTENT_X * direction;
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+  const [height, setHeight] = React.useState<number | "auto">("auto");
+
+  /* The card tweens to each panel's height instead of snapping. Measured off
+     the body (`popLayout` pulls the outgoing panel out of flow, so this is the
+     incoming panel's height), not animated with `layout` — that measures
+     through the `-translate-x-1/2` ancestor and pinned the width. */
+  React.useEffect(() => {
+    const node = bodyRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setHeight(entry.contentRect.height)
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <motion.div
@@ -407,26 +482,36 @@ function DropdownPanel({
           through its ancestors, and this card sits inside a `-translate-x-1/2`
           box, so it kept the previous panel's width: the Docs icon grid spilled
           out over the page. The panel still slides and cross-fades. */}
-      <div
+      <motion.div
         ref={cardRef}
-        className="bg-background/95 relative w-max rounded-3xl border shadow-2xl shadow-black/10 backdrop-blur-xl dark:shadow-black/40"
+        animate={{ height }}
+        transition={{
+          duration: reduceMotion ? 0 : HEIGHT_DURATION,
+          ease: PANEL_EASE,
+        }}
+        className="bg-background/95 relative w-max overflow-hidden rounded-3xl border shadow-2xl shadow-black/10 backdrop-blur-xl dark:shadow-black/40"
       >
-        {/* popLayout pulls the outgoing panel out of flow, so the card resizes
-            to the incoming one instead of stretching to fit both. */}
-        <AnimatePresence mode="popLayout" initial={false}>
-          {item && (
-            <motion.div
-              key={item.name}
-              initial={{ opacity: 0, x: slide, filter: "blur(4px)" }}
-              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-              exit={{ opacity: 0, x: -slide, filter: "blur(4px)" }}
-              transition={{ duration: reduceMotion ? 0 : 0.22, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <PanelContent item={item} onNavigate={onNavigate} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+        <div ref={bodyRef}>
+          {/* popLayout pulls the outgoing panel out of flow, so the card resizes
+              to the incoming one instead of stretching to fit both. */}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {item && (
+              <motion.div
+                key={item.name}
+                initial={{ opacity: 0, x: slide }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -slide }}
+                transition={{
+                  x: { duration: reduceMotion ? 0 : 0.26, ease: PANEL_EASE },
+                  opacity: { duration: reduceMotion ? 0 : 0.16, ease: "easeOut" },
+                }}
+              >
+                <PanelContent item={item} direction={direction} onNavigate={onNavigate} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
       </div>
     </motion.div>
   );
