@@ -37,6 +37,8 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  OrgApiKey,
+  OrgApiKeyInput,
   Organization,
   OrganizationPatch,
   OrgBudget,
@@ -135,6 +137,8 @@ interface MockStore {
     { assistantId: string; userId: string; role: AssistantAccessRole; grantedAt: string; grantedBy: string | null }
   >;
   invites: Map<string, Invite>;
+  /** Org API keys (#618); the mock keeps the hash alongside for later verify. */
+  apiKeys: Map<string, OrgApiKey & { secretHash: string }>;
   connections: Map<string, ProviderConnection>;
   /** organizationId -> the connection chosen to embed its knowledge (#437). */
   embeddingConnections: Map<string, string>;
@@ -365,6 +369,7 @@ function emptyStore(): MockStore {
     ),
     assistantAccess: new Map(),
     invites: new Map(),
+    apiKeys: new Map(),
     connections: new Map(),
     embeddingConnections: new Map(),
     ssoConnections: new Map(),
@@ -1739,6 +1744,38 @@ export const mockDb: Db = {
 
   async revokeInvite(inviteId) {
     getStore().invites.delete(inviteId);
+  },
+
+  // --- Organization API keys (#618) --------------------------------------
+
+  async listApiKeys(organizationId) {
+    return [...getStore().apiKeys.values()]
+      .filter((key) => key.organizationId === organizationId)
+      .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+      .map(({ secretHash: _secretHash, ...apiKey }) => apiKey);
+  },
+
+  async createApiKey(organizationId, input: OrgApiKeyInput) {
+    const stored: OrgApiKey & { secretHash: string } = {
+      id: shortId(),
+      organizationId,
+      name: input.name,
+      secretHint: input.secretHint,
+      role: input.role,
+      createdBy: input.createdBy,
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+      revokedAt: null,
+      secretHash: input.secretHash,
+    };
+    getStore().apiKeys.set(stored.id, stored);
+    const { secretHash: _secretHash, ...apiKey } = stored;
+    return apiKey;
+  },
+
+  async revokeApiKey(keyId) {
+    const key = getStore().apiKeys.get(keyId);
+    if (key && !key.revokedAt) key.revokedAt = new Date().toISOString();
   },
 
   // --- Assistants -------------------------------------------------------

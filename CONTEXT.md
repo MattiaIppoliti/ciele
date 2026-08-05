@@ -24,6 +24,10 @@ _Avoid_: user (ambiguous with widget end users), account
 A Member's permission level: Owner, Admin, Editor or Viewer. Publish and member management require Owner/Admin; Editors edit and test assistants; Viewers only read and test.
 _Avoid_: permission, group
 
+**API Key**:
+An Organization-scoped credential (`ciele_sk_…`) for programmatic access (CLI, MCP server, public API). Minted by an Admin+ Member, it acts with a Role capped at its creator's; only the secret's hash is stored, and revocation keeps the row for audit.
+_Avoid_: token (ambiguous with invite tokens and LLM tokens), PAT
+
 **Knowledge Collection**:
 A named group of knowledge inside one Assistant (e.g. "MARKETING (A) 2024/2025"), anchorable in chat as context and represented as an OKF bundle.
 _Avoid_: course (education-specific label), folder, dataset

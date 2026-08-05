@@ -44,6 +44,8 @@ export type MutatedEntity =
   | { kind: "aiSettings" }
   /** The org members roster. */
   | { kind: "members" }
+  /** The org API keys page (#618). */
+  | { kind: "apiKeys" }
   /** The operational Alerts page. */
   | { kind: "alerts" }
   /** The Improvements Kanban. */
@@ -80,6 +82,8 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
       return [{ path: "/settings/ai" }];
     case "members":
       return [{ path: "/settings/members" }];
+    case "apiKeys":
+      return [{ path: "/settings/api-keys" }];
     case "alerts":
       return [{ path: "/alerts" }];
     case "improvementList":

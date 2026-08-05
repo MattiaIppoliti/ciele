@@ -53,6 +53,8 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  OrgApiKey,
+  OrgApiKeyInput,
   OrganizationPatch,
   Profile,
   ProfilePatch,
@@ -566,6 +568,18 @@ interface InviteRow {
   created_at: string;
 }
 
+interface OrgApiKeyRow {
+  id: string;
+  organization_id: string;
+  name: string;
+  secret_hint: string;
+  role: Role;
+  created_by: string | null;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+}
+
 function toAssistant(row: AssistantRow): Assistant {
   return {
     id: row.id,
@@ -677,6 +691,20 @@ function toInvite(row: InviteRow): Invite {
     role: row.role,
     token: row.token,
     createdAt: row.created_at,
+  };
+}
+
+function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    name: row.name,
+    secretHint: row.secret_hint,
+    role: row.role,
+    createdBy: row.created_by ?? "",
+    createdAt: row.created_at,
+    lastUsedAt: row.last_used_at,
+    revokedAt: row.revoked_at,
   };
 }
 
@@ -1040,6 +1068,49 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("organization_invites")
         .delete()
         .eq("id", inviteId);
+      if (error) throw error;
+    },
+
+    // --- Organization API keys (#618) -----------------------------------
+
+    async listApiKeys(organizationId) {
+      const { data, error } = await client
+        .from("organization_api_keys")
+        .select(
+          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as OrgApiKeyRow[]).map(toOrgApiKey);
+    },
+
+    async createApiKey(organizationId, input: OrgApiKeyInput) {
+      const row = {
+        organization_id: organizationId,
+        name: input.name,
+        secret_hash: input.secretHash,
+        secret_hint: input.secretHint,
+        role: input.role,
+        created_by: input.createdBy,
+      };
+      const { data, error } = await client
+        .from("organization_api_keys")
+        .insert(row)
+        .select(
+          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
+        )
+        .single();
+      if (error) throw error;
+      return toOrgApiKey(data as OrgApiKeyRow);
+    },
+
+    async revokeApiKey(keyId) {
+      const { error } = await client
+        .from("organization_api_keys")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("id", keyId)
+        .is("revoked_at", null);
       if (error) throw error;
     },
 

@@ -43,7 +43,10 @@ import type {
 } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
+  apiKeySecretHint,
   buildPublicationConfig,
+  generateApiKeySecret,
+  hashApiKeySecret,
   okfActor,
   openSecret,
   sealSecret,
@@ -91,7 +94,12 @@ import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { invalidatePublication } from "@/lib/widget-db";
-import { canChangeRoles, canManageMembers, canViewReasoning } from "@/lib/rbac";
+import {
+  canAssignApiKeyRole,
+  canChangeRoles,
+  canManageMembers,
+  canViewReasoning,
+} from "@/lib/rbac";
 import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
 import {
   INBOX_EXPORT_MAX_CONVERSATIONS,
@@ -323,6 +331,41 @@ export async function revokeInviteAction(inviteId: string) {
   await orgMutation(
     { capability: "manageMembers", entities: [{ kind: "members" }] },
     ({ db }) => db.revokeInvite(inviteId),
+  );
+}
+
+// --- Organization API keys (#618) --------------------------------------------
+
+/**
+ * Mints an org API key. The plaintext secret is returned ONCE from here and
+ * never stored — the Db seam only ever sees its hash and displayable hint.
+ * The key's Role is capped at the creator's: a key acts as a delegate of the
+ * human who minted it and can never out-rank them.
+ */
+export async function createApiKeyAction(name: string, role: Role) {
+  return orgMutation(
+    { capability: "manageApiKeys", entities: [{ kind: "apiKeys" }] },
+    async ({ db, session }) => {
+      if (!canAssignApiKeyRole(session.role, role)) {
+        throw new Error("A key's role cannot exceed your own");
+      }
+      const secret = generateApiKeySecret();
+      const apiKey = await db.createApiKey(session.organization.id, {
+        name: name.trim() || "Untitled key",
+        role,
+        secretHash: hashApiKeySecret(secret),
+        secretHint: apiKeySecretHint(secret),
+        createdBy: session.userId,
+      });
+      return { apiKey, secret };
+    },
+  );
+}
+
+export async function revokeApiKeyAction(keyId: string) {
+  await orgMutation(
+    { capability: "manageApiKeys", entities: [{ kind: "apiKeys" }] },
+    ({ db }) => db.revokeApiKey(keyId),
   );
 }
 

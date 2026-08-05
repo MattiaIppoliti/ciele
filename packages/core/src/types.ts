@@ -592,6 +592,34 @@ export interface Invite {
 }
 
 /**
+ * An Organization-scoped API key (#618): authenticates programmatic access
+ * (the CLI, MCP server, /api/v1) as the Organization, acting with a Role
+ * capped at its creator's. Only the SHA-256 hash of the secret is stored
+ * (see `api-keys.ts`); `secretHint` is the displayable first characters.
+ * A revoked key keeps its row — `revokedAt` set — for audit.
+ */
+export interface OrgApiKey {
+  id: string;
+  organizationId: string;
+  name: string;
+  secretHint: string;
+  role: Role;
+  /** Empty when the creating account was since deleted. */
+  createdBy: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface OrgApiKeyInput {
+  name: string;
+  role: Role;
+  secretHash: string;
+  secretHint: string;
+  createdBy: string;
+}
+
+/**
  * A Member's per-assistant role override ("Manage access" — PRD #296).
  * No row means "System Role": the Member's org Role applies. 'denied' hides
  * the Assistant and its data from that Member entirely. Org owners and

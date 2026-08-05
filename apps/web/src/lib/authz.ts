@@ -8,7 +8,13 @@ import {
 } from "@/lib/admin-page-reads";
 import { getSession, type Session } from "@/lib/auth";
 import { getDb } from "@/lib/data";
-import { canChangeRoles, canEdit, canManageMembers, canPublish } from "@/lib/rbac";
+import {
+  canChangeRoles,
+  canEdit,
+  canManageApiKeys,
+  canManageMembers,
+  canPublish,
+} from "@/lib/rbac";
 
 /** A session guaranteed to carry an active Organization. */
 export type OrgSession = Session & {
@@ -31,6 +37,7 @@ export type MemberCapability =
   | "edit"
   | "publish"
   | "manageMembers"
+  | "manageApiKeys"
   | "changeRoles";
 
 const CAPABILITY_GUARDS: Record<
@@ -40,6 +47,10 @@ const CAPABILITY_GUARDS: Record<
   edit: { allowed: canEdit, error: "Not allowed" },
   publish: { allowed: canPublish, error: "Only admins/owners can publish" },
   manageMembers: { allowed: canManageMembers, error: "Not allowed" },
+  manageApiKeys: {
+    allowed: canManageApiKeys,
+    error: "Only admins/owners can manage API keys",
+  },
   changeRoles: { allowed: canChangeRoles, error: "Only owners can change roles" },
 };
 

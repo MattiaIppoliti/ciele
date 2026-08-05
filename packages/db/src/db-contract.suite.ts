@@ -1,6 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AiUsageStage, FlowCondition } from "@agent-hub/core";
-import { ASSISTANT_GOAL_CAP, buildPublicationConfig, shortId } from "@agent-hub/core";
+import {
+  ASSISTANT_GOAL_CAP,
+  apiKeySecretHint,
+  buildPublicationConfig,
+  generateApiKeySecret,
+  hashApiKeySecret,
+  shortId,
+} from "@agent-hub/core";
 import type { Db } from "./types";
 
 /**
@@ -97,6 +104,60 @@ export function describeDbContract(
 
         const current = await db.getCurrentOrg();
         expect(current?.organization.name).toBe("Renamed Org");
+      });
+    });
+
+    describe("organization API keys", () => {
+      const newKeyInput = (name: string, role: "viewer" | "editor" | "admin") => {
+        const secret = generateApiKeySecret();
+        return {
+          name,
+          role,
+          secretHash: hashApiKeySecret(secret),
+          secretHint: apiKeySecretHint(secret),
+          createdBy: ctx.userId,
+        };
+      };
+
+      it("create → list → revoke round-trips, org-scoped, hash never exposed", async () => {
+        const created = await db.createApiKey(
+          ctx.organizationId,
+          newKeyInput("CI deploy key", "editor")
+        );
+        expect(created).toMatchObject({
+          organizationId: ctx.organizationId,
+          name: "CI deploy key",
+          role: "editor",
+          createdBy: ctx.userId,
+          lastUsedAt: null,
+          revokedAt: null,
+        });
+        expect(created.secretHint.startsWith("ciele_sk_")).toBe(true);
+        // The stored hash never crosses the seam back out.
+        expect("secretHash" in created).toBe(false);
+
+        const second = await db.createApiKey(
+          ctx.organizationId,
+          newKeyInput("Reporting key", "viewer")
+        );
+
+        const listed = await db.listApiKeys(ctx.organizationId);
+        const ids = listed.map((k) => k.id);
+        expect(ids).toContain(created.id);
+        expect(ids).toContain(second.id);
+        for (const key of listed) expect("secretHash" in key).toBe(false);
+
+        // Foreign-org reads never surface these keys.
+        const foreign = await db.listApiKeys(ctx.foreignOrganizationId);
+        expect(foreign.map((k) => k.id)).not.toContain(created.id);
+
+        // Revocation keeps the row (audit) and stamps revokedAt; idempotent.
+        await db.revokeApiKey(created.id);
+        await db.revokeApiKey(created.id);
+        const after = await db.listApiKeys(ctx.organizationId);
+        const revoked = after.find((k) => k.id === created.id);
+        expect(revoked?.revokedAt).toBeTruthy();
+        expect(after.find((k) => k.id === second.id)?.revokedAt).toBeNull();
       });
     });
 

@@ -40,3 +40,19 @@ export function canViewMembers(role: Role | null): boolean {
 export function canChangeRoles(role: Role | null): boolean {
   return roleRank(role) >= 4;
 }
+
+/** Admins and above manage the Organization's API keys (#618). */
+export function canManageApiKeys(role: Role | null): boolean {
+  return roleRank(role) >= 3;
+}
+
+/**
+ * An API key may never carry a Role above its creator's — the key acts as a
+ * delegate of the human who minted it, so the ladder caps at their rank.
+ */
+export function canAssignApiKeyRole(
+  creator: Role | null,
+  keyRole: Role
+): boolean {
+  return roleRank(keyRole) <= roleRank(creator);
+}

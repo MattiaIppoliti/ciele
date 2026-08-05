@@ -3,6 +3,7 @@ import {
   CreditCard,
   Fingerprint,
   Gauge,
+  KeyRound,
   Sparkles,
   Users,
   type LucideIcon,
@@ -47,6 +48,12 @@ export const ORG_SETTINGS_TABS: SettingsTab[] = [
     slug: "ai",
     href: "/settings/ai",
     icon: Sparkles,
+  },
+  {
+    label: "API Keys",
+    slug: "api-keys",
+    href: "/settings/api-keys",
+    icon: KeyRound,
   },
   { label: "Usage", slug: "usage", href: "/settings/usage", icon: Gauge },
   {

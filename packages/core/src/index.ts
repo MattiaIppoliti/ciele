@@ -167,6 +167,15 @@ export type { FundingBucket } from "./funding";
 // past it would write a row `openSecret` cannot read back.
 export { sealSecret, openSecret } from "./crypto";
 
+// Organization API key secrets (#618): mint, hash, and hint. Verification is
+// a hash lookup, so the same trio serves the web app now and /api/v1 later.
+export {
+  API_KEY_PREFIX,
+  apiKeySecretHint,
+  generateApiKeySecret,
+  hashApiKeySecret,
+} from "./api-keys";
+
 // Reads a message off a thrown value — including the plain objects PostgREST
 // throws instead of Error instances.
 export { thrownMessage } from "./thrown-message";

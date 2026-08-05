@@ -73,6 +73,8 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  OrgApiKey,
+  OrgApiKeyInput,
   OrgBudget,
   OrgWebsiteSource,
   Organization,
@@ -154,6 +156,17 @@ export interface Db {
     organizationId: string,
     patch: OrganizationPatch
   ): Promise<Organization>;
+
+  // Organization API keys (#618) — programmatic access credentials.
+  // Admin+ only (enforced by RLS and requireMember); the secret itself never
+  // passes through this seam, only its hash and displayable hint.
+  listApiKeys(organizationId: string): Promise<OrgApiKey[]>;
+  createApiKey(
+    organizationId: string,
+    input: OrgApiKeyInput
+  ): Promise<OrgApiKey>;
+  /** Marks the key revoked (row kept for audit). Idempotent. */
+  revokeApiKey(keyId: string): Promise<void>;
 
   // Profile (the signed-in caller's own — Settings > Profile)
   getProfile(): Promise<Profile | null>;
