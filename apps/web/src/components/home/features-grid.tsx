@@ -228,7 +228,13 @@ export function FeaturesGrid() {
 
   return (
     <AmbientActiveContext.Provider value={active}>
-      <div ref={gridRef} className="mt-14 grid gap-8 md:grid-cols-3">
+      {/* grid-cols-1 is not cosmetic: without it the single-column stack uses an
+          implicit `auto` track, whose auto min sizing lets each card grow to its
+          content-based minimum — the card visuals are a fixed 356px wide, so the
+          cards ran ~30px past the right edge of a phone viewport. An explicit
+          minmax(0,1fr) column (what grid-cols-1 emits, same as md:grid-cols-3)
+          zeroes that minimum, so the card fits and clips its visual instead. */}
+      <div ref={gridRef} className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
         {FEATURES.map((feature) => (
           <FeatureCard key={feature.title} feature={feature} mounted={mounted} />
         ))}

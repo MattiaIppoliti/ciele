@@ -4,6 +4,7 @@ import { FeaturesSection, HeroSection } from "@/components/home/hero-section";
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeSectionRail } from "@/components/home/home-section-rail";
 import { HomeShell } from "@/components/home/home-shell";
+import { CtaSection } from "@/components/marketing/cta-section";
 
 export const metadata: Metadata = {
   title: "Ciele, AI assistants for your business",
@@ -23,6 +24,18 @@ export default async function HomePage() {
       <main>
         <HeroSection />
         <FeaturesSection />
+        {/* The same sign-off every marketing page ends on, so the home page
+            hands over to the footer the way /features/* and /pricing do
+            instead of stopping on the last feature card. bg-background keeps
+            it on the white band the features sit on, above the footer sky. */}
+        <section className="home-below-fold bg-background">
+          <CtaSection
+            lead="Built on your knowledge."
+            trail="Answering today."
+            primary={{ label: "Request a demo", href: "/contact/sales" }}
+            secondary={{ label: "See pricing", href: "/pricing" }}
+          />
+        </section>
       </main>
       <HomeFooter />
     </HomeShell>
