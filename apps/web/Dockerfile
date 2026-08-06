@@ -31,6 +31,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
 COPY packages/ui/package.json packages/ui/
 COPY packages/charts/package.json packages/charts/
+COPY packages/ops/package.json packages/ops/
 RUN pnpm install --frozen-lockfile --filter @agent-hub/web...
 
 FROM deps AS build
