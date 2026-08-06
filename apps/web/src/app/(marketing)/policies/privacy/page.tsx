@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -231,19 +228,14 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function PrivacyPolicyPage() {
-  const session = await getSession();
-
+export default function PrivacyPolicyPage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Legal"
-        title="Privacy Policy"
-        lastUpdated="July 18, 2026"
-        intro="This Privacy Policy describes how Ciele handles personal data when you use our website, our admin console and the AI assistants our customers publish. We keep it plain and specific to how the product actually works."
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Legal"
+      title="Privacy Policy"
+      lastUpdated="July 18, 2026"
+      intro="This Privacy Policy describes how Ciele handles personal data when you use our website, our admin console and the AI assistants our customers publish. We keep it plain and specific to how the product actually works."
+      sections={SECTIONS}
+    />
   );
 }

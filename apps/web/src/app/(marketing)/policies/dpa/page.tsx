@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -242,26 +239,21 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function DpaPage() {
-  const session = await getSession();
-
+export default function DpaPage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Legal"
-        title="Data Processing Addendum"
-        lastUpdated={LAST_UPDATED}
-        intro={
-          <>
-            The processor terms that govern the personal data flowing through your
-            assistants: what we may do with it, who else touches it, where it
-            goes, what happens if something goes wrong, and how it is deleted.
-            Published in full rather than sent on request.
-          </>
-        }
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Legal"
+      title="Data Processing Addendum"
+      lastUpdated={LAST_UPDATED}
+      intro={
+        <>
+          The processor terms that govern the personal data flowing through your
+          assistants: what we may do with it, who else touches it, where it
+          goes, what happens if something goes wrong, and how it is deleted.
+          Published in full rather than sent on request.
+        </>
+      }
+      sections={SECTIONS}
+    />
   );
 }

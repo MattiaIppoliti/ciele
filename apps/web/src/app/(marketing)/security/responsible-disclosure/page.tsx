@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -172,26 +169,21 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function ResponsibleDisclosurePage() {
-  const session = await getSession();
-
+export default function ResponsibleDisclosurePage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Security"
-        title="Responsible disclosure"
-        lastUpdated={LAST_UPDATED}
-        intro={
-          <>
-            If you have found a vulnerability in Ciele, we want to hear about it
-            and we would rather you did not have to guess at the rules first.
-            This is what is in scope, what we commit to doing, and what we ask of
-            you in return.
-          </>
-        }
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Security"
+      title="Responsible disclosure"
+      lastUpdated={LAST_UPDATED}
+      intro={
+        <>
+          If you have found a vulnerability in Ciele, we want to hear about it
+          and we would rather you did not have to guess at the rules first.
+          This is what is in scope, what we commit to doing, and what we ask of
+          you in return.
+        </>
+      }
+      sections={SECTIONS}
+    />
   );
 }

@@ -5,9 +5,9 @@
 // navigation boundary, so React never re-renders it on the client — that
 // matters because a <script> element created during a client render is never
 // executed and React 19 warns ("Encountered a script tag while rendering React
-// component"). Mounting this in a nested layout (e.g. app/home) triggers that
-// warning on any client nav into it, and next/script's `beforeInteractive`
-// strategy is likewise only supported in the root layout.
+// component"). Mounting it in a nested layout — the (marketing) group's, say —
+// triggers that warning on any client nav into it, and next/script's
+// `beforeInteractive` strategy is likewise only supported in the root layout.
 //
 // Because it is global, the script itself scopes theming: auth pages and the
 // published widget must stay light (see theme-provider.tsx).

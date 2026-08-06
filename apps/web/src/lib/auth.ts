@@ -82,19 +82,11 @@ export const getSession = cache(async (): Promise<Session | null> => {
   };
 });
 
-/**
- * Presence-only auth check: is there a signed-in caller, without loading
- * their Organization, profile or org list. Unlike {@link getSession} this
- * does no Db reads (`auth.getUser()` only in real mode, always true in demo
- * mode), so a surface that needs nothing but "signed in?" — e.g. the
- * marketing home choosing its header CTA — doesn't turn dynamic on three
- * discarded queries. Memoized per-request like getSession.
- */
-export const hasActiveSession = cache(async (): Promise<boolean> => {
-  if (!isSupabaseConfigured()) return true;
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user !== null;
-});
+/* There was a `hasActiveSession()` here: a presence-only check for surfaces that
+   needed "is anyone signed in?" without getSession's three Db reads. Its only
+   callers were the marketing pages, and they no longer ask the server at all —
+   the pages prerender and the header picks its CTA from the signed-in hint
+   (lib/auth-hint.ts), so the question is answered in the browser, after the
+   response. Deleted rather than left exported: it read cookies, so calling it
+   from anything under (marketing) would silently make that route dynamic again.
+   Restore it from history if a server-rendered surface ever needs it. */

@@ -25,6 +25,14 @@ const nextConfig: NextConfig = {
     "@agent-hub/db",
     "@agent-hub/ui",
   ],
+  images: {
+    // AVIF first, WebP second (Next's default is WebP alone). The marketing
+    // hero's two painterly clouds are the heaviest images the public site
+    // serves and they are `priority`, so they are preloaded — AVIF typically
+    // lands 20-30% under WebP on exactly this kind of soft-gradient artwork.
+    // The cost is a slower first optimization per size; the result is cached.
+    formats: ["image/avif", "image/webp"],
+  },
   outputFileTracingIncludes: {
     // The runtime route reads this file at request time; trace it into the
     // standalone bundle. The terminal one-liner is served from here too.

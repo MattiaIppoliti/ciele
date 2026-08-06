@@ -1,7 +1,4 @@
 import type { Metadata } from "next";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -190,19 +187,14 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function TermsOfServicePage() {
-  const session = await getSession();
-
+export default function TermsOfServicePage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Legal"
-        title="Terms of Service"
-        lastUpdated="July 18, 2026"
-        intro="These terms govern your use of the Ciele platform. They are written to be readable and to reflect how the product actually works, rather than to obscure it."
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Legal"
+      title="Terms of Service"
+      lastUpdated="July 18, 2026"
+      intro="These terms govern your use of the Ciele platform. They are written to be readable and to reflect how the product actually works, rather than to obscure it."
+      sections={SECTIONS}
+    />
   );
 }

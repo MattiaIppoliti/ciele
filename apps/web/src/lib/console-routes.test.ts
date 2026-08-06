@@ -43,6 +43,7 @@ describe("console routes", () => {
     for (const path of [
       "/home",
       "/pricing",
+      "/enterprise",
       "/security",
       "/policies/cookies",
       "/contact/sales",
@@ -86,13 +87,16 @@ describe("marketing routes", () => {
       "/security",
       "/security/gdpr",
       "/policies/privacy",
+      // The landing page is in the group as well, so the whole public site
+      // shares one layout.
+      "/home",
     ]) {
       expect(isMarketingPath(path)).toBe(true);
     }
   });
 
   it("leaves the console, the root and lookalike paths alone", () => {
-    for (const path of ["/", "/assistants", "/home", "/security-report"]) {
+    for (const path of ["/", "/assistants", "/security-report", "/homepage"]) {
       expect(isMarketingPath(path)).toBe(false);
     }
   });

@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -234,26 +231,21 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function GdprPage() {
-  const session = await getSession();
-
+export default function GdprPage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Security"
-        title="GDPR"
-        lastUpdated={LAST_UPDATED}
-        intro={
-          <>
-            How the General Data Protection Regulation applies to Ciele, which
-            role we play for which data, and what a data protection officer needs
-            in order to sign us off. Where a certification is still in progress
-            this page says so rather than rounding up.
-          </>
-        }
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Security"
+      title="GDPR"
+      lastUpdated={LAST_UPDATED}
+      intro={
+        <>
+          How the General Data Protection Regulation applies to Ciele, which
+          role we play for which data, and what a data protection officer needs
+          in order to sign us off. Where a certification is still in progress
+          this page says so rather than rounding up.
+        </>
+      }
+      sections={SECTIONS}
+    />
   );
 }

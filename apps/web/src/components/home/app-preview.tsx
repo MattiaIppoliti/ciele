@@ -9,7 +9,10 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
-import { GLOBAL_NAV, SETUP_SECTIONS } from "@/components/shell/nav";
+import {
+  PREVIEW_GLOBAL_NAV,
+  PREVIEW_SETUP_SECTIONS,
+} from "@/components/home/preview-nav";
 import { cn } from "@/lib/utils";
 import {
   ASSISTANTS,
@@ -90,7 +93,8 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
   const breadcrumb =
     view.kind === "global"
       ? view.label
-      : (SETUP_SECTIONS.find((section) => section.slug === view.slug)?.label ??
+      : (PREVIEW_SETUP_SECTIONS.find((section) => section.slug === view.slug)
+          ?.label ??
         "Setup");
 
   return (
@@ -151,7 +155,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
             </kbd>
           </div>
 
-          {GLOBAL_NAV.filter((item) => !item.bottom).map((item) => (
+          {PREVIEW_GLOBAL_NAV.filter((item) => !item.bottom).map((item) => (
             <NavRow
               key={item.label}
               icon={item.icon}
@@ -166,7 +170,10 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
 
           <div className="my-2 border-t" />
 
-          {(compact ? SETUP_SECTIONS.slice(0, 4) : SETUP_SECTIONS).map(
+          {(compact
+            ? PREVIEW_SETUP_SECTIONS.slice(0, 4)
+            : PREVIEW_SETUP_SECTIONS
+          ).map(
             (section) => (
               <NavRow
                 key={section.slug}
@@ -185,7 +192,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
             {!compact && (
               <div className="mb-2 border-t pt-2">
                 {/* Alerts and Settings are decorative here — no pane behind them. */}
-                {GLOBAL_NAV.filter((item) => item.bottom).map((item) => (
+                {PREVIEW_GLOBAL_NAV.filter((item) => item.bottom).map((item) => (
                   <NavRow
                     key={item.label}
                     icon={item.icon}
@@ -226,7 +233,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
                 onMouseDown={(event) => event.preventDefault()}
                 className="text-muted-foreground hover:text-foreground flex items-center gap-2 transition-colors"
               >
-                <PreviewIcon icon={GLOBAL_NAV[0].icon} size={15} />
+                <PreviewIcon icon={PREVIEW_GLOBAL_NAV[0].icon} size={15} />
                 All Assistants
                 <ChevronsUpDown className="size-3.5" />
               </button>
@@ -245,7 +252,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
                       scope === null && "bg-muted",
                     )}
                   >
-                    <PreviewIcon icon={GLOBAL_NAV[0].icon} size={14} />
+                    <PreviewIcon icon={PREVIEW_GLOBAL_NAV[0].icon} size={14} />
                     All Assistants
                   </button>
                   <div className="my-1 border-t" />

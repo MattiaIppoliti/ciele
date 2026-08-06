@@ -31,12 +31,15 @@ export const CONSOLE_PATH_PREFIXES = [
 export const MARKETING_PATH_PREFIXES = [
   "/enterprise",
   "/features",
+  // The landing page lives in the group too, so the shell it shares with the
+  // rest of the public site can sit in one layout.
+  "/home",
   "/policies",
   "/pricing",
   "/security",
 ] as const;
 
-/** True for the public marketing site's routes (the `/home` landing aside). */
+/** True for the public marketing site's routes. */
 export function isMarketingPath(pathname: string): boolean {
   return MARKETING_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)

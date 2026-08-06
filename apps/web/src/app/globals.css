@@ -216,8 +216,8 @@
   }
   /* The display serif (Sorts Mill Goudy) is a *marketing-only* brand accent —
      home, pricing, policies, etc. The actual app (admin console, assistant
-     editor, chat widget) stays entirely in the sans UI font. Marketing route
-     layouts opt in with `.marketing-serif` (see (marketing)/ and home/). */
+     editor, chat widget) stays entirely in the sans UI font. The marketing
+     route group's layout opts in with `.marketing-serif` (see (marketing)/). */
   .marketing-serif :is(h1, h2, h3, h4) {
     @apply font-heading;
   }

@@ -25,10 +25,19 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 # apps the image never ships need no placeholder manifest here — which also
 # keeps this Dockerfile buildable from the open-source tree, where the
 # enterprise apps do not exist at all.
+#
+# But every workspace package apps/web *does* depend on, directly or through
+# another, needs its manifest here: without it pnpm links no node_modules for
+# that directory, and the build fails compiling its source (packages ship as
+# source, so Turbopack compiles them in place — a missing link surfaces as
+# "Module not found: Can't resolve '@agent-hub/core'" from inside the package,
+# not as a missing dependency of the app). `deploy/compose.test.mjs` derives
+# the closure from the manifests and fails if one is missing from this list.
 COPY apps/web/package.json apps/web/
 COPY packages/agent/package.json packages/agent/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
+COPY packages/ops/package.json packages/ops/
 COPY packages/ui/package.json packages/ui/
 COPY packages/charts/package.json packages/charts/
 COPY packages/ops/package.json packages/ops/

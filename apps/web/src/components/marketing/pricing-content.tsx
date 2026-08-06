@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowDown, Check, Minus } from "lucide-react";
 import React from "react";
@@ -14,123 +12,34 @@ import {
   cn,
 } from "@agent-hub/ui";
 import type { PlanCatalog } from "@agent-hub/agent";
-import { planTierViews, type PlanTierView } from "@/lib/plan-pricing";
+import { planViewsBySlug, type PlanTierView } from "@/lib/plan-pricing";
 import {
   BouncyAccordion,
   type BouncyAccordionItem,
 } from "@/components/motion/bouncy-accordion";
 import { GridBeam } from "@/components/motion/grid-beam";
-import { RangeSlider } from "@/components/motion/range-slider";
-import { TiltCard } from "@/components/motion/tilt-card";
 import { CodeBlock } from "@/components/ui/code-block";
+import { CTA_CLASS, PlanTilt, TIERS, type Tier } from "./plan-cards";
+import { PlanPicker } from "./plan-picker";
 
 /**
- * What this page says about each tier that is NOT a number: who it is for, what
- * it unlocks, and how you buy it.
+ * The public pricing page.
  *
- * Every price and every included volume is deliberately absent here. Those
- * arrive as a `PlanCatalog` from the enterprise billing seam — one ladder,
- * derived from the allowance constants the caps actually enforce and priced at
- * `PLAN_PRICE_EUR`, which is also what the Stripe products charge. Restating a
- * price in this file is how a marketing page and an invoice start disagreeing,
- * so the only pricing this component owns is the layout it renders it in.
+ * A server component, deliberately: all of it — the hero, the metering note,
+ * the free edition's card, the comparison matrix, the install section and the
+ * FAQ — is static content over server-supplied data, and none of it needs to be
+ * shipped to the browser as JavaScript to be hydrated.
  *
- * A deployment with no catalog (the open-source edition, which ships no
- * `src/ee`) therefore has no prices to publish, and the cards say so instead of
- * advertising a ladder that cannot be bought.
+ * The one genuinely interactive piece is the answers picker and the plan cards
+ * whose highlight follows it, which live in the `PlanPicker` island. Two static
+ * regions sit inside that island's layout, so they are passed to it as already-
+ * rendered slots rather than being pulled across the boundary with it.
  *
- * Feature lines describe what the platform does today (see docs/ARCHITECTURE.md
- * §12 for the shipped-vs-inert breakdown). Enterprise's last two lines are
- * contractual rather than product: commitments sales makes, not switches.
+ * The tier ladder and the shared card chrome live in `./plan-cards`, which both
+ * sides read.
  */
-interface Tier {
-  /** Matches the catalog entry's slug — and the Stripe product's name. */
-  slug: "go" | "business" | "enterprise";
-  name: string;
-  tagline: string;
-  featuresLabel: string;
-  features: string[];
-  /**
-   * The plan this tier buys through Stripe Checkout, or null for the sales-led
-   * tier. Only these two have a Stripe Price env (`plans.ts` ENV_KEY), and the
-   * checkout route rejects anything else.
-   */
-  checkoutPlan: "go" | "business" | null;
-  salesCta: string;
-  recommended: boolean;
-}
-
-const TIERS: Tier[] = [
-  {
-    slug: "go",
-    name: "Go",
-    tagline: "One team, one assistant, answering from your own content.",
-    featuresLabel: "Everything you need to launch:",
-    features: [
-      "Unlimited assistants, edited beside a live widget preview",
-      "Knowledge from websites, files and FAQs, re-crawled weekly",
-      "Grounded answers that cite the exact Source behind them",
-      "Publish as a website floater or an embedded iframe",
-      "Conversation inbox, insights dashboard and help-desk escalation",
-      "Tenant isolation, role-based access and single sign-on for admins",
-    ],
-    checkoutPlan: "go",
-    salesCta: "Request access",
-    recommended: false,
-  },
-  {
-    slug: "business",
-    name: "Business",
-    tagline: "Several assistants across departments, wired into your systems.",
-    featuresLabel: "Everything in Go, plus:",
-    features: [
-      "Bring your own model keys, and pick the model per assistant",
-      "Crawl JavaScript-heavy and login-protected sites",
-      "Advanced flow actions: API requests, email, handover",
-      "Ticketing integrations that open a real case on escalation",
-      // Trend reports and exports are routed but stubbed (ARCHITECTURE §12), so
-      // this line advertises the alerting that actually ships today.
-      "Operational alerts when an integration's credentials stop working",
-      "Priority support",
-    ],
-    checkoutPlan: "business",
-    salesCta: "Request access",
-    recommended: true,
-  },
-  {
-    slug: "enterprise",
-    name: "Enterprise",
-    tagline: "Institution-wide rollout, on your own cloud account and terms.",
-    featuresLabel: "Everything in Business, plus:",
-    features: [
-      "Keyless federated access to Vertex, Anthropic and Azure OpenAI",
-      "Model spend billed to your own cloud account, not resold through us",
-      "Organization-wide usage caps and budget controls",
-      "Extended runtime-event retention for audit and review",
-      "Self-hosting on the AGPL core",
-      "DPA, Standard Contractual Clauses and security review support",
-      "Onboarding, a named contact and an availability commitment",
-    ],
-    // Sales-led on purpose: Enterprise carries custom terms, an availability
-    // commitment and often tenant-billed models — none of it a card can settle.
-    checkoutPlan: null,
-    salesCta: "Talk to sales",
-    recommended: false,
-  },
-];
 
 const [GO, BUSINESS, ENTERPRISE] = TIERS;
-
-/**
- * The picker's range, in answers a month. The floor is a genuinely small pilot;
- * the ceiling comes from the catalog at render time, because the dearest plan's
- * volume is the last point where recommending a published plan is honest. The
- * step is coarse on purpose — this is an estimate a visitor makes about their
- * own year, not a quote.
- */
-const MIN_ANSWERS = 500;
-const ANSWER_STEP_SIZE = 500;
-const DEFAULT_ANSWERS = 5_000;
 
 /**
  * The fourth card, and deliberately not a `Tier`: nothing about it moves with
@@ -281,52 +190,6 @@ function comparisonRows(
 }
 
 /**
- * The shared plan-card shell: every card tilts towards the cursor.
- *
- * `overflow-visible` overrides TiltCard's own clip — `Card` draws its outline
- * as a ring, which sits outside the padding box and would be clipped away
- * entirely, taking the "Most popular" highlight with it. The glare rounds
- * itself to the same radius instead of relying on that clip.
- *
- * The glare is also turned well down from its default: it is painted at rest,
- * not just under the pointer, and at full strength it washes a 900px card of
- * body copy grey.
- */
-function PlanTilt({ children }: { children: React.ReactNode }) {
-  return (
-    <TiltCard
-      max={7}
-      glareOpacity={0.06}
-      invert
-      className="h-full overflow-visible rounded-xl"
-    >
-      {children}
-    </TiltCard>
-  );
-}
-
-/**
- * One CTA look for the whole page, in both themes: an outlined pill at rest that
- * inverts to a filled one with a faint halo on hover.
- *
- * Every plan card carries the same button on purpose. Which plan we suggest is
- * already said twice — the ring and the badge — and saying it a third time with
- * a filled button made the other three cards' CTAs read as the disabled
- * alternatives to it. The recommendation also *moves* with the answers slider
- * while a variant chosen per tier cannot, so the filled button regularly
- * disagreed with the ringed card.
- *
- * `text-foreground` is explicit rather than inherited: these buttons sit on a
- * translucent card over the page's own gradient, and inheriting a muted colour
- * from an ancestor is how the label ends up unreadable at rest. The hover half
- * restates the `default` variant's invert so `outline` borrows it —
- * tailwind-merge drops `outline`'s own `hover:bg-*`/`hover:text-*` in favour of
- * these, which is why they stay a className rather than move into the variant.
- */
-const CTA_CLASS =
-  "text-foreground hover:bg-primary hover:text-primary-foreground hover:shadow-[0_0_14px_rgba(0,0,0,0.18)] dark:hover:bg-none dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:shadow-[0_0_14px_rgba(255,255,255,0.28)]";
-
-/**
  * The open-source repository — where "View the source" goes and what the quick
  * start clones. Writing it out is deliberate: an install command a reader has to
  * fill in themselves is not an install command.
@@ -404,6 +267,146 @@ const INSTALL_REQUIREMENTS = [
   },
 ];
 
+/**
+ * What a plan meters, stated above the cards — the picker's sibling inside the
+ * same box, and the reason that box's static half never crosses into the island.
+ */
+function MeteringNote({ catalog }: { catalog: PlanCatalog | null }) {
+  const basis = catalog?.answerBasis ?? null;
+  return (
+    <>
+      <p className="text-foreground text-base font-semibold">
+        What a plan pays for
+      </p>
+      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+        Members are unlimited on every plan, and visitors chatting with a
+        published widget are never counted. What a plan meters is the AI work the
+        platform funds on your behalf: answering questions, crawling your sites
+        and indexing your documents. Each plan below states that allowance as the
+        volumes it covers, and your Usage page shows exactly where you are
+        against it.
+      </p>
+      {basis ? (
+        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
+          Answer volumes are quoted on{" "}
+          <span className="text-foreground font-medium">
+            {basis.quotedModel}
+          </span>
+          , the lightest model on the platform. Which model your assistants run
+          is your choice and it moves this a lot: on {basis.frontierModel}, the
+          usual step up when you want a stronger answer, one answer costs
+          roughly {basis.frontierFactor}× more, so the same allowance covers
+          proportionally fewer.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * The free edition's card. Static — nothing on it moves with the picker — so it
+ * is rendered here and handed to the island as the first cell of its grid.
+ */
+function SelfHostedCard() {
+  return (
+    <PlanTilt>
+      <Card className="bg-card/60 h-full gap-0 backdrop-blur-sm [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-foreground text-lg font-semibold">
+              {SELF_HOSTED.name}
+            </CardTitle>
+            <Badge variant="outline">Open source</Badge>
+          </div>
+          {/* Two-line floor on the tagline and a fixed height on the
+              allowance box below: the four cards then reach their feature
+              list at the same y, which is what makes the lists
+              comparable. See the same two classes on the tier cards. */}
+          <p className="text-muted-foreground mt-1 min-h-17 text-sm leading-relaxed">
+            {SELF_HOSTED.tagline}
+          </p>
+          {/* No catalog lookup here: the open-source edition is not a
+              purchasable tier, so its price is the licence, not data. */}
+          <div className="mt-6 flex items-baseline gap-1.5">
+            <span className="text-foreground text-4xl font-semibold">Free</span>
+            <span className="text-muted-foreground text-sm">/ forever</span>
+          </div>
+          {/* Two-line floor, as on the tier cards: their note wraps and
+              this one does not, and a 16px offset would carry down into
+              every row below it. */}
+          <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
+            AGPL-3.0 — no plan, no allowance
+          </p>
+          <div className="border-border/60 mt-4 min-h-38 rounded-lg border border-dashed px-3 py-2.5">
+            <p className="text-foreground text-xs font-semibold">
+              Included each month:
+            </p>
+            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
+              Nothing — the AI work is billed to your own provider account, or
+              runs on a model server you host.
+            </p>
+          </div>
+        </CardHeader>
+
+        <CardContent className="mt-6 flex-1">
+          <p className="text-foreground text-xs font-semibold">
+            {SELF_HOSTED.featuresLabel}
+          </p>
+          <ul className="mt-3 space-y-2.5">
+            {SELF_HOSTED.features.map((feature) => (
+              <li key={feature} className="flex gap-2.5 text-sm">
+                <Check
+                  aria-hidden="true"
+                  className="text-primary mt-0.5 size-4 shrink-0"
+                  strokeWidth={2.25}
+                />
+                <span className="text-muted-foreground leading-relaxed">
+                  {feature}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {/* Same list shape, deliberately not the same marker: a dash
+              where the tiers carry a tick, so the two lines read as the
+              cost of running it yourself rather than as four extra
+              features the paid plans lack. */}
+          <p className="text-foreground mt-5 text-xs font-semibold">
+            {SELF_HOSTED.burdensLabel}
+          </p>
+          <ul className="mt-3 space-y-2.5">
+            {SELF_HOSTED.burdens.map((burden) => (
+              <li key={burden} className="flex gap-2.5 text-sm">
+                <Minus
+                  aria-hidden="true"
+                  className="text-muted-foreground/60 mt-0.5 size-4 shrink-0"
+                  strokeWidth={2.25}
+                />
+                <span className="text-muted-foreground leading-relaxed">
+                  {burden}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+
+        <CardFooter className="mt-6">
+          {/* A same-page jump, so a plain anchor: next/link would push a
+              history entry for a hash the router does not own. */}
+          <Button
+            className={cn("h-9 w-full", CTA_CLASS)}
+            variant="outline"
+            nativeButton={false}
+            render={<a href={`#${SELF_HOSTED.anchor}`} />}
+          >
+            <span>Install it yourself</span>
+            <ArrowDown aria-hidden="true" className="size-4" />
+          </Button>
+        </CardFooter>
+      </Card>
+    </PlanTilt>
+  );
+}
+
 export function PricingContent({
   billingEnabled,
   catalog,
@@ -420,57 +423,8 @@ export function PricingContent({
    */
   catalog: PlanCatalog | null;
 }) {
-  /** The catalog's tiers, keyed by slug so a card can find its own numbers. */
-  const views = React.useMemo(() => {
-    const entries = planTierViews(catalog?.tiers ?? null);
-    return new Map(entries.map((view) => [view.slug, view]));
-  }, [catalog]);
-  const rows = React.useMemo(() => comparisonRows(views), [views]);
-  const basis = catalog?.answerBasis ?? null;
-
-  /**
-   * The picker: how many answers a month the visitor expects, and the cheapest
-   * published plan whose allowance funds them.
-   *
-   * It picks by ANSWERS rather than by team size because that is what a plan
-   * meters — members are unlimited — and the answer count is the one volume a
-   * prospect can estimate about themselves. The recommendation walks the catalog
-   * cheapest-first, so it moves with the allowances rather than with a table
-   * written here. Above the dearest published volume nothing is recommended: the
-   * honest answer there is a conversation, not the top card.
-   */
-  const [answersWanted, setAnswersWanted] = React.useState(DEFAULT_ANSWERS);
-  /** The dearest published answer volume — the top of the slider's range. */
-  const maxAnswers = React.useMemo(() => {
-    const volumes = (catalog?.tiers ?? []).map((entry) => entry.volumes.answers);
-    return volumes.length > 0 ? Math.max(...volumes) : DEFAULT_ANSWERS;
-  }, [catalog]);
-  const recommended = React.useMemo(
-    () =>
-      TIERS.find((tier) => {
-        const answers = catalog?.tiers.find(
-          (entry) => entry.slug === tier.slug
-        )?.volumes.answers;
-        return answers != null && answers >= answersWanted;
-      }) ?? null,
-    [catalog, answersWanted]
-  );
-
-  /**
-   * Which card is ringed. The picker's answer when it has one, so the highlight
-   * responds to the reader; the static "most popular" flag otherwise, which is
-   * also what a deployment with no catalog falls back to.
-   */
-  const highlighted = (tier: Tier): boolean =>
-    catalog ? recommended?.slug === tier.slug : tier.recommended;
-
-  const cta = (tier: Tier): { label: string; href: string } =>
-    billingEnabled && tier.checkoutPlan
-      ? {
-          label: "Get started",
-          href: `/api/ee/stripe/checkout?plan=${tier.checkoutPlan}`,
-        }
-      : { label: tier.salesCta, href: "/contact/sales" };
+  /** The catalog's tiers, keyed by slug so the matrix can find its numbers. */
+  const rows = comparisonRows(planViewsBySlug(catalog?.tiers ?? null));
 
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
@@ -491,299 +445,12 @@ export function PricingContent({
           </p>
         </div>
 
-        {/* What the plan meters, stated before any number below it: an
-            allowance is only readable once you know what it is spent on. */}
-        <div className="border-border bg-card/60 mt-12 rounded-2xl border p-6 backdrop-blur-sm sm:p-8">
-          {/* The picker only exists where there is a ladder to point at: with no
-              catalog there are no volumes to compare an estimate against. */}
-          {catalog ? (
-            <div className="border-border/60 mb-6 border-b pb-6">
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-foreground text-base font-semibold">
-                  Answers a month
-                </p>
-                <div className="bg-primary/10 flex items-baseline gap-1.5 rounded-full px-3.5 py-1.5">
-                  <span className="text-primary text-xl font-semibold tabular-nums">
-                    {answersWanted.toLocaleString("en-US")}
-                  </span>
-                  <span className="text-muted-foreground text-sm">answers</span>
-                </div>
-              </div>
-              {/* The visible heading above is a plain paragraph rather than a
-                  label: the thumb is the `role="slider"` element, and only
-                  `aria-label` reaches it. */}
-              <RangeSlider
-                className="mt-5"
-                aria-label="Answers a month"
-                value={answersWanted}
-                min={MIN_ANSWERS}
-                max={maxAnswers}
-                step={ANSWER_STEP_SIZE}
-                onValueChange={setAnswersWanted}
-              />
-              <div className="text-muted-foreground mt-1.5 flex justify-between text-xs tabular-nums">
-                <span>{MIN_ANSWERS.toLocaleString("en-US")}</span>
-                <span>{Math.round(maxAnswers / 2).toLocaleString("en-US")}</span>
-                <span>{maxAnswers.toLocaleString("en-US")}</span>
-              </div>
-              <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-                {recommended
-                  ? `${recommended.name} funds about that much answering, it is marked below. Crawling and indexing draw on the same allowance, so a heavy indexing month leaves less for answers.`
-                  : "That is more than the published plans fund. Enterprise is sized in a conversation, so tell us the number and we will quote it."}
-              </p>
-            </div>
-          ) : null}
-          <p className="text-foreground text-base font-semibold">
-            What a plan pays for
-          </p>
-          <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-            Members are unlimited on every plan, and visitors chatting with a
-            published widget are never counted. What a plan meters is the AI work
-            the platform funds on your behalf: answering questions, crawling your
-            sites and indexing your documents. Each plan below states that
-            allowance as the volumes it covers, and your Usage page shows exactly
-            where you are against it.
-          </p>
-          {basis ? (
-            <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-              Answer volumes are quoted on{" "}
-              <span className="text-foreground font-medium">
-                {basis.quotedModel}
-              </span>
-              , the lightest model on the platform. Which model your assistants
-              run is your choice and it moves this a lot: on{" "}
-              {basis.frontierModel}, the usual step up when you want a stronger
-              answer, one answer costs roughly {basis.frontierFactor}× more, so
-              the same allowance covers proportionally fewer.
-            </p>
-          ) : null}
-        </div>
-
-        {/* Tier cards */}
-        {/* Stretch, not items-start: the four lists are close enough in length
-            now that equal-height cards line the CTAs up for comparison. Two
-            columns on tablets, four from `xl` — at `lg` a quarter of the
-            container is too narrow for the price line to hold one line. */}
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          {/* Free edition first, matching the comparison grid's column order
-              and the usual cheapest-to-dearest read. */}
-          <PlanTilt>
-            <Card className="bg-card/60 h-full gap-0 backdrop-blur-sm [--card-spacing:--spacing(6)]">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-foreground text-lg font-semibold">
-                    {SELF_HOSTED.name}
-                  </CardTitle>
-                  <Badge variant="outline">Open source</Badge>
-                </div>
-                {/* Two-line floor on the tagline and a fixed height on the
-                    allowance box below: the four cards then reach their feature
-                    list at the same y, which is what makes the lists
-                    comparable. See the same two classes on the tier cards. */}
-                <p className="text-muted-foreground mt-1 min-h-17 text-sm leading-relaxed">
-                  {SELF_HOSTED.tagline}
-                </p>
-                {/* No catalog lookup here: the open-source edition is not a
-                    purchasable tier, so its price is the licence, not data. */}
-                <div className="mt-6 flex items-baseline gap-1.5">
-                  <span className="text-foreground text-4xl font-semibold">
-                    Free
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    / forever
-                  </span>
-                </div>
-                {/* Two-line floor, as on the tier cards: their note wraps and
-                    this one does not, and a 16px offset would carry down into
-                    every row below it. */}
-                <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
-                  AGPL-3.0, no plan, no allowance
-                </p>
-                <div className="border-border/60 mt-4 min-h-38 rounded-lg border border-dashed px-3 py-2.5">
-                  <p className="text-foreground text-xs font-semibold">
-                    Included each month:
-                  </p>
-                  <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-                    Nothing, the AI work is billed to your own provider account,
-                    or runs on a model server you host.
-                  </p>
-                </div>
-              </CardHeader>
-
-              <CardContent className="mt-6 flex-1">
-                <p className="text-foreground text-xs font-semibold">
-                  {SELF_HOSTED.featuresLabel}
-                </p>
-                <ul className="mt-3 space-y-2.5">
-                  {SELF_HOSTED.features.map((feature) => (
-                    <li key={feature} className="flex gap-2.5 text-sm">
-                      <Check
-                        aria-hidden="true"
-                        className="text-primary mt-0.5 size-4 shrink-0"
-                        strokeWidth={2.25}
-                      />
-                      <span className="text-muted-foreground leading-relaxed">
-                        {feature}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {/* Same list shape, deliberately not the same marker: a dash
-                    where the tiers carry a tick, so the two lines read as the
-                    cost of running it yourself rather than as four extra
-                    features the paid plans lack. */}
-                <p className="text-foreground mt-5 text-xs font-semibold">
-                  {SELF_HOSTED.burdensLabel}
-                </p>
-                <ul className="mt-3 space-y-2.5">
-                  {SELF_HOSTED.burdens.map((burden) => (
-                    <li key={burden} className="flex gap-2.5 text-sm">
-                      <Minus
-                        aria-hidden="true"
-                        className="text-muted-foreground/60 mt-0.5 size-4 shrink-0"
-                        strokeWidth={2.25}
-                      />
-                      <span className="text-muted-foreground leading-relaxed">
-                        {burden}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-
-              <CardFooter className="mt-6">
-                {/* A same-page jump, so a plain anchor: next/link would push a
-                    history entry for a hash the router does not own. */}
-                <Button
-                  className={cn("h-9 w-full", CTA_CLASS)}
-                  variant="outline"
-                  nativeButton={false}
-                  render={<a href={`#${SELF_HOSTED.anchor}`} />}
-                >
-                  <span>Install it yourself</span>
-                  <ArrowDown aria-hidden="true" className="size-4" />
-                </Button>
-              </CardFooter>
-            </Card>
-          </PlanTilt>
-
-          {TIERS.map((tier) => (
-            <PlanTilt key={tier.name}>
-              <Card
-                className={cn(
-                  "bg-card/60 h-full gap-0 backdrop-blur-sm [--card-spacing:--spacing(6)]",
-                  highlighted(tier) && "ring-primary ring-2"
-                )}
-              >
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-foreground text-lg font-semibold">
-                      {tier.name}
-                    </CardTitle>
-                    {/* The badge follows the picker where there is one: a card
-                        the reader's own estimate landed on is more use to them
-                        than which card sells most. */}
-                    {highlighted(tier) && (
-                      <Badge>
-                        {recommended?.slug === tier.slug
-                          ? "Fits your usage"
-                          : "Most popular"}
-                      </Badge>
-                    )}
-                  </div>
-                  {/* Two-line floor, same as the self-hosted card, so all four
-                      feature lists start at the same height. */}
-                  <p className="text-muted-foreground mt-1 min-h-17 text-sm leading-relaxed">
-                    {tier.tagline}
-                  </p>
-                  {/* Price and volumes come from the catalog, so a tier the
-                      catalog does not carry says so rather than inventing one. */}
-                  <div className="mt-6 flex items-baseline gap-1.5">
-                    {views.get(tier.slug)?.pricePrefix && (
-                      <span className="text-muted-foreground text-sm">
-                        {views.get(tier.slug)?.pricePrefix}
-                      </span>
-                    )}
-                    <span className="text-foreground text-4xl font-semibold tabular-nums">
-                      {views.get(tier.slug)?.priceLabel ?? "Let’s talk"}
-                    </span>
-                    {views.has(tier.slug) && (
-                      <span className="text-muted-foreground text-sm">
-                        / month
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
-                    {views.has(tier.slug)
-                      ? "Unlimited members. Change or cancel in the billing portal."
-                      : "Priced to your usage, once we have sized it with you."}
-                  </p>
-                  <div className="border-border/60 mt-4 min-h-38 rounded-lg border border-dashed px-3 py-2.5">
-                    <p className="text-foreground text-xs font-semibold">
-                      Included each month:
-                    </p>
-                    {views.has(tier.slug) ? (
-                      <ul className="mt-1.5 space-y-1">
-                        {views.get(tier.slug)?.volumes.map((line) => (
-                          <li
-                            key={line}
-                            className="text-muted-foreground text-xs leading-relaxed tabular-nums"
-                          >
-                            {line}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-                        Sized with you, then written into the agreement.
-                      </p>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="mt-6 flex-1">
-                  <p className="text-foreground text-xs font-semibold">
-                    {tier.featuresLabel}
-                  </p>
-                  <ul className="mt-3 space-y-2.5">
-                    {tier.features.map((feature) => (
-                      <li key={feature} className="flex gap-2.5 text-sm">
-                        <Check
-                          aria-hidden="true"
-                          className="text-primary mt-0.5 size-4 shrink-0"
-                          strokeWidth={2.25}
-                        />
-                        <span className="text-muted-foreground leading-relaxed">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-
-                <CardFooter className="mt-6">
-                  {/* Checkout is a server redirect chain out to Stripe, so it
-                      is a plain <a>: next/link would try to prefetch and soft-
-                      navigate a route that only ever answers with a 303. */}
-                  <Button
-                    className={cn("h-9 w-full", CTA_CLASS)}
-                    variant="outline"
-                    nativeButton={false}
-                    render={
-                      billingEnabled && tier.checkoutPlan ? (
-                        <a href={cta(tier).href} />
-                      ) : (
-                        <Link href={cta(tier).href} />
-                      )
-                    }
-                  >
-                    <span>{cta(tier).label}</span>
-                  </Button>
-                </CardFooter>
-              </Card>
-            </PlanTilt>
-          ))}
-        </div>
+        <PlanPicker
+          billingEnabled={billingEnabled}
+          catalog={catalog}
+          meteringNote={<MeteringNote catalog={catalog} />}
+          selfHostedCard={<SelfHostedCard />}
+        />
 
         {/* Notes — centred under the card row rather than hugging the left
             edge, which read as a stray column against the grid. */}
@@ -932,11 +599,7 @@ export function PricingContent({
                   variant="outline"
                   nativeButton={false}
                   render={
-                    <a
-                      href={SOURCE_URL}
-                      target="_blank"
-                      rel="noreferrer"
-                    />
+                    <a href={SOURCE_URL} target="_blank" rel="noreferrer" />
                   }
                 >
                   <span>View the source</span>

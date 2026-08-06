@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
-import { SETUP_SECTIONS } from "@/components/shell/nav";
+import { PREVIEW_SETUP_SECTIONS } from "@/components/home/preview-nav";
 import { cn } from "@/lib/utils";
 import {
   ASSISTANTS,
@@ -602,7 +602,9 @@ function InsightsPane() {
 
 export function SetupPane({ slug }: { slug: string }) {
   const compact = useContext(CompactContext);
-  const section = SETUP_SECTIONS.find((candidate) => candidate.slug === slug);
+  const section = PREVIEW_SETUP_SECTIONS.find(
+    (candidate) => candidate.slug === slug
+  );
   if (!section) return null;
   const Icon = section.icon;
 

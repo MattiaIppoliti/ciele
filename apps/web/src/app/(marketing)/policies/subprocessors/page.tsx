@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
 export const metadata: Metadata = {
@@ -204,26 +201,21 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function SubprocessorsPage() {
-  const session = await getSession();
-
+export default function SubprocessorsPage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Legal"
-        title="Subprocessors"
-        lastUpdated={LAST_UPDATED}
-        intro={
-          <>
-            The third parties that process data on our instructions to deliver
-            the managed platform, grouped by what they are for. The list is short
-            on purpose, and it is published rather than sent on request so a
-            review can start without waiting on us.
-          </>
-        }
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Legal"
+      title="Subprocessors"
+      lastUpdated={LAST_UPDATED}
+      intro={
+        <>
+          The third parties that process data on our instructions to deliver
+          the managed platform, grouped by what they are for. The list is short
+          on purpose, and it is published rather than sent on request so a
+          review can start without waiting on us.
+        </>
+      }
+      sections={SECTIONS}
+    />
   );
 }

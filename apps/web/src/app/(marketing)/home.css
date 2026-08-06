@@ -1,4 +1,5 @@
-/* Marketing home ("/home") — sky scenes and motion. Scoped by .home-scene:
+/* The public marketing site — sky scenes and motion. Imported once, by the
+   (marketing) layout that owns the shared shell, and scoped by .home-scene:
    light mode is a day sky with birds, while dark mode is a starry night
    with falling-star streaks. */
 
@@ -762,6 +763,41 @@ html[data-sky-transition="to-day"] .home-sun::after {
   }
 }
 
+/* Header CTA, chosen by the signed-in hint rather than by the server.
+   ---------------------------------------------------------------------------
+   The marketing pages are prerendered, so nothing server-side knows who is
+   asking — resolving that meant reading a cookie in the (marketing) layout,
+   which made all seven routes dynamic. The header therefore renders BOTH CTA
+   sets and these rules reveal one, keyed on the `data-signed-in` attribute a
+   blocking inline script copies from the hint cookie onto <html> before first
+   paint. No flash, and no request read. See lib/auth-hint.ts.
+
+   `display: contents` for the visible half, so the wrappers add no box and the
+   parent's own flex gap keeps spacing the buttons. `display: none` for the
+   hidden half, which also keeps it out of the accessibility tree — a screen
+   reader announces one CTA, not both. */
+.home-cta-anon {
+  display: contents;
+}
+.home-cta-authed {
+  display: none;
+}
+[data-signed-in] .home-cta-anon {
+  display: none;
+}
+[data-signed-in] .home-cta-authed {
+  display: contents;
+}
+
+/* Desktop scrolled pill: the signed-in row is one button shorter, so it trims
+   further. The signed-out width is a Tailwind utility on the element (see
+   home-header.tsx); this file is unlayered, so this rule wins over it. */
+@media (min-width: 1024px) {
+  [data-signed-in] nav[data-scrolled]:not([data-state="active"]) > div {
+    max-width: 43rem;
+  }
+}
+
 /* Mobile nav menu (below lg) — Dia-style. The pill IS the menu: it stays a
    slim stadium when closed and, on open, its own bottom edge stretches down
    to cover almost the whole screen (one morphing component, no overlay). The
@@ -835,7 +871,11 @@ html[data-sky-transition="to-day"] .home-sun::after {
   nav[data-scrolled]:not([data-state="active"]) > div {
     max-width: 34rem;
   }
-  nav[data-scrolled][data-auth]:not([data-state="active"]) > div {
+  /* Keyed on the signed-in hint on <html> rather than a prop on the nav: the
+     header no longer knows who the caller is, because knowing meant reading a
+     cookie server-side and that made every marketing page dynamic. See
+     lib/auth-hint.ts. */
+  [data-signed-in] nav[data-scrolled]:not([data-state="active"]) > div {
     max-width: 28rem;
   }
 

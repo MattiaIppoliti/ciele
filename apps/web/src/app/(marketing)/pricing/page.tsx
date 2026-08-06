@@ -1,9 +1,31 @@
 import type { Metadata } from "next";
-import { getSession } from "@/lib/auth";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { PricingContent } from "@/components/marketing/pricing-content";
+
+/**
+ * Regenerate on the running server rather than serving the build's answer for
+ * the life of the deployment.
+ *
+ * Alone among the marketing pages, what this one publishes depends on *server
+ * configuration*: `STRIPE_SECRET_KEY` below and the `STRIPE_PRICE_*` ids
+ * `priceIdForPlan` reads through the catalog. A prerender freezes both at build
+ * time, and the self-host image is built before that configuration exists —
+ * `deploy/docker-compose.yml` passes only `NEXT_PUBLIC_*` as build args and
+ * supplies everything else as runtime environment. So a fully static page would
+ * publish "no prices, talk to sales" permanently on a stack whose Stripe keys
+ * arrive at boot, and no amount of restarting would change it.
+ *
+ * `revalidate` keeps the page prerendered — the point of the whole group — while
+ * making the build's HTML the *first* answer rather than the only one: the next
+ * request after the window regenerates on the server that has the environment,
+ * and every request after that is served the real ladder from the cache. Both
+ * readers below re-run, so the price in the metadata description tracks the body.
+ *
+ * Bounded staleness is the trade, and five minutes is sized to the thing that
+ * actually changes: an operator configuring Stripe, not a per-request fact.
+ * Prices themselves are a code change, which redeploys anyway.
+ */
+export const revalidate = 300;
 
 /**
  * The description carries a price, so it reads the catalog through the same seam
@@ -15,12 +37,13 @@ import { PricingContent } from "@/components/marketing/pricing-content";
  * Reads the plan catalog through the enterprise capability seam.
  *
  * The import is what makes the read reliable. `instrumentation.ts` registers the
- * enterprise capabilities at server start, but this page is prerendered at build
- * time — a phase that never runs instrumentation — so relying on it alone bakes
- * "no catalog" into the static HTML and the page publishes no prices however the
- * deployment is configured. Importing the registration entrypoint here puts it in
- * this route's own module graph, so the capabilities are registered before the
- * first read whichever phase performs it.
+ * enterprise capabilities at server start, which covers a request-time render
+ * but not the build, and this page is read in both phases (see `revalidate`
+ * above) by two readers — the body and `generateMetadata`. Neither can assume
+ * registration-at-start happened, and a phase that skipped it would report "no
+ * prices" however the deployment is configured. Importing the registration
+ * entrypoint here puts it in this route's own module graph, so the capabilities
+ * are registered before the first read whichever phase performs it.
  *
  * Mirror-safe: the public tree overlays an inert stub at this exact path, so the
  * import resolves in both editions and registers nothing in the open-source one.
@@ -47,8 +70,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PricingPage() {
-  const session = await getSession();
-
   // The plan ladder — prices and allowance-derived volumes — comes from the
   // enterprise billing seam, so the open-source edition renders this same page
   // with no prices to publish rather than a ladder nobody can buy.
@@ -60,10 +81,5 @@ export default async function PricingPage() {
   // checkout route to send anyone to, and the plan buttons fall back to sales.
   const billingEnabled = Boolean(process.env.STRIPE_SECRET_KEY);
 
-  return (
-    <HomeShell authenticated={session !== null}>
-      <PricingContent billingEnabled={billingEnabled} catalog={catalog} />
-      <HomeFooter />
-    </HomeShell>
-  );
+  return <PricingContent billingEnabled={billingEnabled} catalog={catalog} />;
 }

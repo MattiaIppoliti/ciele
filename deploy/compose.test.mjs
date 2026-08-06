@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -118,6 +118,58 @@ check("a worker cannot start without its credential", () => {
       compose,
       guarded,
       `${variable} must use \${${variable}:?message} so the workers profile refuses to start without it`,
+    );
+  }
+});
+
+check("the image's deps stage copies every workspace manifest the app needs", () => {
+  /* The `app` service builds apps/web/Dockerfile, whose deps stage installs from
+     the lockfile with an explicit list of manifests. A workspace package added to
+     apps/web's dependency closure and not to that list gets no node_modules link,
+     and the build dies compiling the package's own source — packages ship as
+     source, so the error reads "Can't resolve '@agent-hub/core'" from inside the
+     new package rather than as a missing dependency of the app.
+
+     That is exactly how it broke once: a new operations package landed with no
+     Dockerfile change, and only the real Docker build caught it, minutes in and
+     after the fast gates had already gone green. Deriving the closure from the
+     manifests catches it in milliseconds instead. */
+  const dockerfile = read("../apps/web/Dockerfile");
+  const manifest = (dir) => JSON.parse(read(`../${dir}/package.json`));
+
+  /** Workspace dirs reachable from apps/web through `workspace:` deps. */
+  const closure = new Set();
+  const byName = new Map();
+  for (const entry of ["packages", "apps"]) {
+    for (const dir of readdirSync(path.join(here, "..", entry), { withFileTypes: true })) {
+      if (!dir.isDirectory()) continue;
+      const relative = `${entry}/${dir.name}`;
+      try {
+        byName.set(manifest(relative).name, relative);
+      } catch {
+        // Not a workspace package (no manifest); nothing to link.
+      }
+    }
+  }
+
+  const walk = (dir) => {
+    // Runtime deps only: devDependencies are not installed by the build stage
+    // and a package's own tooling never reaches the image.
+    for (const [name, range] of Object.entries(manifest(dir).dependencies ?? {})) {
+      if (!String(range).startsWith("workspace:")) continue;
+      const target = byName.get(name);
+      assert.ok(target, `${dir} depends on workspace package "${name}", which has no directory`);
+      if (closure.has(target)) continue;
+      closure.add(target);
+      walk(target);
+    }
+  };
+  walk("apps/web");
+
+  for (const dir of [...closure].sort()) {
+    assert.ok(
+      dockerfile.includes(`COPY ${dir}/package.json ${dir}/`),
+      `apps/web/Dockerfile must COPY ${dir}/package.json — apps/web depends on it, so pnpm needs its manifest to link it`
     );
   }
 });

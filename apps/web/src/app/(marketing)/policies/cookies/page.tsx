@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { getSession } from "@/lib/auth";
 import { CookiePreferencesButton } from "@/components/cookie-consent/cookie-preferences-button";
-import { HomeFooter } from "@/components/home/home-footer";
-import { HomeShell } from "@/components/home/home-shell";
 import { LegalDoc, type LegalBlock, type LegalSection } from "@/components/marketing/legal-doc";
 import {
   CONSENT_CATEGORIES,
@@ -292,19 +289,14 @@ const SECTIONS: LegalSection[] = [
   },
 ];
 
-export default async function CookieNoticePage() {
-  const session = await getSession();
-
+export default function CookieNoticePage() {
   return (
-    <HomeShell authenticated={session !== null}>
-      <LegalDoc
-        eyebrow="Legal"
-        title="Cookie Notice"
-        lastUpdated={COOKIE_NOTICE_LAST_UPDATED}
-        intro="This notice explains how Ciele uses cookies, local storage and similar technologies on ciele.app, in the Ciele console, and across the assistants our customers publish, what each one is for, how long it lasts, and how to change or withdraw your choice. The tables below are generated from the same declaration that drives our consent banner, so what you see here is what we actually set."
-        sections={SECTIONS}
-      />
-      <HomeFooter />
-    </HomeShell>
+    <LegalDoc
+      eyebrow="Legal"
+      title="Cookie Notice"
+      lastUpdated={COOKIE_NOTICE_LAST_UPDATED}
+      intro="This notice explains how Ciele uses cookies, local storage and similar technologies on ciele.app, in the Ciele console, and across the assistants our customers publish, what each one is for, how long it lasts, and how to change or withdraw your choice. The tables below are generated from the same declaration that drives our consent banner, so what you see here is what we actually set."
+      sections={SECTIONS}
+    />
   );
 }

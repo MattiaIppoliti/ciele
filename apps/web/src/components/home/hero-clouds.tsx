@@ -110,12 +110,17 @@ export function HeroClouds() {
         ref={leftWrapRef}
         className="home-cloud-wrap-left absolute -left-24 top-4 w-[24rem] md:w-[34rem]"
       >
+        {/* `sizes` must track the wrapper's width above. Without it the
+            browser assumes the image fills the viewport and preloads a
+            1920-wide render of something drawn 544px across — and `priority`
+            means that download competes with the hero's own first paint. */}
         <Image
           src="/images/home/cloud-left.png"
           alt=""
           width={1212}
           height={641}
           priority
+          sizes="(min-width: 768px) 34rem, 24rem"
           className="home-cloud w-full"
         />
       </div>
@@ -129,6 +134,7 @@ export function HeroClouds() {
           width={1180}
           height={620}
           priority
+          sizes="(min-width: 768px) 36rem, 26rem"
           className="home-cloud home-cloud-slow w-full"
         />
       </div>

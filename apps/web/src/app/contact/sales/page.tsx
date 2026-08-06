@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ContactSalesClient } from "@/components/contact/contact-sales-client";
+import { ContactSales } from "@/components/contact/contact-sales";
 
 export const metadata: Metadata = {
   title: "Contact Sales | Ciele",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ContactSalesPage() {
-  return <ContactSalesClient />;
+  return <ContactSales />;
 }
