@@ -39,6 +39,8 @@ const SECTIONS: LegalSection[] = [
           "Account details you enter when you sign up or are invited to an organization: name, work email address and your role within the organization.",
           "Content you create in the product: assistant configuration, welcome messages, quick replies, flows, help desk setup and the knowledge sources you connect (website URLs, uploaded files and FAQs).",
           "Messages you send us through contact forms, support requests or email.",
+          "Sales enquiries: when you ask to talk to our team, the name, work email address, phone number, country, institution website, institution size and product interest you enter, together with your message. Submitting the form sends this to our sales mailbox; we do not keep a separate marketing database of enquiries.",
+          "Your marketing consent: if you turn on the consent toggle on our contact form, we record that you agreed and the moment you agreed, so we can show the basis on which we contacted you. You can withdraw it at any time by replying to any message from us or using the contact details below.",
         ],
       },
       {
@@ -144,6 +146,10 @@ const SECTIONS: LegalSection[] = [
       {
         type: "p",
         text: "We keep personal data for as long as your account is active or as needed to provide the service, then delete or anonymize it unless we are required to keep it for legal, accounting or security reasons. Organizations control the retention of the conversation data their assistants collect and can delete it from within the product.",
+      },
+      {
+        type: "p",
+        text: "Sales enquiries live in our sales mailbox rather than in the product database. We keep them for as long as we are in contact with you about the enquiry and for up to twenty-four months afterwards, then delete them. Ask us at any time and we will delete yours sooner.",
       },
     ],
   },

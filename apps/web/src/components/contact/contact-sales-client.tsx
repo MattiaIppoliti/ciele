@@ -1,7 +1,18 @@
 "use client";
 
 import { ChevronLeft, Clock, PhoneCall } from "lucide-react";
-import { useState } from "react";
+import { useId, useState, useTransition } from "react";
+import {
+  submitSalesEnquiryAction,
+  type ContactSalesResult,
+} from "@/app/contact/sales/actions";
+import {
+  SALES_COMPANY_SIZES,
+  SALES_COUNTRIES,
+  SALES_LEAD_LIMITS,
+  SALES_PRODUCT_INTERESTS,
+  type SalesLeadErrors,
+} from "@/lib/contact/sales-lead";
 import { AuthGrid } from "@/components/auth/auth-grid";
 import { GhostMark } from "@/components/auth/ghost-mark";
 import { Button } from "@agent-hub/ui";
@@ -18,28 +29,22 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-const COUNTRIES = [
-  "Italy",
-  "United Kingdom",
-  "United States",
-  "France",
-  "Germany",
-  "Spain",
-  "Netherlands",
-  "Switzerland",
-  "Other",
-];
+// The option vocabulary lives in lib/contact/sales-lead.ts because the Server
+// Action validates against the same lists — a <Select> constrains a browser,
+// never a poster.
+const COUNTRIES = SALES_COUNTRIES;
+const COMPANY_SIZES = SALES_COMPANY_SIZES;
+const PRODUCT_INTERESTS = SALES_PRODUCT_INTERESTS;
 
-const COMPANY_SIZES = ["1 to 500", "501 to 2,000", "2,001 to 10,000", "10,001 to 30,000", "30,000+"];
-
-const PRODUCT_INTERESTS = [
-  "Customer support assistants",
-  "Internal knowledge assistants",
-  "Help desk & escalation",
-  "Knowledge & content ingestion",
-  "Analytics & insights",
-  "Other",
-];
+/** Inline field error, rendered under the input it belongs to. */
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} role="alert" className="text-destructive text-xs">
+      {message}
+    </p>
+  );
+}
 
 /** Shared square-grid strip (the checker band above/below the content). */
 function GridStrip() {
@@ -60,15 +65,49 @@ function GridStrip() {
 }
 
 export function ContactSalesClient() {
+  const honeypotId = useId();
   const [consent, setConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [country, setCountry] = useState("Italy");
+  const [country, setCountry] = useState<string>("Italy");
   const [size, setSize] = useState("");
   const [interest, setInterest] = useState("");
+  const [errors, setErrors] = useState<SalesLeadErrors>({});
+  /** Non-field failure (delivery or rate limit) shown above the button. */
+  const [problem, setProblem] = useState<ContactSalesResult | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setSubmitted(true);
+    const data = new FormData(e.currentTarget);
+    const field = (name: string) => String(data.get(name) ?? "");
+    setErrors({});
+    setProblem(null);
+    startTransition(async () => {
+      // The thank-you panel is now conditional on the server saying the
+      // enquiry actually left the building.
+      const result = await submitSalesEnquiryAction({
+        email: field("email"),
+        name: field("name"),
+        phone: field("phone"),
+        website: field("website"),
+        message: field("message"),
+        country,
+        size,
+        interest,
+        consent,
+        organizationReference: field("organizationReference"),
+      }).catch((): ContactSalesResult => ({ status: "unavailable" }));
+
+      if (result.status === "sent") {
+        setSubmitted(true);
+        return;
+      }
+      if (result.status === "invalid") {
+        setErrors(result.errors);
+        return;
+      }
+      setProblem(result);
+    });
   }
 
   return (
@@ -154,29 +193,70 @@ export function ContactSalesClient() {
                   </Link>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                  {/* Honeypot. Off-screen rather than display:none so a bot
+                      that skips hidden fields still sees it; never focusable,
+                      never announced, never autofilled. */}
+                  <div aria-hidden="true" className="sr-only">
+                    <label htmlFor={honeypotId}>
+                      Organization reference — leave this field empty
+                    </label>
+                    <input
+                      id={honeypotId}
+                      name="organizationReference"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="email">Institution email</Label>
                     <Input
                       id="email"
+                      name="email"
                       type="email"
                       placeholder="Email address"
                       autoComplete="email"
+                      maxLength={SALES_LEAD_LIMITS.email}
+                      aria-invalid={Boolean(errors.email)}
+                      aria-describedby={errors.email ? "email-error" : undefined}
                       required
                     />
+                    <FieldError id="email-error" message={errors.email} />
                   </div>
 
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="name">Your name</Label>
-                      <Input id="name" placeholder="Full name" autoComplete="name" required />
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="Full name"
+                        autoComplete="name"
+                        maxLength={SALES_LEAD_LIMITS.name}
+                        aria-invalid={Boolean(errors.name)}
+                        aria-describedby={errors.name ? "name-error" : undefined}
+                        required
+                      />
+                      <FieldError id="name-error" message={errors.name} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">
                         Phone number{" "}
                         <span className="text-muted-foreground font-normal">(Optional)</span>
                       </Label>
-                      <Input id="phone" type="tel" placeholder="Enter phone number" autoComplete="tel" />
+                      <Input
+                        id="phone"
+                        name="phone"
+                        type="tel"
+                        placeholder="Enter phone number"
+                        autoComplete="tel"
+                        maxLength={SALES_LEAD_LIMITS.phone}
+                        aria-invalid={Boolean(errors.phone)}
+                        aria-describedby={errors.phone ? "phone-error" : undefined}
+                      />
+                      <FieldError id="phone-error" message={errors.phone} />
                     </div>
                   </div>
 
@@ -199,7 +279,15 @@ export function ContactSalesClient() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="website">Institution website</Label>
-                      <Input id="website" placeholder="http://address.com" />
+                      <Input
+                        id="website"
+                        name="website"
+                        placeholder="http://address.com"
+                        maxLength={SALES_LEAD_LIMITS.website}
+                        aria-invalid={Boolean(errors.website)}
+                        aria-describedby={errors.website ? "website-error" : undefined}
+                      />
+                      <FieldError id="website-error" message={errors.website} />
                     </div>
                     <div className="space-y-2">
                       <Label>Institution size</Label>
@@ -250,9 +338,14 @@ export function ContactSalesClient() {
                     <Label htmlFor="message">How can we help?</Label>
                     <Textarea
                       id="message"
+                      name="message"
                       placeholder="Your organization's needs"
                       rows={5}
+                      maxLength={SALES_LEAD_LIMITS.message}
+                      aria-invalid={Boolean(errors.message)}
+                      aria-describedby={errors.message ? "message-error" : undefined}
                     />
+                    <FieldError id="message-error" message={errors.message} />
                   </div>
 
                   <div className="border-border flex items-start justify-between gap-4 rounded-lg border p-4">
@@ -269,9 +362,41 @@ export function ContactSalesClient() {
                       aria-label="Privacy Policy consent"
                     />
                   </div>
+                  <FieldError id="consent-error" message={errors.consent} />
 
-                  <Button type="submit" className="w-full" disabled={!consent}>
-                    Talk to Ciele
+                  {problem ? (
+                    <p
+                      role="alert"
+                      className="border-destructive/40 bg-destructive/10 text-foreground rounded-lg border p-3 text-xs leading-relaxed"
+                    >
+                      {problem.status === "rate_limited" ? (
+                        <>
+                          You&apos;ve sent us several enquiries just now. Please try
+                          again in{" "}
+                          {Math.max(1, Math.ceil(problem.retryAfterSeconds / 60))} minutes.
+                        </>
+                      ) : (
+                        <>
+                          We couldn&apos;t send your request — nothing has reached
+                          us. Please email{" "}
+                          <a
+                            href="mailto:sales@ciele.app"
+                            className="font-medium underline underline-offset-4"
+                          >
+                            sales@ciele.app
+                          </a>{" "}
+                          and we&apos;ll pick it up from there.
+                        </>
+                      )}
+                    </p>
+                  ) : null}
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={!consent || pending}
+                  >
+                    {pending ? "Sending…" : "Talk to Ciele"}
                   </Button>
                 </form>
               )}

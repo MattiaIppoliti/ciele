@@ -45,7 +45,7 @@ const SECTIONS: LegalSection[] = [
           ],
           [
             "Resend",
-            "Transactional email — invitations, notifications, escalation email",
+            "Transactional email — invitations, notifications, escalation email, sales enquiries from our contact form",
             "Recipient address and message content",
             "EU / US (SCCs)",
           ],
