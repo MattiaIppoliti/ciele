@@ -167,6 +167,14 @@ export interface Db {
   ): Promise<OrgApiKey>;
   /** Marks the key revoked (row kept for audit). Idempotent. */
   revokeApiKey(keyId: string): Promise<void>;
+  /**
+   * Auth-time lookup for /api/v1: the presented secret is hashed and looked
+   * up verbatim. Returns revoked keys too — the auth seam is what turns
+   * `revokedAt` into a 401, so the decision stays in one place.
+   */
+  getApiKeyByHash(secretHash: string): Promise<OrgApiKey | null>;
+  /** Stamps `lastUsedAt` = now. Best-effort; never blocks a request. */
+  touchApiKeyLastUsed(keyId: string): Promise<void>;
 
   // Profile (the signed-in caller's own — Settings > Profile)
   getProfile(): Promise<Profile | null>;
@@ -196,6 +204,7 @@ export interface Db {
 
   // Flows
   listFlows(assistantId: string): Promise<Flow[]>;
+  getFlow(id: string): Promise<Flow | null>;
   createFlow(assistantId: string, input: FlowInput): Promise<Flow>;
   updateFlow(id: string, patch: FlowPatch): Promise<Flow>;
   deleteFlow(id: string): Promise<void>;

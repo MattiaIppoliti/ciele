@@ -1778,6 +1778,21 @@ export const mockDb: Db = {
     if (key && !key.revokedAt) key.revokedAt = new Date().toISOString();
   },
 
+  async getApiKeyByHash(secretHash) {
+    for (const stored of getStore().apiKeys.values()) {
+      if (stored.secretHash === secretHash) {
+        const { secretHash: _secretHash, ...apiKey } = stored;
+        return apiKey;
+      }
+    }
+    return null;
+  },
+
+  async touchApiKeyLastUsed(keyId) {
+    const key = getStore().apiKeys.get(keyId);
+    if (key) key.lastUsedAt = new Date().toISOString();
+  },
+
   // --- Assistants -------------------------------------------------------
 
   async listAssistants(organizationId) {
@@ -1900,6 +1915,10 @@ export const mockDb: Db = {
     return sortFlows(
       [...getStore().flows.values()].filter((f) => f.assistantId === assistantId)
     );
+  },
+
+  async getFlow(id) {
+    return getStore().flows.get(id) ?? null;
   },
 
   async createFlow(assistantId, input: FlowInput) {

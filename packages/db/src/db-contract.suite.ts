@@ -8,6 +8,7 @@ import {
   hashApiKeySecret,
   shortId,
 } from "@agent-hub/core";
+import { OrgPinnedDbError, createOrgPinnedDb } from "./org-pinned";
 import type { Db } from "./types";
 
 /**
@@ -158,6 +159,82 @@ export function describeDbContract(
         const revoked = after.find((k) => k.id === created.id);
         expect(revoked?.revokedAt).toBeTruthy();
         expect(after.find((k) => k.id === second.id)?.revokedAt).toBeNull();
+      });
+      it("looks a key up by hash for auth and stamps last-used (#619)", async () => {
+        const input = newKeyInput("Lookup key", "viewer");
+        const created = await db.createApiKey(ctx.organizationId, input);
+
+        const found = await db.getApiKeyByHash(input.secretHash);
+        expect(found?.id).toBe(created.id);
+        expect(found?.role).toBe("viewer");
+        // A wrong hash finds nothing — there is no fuzzy path to a key.
+        expect(await db.getApiKeyByHash(hashApiKeySecret("nope"))).toBeNull();
+
+        expect(found?.lastUsedAt).toBeNull();
+        await db.touchApiKeyLastUsed(created.id);
+        const touched = await db.getApiKeyByHash(input.secretHash);
+        expect(touched?.lastUsedAt).toBeTruthy();
+
+        // Revoked keys still resolve: the auth seam owns the 401 decision.
+        await db.revokeApiKey(created.id);
+        const revoked = await db.getApiKeyByHash(input.secretHash);
+        expect(revoked?.revokedAt).toBeTruthy();
+      });
+
+      it("org-pinned wrapper pins allow-listed reads and fails closed (#619)", async () => {
+        const assistant = await newAssistant();
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+
+        // The caller's organizationId argument is replaced, not trusted: even
+        // asking for the foreign org yields the pinned org's rows.
+        const hijacked = await pinned.listAssistants(ctx.foreignOrganizationId);
+        expect(hijacked.map((a) => a.id)).toContain(assistant.id);
+        for (const a of hijacked) {
+          expect(a.organizationId).toBe(ctx.organizationId);
+        }
+
+        // Anything outside the allow-lists throws — new routes must extend them.
+        expect(() => pinned.listApiKeys(ctx.organizationId)).toThrowError(
+          OrgPinnedDbError
+        );
+      });
+
+      it("org-pinned wrapper resolves id-addressed rows before trusting them (#620)", async () => {
+        const assistant = await newAssistant();
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        // A wrapper pinned to a DIFFERENT org must treat this org's rows as
+        // foreign: reads come back absent, mutations refuse before executing.
+        const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+
+        // getAssistant: post-checked — a foreign row reads as null, not an error.
+        expect((await pinned.getAssistant(assistant.id))?.id).toBe(assistant.id);
+        expect(await foreignPinned.getAssistant(assistant.id)).toBeNull();
+
+        // Assistant-id mutations and assistant-scoped children: guarded up front.
+        const renamed = await pinned.updateAssistant(assistant.id, {
+          title: "Pinned rename",
+        });
+        expect(renamed.title).toBe("Pinned rename");
+        await expect(
+          foreignPinned.updateAssistant(assistant.id, { title: "hijack" })
+        ).rejects.toThrowError(OrgPinnedDbError);
+        await expect(
+          foreignPinned.listFlows(assistant.id)
+        ).rejects.toThrowError(OrgPinnedDbError);
+
+        // Flow-id methods resolve flow → assistant → org before delegating.
+        const flows = await pinned.listFlows(assistant.id);
+        expect(flows.length).toBeGreaterThan(0);
+        const flow = flows.find((f) => !f.isDefault) ?? flows[0];
+        expect((await db.getFlow(flow.id))?.id).toBe(flow.id);
+        const toggled = await pinned.updateFlow(flow.id, { enabled: false });
+        expect(toggled.enabled).toBe(false);
+        await expect(
+          foreignPinned.updateFlow(flow.id, { enabled: true })
+        ).rejects.toThrowError(OrgPinnedDbError);
+
+        // The mutation the guard blocked really did not run.
+        expect((await db.getFlow(flow.id))?.enabled).toBe(false);
       });
     });
 

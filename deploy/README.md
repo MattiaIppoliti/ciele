@@ -113,6 +113,41 @@ docker compose -f deploy/docker-compose.yml down -v   # also deletes data
 Uploaded files live in the `storage-data` volume and the database in
 `postgres-data`; back up both.
 
+## Programmatic access: API, CLI, MCP (#630)
+
+A self-hosted deployment speaks the same `/api/v1` as the SaaS — no extra
+services, no extra env vars: the routes ship inside the app container.
+
+1. **Mint a key** in the admin console: *Settings → API Keys* (admin+). The
+   key acts with the role you give it, capped at your own. The secret is
+   shown once.
+2. **Point anything at your deployment** with two variables:
+
+```sh
+export CIELE_API_KEY=ciele_sk_…
+export CIELE_BASE_URL=https://ciele.your-campus.example   # this host
+
+# discovery — what this deployment speaks (no auth needed)
+curl "$CIELE_BASE_URL/api/v1/meta"
+# the machine-readable contract
+curl "$CIELE_BASE_URL/api/v1/openapi.json"
+
+# the CLI (packages/cli — see its README for the full command tree)
+ciele login --key "$CIELE_API_KEY" --base-url "$CIELE_BASE_URL"
+ciele whoami
+ciele assistants list
+ciele flows create <assistantId> --name "Fees intent"
+```
+
+3. **MCP** (`packages/mcp`): the stdio server takes the same two variables,
+   plus `CIELE_MCP_READ_ONLY=1` to let an agent explore without writing.
+   Configuration snippets for Claude Code / Claude Desktop are in
+   `packages/mcp/README.md`.
+
+Version skew: a newer CLI against an older self-hosted server should call
+`GET /api/v1/meta` first — `domains` lists what this deployment actually
+ships, and unknown routes 404 cleanly.
+
 ## Not in scope
 
 Kubernetes/Helm charts, TLS termination, and multi-node scale-out. This is a

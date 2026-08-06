@@ -40,6 +40,10 @@ export { IMPROVEMENT_TITLE_MAX, raiseImprovement } from "./improvements";
 // The demo org the in-memory adapter seeds.
 export { DEMO_MEMBER, DEMO_ORG } from "./mock";
 
+// The tenancy boundary for API-key requests (#619): a fail-closed Db view
+// pinned to one Organization, standing in for RLS on service-role clients.
+export { OrgPinnedDbError, createOrgPinnedDb } from "./org-pinned";
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&

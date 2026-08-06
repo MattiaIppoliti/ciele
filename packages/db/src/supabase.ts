@@ -1114,6 +1114,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
     },
 
+    async getApiKeyByHash(secretHash) {
+      const { data, error } = await client
+        .from("organization_api_keys")
+        .select(
+          "id, organization_id, name, secret_hint, role, created_by, created_at, last_used_at, revoked_at"
+        )
+        .eq("secret_hash", secretHash)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toOrgApiKey(data as OrgApiKeyRow) : null;
+    },
+
+    async touchApiKeyLastUsed(keyId) {
+      const { error } = await client
+        .from("organization_api_keys")
+        .update({ last_used_at: new Date().toISOString() })
+        .eq("id", keyId);
+      if (error) throw error;
+    },
+
     // --- Assistants -----------------------------------------------------
 
     async listAssistants(organizationId) {
@@ -1258,6 +1278,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("assistant_id", assistantId);
       if (error) throw error;
       return sortFlows((data as FlowRow[]).map(toFlow));
+    },
+
+    async getFlow(id) {
+      const { data, error } = await client
+        .from("flows")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toFlow(data as FlowRow) : null;
     },
 
     async createFlow(assistantId, input) {

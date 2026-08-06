@@ -24,7 +24,17 @@ describe("Website Source actions", () => {
   beforeEach(() => {
     db = getMockDb();
     requireMemberMock.mockReset();
-    requireMemberMock.mockResolvedValue({ db } as never);
+    // runOperation-backed actions read the session too (org, role, email).
+    requireMemberMock.mockResolvedValue({
+      db,
+      organizationId: DEMO_ORG.id,
+      session: {
+        organization: DEMO_ORG,
+        userId: "test-user",
+        role: "editor",
+        email: "test@ciele.local",
+      },
+    } as never);
   });
 
   async function seed(name: string) {

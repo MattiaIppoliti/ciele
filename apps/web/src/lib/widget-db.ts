@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { unstable_cache, updateTag } from "next/cache";
+import { revalidateTag, unstable_cache, updateTag } from "next/cache";
 import { type Conversation, type Publication } from "@agent-hub/core";
 import { createDb, getMockDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
 
@@ -60,6 +60,20 @@ export async function getLatestPublicationCached(
  */
 export function invalidatePublication(assistantId: string) {
   updateTag(publicationTag(assistantId));
+}
+
+/**
+ * The Route Handler twin (#623): `updateTag` is Server-Action-only, so the
+ * /api/v1 publish endpoints invalidate through `revalidateTag`. Best-effort —
+ * outside a request scope (unit tests) Next throws, and cache freshness must
+ * never fail the mutation that already committed.
+ */
+export function invalidatePublicationFromRoute(assistantId: string) {
+  try {
+    revalidateTag(publicationTag(assistantId), "max");
+  } catch {
+    // outside a Next request scope
+  }
 }
 
 /** Everything a widget endpoint starts from once the Publication resolves. */

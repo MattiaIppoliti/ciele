@@ -22,6 +22,7 @@
     "@agent-hub/core": "workspace:*",
     "@agent-hub/db": "workspace:*",
     "@agent-hub/ui": "workspace:*",
+    "@ciele/ops": "workspace:*",
     "@ai-sdk/anthropic": "^4.0.5",
     "@ai-sdk/google": "^4.0.6",
     "@ai-sdk/google-vertex": "^5.0.12",

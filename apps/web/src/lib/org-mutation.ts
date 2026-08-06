@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import type { MutatedEntity } from "@ciele/ops";
 import {
   requireMember,
   type MemberCapability,
@@ -23,37 +24,12 @@ import {
  */
 
 /**
- * A domain entity an admin mutation can touch. Kinds are atomic and composable:
- * an action passes every entity it affected, and overlapping paths dedupe. The
- * exact `revalidatePath` set an action produced by hand is reproduced by its
- * declared entities.
+ * The entity vocabulary itself moved to `@ciele/ops` (#620) so operations can
+ * declare what they mutate without knowing about routes; this module keeps
+ * the entity→path table, which is web-shaped knowledge. Re-exported for the
+ * existing action imports.
  */
-export type MutatedEntity =
-  | { kind: "assistantList" }
-  /** One Assistant's config: the dashboard card and the whole editor layout. */
-  | { kind: "assistant"; id: string }
-  /** An Assistant's Flow list: the editor page that renders the router. */
-  | { kind: "flows"; assistantId: string }
-  /** Any Assistant-editor sub-resource (knowledge, skills, goals, publish). */
-  | { kind: "assistantEditor"; assistantId: string }
-  /** The org Help Desk directory. */
-  | { kind: "helpDeskList" }
-  /** One Help Desk's detail page (channels, ticketing). */
-  | { kind: "helpDesk"; id: string }
-  /** The AI/org settings page (budget, prompt, provider connections). */
-  | { kind: "aiSettings" }
-  /** The org members roster. */
-  | { kind: "members" }
-  /** The org API keys page (#618). */
-  | { kind: "apiKeys" }
-  /** The operational Alerts page. */
-  | { kind: "alerts" }
-  /** The Improvements Kanban. */
-  | { kind: "improvementList" }
-  /** One Improvement's detail page. */
-  | { kind: "improvement"; id: string }
-  /** The conversation Inbox. */
-  | { kind: "inbox" };
+export type { MutatedEntity } from "@ciele/ops";
 
 interface Revalidation {
   path: string;
@@ -95,6 +71,23 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
   }
 }
 
+/**
+ * Turns declared entities into deduped `revalidatePath` calls. Shared by
+ * `orgMutation` (server actions) and the /api/v1 mutation runner, so an API
+ * write refreshes the admin UI exactly like the equivalent web write.
+ */
+export function revalidateEntities(entities: MutatedEntity[]) {
+  const seen = new Set<string>();
+  for (const entity of entities) {
+    for (const { path, scope } of revalidationsFor(entity)) {
+      const key = `${scope ?? "page"}:${path}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      revalidatePath(path, scope);
+    }
+  }
+}
+
 export interface OrgMutationOptions<T> {
   /** The Role capability requireMember enforces before the mutation runs. */
   capability: MemberCapability;
@@ -125,19 +118,11 @@ export async function orgMutation<T>(
   const result = await fn(ctx);
 
   if (!options.revalidateIf || options.revalidateIf(result)) {
-    const entities =
+    revalidateEntities(
       typeof options.entities === "function"
         ? options.entities(result)
-        : options.entities;
-    const seen = new Set<string>();
-    for (const entity of entities) {
-      for (const { path, scope } of revalidationsFor(entity)) {
-        const key = `${scope ?? "page"}:${path}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        revalidatePath(path, scope);
-      }
-    }
+        : options.entities
+    );
   }
 
   return result;
