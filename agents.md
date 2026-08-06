@@ -3,6 +3,9 @@
 How an **Assistant** behaves at runtime — the conversational engine's design. Read with
 [`CLAUDE.md`](CLAUDE.md) (feature surface) and [`context.md`](context.md) (domain language).
 
+> **Repository-agent pull requests:** GPT Codex must follow the complete automatic PR contract in
+> [`docs/agents/pull-requests.md`](docs/agents/pull-requests.md).
+
 > **This document is the target conversational design.** For exactly how *this repo* implements it
 > today — the **two-engine runtime**, wire-event contract, and per-action/-condition status — see
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §5. Current-state deltas to keep in mind while
