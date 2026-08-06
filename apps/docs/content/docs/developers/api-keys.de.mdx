@@ -1,0 +1,36 @@
+---
+title: API-Schlüssel
+description: Erstellen und widerrufen Sie Organisations-Anmeldeinformationen für den programmgesteuerten Zugriff.
+---
+
+Ein API-Schlüssel ermöglicht einem Programm den Zugriff auf eine Organisation.
+Ciele speichert nur den Hash des Secrets.
+
+## Einen Schlüssel erstellen
+
+1. Öffnen Sie **Settings**.
+2. Wählen Sie **API Keys**.
+3. Wählen Sie **Create API key**.
+4. Geben Sie einen Namen für den Schlüssel ein.
+5. Wählen Sie die mindestens erforderliche Rolle aus.
+6. Kopieren Sie das Secret in einen sicheren Anmeldedatenspeicher.
+
+Ciele zeigt das `ciele_sk_...`-Geheimnis einmal an. Sie können dasselbe Secret
+später nicht mehr abrufen.
+
+Die ausgewählte Rolle darf nicht höher sein als Ihre eigene Rolle. Ciele prüft
+die Rolle bei jeder API-Operation.
+
+## Einen Schlüssel widerrufen
+
+1. Öffnen Sie **Settings > API Keys**.
+2. Suchen Sie den Schlüssel.
+3. Wählen Sie **Revoke**.
+4. Bestätigen Sie die Aktion.
+
+Durch den Widerruf werden neue Anfragen, die den Schlüssel verwenden, gestoppt.
+Ciele führt den Schlüsseldatensatz zu Audit-Zwecken.
+
+<Callout type="warn" title="Protect the secret">
+Do not put an API key in source control, public logs, prompts, or screenshots. Use an environment variable or a secret store.
+</Callout>

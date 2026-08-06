@@ -1,77 +1,40 @@
 ---
-title: Processus de fond
-description: Le profil des workers optionnels — la récupération de graphes dérivés et un crawler de rendu JavaScript — ce que chacun vous apporte, et ce qu'un déploiement fait sans eux.
+title: Processus d'arrière-plan
+description: Activez les services optionnels de récupération de graphes et d'exploration avec rendu JavaScript.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+La pile par défaut ne démarre pas le profil `workers`. La recherche et
+l'ingestion de sites Web se poursuivent avec des capacités réduites.
 
-Ciele fonctionne entièrement sans processus de fond. Deux services optionnels
-renforcent la récupération des connaissances. Ils sont tous deux désactivés par
-défaut, car ils nécessitent ensemble environ **8 Go de RAM**, soit plus que le
-reste de la pile combiné.
+Sans le worker graphique, Knowledge utilise la recherche vectorielle et
+lexicale. Sans Crawl4AI, Ciele utilise son robot d'indexation Fetch intégré.
 
-| Service | Ce qu'il apporte | Sans lui |
-| --- | --- | --- |
-| **Graph worker** | Dérive un graphe sur vos connaissances, de sorte que la récupération puisse suivre les relations entre les concepts au lieu de faire correspondre un seul passage | La récupération utilise uniquement la recherche sémantique et lexicale |
-| **Crawl4AI** | Un robot d'indexation basé sur navigateur qui exécute JavaScript avant d'extraire le contenu | Le robot d'indexation intégré basé sur fetch gère les sites Web — il est efficace pour les pages rendues par le serveur, mais moins performant pour celles qui utilisent beaucoup de JavaScript |
+## Activez le profil
 
-Aucun des deux ne modifie ce que le produit *fait*. Les assistants répondent,
-citent des sources, acheminent à travers les flux et remontent les informations
-exactement de la même manière. La différence réside dans la quantité
-d'informations qu'une étape de récupération peut trouver.
+Définissez ces valeurs dans `deploy/.env` :
 
-## Les activer
-
-Les workers sont un profil Docker Compose. Ajoutez `workers` à
-`COMPOSE_PROFILES` dans `deploy/.env` et attribuez à chaque service son secret :
-
-```sh
-# deploy/.env
+```dotenv
 COMPOSE_PROFILES=db,migrate,app,cron,workers
-GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
-GRAPH_LLM_API_KEY=<key for the graph worker's model>
-CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
-CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+GRAPH_WORKER_API_TOKEN=<generated-token>
+GRAPH_LLM_API_KEY=<provider-key>
+CRAWL4AI_API_TOKEN=<generated-token>
+CRAWL4AI_SECRET_KEY=<generated-token>
 ```
 
-Ensuite, redémarrez la pile :
+Ensuite, démarrez la pile :
 
-```sh
+```bash
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-<Callout title="Turn them on later, not up front">
-Nothing is lost by starting without the workers. Knowledge you have already
-indexed stays indexed, and enabling a worker afterwards simply gives new and
-re-synced sources a richer pipeline. Start small, then add the memory when your
-retrieval quality asks for it.
-</Callout>
+Les deux workers optionnels peuvent nécessiter environ 8 GiB de mémoire. Mesurez
+l'utilisation réelle sur l'hôte que vous avez sélectionné.
 
-## Exécuter un worker ailleurs
+## Vérifiez l'état du worker
 
-Le profil est une commodité, pas une obligation : chaque worker est un service
-HTTP ordinaire, vous pouvez donc exécuter l'un ou l'autre sur un hôte distinct
-et y diriger l'application. C'est la réponse habituelle lorsque votre serveur
-d'applications est petit mais que vous disposez d'une machine plus puissante
-pour l'indexation.
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
+```
 
-Crawl4AI est configuré à l'aide des deux mêmes variables, qu'il s'exécute dans
-le profil ou sur son propre hôte :
-
-| Variable | Objectif |
-| --- | --- |
-| `CRAWL4AI_BASE_URL` | Où le robot d'indexation est accessible. Cette variable et le jeton doivent être définis avant de pouvoir sélectionner le fournisseur. |
-| `CRAWL4AI_API_TOKEN` | Jeton réservé au serveur que l'application lui présente. |
-
-Consultez [Configuration](/self-hosting/configuration) pour le reste de
-l'environnement, et [Mise à niveau](/self-hosting/upgrade) pour savoir comment
-les workers sont reconstruits lorsque vous adoptez une nouvelle version.
-
-## Choisir un fournisseur d'analyse
-
-Avec Crawl4AI disponible, le pipeline d'exploration de site Web peut choisir
-entre le robot d'indexation intégré et le worker par source. La console présente
-ce choix sous la forme d'une politique de capacité plutôt que d'un commutateur
-fixe : laissez-la sur **Automatic** et chaque site se verra attribuer le
-fournisseur qui lui convient, ou choisissez-en un délibérément lorsque vous
-savez ce dont un site a besoin.
+N'exposez pas les ports ou les jetons des workers au réseau public.

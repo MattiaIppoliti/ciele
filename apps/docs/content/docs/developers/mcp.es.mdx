@@ -1,0 +1,56 @@
+---
+title: Servidor Ciele MCP
+description: Concede a un cliente MCP acceso controlado a las operaciones de administración de Ciele.
+---
+
+El servidor Ciele Model Context Protocol (MCP) es un proceso `stdio` local.
+Llama a la API de Ciele a través del cliente tipado.
+
+## Requisitos
+
+- Utiliza Node.js 22.6 o una versión posterior.
+- Clona el repositorio de Ciele.
+- Crea una [clave de API de organización](/developers/api-keys).
+- Utiliza un cliente MCP que pueda iniciar un servidor `stdio` local.
+
+Inicia este programa desde el repositorio:
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+## Variables de entorno
+
+| Variable | Requisito | Finalidad |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Obligatorio | Autentica a la organización. |
+| `CIELE_BASE_URL` | Opcional | Selecciona un origen autoalojado. |
+| `CIELE_MCP_READ_ONLY` | Opcional | Rechaza las acciones de mutación cuando el valor es `1`. |
+
+La comprobación de solo lectura se realiza dentro del proceso MCP. Una mutación
+rechazada no realiza una solicitud a la API.
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Herramientas disponibles
+
+| Herramienta | Operaciones actuales |
+| --- | --- |
+| `ciele_identity` | Leer información de implementación, organización y rol. |
+| `manage_assistants` | Enumerar, leer, crear, actualizar, duplicar o eliminar Asistentes. |
+| `manage_flows` | Enumerar, leer, crear, actualizar, reordenar o eliminar flujos. |
+| `manage_knowledge` | Gestionar colecciones, fuentes y preguntas frecuentes. |
+| `publish_assistant` | Leer el estado, publicar, anular la publicación o restaurar una publicación. |
+| `read_inbox` | Listar, leer o exportar conversaciones. |
+| `manage_improvements` | Listar, leer o actualizar mejoras. |
+
+El servidor MCP no proporciona un transporte HTTP remoto. Consulta
+[Clientes de IA](/developers/ai-clients) para obtener información sobre
+compatibilidad.
+
+## Comprueba la conexión
+
+Pídele al cliente que llame a `ciele_identity`. Confirma el ID de organización,
+el rol, la versión de la API y la lista de dominios esperados.

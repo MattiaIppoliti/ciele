@@ -1,32 +1,23 @@
 ---
-title: Exploiter vos assistants
-description: "Les outils pour faire fonctionner les assistants en production : lire les conversations, améliorer les réponses, suivre les analyses et gérer les alertes."
+title: Gérez vos assistants
+description: Passez en revue les conversations, la qualité du travail, les analyses, les exportations et les alertes.
 ---
 
-La publication d'un assistant est le début, pas la fin. Ciele vous propose un
-petit ensemble d'outils pour bien gérer vos assistants au fil du temps : pour
-voir ce que demandent les visiteurs, pour corriger les réponses insuffisantes,
-pour mesurer l'impact et pour détecter rapidement les problèmes opérationnels.
+Utilisez les sections opérationnelles après avoir publié un Assistant.
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
+| Section | Utilisation |
+| --- | --- |
+| Boîte de réception | Lisez les transcriptions des conversations, les sources, les marqueurs de flux et les détails de la session. |
+| Améliorations | Suivez le travail de qualité des réponses. |
+| Informations | Consultez les indicateurs agrégés actuels et les graphiques. |
+| Exportations | Créez des enregistrements de conversation téléchargeables. |
+| Alertes | Examinez les problèmes opérationnels et liés aux objectifs qui ont été détectés. |
 
-<Cards>
-  <Card title="Inbox" href="/operations/inbox" description="Read every conversation, with sources, session details, and escalation status." />
-  <Card title="Improvements" href="/operations/improvements" description="Track and resolve weak answers on a simple board." />
-  <Card title="Insights" href="/operations/insights" description="See resolution rate, ratings, volume, and trends over time." />
-  <Card title="Alerts" href="/operations/alerts" description="Spot operational issues, such as a connection that stopped working." />
-</Cards>
+Adoptez un cycle de révision régulier :
 
-## Une routine saine
-
-Un rythme hebdomadaire simple permet aux assistants de rester performants :
-
-1. Parcourez la [Boîte de réception](/operations/inbox) pour identifier les
-   questions que l'assistant a mal traitées ou auxquelles il n'a pas pu
-   répondre.
-2. Parcourez le tableau [Améliorations](/operations/improvements) en mettant à
-   jour les connaissances et les flux au fur et à mesure.
-3. Consultez [Insights](/operations/insights) pour voir si le taux de résolution
-   et les évaluations évoluent dans la bonne direction.
-4. Effacez toutes les [Alertes](/operations/alerts) pour que les intégrations
-   continuent de fonctionner.
+1. Examinez les nouvelles alertes.
+2. Examinez les changements de métriques dans Insights.
+3. Lisez des conversations représentatives dans la boîte de réception.
+4. Créez ou mettez à jour des améliorations.
+5. Corrigez le brouillon de l'Assistant.
+6. Testez et publiez la correction.

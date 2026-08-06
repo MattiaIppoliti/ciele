@@ -1,62 +1,33 @@
 ---
-title: Authentifizierungsübersicht
-description: Fordern Sie Besucher auf, sich anzumelden, bevor sie chatten, und personalisieren Sie die Antworten mit ihrem Profil.
+title: Authentifizierung von Besuchern
+description: Fordern Sie eine Microsoft-Entra-Anmeldung, bevor ein Besucher einen Assistenten nutzen kann.
 ---
 
-Standardmäßig ist ein Assistent für jeden zugänglich, der die Seite erreichen
-kann, auf der er sich befindet. Wenn Sie wissen möchten, wer sich auf der
-anderen Seite des Gesprächs befindet, können Sie Ihren Identitätsanbieter
-verbinden und verlangen, dass sich Personen anmelden, bevor sie chatten. Dadurch
-kann der Assistent bestätigen, wer jemand ist, sich an dessen Rolle anpassen und
-Antworten mit Details aus dem Profil personalisieren.
+Die Besucherauthentifizierung ist optional. Anonyme Besucher erhalten eine
+dauerhafte Besucher-ID aus dem lokalen Speicher der Host-Seite.
 
-Sie richten dies für jeden Assistenten einzeln ein. Öffnen Sie einen Assistenten
-und wählen Sie dann **Authentication**.
+Das aktuelle Produkt unterstützt eine Microsoft-Entra-Verbindung auf
+Organisationsebene. Ein Assistent kann diese Verbindung verlangen, bevor der
+Chat beginnt.
 
-## Was Ihnen die Verbindung mit einem Identitätsanbieter bringt
+## Aktuelle Identitätsgrenze
 
-- **Sign in before chat.** Besucher sehen eine **Connect Your Account**-Karte im
-  Widget und können erst fortfahren, nachdem sie sich bei Ihrem
-  Identitätsanbieter angemeldet haben.
-- **Roles and groups.** Die Gruppen, denen eine Person angehört, können in das
-  Gespräch einfließen, sodass ein [Flow](/flows/building-a-flow) ein Mitglied
-  anders behandeln kann als einen anonymen Besucher.
-- **Personalized answers.** Profildetails wie ein Name stehen dem Assistenten
-  zur Verfügung, sodass er in seinen Antworten die Person direkt ansprechen
-  kann.
+Ciele fordert den Bereich `openid` an und validiert das zurückgegebene ID-Token.
+Die authentifizierte Identität verwendet die Token-Subjekt-ID.
 
-<Callout title="Single sign-on, one connection">
-The connection uses OpenID Connect, the standard behind most single sign-on
-setups. Once your identity provider is connected, people sign in with the account
-they already use, and no separate password is created for the assistant.
-</Callout>
+Die aktuelle Verbindung importiert keine Profilfelder, E-Mail-Adressen, Gruppen
+oder Anwendungsrollen. Sie personalisiert keine Antworten anhand dieser
+Attribute.
 
-## Zwei verwandte Einstellungen
+## Anmeldung erforderlich
 
-- **Authentication** verbindet den Identitätsanbieter, der den Chat schützt.
-  Dies ist, was in den Anleitungen in diesem Abschnitt Schritt für Schritt
-  erklärt wird.
-- Mit **User data** können Sie personenbezogene Details importieren, damit der
-  Assistent sie im Stil von Serienbriefen in Antworten einfügen kann. Verwenden
-  Sie diese Option, wenn Sie Antworten wünschen, die auf die persönlichen Daten
-  einer Person verweisen.
+1. Konfigurieren Sie Microsoft Entra in den Organisationseinstellungen.
+2. Öffnen Sie den Assistenten.
+3. Wählen Sie **Authentication**.
+4. Aktivieren Sie die Anmeldepflicht.
+5. Speichern Sie den Entwurf.
+6. Testen Sie den Anmeldefluss in der Vorschau.
+7. Veröffentlichen Sie den Assistant.
 
-## Anleitungen
-
-<Cards>
-  <Card
-    title="Microsoft Entra ID verbinden"
-    href="/authentication/microsoft-entra-id"
-    description="Registrieren Sie eine Anwendung in Microsoft Entra und verlangen Sie eine Anmeldung vor dem Chat."
-  />
-</Cards>
-
-## Nachdem Sie eine Verbindung hergestellt haben
-
-- Öffnen Sie die Widget-Vorschau und vergewissern Sie sich, dass die **Connect
-  Your Account**-Karte angezeigt wird.
-- Melden Sie sich mit einem Testkonto an und prüfen Sie, ob die Konversation
-  fortgesetzt wird.
-- Wenn Sie sich auf Rollen stützen, vergewissern Sie sich, dass ein
-  [Flow](/flows/building-a-flow), der die Benutzerrolle überprüft, sich für
-  angemeldete Personen wie erwartet verhält.
+Das Authentifizierungs-Gate verwendet ein verschlüsseltes Organisations-Cookie.
+Die Sitzung läuft nach 12 Stunden ab.

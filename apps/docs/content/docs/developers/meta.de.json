@@ -1,0 +1,14 @@
+{
+  "title": "Entwickler",
+  "description": "Verwenden Sie die API, die CLI und den MCP-Server",
+  "icon": "Terminal",
+  "root": true,
+  "pages": [
+    "index",
+    "api-keys",
+    "api",
+    "cli",
+    "mcp",
+    "ai-clients"
+  ]
+}

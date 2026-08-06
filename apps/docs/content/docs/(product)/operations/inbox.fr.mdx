@@ -1,50 +1,41 @@
 ---
 title: Boîte de réception
-description: Lisez les conversations de vos assistants avec les visiteurs, avec les sources, les détails de la session et le statut de remontée.
+description: Examinez les conversations, les sources, les traces d'exécution et les métadonnées de session.
 ---
 
-La boîte de réception est l'endroit où vous pouvez lire ce qui s'est réellement
-passé : chaque conversation entre un visiteur et vos assistants. C'est le
-meilleur moyen de comprendre comment les visiteurs formulent leurs questions et
-de savoir où l'assistant est performant ou non. Ouvrez **Inbox** depuis la barre
-latérale.
+La boîte de réception stocke les interventions du visiteur et de l'assistant.
+Ouvrez une conversation pour examiner la transcription exacte qui a été
+enregistrée.
 
-## Parcourir les conversations
+## Liste des conversations
 
-La liste des conversations regroupe les activités récentes afin que la plus
-récente soit facile à trouver. Chaque entrée affiche le visiteur, un aperçu du
-message et un horodatage. Utilisez les outils en haut pour affiner la liste :
+Utilisez la recherche et les filtres disponibles pour affiner la liste. Chaque
+ligne indique l'activité récente et l'état actuel de la conversation.
 
-- **Date range** limite la liste à une période.
-- **Search** recherche les conversations en fonction de leur contenu.
-- **Filters** affiner la recherche selon les attributs qui vous importent.
-- **Exports** vous permet d'extraire les données de conversation pour une
-  analyse plus approfondie.
+Une session qui ne contient que des notifications proactives est marquée du
+symbole **Notification only**. Elle devient une Conversation normale dès qu'un
+Visiteur répond.
 
-## Lire une conversation
+## Détail de la conversation
 
-Ouvrez une conversation pour voir la transcription complète. En plus des
-messages, vous obtenez :
+La vue détaillée peut afficher :
 
-- **Workflow markers** qui indiquent quel flux a géré chaque tour, afin que vous
-  puissiez voir vos règles en action.
-- **Sources** sur chaque réponse générée, afin que vous puissiez vérifier d'où
-  provient l'information.
-- **Feedback** tels que des pouces vers le haut ou vers le bas lorsqu'un
-  visiteur l'a quittée.
+- Messages du visiteur et de l'assistant
+- le flux qui a géré un tour
+- citations de sources nommées
+- Commentaires des visiteurs
+- état de remontée
+- métadonnées de lancement et de l'appareil
+- informations Thinking stockées lorsque le rôle du membre autorise l'accès
 
-Un panneau latéral fournit le contexte de la conversation et de la session,
-notamment des détails sur la manière dont le visiteur a contacté l'assistant et
-sur l'état de la conversation, y compris si elle a été escaladée.
+Les actions de type Verbatim Message et les réponses de type Basic ne
+contiennent pas de trace Thinking. Les réponses de la recherche dans la base de
+connaissances peuvent contenir des événements d'outil et de progression.
 
-## Transformez les informations en actions
+## Créez un travail de qualité
 
-La boîte de réception s'associe naturellement au tableau Améliorations. Lorsque
-vous repérez une réponse erronée, vous pouvez la signaler pour amélioration ;
-elle devient alors un élément suivi à corriger. Voir
-[Améliorations](/operations/improvements).
+Utilisez l'action d'amélioration disponible lorsqu'une réponse doit être
+corrigée. Le nouvel élément renvoie au message de conversation concerné.
 
-<Callout title="Read real questions often">
-Nothing teaches you more about an assistant than the words visitors actually use.
-A few minutes in the Inbox regularly will surface most of what needs tuning.
-</Callout>
+Utilisez [Exports](/operations/exports) lorsque vous avez besoin
+d'enregistrements structurés en dehors de la boîte de réception.

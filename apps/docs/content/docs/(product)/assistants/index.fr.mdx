@@ -1,61 +1,33 @@
 ---
-title: Présentation des assistants
-description: Ce qu'est un assistant, comment son éditeur est organisé et où se trouve chaque paramètre.
+title: Assistants
+description: Configurez l'identité, le modèle, le comportement, les outils et les vérifications d'un Assistant.
 ---
 
-Un assistant est une expérience de chat unique que vous façonnez de A à Z : son
-nom, ce qu'il sait, la manière dont il répond, le moment où il effectue une
-escalade, son apparence et l'endroit où il s'affiche. Vous faites tout cela dans
-l'éditeur d'assistant.
+Un Assistant est la principale unité de configuration dans Ciele. Chaque
+Assistant possède ses Connaissances, ses Flux, ses paramètres de brouillon et
+son historique de publication.
 
-## Les sections de configuration
+## Sections de configuration
 
-L'éditeur regroupe les paramètres en sections sur la gauche. Les sections que
-vous utiliserez le plus sont :
+| Section | Objectif |
+| --- | --- |
+| Général | Définissez l'identité, le modèle, le moteur de connaissances et les paramètres par défaut de la conversation. |
+| Connaissances | Ajoutez des sources et des FAQ. |
+| Flux | Définissez le routage et les réponses. |
+| Outils et compétences | Contrôlez les outils d'exécution, l'intégration d'API et les instructions réutilisables. |
+| Objectifs | Planifiez des vérifications de réponses déterministes. |
+| Services d'assistance de l'assistant | Sélectionnez les services d'assistance pour l'escalade. |
+| Style | Définissez la couleur de la marque et la position du lanceur. |
+| Authentification | Exigez la connexion Microsoft Entra pour les visiteurs. |
+| Publier | Créez et gérez l'instantané en direct. |
 
-- **General** couvre l'identité de l'assistant, son message de bienvenue, les
-  boutons de démarrage et son style de réponse. Consultez
-  [Paramètres généraux](/assistants/general-settings).
-- **Knowledge** est l'endroit où vous ajoutez les sources à partir desquelles
-  l'assistant répond. Voir [Knowledge](/knowledge).
-- **Flows** est l'endroit où vous définissez les règles qui contrôlent la
-  manière dont l'assistant répond. Voir [Flux](/flows).
-- **Tools & Skills** vous permet d'activer ou de désactiver les outils intégrés
-  de l'assistant, d'ajouter votre propre outil HTTP que l'assistant pourra
-  appeler, et d'attacher des compétences réutilisables : des playbooks que votre
-  organisation rédige une seule fois et partage entre les assistants.
-- **Goals** contient les questions auxquelles vous attendez de l'assistant qu'il
-  réponde correctement. Elles sont revérifiées selon un calendrier défini, et
-  une alerte est déclenchée dès qu'un objectif commence à ne pas être atteint.
-- **Help Desks** est l'endroit où vous choisissez les destinations d'escalade
-  proposées par cet assistant. Consultez
-  [Connecter un service d'assistance](/help-desks/connect-to-an-assistant).
-- **Style** et les options de couleur dans Général contrôlent l'apparence du
-  widget. Voir [Apparence](/assistants/appearance).
-- **Publish** vous fournit l'extrait de code pour intégrer l'assistant. Voir
-  [Publication](/publishing).
+Les modifications sont immédiatement visibles dans l'aperçu. Le widget en direct
+ne change qu'après la publication.
 
-## L'aperçu en direct
+## Dupliquer un Assistant
 
-Chaque modification que vous apportez est reflétée dans le panneau d'aperçu
-situé à droite. Utilisez-le pour vérifier le message de bienvenue, tester les
-boutons de démarrage et confirmer les couleurs avant de publier. L'aperçu se
-comporte comme le widget réel ; c'est donc le moyen le plus rapide de valider
-votre travail.
+La duplication copie la configuration et les flux. Elle ne copie pas le contenu
+Knowledge.
 
-## Ordre recommandé
-
-Si vous configurez un assistant pour la première fois, cet ordre est recommandé
-:
-
-1. Définissez l'identité et le message de bienvenue dans **General**.
-2. Ajoutez **Knowledge** pour que l'assistant ait quelque chose à partir de quoi
-   répondre.
-3. Testez dans l'aperçu en posant quelques questions réelles.
-4. Ajoutez **Flows** pour tous les types de messages nécessitant un traitement
-   particulier.
-5. Configurez **Help Desks** pour l'escalade.
-6. Ajustez **Style**.
-7. Accédez à **Publish** et intégrez le widget.
-8. Une fois que c'est en ligne, ajoutez quelques **Goals** pour savoir quand une
-   bonne réponse cesse de l'être.
+Vérifiez le nouvel Assistant avant sa publication. En particulier, ajoutez ses
+Sources requises et confirmez ses connexions au service d'assistance.

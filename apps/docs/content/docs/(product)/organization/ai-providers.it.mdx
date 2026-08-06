@@ -1,0 +1,47 @@
+---
+title: Provider di IA
+description: Collega un provider di modelli e seleziona il modello per ogni Assistente.
+---
+
+Ciele utilizza un'unica astrazione del provider per i modelli Anthropic, OpenAI
+e Google. Un Assistente seleziona la connessione al provider e il modello.
+
+## Tipi di connessione al provider
+
+| Tipo | Utilizzo |
+| --- | --- |
+| Piano della piattaforma | Utilizza i modelli forniti dal piano Ciele gestito. |
+| Abbonamento | Utilizza un abbonamento membro solo per la versione Preview. |
+| Chiave API | Utilizza una chiave provider gestita dall'organizzazione. |
+
+Una connessione Subscription non serve un widget pubblicato. Seleziona un piano
+Platform o una connessione con chiave API per il traffico pubblicato.
+
+## Aggiungi una connessione con chiave API
+
+1. Apri **Settings**.
+2. Seleziona **AI Provider**.
+3. Aggiungi una connessione provider.
+4. Seleziona Anthropic, OpenAI o Google.
+5. Inserisci la credenziale del provider richiesta.
+6. Salva la connessione.
+
+Ciele cripta le credenziali prima di archiviarle. Non riutilizzare una chiave
+personale con autorizzazioni non correlate.
+
+## Seleziona un modello di Assistente
+
+1. Apri l'Assistente.
+2. Seleziona **General**.
+3. Seleziona la connessione del provider.
+4. Seleziona un modello disponibile.
+5. Prova l'Assistente in Anteprima.
+6. Pubblica l'Assistente.
+
+Il widget pubblicato utilizza il provider e il modello nella sua istantanea di
+pubblicazione. Le successive modifiche generali richiedono un'altra
+pubblicazione.
+
+<Callout title="Provider accounts are separate">
+Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.
+</Callout>

@@ -1,78 +1,55 @@
 ---
 title: Configuration
-description: Les variables d'environnement qu'un déploiement Ciele auto-hébergé lit pour sa base de données, ses fournisseurs d'IA et ses secrets opérationnels.
+description: Configurez les origines, les secrets, les comptes, les modèles, l'e-mail et les travailleurs optionnels.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Le script de démarrage écrit `deploy/.env`. Utilisez `deploy/.env.example` comme
+référence de variable actuelle.
 
-Un déploiement auto-hébergé est entièrement configuré au moyen de variables
-d'environnement. Copiez `apps/web/.env.example` dans `apps/web/.env.local` et
-saisissez les valeurs dont vous avez besoin. Le fichier d'exemple est livré avec
-des valeurs par défaut de développement local fonctionnelles. Ainsi, sur une
-pile de base de données locale, la plupart de ces valeurs sont déjà définies
-pour vous.
+## Origines publiques
 
-## Base de données
+Définissez `PUBLIC_URL` sur l'origine publique de l'application. Définissez
+`SUPABASE_PUBLIC_URL` sur l'origine de la passerelle de base de données
+accessible par le navigateur.
 
-Définissez ces deux éléments et la couche de données passera automatiquement de
-la boutique de démonstration à votre base de données. Laissez-les vides pour
-rester en mode démo.
+Recompilez l'application après avoir modifié `SUPABASE_PUBLIC_URL`. Le paquet du
+navigateur contient cette valeur au moment de la compilation.
 
-| Variable | Objectif |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | L'URL de votre projet Supabase. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | La clé publique anonyme pour l'accès via navigateur. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clé serveur uniquement pour l'exécution du widget et les lectures privilégiées. Ne l'exposez jamais au navigateur. |
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
 
-Consultez [Database](/self-hosting/database) pour le provisionnement et les
-migrations.
+## Secrets générés
 
-## Fournisseurs d'IA
+La pile nécessite Postgres, JSON Web Token, un rôle de service, le chiffrement
+de l'application et des secrets cron. Laissez le script de démarrage les
+générer.
 
-Les assistants font appel à un fournisseur d'IA pour générer des réponses.
-Fournissez au moins une clé de plateforme, ou pointez vers n'importe quel point
-de terminaison compatible avec OpenAI pour une exécution entièrement locale.
+Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` indépendamment.
+Ils forment une configuration de signature.
 
-| Variable | Objectif |
-| --- | --- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Clé de plateforme utilisée lorsqu'un assistant n'a pas de connexion à un fournisseur par organisation. |
-| `ANTHROPIC_API_KEY` | Fournisseur supplémentaire facultatif. |
-| `OPENAI_API_KEY` | Fournisseur supplémentaire facultatif. |
+## Comptes et e-mail
 
-<Callout title="Run fully local, no cloud AI">
-Set `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_CHAT_MODEL` to route
-answers through any server that speaks the OpenAI chat API — a local runner, a
-self-hosted model server, or a gateway. Add `OPENAI_COMPATIBLE_EMBEDDING_MODEL`
-(and `OPENAI_COMPATIBLE_EMBEDDING_DIMS`) to enable semantic knowledge search;
-without an embedding model, knowledge search falls back to lexical matching. An
-API key is only needed if your server enforces one.
-</Callout>
+Le premier compte devient le propriétaire de l'organisation. Définissez
+`DISABLE_SIGNUP=true` une fois que les comptes requis existent.
 
-Les organisations peuvent également importer leurs propres clés depuis la
-console, ce qui est une fonctionnalité du produit plutôt qu'une configuration de
-déploiement.
+Sans configuration SMTP, `MAILER_AUTOCONFIRM=true` confirme automatiquement les
+nouveaux comptes.
 
-## Secrets et opérations
+Les actions d'e-mail d'exécution utilisent `RESEND_API_KEY` et `EMAIL_FROM`.
+Elles signalent un résultat non configuré lorsque l'une ou l'autre de ces
+valeurs est absente.
 
-| Variable | Objectif |
-| --- | --- |
-| `APP_ENCRYPTION_KEY` | Scelle les clés de fournisseur propres à chaque organisation au repos (AES-256-GCM). Sans cela, ces clés sont stockées en texte clair marqué et accompagnées d'un avertissement. Générez-en une avec `openssl rand -base64 32`. |
-| `PLATFORM_OWNER_EMAIL` | Le premier utilisateur qui s'inscrit avec cette adresse e-mail devient le propriétaire de la plateforme. |
-| `CRON_SECRET` | Secret partagé protégeant les routes de l'API de maintenance et de cron. |
+## Points de terminaison de modèle
 
-## Ingestion de connaissances (facultative)
+Configurez les clés de fournisseur Anthropic, OpenAI ou Google. Vous pouvez
+également configurer un point de terminaison de chat et d'intégration compatible
+avec OpenAI.
 
-Le pipeline de connaissances d'exploration de site Web peut utiliser un robot
-d'indexation externe. Ceux-ci sont facultatifs ; sans eux, le robot d'indexation
-local intégré est utilisé.
+La recherche de connaissances utilise la correspondance lexicale lorsqu'aucun
+modèle d'intégration n'est disponible.
 
-| Variable | Objectif |
-| --- | --- |
-| `APIFY_API_TOKEN` | Jeton pour le fournisseur d'exploration de sites Web basé sur Apify. |
-| `CRAWL4AI_BASE_URL`, `CRAWL4AI_API_TOKEN` | Un worker privé de Crawl4AI ; les deux sont requis pour qu'il soit sélectionnable, et le jeton est réservé au serveur. |
+## TLS
 
-<Callout type="warn" title="Review row-level security before shipping">
-The database ships with permissive row-level-security policies suited to a demo.
-Scope them to authenticated administrators before exposing a deployment to real
-users.
-</Callout>
+Terminez TLS dans un proxy inverse. Ensuite, définissez les deux variables
+d'origine publique sur leurs adresses HTTPS et recompilez l'application.

@@ -1,94 +1,40 @@
 ---
-title: Actualización
-description: "Descubre una nueva versión de Ciele: cómo se publican las versiones, qué hace una actualización en tu base de datos y cómo realizar una copia de seguridad y restaurar."
+title: Actualizar
+description: Aplica una nueva versión del repositorio y sus migraciones pendientes.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Antes de la actualización
 
-Ciele se publica como versiones etiquetadas. Cada versión es una única
-confirmación en el repositorio público más una etiqueta `vMAJOR.MINOR.PATCH`,
-por lo que la pregunta «¿qué versión estoy ejecutando?» siempre tiene una
-respuesta exacta:
+1. Lee los cambios de la versión.
+2. Registra la confirmación o etiqueta actual.
+3. Haz una copia de seguridad de la base de datos y de los archivos subidos.
+4. Prueba el proceso de restauración.
+5. Programa una ventana de servicio aceptable.
 
-```sh
-git describe --tags
-```
+## Aplica la versión
 
-Fija tu implementación a una etiqueta en lugar de seguir la rama predeterminada
-y decide cuándo cambiar.
-
-## Actualizar una implementación de Docker
-
-```sh
-git fetch --tags
-git checkout v0.2.0        # the release you want
+```bash
+git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Eso recompila la imagen de la aplicación y reinicia la pila. El servicio
-`migrate` se ejecuta primero, aplica solo las migraciones que aún no tienes y
-sale; la aplicación se inicia una vez que ha terminado. No ejecutes migraciones
-manualmente.
+El servicio `migrate` solo aplica las migraciones pendientes. Inspecciona su
+resultado antes de aceptar la aplicación como correcta.
 
-Si habilitaste el [perfil de trabajadores](/self-hosting/workers), `--build`
-también recompila esas imágenes, sin necesidad de un paso aparte.
-
-## Actualizar una implementación de origen
-
-Ejecutar las aplicaciones directamente en lugar de en Compose:
-
-```sh
-git fetch --tags && git checkout v0.2.0
-pnpm install
-pnpm build
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
 ```
 
-Aplica las migraciones pendientes a tu base de datos antes de iniciar la nueva
-compilación. Consulta [Base de datos](/self-hosting/database) para saber cómo
-funciona el runner ordenado por nombre de archivo y cómo realiza un seguimiento
-de lo que ya ha aplicado.
+## Verifica el resultado
 
-## Primero haz una copia de seguridad
+1. Inicia sesión en la consola de administración.
+2. Abre un Asistente.
+3. Vista previa de prueba.
+4. Abre un widget publicado.
+5. Llama a `GET /api/v1/meta` cuando se estén usando clientes programáticos.
 
-Una actualización que aplica migraciones cambia tu esquema. Haz una copia de
-seguridad antes de empezar, siempre:
-
-```sh
-docker compose -f deploy/docker-compose.yml exec -T postgres \
-  pg_dump -U postgres postgres | gzip > ciele-$(date +%F).sql.gz
-```
-
-Dos volúmenes contienen todo lo importante: `postgres-data` (la base de datos) y
-`storage-data` (los archivos subidos). Haz una copia de seguridad de ambos: una
-copia de seguridad de la base de datos por sí sola restaurará tus asistentes,
-conversaciones y registros de conocimiento, pero no los archivos que hay detrás
-de ellos.
-
-<Callout type="warn" title="Migrations move forward only">
-There is no down-migration path. Rolling back to an earlier version means
-restoring the backup you took before the upgrade, not re-running the runner in
-reverse. This is why the dump above is not optional.
-</Callout>
-
-## Restaurar a una versión anterior
-
-```sh
-docker compose -f deploy/docker-compose.yml down
-git checkout v0.1.0
-gunzip -c ciele-2026-07-25.sql.gz | docker compose -f deploy/docker-compose.yml \
-  exec -T postgres psql -U postgres postgres
-docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-Restaura el volcado que coincida con la versión a la que vas a volver. Una copia
-de seguridad más reciente contiene un esquema más nuevo que el código anterior
-no entenderá.
-
-## Qué leer antes de una actualización menor
-
-Las notas de la versión se publican en cada etiqueta y señalan cualquier cosa
-que requiera una decisión por tu parte: una nueva variable de entorno
-obligatoria, un valor predeterminado modificado o una migración que reescriba
-una tabla grande. Échales un vistazo antes de actualizar una implementación de
-la que dependa la gente; las versiones de parche son rutinarias, pero las
-versiones menores a veces no lo son.
+No restaures una imagen de aplicación antigua en una base de datos migrada
+incompatible. Utiliza las instrucciones de la versión para una ruta de reversión
+compatible.

@@ -1,53 +1,30 @@
 ---
-title: Starter buttons
-description: Give visitors quick ways into a conversation with typed starter buttons.
+title: Quick replies
+description: Add starter buttons that send text or return a curated FAQ answer.
 ---
 
-Starter buttons appear when a visitor opens the chat. They are a friendly way to
-guide people toward the things your assistant does best. You manage them in the
-**General** section of the assistant editor.
+Quick replies appear near the welcome message. They help a Visitor start a common task.
 
-## Add a button
+## Send Text
 
-1. In General, find the starter buttons list.
-2. Select **Add button**.
-3. Give the button a **name**. This is the label the visitor sees.
-4. Choose a **type**, then fill in the type specific settings.
-5. Save the button.
+A **Send Text** quick reply sends its configured text as a Visitor message. The normal Flow router then handles that message.
 
-You can add several buttons and reorder them so the most useful ones come first.
+Use this type when the Assistant must interpret the starter text through its normal routing rules.
 
-## Button types
+## FAQ
 
-Each button does one of four things.
+An **FAQ** quick reply returns the curated FAQ answer verbatim. It does not call the chat model.
 
-### Send text into chat
+The answer includes the FAQ Source citation. Use this type when an approved answer must remain exact.
 
-The button sends a message into the chat for the visitor, as if they had typed it.
-Use this to focus the assistant on a specific topic. For example, a button named
-"Pricing" can send the message "Tell me about your pricing" so the assistant
-answers that question right away.
+## Add a quick reply
 
-### Escalation
+1. Open **General**.
+2. Find **Quick replies**.
+3. Add a **Send Text** or **FAQ** item.
+4. Enter the visible label.
+5. Select or enter the required content.
+6. Save the draft.
+7. Test the button in Preview.
 
-The button connects the visitor to your team through your configured escalation
-options. Use this when you want a clear, always visible way to reach a human. It
-relies on your [Help Desks](/help-desks).
-
-### Open external link
-
-The button opens a web address in a new tab. Use this to send visitors to a page
-on your site, a form, or any external resource.
-
-### FAQ
-
-The button surfaces a specific question and answer pair from your knowledge. Use
-this to give an instant, exact answer to a common question. See
-[FAQs](/knowledge/faqs).
-
-## Tips
-
-- Keep labels short so they fit neatly in the widget.
-- Lead with the questions visitors ask most.
-- Pair a "Send text into chat" button with strong knowledge so the assistant has
-  a good answer ready.
+Keep labels short. The label must describe the action that occurs after selection.

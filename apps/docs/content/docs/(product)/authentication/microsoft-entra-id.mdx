@@ -1,119 +1,39 @@
 ---
-title: Connect Microsoft Entra ID
-description: Register an application in Microsoft Entra and require people to sign in before they chat.
+title: Microsoft Entra ID
+description: Configure the current OpenID Connect connection for Visitor sign-in.
 ---
 
-Microsoft Entra ID (formerly Azure Active Directory) is the identity provider many
-organizations already use for single sign-on. Connecting it lets people sign in to
-your assistant with their existing work account, and lets the assistant see their
-role and profile. The connection uses OpenID Connect, so the setup is a matter of
-registering an application in Entra and pasting a few values into the assistant.
+Microsoft Entra ID is the available Visitor identity provider.
 
-You need administrator access to your Microsoft Entra tenant to register an
-application, and access to the assistant's **Authentication** page in Ciele.
+## Create the Entra application
 
-## Before you start
+1. Register a confidential web application in Microsoft Entra ID.
+2. Add the Ciele callback URL shown in the provider form.
+3. Create a client secret.
+4. Record the tenant ID and client ID.
 
-1. Open the assistant, then select **Authentication**.
-2. Choose Microsoft Entra as the identity provider. The page shows a **redirect
-   URL** (sometimes called a callback or reply URL) for this assistant. Keep this
-   page open, you will paste this value into Entra in the next step and then bring
-   values back here.
+Use the exact callback URL. A different scheme, host, path, or port prevents the authorization response.
 
-<Callout title="Keep the redirect URL exact">
-Copy the redirect URL exactly as shown, including `https://` and any path. Entra
-matches it character for character, and a mismatch is the most common reason sign
-in fails.
-</Callout>
+## Configure Ciele
 
-## Step 1: Register an application in Entra
+1. Open **Settings**.
+2. Open the Visitor authentication configuration.
+3. Select **Microsoft Entra ID**.
+4. Enter the tenant ID.
+5. Enter the client ID.
+6. Enter the client secret.
+7. Save the connection.
 
-1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com) as an
-   administrator.
-2. Go to **Identity**, then **Applications**, then **App registrations**, and select
-   **New registration**.
-3. Give the application a **name** your team will recognize, such as `Ciele
-   Assistant`.
-4. Under **Supported account types**, choose the option that matches who should be
-   able to sign in. For a single organization, choose accounts in this
-   organizational directory only.
-5. Under **Redirect URI**, select the **Web** platform and paste the redirect URL
-   you copied from the assistant's Authentication page.
-6. Select **Register**.
+Ciele uses the authorization-code flow with Proof Key for Code Exchange (PKCE). It requests only the `openid` scope.
 
-## Step 2: Collect the client and tenant identifiers
+## Required server setting
 
-After registration you land on the application's **Overview** page.
+Set `APP_ENCRYPTION_KEY` on the Ciele deployment. Ciele uses this key to protect the authentication gate cookie and stored secrets.
 
-1. Copy the **Application (client) ID**.
-2. Copy the **Directory (tenant) ID**.
+## Test the connection
 
-Keep both values, you will paste them into the assistant shortly.
-
-## Step 3: Create a client secret
-
-1. In the application, open **Certificates & secrets**.
-2. Select **New client secret**, add a short description, and choose an expiry that
-   fits your organization's policy.
-3. Select **Add**, then immediately copy the secret **Value**. It is shown only
-   once, so copy it now rather than the secret ID.
-
-<Callout type="warn" title="Secrets expire">
-A client secret has an expiry date. Set a reminder to create a new secret and
-update it in the assistant before the old one expires, otherwise sign in will stop
-working when it lapses. Clearing the connection later is covered under
-[Alerts](/operations/alerts), which flags a connection that has stopped working.
-</Callout>
-
-## Step 4: Choose what the assistant can read
-
-The assistant needs the basic sign-in scopes to identify a person.
-
-1. Open **API permissions**.
-2. Confirm the delegated permissions include **openid**, **profile**, and
-   **email**. These let the assistant read who someone is. They are usually present
-   by default.
-3. If you want the assistant to react to a person's groups or roles, open **Token
-   configuration** and add a **groups claim** (or the optional claims your
-   organization uses for roles). This is what makes group and role based
-   [flow conditions](/flows/building-a-flow) work for signed-in people.
-4. If your organization requires it, grant admin consent for the permissions.
-
-## Step 5: Finish the connection in Ciele
-
-Return to the assistant's **Authentication** page and enter the values from Entra:
-
-1. **Client ID**: the Application (client) ID from Step 2.
-2. **Tenant ID**: the Directory (tenant) ID from Step 2.
-3. **Client secret**: the secret Value from Step 3.
-4. **Scopes**: leave the default sign-in scopes unless your setup needs more.
-5. Save the connection.
-
-## Step 6: Test sign in
-
-1. Open the assistant's live preview or a page where it is published.
-2. The widget shows a **Connect Your Account** card. Select it.
-3. Sign in with a Microsoft account from your tenant.
-4. Confirm the conversation continues and, if you configured groups, that a
-   role based flow behaves as expected.
-
-## Troubleshooting
-
-- **Redirect URI mismatch.** The error names a reply URL that does not match. Copy
-  the redirect URL from the Authentication page again and make sure the value in
-  Entra under the **Web** platform is identical.
-- **Sign in works but roles do not.** Add the **groups claim** in **Token
-  configuration** (Step 4). Without it, the assistant sees the person but not their
-  groups.
-- **Sign in stopped working after a while.** The client secret likely expired.
-  Create a new secret in **Certificates & secrets** and update it on the
-  Authentication page.
-- **Admin consent required.** An administrator needs to grant consent for the
-  application's permissions once, in **API permissions**.
-
-## What comes next
-
-- Personalize replies with a person's own details using **User data** on the same
-  Authentication page.
-- Use the person's role in rules on the [Flows](/flows/building-a-flow) page, so the
-  assistant answers members and anonymous visitors differently.
+1. Require authentication on one draft Assistant.
+2. Open Preview in a signed-out browser session.
+3. Complete Microsoft sign-in.
+4. Confirm that the chat becomes available.
+5. Confirm that another Organization cannot reuse the gate cookie.

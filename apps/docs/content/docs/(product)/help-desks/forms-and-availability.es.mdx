@@ -1,53 +1,34 @@
 ---
 title: Formularios y disponibilidad
-description: Decide qué recopila un canal de un visitante, qué datos de la conversación adjuntar y cuándo está abierto.
+description: Recopila los datos de escalamiento necesarios y muestra cuándo hay un canal disponible.
 ---
 
-Cada canal puede hacer más que transmitir un mensaje. Puedes recopilar los
-detalles exactos que necesita tu equipo, adjuntar contexto útil de la
-conversación y controlar cuándo está disponible el canal. Estas opciones se
-encuentran en las pestañas del editor de canales.
+## Añade campos al formulario
 
-## Crea el formulario
+Añade solo los datos que necesita el equipo receptor. Marca un campo como
+obligatorio cuando el canal no pueda funcionar sin él.
 
-El formulario es lo que rellena un visitante cuando usa el canal. Comienza con
-valores predeterminados razonables y tú lo configuras con un generador.
+Prueba el formulario como visitante. Confirma que los campos obligatorios
+impidan un envío incompleto.
 
-1. Abre un canal y ve a su pestaña de formulario.
-2. Añade un campo con **Add field**.
-3. Elige el **tipo de campo**. Los tipos incluyen texto libre, texto más largo,
-   datos de contacto, un número de teléfono, un menú desplegable de opciones y
-   campos de rol o identidad que se pueden rellenar desde el perfil de un
-   visitante cuando esté disponible.
-4. Establece el **nombre** del campo, un **marcador de posición** opcional y
-   marcas como si el campo es **obligatorio** y si debe aparecer en el
-   formulario.
+## Adjuntar datos de la conversación
 
-También puedes configurar el mensaje que verá un visitante después de enviar su
-solicitud, para que sepa que se ha recibido y qué sucede a continuación.
+Un servicio de asistencia puede adjuntar a una escalación la información
+configurada de la conversación. Los datos disponibles pueden incluir un resumen,
+un historial, datos de usuario y metadatos.
 
-## Adjunta datos de la conversación
+Selecciona los datos mínimos que necesita el equipo receptor. Revisa la
+selección teniendo en cuenta tus requisitos de privacidad.
 
-Para canales como el correo electrónico y los puntos de conexión de la API,
-puedes adjuntar contexto de la conversación a la solicitud que recibe tu equipo.
-Esto puede incluir un resumen del chat, el historial completo, información sobre
-el visitante y metadatos sobre la sesión. Al adjuntar contexto, tu equipo no
-tendrá que pedirle al visitante que repita lo que ha dicho.
+## Configura la disponibilidad
 
-## Establece la disponibilidad
+Establece la programación y la zona horaria del canal. El widget muestra si el
+canal está disponible y puede mostrar su próxima hora disponible.
 
-Un canal puede estar disponible en todo momento o limitarse a horas específicas.
+Utiliza la zona horaria del equipo que recibe la escalada. Prueba el límite al
+principio y al final de una ventana de disponibilidad.
 
-1. Abre un canal y ve a su pestaña de disponibilidad.
-2. Elige **siempre disponible** o establece **horario limitado** para cada día
-   de la semana.
-3. Añade fechas especiales en las que el horario sea diferente, como los días
-   festivos.
+## Entrega de correo electrónico
 
-Cuando un canal está fuera de su horario, no se ofrece, lo que evita que los
-visitantes accedan a un canal que nadie está viendo.
-
-<Callout title="Collect only what you need">
-Every extra field is friction for the visitor. Ask for the minimum that lets your
-team act, and rely on attached conversation data for the rest.
-</Callout>
+El canal de correo electrónico requiere un transporte Resend configurado. Cuando
+falta, Ciele informa de que el correo electrónico no se ha enviado.

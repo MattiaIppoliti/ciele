@@ -1,49 +1,26 @@
 ---
 title: Forms and availability
-description: Decide what a channel collects from a visitor, what conversation data to attach, and when it is open.
+description: Collect required escalation data and show when a channel is available.
 ---
 
-Each channel can do more than pass along a message. You can collect the exact
-details your team needs, attach useful context from the conversation, and control
-when the channel is available. These options live in the tabs of the channel
-editor.
+## Add form fields
 
-## Build the form
+Add only the data that the receiving team needs. Mark a field as required when the channel cannot operate without it.
 
-The form is what a visitor fills in when they use the channel. It starts with
-sensible defaults and you shape it with a builder.
+Test the form as a Visitor. Confirm that required fields prevent an incomplete submission.
 
-1. Open a channel and go to its form tab.
-2. Add a field with **Add field**.
-3. Choose the **field type**. Types cover free text, longer text, contact details,
-   a phone number, a dropdown of options, and role or identity fields that can be
-   filled in from a visitor's profile when available.
-4. Set the field **name**, an optional **placeholder**, and flags such as whether
-   the field is **required** and whether it should appear in the form.
+## Attach Conversation data
 
-You can also set the message a visitor sees after they submit, so they know their
-request was received and what happens next.
+A Help Desk can attach configured Conversation information to an escalation. Available data can include a summary, history, user data, and metadata.
 
-## Attach conversation data
+Select the minimum data required by the receiving team. Review the selection against your privacy requirements.
 
-For channels such as email and API endpoints, you can attach context from the
-conversation to the request your team receives. This can include a summary of the
-chat, the full history, information about the visitor, and metadata about the
-session. Attaching context saves your team from asking the visitor to repeat
-themselves.
+## Configure availability
 
-## Set availability
+Set the channel schedule and timezone. The widget shows whether the channel is available and can show its next available time.
 
-A channel can be available at all times, or limited to specific hours.
+Use the timezone of the team that receives the escalation. Test the boundary at the start and end of one availability window.
 
-1. Open a channel and go to its availability tab.
-2. Choose **always available**, or set **limited hours** for each day of the week.
-3. Add special dates when the schedule differs, such as holidays.
+## Email delivery
 
-When a channel is outside its hours, it is not offered, which keeps visitors from
-reaching a channel no one is watching.
-
-<Callout title="Collect only what you need">
-Every extra field is friction for the visitor. Ask for the minimum that lets your
-team act, and rely on attached conversation data for the rest.
-</Callout>
+The Email channel requires a configured Resend transport. When it is absent, Ciele reports that the email was not sent.

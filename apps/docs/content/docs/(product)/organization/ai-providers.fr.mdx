@@ -1,0 +1,49 @@
+---
+title: Fournisseurs d'IA
+description: Connectez un fournisseur de modèles et sélectionnez le modèle pour chaque Assistant.
+---
+
+Ciele utilise une abstraction de fournisseur unique pour les modèles Anthropic,
+OpenAI et Google. Un Assistant sélectionne sa connexion au fournisseur et son
+modèle.
+
+## Types de connexion aux fournisseurs
+
+| Type | Utilisation |
+| --- | --- |
+| Forfait plateforme | Utilise les modèles fournis par le forfait Ciele géré. |
+| Abonnement | Utilise un abonnement de membre pour la version Preview uniquement. |
+| Clé API | Utilise une clé de fournisseur gérée par l'organisation. |
+
+Une connexion par abonnement ne prend pas en charge un widget publié.
+Sélectionnez un forfait Platform ou une connexion par clé API pour le trafic
+publié.
+
+## Ajoutez une connexion par clé API
+
+1. Ouvrez **Settings**.
+2. Sélectionnez **AI Provider**.
+3. Ajoutez une connexion fournisseur.
+4. Sélectionnez Anthropic, OpenAI ou Google.
+5. Saisissez l'identifiant du fournisseur requis.
+6. Enregistrez la connexion.
+
+Ciele chiffre l'identifiant avant son stockage. Ne réutilisez pas une clé
+personnelle associée à des autorisations sans rapport.
+
+## Sélectionnez un modèle d'assistant
+
+1. Ouvrez l'Assistant.
+2. Sélectionnez **General**.
+3. Sélectionnez la connexion du fournisseur.
+4. Sélectionnez un modèle disponible.
+5. Testez l'Assistant en mode Aperçu.
+6. Publiez l'Assistant.
+
+Le widget publié utilise le fournisseur et le modèle dans son instantané de
+publication. Les modifications générales ultérieures nécessitent une nouvelle
+publication.
+
+<Callout title="Provider accounts are separate">
+Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.
+</Callout>

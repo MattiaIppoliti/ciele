@@ -1,56 +1,40 @@
 ---
 title: Verbesserungen
-description: Verfolgen und beheben Sie schwache Antworten auf einem Board, von „offen“ bis „erledigt“.
+description: Verfolgen und erledigen Sie Arbeiten, mit denen schwache Antworten des Assistenten korrigiert werden.
 ---
 
-Auf dem Board „Improvements“ wird die Antwortqualität verwaltet. Jedes Element
-steht für etwas, das an der Antwort des Assistenten verbessert werden sollte,
-und das Board verschiebt die Elemente von „Offen“ nach „Erledigt“. Öffnen Sie
-**Improvements** in der Seitenleiste.
+Eine Verbesserung erfasst ein Problem mit der Antwortqualität. Sie kann
+verknüpfte Nachrichten, Quellen, eine Beschreibung und eine vorgeschlagene
+Korrektur enthalten.
 
-## Woher Verbesserungen kommen
+## Quellen von Verbesserungen
 
-Verbesserungen kommen von drei Stellen:
+- Eine Aktion des Verbesserungsablaufs erstellt ein Element.
+- Ein Helpdesk kann nach einer Eskalation ein Element erstellen.
+- Ein Administrator kann eine Antwort aus dem Posteingang markieren.
+- Search Knowledge kann bei entsprechender Konfiguration ein Element für eine
+  ungelöste Anfrage erstellen.
 
-- Ein **Flow** mit einer Verbesserungsaktion kennzeichnet eine Antwort zur
-  Überprüfung.
-- Ein **Helpdesk**, der so eingestellt ist, dass er automatisch Verbesserungen
-  generiert, erstellt eine aus der letzten Antwort vor einer Eskalation. Siehe
-  [Ticketing und Verbesserungen](/help-desks/ticketing-and-improvements).
-- Eine Person **markiert eine Antwort** manuell, während sie den
-  [Posteingang](/operations/inbox) liest.
+## Ein Element verwalten
 
-Da sie aus echten Gesprächen stammen, weisen Verbesserungen auf Probleme hin,
-auf die Ihre Besucher tatsächlich stoßen.
+Öffnen Sie ein Element, um die damit verknüpften Nachrichten und die verfügbare
+vorgeschlagene Korrektur zu überprüfen. Sie können dessen Status, Priorität,
+Tags, Verantwortlichen und Fälligkeitsdatum ändern.
 
-## Das Board
+Die API, die CLI und der MCP-Server können vorhandene Verbesserungen auflisten,
+lesen und aktualisieren. Die Erstellung von Verbesserungen bleibt ein Vorgang,
+der während der Produktlaufzeit ausgeführt wird.
 
-Die Elemente sind in Spuren organisiert, die ihren Status darstellen, und
-bewegen sich von offenen Aufgaben über „In Bearbeitung“ und „Überprüfung“ bis
-hin zu „Erledigt“. Es gibt ein Archiv für Elemente, die Sie behalten, aber
-beiseitelegen möchten. Jede Spur zeigt an, wie viele Elemente sie enthält, und
-Sie können einen Bericht für eine Spur exportieren.
+## Korrigieren Sie die Antwort
 
-Ein Element enthält die Details, die Sie benötigen, um zu handeln: einen Titel,
-die Häufigkeit, mit der das Problem aufgetreten ist, eine Priorität, Tags und
-eine verantwortliche Person aus den Mitgliedern Ihrer Organisation. Nutzen Sie
-die Suche und die Filter oben, um sich auf das zu konzentrieren, was jetzt
-wichtig ist.
+1. Lesen Sie die verlinkte Konversation.
+2. Identifizieren Sie die falsche Quelle, FAQ, den falschen Flow oder die
+   falsche Anweisung.
+3. Korrigieren Sie den Konfigurationsentwurf.
+4. Stellen Sie die ursprüngliche Frage in der Vorschau.
+5. Bestätigen Sie die Antwort und die Quellen.
+6. Veröffentlichen Sie den Assistenten.
+7. Markieren Sie die Verbesserung als abgeschlossen.
 
-## Bearbeiten Sie ein Element
-
-Öffnen Sie ein Element, um seine vollständige Beschreibung und die Nachrichten
-zu sehen, die es ausgelöst haben, einschließlich der beteiligten Antworten und
-deren Quellen, mit einem Link zurück zur Konversation für den Kontext. Legen Sie
-die Priorität, die Tags, die verantwortliche Person und das Fälligkeitsdatum
-fest und arbeiten Sie dann an der Behebung. Wenn das zugrunde liegende Wissen
-oder der zugrunde liegende Ablauf korrigiert ist, markieren Sie das Element als
-erledigt.
-
-## Der Verbesserungskreislauf
-
-Verbesserungen schließen den Kreis zwischen dem, was Besucher erleben, und dem,
-was Sie ändern. Eine schwache Antwort wird zu einem Element, das Element führt
-zu einer Korrektur Ihrer Wissensdatenbank oder Ihrer Abläufe, und der nächste
-Besucher erhält eine bessere Antwort. Die regelmäßige Bearbeitung des Boards ist
-die effektivste Maßnahme, um die Antwortqualität zu verbessern.
+Überprüfen Sie die generierten Korrekturvorschläge, bevor Sie sie verwenden. Der
+gespeicherte Vorschlag ist keine Publikationsänderung.

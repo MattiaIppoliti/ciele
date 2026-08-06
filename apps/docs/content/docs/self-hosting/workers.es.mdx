@@ -1,75 +1,40 @@
 ---
 title: Procesos en segundo plano
-description: El perfil de trabajadores opcionales —recuperación de grafos derivados y un rastreador de renderización de JavaScript— qué te aporta cada uno y qué hace una implementación sin ellos.
+description: Habilita los servicios opcionales de rastreo para la recuperación de grafos y la renderización de JavaScript.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+La pila predeterminada no inicia el perfil `workers`. La búsqueda y la ingesta
+de sitios web continúan con capacidades reducidas.
 
-Ciele funciona completamente sin procesos de fondo. Dos servicios opcionales
-mejoran la recuperación de conocimiento, y ambos están desactivados de forma
-predeterminada porque juntos requieren aproximadamente **8 GiB de RAM**, más que
-el resto de la pila combinada.
+Sin el trabajador de grafos, Knowledge utiliza la recuperación vectorial y
+léxica. Sin Crawl4AI, Ciele utiliza su rastreador de búsqueda integrado.
 
-| Servicio | Qué aporta | Sin él |
-| --- | --- | --- |
-| **Graph worker** | Deriva un grafo sobre tu conocimiento, de modo que la recuperación pueda seguir las relaciones entre conceptos en lugar de buscar coincidencias en un único fragmento | La recuperación utiliza únicamente la búsqueda semántica y léxica |
-| **Crawl4AI** | Un rastreador basado en navegador que ejecuta JavaScript antes de extraer el contenido | El rastreador integrado basado en Fetch se encarga de los sitios web: funciona bien para las páginas renderizadas por el servidor, pero es más débil en las que tienen mucho JavaScript |
+## Habilita el perfil
 
-Ninguno de los dos cambia lo que *hace* el producto. Los asistentes responden,
-citan fuentes, dirigen a través de flujos y escalan exactamente de la misma
-manera. La diferencia está en cuánto puede encontrar un paso de recuperación.
+Establece estos valores en `deploy/.env`:
 
-## Activarlos
-
-Los trabajadores son un perfil de Docker Compose. Añade `workers` a
-`COMPOSE_PROFILES` en `deploy/.env` y asigna a cada servicio su secreto:
-
-```sh
-# deploy/.env
+```dotenv
 COMPOSE_PROFILES=db,migrate,app,cron,workers
-GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
-GRAPH_LLM_API_KEY=<key for the graph worker's model>
-CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
-CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+GRAPH_WORKER_API_TOKEN=<generated-token>
+GRAPH_LLM_API_KEY=<provider-key>
+CRAWL4AI_API_TOKEN=<generated-token>
+CRAWL4AI_SECRET_KEY=<generated-token>
 ```
 
-Luego, vuelve a poner en marcha la pila:
+A continuación, inicia la pila:
 
-```sh
+```bash
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-<Callout title="Turn them on later, not up front">
-Nothing is lost by starting without the workers. Knowledge you have already
-indexed stays indexed, and enabling a worker afterwards simply gives new and
-re-synced sources a richer pipeline. Start small, then add the memory when your
-retrieval quality asks for it.
-</Callout>
+Los dos trabajadores opcionales pueden requerir aproximadamente 8 GiB de
+memoria. Mide el uso real en el host que hayas seleccionado.
 
-## Ejecutar un proceso de trabajo en otro lugar
+## Comprueba el estado del trabajador
 
-El perfil es una comodidad, no un requisito: cada trabajador es un servicio HTTP
-normal, por lo que puedes ejecutar cualquiera de ellos en un host separado y
-dirigir la aplicación a él. Esa es la respuesta habitual cuando tu servidor de
-aplicaciones es pequeño, pero tienes una máquina más grande disponible para la
-indexación.
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
+```
 
-Crawl4AI se configura mediante las mismas dos variables, tanto si se ejecuta en
-el perfil como en su propio host:
-
-| Variable | Finalidad |
-| --- | --- |
-| `CRAWL4AI_BASE_URL` | Donde se pueda acceder al rastreador. Tanto esto como el token deben configurarse antes de poder seleccionar el proveedor. |
-| `CRAWL4AI_API_TOKEN` | Token exclusivo para el servidor que la aplicación le presenta. |
-
-Consulta [Configuración](/self-hosting/configuration) para el resto del entorno
-y [Actualización](/self-hosting/upgrade) para saber cómo se recompilan los
-trabajadores cuando adoptas una nueva versión.
-
-## Elegir un proveedor de rastreo
-
-Con Crawl4AI disponible, la canalización de rastreo de sitios web puede elegir
-entre el rastreador integrado y el trabajador por fuente. La consola expone la
-opción como una política de capacidades en lugar de un cambio fijo: déjala en
-**Automatic** y cada sitio obtendrá el proveedor que le convenga, o fija uno
-deliberadamente cuando sepas lo que necesita un sitio.
+No expongas los puertos de los trabajadores ni los tokens a la red pública.

@@ -1,54 +1,38 @@
 ---
 title: Améliorations
-description: Suivez et résolvez les réponses de mauvaise qualité sur un tableau, de l'état « ouvert » à l'état « terminé ».
+description: Suivez et effectuez le travail qui corrige les réponses insuffisantes de l'Assistant.
 ---
 
-Le tableau Améliorations est l'endroit où la qualité des réponses est gérée.
-Chaque élément représente un point à corriger dans la réponse de l'assistant, et
-le tableau fait passer les éléments de l'état ouvert à l'état terminé. Ouvrez
-**Improvements** depuis la barre latérale.
+Une amélioration enregistre un problème de qualité de réponse. Elle peut inclure
+des messages liés, des Sources, une description et une suggestion de correction.
 
-## D'où proviennent les améliorations
+## Sources d'améliorations
 
-Les améliorations proviennent de trois sources :
+- Une action de flux d'amélioration crée un élément.
+- Un service d'assistance peut créer un élément après une remontée.
+- Un administrateur peut signaler une réponse depuis la boîte de réception.
+- La recherche dans la base de connaissances peut créer un élément pour une
+  requête non résolue lorsqu'elle est configurée.
 
-- Un **flux** avec une action d'amélioration signale une réponse à examiner.
-- Un **help desk** configuré pour générer automatiquement des améliorations en
-  crée une à partir de la dernière réponse avant une escalade. Consultez
-  [Gestion des tickets et améliorations](/help-desks/ticketing-and-improvements).
-- Une personne **marque une réponse** manuellement en lisant la
-  [Boîte de réception](/operations/inbox).
+## Gérer un élément
 
-Parce qu'elles proviennent de conversations réelles, les améliorations mettent
-en évidence les problèmes que vos visiteurs rencontrent réellement.
+Ouvrez un élément pour examiner les messages qui lui sont liés et la suggestion
+de correction disponible. Vous pouvez modifier son statut, sa priorité, ses
+balises, son destinataire et son échéance.
 
-## Le tableau
+L'API, la CLI et le serveur MCP peuvent répertorier, lire et mettre à jour les
+améliorations existantes. La création d'améliorations reste une opération
+exécutée au moment de l'exécution du produit.
 
-Les éléments sont organisés en voies qui représentent leur statut : ils passent
-de « Ouvert » à « En cours », puis à « Révision » et enfin à « Terminé ». Il
-existe également une archive pour les éléments que vous souhaitez conserver mais
-mettre de côté. Chaque voie indique le nombre d'éléments qu'elle contient, et
-vous pouvez exporter un rapport pour une voie.
+## Corrigez la réponse
 
-Un élément contient les détails dont vous avez besoin pour agir : un titre, la
-fréquence à laquelle le problème est survenu, une priorité, des balises et un
-responsable choisi parmi les membres de votre organisation. Utilisez la
-recherche et les filtres en haut pour vous concentrer sur ce qui est important
-en ce moment.
+1. Lisez la conversation liée.
+2. Identifiez la source, la FAQ, le flux ou l'instruction incorrect(e).
+3. Corrigez le brouillon de configuration.
+4. Posez la question d'origine en mode Aperçu.
+5. Confirmez la réponse et les Sources.
+6. Publiez l'Assistant.
+7. Marquez l'amélioration comme terminée.
 
-## Traiter un élément
-
-Ouvrez un élément pour afficher sa description complète et les messages qui
-l'ont déclenché, y compris les réponses concernées et leurs sources, ainsi qu'un
-lien vers la conversation pour plus de contexte. Définissez sa priorité, ses
-balises, son responsable et sa date d'échéance, puis travaillez sur le
-correctif. Lorsque la connaissance ou le flux sous-jacent est corrigé, marquez
-l'élément comme terminé.
-
-## La boucle d'amélioration
-
-Les améliorations bouclent la boucle entre ce que vivent les visiteurs et ce que
-vous modifiez. Une réponse médiocre devient un élément, cet élément guide une
-correction de vos connaissances ou de vos flux, et le visiteur suivant reçoit
-une meilleure réponse. Travailler régulièrement sur le tableau est l'habitude la
-plus efficace pour améliorer la qualité des réponses.
+Examinez les suggestions de correctifs générées avant de les utiliser. La
+suggestion enregistrée n'est pas une modification de publication.

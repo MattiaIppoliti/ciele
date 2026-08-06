@@ -1,171 +1,44 @@
 ---
 title: Knowledge pipeline
-description: How a website, file, or FAQ becomes searchable text, and how a generated answer earns citations that point back at a named source.
+description: Trace a Source from ingestion to a cited Assistant answer.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Ingestion
 
-[Knowledge](/knowledge) enters the system as a **source**, is enriched into
-**concepts**, and is stored as embedded **chunks**. Retrieval walks that chain back
-the other way, which is what lets an answer cite a named source rather than an
-opaque fragment of text.
-
-## From a source to searchable text
-
-Nothing in this pipeline runs on the request that started it. Adding a source
-records it and queues a job; the pipeline drains that queue afterwards, and the
-console polls the source's status while it does.
-
-<Mermaid
-  title="Ingestion: one source becomes many embedded chunks"
-  chart={`
+```mermaid
 flowchart TB
-  IN["A member adds a source<br/>text · file · link · website"]
-  ROW["Create the source row<br/>status: processing"]
-  Q["Queue an ingestion job"]
-  EX{"Extractor,<br/>by source kind"}
-  T["text"]
-  U["link"]
-  F["file"]
-  W["website"]
-  OKF["Enrich into concepts<br/>markdown + front matter"]
-  CH["Split into chunks"]
-  EM["Embed each chunk"]
-  PERSIST["One write path<br/>create concept + index it"]
-  DB[("concepts + concept_chunks<br/>with a vector index")]
-  DONE["status: ready"]
-  ERR["status: error<br/>+ reason"]
+  SOURCE["Website, file, text, or FAQ"]
+  EXTRACT["Extract normalized content"]
+  CONCEPT["Create OKF Concepts"]
+  INDEX["Store lexical and vector indexes"]
+  GRAPH["Update optional graph data"]
+  READY["Set Source status to Ready"]
+  SOURCE --> EXTRACT
+  EXTRACT --> CONCEPT
+  CONCEPT --> INDEX
+  CONCEPT --> GRAPH
+  INDEX --> READY
+  GRAPH --> READY
+```
 
-  IN --> ROW --> Q
-  Q -->|"off the request path"| EX
-  EX --> T & U & F & W --> OKF
-  OKF --> CH --> EM --> PERSIST --> DB --> DONE
-  Q -.->|"failure anywhere"| ERR
-`}
-/>
+Knowledge uses Open Knowledge Format (OKF) Concepts. A Concept keeps a reference to its original Source.
 
-Two seams are doing the work here, and both are registries rather than
-conditionals:
+FAQ ingestion creates a curated Concept with question and answer provenance. File and website ingestion preserve the original Source object where applicable.
 
-- **Extraction** is one extractor per source kind. Adding a new kind of source
-  means adding an extractor, not editing a parser that already handles four other
-  formats.
-- **Persistence** is a single write path. Every route that lands knowledge — an
-  enriched source, one crawled page, a hand-written FAQ — goes through the same
-  function that creates the concept and indexes it. There is no second way to
-  write a concept, which is why a chunk without an index is not a state the system
-  can reach.
+## Retrieval
 
-A concept can be excluded from retrieval without being deleted, which is the
-mechanism behind hiding one crawled page you do not want answered from.
+The runtime can retrieve Concepts through vector search and lexical fallback. Graph mode can add navigation through indexed Concept relationships.
 
-## Crawling a website
+A Context Hint can constrain retrieval to a relevant Collection or course-like context when the runtime supplies one.
 
-Website sources are the one kind with real operational variety, so the crawler is a
-provider matrix behind a single lifecycle. A source picks a provider — or leaves it
-automatic, in which case a pure capability policy resolves one at crawl start and
-records which one it chose.
+Deep Search increases Knowledge navigation work within runtime bounds. It does not query the public web.
 
-<Mermaid
-  title="Crawler selection and the safety checks every provider passes"
-  chart={`
-flowchart TB
-  SRC["Website source<br/>provider: automatic | local | rendered | managed"]
-  POL{"Automatic?"}
-  CAP["Capability policy<br/>needs a browser? files?<br/>a login? a proxy?"]
-  PICK["Resolve one provider<br/>and persist the choice"]
+## Citation resolution
 
-  GUARD["Target validation<br/>HTTP(S) only · no credentials in the URL<br/>no loopback, private, link-local, or metadata address<br/>reject hosts that resolve privately"]
+The final answer cites named Sources, not opaque search chunks. Citation identifiers resolve through the Concept to its original Source.
 
-  L["Local crawler<br/>in-process, same origin"]
-  R["Rendered crawler<br/>browser worker"]
-  M["Managed crawler<br/>external service"]
+The Visitor can open the Sources display after the answer. The Inbox stores the same citation parts with the Conversation.
 
-  PAGES["One concept per page"]
+## Deletion and recrawl
 
-  SRC --> POL
-  POL -->|"yes"| CAP --> PICK
-  POL -->|"no"| PICK
-  PICK --> GUARD
-  GUARD --> L & R & M
-  L & R & M --> PAGES
-`}
-/>
-
-Every provider passes the same validation before a target is submitted. The local
-crawler additionally re-validates each redirect, stays on the starting origin, pins
-its connections to the address that passed validation, caps response size, and
-enforces both per-page and total deadlines.
-
-<Callout title="Where the boundary actually is">
-The remote providers receive an already-validated hostname and resolve it inside
-their own network. Address pinning for those crawls is therefore outside this
-process's control — worth knowing if your threat model cares. Worker credentials
-are server-only and are stripped from any error, alert, or telemetry a member can
-see.
-</Callout>
-
-Re-crawling replaces the previous pages rather than appending to them, so a page
-that disappears from a site stops being answered from.
-
-## Embeddings
-
-Every chunk is stored in one vector column with one index, at a fixed width. A
-provider whose vectors are shorter is zero-padded to that width — cosine
-similarity is unaffected by the padding, so a single index serves every provider.
-
-<Mermaid
-  title="Embedding provider preference, and the fallback when there is none"
-  chart={`
-flowchart TB
-  CH["A chunk of text"]
-  RES{"Which provider<br/>can embed?"}
-  O["OpenAI"]
-  G["Google"]
-  N["None configured"]
-  PAD["Pad to the fixed width"]
-  VEC[("Vector column<br/>one shared index")]
-  LEX["Lexical search<br/>no vector stored"]
-
-  CH --> RES
-  RES --> O --> PAD
-  RES --> G --> PAD
-  RES --> N --> LEX
-  PAD --> VEC
-`}
-/>
-
-The padding is a deliberate trade: one shared index and no migration when a
-provider changes, at the cost of caveats when comparing vectors produced by
-different models. If no embedding provider is configured at all, retrieval degrades
-to lexical search rather than failing — the same principle as the keyword router in
-the [chat runtime](/self-hosting/architecture/chat-runtime).
-
-An organization can also nominate which provider connection does its embedding,
-independently of which provider answers chat.
-
-## Retrieval and citations
-
-Retrieval is a similarity search over chunks, scoped to the assistant and the
-selected collection, topped up with lexical matches when the vector results are
-thin. Excluded concepts are filtered in SQL rather than after the fact.
-
-<Mermaid
-  title="From a query to a citation chip"
-  chart={`
-flowchart TB
-  Q["Query"] --> EMB["Embed the query"]
-  EMB --> MATCH["Similarity search<br/>scoped by assistant + collection"]
-  MATCH --> TOPUP["Top up with lexical matches"]
-  TOPUP --> RESOLVE["Resolve chunk → concept → source"]
-  RESOLVE --> ANSWER["Grounded answer"]
-  RESOLVE --> CITE["Citation chips<br/>named sources"]
-`}
-/>
-
-The resolution step is the important one. Results are never handed to the model — or
-to the reader — as bare fragments; each one carries the concept it came from and
-the source that concept was built from. That is why the same citation component
-renders in the widget, in the console's preview, and in the
-[inbox](/operations/inbox) transcript: there is one shape to render, because
-citations always resolve to the same thing.
+Source deletion retires related Concepts from active graph and search data. Website recrawl restarts extraction and indexing for that Source.

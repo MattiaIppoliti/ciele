@@ -1,339 +1,58 @@
 ---
-title: Das agentische Modell
-description: Wie das Modell ausgewählt wird, was es entscheiden darf, die Prompt-Ebenen und Tools, mit denen es arbeitet, die Budgets, an die es gebunden ist, und die nächtliche Schleife, in der es bewertet wird.
+title: Agentenmodell
+description: Verstehen Sie die Provider-Auflösung, die Tool-Nutzung, die Grenzen, die Traces und die Zitationen.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Die Laufzeitumgebung verwendet die Provider-Abstraktion des Vercel AI SDK. Zu
+den aktuellen Provider-Adaptern gehören Anthropic, OpenAI, Google und ein
+OpenAI-kompatibler Endpunkt.
 
-Ein Agent ist, auf das Wesentliche reduziert, ein Modell mit Tools in einer
-Schleife: Es antwortet oder ruft ein Tool auf, und was auch immer das Tool
-zurückgibt, geht an das Modell zurück, bis es antwortet. Diese Schleife ist
-wirklich das, was hier abläuft. Auf dieser Seite geht es um alles, was darum
-herum aufgebaut ist – welches Modell letztendlich antwortet, was das Modell
-entscheiden darf, worauf es zugreifen kann, wo es abgeschnitten wird und wie
-seine Antworten anschließend bewertet werden.
+## Generative Grenzen
 
-Die Seite [Chat-Runtime](/self-hosting/architecture/chat-runtime) beschreibt die
-Mechanismen, die eine Nachricht durchläuft. Hier geht es um das Modell, das
-darin steckt.
+Die Laufzeitumgebung führt einen Modellaufruf nur innerhalb einer generativen
+Aktion oder einer Intent Classification durch. Deterministische Aktionen leiten
+ihren Inhalt nicht durch ein Modell weiter.
 
-## Was das Modell entscheidet und was es niemals entscheidet
+Die einfache Antwort verwendet einen Chat-Aufruf und keine Tools. Search
+Knowledge verwendet eine begrenzte Tool-Schleife.
 
-Das Nützlichste, was Sie über diese Architektur wissen sollten, ist, wo die
-Grenze verläuft. Autonomie wird bewusst gewährt, eine Entscheidung nach der
-anderen.
+## Schleife zur Suche in Knowledge
 
-| Das Modell entscheidet | Der Code entscheidet |
-|---|---|
-| Zu welchem Flow die Nachricht gehört | Welche Aktionen dann ausgeführt werden und in welcher Reihenfolge |
-| Ob ein Tool aufgerufen werden soll und mit welchen Argumenten | Welche Tools in diesem Durchlauf überhaupt vorhanden sind |
-| Wonach gesucht werden soll und ob erneut gesucht werden soll | Die feste Obergrenze für die Anzahl der Suchvorgänge pro Durchlauf |
-| Der Wortlaut einer generativen Antwort | Ob die Generierung in diesem Schritt erlaubt ist |
-| Welche abgerufenen Fakten verwendet werden sollen | Welche Quellen zitiert werden – nur das, was tatsächlich gelesen wurde |
-| Nichts, nachdem die Antwort geschrieben wurde | Persistenz, Side Effects, Eskalation, Grading |
+1. Das Modell erhält die Anweisungen für den Assistenten und die Beschreibungen
+   der verfügbaren Tools.
+2. Das Modell durchsucht Knowledge oder liest ein ausgewähltes Source-Fenster.
+3. Die Laufzeit zeichnet Ereignisse im Tool-Lebenszyklus auf.
+4. Das Modell kann die Suche innerhalb der Schrittbegrenzung wiederholen.
+5. Die Laufzeit generiert die endgültige Antwort und benannte Zitate.
 
-Zwei Konsequenzen, die es wert sind, verinnerlicht zu werden. Konfigurierter
-Text wird niemals umformuliert: Eine Nachrichtenaktion sendet ihre Kopie
-wortgetreu, sodass der Wortlaut eines Administrators nicht umformuliert wird.
-Und ein Modell kann seine eigene Reichweite niemals erweitern – ein Tool, das
-ihm nicht gegeben wurde, existiert für es nicht, und kein Tool-Ergebnis gewährt
-ihm ein neues.
+Das Thinking-Panel stellt diese aufgezeichneten Fortschritts- und
+Tool-Ereignisse dar. Simplified Thinking schreibt den Fortschrittstext für die
+Besucheranzeige neu.
 
-## Auswahl des Modells, das antwortet
+## Tools zur API-Integration
 
-Ein Assistent benennt einen Provider und ein Modell, aber diese Präferenz ist
-der *Start* der Lösung und nicht deren Ende.
+Ein Assistent kann einen API-Katalog registrieren. Der Katalog beschreibt seine
+Basis-URL, seine geschützten Anmeldeinformationen und die verfügbaren Endpunkte.
 
-<Mermaid
-  title="Auflösung des Modells, das einen Turn beantwortet"
-  chart={`
-flowchart TB
-  T["A turn needs a model"]
-  P{"Credential for the<br/>assistant's provider?"}
-  A{"Credential for any<br/>other provider?"}
-  RUN["Generate on the<br/>assistant's own model"]
-  FB["Generate on a fallback<br/>provider, cheap tier"]
-  KW["Keyword router<br/>no generation at all"]
+Das Modell kann API-Details überprüfen und einen registrierten Endpunkt
+abfragen. Die Laufzeitumgebung validiert jeden Pfad anhand des Katalogs, bevor
+er das Netzwerk verlässt.
 
-  T --> P
-  P -->|"yes"| RUN
-  P -->|"no"| A
-  A -->|"yes"| FB
-  A -->|"no"| KW
-`}
-/>
+Windowed-Reader geben einen angeforderten Inhaltsbereich und die Gesamtlänge
+zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
+Wissens-Nutzlasten ohne stille Trunkierung zu untersuchen.
 
-Innerhalb eines einzelnen Providers verwendet die Laufzeitumgebung die erste
-Anmeldedaten, die sie findet, in dieser Reihenfolge:
+## Fehlverhalten
 
-1. Eine angemeldete Provider-CLI, die auf dem Rechner erkannt wird, auf dem die
-   Konsole läuft – **nur in der Vorschau-Oberfläche**, niemals für
-   veröffentlichten Datenverkehr.
-2. Die organisationsspezifische Anmeldedaten: ein von ihr bereitgestellter
-   API-Schlüssel oder föderierte Anmeldedaten, sofern der Anbieter diese
-   unterstützt.
-3. Der Plattformschlüssel aus der Umgebung der Bereitstellung.
+Der Keyword-Router übernimmt die Klassifizierung, wenn kein Klassifizierermodell
+verfügbar ist oder die Klassifizierung fehlschlägt. Die Wissenssuche kann auf
+lexikalische Fallback-Funktionen ohne Embeddings zurückgreifen.
 
-Vier Anbieterfamilien werden unterstützt: Anthropic, OpenAI, Google und **jeder
-Server, der die OpenAI-API unterstützt** – so läuft eine Bereitstellung
-vollständig lokal auf ihrem eigenen Inferenzserver, der entweder pro
-Organisation oder über die `OPENAI_COMPATIBLE_*`-Umgebungsvariablen in
-[Konfiguration](/self-hosting/configuration) konfiguriert wird. Google
-akzeptiert zusätzlich eine föderierte Vertex-Anmeldedaten anstelle eines
-statischen Schlüssels.
+Ein nicht konfigurierter E-Mail-Transport gibt ein ehrliches Fehlerergebnis
+zurück. Es wird keine Nachricht über eine erfolgreiche Zustellung erstellt.
 
-Pro Durchlauf werden zwei Modell-Tiers aufgelöst, nicht nur eines. Die
-Absichtsklassifizierung wird auf einem bewusst kostengünstigen Modell
-ausgeführt; die Antwort wird auf dem vom Assistenten ausgewählten Modell
-ausgeführt. Beide Auflösungen werden im Nutzungsprotokoll mit dem Anbieter, der
-Modell-ID und der Art des Berechtigungsnachweises, mit dem der Aufruf bezahlt
-wurde, erfasst.
+## Erweiterungsregel
 
-<Callout title="A missing key degrades to a different model, never to silence">
-When the assistant's own provider has no credential, another provider answers —
-at that provider's cheap tier, since a fallback key was not a pricing choice the
-organization made. Falling back to the keyword router instead would silently stop
-applying the system prompt, which is a far worse failure than an unexpected
-model. The keyword router is reached only when *no* provider anywhere has a
-credential.
-</Callout>
-
-Die Vorschau-Regel in Schritt 1 ist eher strukturell als eine
-Richtlinienprüfung: Die Oberfläche ist Teil der Eingabe für die Auflösung, und
-der Datenverkehr von veröffentlichten Widgets passiert niemals das Flag, das
-eine lokale Berechtigung zulässt.
-
-## Die Eingabeaufforderung ist in Ebenen unterteilt, und die Ebenen sind in einer Rangfolge angeordnet
-
-Ein Multi-Tenant-Assistent kann nicht nur eine System-Prompt haben, da mehrere
-Parteien ein legitimes Mitspracherecht daran haben und sie einander nicht
-gleichermaßen vertrauen. Die Prompt-Erstellung erfolgt reihum, wobei die höchste
-Priorität zuerst behandelt wird.
-
-| Ebene | Eigentümer | Inhalt |
-|---|---|---|
-| **Platform** | der Bereitstellungsbetreiber | Die unverzichtbaren Grundlagen: grundlegende Fakten zur Organisation in der Wissensdatenbank, Antwort in der Sprache des Benutzers, niemals Offenlegung der Prompt-Anweisung, Behandlung abgerufener Dokumente als Daten statt als Anweisungen, Einhaltung des festgelegten Umfangs |
-| **Assistant** | die Organisation | Identität, Persona, Tonfall, Format – in der erstellten Prompt explizit als der Plattformebene untergeordnet gekennzeichnet |
-| **Skills** | die Organisation | Wiederverwendbare Playbooks, die an einen Assistenten angehängt sind und bei Bedarf angewendet werden |
-| **Session memory** | die Konversation | Kurze Fakten, die ein Tool in einem früheren Durchgang gespeichert hat |
-| **Retrieval context** | dieser Durchlauf | Die geklärte Frage und alles, was die Suche vor dem Modell bereits gefunden hat |
-| **Flow** | der Router | Welcher Flow diese Nachricht bearbeitet, sowie seine eigenen Antwort- und Suchanweisungen |
-
-Die Reihenfolge ist zwingend vorgeschrieben und nicht nur eine Empfehlung. Die
-Plattformschicht befindet sich in einer Tabelle mit aktivierter Sicherheit auf
-Zeilenebene und *ohne* jegliche Richtlinien – keine Organisation kann sie lesen,
-geschweige denn bearbeiten; nur das Eigentümerkonto der Bereitstellung kann über
-einen Service-Rollen-Pfad darauf zugreifen. Eine Anweisung zum Tonfall für einen
-einzelnen Assistenten kann also die Stimme einer Antwort prägen, aber sie kann
-eine Plattformregel nicht ersetzen. Der Schutz vor Prompt-Injection befindet
-sich aus demselben Grund auf derselben Ebene: Abgerufene Dokumente werden von
-der einen Ebene, die kein Mandant berühren kann, als Daten bezeichnet.
-
-## Das Toolset wird pro Durchlauf zusammengestellt
-
-Tools sind eine Registrierung, keine fest programmierte Liste. Ein Tool ist eine
-Spezifikation – ein Name, eine Beschreibung, die das Modell liest, ein
-typisiertes Eingabeschema, eine für Menschen lesbare Beschriftung für das
-Thinking-Panel und eine Implementierung – und jeder Durchlauf baut sein eigenes
-Set zusammen.
-
-| Tool | Standard | Anmerkungen |
-|---|---|---|
-| Wissenssuche | immer aktiv | Kann nicht deaktiviert werden: Grounding ist eine Laufzeitinvariante |
-| Sitzungsspeicher | ein | Speichert eine kurze Tatsache für spätere Runden in dieser Konversation |
-| URL abrufen | **aus** | Ausgehender Netzwerkzugriff ist pro Assistent optional |
-| Benutzerdefinierte HTTP-Tools | wie konfiguriert | Von Administratoren definiert; Parameter, die das Modell ausfüllt, werden zu einer Abfragezeichenfolge oder einem JSON-Textkörper |
-
-Jedes Tool, mit Ausnahme der Wissenssuche, ist von derselben Instrumentierung
-umschlossen, und in diesem Wrapper liegt ein Großteil der Zuverlässigkeit: Er
-gibt die Start- und Endereignisse aus, die das Widget als sichtbare Schritte
-rendert, er misst die Dauer des Aufrufs und **enthält Fehler**. Ein
-Throwing-Tool gibt einen Fehlerwert an das Modell zurück und markiert dessen
-Schritt als fehlgeschlagen; es bricht den Zug nicht ab. Das Modell liest den
-Fehler und umgeht ihn, genau wie es ein Tool tun würde, das „not found“ gemeldet
-hätte.
-
-Die Wissenssuche ist die bewusste Ausnahme. Stattdessen befinden sich sein
-Lebenszyklus, sein Abdeckungsurteil und seine Budgetbuchhaltung in einer
-gemeinsamen Suchprimitive, sodass die eigenen Suchen des Modells und die Suchen,
-die die Laufzeit vor der Ausführung des Modells initiiert, nicht
-auseinanderlaufen können. In der
-[Wissens-Pipeline](/self-hosting/architecture/knowledge-pipeline) erfahren Sie,
-was eine Suche tatsächlich bewirkt.
-
-### Die Verbindung nach außen ist ein geschützter Vorgang
-
-Sowohl das Abrufen einer URL als auch der Aufruf eines benutzerdefinierten
-HTTP-Tools erfolgen über ein einziges Egress-Gate, das mit dem Website-Crawler
-und der Wissensextraktion geteilt wird. Es validiert das Ziel zum Zeitpunkt der
-DNS-Auflösung, bindet die Verbindung an die validierten Adressen, sodass sich
-das Ziel zwischen Prüfung und Verbindung nicht ändern kann, validiert jeden
-Umleitungs-Hop erneut und begrenzt sowohl die Zeit als auch die Antwortgröße.
-Ein blockierter Host und ein nicht erreichbarer Host geben die *gleiche* Meldung
-zurück, sodass das Tool nicht zum Mappen eines privaten Netzwerks verwendet
-werden kann.
-
-## Die Autonomie ist durch die Konstruktion begrenzt
-
-Die Schleife ist in ihrer Form offen und in ihren Kosten geschlossen. Es gelten
-mehrere unabhängige Limits, und keines davon hängt davon ab, ob das Modell
-entscheidet, zu stoppen.
-
-<Mermaid
-  title="Ein Durchlauf durch die Agentenschleife und die Gates, die sie beenden"
-  chart={`
-flowchart TB
-  IN["Messages + layered prompt<br/>+ this turn's toolset"]
-  STEP["Model step"]
-  KIND{"Tool call<br/>or text?"}
-  TOOL["Run the tool<br/>timed · errors contained"]
-  GATE{"Search budget or<br/>step cap reached?"}
-  TEXT["Answer text, streamed"]
-  FIN["Reply parts + citations"]
-
-  IN --> STEP --> KIND
-  KIND -->|"tool call"| TOOL --> GATE
-  GATE -->|"no"| STEP
-  KIND -->|"text"| TEXT
-  GATE -->|"yes"| TEXT
-  TEXT --> FIN
-`}
-/>
-
-| Grenze | Wirkung |
-|---|---|
-| Suchbudget | Maximal sechs Wissenssuchen pro Runde – gezielt gezählt, sodass nicht zusammenhängende Tool-Aufrufe das Abrufbudget nicht verbrauchen können |
-| Schritt-Obergrenze | Eine separate Obergrenze für die Gesamtzahl der Schritte, sodass ein Modell, das nie sucht, trotzdem nicht für immer in einer Schleife laufen kann |
-| Obergrenzen pro Aufruf | Jeder ausgehende Tool-Aufruf hat ein Zeitlimit und eine maximale Antwortgröße |
-| Ablehnung | Eine Ablehnung durch einen Anbieter ist ein eigener Beendigungsgrund, der ehrlich beantwortet wird und eine Ausstiegsmöglichkeit für den Menschen bietet – es wird niemals ein erneuter Versuch bei einem anderen Anbieter unternommen |
-| Trunkierung | Eine durch das Ausgabelimit abgeschnittene Antwort weist darauf hin, anstatt so zu tun, als ob nichts gefunden worden wäre |
-| Leeres Ende | Wenn ein Gate die Schleife beendet, bevor Text gestreamt wurde, antwortet der Turn dennoch: entweder mit einer gezielten Klärungsfrage oder mit einem Hinweis, was gesucht wurde und was fehlt |
-
-Wenn das Budget aufgebraucht ist, wird das Modell im Ergebnis des Tools selbst
-*darauf hingewiesen* – „Suche nicht erneut, antworte mit dem, was du hast, und
-sage ehrlich, wenn es nicht ausreicht“. Eine Schleife zu begrenzen und das
-Modell die Wand selbst finden zu lassen, indem es dagegen läuft, führt zu
-schlechteren Antworten, als sie zu begrenzen und dies auch zu sagen.
-
-## Zustand, der keine Nachricht ist
-
-Das Transkript ist nicht das Einzige, woran sich eine Konversation erinnert.
-Jede Konversation enthält einen kleinen Statusbehälter, der vor der Ausführung
-des Zuges geladen und zurückgeschrieben wird, nachdem die Nachricht des
-Assistenten gespeichert wurde – und nur dann, wenn ein Tool ihn tatsächlich
-geändert hat. Ein schreibgeschützter Zug verursacht also keinen zusätzlichen
-Schreibvorgang, und ein fehlgeschlagener Zug führt niemals zu einem
-halbgeschriebenen Status. Das Speicher-Tool fügt ihm begrenzte, deduplizierte
-Fakten hinzu, die die Eingabeaufforderung des nächsten Durchlaufs als
-Sitzungsspeicherebene einführt.
-
-Dadurch wird verhindert, dass „state equals transcript“ zu einer Obergrenze
-wird, ohne dass das Transkript so groß wird, dass es diese tragen kann.
-
-## Sichtbar gemachtes Denken ohne einen zweiten Modellaufruf
-
-Modelle erzählen oft, bevor sie ein Tool aufrufen. Es wird nur der Textstrom
-verwendet, und diese Erzählung landet in der Antwortblase. Die Laufzeit
-verwendet stattdessen den gesamten Stream und klassifiziert den bisher
-gestreamten Text bei Eintreffen eines Tool-Aufrufs als *Gedanke* um. Der Client
-verschiebt es in das Denk-Panel, und die Antwort beginnt neu, nachdem das Tool
-zurückkehrt.
-
-Ein zusätzlicher Ereignistyp ermöglicht die gesamte Benutzeroberfläche für die
-Argumentation – kein zweiter Modellaufruf, kein separater Summariser. Das
-vollständige Ereignisvokabular finden Sie unter
-[Request flows](/self-hosting/architecture/request-flows).
-
-## Nichts bewertet seine eigenen Hausaufgaben
-
-Die Generierung ist der schnelle Weg; die Qualität ist eine separate, langsamere
-Schleife, die nach einem Zeitplan abläuft. Die Antwort eines Besuchers wartet
-nie darauf.
-
-<Mermaid
-  title="Die geplante Qualitätsschleife"
-  chart={`
-flowchart TB
-  TICK["Nightly tick"]
-  GOALS["Standing goals<br/>replayed headlessly"]
-  VER["Answer verifier<br/>an independent second read"]
-  TRUST["Trust tiers<br/>rolling pass rate per flow"]
-  COMP["Weekly digest<br/>at most three proposals"]
-  OUT["Alerts · Improvements"]
-  NEXT["Next turn: a watch-tier flow<br/>always offers human escalation"]
-
-  TICK --> GOALS --> VER --> TRUST --> COMP --> OUT
-  TRUST --> NEXT
-`}
-/>
-
-- **Standing goals** sind Fragen mit überprüfbaren Erwartungen, die durch die
-  reale Engine anhand des veröffentlichten Snapshots des Assistenten wiederholt
-  werden, wobei der Verlauf leer ist und nichts gespeichert wird. Die Bewertung
-  ist eine reine Funktion der Antwort – wenn eine Prüfung nicht als Code
-  geschrieben werden kann, gehört sie nicht in ein Ziel.
-- **The verifier** liest kürzlich generierte Antworten mit bewusst
-  eingeschränkter Eingabe erneut: Die Frage, die Antwort und der zitierte Inhalt
-  werden zum Zeitpunkt der Bewertung erneut abgerufen. Es sieht niemals die
-  Prompts des antwortenden Modells oder Tool-Traces, denn Konfidenz ist kein
-  Beweis.
-- **Trust** ist eine gleitende Erfolgsquote pro Flow, die auf den zuletzt
-  bewerteten Signalen basiert – Verifizierer-Urteile sowie explizites
-  Besucher-Feedback, wobei ein Urteil gewinnt, wenn beide die gleiche Antwort
-  bewertet haben. Drei Stufen: Eine anhaltend hohe Erfolgsquote über genügend
-  Durchläufe bringt die oberste Stufe, zu wenige Durchläufe oder eine zu
-  niedrige Quote führen zu `watch`, und alles dazwischen befindet sich in der
-  mittleren Stufe. Ein Flow ohne Historie hat nichts verdient und beginnt in
-  `watch`. Das Zeitfenster rollt, sodass Vertrauen sowohl verloren als auch
-  gewonnen werden kann.
-- **The tier has exactly one runtime effect today**: Die generativen Antworten
-  eines Flows der Stufe `watch` bieten immer die Möglichkeit, dass ein Mensch
-  eingreift. Absichtlich ein eng gefasstes Verhalten statt eines umfassenden
-  Autonomieschalters.
-- **The weekly digest** wandelt die Misserfolge der Woche in höchstens drei
-  Vorschläge um – eine vorgeschlagene FAQ, eine Flow-Anpassung, eine Änderung
-  des Antwortstils, ein neues Ziel –, die jeweils als markiertes
-  Verbesserungselement erscheinen. Nichts wird jemals automatisch angewendet.
-  Ein Mensch nimmt einen Vorschlag an, indem er die Arbeit erledigt, oder lehnt
-  ihn ab, indem er ihn archiviert.
-
-<Callout title="Read this section as a design stance, not a feature list">
-Every part of it exists to keep an unattended agent honest: it is graded by
-something that did not write the answer, its autonomy is measured rather than
-assumed, and its self-improvement requires a human signature.
-</Callout>
-
-## Erweiterung des Agenten
-
-Die Nahtstellen sind der springende Punkt. Jede dieser Aktionen ist eine
-Ergänzung, keine Änderung der Schleife:
-
-- **A new tool** – fügen Sie eine Spezifikation zur Registry hinzu.
-  Lebenszyklusereignisse, Fehlerbegrenzung und Fortschritt im Thinking-Panel
-  sind ebenfalls enthalten.
-- **An organization-defined tool** – ein Administrator beschreibt einen
-  HTTP-Endpunkt in der Konsole. Keine Bereitstellung.
-- **A new capability with its own configuration** – fügen Sie eine Flow-Aktion
-  hinzu, damit der Administrator, der den Flow verknüpft hat, weiterhin
-  entscheidet, ob er ausgeführt wird.
-- **An external tool server** – ein Client im MCP-Stil fügt sich als
-  Tool-*Provider* ein: Listen Sie seine Tools zu Beginn eines Durchgangs auf und
-  verteilen Sie sie in den zusammengestellten Satz. Das Ereignisprotokoll deckt
-  deren Fortschritt bereits ab. Dafür ist die Registry-Seam gedacht.
-- **Headless callers** – Der Engine-Einstiegspunkt ist UI-frei. Alles, was einen
-  Assistenten, seine Flows und seine Anmeldeinformationen bereitstellen kann,
-  erhält den gesamten Agenten. So wird er von der Zielwiederholung und der
-  Offline-Testsuite gesteuert.
-
-## Die Invarianten dieser Ebene
-
-1. Flows leiten weiter; das Modell nicht. Neues generatives Verhalten findet
-   **innerhalb** einer Aktion statt, niemals oberhalb des Routers.
-2. Das Wissenssuch-Tool kann nicht deaktiviert werden. Grounding ist keine
-   Einstellung.
-3. Zitate werden aus dem gesammelt, was das Modell tatsächlich gelesen hat, und
-   werden niemals im Nachhinein rekonstruiert.
-4. Nebenwirkungen werden während des Zuges beschrieben und angewendet, nachdem
-   die Antwort bestätigt wurde.
-5. Nichts bewertet seine eigenen Antworten, und nichts wendet seine eigenen
-   Vorschläge an.
+Fügen Sie ein neues Agent-Tool über das Tool-Registry und dessen
+Lifecycle-Wrapper hinzu. Behalten Sie Autorisierungs-, Eigentums-,
+Eingabevalidierungs- und Ausgangsprüfungen außerhalb der Modellsteuerung.

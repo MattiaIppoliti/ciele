@@ -1,0 +1,51 @@
+---
+title: Notifications
+description: Envoyez un message proactif lorsqu'un événement de page ou de chat se produit.
+---
+
+Une notification est la seule action de réponse pour un flux proactif. Elle
+n'appelle pas de modèle d'IA.
+
+## Sélectionnez un déclencheur proactif
+
+Utilisez l'un de ces déclencheurs suivants :
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+## Configurez la notification
+
+1. Créez ou ouvrez un flux.
+2. Sélectionnez un déclencheur proactif.
+3. Saisissez le titre de la notification.
+4. Saisissez le contenu de la notification.
+5. Sélectionnez la règle de livraison.
+6. Choisissez si les utilisateurs peuvent répondre.
+7. Ajoutez des boutons si nécessaire.
+8. Enregistrez et testez le flux en mode prévisualisation.
+
+Ciele diffuse le contenu configuré tel quel, sans modification. Le titre peut
+contenir 100 caractères. Le contenu peut contenir 5 000 caractères.
+
+## Comportement de livraison
+
+Le serveur vérifie à nouveau l'état du déclencheur et de la livraison avant
+d'écrire un message. Les événements client relus ne contournent pas cette
+vérification.
+
+L'aperçu ignore la règle de livraison. Ce comportement permet à un
+administrateur de tester la notification plus d'une fois.
+
+Le paramètre de réponse à la dernière notification contrôle l'éditeur. Une
+réponse ultérieure activée pour la réponse peut rouvrir l'éditeur.
+
+## Analyse
+
+Une notification n'est pas une réponse de l'IA. Les sessions en mode
+notification uniquement n'augmentent pas le volume de réponses ni le taux de
+résolution de l'IA.
+
+La métrique **Notifications Sent** enregistre les notifications livrées. La
+boîte de réception marque une session comme **Notification only** jusqu'à ce
+qu'un visiteur réponde.

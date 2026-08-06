@@ -1,47 +1,37 @@
 ---
 title: Utilizzo e limiti
-description: Come Ciele Cloud misura l'utilizzo mensile rispetto alla disponibilità del tuo piano e cosa succede quando raggiungi il limite.
+description: Verifica l'utilizzo recente di AI, embedding e scraping rispetto ai limiti attuali.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Apri **Settings > Usage**. La pagina mostra i dati di utilizzo disponibili
+relativi agli ultimi 30 giorni.
 
-<Callout title="Ciele Cloud only">
-Usage metering and enforced limits are part of the managed edition. A self-hosted
-open-source deployment has no usage caps — its capacity is bounded only by the
-infrastructure and AI provider keys you configure.
-</Callout>
+## Misuratori di utilizzo
 
-Ogni piano Ciele Cloud include un limite di utilizzo mensile. Ciele misura
-l'utilizzo della tua organizzazione man mano che le conversazioni avvengono e lo
-confronta con la quota del tuo piano, così non ci sono sorprese e non c'è
-bisogno di fare conteggi manuali.
+Ciele misura questi gruppi di risorse separatamente:
 
-## Cosa conta come utilizzo
+- Utilizzo del modello IA
+- utilizzo dell'Embedding
+- utilizzo dello scraping
 
-L'utilizzo viene misurato in base al lavoro di IA svolto dai tuoi assistenti per
-conto dei tuoi visitatori, principalmente le risposte generate dagli assistenti.
-La console mostra il tuo utilizzo corrente per il periodo di fatturazione, così
-sai sempre a che punto sei.
+La pagina indica se l'operazione è stata finanziata con i fondi della
+piattaforma Ciele o con le credenziali dell'Organizzazione.
 
-## Monitora il tuo utilizzo
+I crediti rappresentano il costo stimato in centesimi. Non rappresentano un
+conteggio delle risposte dell'Assistente.
 
-Puoi visualizzare in qualsiasi momento l'utilizzo per il periodo corrente nella
-console. Tienilo d'occhio se stai conducendo una campagna, lanciando un nuovo
-assistente o se prevedi un picco di utilizzo, così potrai passare a un
-[piano](/cloud/plans-and-billing) più ampio prima di esaurire il credito.
+## Limiti
 
-## Raggiungere il limite
+La pagina confronta l'utilizzo corrente con i limiti del piano disponibile. Può
+anche mostrare il budget giornaliero dell'Organizzazione.
 
-Quando il tuo utilizzo si avvicina al limite del piano, Ciele lo mostra nella
-console. Una volta raggiunto il limite di utilizzo, per il resto del periodo di
-fatturazione si applica il tetto massimo del piano. Il passaggio a un piano con
-una quota maggiore ripristina immediatamente la capacità; in caso contrario, la
-quota viene azzerata all'inizio del periodo di fatturazione successivo.
+Le righe giornaliere utilizzano il Tempo Coordinato Universale (UTC). Utilizza
+questo limite quando confronti i dati di Ciele con una fattura del provider.
 
-## Mantenere un utilizzo efficiente
+## Analizza l'utilizzo imprevisto
 
-Le stesse pratiche che migliorano le risposte mantengono anche un utilizzo
-efficiente: [conoscenza](/knowledge) mirata in modo che il recupero rimanga
-pertinente, [flussi](/flows) che gestiscono direttamente le domande comuni e
-[help desk](/help-desks) che effettuano un passaggio di consegne fluido quando
-un essere umano è il passo successivo più appropriato.
+1. Seleziona il contatore interessato.
+2. Identifica il giorno UTC e la fonte di finanziamento.
+3. Esamina l'attività dell'Assistente per lo stesso periodo.
+4. Controlla la connessione del provider selezionato.
+5. Modifica il budget dell'organizzazione quando autorizzato.

@@ -1,60 +1,36 @@
 ---
-title: Starter-Buttons
-description: Bieten Sie Besuchern mit vorgefertigten Starter-Buttons schnelle Möglichkeiten, ein Gespräch zu beginnen.
+title: Schnelle Antworten
+description: Fügen Sie Starter-Buttons hinzu, die Text senden oder eine kuratierte FAQ-Antwort zurückgeben.
 ---
 
-Starter-Buttons werden angezeigt, wenn ein Besucher den Chat öffnet. Sie sind
-eine freundliche Möglichkeit, Menschen zu den Dingen zu führen, die Ihr
-Assistent am besten kann. Sie verwalten sie im Abschnitt **General** des
-Assistenten-Editors.
+Schnelle Antworten werden in der Nähe der Begrüßungsnachricht angezeigt. Sie
+helfen einem Besucher, eine gängige Aufgabe zu starten.
 
-## Fügen Sie eine Schaltfläche hinzu
+## Text senden
 
-1. Suchen Sie unter Allgemein die Liste der Starter-Buttons.
-2. Wählen Sie **Add button**.
-3. Geben Sie der Schaltfläche einen **Namen**. Dies ist die Beschriftung, die
-   der Besucher sieht.
-4. Wählen Sie einen **Typ** aus und geben Sie dann die typspezifischen
-   Einstellungen ein.
-5. Speichern Sie die Schaltfläche.
+Eine **Send Text**-Schnellantwort sendet ihren konfigurierten Text als
+Besuchernachricht. Der normale Flow-Router verarbeitet diese Nachricht dann.
 
-Sie können mehrere Schaltflächen hinzufügen und sie neu anordnen, sodass die
-nützlichsten zuerst angezeigt werden.
+Verwenden Sie diesen Typ, wenn der Assistent den Starttext anhand seiner
+normalen Routing-Regeln interpretieren muss.
 
-## Schaltflächentypen
+## Häufig gestellte Fragen
 
-Jede Schaltfläche führt eine von vier Aktionen aus.
+Eine **FAQ**-Schnellantwort gibt die kuratierte FAQ-Antwort wortgetreu zurück.
+Das Chat-Modell wird dabei nicht aufgerufen.
 
-### Text in den Chat senden
+Die Antwort enthält die Quellenangabe zur FAQ. Verwenden Sie diesen Typ, wenn
+eine genehmigte Antwort genau bleiben muss.
 
-Die Schaltfläche sendet eine Nachricht an den Besucher in den Chat, als hätte er
-sie selbst eingegeben. Verwenden Sie diese Option, um den Assistenten auf ein
-bestimmtes Thema zu fokussieren. Eine Schaltfläche mit dem Namen „Preise“ kann
-beispielsweise die Nachricht „Erzählen Sie mir von Ihren Preisen“ senden, sodass
-der Assistent diese Frage sofort beantwortet.
+## Fügen Sie eine Schnellantwort hinzu
 
-### Eskalation
+1. Öffnen Sie **General**.
+2. Suchen Sie **Quick replies**.
+3. Fügen Sie ein **Send Text**- oder **FAQ**-Element hinzu.
+4. Geben Sie die sichtbare Beschriftung ein.
+5. Wählen Sie den erforderlichen Inhalt aus oder geben Sie ihn ein.
+6. Speichern Sie den Entwurf.
+7. Testen Sie die Schaltfläche in der Vorschau.
 
-Die Schaltfläche verbindet den Besucher über Ihre konfigurierten
-Eskalationsoptionen mit Ihrem Team. Verwenden Sie diese Option, wenn Sie eine
-klare, stets sichtbare Möglichkeit wünschen, einen Menschen zu erreichen. Dies
-basiert auf Ihren [Help Desks](/help-desks).
-
-### Externen Link öffnen
-
-Die Schaltfläche öffnet eine Webadresse in einem neuen Tab. Verwenden Sie diese
-Option, um Besucher auf eine Seite Ihrer Website, zu einem Formular oder zu
-einer beliebigen externen Ressource zu leiten.
-
-### Häufig gestellte Fragen
-
-Die Schaltfläche zeigt ein bestimmtes Frage-Antwort-Paar aus Ihrer
-Wissensdatenbank an. Verwenden Sie diese Option, um eine sofortige, genaue
-Antwort auf eine häufig gestellte Frage zu geben. Siehe [FAQs](/knowledge/faqs).
-
-## Tipps
-
-- Halten Sie Beschriftungen kurz, damit sie gut in das Widget passen.
-- Beginnen Sie mit den Fragen, die Besucher am häufigsten stellen.
-- Koppeln Sie eine Schaltfläche „Text in den Chat senden“ mit fundiertem Wissen,
-  damit der Assistent eine gute Antwort parat hat.
+Halten Sie Beschriftungen kurz. Die Beschriftung muss die Aktion beschreiben,
+die nach der Auswahl erfolgt.

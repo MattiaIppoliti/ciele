@@ -1,58 +1,33 @@
 ---
-title: Panoramica degli assistenti
-description: Cos'è un assistente, come è organizzato il suo editor e dove si trova ogni impostazione.
+title: Assistenti
+description: Configura l'identità, il modello, il comportamento, gli strumenti e i controlli di un Assistente.
 ---
 
-Un assistente è un'esperienza di chat unica che puoi modellare da cima a fondo:
-il suo nome, ciò che sa, come risponde, quando inoltra la richiesta, come appare
-e dove viene visualizzato. Fai tutto questo nell'editor dell'assistente.
+Un Assistente è la principale unità di configurazione in Ciele. Ogni Assistente
+possiede le proprie Conoscenze, i propri Flussi, le impostazioni delle bozze e
+la cronologia delle pubblicazioni.
 
-## Le sezioni di configurazione
+## Sezioni di configurazione
 
-L'editor raggruppa le impostazioni in sezioni sulla sinistra. Le sezioni che
-utilizzerai di più sono:
+| Sezione | Scopo |
+| --- | --- |
+| Generale | Imposta l'identità, il modello, il motore di conoscenza e le impostazioni predefinite di conversazione. |
+| Conoscenza | Aggiungi fonti e FAQ. |
+| Flussi | Definisci il routing e le risposte. |
+| Strumenti e competenze | Controlla gli strumenti di runtime, l'integrazione API e le istruzioni riutilizzabili. |
+| Obiettivi | Pianifica controlli deterministici delle risposte. |
+| Help desk per gli assistenti | Seleziona gli help desk per l'escalation. |
+| Stile | Imposta il colore del marchio e la posizione del launcher. |
+| Autenticazione | Richiedi l'accesso con Microsoft Entra per i visitatori. |
+| Pubblica | Crea e gestisci l'istantanea live. |
 
-- **General** riguarda l'identità dell'assistente, il suo messaggio di
-  benvenuto, i pulsanti di avvio e il suo stile di risposta. Vedi
-  [Impostazioni generali](/assistants/general-settings).
-- **Knowledge** è la sezione in cui aggiungi le fonti da cui l'assistente
-  attinge per rispondere. Vedi [Knowledge](/knowledge).
-- **Flows** è la sezione in cui definisci le regole che controllano il modo in
-  cui l'assistente risponde. Vedi [Flussi](/flows).
-- **Tools & Skills** ti consente di attivare o disattivare gli strumenti
-  integrati dell'assistente, di aggiungere il tuo strumento HTTP che
-  l'assistente può chiamare e di collegare competenze riutilizzabili: playbook
-  che la tua organizzazione scrive una volta e condivide tra gli assistenti.
-- **Goals** contiene le domande a cui ti aspetti che l'assistente risponda
-  correttamente. Vengono ricontrollate secondo una pianificazione e, se un
-  obiettivo inizia a non essere raggiunto, viene generato un avviso.
-- In **Help Desks** scegli quali destinazioni di escalation offre questo
-  assistente. Vedi [Collega un help desk](/help-desks/connect-to-an-assistant).
-- **Style** e le opzioni colore in Generale controllano l'aspetto del widget.
-  Vedi [Aspetto](/assistants/appearance).
-- **Publish** ti fornisce lo snippet per incorporare l'assistente. Vedi
-  [Pubblicazione](/publishing).
+Le modifiche si riflettono immediatamente nell'Anteprima. Il widget live cambia
+solo dopo la pubblicazione.
 
-## L'anteprima in tempo reale
+## Duplica un Assistente
 
-Ogni modifica che apporti viene mostrata nel pannello di anteprima sulla destra.
-Usalo per controllare il messaggio di benvenuto, provare i pulsanti di avvio e
-confermare i colori prima di pubblicare. L'anteprima si comporta come il widget
-vero e proprio, quindi è il modo più veloce per verificare il tuo lavoro.
+La duplicazione copia la configurazione e i flussi. Non copia il contenuto della
+Knowledge Base.
 
-## Un ordine consigliato
-
-Se stai configurando un assistente per la prima volta, questo ordine funziona
-bene:
-
-1. Imposta l'identità e il messaggio di benvenuto in **General**.
-2. Aggiungi **Knowledge** in modo che l'assistente abbia qualcosa da cui partire
-   per rispondere.
-3. Prova l'anteprima ponendo alcune domande reali.
-4. Aggiungi **Flows** per tutti i tipi di messaggio che richiedono una gestione
-   speciale.
-5. Imposta **Help Desks** per l'escalation.
-6. Modifica **Style**.
-7. Vai su **Publish** e incorpora il widget.
-8. Una volta pubblicato, aggiungi qualche **Goals** per sapere quando una buona
-   risposta non lo è più.
+Rivedi il nuovo Assistente prima della pubblicazione. In particolare, aggiungi
+le Fonti richieste e conferma le connessioni con l'Help Desk.

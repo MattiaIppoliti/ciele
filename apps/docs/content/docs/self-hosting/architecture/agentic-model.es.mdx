@@ -1,326 +1,59 @@
 ---
-title: El modelo de agente
-description: Cómo se elige el modelo, qué se le permite decidir, las capas de «prompts» y las herramientas con las que se ejecuta, los presupuestos que lo limitan y el bucle nocturno que lo califica.
+title: Modelo agentivo
+description: Comprende la resolución del proveedor, el uso de herramientas, los límites, los seguimientos y las citas.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+El tiempo de ejecución utiliza la abstracción de proveedor del SDK de Vercel AI.
+Los adaptadores de proveedores actuales incluyen Anthropic, OpenAI, Google y un
+punto de conexión compatible con OpenAI.
 
-Un agente, en su forma más básica, es un modelo con herramientas en un bucle:
-responde o llama a una herramienta, y lo que la herramienta devuelva vuelve a él
-hasta que responda. Ese bucle es realmente lo que se ejecuta aquí. Esta página
-trata de todo lo que se construye en torno a él: qué modelo termina
-respondiendo, qué se le permite decidir, a qué puede acceder, dónde se le pone
-un límite y cómo se califican sus respuestas después.
+## Límites generativos
 
-La página [chat runtime](/self-hosting/architecture/chat-runtime) describe la
-maquinaria por la que pasa un mensaje. Esta trata sobre el modelo que hay en su
-interior.
+El tiempo de ejecución realiza una llamada al modelo solo dentro de una acción
+generativa o de una Clasificación de Intención. Las acciones deterministas no
+pasan su contenido a través de un modelo.
 
-## Lo que decide el modelo y lo que nunca decide
+La respuesta básica utiliza una llamada de chat y ninguna herramienta. Search
+knowledge utiliza un bucle de herramientas limitado.
 
-Lo más útil que debes saber sobre esta arquitectura es dónde está el límite. La
-autonomía se otorga deliberadamente, decisión a decisión.
+## Bucle de búsqueda en Knowledge
 
-| El modelo decide | El código decide |
-|---|---|
-| A qué flujo pertenece el mensaje | Qué acciones se ejecutan a continuación y en qué orden |
-| Si llamar a una herramienta y con qué argumentos | Qué herramientas existen en este turno |
-| Qué buscar y si buscar de nuevo | El límite máximo de búsquedas por turno |
-| La redacción de una respuesta generativa | Si la generación está permitida en este paso |
-| Qué hechos recuperados usar | Qué fuentes se citan: solo lo que realmente se ha leído |
-| Nada después de que se escriba la respuesta | Persistencia, efectos secundarios, escalada, clasificación |
+1. El modelo recibe las instrucciones del Asistente y las descripciones de las
+   herramientas disponibles.
+2. El modelo busca en Knowledge o lee una ventana de Source seleccionada.
+3. El tiempo de ejecución registra los eventos del ciclo de vida de la
+   herramienta.
+4. El modelo puede repetir la búsqueda dentro del límite de pasos.
+5. El tiempo de ejecución genera la respuesta final y las citas con nombre.
 
-Dos consecuencias que vale la pena interiorizar. El texto configurado nunca se
-reescribe: una acción de mensaje envía su copia textualmente, por lo que la
-redacción de un administrador está a salvo de la paráfrasis. Y un modelo nunca
-puede ampliar su propio alcance: una herramienta que no se le ha proporcionado
-no existe para él, y ningún resultado de herramienta le otorga una nueva.
+El panel Pensamiento representa estos eventos registrados del progreso y de las
+herramientas. El pensamiento simplificado reescribe el texto de progreso para la
+pantalla del visitante.
 
-## Elegir el modelo que responde
+## Herramientas de integración de API
 
-Un asistente nombra un proveedor y un modelo, pero esa preferencia es el
-*inicio* de la resolución y no su final.
+Un Asistente puede registrar un catálogo de API. El catálogo describe su URL
+base, su credencial protegida y los puntos de conexión disponibles.
 
-<Mermaid
-  title="Resolución del modelo que responde a un turno"
-  chart={`
-flowchart TB
-  T["A turn needs a model"]
-  P{"Credential for the<br/>assistant's provider?"}
-  A{"Credential for any<br/>other provider?"}
-  RUN["Generate on the<br/>assistant's own model"]
-  FB["Generate on a fallback<br/>provider, cheap tier"]
-  KW["Keyword router<br/>no generation at all"]
+El modelo puede inspeccionar los detalles de la API y consultar un punto de
+conexión registrado. El tiempo de ejecución valida cada ruta con el catálogo
+antes de la salida de la red.
 
-  T --> P
-  P -->|"yes"| RUN
-  P -->|"no"| A
-  A -->|"yes"| FB
-  A -->|"no"| KW
-`}
-/>
+Los lectores en ventana devuelven un rango de contenido solicitado y la longitud
+total. Este contrato permite que el modelo inspeccione grandes cargas útiles de
+API y Knowledge sin truncamiento silencioso.
 
-Dentro de un único proveedor, el tiempo de ejecución toma la primera credencial
-que encuentra, en este orden:
+## Comportamiento en caso de fallo
 
-1. Una CLI de proveedor con sesión iniciada detectada en la máquina que ejecuta
-   la consola — **solo en la superficie de vista previa**, nunca para el tráfico
-   publicado.
-2. La propia credencial de la organización: una clave de API que haya
-   proporcionado o una credencial federada, si el proveedor la admite.
-3. La clave de plataforma del entorno de la implementación.
+El enrutador de palabras clave se encarga de la clasificación cuando no hay
+ningún modelo clasificador disponible o cuando falla la clasificación. La
+búsqueda de conocimiento puede usar la reserva léxica sin incrustaciones.
 
-Se admiten cuatro familias de proveedores: Anthropic, OpenAI, Google y
-**cualquier servidor que hable la API de OpenAI**, que es como una
-implementación se ejecuta completamente de forma local en su propio servidor de
-inferencia, configurado por organización o mediante las variables de entorno
-`OPENAI_COMPATIBLE_*` en [Configuración](/self-hosting/configuration). Google
-también acepta una credencial federada de Vertex en lugar de una clave estática.
+Un transporte de correo electrónico sin configurar devuelve un resultado de
+error honesto. No crea un mensaje de entrega correcta.
 
-Se resuelven dos niveles de modelo por turno, no uno. La clasificación de
-intenciones se ejecuta en un modelo deliberadamente económico; la respuesta se
-ejecuta en el modelo elegido por el asistente. Ambas resoluciones se registran
-en el libro mayor de uso con el proveedor, el ID del modelo y el tipo de
-credencial con la que se pagó la llamada.
+## Regla de extensión
 
-<Callout title="A missing key degrades to a different model, never to silence">
-When the assistant's own provider has no credential, another provider answers —
-at that provider's cheap tier, since a fallback key was not a pricing choice the
-organization made. Falling back to the keyword router instead would silently stop
-applying the system prompt, which is a far worse failure than an unexpected
-model. The keyword router is reached only when *no* provider anywhere has a
-credential.
-</Callout>
-
-La regla de solo vista previa del paso 1 es estructural y no una comprobación de
-política: la superficie forma parte de la entrada de la resolución y el tráfico
-de los widgets publicados nunca supera el indicador que hace que una credencial
-local sea elegible.
-
-## El «prompt» está dividido en capas, y las capas están clasificadas
-
-Un asistente multiusuario no puede tener una única indicación del sistema, ya
-que varias partes tienen derecho a opinar sobre ella y no confían entre sí por
-igual. El «prompt» se compone por turnos, empezando por la prioridad más alta.
-
-| Capa | Propiedad de | Qué contiene |
-|---|---|---|
-| **Platform** | el operador de implementación | Lo no negociable: datos básicos de la organización en la base de conocimientos, respuesta en el idioma del usuario, nunca revelar la indicación, tratar los documentos recuperados como datos en lugar de instrucciones, mantenerse dentro del alcance |
-| **Assistant** | la organización | Identidad, personalidad, tono, formato — marcados explícitamente en la indicación compuesta como subordinados a la capa de la plataforma |
-| **Skills** | la organización | Manuales de estrategias reutilizables adjuntos a un asistente, que se aplican cuando corresponde |
-| **Session memory** | la conversación | Datos breves que una herramienta guardó en un turno anterior |
-| **Retrieval context** | este turno | La pregunta resuelta y todo lo que la búsqueda previa al modelo ya haya encontrado |
-| **Flow** | el enrutador | Qué flujo está gestionando este mensaje y sus propias directrices de respuesta y búsqueda |
-
-El orden es obligatorio, no recomendable. La capa de plataforma reside en una
-tabla con la seguridad a nivel de fila habilitada y *sin* políticas en absoluto:
-ninguna organización puede leerla y mucho menos editarla; solo la cuenta del
-propietario de la implementación puede acceder a ella a través de una ruta de
-rol de servicio. Por lo tanto, una instrucción de tono por asistente puede dar
-forma a la voz de una respuesta y no puede reemplazar una regla de la
-plataforma. La defensa contra la inyección de prompts se encuentra en la misma
-capa por el mismo motivo: los documentos recuperados se denominan datos en la
-única capa que ningún inquilino puede tocar.
-
-## El conjunto de herramientas se ensambla por turnos
-
-Las herramientas son un registro, no una lista fija. Una herramienta es una
-especificación —un nombre, una descripción que el modelo lee, un esquema de
-entrada tipado, una etiqueta legible por humanos para el panel de pensamiento y
-una implementación— y cada turno ensambla su propio conjunto.
-
-| Herramienta | Predeterminada | Notas |
-|---|---|---|
-| Búsqueda de conocimiento | siempre activada | No se puede desactivar: el «grounding» es una invariante en tiempo de ejecución |
-| Memoria de sesión | activada | Guarda un dato breve para los siguientes turnos de esta conversación |
-| Obtener una URL | **desactivado** | El acceso de red saliente es opcional, por asistente |
-| Herramientas HTTP personalizadas | según la configuración | Definidas por los administradores; los parámetros que rellena el modelo se convierten en una cadena de consulta o en un cuerpo JSON |
-
-Todas las herramientas, excepto la búsqueda de conocimiento, están envueltas por
-la misma instrumentación, y es en ese envoltorio donde reside gran parte de la
-fiabilidad: emite los eventos de inicio y finalización que el widget representa
-como pasos visibles, cronometra la llamada y **contiene errores**. Una
-herramienta de lanzamiento devuelve un valor de error al modelo y marca su paso
-como fallido; no cancela el turno. El modelo lee el error y lo resuelve,
-exactamente como lo haría con una herramienta que informara de «no encontrado».
-
-La búsqueda de conocimiento es la excepción deliberada. En cambio, su ciclo de
-vida, su veredicto de cobertura y su contabilidad presupuestaria residen en una
-primitiva de búsqueda compartida, de modo que las búsquedas propias del modelo y
-las búsquedas que el entorno de ejecución propaga antes de que el modelo se
-ejecute nunca puedan separarse. Consulta el
-[proceso de conocimiento](/self-hosting/architecture/knowledge-pipeline) para
-saber qué hace realmente una búsqueda.
-
-### La conexión externa es una acción protegida
-
-Tanto la obtención de una URL como la llamada a una herramienta HTTP
-personalizada pasan por una puerta de salida, compartida con el rastreador de
-sitios web y la extracción de conocimiento. Valida el destino en el momento de
-la resolución DNS, fija la conexión a las direcciones que ha validado para que
-el destino no pueda cambiar entre la comprobación y la conexión, vuelve a
-validar cada salto de redireccionamiento y limita tanto el tiempo como el tamaño
-de la respuesta. Un host bloqueado y un host inalcanzable devuelven el *mismo*
-mensaje, por lo que la herramienta no se puede utilizar para mapear una red
-privada.
-
-## La autonomía está limitada por la construcción
-
-El bucle es de forma abierta y de coste cerrado. Se aplican varios límites
-independientes, y ninguno de ellos depende de que el modelo decida detenerse.
-
-<Mermaid
-  title="Una pasada por el bucle del agente y las puertas que lo terminan"
-  chart={`
-flowchart TB
-  IN["Messages + layered prompt<br/>+ this turn's toolset"]
-  STEP["Model step"]
-  KIND{"Tool call<br/>or text?"}
-  TOOL["Run the tool<br/>timed · errors contained"]
-  GATE{"Search budget or<br/>step cap reached?"}
-  TEXT["Answer text, streamed"]
-  FIN["Reply parts + citations"]
-
-  IN --> STEP --> KIND
-  KIND -->|"tool call"| TOOL --> GATE
-  GATE -->|"no"| STEP
-  KIND -->|"text"| TEXT
-  GATE -->|"yes"| TEXT
-  TEXT --> FIN
-`}
-/>
-
-| Límite | Efecto |
-|---|---|
-| Presupuesto de búsqueda | Un máximo de seis búsquedas de conocimiento por turno, contadas específicamente, para que las llamadas a herramientas no relacionadas no puedan consumir el presupuesto de recuperación |
-| Límite de pasos | Un límite aparte para el total de pasos, de modo que un modelo que nunca realice búsquedas tampoco pueda entrar en un bucle infinito |
-| Límites por llamada | Cada llamada saliente a una herramienta tiene un tiempo de espera y un tamaño máximo de respuesta |
-| Rechazo | El rechazo de un proveedor es un motivo de finalización distinto, respondido con honestidad y con una vía de salida humana, sin que se vuelva a intentar nunca con otro proveedor |
-| Truncamiento | Una respuesta cortada por el límite de salida lo indica, en lugar de fingir que no se ha encontrado nada |
-| Finalización vacía | Si una puerta finaliza el bucle antes de que se transmita texto, el turno aún responde: o bien con una pregunta aclaratoria específica, o bien con una advertencia que indica lo que se ha buscado y lo que falta |
-
-Cuando se agota el presupuesto, se *indica* al modelo en el propio resultado de
-la herramienta: «No vuelvas a buscar, responde con lo que tienes y di
-honestamente si no es suficiente». Limitar un bucle y dejar que el modelo
-descubra el límite chocando contra él produce respuestas peores que limitarlo y
-decirlo.
-
-## Estado que no es un mensaje
-
-La transcripción no es lo único que recuerda una conversación. Cada conversación
-lleva una pequeña bolsa de estado, que se carga antes de que se ejecute el turno
-y se vuelve a escribir después de que el mensaje del asistente se almacene de
-forma persistente, y solo si una herramienta realmente lo ha cambiado, por lo
-que un turno de solo lectura no cuesta ninguna escritura adicional y un turno
-fallido nunca escribe el estado a medias. La herramienta de memoria le añade
-hechos limitados y deduplicados, que la indicación del siguiente turno inyecta
-como su capa de memoria de sesión.
-
-Eso evita que «estado igual a transcripción» se convierta en un techo sin dejar
-que la transcripción crezca para soportarlo.
-
-## Razonamiento hecho visible sin una segunda llamada al modelo
-
-Los modelos suelen narrar antes de llamar a una herramienta. Consume solo el
-flujo de texto y esa narración aparece en la burbuja de respuesta; en cambio, el
-tiempo de ejecución consume el flujo completo y, cuando llega una llamada a una
-herramienta, reclasifica el texto transmitido hasta ese momento como un
-*pensamiento*. El cliente lo mueve al panel de pensamiento y la respuesta se
-reinicia desde cero cuando la herramienta devuelve el resultado.
-
-Un tipo de evento adicional proporciona toda la interfaz de usuario de
-razonamiento: sin una segunda llamada al modelo ni un resumen separado. El
-vocabulario completo de eventos está en
-[Request flows](/self-hosting/architecture/request-flows).
-
-## Nada califica sus propios deberes
-
-La generación es el camino rápido; la calidad es un bucle separado y más lento
-que se ejecuta según un horario. La respuesta de un visitante nunca depende de
-ello.
-
-<Mermaid
-  title="El bucle de calidad programado"
-  chart={`
-flowchart TB
-  TICK["Nightly tick"]
-  GOALS["Standing goals<br/>replayed headlessly"]
-  VER["Answer verifier<br/>an independent second read"]
-  TRUST["Trust tiers<br/>rolling pass rate per flow"]
-  COMP["Weekly digest<br/>at most three proposals"]
-  OUT["Alerts · Improvements"]
-  NEXT["Next turn: a watch-tier flow<br/>always offers human escalation"]
-
-  TICK --> GOALS --> VER --> TRUST --> COMP --> OUT
-  TRUST --> NEXT
-`}
-/>
-
-- **Standing goals** son preguntas con expectativas verificables, que se
-  reproducen a través del motor real comparándolas con la instantánea publicada
-  del asistente, con el historial vacío y sin que nada se conserve. La
-  calificación es una función pura de la respuesta: si una comprobación no se
-  puede escribir como código, no pertenece a un objetivo.
-- **The verifier** relee las respuestas generativas recientes con una entrada
-  deliberadamente restringida: la pregunta, la respuesta y el contenido citado
-  se vuelven a obtener en el momento de la calificación. Nunca ve las
-  indicaciones del modelo de respuesta ni los rastros de las herramientas,
-  porque la confianza no es evidencia.
-- **Trust** es una tasa de aprobación móvil por flujo sobre sus últimas señales
-  calificadas: los veredictos del verificador más los comentarios explícitos de
-  los visitantes, y un veredicto ganador cuando ambos calificaron la misma
-  respuesta. Tres niveles: una tasa de aprobación alta y sostenida en un número
-  suficiente de ejecuciones permite alcanzar el nivel superior; si hay muy pocas
-  ejecuciones o la tasa es demasiado baja, se llega a `watch`; y todo lo que
-  queda entre ambos extremos se sitúa en el nivel intermedio. Un flujo sin
-  historial no ha obtenido nada y comienza en `watch`. El periodo es dinámico,
-  por lo que la confianza se puede perder al igual que se puede ganar.
-- **The tier has exactly one runtime effect today**: las respuestas generativas
-  de un flujo de nivel `watch` siempre ofrecen la rampa de salida humana.
-  Deliberadamente un comportamiento limitado en lugar de un cambio a una
-  autonomía amplia.
-- **The weekly digest** convierte los fallos de la semana en un máximo de tres
-  propuestas —una sugerencia de preguntas frecuentes, un ajuste del flujo, un
-  cambio en el estilo de respuesta, un nuevo objetivo— y cada una de ellas se
-  presenta como un elemento de mejora etiquetado. Nunca se aplica nada
-  automáticamente. Una persona acepta una propuesta realizando el trabajo o la
-  rechaza archivándola.
-
-<Callout title="Read this section as a design stance, not a feature list">
-Every part of it exists to keep an unattended agent honest: it is graded by
-something that did not write the answer, its autonomy is measured rather than
-assumed, and its self-improvement requires a human signature.
-</Callout>
-
-## Ampliación del agente
-
-Las costuras son lo importante. Cada una de estas es una adición, no un cambio
-en el bucle:
-
-- **A new tool** — añade una especificación al registro. Incluye eventos del
-  ciclo de vida, contención de errores y progreso en el panel de pensamiento.
-- **An organization-defined tool** — un administrador describe un punto de
-  conexión HTTP en la consola. Sin implementación.
-- **A new capability with its own configuration** — añade una acción de flujo,
-  de modo que el administrador que conectó el flujo siga decidiendo si se
-  ejecuta.
-- **An external tool server** — un cliente de estilo MCP se incorpora como
-  *proveedor* de herramientas: enumera sus herramientas al comienzo de un turno
-  y las distribuye en el conjunto ensamblado. El protocolo de eventos ya cubre
-  su progreso, que es para lo que sirve la costura del registro.
-- **Headless callers** — el punto de entrada del motor no tiene interfaz de
-  usuario. Cualquier elemento que pueda proporcionar un asistente, sus flujos y
-  sus credenciales obtiene el agente completo; así es como la reproducción de
-  objetivos y el conjunto de pruebas sin conexión lo impulsan.
-
-## Las invariantes de esta capa
-
-1. Los flujos enrutan; el modelo no. El nuevo comportamiento generativo va
-   **dentro** de una acción, nunca por encima del enrutador.
-2. La herramienta de búsqueda de conocimiento no se puede desactivar. El
-   «grounding» no es una configuración.
-3. Las citas se recopilan de lo que el modelo realmente ha leído, nunca se
-   reconstruyen posteriormente.
-4. Los efectos secundarios se describen durante el turno y se aplican después de
-   confirmar la respuesta.
-5. Nada califica sus propias respuestas ni aplica sus propias propuestas.
+Añade una nueva herramienta de agente a través del registro de herramientas y su
+contenedor de ciclo de vida. Mantén la autorización, la propiedad, la validación
+de entradas y las comprobaciones de salida fuera del control del modelo.

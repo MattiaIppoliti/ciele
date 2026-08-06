@@ -1,49 +1,40 @@
 ---
 title: Membres et rôles
-description: Invitez des collègues dans votre organisation et contrôlez ce que chacun d'entre eux peut faire grâce aux rôles.
+description: Contrôlez qui peut lire, modifier, publier et administrer une organisation.
 ---
-
-Ciele est conçu pour les équipes. Vous invitez des personnes à rejoindre votre
-organisation en tant que membres, et chaque membre a un rôle qui détermine ce
-qu'il peut voir et modifier. Vous gérez cela à partir des paramètres des membres
-de votre organisation.
-
-## Invitez un membre
-
-1. Ouvrez les paramètres des membres de votre organisation.
-2. Invitez un nouveau membre en saisissant son adresse e-mail.
-3. Choisissez le rôle qui lui sera attribué.
-4. Envoyez l'invitation.
-
-La personne reçoit une invitation à rejoindre votre organisation. Une fois
-qu'elle a accepté, elle apparaît dans votre liste de membres avec le rôle que
-vous lui avez attribué.
 
 ## Rôles
 
-Les rôles vont du contrôle total à l'accès en lecture seule. En termes généraux
-:
+| Rôle | Niveau d'autorisation actuel |
+| --- | --- |
+| Lecteur | Lit les données de l'organisation et du produit. |
+| Éditeur | Modifie le contenu et la configuration de l'Assistant. |
+| Administrateur | Publie les Assistants et gère les membres et les clés API. |
+| Propriétaire | Modifie les rôles et gère les propriétaires. |
 
-- Un rôle de niveau propriétaire ou administrateur peut gérer l'organisation,
-  ses membres et ses assistants.
-- Un rôle de niveau éditeur peut créer et modifier des assistants sans gérer
-  l'organisation elle-même.
-- Un rôle de niveau visualisation permet de voir l'espace de travail sans y
-  apporter de modifications.
+L'application applique des vérifications de capacité plus spécifiques aux
+opérations individuelles.
 
-Attribuez le niveau d'accès le plus bas qui permette à chaque personne de faire
-son travail. Vous pouvez modifier le rôle d'un membre ultérieurement, en
-fonction de l'évolution de ses responsabilités.
+## Invitez un membre
 
-## Gérez les membres existants
+1. Ouvrez **Settings > Members**.
+2. Sélectionnez **Invite member**.
+3. Saisissez l'adresse e-mail.
+4. Sélectionnez le rôle minimum requis.
+5. Envoyez l'invitation.
 
-À partir de la liste des membres, vous pouvez vérifier qui fait partie de votre
-organisation, modifier le rôle d'un membre et supprimer l'accès lorsque
-quelqu'un n'en a plus besoin. La gestion des membres et des rôles est soumise à
-des autorisations ; par conséquent, seuls les membres disposant du rôle
-approprié peuvent consulter et modifier la liste.
+## Modifier un membre
 
-<Callout title="Right sized access">
-Give new teammates an editor or viewer role by default, and reserve owner and admin
-roles for the people who genuinely need to manage the organization.
-</Callout>
+Un administrateur peut gérer les membres dont le niveau est inférieur à celui de
+propriétaire. Un propriétaire peut gérer tous les niveaux.
+
+Un membre ne peut pas modifier ou supprimer sa propre ligne de la liste des
+membres. Utilisez un autre membre autorisé pour cette opération.
+
+## Rôles de clé API
+
+Un administrateur ou un propriétaire peut créer une clé API d'organisation. Le
+rôle sélectionné ne peut pas être supérieur au rôle du créateur.
+
+Révoquez une clé lorsque son client n'a plus besoin d'accès. Ciele conserve
+l'enregistrement révoqué à des fins d'audit.

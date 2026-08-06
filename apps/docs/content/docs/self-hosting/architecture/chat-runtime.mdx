@@ -1,203 +1,51 @@
 ---
-title: The chat runtime
-description: How a message is routed to a flow, how flow actions are dispatched, and what the retrieval loop does before an answer is written.
+title: Chat runtime
+description: Understand current trigger dispatch, Flow routing, conditions, and ordered actions.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Message path
 
-Everything that happens between "a message arrived" and "reply parts are ready"
-lives in one module. It is the densest part of the codebase and the one with an
-enforced public surface — two entry points, a server barrel and a client-safe
-barrel, with a lint rule rejecting anything that reaches past them.
-
-## Flows route; the model does not
-
-The central invariant is that [flows](/flows) are an **authoritative router**. A
-model is used to decide *which* flow answers, and then that flow's actions run in
-order. The model never overrides the flow, and it never chooses what to do next.
-
-<Mermaid
-  title="Routing a message to a flow"
-  chart={`
+```mermaid
 flowchart TB
   MSG["Visitor message"]
-  RESOLVE{"Is a model<br/>available?"}
-  CLASSIFY["Classify intent<br/>flows rendered as a catalogue,<br/>with conditions and examples"]
-  KEYWORD["Keyword router<br/>token scoring, built-in triggers"]
-  MATCHED{"A flow<br/>matched?"}
-  DEFAULT["Default behaviour<br/>the locked catch-all"]
-  RUN["Run the flow's actions,<br/>in order"]
-  PARTS["Reply parts + events"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+```
 
-  MSG --> RESOLVE
-  RESOLVE -->|"yes"| CLASSIFY
-  RESOLVE -->|"no"| KEYWORD
-  CLASSIFY -->|"empty or error"| KEYWORD
-  CLASSIFY --> MATCHED
-  KEYWORD --> MATCHED
-  MATCHED -->|"yes"| RUN
-  MATCHED -->|"no"| DEFAULT
-  DEFAULT --> RUN
-  RUN --> PARTS
-`}
-/>
+`messageFlowCandidates` supplies candidates to both routing engines. This boundary prevents objective conditions from producing different router results.
 
-There are two routers and one action path. The classifier is the normal route; the
-keyword router is the fallback when no model is configured anywhere, when the
-candidate set comes back empty, or when classification errors. Both feed the *same*
-action registry, so a deployment with no AI provider at all still runs flows,
-still emits the same events, and still renders identically — it just answers from
-retrieved text rather than generated prose.
+Conversation context supplies semantic examples to classification. It does not act as an independent boolean gate.
 
-<Callout title="Why the fallback matters even in production">
-It is what makes the whole product testable offline. The test suite routes
-messages, dispatches actions, and asserts reply parts with no network and no keys.
-</Callout>
+## Courtesy shortcut
 
-## Actions are a registry, not a switch
+The built-in Basic Interaction Flow can handle a short courtesy-only message before Intent Classification. An earlier eligible custom Flow still has priority.
 
-The engine walks the flow's action list and looks each one up in a registry keyed
-by action type. Each handler is an adapter with one signature: it receives a
-context, emits its own wire events, returns the reply parts to persist, and may
-request a deferred effect or halt the rest of the flow.
+The shortcut does not activate after an Assistant question or for a message that contains an information request.
 
-<Mermaid
-  title="Action dispatch and deferred effects"
-  chart={`
-flowchart LR
-  REG{"Registry<br/>lookup"}
-  H1["custom_message<br/><i>verbatim</i>"]
-  H2["search_knowledge<br/><i>generative</i>"]
-  H3["suggest_help_desk"]
-  H4["follow_up_questions"]
-  H5["show_button · iframe"]
-  H6["api_request"]
-  H7["improvement"]
-  H8["send_email"]
-  H9["handover<br/><i>halts</i>"]
+## Proactive path
 
-  PARTS["Reply parts"]
-  EFF["Requested<br/>effects"]
-  DONE["Persist, then<br/>apply effects"]
+The embed reports page load, dwell time, and chat-open events. The server validates the configured trigger and delivery state.
 
-  REG --> H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9
-  H1 & H2 & H3 & H4 & H5 & H6 & H9 --> PARTS
-  H7 & H8 --> EFF
-  PARTS --> DONE
-  EFF --> DONE
-`}
-/>
+A proactive Flow contains one Notification action and no conditions. The action emits configured content without a model call.
 
-| Action | What it does |
-|---|---|
-| `custom_message` | Sends the configured text **verbatim**. Never rewritten by a model. |
-| `search_knowledge` | The generative retrieval turn: search, then write a cited answer |
-| `suggest_help_desk` | Offers an escalation button |
-| `follow_up_questions` | Offers up to three suggested next questions |
-| `show_button` / `iframe` | Renders a link button or an embedded frame |
-| `api_request` | Calls an external endpoint and can feed the result back into the reply |
-| `improvement` | Silently files an answer-quality item for review |
-| `send_email` | Forwards the conversation by mail |
-| `handover` | Acknowledges and stops the flow |
+## Action execution
 
-Two things follow. Adding an action type is **one adapter plus one registry
-entry** — not a change in two places that can drift apart. And handlers stay
-pure: because a side effect is *requested* rather than performed, a handler can be
-unit-tested by asserting which effect it asked for, with no database in sight.
+Actions run in stored order. Each action returns structured reply parts or a silent effect.
 
-## Inside a generative answer
+Generative work stays inside Basic reply, Search knowledge, generated Follow-ups, and supported recommendation paths.
 
-`search_knowledge` is where generation is allowed to happen, and it is a loop
-rather than a single call. The retrieval turn understands the question in context,
-searches, scores whether it has enough, reformulates if it does not, and only then
-writes.
+## Handover
 
-<Mermaid
-  title="The retrieval turn behind one cited answer"
-  chart={`
-flowchart TB
-  IN["The question + conversation context"]
-  FRAME["Build a context frame<br/>what is this turn actually about?"]
-  UQ["Understand the query<br/>intent and search terms"]
-  CLARIFY1{"Too ambiguous<br/>to search?"}
-  ASK["Ask a clarifying question"]
-  PASS["Search pass<br/>vector + lexical retrieval"]
-  SCORE{"Coverage<br/>good enough?"}
-  BUDGET{"Passes<br/>left?"}
-  REFORM["Reformulate the query"]
-  GEN["Generate the answer<br/>grounded in what was retrieved"]
-  CAVEAT["Add a best-effort caveat"]
-  CITE["Project retrieved chunks<br/>to their sources"]
-  OUT["Answer + citations<br/>(+ escalation chip if nothing grounded it)"]
+Handover loads a published target Assistant in the same Organization. It runs the Visitor message through that target one time.
 
-  IN --> FRAME --> UQ --> CLARIFY1
-  CLARIFY1 -->|"yes"| ASK
-  CLARIFY1 -->|"no"| PASS
-  PASS --> SCORE
-  SCORE -->|"no"| BUDGET
-  BUDGET -->|"yes"| REFORM --> PASS
-  BUDGET -->|"no"| CAVEAT --> GEN
-  SCORE -->|"yes"| GEN
-  GEN --> CITE --> OUT
-`}
-/>
-
-The loop is bounded: there is a maximum number of search passes and a single
-budget gate that all of them go through, so a hard question costs more than an
-easy one but never unboundedly more. The coverage scoring, the reformulation, and
-the clarify decision are all pure functions the loop consults — model-free, and
-therefore testable on their own.
-
-When nothing retrieved actually grounds the answer, the action can attach an
-escalation button and file an improvement item, so an unanswerable question turns
-into two useful outcomes instead of a confident wrong answer.
-
-## Tools and skills
-
-Beyond retrieval, an assistant can be given tools — HTTP endpoints described well
-enough for a model to call them. The toolset is assembled per turn from the
-assistant's own configuration and the organization's shared skills, with the same
-lifecycle events (`tool-start`, `tool-end`) the widget renders as visible steps.
-
-<Mermaid
-  title="What a turn assembles before it runs"
-  chart={`
-flowchart LR
-  A["Assistant config<br/>enabled tools"] --> TS["Per-turn toolset"]
-  S["Organization skills<br/>shared definitions"] --> TS
-  BI["Built-in tools<br/>e.g. knowledge search"] --> TS
-  TS --> TURN["The turn"]
-  SESSION["Turn session<br/>state carried across steps"] --> TURN
-  PROMPT["Platform prompt<br/>+ the assistant's answering style"] --> TURN
-`}
-/>
-
-The prompt is layered deliberately: a platform layer sits above the assistant's
-own answering style, so a per-assistant tone instruction can shape an answer but
-cannot displace the platform's own rules. [The agentic
-model](/self-hosting/architecture/agentic-model) covers the full precedence
-chain, how a provider and model are resolved for a turn, and the budgets and
-grading loop around the agent itself.
-
-## What is stored but not yet acted on
-
-Being honest about this is more useful than a diagram that implies more than the
-code does:
-
-- **Non-message triggers.** A flow can be configured to fire on page load, on
-  chat open, or after a dwell time. Those settings are stored, but only
-  message-triggered flows currently compete for a visitor's message.
-- **Richer conditions.** A flow's conversational-context condition is given to the
-  classifier as routing context — it *influences* the choice rather than acting as
-  a hard gate. The other condition types in the builder are not yet evaluated.
-
-## The rules that must not break
-
-1. Flows route, the model does not. Classification picks the flow; the flow's
-   actions then run in order.
-2. `custom_message` is verbatim.
-3. New generative behaviour goes **inside** an action. Never above the router.
-
-The third is the one to remember when extending the runtime. A new capability that
-generates text belongs in a handler, where the flow that invoked it still decides
-whether it runs at all.
+The target execution ignores another handover. This rule prevents an unbounded Assistant chain.

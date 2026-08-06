@@ -1,0 +1,51 @@
+---
+title: Ciele MCP server
+description: Give an MCP client controlled access to Ciele administration operations.
+---
+
+The Ciele Model Context Protocol (MCP) server is a local `stdio` process. It calls the Ciele API through the typed client.
+
+## Requirements
+
+- Use Node.js 22.6 or later.
+- Clone the Ciele repository.
+- Create an [Organization API key](/developers/api-keys).
+- Use an MCP client that can start a local `stdio` server.
+
+Start this program from the repository:
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+## Environment variables
+
+| Variable | Requirement | Purpose |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Required | Authenticates the Organization. |
+| `CIELE_BASE_URL` | Optional | Selects a self-hosted origin. |
+| `CIELE_MCP_READ_ONLY` | Optional | Refuses mutation actions when the value is `1`. |
+
+The read-only check occurs inside the MCP process. A refused mutation does not make an API request.
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Available tools
+
+| Tool | Current operations |
+| --- | --- |
+| `ciele_identity` | Read deployment, Organization, and Role information. |
+| `manage_assistants` | List, read, create, update, duplicate, or delete Assistants. |
+| `manage_flows` | List, read, create, update, reorder, or delete Flows. |
+| `manage_knowledge` | Manage Collections, Sources, and FAQs. |
+| `publish_assistant` | Read status, publish, unpublish, or restore a publication. |
+| `read_inbox` | List, read, or export Conversations. |
+| `manage_improvements` | List, read, or update Improvements. |
+
+The MCP server does not provide a remote HTTP transport. See [AI clients](/developers/ai-clients) for compatibility information.
+
+## Check the connection
+
+Ask the client to call `ciele_identity`. Confirm the expected Organization ID, Role, API version, and domain list.

@@ -1,52 +1,38 @@
 ---
 title: Miglioramenti
-description: Monitora e risolvi le risposte deboli su una bacheca, da aperte a completate.
+description: Tieni traccia e completa il lavoro per correggere le risposte deboli dell'Assistente.
 ---
 
-La bacheca Miglioramenti è il luogo in cui viene gestita la qualità delle
-risposte. Ogni elemento rappresenta qualcosa che vale la pena correggere nel
-modo in cui l'assistente ha risposto, e la bacheca sposta gli elementi da aperto
-a fatto. Apri **Improvements** dalla barra laterale.
+Un Miglioramento registra un problema relativo alla qualità della risposta. Può
+includere messaggi collegati, fonti, una descrizione e una correzione suggerita.
 
-## Da dove provengono i miglioramenti
+## Fonti di miglioramento
 
-I miglioramenti arrivano da tre fonti:
+- Un'azione del flusso di miglioramento crea un elemento.
+- Un Help Desk può creare un elemento dopo l'escalation.
+- Un amministratore può contrassegnare una risposta dalla Posta in arrivo.
+- Se configurata, la ricerca nella knowledge base può creare un elemento per una
+  query irrisolta.
 
-- Un **flusso** con un'azione di miglioramento contrassegna una risposta per la
-  revisione.
-- Un **help desk** impostato per generare automaticamente miglioramenti ne crea
-  uno dall'ultima risposta prima di un'escalation. Vedi
-  [Ticketing e miglioramenti](/help-desks/ticketing-and-improvements).
-- Una persona **contrassegna una risposta** manualmente mentre legge la
-  [Posta in arrivo](/operations/inbox).
+## Gestisci un elemento
 
-Poiché derivano da conversazioni reali, i miglioramenti indicano i problemi che
-i tuoi visitatori incontrano effettivamente.
+Apri un elemento per esaminare i messaggi collegati e la correzione suggerita
+disponibile. Puoi modificarne lo stato, la priorità, i tag, l'assegnatario e la
+data di scadenza.
 
-## La bacheca
+L'API, la CLI e il server MCP possono elencare, leggere e aggiornare i
+miglioramenti esistenti. La creazione di un miglioramento rimane un'operazione
+eseguita in fase di runtime del prodotto.
 
-Gli elementi sono organizzati in corsie che ne rappresentano lo stato, passando
-da lavoro aperto a in corso e in revisione fino a completato, con un archivio
-per gli elementi che vuoi conservare ma mettere da parte. Ogni corsia mostra il
-numero di elementi che contiene e puoi esportare un report per una corsia.
+## Correggi la risposta
 
-Un elemento contiene i dettagli di cui hai bisogno per agire: un titolo, la
-frequenza con cui si è verificato il problema, una priorità, dei tag e un
-assegnatario scelto tra i membri della tua organizzazione. Usa la ricerca e i
-filtri in alto per concentrarti su ciò che conta ora.
+1. Leggi la conversazione collegata.
+2. Identifica la fonte, la FAQ, il flusso o l'istruzione errati.
+3. Correggi la bozza di configurazione.
+4. Poni la domanda originale in Anteprima.
+5. Conferma la risposta e le Fonti.
+6. Pubblica l'Assistente.
+7. Contrassegna il Miglioramento come completato.
 
-## Lavora su un elemento
-
-Apri un elemento per visualizzarne la descrizione completa e i messaggi che lo
-hanno generato, comprese le risposte coinvolte e le relative fonti, con un link
-alla conversazione per il contesto. Imposta la priorità, i tag, l'assegnatario e
-la data di scadenza, quindi lavora alla correzione. Quando la conoscenza o il
-flusso sottostante sono stati corretti, contrassegna l'elemento come completato.
-
-## Il ciclo di miglioramento
-
-I miglioramenti chiudono il ciclo tra ciò che i visitatori sperimentano e ciò
-che tu modifichi. Una risposta debole diventa un elemento, l'elemento guida una
-correzione alla tua conoscenza o ai tuoi flussi e il visitatore successivo
-riceve una risposta migliore. Lavorare regolarmente sulla bacheca è l'abitudine
-più efficace per migliorare la qualità delle risposte.
+Rivedi le correzioni suggerite generate prima di usarle. Il suggerimento salvato
+non è una modifica alla pubblicazione.

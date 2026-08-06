@@ -1,49 +1,38 @@
 ---
 title: Preguntas frecuentes
-description: Escribe pares exactos de pregunta y respuesta para guiar al asistente en las preguntas habituales.
+description: Añade pares de preguntas y respuestas aprobados a una colección de conocimientos.
 ---
 
-Las preguntas frecuentes te permiten controlar con precisión cómo responde el
-asistente a preguntas específicas. Cada pregunta frecuente es una pregunta junto
-con la respuesta que quieres que use el asistente. Abre un asistente, selecciona
-**Knowledge** y luego abre la pestaña **FAQs**.
+Una FAQ almacena una pregunta y una respuesta seleccionada. Utiliza las
+preguntas frecuentes para el contenido que requiera una respuesta exacta
+aprobada.
 
-## Añade una sola pregunta frecuente
+## Añade una pregunta frecuente
 
-1. Selecciona «Añadir una pregunta frecuente» y, a continuación, elige la opción
-   de entrada única.
-2. Escribe la **pregunta** como la formularía un visitante.
-3. Escribe la **respuesta** en el editor de texto enriquecido. Una respuesta
-   detallada le da al asistente más material con el que trabajar, así que
-   procura dar una respuesta completa en lugar de una sola línea.
-4. Guarda la pregunta frecuente.
+1. Abre el Asistente.
+2. Selecciona **Knowledge**.
+3. Añade una pregunta frecuente.
+4. Introduce la pregunta.
+5. Introduce la respuesta aprobada.
+6. Guarda la pregunta frecuente.
 
-El asistente utiliza tus preguntas frecuentes junto con sus otros conocimientos,
-por lo que una pregunta frecuente bien escrita lo orienta hacia la respuesta que
-prefieres para esa pregunta.
+## Importar preguntas frecuentes
 
-## Importa muchas preguntas frecuentes a la vez
+Prepara un archivo CSV con estas columnas:
 
-Si ya tienes una lista de preguntas y respuestas, puedes importarlas en bloque
-en lugar de escribirlas una por una.
+```csv
+question,answer
+When does enrollment close?,Enrollment closes on October 31.
+```
 
-1. Selecciona «Añadir una pregunta frecuente» y, a continuación, elige la opción
-   de importación.
-2. Proporciona tu archivo de preguntas y respuestas en el formato esperado.
-3. Confirma la importación.
+Importa el archivo a la colección requerida. Corrige las filas que no contengan
+ambos valores.
 
-Esta es la forma más rápida de crear un gran conjunto de preguntas frecuentes,
-por ejemplo, al trasladar el contenido de ayuda existente a Ciele.
+## Utiliza una respuesta rápida de preguntas frecuentes
 
-## Cuándo usar una sección de preguntas frecuentes
+Una respuesta rápida de preguntas frecuentes devuelve la respuesta seleccionada
+textualmente. No realiza ninguna llamada al modelo de chat e incluye la cita de
+la fuente de la FAQ.
 
-Las preguntas frecuentes son la herramienta adecuada cuando:
-
-- Una pregunta tiene una respuesta correcta que quieres que se use siempre.
-- La respuesta no aparece claramente en ningún otro lugar de tu base de
-  conocimientos.
-- Quieres dar forma al tono o a la redacción de un tema delicado.
-
-También puedes mostrar al instante una pregunta frecuente específica desde un
-[botón de inicio](/assistants/quick-replies), lo que ofrece a los visitantes una
-ruta de un solo toque a una respuesta habitual.
+Utiliza una respuesta rápida **Send Text** cuando el texto deba entrar en el
+enrutador normal de Flow en su lugar.

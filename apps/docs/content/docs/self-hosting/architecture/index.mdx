@@ -1,198 +1,39 @@
 ---
 title: Architecture
-description: A visual tour of how a Ciele deployment is put together — the applications, the database, the background workers, and the seams between them.
+description: Understand the current open-source components and their runtime boundaries.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele is a TypeScript monorepo with one Next.js product application, shared packages, Postgres, and optional workers.
 
-This section is for people who run Ciele on their own infrastructure or change
-its code. It draws the deployment as it actually is: which processes exist, what
-each one talks to, and where the boundaries are. The feature pages in the main
-[Documentation](/) describe what the product does; these pages describe how it is
-built.
+## Main boundaries
 
-<Callout title="Read the code when the two disagree">
-These diagrams are maintained alongside the source, but the source is the
-authority. Every page names the files it describes so you can check.
-</Callout>
-
-## The application at a glance
-
-Start here. This is the whole application in one picture — every major subsystem,
-and the direction requests travel through them. Each layer below is the subject of
-one of the pages in this section.
-
-<Mermaid
-  title="The application, layer by layer"
-  chart={`
+```mermaid
 flowchart TB
-  S["<b>Surfaces</b><br/>chat widget · admin console · embed and iframe"]
-  E["<b>Request handling</b><br/>session gate → server components (reads)<br/>server actions (writes) · route handlers (chat · cron)"]
-  G["<b>Authorization</b><br/>role → capability · one guard for every write"]
-  R["<b>Chat runtime</b><br/>flow router · action registry · agentic search"]
-  K["<b>Knowledge</b><br/>ingestion jobs · crawler matrix · chunking and embeddings"]
-  O["<b>Operations</b><br/>publishing · insights and exports · improvements and alerts"]
-  D["<b>Data layer</b><br/>one interface · two implementations"]
-  P[("<b>Postgres + pgvector</b><br/>row-level security")]
-  X["<b>External</b><br/>AI providers · sites you crawl · email · ticketing"]
+  UI["Administrator console and widget"]
+  API["Server actions and API v1"]
+  OPS["Shared operations"]
+  RUNTIME["Flow and agent runtime"]
+  DB["Database access"]
+  PG[("Postgres and storage")]
+  WORKERS["Optional workers"]
+  UI --> API
+  API --> OPS
+  API --> RUNTIME
+  OPS --> DB
+  RUNTIME --> DB
+  DB --> PG
+  RUNTIME --> WORKERS
+```
 
-  S --> E --> G --> R
-  E --> D
-  R --> K
-  R --> O
-  R --> D
-  K --> D
-  O --> D
-  D --> P
-  R --> X
-  K --> X
-  O --> X
-`}
-/>
+The Flow router remains authoritative. A model can classify intent, generate selected actions, and call registered tools.
 
-Read it top to bottom. **Surfaces** are the only things a browser touches.
-**Request handling** splits reads from writes: pages read, actions write, and route
-handlers carry chat and scheduled work. **Authorization** is one guard that every
-organization-scoped write passes through. The **chat runtime**, **knowledge**, and
-**operations** bands are where behaviour lives. Everything reaches Postgres through
-a single **data layer** interface — never directly.
+The model cannot replace Flow order, objective conditions, action configuration, Organization authorization, or network egress checks.
 
-What the diagram leaves out is as informative as what it shows. No surface reaches
-the runtime or the database on its own, nothing writes without crossing the guard,
-and only the middle three bands ever talk to the outside world.
+## Read the architecture
 
-## The whole deployment, in one picture
-
-That is the software. This is what you actually run: one Next.js application, one
-Postgres database, and a handful of scheduled jobs. Everything else is optional.
-
-<Mermaid
-  title="A self-hosted deployment and its external dependencies"
-  chart={`
-flowchart TB
-  V["Visitor<br/>widget on your site"]
-  M["Member<br/>admin console"]
-
-  subgraph app["Your deployment"]
-    direction TB
-    W["<b>apps/web</b><br/>console · widget · API"]
-    C["Scheduled jobs<br/>/api/cron/*"]
-    K["Workers<br/>services/ · optional"]
-  end
-
-  PG[("Postgres + pgvector<br/>Auth · RLS · Storage")]
-  AI["AI providers"]
-  SITE["Sites you crawl"]
-  MAIL["Email"]
-
-  V -->|"embed script"| W
-  M -->|"signed in"| W
-  W --> PG
-  C --> PG
-  K --> PG
-  W --> AI
-  W --> SITE
-  W --> MAIL
-`}
-/>
-
-The application is deliberately boring to operate: it is a standard Next.js
-server, it keeps no state of its own, and every piece of durable data lives in
-Postgres. Scale it by running more copies.
-
-## The processes
-
-| Process | What it is | Required |
-|---|---|---|
-| **Web app** | The admin console, the public chat widget, and the HTTP API, in one Next.js application | Yes |
-| **Postgres** | Every row of durable data, with row-level security and pgvector for retrieval | Yes |
-| **Scheduled jobs** | HTTP endpoints under `/api/cron/*` invoked on a timer — crawl finalization, recrawl sweeps, exports, usage rollup, goal checks | Recommended |
-| **Docs site** | This documentation, a separate Next.js app | No |
-| **Workers** | Containers under `services/` for heavier crawling and graph work | No |
-
-The [Docker Compose stack](/self-hosting/installation) wires the first three
-together by default and leaves the workers behind an opt-in profile.
-
-## Two boundaries the tooling enforces
-
-Most of the codebase is ordinary application code you can read top to bottom.
-Two modules are different: their public surface is enforced, so you can rely on
-it and change everything behind it.
-
-<Mermaid
-  title="The two enforced module boundaries"
-  chart={`
-flowchart TB
-  UI["Console pages · API routes<br/>server actions"]
-
-  subgraph rt["Chat runtime"]
-    direction TB
-    RTB["Two entry points:<br/>server barrel · client barrel"]
-    RTI["Internals: router, actions,<br/>retrieval, crawlers, embeddings"]
-    RTB --> RTI
-  end
-
-  subgraph db["Data layer"]
-    direction TB
-    DBI["One interface<br/>every query in the app"]
-    IMPL1["Postgres"]
-    IMPL2["In-memory"]
-    DBI --> IMPL1
-    DBI --> IMPL2
-  end
-
-  UI --> RTB
-  UI --> DBI
-  RTI --> DBI
-  UI -.->|"lint error"| RTI
-`}
-/>
-
-- **The data layer** is one interface with two implementations. The real one
-  talks to Postgres under row-level security; the in-memory one lets the whole
-  application boot with no database at all, which is how a fresh checkout runs
-  with zero configuration. One shared test suite runs against both, so they
-  cannot drift.
-- **The chat runtime** exposes exactly two entry points — a server barrel and a
-  client-safe barrel — and a lint rule rejects imports that reach past them. A
-  test locks the exported surface, so widening it is a deliberate act rather than
-  an accident.
-
-Both boundaries exist for the same reason: they are the parts most likely to be
-replaced, and the parts where a leak would spread furthest.
-
-## Where to go next
-
-<Cards>
-  <Card
-    title="Repository map"
-    href="/self-hosting/architecture/repository-map"
-    description="The directory layout, how the workspaces depend on each other, and which modules carry the most weight."
-  />
-  <Card
-    title="Request flows"
-    href="/self-hosting/architecture/request-flows"
-    description="What happens on a visitor's chat message and on an administrator's edit, step by step."
-  />
-  <Card
-    title="The chat runtime"
-    href="/self-hosting/architecture/chat-runtime"
-    description="Flow routing, the action registry, and the retrieval loop behind an answer."
-  />
-  <Card
-    title="The agentic model"
-    href="/self-hosting/architecture/agentic-model"
-    description="How a model is chosen, what it is allowed to decide, the budgets that bound it, and the loop that grades it."
-  />
-  <Card
-    title="Knowledge pipeline"
-    href="/self-hosting/architecture/knowledge-pipeline"
-    description="How a source becomes searchable text, and how an answer earns its citations."
-  />
-  <Card
-    title="Data model"
-    href="/self-hosting/architecture/data-model"
-    description="The tables, how tenants are isolated, and how migrations are applied."
-  />
-</Cards>
+- [Repository map](/self-hosting/architecture/repository-map) locates code ownership.
+- [Request flows](/self-hosting/architecture/request-flows) traces console, API, and widget requests.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) explains triggers, routing, and actions.
+- [Agentic model](/self-hosting/architecture/agentic-model) explains model and tool execution.
+- [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explains ingestion and retrieval.
+- [Data model](/self-hosting/architecture/data-model) explains tenant and Conversation relationships.

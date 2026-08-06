@@ -1,164 +1,42 @@
 ---
 title: Repository map
-description: The directory layout of the monorepo, how the workspaces depend on each other, and which modules carry the most of the codebase's weight.
+description: Locate the current open-source application, packages, workers, schema, and deployment files.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Files, Folder, File } from 'fumadocs-ui/components/files';
+## Applications
 
-Ciele is a pnpm workspace monorepo driven by Turbo. Two Next.js applications, three
-shared packages, the database migrations, the container stack, and the worker
-images.
+| Path | Responsibility |
+| --- | --- |
+| `apps/web` | Administrator console, widget runtime, public pages, server actions, and API v1. |
+| `apps/docs` | Fumadocs documentation application and translation pipeline. |
 
-## The tree
+## Shared packages
 
-<Files>
-  <Folder name="apps" defaultOpen>
-    <Folder name="web" defaultOpen>
-      <File name="src/app/(admin)/ — the authenticated console" />
-      <File name="src/app/widget/ — the public chat page" />
-      <File name="src/app/api/ — widget, preview, and cron endpoints" />
-      <File name="src/app/actions.ts — every mutation, one file" />
-      <File name="src/components/ — console, editor, chat, and widget UI" />
-      <File name="src/lib/runtime/ — the chat runtime (enforced module)" />
-      <File name="src/lib/ — auth, authorization, data access, exports" />
-      <File name="src/middleware.ts — the authentication gate" />
-    </Folder>
-    <Folder name="docs">
-      <File name="content/docs/ — this documentation, as MDX" />
-      <File name="src/ — the Fumadocs site" />
-    </Folder>
-  </Folder>
-  <Folder name="packages" defaultOpen>
-    <Folder name="db">
-      <File name="src/types.ts — domain types and the data interface" />
-      <File name="src/supabase.ts — the Postgres implementation" />
-      <File name="src/mock.ts — the in-memory implementation" />
-      <File name="src/engine.ts — the keyword router fallback" />
-      <File name="src/db-contract.suite.ts — one suite, both implementations" />
-    </Folder>
-    <Folder name="ui">
-      <File name="shared primitives, used by both apps" />
-    </Folder>
-    <Folder name="charts">
-      <File name="chart and metric components" />
-    </Folder>
-  </Folder>
-  <Folder name="supabase" defaultOpen>
-    <File name="migrations/ — the schema, applied in filename order" />
-    <File name="seed.sql — demo data" />
-  </Folder>
-  <Folder name="deploy">
-    <File name="docker-compose.yml — the self-host stack" />
-    <File name="bootstrap.sh — generates secrets and starts everything" />
-  </Folder>
-  <Folder name="services">
-    <File name="crawl4ai-worker/ — browser-rendered crawling" />
-    <File name="graph-worker/ — knowledge-graph processing" />
-  </Folder>
-  <Folder name="docs">
-    <File name="ARCHITECTURE.md, adr/, runbooks/ — engineering notes" />
-  </Folder>
-</Files>
+| Path | Responsibility |
+| --- | --- |
+| `packages/core` | Domain types, pure Flow rules, defaults, conditions, and analytics logic. |
+| `packages/db` | Persistence interfaces, mock storage, and Supabase implementation. |
+| `packages/agent` | Turn execution, model providers, Knowledge tools, ingestion, and evaluation. |
+| `packages/ops` | Shared Organization operations used by console actions and API v1. |
+| `packages/client` | Typed client for API v1. |
+| `packages/cli` | Terminal interface over the typed client. |
+| `packages/mcp` | Seven-tool local MCP adapter over the typed client. |
+| `packages/ui` | Shared user-interface components. |
+| `packages/charts` | Shared analytics visualizations. |
 
-<Callout title="Enterprise code is not in an open-source checkout">
-A small set of managed-service features lives under dedicated paths that are
-removed when the public tree is assembled, so an open-source checkout simply does
-not contain them — nor the database migrations that belong to them. See
-[The open-core boundary](/self-hosting/open-core-boundary).
-</Callout>
+## Services and infrastructure
 
-## How the workspaces depend on each other
+| Path | Responsibility |
+| --- | --- |
+| `services/graph-worker` | Optional graph extraction and retrieval service. |
+| `services/crawl4ai` | Optional JavaScript-rendering crawler configuration. |
+| `supabase/migrations` | Ordered database schema changes. |
+| `deploy` | Single-host Docker Compose deployment and bootstrap scripts. |
 
-The dependency graph is shallow on purpose. Nothing shared depends on an
-application, and the data package depends on nothing internal at all — which is
-what lets its test suite run in isolation.
+## Dependency direction
 
-<Mermaid
-  title="Workspace dependencies (arrows point at the dependency)"
-  chart={`
-flowchart BT
-  WEB["apps/web<br/>console · widget · API"]
-  DOCS["apps/docs<br/>documentation site"]
-  DB["packages/db<br/>data interface + two implementations"]
-  UI["packages/ui<br/>shared primitives"]
-  CH["packages/charts<br/>chart components"]
-  SQL[("supabase/migrations<br/>the schema")]
+Pure rules belong in `packages/core`. Persistence behavior belongs in `packages/db`.
 
-  WEB --> DB
-  WEB --> UI
-  DOCS --> UI
-  DB -.->|"must match"| SQL
-`}
-/>
+Reusable mutations belong in `packages/ops`. Model and retrieval behavior belongs in `packages/agent`.
 
-`packages/charts` is consumed by the managed operations console, which is outside
-the open-source tree; it ships in the workspace but nothing in an open-source
-checkout imports it.
-
-## Inside the web application
-
-The application layers cleanly: routes read through a request-scoped data handle,
-mutations funnel through a single authorization guard, and everything generative
-sits behind the runtime module.
-
-<Mermaid
-  title="Layers inside apps/web"
-  chart={`
-flowchart TB
-  MW["middleware.ts + lib/auth.ts<br/>session gate — who is this?"]
-
-  MW --> RSC["Server Components<br/>app/(admin)/** — reads"]
-  MW --> ACT["Server Actions<br/>app/actions.ts — writes"]
-  MW --> API["Route handlers<br/>app/api/** — chat · cron"]
-
-  ACT --> AZ["lib/authz.ts + lib/rbac.ts<br/>may they do this?"]
-  API --> RT["lib/runtime/<br/>chat · retrieval · crawling · jobs"]
-  ACT --> RT
-
-  RSC --> DATA["lib/data.ts<br/>request-scoped data handle"]
-  AZ --> DATA
-  RT --> DATA
-  DATA --> PG[("Postgres<br/>row-level security")]
-`}
-/>
-
-Three properties follow from this shape, and they are worth knowing before you
-change anything:
-
-- **There is no client-side write path.** Browsers call server actions; server
-  actions mutate. Adding a mutation means adding an action, not an endpoint.
-- **Every organization-scoped mutation starts at one guard.** The authorization
-  check is a single function, so changing the role model touches two files rather
-  than every call site.
-- **Reads carry the caller's identity into Postgres**, so row-level security
-  applies to them. Tenant isolation is enforced in the database as well as in the
-  application.
-
-## Where the weight sits
-
-The numbers below come from a static analysis of the application's own source —
-symbols and the imports and calls between them — aggregated per area. They are a
-rough measure of how connected each area is, which is a good proxy for "how much
-of the system will notice if I change this".
-
-| Area | Relative connectedness | What lives there |
-|---|---:|---|
-| `lib/runtime/` | ●●●●●●●●●● | Routing, actions, retrieval, crawling, embeddings, jobs |
-| `components/ui/` | ●●●●● | Shared primitives, used from everywhere |
-| `components/assistant/` | ●● | The assistant editor: general, knowledge, flows, publish |
-| `app/actions.ts` | ●● | Every mutation in the product, in one file |
-| `app/(admin)/` | ●● | The console's pages |
-| `app/api/` | ● | Widget, preview, and cron endpoints |
-
-Two entries deserve comment. `lib/runtime/` is by a wide margin the densest part
-of the codebase — it is where nearly all behaviour lives, which is exactly why its
-public surface is locked. And `app/actions.ts` is the single most connected
-*file*: it is a deliberate seam rather than an accident, since one mutation
-surface is what makes "every mutation is authorized" checkable.
-
-<Callout title="Reproducing this yourself">
-Any call-graph tool over `apps/web/src` will show the same shape. The point of
-the table is the ordering, not the exact figures — treat it as a map of where to
-tread carefully.
-</Callout>
+Surface adapters in `apps/web`, `packages/cli`, and `packages/mcp` must not create separate domain behavior.

@@ -1,0 +1,47 @@
+---
+title: Obiettivi
+description: Pianifica controlli ripetibili per le risposte importanti dell'Assistente.
+---
+
+Un Goal pone una domanda ricorrente e confronta la risposta con aspettative
+deterministiche. Un obiettivo non raggiunto genera un avviso.
+
+## Crea un obiettivo
+
+1. Apri un Assistente.
+2. Seleziona **Goals**.
+3. Seleziona **Create Goal**.
+4. Inserisci la domanda che Ciele deve porre.
+5. Aggiungi una o più aspettative.
+6. Salva l'obiettivo.
+
+## Aspettative disponibili
+
+| Aspettativa | Verifica |
+| --- | --- |
+| Deve citare una fonte | La risposta contiene almeno una citazione di una fonte. |
+| L'URL citato contiene | Un URL citato contiene il testo configurato. |
+| La risposta contiene | La risposta contiene ogni frammento di testo configurato. |
+| Risposta non di fallback | Il runtime non ha restituito il suo risultato di fallback. |
+
+Ciele verifica sempre la presenza di una risposta non di fallback. Altre
+aspettative dipendono dalla configurazione dell'obiettivo.
+
+## Stato dell'obiettivo
+
+Un Goal attivo viene eseguito secondo la sua pianificazione. Ciele può mettere
+in quarantena un Obiettivo dopo ripetuti problemi di esecuzione.
+
+Un Goal in quarantena non prosegue con la sua normale pianificazione. Rivedi
+l'obiettivo e il relativo avviso prima di riattivarlo.
+
+## Esamina un errore
+
+1. Apri **Alerts**.
+2. Seleziona l'errore dell'obiettivo.
+3. Rivedi la risposta e l'aspettativa non soddisfatta.
+4. Correggi la Conoscenza, il Flusso o l'Obiettivo.
+5. Esegui nuovamente l'obiettivo.
+
+Gli obiettivi utilizzano controlli esatti. Non utilizzano un valutatore di
+modelli aperto.

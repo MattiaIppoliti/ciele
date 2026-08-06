@@ -1,61 +1,33 @@
 ---
-title: Resumen de la autenticación
-description: Exige a los visitantes que inicien sesión antes de chatear y personaliza las respuestas con su perfil.
+title: Autenticación de visitantes
+description: Requerir el inicio de sesión de Microsoft Entra para que un Visitante pueda usar un Asistente.
 ---
 
-De forma predeterminada, un asistente está abierto a cualquier persona que pueda
-acceder a la página en la que se encuentra. Cuando necesites saber quién está al
-otro lado de la conversación, puedes conectar tu proveedor de identidad y exigir
-que las personas inicien sesión antes de chatear. Esto permite que el asistente
-confirme quién es una persona, se adapte a su rol y personalice las respuestas
-con detalles de su perfil.
+La autenticación de visitantes es opcional. Los visitantes anónimos reciben un
+ID de visitante persistente del almacenamiento local de la página de
+alojamiento.
 
-Puedes configurar esto para cada asistente. Abre un asistente y luego selecciona
-**Authentication**.
+El producto actual admite una conexión de Microsoft Entra a nivel de
+organización. Un Asistente puede requerir esa conexión antes de que comience el
+chat.
 
-## Qué obtienes al conectar un proveedor de identidad
+## Límite de identidad actual
 
-- **Sign in before chat.** Los visitantes ven una tarjeta **Connect Your
-  Account** en el widget y solo pueden continuar después de iniciar sesión con
-  tu proveedor de identidad.
-- **Roles and groups.** Los grupos a los que pertenece una persona pueden
-  incorporarse a la conversación, por lo que un [flujo](/flows/building-a-flow)
-  puede tratar a un miembro de forma diferente a un visitante anónimo.
-- **Personalized answers.** El asistente tiene acceso a los datos del perfil,
-  como el nombre, por lo que puede dirigirse directamente a la persona en sus
-  respuestas.
+Ciele solicita el ámbito `openid` y valida el token de ID devuelto. La identidad
+autenticada utiliza el identificador de sujeto del token.
 
-<Callout title="Single sign-on, one connection">
-The connection uses OpenID Connect, the standard behind most single sign-on
-setups. Once your identity provider is connected, people sign in with the account
-they already use, and no separate password is created for the assistant.
-</Callout>
+La conexión actual no importa campos de perfil, correo electrónico, grupos ni
+roles de aplicación. No personaliza las respuestas a partir de esos atributos.
 
-## Dos ajustes relacionados
+## Requerir inicio de sesión
 
-- **Authentication** conecta al proveedor de identidad que controla el acceso al
-  chat. Esto es lo que explican las guías de esta sección.
-- **User data** te permite importar datos de cada persona para que el asistente
-  pueda incluirlos en las respuestas, al estilo de la combinación de
-  correspondencia. Úsalo cuando quieras respuestas que hagan referencia a la
-  información personal de alguien.
+1. Configura Microsoft Entra en los ajustes de la organización.
+2. Abre el Asistente.
+3. Selecciona **Authentication**.
+4. Habilita el requisito de inicio de sesión.
+5. Guarda el borrador.
+6. Prueba el flujo de inicio de sesión en Vista previa.
+7. Publica el Asistente.
 
-## Guías
-
-<Cards>
-  <Card
-    title="Conecta Microsoft Entra ID"
-    href="/authentication/microsoft-entra-id"
-    description="Registra una aplicación en Microsoft Entra y exige iniciar sesión antes de chatear."
-  />
-</Cards>
-
-## Después de conectarte
-
-- Abre la vista previa del widget y confirma que aparece la tarjeta **Connect
-  Your Account**.
-- Inicia sesión con una cuenta de prueba y comprueba que la conversación
-  continúa.
-- Si utilizas roles, confirma que un [flujo](/flows/building-a-flow) que
-  compruebe el rol del usuario se comporta como esperas para las personas que
-  han iniciado sesión.
+La puerta de autenticación utiliza una cookie cifrada de la organización. La
+sesión caduca después de 12 horas.

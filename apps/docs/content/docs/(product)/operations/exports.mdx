@@ -1,0 +1,35 @@
+---
+title: Exports
+description: Create and download structured Conversation exports.
+---
+
+Exports create downloadable records for selected Conversations. Ciele builds the export as a background job.
+
+## Create an export
+
+1. Open **Insights**.
+2. Select **Exports**.
+3. Select the Conversations or available export scope.
+4. Start the export.
+5. Wait until the job status is ready.
+6. Download the file before its link expires.
+
+The download uses a time-limited signed URL. Start a new export when the link is no longer valid.
+
+## Export content
+
+Each Conversation record uses the current 29-field export format. The record includes conversation, Assistant, visitor, session, and outcome information.
+
+Reasoning details depend on the API-key or member Role. A lower Role cannot request hidden reasoning through an export option.
+
+## API and CLI access
+
+The API accepts selected Conversation IDs at `POST /api/v1/conversations/export`.
+
+The CLI can write the same record shape to a file:
+
+```bash
+ciele conversations export <conversation-id> --out export.json
+```
+
+The MCP `read_inbox` tool can also request an export. This tool is always read-only.

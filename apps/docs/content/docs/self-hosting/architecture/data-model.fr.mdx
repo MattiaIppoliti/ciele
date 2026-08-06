@@ -1,200 +1,60 @@
 ---
 title: Modèle de données
-description: Les tables et leurs relations, la manière dont les lignes d'une organisation sont séparées de celles d'une autre, et la façon dont le schéma est appliqué à une base de données.
+description: Comprenez les relations entre le locataire principal, la configuration, la connaissance et la conversation.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Propriété du locataire
 
-Chaque octet durable réside dans Postgres. Il existe une quarantaine de tables,
-et presque toutes sont rattachées à l'une des deux ancres suivantes : une
-**organisation** ou un **assistant**. Apprenez ces deux piliers et le reste du
-schéma suivra.
+Une organisation est le locataire principal. Les membres rejoignent une
+organisation avec un seul rôle.
 
-## Les deux ancres
+Les enregistrements appartenant à l'organisation comprennent les assistants, les
+centres d'assistance, les connexions aux fournisseurs, les clés API, les
+compétences, les améliorations, les objectifs, les alertes et les
+enregistrements d'utilisation.
 
-Presque toutes les tables sont accessibles depuis une organisation. Voici les
-lignes qu'une organisation possède directement :
+## Configuration de l'assistant
 
-<Mermaid
-  title="Ce qu'une organisation possède (chaque flèche est une relation un-à-plusieurs)"
-  chart={`
-flowchart LR
-  O["organizations"]
-  P["profiles"]
-  OM["organization_members"]
-  OI["organization_invites"]
-  A["assistants"]
-  KC["knowledge_collections"]
-  PC["provider_connections"]
-  HD["help_desks"]
-  SC["support_channels"]
+```mermaid
+erDiagram
+  ORGANIZATION ||--o{ ASSISTANT : owns
+  ASSISTANT ||--o{ FLOW : routes
+  ASSISTANT ||--o{ PUBLICATION : snapshots
+  ASSISTANT ||--o{ COLLECTION : knows
+  COLLECTION ||--o{ SOURCE : contains
+  SOURCE ||--o{ CONCEPT : produces
+  ASSISTANT ||--o{ CONVERSATION : serves
+  CONVERSATION ||--o{ MESSAGE : stores
+```
 
-  O --> OM
-  P --> OM
-  O --> OI
-  O --> A
-  O --> KC
-  O --> PC
-  O --> HD --> SC
-`}
-/>
+Une Publication stocke un instantané immuable de la configuration de
+l'Assistant. Les enregistrements en brouillon restent modifiables après leur
+publication.
 
-Et voici la chaîne qu'il vaut mieux connaître par cœur : le chemin qui mène d'un
-assistant à une citation, et d'une réponse à un élément d'évaluation :
+Un flux stocke un déclencheur, une configuration de condition et des actions
+ordonnées. La validation à l'exécution impose des paires valides de déclencheurs
+et d'actions.
 
-<Mermaid
-  title="D'un assistant à une réponse citée, et d'une réponse à un élément d'évaluation"
-  chart={`
-flowchart TB
-  A["assistants"]
-  F["flows"]
-  PB["publications"]
-  CV["conversations"]
-  MS["messages"]
-  IM["improvement_messages"]
-  IMP["improvements"]
+## Données de conversation
 
-  A -->|"routes with"| F
-  A -->|"snapshots into"| PB
-  A -->|"answers in"| CV
-  CV -->|"contains"| MS
-  MS -->|"flagged in"| IM
-  IMP -->|"collects"| IM
+Une Conversation appartient à l'Assistant en service et suit une session
+Visiteur. Les messages stockent des éléments typés pour le texte, les citations,
+les boutons, les traces et d'autres réponses.
 
-  KC["knowledge_collections"]
-  S["sources"]
-  C["concepts"]
-  CH["concept_chunks"]
+L'état de la session enregistre également la livraison de notifications
+proactives. Une notification ne crée pas de message visiteur.
 
-  KC -->|"gathers"| S
-  S -->|"enriches into"| C
-  C -->|"splits into"| CH
-`}
-/>
+## Identifiants programmatiques
 
-Les deux chaînes se rejoignent au niveau de la récupération plutôt que par le
-biais d'une clé étrangère : un fragment est résolu en son concept et sa source,
-et ceux-ci deviennent les citations d'un message (voir
-[Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline)).
+Un enregistrement de clé API appartient à une organisation et stocke un hachage
+secret, un rôle, un créateur et un état de révocation. Le secret en texte clair
+n'est pas stocké.
 
-Les lignes de contenu utilisent une clé primaire de type texte court plutôt
-qu'un UUID. C'est pourquoi l'identifiant d'un assistant est lisible et copiable
-dans la console. Les tables d'organisation, de membre et d'invitation utilisent
-des UUID Postgres.
+## Isolement
 
-## L'ensemble du schéma, par domaine
+L'accès authentifié à la console utilise la sécurité au niveau des lignes, le
+cas échéant. Les chemins d'accès des rôles de service doivent ajouter une limite
+explicite d'organisation.
 
-| Domaine | Tables | Ce qu'il contient |
-|---|---|---|
-| **Tenancy and identity** | `organizations`, `organization_members`, `organization_invites`, `profiles`, `sso_connections`, `platform_settings` | Les organisations, leurs membres et les invitations en attente, ainsi qu'un miroir de la table des utilisateurs d'authentification à laquelle les politiques peuvent être jointes |
-| **Assistants and routing** | `assistants`, `flows`, `publications`, `assistant_access`, `assistant_skills`, `skills`, `assistant_goals`, `assistant_goal_runs`, `flow_trust`, `flow_trust_events` | Configuration de l'assistant, ses flux et les instantanés immuables fournis par le widget ; ainsi que les outils, les compétences partagées et les objectifs |
-| **Knowledge and retrieval** | `knowledge_collections`, `sources`, `concepts`, `concept_chunks` | Les collections, les sources qu'elles contiennent, les concepts que chaque source devient, et les blocs incorporés qui permettent la recherche inversée |
-| **Conversations** | `conversations`, `messages`, `runtime_events` | Chaque conversation et chaque message, avec le flux qui a produit chaque réponse et les événements d'exécution sous-jacents |
-| **Answer quality** | `improvements`, `improvement_counters`, `improvement_messages`, `improvement_proposals`, `answer_verdicts`, `answer_verifier_claims`, `compost_runs`, `compost_claims` | Le suivi des améliorations, sa numérotation par organisation, les propositions et la vérification des réponses |
-| **Escalation** | `help_desks`, `support_channels` | Les centres d'assistance et leurs canaux de support écrits |
-| **Operations** | `alerts`, `background_jobs`, `export_jobs`, `ai_usage`, `usage_daily`, `org_budgets` | Alertes d'intégrité, tâches en arrière-plan en file d'attente, fichiers d'exportation et comptabilité d'utilisation |
-| **Provider access** | `provider_connections`, `local_connector_devices`, `local_connector_pairings`, `local_inference_jobs` | Connexions aux fournisseurs et enregistrements relatifs à l'accès aux modèles exécutés localement |
-
-## Comment les locataires restent séparés
-
-L'isolement est appliqué deux fois, délibérément. L'application vérifie les
-capacités avant une mutation, et la base de données refuse les lignes
-extérieures à l'organisation de l'appelant, quelle que soit la demande de
-l'application.
-
-<Mermaid
-  title="Deux portes indépendantes sur la même ligne"
-  chart={`
-flowchart TB
-  REQ["A request"]
-  APP{"Application:<br/>does this role have<br/>the capability?"}
-  SQL{"Postgres:<br/>is the caller a member<br/>of this row's organization?"}
-  ROW[("The row")]
-  NO1["Rejected in the action"]
-  NO2["Invisible to the query"]
-
-  REQ --> APP
-  APP -->|"no"| NO1
-  APP -->|"yes"| SQL
-  SQL -->|"no"| NO2
-  SQL -->|"yes"| ROW
-`}
-/>
-
-La sécurité au niveau des lignes est activée pour chaque table. Les membres
-peuvent lire au sein de leur organisation, les éditeurs et les rôles supérieurs
-peuvent créer et mettre à jour, et les administrateurs et les rôles supérieurs
-peuvent supprimer. Les écritures qui ne doivent pas être falsifiables — un
-compteur monotone, par exemple — passent par des fonctions qui s'exécutent avec
-des droits élevés plutôt que par une politique qui devrait faire confiance à
-l'appelant.
-
-Les fonctions d'assistance appelées par les politiques se trouvent dans un
-schéma privé, et non dans le schéma public. Elles ne font donc pas partie de
-l'interface API exposée par la base de données.
-
-### Secrets
-
-Deux types de valeurs sont chiffrées par l'application avant d'atteindre
-Postgres : les clés API des fournisseurs et les identifiants d'intégration de la
-billetterie. Elles sont scellées avec un chiffrement authentifié utilisant une
-clé de l'environnement, de sorte que la base de données ne contient jamais que
-du texte chiffré et qu'une copie de la base de données ne divulgue pas les
-informations d'identification.
-
-<Callout title="Set the encryption key before storing any credential">
-The key comes from configuration, not from the database. Rotating it without
-re-sealing existing rows makes them unreadable — see
-[Configuration](/self-hosting/configuration).
-</Callout>
-
-## Comment le schéma est appliqué
-
-Les migrations sont de simples fichiers SQL appliqués dans l'ordre des noms de
-fichiers. Elles ne sont **pas** appliquées manuellement, ni avec la commande
-push de la CLI Supabase : l'historique en direct de ce projet a été en partie
-écrit hors bande, avec des noms et des préfixes numériques en double que
-l'historique à clé de version de la CLI ne peut pas représenter.
-
-<Mermaid
-  title="L'applicateur de migration"
-  chart={`
-flowchart TB
-  START["Run the applier<br/>against a database URL"]
-  LOCK["Take an advisory lock<br/>so concurrent runs are safe"]
-  LIST["List migration files<br/>in filename order"]
-  BASE{"Listed in the<br/>baseline file?"}
-  RECORD["Record it without running it"]
-  LEDGER{"Already in<br/>the ledger?"}
-  SKIP["Skip"]
-  TX["Run it in its own transaction —<br/>which also writes the ledger row"]
-  FAIL["Failed: no ledger row,<br/>so the next run retries it"]
-  EE["Then the enterprise chain,<br/>where one exists"]
-
-  START --> LOCK --> LIST --> BASE
-  BASE -->|"yes"| RECORD
-  BASE -->|"no"| LEDGER
-  LEDGER -->|"yes"| SKIP
-  LEDGER -->|"no"| TX
-  TX -->|"error"| FAIL
-  TX --> EE
-`}
-/>
-
-Les propriétés qui comptent sur le plan opérationnel :
-
-- **The ledger is keyed by filename**, dans un schéma privé. Ce qui a été
-  exécuté est un fait dans la base de données, et non une hypothèse.
-- **Each migration is its own transaction**, et cette transaction écrit la ligne
-  du registre. Une migration qui échoue ne laisse aucune trace ; par conséquent,
-  une nouvelle exécution de l'appliquer relance exactement la même opération.
-- **Concurrent runs are safe**, via un verrouillage consultatif et une nouvelle
-  vérification à l'intérieur de la transaction.
-- **New migrations use a timestamp prefix** et se retrouvent dans la même
-  modification que le code qui en a besoin.
-- **The enterprise chain, where present, is applied strictly after the whole
-  open-source chain** et utilise le même registre. Une extraction open source ne
-  dispose pas d'un tel répertoire et applique uniquement la chaîne open source.
-
-Consultez [Database](/self-hosting/database) pour exécuter ceci sur votre propre
-Postgres.
+L'API v1 utilise l'organisation résolue à partir de la clé API. Elle n'accepte
+pas une organisation sélectionnée par l'appelant comme autorité.

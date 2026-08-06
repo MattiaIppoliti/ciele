@@ -1,49 +1,37 @@
 ---
 title: Nutzung und Limits
-description: Wie Ciele Cloud die monatliche Nutzung mit dem Kontingent Ihres Plans abgleicht und was passiert, wenn Sie die Obergrenze erreichen.
+description: Überprüfen Sie die aktuelle Nutzung von KI, Einbettung und Scraping anhand der aktuellen Limits.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Öffnen Sie **Settings > Usage**. Die Seite zeigt die verfügbaren Nutzungsdaten
+der letzten 30 Tage an.
 
-<Callout title="Ciele Cloud only">
-Usage metering and enforced limits are part of the managed edition. A self-hosted
-open-source deployment has no usage caps — its capacity is bounded only by the
-infrastructure and AI provider keys you configure.
-</Callout>
+## Nutzungszähler
 
-Jedes Ciele-Cloud-Paket beinhaltet ein monatliches Nutzungsvolumen. Ciele misst
-die Nutzung Ihrer Organisation während der laufenden Konversationen und
-vergleicht sie mit dem Kontingent Ihres Plans, sodass es keine Überraschungen
-gibt und keine manuelle Zählung erforderlich ist.
+Ciele misst diese Ressourcengruppen separat:
 
-## Was als Nutzung gilt
+- Nutzung von KI-Modellen
+- Nutzung von Einbettungen
+- Scraping-Nutzung
 
-Die Nutzung wird anhand der KI-Arbeit gemessen, die Ihre Assistenten im Namen
-Ihrer Besucher erledigen – hauptsächlich anhand der Antworten, die die
-Assistenten generieren. Die Konsole zeigt Ihre aktuelle Nutzung für den
-Abrechnungszeitraum an, sodass Sie immer wissen, wo Sie stehen.
+Die Seite gibt an, ob die Operation mit Ciele-Plattform-Finanzierung oder mit
+Anmeldeinformationen der Organisation finanziert wurde.
 
-## Ihre Nutzung im Blick behalten
+Credits stellen die geschätzten Kosten in Cent dar. Sie stellen keine Zählung
+der Antworten des Assistenten dar.
 
-Sie können die Nutzung für den aktuellen Zeitraum jederzeit in der Konsole
-einsehen. Behalten Sie sie im Blick, wenn Sie eine Kampagne durchführen, einen
-neuen Assistenten starten oder anderweitig einen Anstieg erwarten, damit Sie zu
-einem größeren [Plan](/cloud/plans-and-billing) wechseln können, bevor Ihr
-Kontingent aufgebraucht ist.
+## Limits
 
-## Erreichen der Obergrenze
+Die Seite vergleicht die aktuelle Nutzung mit den verfügbaren Planlimits. Sie
+kann auch das Tagesbudget der Organisation anzeigen.
 
-Wenn sich Ihre Nutzung dem im Plan festgelegten Kontingent nähert, zeigt Ciele
-dies in der Konsole an. Wenn das Kontingent erreicht ist, gilt für den Rest des
-Abrechnungszeitraums die Obergrenze des Plans. Durch ein Upgrade auf einen Plan
-mit einem größeren Kontingent wird die Kapazität sofort wiederhergestellt.
-Andernfalls wird das Kontingent zu Beginn des nächsten Abrechnungszeitraums
-zurückgesetzt.
+In den Tageszeilen wird die koordinierte Weltzeit (UTC) verwendet. Verwenden Sie
+diese Grenze, wenn Sie Ciele-Daten mit einer Anbieterrechnung vergleichen.
 
-## Effiziente Nutzung beibehalten
+## Untersuchen Sie unerwartete Nutzung
 
-Die gleichen Praktiken, die Antworten verbessern, sorgen auch für eine
-effiziente Nutzung: fokussiertes [Wissen](/knowledge), damit die Abfrage
-zielgerichtet bleibt, [Flows](/flows), die häufige Fragen direkt bearbeiten, und
-[Helpdesks](/help-desks), die sauber übergeben, wenn ein Mensch der richtige
-nächste Schritt ist.
+1. Wählen Sie den betroffenen Zähler aus.
+2. Identifizieren Sie den UTC-Tag und die Finanzierungsquelle.
+3. Überprüfen Sie die Aktivitäten des Assistenten für denselben Zeitraum.
+4. Überprüfen Sie die Verbindung zum ausgewählten Anbieter.
+5. Passen Sie das Budget der Organisation an, wenn Sie dazu berechtigt sind.

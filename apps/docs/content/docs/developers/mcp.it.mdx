@@ -1,0 +1,55 @@
+---
+title: Server Ciele MCP
+description: Concedi a un client MCP l'accesso controllato alle operazioni di amministrazione di Ciele.
+---
+
+Il server Ciele Model Context Protocol (MCP) è un processo `stdio` locale.
+Chiama l'API Ciele tramite il client di tipo.
+
+## Requisiti
+
+- Utilizza Node.js 22.6 o versioni successive.
+- Clona il repository Ciele.
+- Crea una [chiave API dell'organizzazione](/developers/api-keys).
+- Utilizza un client MCP in grado di avviare un server `stdio` locale.
+
+Avvia questo programma dal repository:
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+## Variabili di ambiente
+
+| Variabile | Requisito | Scopo |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Obbligatorio | Autentica l'organizzazione. |
+| `CIELE_BASE_URL` | Opzionale | Seleziona un'origine self-hosted. |
+| `CIELE_MCP_READ_ONLY` | Opzionale | Rifiuta le azioni di modifica quando il valore è `1`. |
+
+Il controllo di sola lettura avviene all'interno del processo MCP. Una modifica
+rifiutata non genera una richiesta API.
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Strumenti disponibili
+
+| Strumento | Operazioni correnti |
+| --- | --- |
+| `ciele_identity` | Leggi le informazioni su distribuzione, organizzazione e ruolo. |
+| `manage_assistants` | Elenca, leggi, crea, aggiorna, duplica o elimina gli Assistenti. |
+| `manage_flows` | Elenca, leggi, crea, aggiorna, riordina o elimina i flussi. |
+| `manage_knowledge` | Gestisci raccolte, fonti e FAQ. |
+| `publish_assistant` | Leggi lo stato, pubblica, annulla la pubblicazione o ripristina una pubblicazione. |
+| `read_inbox` | Elenca, leggi o esporta le Conversazioni. |
+| `manage_improvements` | Elenca, leggi o aggiorna i Miglioramenti. |
+
+Il server MCP non fornisce un trasporto HTTP remoto. Consulta
+[AI clients](/developers/ai-clients) per informazioni sulla compatibilità.
+
+## Verifica la connessione
+
+Chiedi al client di chiamare `ciele_identity`. Conferma l'ID organizzazione, il
+ruolo, la versione API e l'elenco dei domini previsti.

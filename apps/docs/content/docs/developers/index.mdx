@@ -1,0 +1,48 @@
+---
+title: Developer tools
+description: Use one API key with the Ciele API, CLI, or MCP server.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Ciele provides three interfaces for programmatic administration. Each interface uses the same operations and role checks as the administrator console.
+
+<Cards>
+  <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
+  <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
+  <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
+  <Card title="AI clients" href="/developers/ai-clients" description="Configure supported clients and use copyable prompts." />
+</Cards>
+
+## Common connection model
+
+All three interfaces require an Organization API key. The assigned Role controls the operations that the key can use.
+
+```mermaid
+flowchart TB
+  subgraph Clients
+    CLI["Ciele CLI"]
+    MCP["Ciele MCP server"]
+    HTTP["HTTP client"]
+  end
+  API["Ciele API v1"]
+  OPS["Shared operations"]
+  DB[("Organization data")]
+  CLI --> API
+  MCP --> API
+  HTTP --> API
+  API --> OPS
+  OPS --> DB
+```
+
+The hosted service uses `https://platform.ciele.app` by default. A self-hosted installation uses its own public origin.
+
+<Callout title="Use the minimum Role">
+Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
+</Callout>
+
+## Available domains
+
+The current API includes Assistants, Flows, Knowledge, publication, Inbox conversations, and Improvements.
+
+The API does not expose all console functions. For example, avatar upload and Improvement creation remain console-only.

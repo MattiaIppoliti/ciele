@@ -1,66 +1,22 @@
 ---
-title: Open source
-description: "Esegui Ciele sulla tua infrastruttura. Il core è open source sotto licenza AGPL-3.0: la console di amministrazione, il widget di chat, il router di flusso, la pipeline della conoscenza e le superfici operative."
+title: Open Source
+description: Installa e gestisci il core Ciele solo AGPL-3.0.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Il repository contiene la console di amministrazione, il runtime dei widget, il
+livello dati, il runner di migrazione, i job pianificati, l'API, la CLI e il
+server MCP.
 
-Il core di Ciele è open source con licenza **AGPL-3.0** e puoi eseguirlo in
-autonomia. L'edizione open source è l'intero prodotto utilizzato dai tuoi
-visitatori e amministratori: la console di amministrazione, il widget di chat,
-il router [flow](/flows), la pipeline [knowledge](/knowledge) e di recupero e le
-superfici operative — [inbox](/operations/inbox),
-[improvements](/operations/improvements), [insights](/operations/insights) e
-[alerts](/operations/alerts).
+L'esempio di distribuzione supportato utilizza Docker Compose su un host. Non
+include Kubernetes, Helm o il funzionamento multi-nodo.
 
-<Callout title="Same product, you operate it">
-Every feature page in the main [Documentation](/) applies to a self-hosted
-deployment. The difference is operational: you provide the infrastructure, the
-database, and the AI provider keys, and you apply upgrades. The managed
-alternative is [Ciele Cloud](/cloud).
-</Callout>
+## Inizia qui
 
-## Cosa fornisci
+1. Leggi [Installazione](/self-hosting/installation).
+2. Consulta [Configurazione](/self-hosting/configuration).
+3. Seleziona i [Workers](/self-hosting/workers) opzionali.
+4. Configura TLS prima dell'esposizione pubblica.
+5. Leggi [Aggiornamento](/self-hosting/upgrade) prima di cambiare versione.
 
-- **A place to run it.** Le app sono applicazioni Next.js standard; possono
-  essere ospitate ovunque venga eseguito Node.
-- **A database.** Ciele archivia i suoi dati in Postgres, utilizzando
-  [Supabase](/self-hosting/database) per il database, l'autenticazione e la
-  sicurezza a livello di riga.
-- **AI provider keys.** Gli assistenti chiamano un provider di IA per generare
-  risposte; tu fornisci le tue chiavi. Vedi
-  [Configurazione](/self-hosting/configuration).
-
-## La licenza, in breve
-
-AGPL-3.0 è una licenza open source. Puoi eseguire, studiare, modificare e
-condividere il software. La sua condizione fondamentale è la clausola di rete:
-se modifichi Ciele e offri quella versione modificata ad altri tramite una rete,
-devi anche offrire a quegli utenti il corrispondente codice sorgente della tua
-versione modificata. Eseguire il software senza modifiche o modificarlo solo per
-uso interno della propria organizzazione non comporta tale obbligo. Questa
-pagina è un riepilogo pratico, non una consulenza legale; i termini ufficiali si
-trovano nel file `LICENSE` nella radice del repository.
-
-Se la tua organizzazione preferisce non assumersi gli obblighi previsti dalla
-licenza AGPL o il lavoro operativo, [Ciele Cloud](/cloud) offre lo stesso core
-con un accordo commerciale.
-
-## Cosa non è incluso nell'edizione open source
-
-Una piccola serie di funzionalità commerciali di servizi gestiti si trova al di
-fuori del core open source e non fa parte di una distribuzione self-hosted. Vedi
-[Il confine dell'open-core](/self-hosting/open-core-boundary) per la linea
-esatta.
-
-## Passaggi successivi
-
-<Cards>
-  <Card title="Installation" href="/self-hosting/installation" description="One command with Docker, or run the monorepo directly." />
-  <Card title="Configuration" href="/self-hosting/configuration" description="Environment variables for the database and AI providers." />
-  <Card title="Database" href="/self-hosting/database" description="Postgres, Supabase, and how migrations are applied." />
-  <Card title="Background workers" href="/self-hosting/workers" description="The optional graph and crawler services, and what they add." />
-  <Card title="Upgrading" href="/self-hosting/upgrade" description="Take a new release, back up, and roll back." />
-  <Card title="The open-core boundary" href="/self-hosting/open-core-boundary" description="Exactly what is open source and what is Cloud-only." />
-</Cards>
+Utilizza la sezione [Architecture](/self-hosting/architecture) per comprendere
+gli attuali limiti relativi a pacchetti e richieste.

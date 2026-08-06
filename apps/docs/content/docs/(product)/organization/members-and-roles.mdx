@@ -1,43 +1,35 @@
 ---
-title: Members and roles
-description: Invite teammates to your organization and control what each of them can do with roles.
+title: Members and Roles
+description: Control who can read, edit, publish, and administer an Organization.
 ---
-
-Ciele is built for teams. You invite people to your organization as members, and
-each member has a role that controls what they can see and change. You manage this
-from the members settings of your organization.
-
-## Invite a member
-
-1. Open the members settings for your organization.
-2. Invite a new member by entering their email address.
-3. Choose the role they should have.
-4. Send the invitation.
-
-The person receives an invitation to join your organization. Once they accept, they
-appear in your member list with the role you assigned.
 
 ## Roles
 
-Roles range from full control to view only access. In broad terms:
+| Role | Current permission level |
+| --- | --- |
+| Viewer | Reads Organization and product data. |
+| Editor | Changes Assistant content and configuration. |
+| Admin | Publishes Assistants and manages members and API keys. |
+| Owner | Changes Roles and manages owners. |
 
-- An owner or admin level role can manage the organization, its members, and its
-  assistants.
-- An editor level role can build and change assistants without managing the
-  organization itself.
-- A viewer level role can see the workspace without making changes.
+The application applies more specific capability checks to individual operations.
 
-Assign the least access that lets each person do their job. You can change a
-member's role later as their responsibilities change.
+## Invite a member
 
-## Manage existing members
+1. Open **Settings > Members**.
+2. Select **Invite member**.
+3. Enter the email address.
+4. Select the minimum required Role.
+5. Send the invitation.
 
-From the member list you can review who belongs to your organization, change a
-member's role, and remove access when someone no longer needs it. Managing members
-and roles is permission gated, so only members with the right role can view and
-change the roster.
+## Change a member
 
-<Callout title="Right sized access">
-Give new teammates an editor or viewer role by default, and reserve owner and admin
-roles for the people who genuinely need to manage the organization.
-</Callout>
+An Admin can manage members below the Owner tier. An Owner can manage all tiers.
+
+A member cannot edit or remove their own row from the member list. Use another authorized member for that operation.
+
+## API-key Roles
+
+An Admin or Owner can create an Organization API key. The selected Role cannot be higher than the creator's Role.
+
+Revoke a key when its client no longer needs access. Ciele keeps the revoked record for audit information.

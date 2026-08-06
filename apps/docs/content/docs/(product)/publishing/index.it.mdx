@@ -1,54 +1,51 @@
 ---
-title: Pubblicazione
-description: Inserisci un assistente sul tuo sito web con uno snippet di incorporamento, come widget mobile o come frame incorporato.
+title: Pubblica un Assistente
+description: Crea un'istantanea del widget immutabile e controlla dove può essere eseguito.
 ---
 
-La pubblicazione è il passaggio che porta il tuo assistente dall'anteprima al
-tuo sito attivo. Apri un assistente e seleziona **Publish** per ottenere lo
-snippet di cui hai bisogno. Ogni opzione apre una finestra di dialogo con uno
-snippet che copi nel tuo sito.
+Una Pubblicazione blocca la configurazione corrente dell'Assistente. Il widget
+live legge la Pubblicazione attiva invece della bozza.
 
-## Il widget mobile
+## Prepara la pubblicazione
 
-Il widget mobile aggiunge un pulsante di avvio alle tue pagine. Quando un
-visitatore lo seleziona, la finestra di chat si apre sopra la pagina.
+1. Prova la bozza in Anteprima.
+2. Verifica che le Knowledge Sources richieste siano pronte.
+3. Testa i messaggi del flusso corrispondenti e non corrispondenti.
+4. Testa i percorsi di Help Desk e di autenticazione quando sono abilitati.
+5. Apri **Publish**.
 
-1. In **Publish**, scegli l'opzione widget mobile per il sito web.
-2. Copia lo snippet fornito.
-3. Incollalo nella parte del tuo sito che appare su ogni pagina in cui desideri
-   che compaia l'assistente, in genere l'intestazione condivisa del template del
-   tuo sito.
+## Configura i domini consentiti
 
-Lo snippet carica il widget e lo indirizza al tuo assistente utilizzando
-l'identificatore dell'assistente, in modo che venga visualizzato l'assistente
-corretto.
+Aggiungi ogni origine del sito web che può incorporare l'Assistente. Utilizza
+esattamente lo schema e l'host inviati dal browser.
 
-## Il frame incorporato
+Non aggiungere un dominio generico quando solo un'applicazione ha bisogno del
+widget.
 
-Se vuoi che l'assistente si trovi all'interno della pagina anziché fluttuare su
-di essa, usa l'opzione del frame incorporato. Ti fornisce un riquadro che puoi
-posizionare ovunque tu voglia che appaia la chat, il che è utile per una pagina
-di aiuto dedicata o per un angolo di supporto della tua app.
+## Crea la pubblicazione
 
-## Dopo la pubblicazione
+1. Seleziona **Publish**.
+2. Conferma l'azione di pubblicazione.
+3. Copia il codice di incorporamento.
+4. Aggiungi il codice a un sito web consentito.
+5. Apri il sito web in una sessione privata del browser.
+6. Invia un messaggio di prova.
 
-- Visita una pagina che include lo snippet e verifica che il widget venga
-  visualizzato e si apra.
-- Ponigli alcune domande reali e verifica che le risposte e le fonti siano
-  corrette.
-- Osserva le prime conversazioni nella [Posta in arrivo](/operations/inbox) per
-  vedere come lo utilizzano i visitatori e modifica le conoscenze o i flussi
-  secondo necessità.
+Le successive modifiche alla bozza non cambiano questa Pubblicazione. Pubblica
+di nuovo per creare e attivare una nuova istantanea immutabile.
 
-<Callout title="One assistant, many places">
-Because the snippet references the assistant by its identifier, you can place the
-same assistant on several pages or sites. Update the assistant once and every
-placement reflects the change.
+## Ripristina una pubblicazione
+
+Seleziona una Pubblicazione precedente quando devi ripristinarne la
+configurazione. L'azione di ripristino rende nuovamente attiva quella versione
+immutabile.
+
+## Annulla la pubblicazione
+
+Usa **Unpublish** per mettere offline la configurazione del widget. Il codice di
+incorporamento esistente non può caricare un Assistente attivo dopo
+l'operazione.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
 </Callout>
-
-## Tieni l'identificativo a portata di mano
-
-La pubblicazione utilizza l'identificativo dell'assistente, che puoi copiare
-dalla scheda dell'assistente o dall'editor. Se mai dovessi spostare o
-reinstallare il widget, quell'identificatore è tutto ciò che ti serve per
-indirizzare un nuovo snippet allo stesso assistente.

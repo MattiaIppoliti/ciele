@@ -1,130 +1,55 @@
 ---
 title: Installation
-description: Führen Sie das gesamte Produkt mit einem Befehl mithilfe von Docker aus oder führen Sie das Monorepo direkt für die Entwicklung aus.
+description: Starten Sie die aktuelle Docker-Compose-Bereitstellung für einen einzelnen Host.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Anforderungen
 
-Es gibt zwei Möglichkeiten. **Docker** stellt Ihnen das gesamte Produkt –
-Konsole, Widget-Runtime, Datenbank, geplante Jobs – auf einem Rechner mit einem
-einzigen Befehl bereit und ist der Weg für eine echte Bereitstellung. **Running
-the monorepo directly** dient der Entwicklung gegen den Code.
+- Installieren Sie Git.
+- Installieren Sie Docker mit Docker Compose.
+- Reservieren Sie ausreichend Speicherplatz auf der Festplatte für Bilder,
+  Postgres und hochgeladene Dateien.
+- Reservieren Sie mehr Speicher, wenn Sie die optionalen Worker aktivieren.
 
-## Die Installation mit einem Befehl
+## Bootstrappen Sie den Stack
 
 ```bash
-git clone https://github.com/MattiaIppoliti/ciele.git && cd ciele
+git clone https://github.com/MattiaIppoliti/ciele.git
+cd ciele
 ./deploy/bootstrap.sh
 ```
 
-Das Bootstrap-Skript generiert alle Secrets, die der Stack benötigt –
-einschließlich der Datenbankschlüssel, die er selbst signiert –, schreibt sie in
-`deploy/.env` und startet alles. Beim ersten Durchlauf werden Images
-heruntergeladen und die App wird erstellt. Warten Sie daher einige Minuten. Wenn
-der Vorgang abgeschlossen ist, öffnen Sie
-[http://localhost:3000](http://localhost:3000) und registrieren Sie sich: **Das
-erste Konto wird zum Eigentümer seiner Organisation**.
+Das Skript generiert die erforderlichen Secrets in `deploy/.env`. Anschließend
+baut es die Standardprofile und startet sie.
 
-Fügen Sie `--seed` hinzu, um bereinigte Demo-Inhalte zu laden, sodass Sie ein
-mit Inhalten gefülltes Produkt sehen, bevor Sie Ihre eigenen Inhalte hinzufügen.
+Öffnen Sie [http://localhost:3000](http://localhost:3000), sobald die Dienste
+fehlerfrei laufen. Das erste Konto wird zum Eigentümer der Organisation.
 
-<Callout title="No account anywhere, no license fee">
-A self-hosted deployment talks to no Ciele service. It can also talk to no AI
-vendor: point it at any server speaking the OpenAI chat and embeddings API — a
-local model runner on the same host works — and the whole thing runs offline.
-See [Configuration](/self-hosting/configuration).
-</Callout>
+Verwenden Sie `./deploy/bootstrap.sh --seed`, um bereinigte Demo-Inhalte
+hinzuzufügen.
 
-### Was läuft
+## Standardprofile
 
-Der Stack ist eine Reihe von Docker-Compose-Profilen, die von `COMPOSE_PROFILES`
-in `deploy/.env` ausgewählt werden:
+| Profil | Standard | Dienste |
+| --- | :---: | --- |
+| `db` | Ja | Postgres, pgvector, Authentifizierung, Daten-API, Speicher und Gateway. |
+| `migrate` | Ja | Ausstehende Migrationen und erforderliche Speicher-Buckets. |
+| `app` | Ja | Administratorkonsole, Widget-Laufzeitumgebung und API v1. |
+| `cron` | Ja | Geplante Anwendungsaufträge. |
+| `workers` | Nein | Graph-Abruf- und JavaScript-Rendering-Crawl-Dienste. |
+| `studio` | Nein | Schnittstelle zur Datenbankverwaltung. |
 
-| Profil | Standard | Was es ist |
-| --- | :--: | --- |
-| `db` | ✅ | Postgres mit pgvector, plus Authentifizierung, der Daten-API, Dateispeicher und einem Gateway, das ihnen einen gemeinsamen Ursprung gibt |
-| `migrate` | ✅ | Einmalig: Wendet ausstehende Migrationen an, stellt Speicher-Buckets bereit und startet dann die App |
-| `app` | ✅ | Die Webanwendung – Admin-Konsole und Widget-Laufzeitumgebung |
-| `cron` | ✅ | Die geplanten Jobs, nach denselben Zeitplänen, die der verwaltete Dienst verwendet |
-| `workers` | ⬜ | Graph-Abruf und ein JavaScript-Rendering-Crawler. Schwer – siehe [Background-Worker](/self-hosting/workers) |
-| `studio` | ⬜ | Eine Benutzeroberfläche für die Datenbankverwaltung |
-
-<Callout type="warn" title="TLS is yours to terminate">
-The stack listens on plain HTTP and expects a reverse proxy in front of it. Only
-the app and the database gateway are published; Postgres is not reachable from
-outside the Compose network. When you put a proxy in front, set `PUBLIC_URL` and
-`SUPABASE_PUBLIC_URL` to the public HTTPS origins and rebuild the app image — the
-browser bundle inlines the latter at build time.
-</Callout>
-
-Eine neue Version später zu übernehmen, ist [Upgrading](/self-hosting/upgrade).
-
-## Führen Sie das Monorepo direkt aus
-
-Ciele ist ein pnpm- und Turborepo-Monorepo. Das für Mandanten sichtbare Produkt
-ist eine Next.js-Anwendung unter `apps/web`; die Datenschicht ist `packages/db`;
-das Datenbankschema befindet sich in `supabase/`.
-
-## Voraussetzungen
-
-- **Node.js** und **pnpm**.
-- **Docker**, wenn Sie den vollständigen Datenbank-Stack lokal ausführen möchten
-  (optional – siehe Demo-Modus unten).
-
-## Lokal ausführen
+## Überprüfen Sie den Stack
 
 ```bash
-pnpm install
-pnpm dev        # starts the web app on http://localhost:3000
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
-<Callout title="Demo mode with zero setup">
-Without a database configured, the app runs on an in-memory demo dataset so you
-can click through the whole console immediately. A banner on the dashboard reminds
-you that you are in demo mode. Configure the database when you are ready to keep
-real data.
+In der Standardkonfiguration wird die Anwendung auf Port `3000` und das
+Datenbank-Gateway auf Port `8000` veröffentlicht. Postgres wird nicht
+veröffentlicht.
+
+<Callout type="warn" title="Add TLS before public use">
+The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
-
-## Ausführen mit einer lokalen Datenbank
-
-Um gegen denselben Postgres-, Authentifizierungs- und Row-Level-Security-Stack
-wie in der Produktion zu entwickeln, führen Sie den lokalen Datenbank-Stack aus
-(Docker erforderlich):
-
-```bash
-pnpm db:start                                  # boot the local database stack
-pnpm db:reset                                  # apply migrations + seed data
-cp apps/web/.env.example apps/web/.env.local   # local credentials are pre-filled
-pnpm dev                                        # the app now uses the database
-```
-
-- `pnpm db:status` zeigt die lokalen URLs, Schlüssel und den Link zum
-  Datenbankstudio an.
-- `pnpm db:reset` löscht und seedet jederzeit neu; `pnpm db:stop` fährt es
-  herunter.
-- Lassen Sie die Datenbankvariablen in `.env.local` leer, um in den Demo-Modus
-  zurückzukehren.
-
-## Zur Produktion wechseln
-
-Für eine gehostete Bereitstellung verweisen Sie die App auf ein gehostetes
-Postgres-/Supabase-Projekt und legen Sie dessen Anmeldeinformationen als
-Umgebungsvariablen fest. Das Schema wird vom Migration Runner angewendet, nicht
-von Hand. Beide Themen haben eigene Seiten:
-
-- [Konfiguration](/self-hosting/configuration) – die festzulegenden
-  Umgebungsvariablen.
-- [Datenbank](/self-hosting/database) – die gehostete Datenbank und wie
-  Migrationen angewendet werden.
-
-## Häufig verwendete Skripte
-
-| Befehl          | Was er bewirkt                              |
-| ---------------- | ----------------------------------------- |
-| `pnpm dev`       | Entwicklungsserver für den Arbeitsbereich             |
-| `pnpm build`     | Produktions-Build                          |
-| `pnpm lint`      | Lint für den Arbeitsbereich                        |
-| `pnpm db:start`  | Starten Sie den lokalen Datenbank-Stack (Docker)    |
-| `pnpm db:reset`  | Migrationen und Seed-Daten lokal anwenden    |
-| `pnpm db:status` | Lokale Datenbank-URLs, -Schlüssel und -Links anzeigen |
-| `pnpm db:stop`   | Stoppen Sie den lokalen Datenbank-Stack             |

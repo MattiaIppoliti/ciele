@@ -1,68 +1,22 @@
 ---
 title: Edizioni
-description: "Ciele è disponibile in due edizioni: il core open source che puoi ospitare autonomamente e Ciele Cloud, il servizio completamente gestito. Questa pagina spiega cosa include ciascuna di esse."
+description: Scegli Ciele Cloud oppure utilizza l'edizione open source.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele offre un'edizione Cloud gestita e un'edizione open source self-hosted.
+Entrambe le edizioni utilizzano lo stesso core del prodotto open source.
 
-Ciele è disponibile in due edizioni che condividono lo stesso prodotto e la
-stessa documentazione. Tutto ciò che trovi in questa sezione **Documentation** —
-assistenti, conoscenza, flussi, help desk, pubblicazione e operazioni — funziona
-allo stesso modo in entrambe le edizioni. Le edizioni differiscono solo per
-**chi gestisce il software** e per un piccolo insieme di **funzionalità gestite
-esclusivamente**.
+| Area | Ciele Cloud | Open source |
+| --- | --- | --- |
+| Gestione del prodotto | Ciele gestisce il servizio. | Il tuo team gestisce il servizio. |
+| Abbonamento | Un piano Ciele controlla l'utilizzo incluso. | Non è richiesto alcun abbonamento a Ciele. |
+| Infrastruttura | Ciele seleziona e gestisce la distribuzione. | Il tuo team fornisce e gestisce la distribuzione. |
+| Credenziali del modello | Utilizza i modelli del piano o le connessioni dei provider supportati. | Configura il provider supportato o gli endpoint locali compatibili. |
+| Aggiornamenti | Il servizio gestito riceve le release distribuite. | Il tuo team seleziona e applica le release. |
+| Licenza | Si applicano i termini di servizio. | Il core utilizza solo AGPL-3.0. |
 
-## Il core open source
+La documentazione pubblica open source descrive solo i file presenti nel
+repository open source. Non descrive i dettagli dell'implementazione aziendale.
 
-Il core di Ciele è open source sotto licenza **AGPL-3.0**. È l'intero prodotto
-con cui interagiscono un visitatore e un amministratore: la console di
-amministrazione, il widget di chat, il router di flusso, la pipeline di
-conoscenza e recupero e le superfici operative (posta in arrivo, miglioramenti,
-approfondimenti, avvisi). Puoi eseguirlo sulla tua infrastruttura senza costi di
-licenza.
-
-Consulta [Open Source](/self-hosting) per scoprire come installare, configurare
-e gestire una distribuzione self-hosted e per capire esattamente dove si trova
-il confine dell'open core.
-
-## Ciele Cloud
-
-Ciele Cloud è lo stesso core, ospitato e gestito per te, con in più le
-funzionalità commerciali che hanno senso solo per un servizio multi-tenant
-gestito. Non devi installare né applicare patch: accedi e inizia a creare.
-
-L'edizione gestita aggiunge:
-
-- **Plans and billing** — piani di abbonamento, fatturazione e pagamento,
-  gestiti nella console. Consulta
-  [Piani e fatturazione](/cloud/plans-and-billing).
-- **Usage limits** — quote per piano che misurano e limitano l'utilizzo mensile.
-  Consulta [Utilizzo e limiti](/cloud/usage-and-limits).
-- **Managed single sign-on** — onboarding SSO dell'organizzazione eseguito per
-  te. Consulta [Team e Single Sign-On](/cloud/team-and-sso).
-- **Operations and support** — hosting, aggiornamenti, backup e un canale di
-  assistenza con un impegno di servizio. Consulta [Assistenza](/cloud/support).
-
-Queste funzionalità risiedono al di fuori del core open source e non vengono
-create in una distribuzione self-hosted.
-
-## Quale edizione sto usando?
-
-Se ti sei registrato al servizio in hosting e non hai mai installato nulla, stai
-utilizzando **Ciele Cloud**. Se la tua organizzazione esegue Ciele sui propri
-server, stai utilizzando l'edizione **open-source**. La fatturazione, i limiti
-di utilizzo e l'SSO gestito sono disponibili solo su Ciele Cloud.
-
-<Callout title="Same docs, both editions">
-Feature pages that describe a managed-only capability say so at the top. Where a
-page has no such note, the feature is part of the open-source core and behaves the
-same wherever Ciele runs.
-</Callout>
-
-## E adesso?
-
-<Cards>
-  <Card title="Open Source" href="/self-hosting" description="Install, configure, and operate a self-hosted deployment, and see the open-core boundary." />
-  <Card title="Ciele Cloud" href="/cloud" description="Plans, usage limits, managed single sign-on, and support for the hosted service." />
-</Cards>
+Utilizza [Ciele Cloud](/cloud) per informazioni sul piano in hosting. Utilizza
+[Open Source](/self-hosting) per le istruzioni di installazione e funzionamento.

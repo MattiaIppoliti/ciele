@@ -1,81 +1,55 @@
 ---
 title: Concepts fondamentaux
-description: Le vocabulaire que vous verrez dans l'ensemble de Ciele, et la manière dont les éléments sont liés les uns aux autres.
+description: Découvrez les termes stables que Ciele utilise dans le produit et dans la documentation.
 ---
-
-Ciele utilise un petit ensemble de termes de manière cohérente dans l'ensemble
-du produit. Une fois que vous les avez appris, il est plus facile de suivre
-toutes les autres pages.
 
 ## Organisation
 
-Une organisation est votre espace de travail. Elle est propriétaire de vos
-assistants, de vos membres, de vos centres d'assistance et de vos données. Tout
-ce que vous créez appartient à une seule organisation, et les données restent
-isolées entre les organisations.
-
-## Membre et rôle
-
-Un membre est une personne qui appartient à votre organisation. Chaque membre a
-un rôle qui détermine ce qu'il peut voir et modifier. Les rôles vont du contrôle
-total à l'accès en lecture seule. Consultez
-[Membres et rôles](/organization/members-and-roles).
+Une organisation possède des membres, des assistants, des centres d'assistance,
+des connexions à des fournisseurs, des clés API, des compétences et des données
+opérationnelles.
 
 ## Assistant
 
-Un Assistant est une expérience de chat unique basée sur l'IA : un widget auquel
-les visiteurs s'adressent. Une organisation peut avoir de nombreux assistants,
-chacun avec son propre nom, ses connaissances, ses règles et son apparence. Vous
-configurez un assistant dans son éditeur, qui dispose d'un aperçu en temps réel
-sur la droite.
+Un Assistant est un agent conversationnel configuré. Il possède une identité,
+des connaissances, des flux, des outils, un modèle, une apparence et un état de
+publication.
 
-## Visiteur et conversation
+## Collection de connaissances
 
-Un visiteur est toute personne qui discute avec un assistant publié. Une
-conversation est l'échange complet entre un visiteur et un assistant, comprenant
-chaque message, les sources citées et toute remontée d'information. Les
-conversations apparaissent dans la boîte de réception.
+Une collection de connaissances appartient à un assistant. Elle contient des
+Sources, des Concepts et des FAQ sélectionnées, utilisés pour fournir des
+réponses fondées.
 
-## Connaissances et source
+## Flux
 
-La connaissance est tout ce sur quoi un assistant peut s'appuyer pour répondre :
-sites Web, fichiers et FAQ. Lorsque l'assistant utilise un élément de
-connaissance dans une réponse, il peut citer la Source, afin que le visiteur
-voie d'où provient l'information.
+Un flux est une règle de routage ordonnée. Il contient un déclencheur, des
+conditions disponibles et des actions de réponse ordonnées.
 
-## Flux et comportement par défaut
+Le flux **Default behavior** verrouillé reste le dernier. Il traite un message
+éligible lorsqu'aucun flux précédent n'est prioritaire.
 
-Un flux est une règle. Il contient une description du type de message qu'il
-traite, des conditions facultatives et un ensemble d'actions à exécuter. Les
-flux sont classés par ordre de priorité, et le premier qui correspond est
-prioritaire. Le comportement par défaut est la règle intégrée située tout à la
-fin, qui traite tout message auquel aucun flux ne correspond.
+## Publication
 
-## Action de flux
+Une Publication est un instantané immuable d'un Assistant. Le widget utilise la
+Publication active, et non le brouillon actuel de l'administrateur.
 
-Une action de flux est une étape que l'assistant exécute lorsqu'un flux
-correspond. Par exemple, envoyer un message fixe, effectuer une recherche dans
-votre base de connaissances, afficher des boutons ou effectuer une remontée.
-Voir [Actions de flux](/flows/actions).
+## Conversation
+
+Une Conversation stocke les messages du Visiteur et de l'Assistant, les éléments
+de réponse, les citations, les traces d'exécution et les métadonnées de session.
 
 ## Centre d'assistance
 
-Un centre d'assistance est une destination d'escalade qui appartient à votre
-organisation. Il regroupe un ou plusieurs canaux, tels que l'e-mail ou le chat
-en direct, qu'un visiteur peut utiliser pour contacter votre équipe. Les
-assistants choisissent les centres d'assistance qu'ils proposent. Voir
-[Centres d'assistance](/help-desks).
-
-## Widget
-
-Le Widget est l'assistant tel que vos visiteurs le voient : le bouton de
-lancement et la fenêtre de chat sur votre site. Vous contrôlez ses couleurs et
-sa position, et vous le publiez avec un extrait d'intégration.
+Un centre d'assistance définit un ou plusieurs canaux de contact. Un Assistant
+peut suggérer un Centre d'assistance pertinent lors de l'escalade.
 
 ## Amélioration
 
-Une amélioration est un élément suivi qui permet d'optimiser les réponses. Il
-peut être créé automatiquement lorsqu'une réponse est insuffisante ou qu'un
-visiteur effectue une remontée, ou manuellement lorsque quelqu'un signale une
-réponse. Les améliorations passent par un tableau simple, de l'état ouvert à
-l'état terminé. Voir [Améliorations](/operations/improvements).
+Une amélioration est un élément d'examen pour un problème de qualité de réponse.
+Elle peut être liée au message exact de la conversation.
+
+## Objectif et Alerte
+
+Un objectif exécute une vérification planifiée de la réponse. Un objectif ayant
+échoué crée une alerte pour un administrateur.

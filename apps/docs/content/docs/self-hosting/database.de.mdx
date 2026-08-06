@@ -1,56 +1,45 @@
 ---
 title: Datenbank
-description: Ciele speichert seine Daten in Postgres über Supabase, mit Sicherheit auf Zeilenebene zur Mandantentrennung und einem Migrations-Runner, der nach Dateinamen sortiert.
+description: Betreiben Sie die aktuellen Postgres- und Supabase-Datendienste.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele verwendet Postgres mit pgvector. Das Compose-`db`-Profil führt außerdem
+Authentifizierung, PostgREST, Speicherung und ein Gateway aus.
 
-Ciele speichert seine Daten in **Postgres** und nutzt
-[Supabase](https://supabase.com) für die Datenbank, die Authentifizierung und
-die Sicherheit auf Zeilenebene. Jede Abfrage wird durch Sicherheitsrichtlinien
-auf Zeilenebene auf die Organisation des angemeldeten Benutzers beschränkt. So
-bleiben die Mandanten voneinander isoliert.
+## Migrationen anwenden
 
-## Bereitstellung
+Der One-Shot-Service `migrate` wendet ausstehende SQL-Migrationen an und
+erstellt die erforderlichen Speicher-Buckets. Die Anwendung startet, nachdem
+dieser Dienst erfolgreich war.
 
-Sie können die Datenbank auf zwei Arten ausführen:
+Bearbeiten Sie keine angewandte Migration. Fügen Sie für jede Schemaänderung
+eine neue Migration hinzu.
 
-- **Locally**, mit dem gebündelten Stack: `pnpm db:start` bootet Postgres, Auth
-  und RLS in Docker, und `pnpm db:reset` wendet das Schema und die Seed-Daten
-  an. Dies ist der schnellste Weg, um gegen eine echte Datenbank zu entwickeln.
-  Siehe [Installation](/self-hosting/installation).
-- **Hosted**, mit einem von Ihnen erstellten Supabase-Projekt. Legen Sie die URL
-  und die Schlüssel als Umgebungsvariablen fest (siehe
-  [Konfiguration](/self-hosting/configuration)), und die App stellt beim
-  nächsten Start eine Verbindung her.
+## Lokale Entwicklung
 
-## So werden Migrationen angewendet
+```bash
+pnpm db:start
+pnpm db:reset
+pnpm db:status
+```
 
-Das Schema befindet sich in `supabase/migrations` als geordnete SQL-Dateien.
-Migrationen werden von einem kleinen Runner (`scripts/apply-migrations.sh`)
-angewendet, der jede ausstehende Datei **in der Reihenfolge der Dateinamen**
-ausführt und nach Dateinamen aufzeichnet, was er angewendet hat. Neue
-Migrationen verwenden ein Zeitstempel-Präfix, sodass die Reihenfolge eindeutig
-ist, und sie landen neben dem Code, der sie benötigt.
+`pnpm db:reset` löscht lokale Datenbankdaten und wendet Migrationen und
+Seed-Daten erneut an.
 
-<Callout title="Filename-ordered, not CLI-tracked">
-The runner tracks applied migrations by filename rather than relying on a CLI's
-version history. Follow the same timestamp-prefixed naming for any migration you
-add, and let the runner apply it — do not hand-edit the applied ledger.
+## Persistente Daten
+
+Das Volume `postgres-data` enthält die Datenbank. Das Volume `storage-data`
+enthält hochgeladene Objekte.
+
+Sichern Sie beide Volumes, um eine vollständige Datenkopie zu erhalten. Testen
+Sie die Wiederherstellung, bevor Sie sich auf einen Sicherungsprozess verlassen.
+
+<Callout type="warn" title="Volume deletion removes data">
+`docker compose -f deploy/docker-compose.yml down -v` deletes the database and uploaded-file volumes. Use it only for an intentional reset.
 </Callout>
 
-## Seed-Daten
+## Mandantenisolierung
 
-`supabase/seed.sql` enthält neutrale Demodaten – eine generische Organisation
-und einige Beispielassistenten –, sodass eine neue Datenbank nicht leer ist. Sie
-können es bedenkenlos auf eine Entwicklungsdatenbank anwenden oder überspringen,
-um einen sauberen Produktionsstart zu gewährleisten.
-
-## Die Enterprise-Kette
-
-Das Open-Source-Schema ist völlig eigenständig. Die verwaltete Edition verfügt
-über eine zusätzliche Migrationskette, die **nicht Teil des Open-Source-Baums**
-ist und niemals von einer selbst gehosteten Bereitstellung erstellt wird. Dies
-ist die Datenbankseite der [Open-Core-Grenze](/self-hosting/open-core-boundary):
-Enterprise-Tabellen können auf Open-Source-Tabellen verweisen, niemals
-umgekehrt.
+Konsolenanforderungen verwenden authentifizierten Datenbankzugriff und
+Sicherheit auf Zeilenebene. API-Schlüssel-Operationen verwenden einen von der
+Organisation festgelegten Datenbank-Wrapper und Berechtigungsprüfungen.

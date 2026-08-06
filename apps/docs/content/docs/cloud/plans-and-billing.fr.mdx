@@ -1,53 +1,35 @@
 ---
 title: Formules et facturation
-description: Choisissez un abonnement et gérez les paiements et les factures de votre organisation sur Ciele Cloud.
+description: Sélectionnez un forfait géré et vérifiez le compte de facturation Stripe actuel.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Ouvrez **Settings > Billing** dans l'édition gérée. La page affiche l'état
+actuel de l'abonnement et les entrées de catalogue disponibles.
 
-<Callout title="Ciele Cloud only">
-Plans and billing are part of the managed edition. A self-hosted open-source
-deployment has no subscription, no billing, and no plan — you run the software
-under the AGPL-3.0 license at no license cost.
-</Callout>
+## Souscrire ou modifier un abonnement
 
-Sur Ciele Cloud, chaque organisation bénéficie d'un abonnement. Le forfait
-définit ce que votre organisation peut faire et ce qu'elle peut utiliser au
-cours d'un mois. C'est également là que sont gérés le paiement et les factures.
+1. Consultez les limites et le prix de l'abonnement disponible.
+2. Sélectionnez le forfait souhaité.
+3. Effectuez le paiement Stripe lorsque cela vous est demandé.
+4. Revenez sur Ciele.
+5. Confirmez l'état actif de l'abonnement.
 
-## Choisir un abonnement
+Ciele rapproche l'état de la facturation avec Stripe. Ne présumez pas qu'une
+redirection réussie du navigateur prouve l'activation de l'abonnement.
 
-Les forfaits diffèrent principalement par leurs
-[allocations d'utilisation](/cloud/usage-and-limits), ainsi que par la taille de
-l'équipe et le nombre d'assistants qu'ils prennent en charge. Vous pouvez
-commencer avec un forfait d'entrée de gamme et passer à un forfait supérieur au
-fur et à mesure que votre utilisation augmente ; tout changement prend effet à
-la prochaine période de facturation.
+## Compte de facturation
 
-## Gestion du paiement
+Lorsque Stripe renvoie les données, la page peut afficher :
 
-La facturation est gérée depuis les paramètres de l'organisation dans la console
-:
+- informations sur le renouvellement
+- le récapitulatif de la carte de paiement actuelle
+- factures
+- actions de changement de forfait
 
-- **Payment method.** Ajoutez ou mettez à jour la carte enregistrée pour votre
-  organisation.
-- **Invoices.** Consultez et téléchargez les factures précédentes pour vos
-  archives.
-- **Plan changes.** Mettez à niveau ou modifiez votre abonnement ; la console
-  affiche ce qui change et la date d'entrée en vigueur.
+Les champs de facturation peuvent rester absents lorsque Stripe ne les a pas
+fournis.
 
-## Qui peut gérer la facturation
+## Édition auto-hébergée
 
-La facturation est une responsabilité au niveau de l'organisation ; elle est
-donc limitée aux membres ayant un rôle administratif. Consultez
-[Membres et rôles](/organization/members-and-roles) pour savoir comment les
-rôles contrôlent l'accès. Un membre sans le rôle approprié peut utiliser le
-produit normalement, mais il ne verra pas les contrôles de facturation.
-
-## Lorsqu'un forfait atteint sa limite
-
-Les forfaits incluent des quotas d'utilisation mensuels. À l'approche et au
-moment où vous les atteignez, Ciele mesure l'utilisation et applique le plafond
-de l'abonnement. Ce qui se passe lorsque le plafond est atteint et comment
-surveiller votre utilisation au cours du mois sont expliqués dans
-[Utilisation et limites](/cloud/usage-and-limits).
+L'édition auto-hébergée n'affiche ni le catalogue des forfaits gérés ni le
+compte d'abonnement.

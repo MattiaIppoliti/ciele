@@ -1,66 +1,29 @@
 ---
-title: El límite del modelo open-core
-description: Exactamente lo que hay en la edición de código abierto y lo que pertenece al servicio gestionado Ciele Cloud.
+title: Límite del código abierto
+description: Identifica el núcleo público y el directorio empresarial independiente.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+El núcleo público de Ciele utiliza la licencia `AGPL-3.0-only`. Su código fuente
+incluye la aplicación del producto y los paquetes de tiempo de ejecución
+compartidos.
 
-Ciele sigue un modelo «open-core»: el producto es de código abierto, y un
-pequeño conjunto de características comerciales que solo tienen sentido para un
-servicio gestionado multiusuario se encuentran fuera del árbol de código
-abierto. Esta página traza la línea con precisión.
+El repositorio también puede contener un directorio `ee/` separado. Ese
+directorio tiene sus propios avisos de licencia y no forma parte del núcleo
+AGPL.
 
-## En la edición de código abierto (AGPL-3.0)
+## Regla de la documentación pública
 
-Todo el producto que usan tus visitantes y administradores es de código abierto:
+La documentación de código abierto describe únicamente los componentes
+necesarios para compilar, ejecutar y comprender el núcleo público.
 
-- La **consola de administración** y el **editor** de asistentes con vista
-  previa en tiempo real.
-- El **widget de chat** y su motor de ejecución.
-- El **enrutador de flujo** y las acciones de flujo.
-- El canal de **conocimiento** y recuperación, que incluye el rastreo de sitios
-  web, archivos y preguntas frecuentes, con citas de las fuentes.
-- **Help desks** y canales de escalamiento.
-- Las superficies de operaciones: **bandeja de entrada**, **mejoras**,
-  **información** y **alertas**.
-- **Multi-tenancy** con organizaciones, miembros, roles y seguridad a nivel de
-  fila.
-- Publicación en tu sitio web con un fragmento de incrustación.
+No enumera los componentes internos de la empresa. Lee el archivo de licencia de
+cada área de código antes de redistribuir o modificar esa área.
 
-Si una característica está documentada en la [Documentación](/) principal sin
-una nota de edición administrada, forma parte de este núcleo de código abierto.
+## Principales áreas de código abierto
 
-## Solo en la nube (no en el árbol de código abierto)
-
-Estas son las funciones de servicio gestionado. Están excluidas del código de
-código abierto y nunca se crean en una implementación autoalojada:
-
-- **Plans and billing** — planes de suscripción, pago y facturación.
-- **Usage metering and enforced limits** — cuotas mensuales por plan y sus
-  límites.
-- **The cross-organization operations surface** utilizado para ejecutar el
-  servicio gestionado.
-- **Managed single sign-on onboarding** para la consola de administración.
-- **Hosting, upgrades, backups, and support** con un compromiso de servicio.
-
-<Callout title="How the split is enforced in the code">
-Enterprise code lives under a dedicated path and is excluded when the public
-open-source tree is assembled, so an open-source checkout simply does not contain
-it. The enterprise database migrations are a separate chain applied only where
-they exist; a self-hosted deployment has no such directory and creates none of
-those tables. See [Database](/self-hosting/database).
-</Callout>
-
-## Por qué el límite está donde está
-
-Todo lo que una organización con alojamiento propio necesita para ejecutar
-asistentes para sus propios usuarios está en el núcleo de código abierto. Las
-funciones exclusivas de la nube son aquellas vinculadas a Ciele cuando opera el
-servicio *para otras organizaciones*: cobrar por él, limitar el uso entre los
-inquilinos y garantizar la disponibilidad. Al mantenerlas fuera del árbol de
-código abierto, la edición de código abierto es completa y autónoma en sus
-propios términos, y la edición administrada añade solo lo que necesita un
-servicio administrado.
-
-Si quieres esas capacidades gestionadas sin tener que crearlas tú, utiliza
-[Ciele Cloud](/cloud).
+- `apps/web` contiene la aplicación del producto y las rutas de la API.
+- `apps/docs` contiene este sitio de documentación.
+- `packages` contiene paquetes compartidos de producto y de acceso programático.
+- `services` contiene servicios de trabajo opcionales.
+- `supabase` contiene migraciones de esquema y configuración de datos locales.
+- `deploy` contiene el ejemplo de implementación de un solo host.

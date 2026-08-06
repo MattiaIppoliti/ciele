@@ -1,54 +1,33 @@
 ---
-title: Help Desks overview
-description: Set up escalation destinations so visitors can reach your team through the right channels.
+title: Help Desks
+description: Give Visitors a configured path to contact a human team.
 ---
 
-An assistant should know its limits. When it cannot help, or when a visitor simply
-wants a person, a Help Desk is how the conversation reaches your team. A Help Desk
-is an escalation destination that belongs to your organization and groups one or
-more channels a visitor can use.
+A Help Desk groups contact channels, availability, form fields, and escalation settings. An Organization can connect one Help Desk to multiple Assistants.
 
-You manage help desks from the **Help Desks** area in the sidebar, which lists
-every desk in your organization. From there you can create a desk or open one to
-edit it.
+## Current channel behavior
 
-## Create a help desk
+| Channel | Visitor result |
+| --- | --- |
+| Email | Ciele sends an escalation email when the email transport is configured. |
+| Phone | The widget shows the configured phone contact. |
+| Live chat | The widget shows the configured live-chat contact path. |
+| External link | The widget opens the configured destination. |
 
-1. Open **Help Desks** in the sidebar.
-2. Create a new desk and give it a **name** and a **description**. The description
-   matters, because an assistant can use it to decide when this desk is the right
-   one to offer.
-3. Add one or more channels, described below.
+Only configure a channel after you test its complete Visitor path.
 
-## Support channels
+## Escalation selection
 
-A channel is a single way to reach your team. Each channel has a name, which
-becomes the button label a visitor sees, plus settings specific to its type. The
-available channel types cover the common ways people ask for help:
+An Assistant can show an always-available **Contact support** action. Ciele can recommend a connected Help Desk from its description and Conversation context.
 
-- **Email** sends the request to a destination address.
-- **Phone number** shows a number the visitor can call.
-- **Live chat** opens a live chat address.
-- **Create a ticket** raises a case in your connected ticketing system.
-- **External link** opens a web address in a new tab.
-- **Salesforce Chat Handover** connects to a Salesforce embedded chat.
-- **API endpoint** sends the request to a service you specify.
+The Visitor selects one available channel. The widget then shows the configured form or contact action.
 
-Add the channels your team actually monitors, and order them so the preferred
-option comes first.
+## Create a Help Desk
 
-## New channel versus editing a channel
-
-When you add a new channel, a short setup flow walks you through its essential
-settings first, then unlocks the rest once the basics are in place. When you open
-an existing channel, all of its settings are available at once and you can save
-your changes directly.
-
-## What comes next
-
-- Shape the information you collect and when a channel is open in
-  [Forms and availability](/help-desks/forms-and-availability).
-- Connect a ticketing system and auto generate improvements in
-  [Ticketing and improvements](/help-desks/ticketing-and-improvements).
-- Offer a desk from an assistant in
-  [Connect a help desk to an assistant](/help-desks/connect-to-an-assistant).
+1. Open **Help Desks**.
+2. Create a Help Desk.
+3. Enter a name and routing description.
+4. Add one supported channel.
+5. Configure availability and form fields.
+6. Connect the Help Desk to an Assistant.
+7. Test the escalation in Preview.

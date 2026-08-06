@@ -1,60 +1,18 @@
 ---
 title: Open Source
-description: Run Ciele on your own infrastructure. The core is open source under AGPL-3.0 — the admin console, chat widget, flow router, knowledge pipeline, and operations surfaces.
+description: Install and operate the AGPL-3.0-only Ciele core.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+The repository contains the administrator console, widget runtime, data layer, migration runner, scheduled jobs, API, CLI, and MCP server.
 
-The core of Ciele is open source under the **AGPL-3.0** license, and you can run
-it yourself. The open-source edition is the whole product your visitors and
-administrators use: the admin console, the chat widget, the [flow](/flows) router,
-the [knowledge](/knowledge) and retrieval pipeline, and the operations surfaces —
-[inbox](/operations/inbox), [improvements](/operations/improvements),
-[insights](/operations/insights), and [alerts](/operations/alerts).
+The supported deployment example uses Docker Compose on one host. It does not include Kubernetes, Helm, or multi-node operation.
 
-<Callout title="Same product, you operate it">
-Every feature page in the main [Documentation](/) applies to a self-hosted
-deployment. The difference is operational: you provide the infrastructure, the
-database, and the AI provider keys, and you apply upgrades. The managed
-alternative is [Ciele Cloud](/cloud).
-</Callout>
+## Start here
 
-## What you provide
+1. Read [Installation](/self-hosting/installation).
+2. Review [Configuration](/self-hosting/configuration).
+3. Select optional [Workers](/self-hosting/workers).
+4. Configure TLS before public exposure.
+5. Read [Upgrading](/self-hosting/upgrade) before you change versions.
 
-- **A place to run it.** The apps are standard Next.js applications; anywhere that
-  runs Node can host them.
-- **A database.** Ciele stores its data in Postgres, using [Supabase](/self-hosting/database)
-  for the database, authentication, and row-level security.
-- **AI provider keys.** Assistants call an AI provider to generate answers; you
-  bring your own keys. See [Configuration](/self-hosting/configuration).
-
-## The license, briefly
-
-AGPL-3.0 is an open-source license. You may run, study, modify, and share the
-software. Its defining condition is the network clause: if you modify Ciele and
-offer that modified version to others over a network, you must also offer those
-users the corresponding source of your modified version. Running it unmodified,
-or modifying it only for your own organization's internal use, does not trigger
-that obligation. This page is a practical summary, not legal advice; the
-authoritative terms are in the `LICENSE` file at the repository root.
-
-If your organization would rather not take on AGPL obligations or the operating
-work, [Ciele Cloud](/cloud) is the same core under a commercial arrangement.
-
-## What is not in the open-source edition
-
-A small set of commercial, managed-service features live outside the open-source
-core and are not part of a self-hosted deployment. See
-[The open-core boundary](/self-hosting/open-core-boundary) for the exact line.
-
-## Next steps
-
-<Cards>
-  <Card title="Installation" href="/self-hosting/installation" description="One command with Docker, or run the monorepo directly." />
-  <Card title="Configuration" href="/self-hosting/configuration" description="Environment variables for the database and AI providers." />
-  <Card title="Database" href="/self-hosting/database" description="Postgres, Supabase, and how migrations are applied." />
-  <Card title="Background workers" href="/self-hosting/workers" description="The optional graph and crawler services, and what they add." />
-  <Card title="Upgrading" href="/self-hosting/upgrade" description="Take a new release, back up, and roll back." />
-  <Card title="The open-core boundary" href="/self-hosting/open-core-boundary" description="Exactly what is open source and what is Cloud-only." />
-</Cards>
+Use the [Architecture](/self-hosting/architecture) section to understand current package and request boundaries.

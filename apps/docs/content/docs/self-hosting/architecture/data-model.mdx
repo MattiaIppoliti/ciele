@@ -1,189 +1,44 @@
 ---
 title: Data model
-description: The tables and how they relate, how one organization's rows are kept away from another's, and how the schema is applied to a database.
+description: Understand the main tenant, configuration, Knowledge, and Conversation relationships.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Tenant ownership
 
-Every durable byte lives in Postgres. There are around forty tables, and almost
-all of them hang off one of two anchors: an **organization** or an **assistant**.
-Learn those two spines and the rest of the schema follows.
+An Organization is the primary tenant. Members join an Organization with one Role.
 
-## The two anchors
+Organization-owned records include Assistants, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
 
-Almost every table is reachable from an organization. These are the rows an
-organization directly owns:
+## Assistant configuration
 
-<Mermaid
-  title="What an organization owns (every arrow is one-to-many)"
-  chart={`
-flowchart LR
-  O["organizations"]
-  P["profiles"]
-  OM["organization_members"]
-  OI["organization_invites"]
-  A["assistants"]
-  KC["knowledge_collections"]
-  PC["provider_connections"]
-  HD["help_desks"]
-  SC["support_channels"]
+```mermaid
+erDiagram
+  ORGANIZATION ||--o{ ASSISTANT : owns
+  ASSISTANT ||--o{ FLOW : routes
+  ASSISTANT ||--o{ PUBLICATION : snapshots
+  ASSISTANT ||--o{ COLLECTION : knows
+  COLLECTION ||--o{ SOURCE : contains
+  SOURCE ||--o{ CONCEPT : produces
+  ASSISTANT ||--o{ CONVERSATION : serves
+  CONVERSATION ||--o{ MESSAGE : stores
+```
 
-  O --> OM
-  P --> OM
-  O --> OI
-  O --> A
-  O --> KC
-  O --> PC
-  O --> HD --> SC
-`}
-/>
+A Publication stores an immutable Assistant configuration snapshot. Draft records remain editable after publication.
 
-And this is the chain worth knowing by heart — the path from an assistant to a
-citation, and from an answer to a review item:
+A Flow stores one trigger, condition configuration, and ordered actions. Runtime validation enforces valid trigger and action pairs.
 
-<Mermaid
-  title="From an assistant to a cited answer, and from an answer to a review item"
-  chart={`
-flowchart TB
-  A["assistants"]
-  F["flows"]
-  PB["publications"]
-  CV["conversations"]
-  MS["messages"]
-  IM["improvement_messages"]
-  IMP["improvements"]
+## Conversation data
 
-  A -->|"routes with"| F
-  A -->|"snapshots into"| PB
-  A -->|"answers in"| CV
-  CV -->|"contains"| MS
-  MS -->|"flagged in"| IM
-  IMP -->|"collects"| IM
+A Conversation belongs to the serving Assistant and tracks one Visitor session. Messages store typed parts for text, citations, buttons, traces, and other replies.
 
-  KC["knowledge_collections"]
-  S["sources"]
-  C["concepts"]
-  CH["concept_chunks"]
+Session state also records proactive Notification delivery. A Notification does not create a Visitor message.
 
-  KC -->|"gathers"| S
-  S -->|"enriches into"| C
-  C -->|"splits into"| CH
-`}
-/>
+## Programmatic credentials
 
-The two chains meet at retrieval rather than through a foreign key: a chunk
-resolves to its concept and source, and those become the citations on a message
-(see [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline)).
+An API-key record belongs to an Organization and stores a secret hash, Role, creator, and revocation state. The plaintext secret is not stored.
 
-Content rows use a short text primary key rather than a UUID, which is why an
-assistant id is readable and copyable in the console. Organization, member, and
-invite tables use Postgres UUIDs.
+## Isolation
 
-## The whole schema, by area
+Authenticated console access uses row-level security where applicable. Service-role paths must add an explicit Organization boundary.
 
-| Area | Tables | What it holds |
-|---|---|---|
-| **Tenancy and identity** | `organizations`, `organization_members`, `organization_invites`, `profiles`, `sso_connections`, `platform_settings` | Organizations, their members and pending invitations, and a mirror of the auth user table that policies can join against |
-| **Assistants and routing** | `assistants`, `flows`, `publications`, `assistant_access`, `assistant_skills`, `skills`, `assistant_goals`, `assistant_goal_runs`, `flow_trust`, `flow_trust_events` | Assistant configuration, its flows, and the immutable snapshots the widget serves; plus tools, shared skills, and goals |
-| **Knowledge and retrieval** | `knowledge_collections`, `sources`, `concepts`, `concept_chunks` | Collections, the sources inside them, the concepts each source becomes, and the embedded chunks that back search |
-| **Conversations** | `conversations`, `messages`, `runtime_events` | Every conversation and message, with the flow that produced each answer and the runtime events behind it |
-| **Answer quality** | `improvements`, `improvement_counters`, `improvement_messages`, `improvement_proposals`, `answer_verdicts`, `answer_verifier_claims`, `compost_runs`, `compost_claims` | The improvement tracker, its per-organization numbering, proposals, and answer verification |
-| **Escalation** | `help_desks`, `support_channels` | Help desks and their typed support channels |
-| **Operations** | `alerts`, `background_jobs`, `export_jobs`, `ai_usage`, `usage_daily`, `org_budgets` | Health alerts, queued background work, export files, and usage accounting |
-| **Provider access** | `provider_connections`, `local_connector_devices`, `local_connector_pairings`, `local_inference_jobs` | Provider connections and the records behind locally-run model access |
-
-## How tenants stay separate
-
-Isolation is enforced twice, deliberately. The application checks capabilities
-before a mutation, and the database refuses rows outside the caller's organization
-regardless of what the application asked for.
-
-<Mermaid
-  title="Two independent gates on the same row"
-  chart={`
-flowchart TB
-  REQ["A request"]
-  APP{"Application:<br/>does this role have<br/>the capability?"}
-  SQL{"Postgres:<br/>is the caller a member<br/>of this row's organization?"}
-  ROW[("The row")]
-  NO1["Rejected in the action"]
-  NO2["Invisible to the query"]
-
-  REQ --> APP
-  APP -->|"no"| NO1
-  APP -->|"yes"| SQL
-  SQL -->|"no"| NO2
-  SQL -->|"yes"| ROW
-`}
-/>
-
-Row-level security is on for every table. Members read within their organization,
-editors and above create and update, and administrators and above delete. Writes
-that must not be forgeable — a monotonic counter, for instance — go through
-functions that run with elevated rights rather than through a policy that would
-have to trust the caller.
-
-The helper functions the policies call live in a private schema, not the public
-one, so they are not part of the API surface the database exposes.
-
-### Secrets
-
-Two kinds of value are encrypted by the application before they reach Postgres:
-provider API keys and ticketing-integration credentials. They are sealed with
-authenticated encryption using a key from the environment, so the database only
-ever holds ciphertext, and a database dump does not leak credentials.
-
-<Callout title="Set the encryption key before storing any credential">
-The key comes from configuration, not from the database. Rotating it without
-re-sealing existing rows makes them unreadable — see
-[Configuration](/self-hosting/configuration).
-</Callout>
-
-## How the schema is applied
-
-Migrations are plain SQL files applied in filename order. They are **not** applied
-by hand, and not with the Supabase CLI's own push command: this project's live
-history was written partly out of band, with names and duplicate numeric prefixes
-the CLI's version-keyed history cannot represent.
-
-<Mermaid
-  title="The migration applier"
-  chart={`
-flowchart TB
-  START["Run the applier<br/>against a database URL"]
-  LOCK["Take an advisory lock<br/>so concurrent runs are safe"]
-  LIST["List migration files<br/>in filename order"]
-  BASE{"Listed in the<br/>baseline file?"}
-  RECORD["Record it without running it"]
-  LEDGER{"Already in<br/>the ledger?"}
-  SKIP["Skip"]
-  TX["Run it in its own transaction —<br/>which also writes the ledger row"]
-  FAIL["Failed: no ledger row,<br/>so the next run retries it"]
-  EE["Then the enterprise chain,<br/>where one exists"]
-
-  START --> LOCK --> LIST --> BASE
-  BASE -->|"yes"| RECORD
-  BASE -->|"no"| LEDGER
-  LEDGER -->|"yes"| SKIP
-  LEDGER -->|"no"| TX
-  TX -->|"error"| FAIL
-  TX --> EE
-`}
-/>
-
-The properties that matter operationally:
-
-- **The ledger is keyed by filename**, in a private schema. What has run is a fact
-  in the database, not an assumption.
-- **Each migration is its own transaction**, and that transaction writes the ledger
-  row. A migration that fails leaves nothing behind, so re-running the applier
-  retries exactly it.
-- **Concurrent runs are safe**, via an advisory lock plus a re-check inside the
-  transaction.
-- **New migrations use a timestamp prefix** and land in the same change as the code
-  that needs them.
-- **The enterprise chain, where present, is applied strictly after the whole
-  open-source chain** and uses the same ledger. An open-source checkout has no such
-  directory and applies only the open-source chain.
-
-See [Database](/self-hosting/database) for running this against your own Postgres.
+API v1 uses the Organization resolved from the API key. It does not accept a caller-selected Organization as authority.

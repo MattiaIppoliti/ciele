@@ -1,49 +1,33 @@
 ---
-title: Create an assistant
-description: Create your first assistant, then find, duplicate, or remove assistants from the dashboard.
+title: Create an Assistant
+description: Create a draft Assistant and verify its first answer.
 ---
 
-Assistants are managed from the dashboard, which is the first screen you see when
-you open the console.
+## Create the draft
 
-## Create a new assistant
+1. Open **Assistants**.
+2. Select **Create Assistant**.
+3. Enter a title.
+4. Enter an optional nickname and description.
+5. Confirm the creation.
 
-1. Open the dashboard. It lists every assistant in your organization as a card.
-2. Select **Create New Assistant**.
-3. Enter a **Title**. This is the internal name you will recognize in the list.
-4. Enter a **Description** that explains what the assistant is for.
-5. Confirm to create it. The assistant opens in its editor, ready to configure.
+Ciele creates the Assistant with built-in Flows and a Knowledge Collection.
 
-A new assistant starts empty. It becomes useful as soon as you add
-[knowledge](/knowledge) and set how it [replies](/assistants/general-settings).
+## Configure the first answer
 
-## Find an assistant
+1. Open **General**.
+2. Select the provider connection and model.
+3. Enter the welcome message and answering style.
+4. Open **Knowledge**.
+5. Add one Source or FAQ.
+6. Wait until the Source status is ready.
 
-Use the **Search assistants** box at the top of the dashboard to filter the list
-by name. Each card shows the assistant icon, its name, a copyable identifier, and
-its description.
+## Test the draft
 
-## Duplicate an assistant
+1. Open Preview.
+2. Ask one question that the Source answers.
+3. Open **Sources** below the answer.
+4. Confirm that the citation names the expected Source.
+5. Test one question that the Source does not answer.
 
-Duplicating is the fastest way to reuse a setup you like.
-
-1. On an assistant card, open the actions menu.
-2. Select **Duplicate assistant**.
-
-The copy includes the configuration and the flows of the original. Knowledge is
-not copied, so the new assistant starts with its own empty knowledge.
-
-## Delete an assistant
-
-1. On an assistant card, open the actions menu.
-2. Select **Delete assistant** and confirm.
-
-Deleting an assistant removes its configuration. Do this only when you are sure
-the assistant is no longer needed.
-
-## The assistant identifier
-
-Every assistant has an identifier shown on its card and in the editor. You use
-this identifier when you embed the assistant on your website, so keep it handy
-when you reach the [Publishing](/publishing) step. You can copy it with one
-click wherever it appears.
+Correct the Knowledge or Flow configuration when the result is not acceptable. Publish only after the checks succeed.

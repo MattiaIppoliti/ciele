@@ -1,50 +1,42 @@
 ---
 title: Posta in arrivo
-description: Leggi le conversazioni che i tuoi assistenti hanno avuto con i visitatori, con le fonti, i dettagli della sessione e lo stato dell'escalation.
+description: Esamina Conversazioni, Sorgenti, trace di runtime e metadati di sessione.
 ---
 
-Nella Posta in arrivo puoi leggere cosa è realmente accaduto: ogni conversazione
-tra un visitatore e i tuoi assistenti. È il modo migliore per capire come i
-visitatori formulano le domande e dove l'assistente riesce bene o dove invece
-non è all'altezza. Apri **Inbox** dalla barra laterale.
+La Posta in arrivo memorizza i turni del Visitatore e dell'Assistente. Apri una
+Conversazione per esaminare l'esatta trascrizione memorizzata.
 
-## Sfoglia le conversazioni
+## Elenco delle conversazioni
 
-L'elenco delle conversazioni raggruppa le attività recenti in modo che la più
-recente sia facile da trovare. Ogni voce mostra il visitatore, un'anteprima del
-messaggio e una marca temporale. Usa gli strumenti in alto per restringere
-l'elenco:
+Utilizza la ricerca e i filtri disponibili per restringere l'elenco. Ogni riga
+identifica l'attività recente e lo stato corrente della Conversazione.
 
-- **Date range** limita l'elenco a un periodo.
-- **Search** trova le conversazioni in base al loro contenuto.
-- **Filters** filtra in base agli attributi che ti interessano.
-- **Exports** ti consente di estrarre i dati delle conversazioni per un'analisi
-  più approfondita.
+Una sessione che contiene solo Notifiche proattive ha il marcatore
+**Notification only**. Diventa una normale Conversazione dopo che un Visitatore
+risponde.
 
-## Leggi una conversazione
+## Dettagli della conversazione
 
-Apri una conversazione per visualizzare la trascrizione completa. Oltre ai
-messaggi, ottieni:
+La vista dettagliata può mostrare:
 
-- **Workflow markers** che mostrano quale flusso ha gestito ogni turno, così
-  puoi vedere le tue regole in azione.
-- **Sources** su ogni risposta generata, così puoi verificare da dove provengono
-  le informazioni.
-- **Feedback** come un pollice in su o in giù quando un visitatore l'ha
-  lasciata.
+- Messaggi del Visitatore e dell'Assistente
+- il Flow che ha gestito un turno
+- citazioni da fonti con nome
+- Feedback dei visitatori
+- stato di escalation
+- metadati di avvio e del dispositivo
+- informazioni Thinking memorizzate quando il ruolo del membro ne consente
+  l'accesso
 
-Un pannello laterale fornisce il contesto della conversazione e della sessione,
-compresi i dettagli su come il visitatore ha raggiunto l'assistente e sullo
-stato della conversazione, inclusa l'eventuale escalation.
+Le azioni Verbatim Message e le risposte Basic non contengono una traccia
+Thinking. Le risposte della ricerca nella knowledge base possono contenere
+eventi relativi a strumenti e progressi.
 
-## Trasforma le informazioni in azioni
+## Crea un lavoro di qualità
 
-La Posta in arrivo si integra perfettamente con la bacheca Miglioramenti. Quando
-noti una risposta sbagliata, puoi segnalarla per il miglioramento in modo che
-diventi un elemento tracciato da correggere. Vedi
-[Miglioramenti](/operations/improvements).
+Utilizza l'azione Improvement disponibile quando una risposta deve essere
+corretta. Il nuovo elemento rimanda al messaggio della Conversazione
+interessato.
 
-<Callout title="Read real questions often">
-Nothing teaches you more about an assistant than the words visitors actually use.
-A few minutes in the Inbox regularly will surface most of what needs tuning.
-</Callout>
+Utilizza [Exports](/operations/exports) quando hai bisogno di record strutturati
+al di fuori della Posta in arrivo.

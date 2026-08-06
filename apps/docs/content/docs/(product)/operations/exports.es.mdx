@@ -1,0 +1,43 @@
+---
+title: Exportaciones
+description: Crea y descarga exportaciones estructuradas de Conversaciones.
+---
+
+Las exportaciones crean registros descargables para las conversaciones
+seleccionadas. Ciele genera la exportación como una tarea en segundo plano.
+
+## Crea una exportación
+
+1. Abre **Insights**.
+2. Selecciona **Exports**.
+3. Selecciona el ámbito de exportación Conversaciones o el ámbito disponible.
+4. Inicia la exportación.
+5. Espera hasta que el estado del trabajo sea «Listo».
+6. Descarga el archivo antes de que caduque su enlace.
+
+La descarga utiliza una URL firmada con límite de tiempo. Inicia una nueva
+exportación cuando el enlace ya no sea válido.
+
+## Exportar contenido
+
+Cada registro de conversación utiliza el formato de exportación actual de 29
+campos. El registro incluye información sobre la conversación, el Asistente, el
+visitante, la sesión y el resultado.
+
+Los detalles del razonamiento dependen de la clave de la API o del rol del
+miembro. Un rol de nivel inferior no puede solicitar el razonamiento oculto a
+través de una opción de exportación.
+
+## Acceso a la API y a la CLI
+
+La API acepta los ID de conversación seleccionados en
+`POST /api/v1/conversations/export`.
+
+La CLI puede escribir el mismo formato de registro en un archivo:
+
+```bash
+ciele conversations export <conversation-id> --out export.json
+```
+
+La herramienta MCP `read_inbox` también puede solicitar una exportación. Esta
+herramienta siempre es de solo lectura.

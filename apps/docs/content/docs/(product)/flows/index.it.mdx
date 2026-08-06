@@ -1,57 +1,38 @@
 ---
-title: Panoramica dei flussi
-description: Come Ciele decide cosa fa un assistente con ogni messaggio, utilizzando un insieme ordinato di regole.
+title: Flussi
+description: Indirizza messaggi ed eventi proattivi ad azioni di risposta ordinate.
 ---
 
-I flussi sono il modo in cui controlli il comportamento di un assistente. Un
-flusso è una regola che dice "quando un messaggio ha questo aspetto, fai queste
-cose". I flussi sono ordinati e il primo che corrisponde a un messaggio ha la
-priorità. Questo rende prevedibile un assistente: puoi guardare l'elenco e
-sapere come gestirà ogni tipo di domanda.
+Un Flow contiene un trigger, le condizioni disponibili e le azioni ordinate. Il
+router elabora i flussi abilitati nell'ordine configurato.
 
-Apri un assistente e seleziona **Flows** per visualizzare l'elenco.
+## Flussi di messaggi
 
-## Come funziona il routing
+Il trigger **User sends a message** utilizza la Classificazione degli intenti.
+Un classificatore di modelli seleziona il miglior Flow idoneo quando è
+disponibile un modello.
 
-Per ogni messaggio in arrivo, l'assistente scorre l'elenco dei flussi e
-seleziona il primo il cui contenuto corrisponde al messaggio. Quindi esegue le
-azioni di quel flusso in ordine. Poiché la corrispondenza si basa sul
-significato del messaggio, descrivi ogni flusso in un linguaggio semplice invece
-di scrivere parole chiave.
+Il router delle parole chiave fornisce un fallback offline e per gli errori.
+Entrambi i router utilizzano lo stesso filtro dei candidati.
 
-## Il comportamento predefinito
+Il flusso **Default behavior** bloccato rimane l'ultimo. Gestisce un messaggio
+idoneo quando nessun Flow precedente ha la priorità.
 
-In fondo alla lista c'è il **Default behavior**. È una regola integrata che si
-trova sempre per ultima e gestisce qualsiasi messaggio a cui nessun altro flusso
-corrisponde. Il comportamento predefinito risponde in base alla tua conoscenza,
-motivo per cui un assistente funziona non appena dispone di conoscenza, anche in
-assenza di flussi personalizzati.
+## Flussi proattivi
 
-Non puoi rimuovere il comportamento predefinito, ma puoi fare affidamento su di
-esso come rete di sicurezza mentre aggiungi flussi più specifici al di sopra di
-esso.
+Questi trigger non classificano un messaggio:
 
-## Risposte fisse vs risposte generate
+- **On page load**
+- **Time on page**
+- **Chat opens**
 
-I flussi ti consentono di combinare due tipi di risposte:
+Un flusso proattivo non ha condizioni e contiene un'azione di notifica. Vedi
+[Notifiche](/flows/notifications).
 
-- **Fixed replies** vengono mostrate esattamente come le hai scritte. Usale
-  quando la formulazione deve essere esatta, come nel caso di una dichiarazione
-  di politica o di una nota legale.
-- **Generated answers** sono scritte dall'assistente sulla base della tua
-  conoscenza. Usale quando vuoi una risposta utile e naturale che si adatti alla
-  domanda.
+## Ordine dei flussi
 
-Questo mix ti dà il controllo dove ne hai bisogno e flessibilità in tutto il
-resto.
+Posiziona i flussi di messaggi specifici prima di quelli generici. L'ordine
+determina anche il funzionamento della scorciatoia integrata Basic Interaction.
 
-## Lettura dell'elenco dei flussi
-
-Ogni flusso nell'elenco mostra il suo nome, una breve descrizione di ciò a cui
-corrisponde e le azioni che eseguirà. Puoi riordinare i flussi per modificarne
-la priorità e puoi attivare o disattivare un flusso senza eliminarlo. Un flusso
-disattivato viene ignorato durante il routing.
-
-Continua con [Creare un flusso](/flows/building-a-flow) per crearne uno e
-[Azioni del flusso](/flows/actions) per l'elenco completo delle azioni che un
-flusso può eseguire.
+Un Flow personalizzato corrispondente precedente può gestire un messaggio di
+cortese prima del Flow Basic Interaction integrato.

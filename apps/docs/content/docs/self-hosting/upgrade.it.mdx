@@ -1,92 +1,40 @@
 ---
-title: Aggiornamento
-description: "Scopri una nuova versione di Ciele: come vengono pubblicate le release, cosa comporta un aggiornamento per il tuo database e come eseguire il backup e il rollback."
+title: Aggiorna
+description: Applica una nuova versione del repository e le relative migrazioni in sospeso.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Prima dell'aggiornamento
 
-Ciele viene pubblicato come release con tag. Ogni release è un singolo commit
-sul repository pubblico più un tag `vMAJOR.MINOR.PATCH`, quindi la domanda
-"quale versione sto usando" ha sempre una risposta precisa:
+1. Leggi le modifiche della release.
+2. Registra il commit o il tag corrente.
+3. Esegui il backup del database e dei file caricati.
+4. Verifica il processo di ripristino.
+5. Pianifica una finestra di servizio accettabile.
 
-```sh
-git describe --tags
-```
+## Applica la versione
 
-Fissa la tua distribuzione a un tag invece di seguire il ramo predefinito, e
-decidi tu quando spostarla.
-
-## Aggiorna una distribuzione Docker
-
-```sh
-git fetch --tags
-git checkout v0.2.0        # the release you want
+```bash
+git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Questo ricostruisce l'immagine dell'app e riavvia lo stack. Il servizio
-`migrate` viene eseguito per primo, applica solo le migrazioni che non hai già e
-termina; l'app si avvia una volta terminato. Non esegui le migrazioni
-manualmente.
+Il servizio `migrate` applica solo le migrazioni in sospeso. Controlla il
+risultato prima di accettare l'applicazione come funzionante.
 
-Se hai abilitato il [profilo workers](/self-hosting/workers), `--build`
-ricostruisce anche quelle immagini, senza alcun passaggio separato.
-
-## Aggiorna una distribuzione sorgente
-
-Esecuzione diretta delle app anziché in Compose:
-
-```sh
-git fetch --tags && git checkout v0.2.0
-pnpm install
-pnpm build
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
 ```
 
-Applica le migrazioni in sospeso al tuo database prima di avviare la nuova
-build. Consulta [Database](/self-hosting/database) per capire come funziona il
-runner ordinato per nome di file e come tiene traccia di ciò che ha già
-applicato.
+## Verifica il risultato
 
-## Esegui prima il backup
+1. Accedi alla console di amministrazione.
+2. Apri un Assistente.
+3. Anteprima di prova.
+4. Apri un widget pubblicato.
+5. Chiama `GET /api/v1/meta` quando sono in uso client programmatici.
 
-Un aggiornamento che applica le migrazioni modifica il tuo schema. Esegui sempre
-un dump prima di iniziare:
-
-```sh
-docker compose -f deploy/docker-compose.yml exec -T postgres \
-  pg_dump -U postgres postgres | gzip > ciele-$(date +%F).sql.gz
-```
-
-Due volumi contengono tutto ciò che conta: `postgres-data` (il database) e
-`storage-data` (i file caricati). Esegui il backup di entrambi: un semplice dump
-del database ripristinerà i tuoi assistenti, le conversazioni e i record di
-conoscenza, ma non i file sottostanti.
-
-<Callout type="warn" title="Migrations move forward only">
-There is no down-migration path. Rolling back to an earlier version means
-restoring the backup you took before the upgrade, not re-running the runner in
-reverse. This is why the dump above is not optional.
-</Callout>
-
-## Ripristino
-
-```sh
-docker compose -f deploy/docker-compose.yml down
-git checkout v0.1.0
-gunzip -c ciele-2026-07-25.sql.gz | docker compose -f deploy/docker-compose.yml \
-  exec -T postgres psql -U postgres postgres
-docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-Ripristina il dump corrispondente alla versione a cui stai tornando. Un dump più
-recente contiene uno schema più recente, che il codice precedente non
-riconoscerà.
-
-## Cosa leggere prima di un aggiornamento minore
-
-Le note di rilascio vengono pubblicate su ogni tag e segnalano tutto ciò che
-richiede una tua decisione: una nuova variabile di ambiente obbligatoria, un
-valore predefinito modificato, una migrazione che riscrive una tabella di grandi
-dimensioni. Dai una rapida occhiata prima di aggiornare una distribuzione da cui
-dipendono altre persone; le versioni patch sono di routine, le versioni minori a
-volte non lo sono.
+Non ripristinare una vecchia immagine dell'applicazione su un database migrato
+incompatibile. Utilizza le istruzioni di rilascio per un percorso di rollback
+supportato.

@@ -1,130 +1,55 @@
 ---
 title: Instalación
-description: Ejecuta todo el producto con un solo comando usando Docker, o ejecuta el monorepositorio directamente para el desarrollo.
+description: Inicia la implementación actual de Docker Compose de un solo host.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Requisitos
 
-Hay dos formas de empezar. **Docker** te ofrece todo el producto —consola,
-entorno de ejecución de widgets, base de datos, tareas programadas— en una sola
-máquina con un único comando, y es la opción que debes elegir para una
-implementación real. **Running the monorepo directly** es para desarrollar
-contra el código.
+- Instala Git.
+- Instala Docker con Docker Compose.
+- Reserva suficiente espacio en disco para las imágenes, Postgres y los archivos
+  subidos.
+- Reserva más memoria cuando habilites los trabajadores opcionales.
 
-## La instalación con un solo comando
+## Inicializa la pila
 
 ```bash
-git clone https://github.com/MattiaIppoliti/ciele.git && cd ciele
+git clone https://github.com/MattiaIppoliti/ciele.git
+cd ciele
 ./deploy/bootstrap.sh
 ```
 
-El script de arranque genera todos los secretos que necesita la pila, incluidas
-las claves de la base de datos que firma ella misma, los escribe en
-`deploy/.env` y lo inicia todo. La primera ejecución descarga las imágenes y
-compila la aplicación, así que dale varios minutos. Cuando termine, abre
-[http://localhost:3000](http://localhost:3000) y regístrate: **la primera cuenta
-se convierte en la propietaria de su organización**.
+El script genera los secretos necesarios en `deploy/.env`. A continuación,
+compila e inicia los perfiles predeterminados.
 
-Añade `--seed` para cargar contenido de demostración depurado, de modo que veas
-un producto con contenido antes de añadir el tuyo.
+Abre [http://localhost:3000](http://localhost:3000) cuando los servicios estén
+en buen estado. La primera cuenta se convierte en la propietaria de la
+organización.
 
-<Callout title="No account anywhere, no license fee">
-A self-hosted deployment talks to no Ciele service. It can also talk to no AI
-vendor: point it at any server speaking the OpenAI chat and embeddings API — a
-local model runner on the same host works — and the whole thing runs offline.
-See [Configuration](/self-hosting/configuration).
-</Callout>
+Utiliza `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
+depurado.
 
-### Qué se ejecuta
+## Perfiles predeterminados
 
-La pila es un conjunto de perfiles de Docker Compose, seleccionados por
-`COMPOSE_PROFILES` en `deploy/.env`:
+| Perfil | Predeterminado | Servicios |
+| --- | :---: | --- |
+| `db` | Sí | Postgres, pgvector, autenticación, API de datos, almacenamiento y puerta de enlace. |
+| `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
+| `app` | Sí | Consola de administrador, tiempo de ejecución de widgets y API v1. |
+| `cron` | Sí | Tareas programadas de la aplicación. |
+| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización en JavaScript. |
+| `studio` | No | Interfaz de administración de la base de datos. |
 
-| Perfil | Predeterminado | Qué es |
-| --- | :--: | --- |
-| `db` | ✅ | Postgres con pgvector, además de autenticación, la API de datos, almacenamiento de archivos y una pasarela que les proporciona un origen único |
-| `migrate` | ✅ | One-shot: aplica las migraciones pendientes y aprovisiona los buckets de almacenamiento; luego se inicia la aplicación |
-| `app` | ✅ | La aplicación web: consola de administración y entorno de ejecución de widgets |
-| `cron` | ✅ | Los trabajos programados, con los mismos horarios que utiliza el servicio gestionado |
-| `workers` | ⬜ | Recuperación de grafos y un rastreador de renderización en JavaScript. Pesado — consulta [Trabajadores en segundo plano](/self-hosting/workers) |
-| `studio` | ⬜ | Una interfaz de usuario para la administración de la base de datos |
-
-<Callout type="warn" title="TLS is yours to terminate">
-The stack listens on plain HTTP and expects a reverse proxy in front of it. Only
-the app and the database gateway are published; Postgres is not reachable from
-outside the Compose network. When you put a proxy in front, set `PUBLIC_URL` and
-`SUPABASE_PUBLIC_URL` to the public HTTPS origins and rebuild the app image — the
-browser bundle inlines the latter at build time.
-</Callout>
-
-Obtener una nueva versión más adelante es [Actualizar](/self-hosting/upgrade).
-
-## Ejecuta el monorepositorio directamente
-
-Ciele es un monorepositorio de pnpm y Turborepo. El producto orientado al
-inquilino es una aplicación Next.js bajo `apps/web`; la capa de datos es
-`packages/db`; el esquema de la base de datos reside en `supabase/`.
-
-## Requisitos previos
-
-- **Node.js** y **pnpm**.
-- **Docker**, si quieres ejecutar la pila completa de la base de datos
-  localmente (opcional; consulta el modo de demostración a continuación).
-
-## Ejecútalo localmente
+## Inspecciona la pila
 
 ```bash
-pnpm install
-pnpm dev        # starts the web app on http://localhost:3000
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
-<Callout title="Demo mode with zero setup">
-Without a database configured, the app runs on an in-memory demo dataset so you
-can click through the whole console immediately. A banner on the dashboard reminds
-you that you are in demo mode. Configure the database when you are ready to keep
-real data.
+La configuración predeterminada publica la aplicación en el puerto `3000` y la
+puerta de enlace de la base de datos en el puerto `8000`. No publica Postgres.
+
+<Callout type="warn" title="Add TLS before public use">
+The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
-
-## Ejecútalo con una base de datos local
-
-Para desarrollar con el mismo entorno de Postgres, autenticación y seguridad a
-nivel de fila que en producción, ejecuta el entorno de base de datos local
-(requiere Docker):
-
-```bash
-pnpm db:start                                  # boot the local database stack
-pnpm db:reset                                  # apply migrations + seed data
-cp apps/web/.env.example apps/web/.env.local   # local credentials are pre-filled
-pnpm dev                                        # the app now uses the database
-```
-
-- `pnpm db:status` muestra las URL locales, las claves y el enlace al estudio de
-  la base de datos.
-- `pnpm db:reset` borra y vuelve a inicializar en cualquier momento;
-  `pnpm db:stop` lo apaga.
-- Deja las variables de la base de datos en blanco en `.env.local` para volver
-  al modo de demostración.
-
-## Ir a producción
-
-Para una implementación alojada, dirige la aplicación a un proyecto
-Postgres/Supabase alojado y establece sus credenciales como variables de
-entorno. El esquema lo aplica el ejecutor de migración, no a mano. Ambos temas
-tienen sus propias páginas:
-
-- [Configuración](/self-hosting/configuration): las variables de entorno que hay
-  que establecer.
-- [Base de datos](/self-hosting/database): la base de datos alojada y cómo se
-  aplican las migraciones.
-
-## Scripts comunes
-
-| Comando          | Qué hace                              |
-| ---------------- | ----------------------------------------- |
-| `pnpm dev`       | Servidores de desarrollo para el espacio de trabajo             |
-| `pnpm build`     | Compilación de producción                          |
-| `pnpm lint`      | Analizar el espacio de trabajo con Lint                        |
-| `pnpm db:start`  | Arrancar la pila de base de datos local (Docker)    |
-| `pnpm db:reset`  | Aplicar migraciones y datos iniciales localmente    |
-| `pnpm db:status` | Mostrar las URL, claves y enlaces de la base de datos local |
-| `pnpm db:stop`   | Detener la pila de la base de datos local             |

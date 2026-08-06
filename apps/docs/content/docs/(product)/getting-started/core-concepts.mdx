@@ -1,71 +1,42 @@
 ---
 title: Core concepts
-description: The vocabulary you will see throughout Ciele, and how the pieces relate to each other.
+description: Learn the stable terms that Ciele uses in the product and documentation.
 ---
-
-Ciele uses a small set of terms consistently across the whole product. Learning
-them once makes every other page easier to follow.
 
 ## Organization
 
-An Organization is your workspace. It owns your assistants, your members, your
-help desks, and your data. Everything you create belongs to one organization, and
-data stays isolated between organizations.
-
-## Member and Role
-
-A Member is a person who belongs to your organization. Each member has a Role that
-controls what they can see and change. Roles range from full control to view only
-access. See [Members and roles](/organization/members-and-roles).
+An Organization owns members, Assistants, Help Desks, provider connections, API keys, Skills, and operational data.
 
 ## Assistant
 
-An Assistant is a single AI chat experience: a widget that visitors talk to. An
-organization can have many assistants, each with its own name, knowledge, rules,
-and appearance. You configure an assistant in its editor, which has a live
-preview on the right.
+An Assistant is a configured conversational agent. It has identity, Knowledge, Flows, tools, a model, appearance, and publication state.
 
-## Visitor and Conversation
+## Knowledge Collection
 
-A Visitor is anyone who talks to a published assistant. A Conversation is the
-full exchange between a visitor and an assistant, including every message, the
-sources cited, and any escalation. Conversations appear in the Inbox.
+A Knowledge Collection belongs to one Assistant. It contains Sources, Concepts, and curated FAQs used for grounded answers.
 
-## Knowledge and Source
+## Flow
 
-Knowledge is everything an assistant can draw on to answer: websites, files, and
-FAQs. When the assistant uses a piece of knowledge in an answer, it can cite the
-Source, so the visitor sees where the information came from.
+A Flow is an ordered routing rule. It contains one trigger, available conditions, and ordered response actions.
 
-## Flow and Default behavior
+The locked **Default behavior** Flow remains last. It handles an eligible message when no earlier Flow wins.
 
-A Flow is a rule. It has a description of the kind of message it handles, optional
-conditions, and a set of actions to run. Flows are ordered, and the first one that
-matches wins. The Default behavior is the built in rule at the very end that
-handles any message no flow matched.
+## Publication
 
-## Flow action
+A Publication is an immutable Assistant snapshot. The widget uses the active Publication, not the current administrator draft.
 
-A Flow action is one step the assistant runs when a flow matches. Examples include
-sending a fixed message, searching your knowledge, showing buttons, or escalating.
-See [Flow actions](/flows/actions).
+## Conversation
+
+A Conversation stores Visitor and Assistant messages, reply parts, citations, runtime traces, and session metadata.
 
 ## Help Desk
 
-A Help Desk is an escalation destination that belongs to your organization. It
-groups one or more channels, such as email or live chat, that a visitor can use
-to reach your team. Assistants choose which help desks they offer. See
-[Help Desks](/help-desks).
-
-## Widget
-
-The Widget is the assistant as your visitors see it: the launch button and the
-chat window on your site. You control its colors and position, and you publish it
-with an embed snippet.
+A Help Desk defines one or more contact channels. An Assistant can suggest a relevant Help Desk during escalation.
 
 ## Improvement
 
-An Improvement is a tracked item for making answers better. It can be created
-automatically when an answer falls short or a visitor escalates, or manually when
-someone flags an answer. Improvements move through a simple board from open to
-done. See [Improvements](/operations/improvements).
+An Improvement is a review item for an answer-quality problem. It can link to the exact Conversation message.
+
+## Goal and Alert
+
+A Goal runs a scheduled answer check. A failed Goal creates an Alert for an administrator.

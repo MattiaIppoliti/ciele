@@ -1,0 +1,50 @@
+---
+title: KI-Anbieter
+description: Verbinden Sie einen Modellanbieter und wählen Sie für jeden Assistenten das Modell aus.
+---
+
+Ciele verwendet eine einzige Provider-Abstraktion für Modelle von Anthropic,
+OpenAI und Google. Ein Assistant wählt seine Provider-Verbindung und sein Modell
+aus.
+
+## Typen von Provider-Verbindungen
+
+| Typ | Verwendung |
+| --- | --- |
+| Plattformplan | Verwendet Modelle, die vom verwalteten Ciele-Plan bereitgestellt werden. |
+| Abonnement | Verwendet ein Mitgliederabonnement nur für die Vorschau. |
+| API-Schlüssel | Verwendet einen von der Organisation verwalteten Provider-Schlüssel. |
+
+Eine Subscription-Verbindung bedient kein veröffentlichtes Widget. Wählen Sie
+für veröffentlichten Traffic einen Platform-Plan oder eine
+API-Schlüssel-Verbindung aus.
+
+## Fügen Sie eine API-Schlüssel-Verbindung hinzu
+
+1. Öffnen Sie **Settings**.
+2. Wählen Sie **AI Provider**.
+3. Fügen Sie eine Provider-Verbindung hinzu.
+4. Wählen Sie Anthropic, OpenAI oder Google aus.
+5. Geben Sie die erforderlichen Anmeldeinformationen des Anbieters ein.
+6. Speichern Sie die Verbindung.
+
+Ciele verschlüsselt die Anmeldeinformationen vor der Speicherung. Verwenden Sie
+keinen persönlichen Schlüssel erneut, der über nicht zugehörige Berechtigungen
+verfügt.
+
+## Wählen Sie ein Assistant-Modell aus
+
+1. Öffnen Sie den Assistant.
+2. Wählen Sie **General**.
+3. Wählen Sie die Provider-Verbindung aus.
+4. Wählen Sie ein verfügbares Modell aus.
+5. Testen Sie den Assistenten in der Vorschau.
+6. Veröffentlichen Sie den Assistenten.
+
+Das veröffentlichte Widget verwendet den Provider und das Modell in seinem
+Veröffentlichungs-Snapshot. Spätere allgemeine Änderungen erfordern eine weitere
+Veröffentlichung.
+
+<Callout title="Provider accounts are separate">
+Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.
+</Callout>

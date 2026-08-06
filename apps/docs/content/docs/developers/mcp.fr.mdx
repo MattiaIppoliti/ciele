@@ -1,0 +1,56 @@
+---
+title: Serveur Ciele MCP
+description: Accordez à un client MCP un accès contrôlé aux opérations d'administration de Ciele.
+---
+
+Le serveur Ciele Model Context Protocol (MCP) est un processus `stdio` local. Il
+appelle l'API Ciele via le client typé.
+
+## Prérequis
+
+- Utilisez Node.js 22.6 ou une version ultérieure.
+- Clonez le dépôt Ciele.
+- Créez une [clé API d'organisation](/developers/api-keys).
+- Utilisez un client MCP capable de démarrer un serveur `stdio` local.
+
+Lancez ce programme à partir du dépôt :
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+## Variables d'environnement
+
+| Variable | Exigence | Objectif |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Obligatoire | Authentifie l'organisation. |
+| `CIELE_BASE_URL` | Facultatif | Sélectionne une origine auto-hébergée. |
+| `CIELE_MCP_READ_ONLY` | Facultatif | Refuse les actions de mutation lorsque la valeur est `1`. |
+
+La vérification en lecture seule est effectuée au sein du processus MCP. Une
+mutation refusée n'effectue pas de requête API.
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Outils disponibles
+
+| Outil | Opérations en cours |
+| --- | --- |
+| `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et au rôle. |
+| `manage_assistants` | Lister, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
+| `manage_flows` | Lister, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
+| `manage_knowledge` | Gérez les collections, les sources et les FAQ. |
+| `publish_assistant` | Lire le statut, publier, annuler la publication ou restaurer une publication. |
+| `read_inbox` | Lister, lire ou exporter des conversations. |
+| `manage_improvements` | Lister, lire ou mettre à jour les améliorations. |
+
+Le serveur MCP ne fournit pas de transport HTTP distant. Consultez
+[Clients IA](/developers/ai-clients) pour obtenir des informations sur la
+compatibilité.
+
+## Vérifiez la connexion
+
+Demandez au client d'appeler `ciele_identity`. Confirmez l'ID d'organisation, le
+rôle, la version de l'API et la liste de domaines attendus.

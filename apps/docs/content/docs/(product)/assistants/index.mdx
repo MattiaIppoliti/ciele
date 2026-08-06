@@ -1,53 +1,28 @@
 ---
-title: Assistants overview
-description: What an assistant is, how its editor is organized, and where each setting lives.
+title: Assistants
+description: Configure the identity, model, behavior, tools, and checks for an Assistant.
 ---
 
-An assistant is a single chat experience that you shape from top to bottom: its
-name, what it knows, how it replies, when it escalates, how it looks, and where it
-appears. You do all of this in the assistant editor.
+An Assistant is the main configuration unit in Ciele. Each Assistant owns its Knowledge, Flows, draft settings, and publication history.
 
-## The setup sections
+## Setup sections
 
-The editor groups settings into sections on the left. The sections you will use
-most are:
+| Section | Purpose |
+| --- | --- |
+| General | Set identity, model, knowledge engine, and conversation defaults. |
+| Knowledge | Add Sources and FAQs. |
+| Flows | Define routing and responses. |
+| Tools & Skills | Control runtime tools, API integration, and reusable instructions. |
+| Goals | Schedule deterministic answer checks. |
+| Assistant Help Desks | Select Help Desks for escalation. |
+| Style | Set the brand color and launcher position. |
+| Authentication | Require Microsoft Entra sign-in for Visitors. |
+| Publish | Create and manage the live snapshot. |
 
-- **General** covers the assistant's identity, its welcome message, starter
-  buttons, and its answering style. See
-  [General settings](/assistants/general-settings).
-- **Knowledge** is where you add the sources the assistant answers from. See
-  [Knowledge](/knowledge).
-- **Flows** is where you define the rules that control how the assistant responds.
-  See [Flows](/flows).
-- **Tools & Skills** lets you switch the assistant's built-in tools on or off, add
-  your own HTTP tool for the assistant to call, and attach reusable skills —
-  playbooks your organization writes once and shares across assistants.
-- **Goals** holds the questions you expect the assistant to answer correctly. They
-  are re-checked on a schedule, and a goal that starts failing raises an alert.
-- **Help Desks** is where you choose which escalation destinations this assistant
-  offers. See [Connect a help desk](/help-desks/connect-to-an-assistant).
-- **Style** and the color options in General control the widget's appearance. See
-  [Appearance](/assistants/appearance).
-- **Publish** gives you the snippet to embed the assistant. See
-  [Publishing](/publishing).
+Changes affect Preview immediately. The live widget changes only after publication.
 
-## The live preview
+## Duplicate an Assistant
 
-Every change you make is reflected in the preview panel on the right. Use it to
-check the welcome message, try the starter buttons, and confirm the colors before
-you publish. The preview behaves like the real widget, so it is the fastest way
-to validate your work.
+Duplication copies configuration and Flows. It does not copy Knowledge content.
 
-## A recommended order
-
-If you are configuring an assistant for the first time, this order works well:
-
-1. Set the identity and welcome message in **General**.
-2. Add **Knowledge** so the assistant has something to answer from.
-3. Test in the preview by asking a few real questions.
-4. Add **Flows** for any message types that need special handling.
-5. Set up **Help Desks** for escalation.
-6. Adjust **Style**.
-7. Go to **Publish** and embed the widget.
-8. Once it is live, add a few **Goals** so you find out when a good answer stops
-   being one.
+Review the new Assistant before publication. In particular, add its required Sources and confirm its Help Desk connections.

@@ -1,0 +1,55 @@
+---
+title: Ciele-MCP-Server
+description: Gewähren Sie einem MCP-Client kontrollierten Zugriff auf Ciele-Administrationsvorgänge.
+---
+
+Der Ciele Model Context Protocol (MCP)-Server ist ein lokaler `stdio`-Prozess.
+Er ruft die Ciele-API über den Typed-Client auf.
+
+## Anforderungen
+
+- Verwenden Sie Node.js 22.6 oder höher.
+- Klonen Sie das Ciele-Repository.
+- Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
+- Verwenden Sie einen MCP-Client, der einen lokalen `stdio`-Server starten kann.
+
+Starten Sie dieses Programm aus dem Repository:
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+## Umgebungsvariablen
+
+| Variable | Anforderung | Zweck |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Erforderlich | Authentifiziert die Organisation. |
+| `CIELE_BASE_URL` | Optional | Wählt einen selbst gehosteten Ursprung aus. |
+| `CIELE_MCP_READ_ONLY` | Optional | Lehnt Mutationsaktionen ab, wenn der Wert `1` ist. |
+
+Die Schreibschutzprüfung erfolgt innerhalb des MCP-Prozesses. Eine abgelehnte
+Mutation führt zu keiner API-Anforderung.
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Verfügbare Tools
+
+| Tool | Aktuelle Vorgänge |
+| --- | --- |
+| `ciele_identity` | Informationen zu Bereitstellung, Organisation und Rolle lesen. |
+| `manage_assistants` | Assistenten auflisten, lesen, erstellen, aktualisieren, duplizieren oder löschen. |
+| `manage_flows` | Flows auflisten, lesen, erstellen, aktualisieren, neu anordnen oder löschen. |
+| `manage_knowledge` | Verwalten Sie Sammlungen, Quellen und FAQs. |
+| `publish_assistant` | Status einer Veröffentlichung lesen, veröffentlichen, Veröffentlichung aufheben oder eine Veröffentlichung wiederherstellen. |
+| `read_inbox` | Konversationen auflisten, lesen oder exportieren. |
+| `manage_improvements` | Auflisten, Lesen oder Aktualisieren von Verbesserungen. |
+
+Der MCP-Server bietet keinen Remote-HTTP-Transport. Informationen zur
+Kompatibilität finden Sie unter [AI-Clients](/developers/ai-clients).
+
+## Überprüfen Sie die Verbindung
+
+Bitten Sie den Client, `ciele_identity` aufzurufen. Bestätigen Sie die erwartete
+Organisations-ID, die Rolle, die API-Version und die Domänenliste.

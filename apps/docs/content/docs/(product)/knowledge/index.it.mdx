@@ -1,44 +1,36 @@
 ---
-title: Panoramica della conoscenza
-description: Come un assistente impara dai tuoi contenuti e cita le sue fonti quando risponde.
+title: Conoscenza
+description: Aggiungi le Fonti che l'Assistente può cercare e citare.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
+Ogni Assistente ha una Raccolta di conoscenze. La Raccolta memorizza le Fonti e
+i Concetti prodotti durante l'importazione.
 
-La conoscenza è ciò che rende utile un assistente. È l'insieme delle fonti che
-l'assistente legge per rispondere alle domande: i tuoi siti web, i tuoi file e
-le coppie di domande e risposte selezionate. Apri un assistente e seleziona
-**Knowledge** per gestire queste fonti.
+## Tipi di fonte disponibili
 
-## Come viene utilizzata la conoscenza
+- URL del sito web
+- File caricato
+- Testo incollato
+- FAQ selezionate
 
-Quando l'assistente deve rispondere attingendo ai tuoi contenuti, cerca nella
-tua knowledge base, trova i passaggi più pertinenti alla domanda e scrive una
-risposta basata su di essi. Questo approccio fa sì che le risposte siano legate
-al tuo materiale piuttosto che alla conoscenza generale.
+Ciele estrae il contenuto della Fonte e crea Concetti ricercabili. Il runtime
+risolve le citazioni riportandole alle Fonti nominate.
 
-## Fonti e citazioni
+## Stato della fonte
 
-Ogni risposta creata a partire dalla tua conoscenza può mostrare le fonti
-utilizzate. Una fonte rimanda a un contenuto reale, come una pagina o un
-documento, in modo che un visitatore possa verificare la risposta e leggere di
-più. Questa trasparenza crea fiducia e rende facile individuare quando una fonte
-deve essere aggiornata.
+| Stato | Significato |
+| --- | --- |
+| In elaborazione | Ciele sta estraendo e indicizzando la Fonte. |
+| Pronto | La Fonte è disponibile per la ricerca di conoscenze. |
+| Non riuscito | L'acquisizione non è stata completata. Controlla l'errore e riprova l'operazione. |
 
-## I tipi di fonte
+Non testare una nuova Fonte prima che il suo stato sia **Ready**.
 
-<Cards>
-  <Card title="Websites" href="/knowledge/websites" description="Crawl your site and knowledge base so the assistant learns from your pages." />
-  <Card title="Files" href="/knowledge/files" description="Upload documents, spreadsheets, slides, and more." />
-  <Card title="FAQs" href="/knowledge/faqs" description="Write exact question and answer pairs to shape specific replies." />
-</Cards>
+## Recupero
 
-## Mantenere le conoscenze aggiornate
+Search knowledge può utilizzare la ricerca vettoriale, il fallback lessicale e
+la navigazione nel grafo della conoscenza. Il motore di Knowledge selezionato
+controlla il percorso principale.
 
-Le risposte valide dipendono dai contenuti aggiornati. I siti web possono essere
-sottoposti a una nuova scansione in modo che le modifiche apportate al tuo sito
-vengano integrate nell'assistente. I file possono essere sostituiti quando
-cambiano. Le FAQ possono essere modificate ogni volta che una risposta necessita
-di perfezionamento. Quando la [Posta in arrivo](/operations/inbox) o
-[Miglioramenti](/operations/improvements) mostrano una risposta debole,
-l'aggiornamento della fonte sottostante è di solito la soluzione.
+Deep Search consente più iterazioni solo Knowledge. Non esegue ricerche sul Web
+aperto.

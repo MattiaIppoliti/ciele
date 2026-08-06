@@ -1,56 +1,38 @@
 ---
-title: Resumen de los flujos
-description: Cómo decide Ciele lo que hace un asistente con cada mensaje, mediante un conjunto ordenado de reglas.
+title: Flujos
+description: Enruta mensajes y eventos proactivos a acciones de respuesta ordenadas.
 ---
 
-Los flujos son la forma en que controlas el comportamiento de un asistente. Un
-flujo es una regla que dice «cuando un mensaje tenga este aspecto, haz estas
-cosas». Los flujos están ordenados y el primero que coincida con un mensaje
-prevalece. Esto hace que un asistente sea predecible: puedes mirar la lista y
-saber cómo gestionará cada tipo de pregunta.
+Un flujo contiene un desencadenante, condiciones disponibles y acciones
+ordenadas. El enrutador procesa los Flows habilitados en el orden configurado.
 
-Abre un asistente y selecciona **Flows** para ver la lista.
+## Flujos de mensajes
 
-## Cómo funciona el enrutamiento
+El desencadenante **User sends a message** utiliza la clasificación de
+intenciones. Un clasificador de modelos selecciona el mejor flujo apto cuando
+hay un modelo disponible.
 
-Por cada mensaje entrante, el asistente lee la lista de flujos y elige el primer
-flujo cuya descripción coincida con el mensaje. A continuación, ejecuta las
-acciones de ese flujo en orden. Dado que la coincidencia se basa en el
-significado del mensaje, describes cada flujo en lenguaje sencillo en lugar de
-escribir palabras clave.
+El enrutador de palabras clave proporciona una alternativa para casos de
+desconexión y error. Ambos enrutadores utilizan el mismo filtro de candidatos.
 
-## El comportamiento predeterminado
+El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
+mensaje apto cuando ningún flujo anterior gana.
 
-Al final de la lista está el **Default behavior**. Es una regla integrada que
-siempre está en último lugar y gestiona cualquier mensaje con el que no haya
-coincidido ningún otro flujo. El comportamiento predeterminado responde a partir
-de tu conocimiento, por lo que un asistente funciona en cuanto tiene
-conocimiento, incluso sin flujos personalizados.
+## Flujos proactivos
 
-No puedes eliminar el comportamiento predeterminado, pero puedes confiar en él
-como tu red de seguridad mientras añades flujos más específicos por encima.
+Estos desencadenantes no clasifican un mensaje:
 
-## Respuestas fijas frente a respuestas generadas
+- **On page load**
+- **Time on page**
+- **Chat opens**
 
-Los flujos te permiten combinar dos tipos de respuestas:
+Un flujo proactivo no tiene condiciones y contiene una acción de notificación.
+Consulta [Notificaciones](/flows/notifications).
 
-- **Fixed replies** se muestran exactamente como las escribiste. Úsalas cuando
-  la redacción deba ser exacta, como en una declaración de política o un aviso
-  legal.
-- El asistente escribe las **Generated answers** a partir de tu conocimiento.
-  Úsalas cuando quieras una respuesta útil y natural que se adapte a la
-  pregunta.
+## Orden de los flujos
 
-Esta combinación te da control donde lo necesitas y flexibilidad en todo lo
-demás.
+Coloca los flujos de mensajes específicos antes de los flujos de mensajes
+generales. El orden también controla el atajo de interacción básica integrado.
 
-## Cómo leer la lista de flujos
-
-Cada flujo de la lista muestra su nombre, una breve descripción de lo que
-coincide y las acciones que ejecutará. Puedes reordenar los flujos para cambiar
-la prioridad y puedes activar o desactivar un flujo sin eliminarlo. Un flujo que
-está desactivado se omite durante el enrutamiento.
-
-Continúa con [Crear un flujo](/flows/building-a-flow) para crear uno y con
-[Acciones de flujo](/flows/actions) para ver la lista completa de cosas que
-puede hacer un flujo.
+Un flujo personalizado anterior que coincida puede gestionar un mensaje de
+cortesía antes del flujo de interacción básica integrado.

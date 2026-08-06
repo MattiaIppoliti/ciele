@@ -1,64 +1,19 @@
 ---
 title: Editions
-description: Ciele comes in two editions — the open-source core you can self-host, and Ciele Cloud, the fully managed service. This page explains what each one includes.
+description: Select Ciele Cloud or operate the open-source edition.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele has a managed Cloud edition and an open-source self-hosted edition. Both editions use the same open-source product core.
 
-Ciele is available in two editions that share the same product and the same
-documentation. Everything in this **Documentation** section — assistants,
-knowledge, flows, help desks, publishing, and operations — works the same way in
-both. The editions differ only in **who runs the software** and in a small set of
-**managed-only features**.
+| Area | Ciele Cloud | Open Source |
+| --- | --- | --- |
+| Product operation | Ciele operates the service. | Your team operates the service. |
+| Subscription | A Ciele plan controls included usage. | No Ciele subscription is required. |
+| Infrastructure | Ciele selects and maintains the deployment. | Your team supplies and maintains the deployment. |
+| Model credentials | Use plan models or supported provider connections. | Configure supported provider or compatible local endpoints. |
+| Updates | The managed service receives deployed releases. | Your team selects and applies releases. |
+| License | Service terms apply. | The core uses AGPL-3.0-only. |
 
-## The open-source core
+The public Open Source documentation describes only files in the open-source repository. It does not describe enterprise implementation details.
 
-The core of Ciele is open source under the **AGPL-3.0** license. It is the whole
-product a visitor and an administrator interact with: the admin console, the chat
-widget, the flow router, the knowledge and retrieval pipeline, and the operations
-surfaces (inbox, improvements, insights, alerts). You can run it on your own
-infrastructure at no license cost.
-
-See [Open Source](/self-hosting) for how to install, configure, and operate a
-self-hosted deployment, and for exactly where the open-core boundary sits.
-
-## Ciele Cloud
-
-Ciele Cloud is the same core, hosted and operated for you, plus the commercial
-features that only make sense for a managed multi-tenant service. You do not
-install or patch anything; you sign in and start building.
-
-The managed edition adds:
-
-- **Plans and billing** — subscription plans, invoicing, and payment, handled in
-  the console. See [Plans and billing](/cloud/plans-and-billing).
-- **Usage limits** — per-plan quotas that meter and cap monthly usage. See
-  [Usage and limits](/cloud/usage-and-limits).
-- **Managed single sign-on** — organization SSO onboarding run for you. See
-  [Team and single sign-on](/cloud/team-and-sso).
-- **Operations and support** — hosting, upgrades, backups, and a support channel
-  with a service commitment. See [Support](/cloud/support).
-
-These features live outside the open-source core and are not created in a
-self-hosted deployment.
-
-## Which edition am I using?
-
-If you signed up at the hosted service and never installed anything, you are on
-**Ciele Cloud**. If your organization runs Ciele on its own servers, you are on
-the **open-source** edition. Billing, usage limits, and managed SSO appear only on
-Ciele Cloud.
-
-<Callout title="Same docs, both editions">
-Feature pages that describe a managed-only capability say so at the top. Where a
-page has no such note, the feature is part of the open-source core and behaves the
-same wherever Ciele runs.
-</Callout>
-
-## What's next
-
-<Cards>
-  <Card title="Open Source" href="/self-hosting" description="Install, configure, and operate a self-hosted deployment, and see the open-core boundary." />
-  <Card title="Ciele Cloud" href="/cloud" description="Plans, usage limits, managed single sign-on, and support for the hosted service." />
-</Cards>
+Use [Ciele Cloud](/cloud) for hosted plan information. Use [Open Source](/self-hosting) for installation and operation instructions.

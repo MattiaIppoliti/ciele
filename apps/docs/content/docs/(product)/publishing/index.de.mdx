@@ -1,53 +1,53 @@
 ---
-title: Veröffentlichung
-description: Platzieren Sie einen Assistenten auf Ihrer Website mit einem Einbettungs-Snippet, als schwebendes Widget oder als Inline-Frame.
+title: Einen Assistenten veröffentlichen
+description: Erstellen Sie einen unveränderlichen Widget-Snapshot und steuern Sie, wo er ausgeführt werden kann.
 ---
 
-Durch das Veröffentlichen gelangt Ihr Assistent von der Vorschau auf Ihre
-Live-Website. Öffnen Sie einen Assistenten und wählen Sie **Publish**, um den
-benötigten Snippet zu erhalten. Jede Option öffnet ein Dialogfeld mit einem
-Snippet, das Sie auf Ihre Website kopieren.
+Eine Veröffentlichung fixiert die aktuelle Konfiguration des Assistenten. Das
+Live-Widget liest die aktive Veröffentlichung anstelle des Entwurfs.
 
-## Das schwebende Widget
+## Bereiten Sie die Veröffentlichung vor
 
-Das schwebende Widget fügt Ihren Seiten eine Startschaltfläche hinzu. Wenn ein
-Besucher darauf klickt, öffnet sich das Chat-Fenster über der Seite.
+1. Testen Sie den Entwurf in der Vorschau.
+2. Vergewissern Sie sich, dass die erforderlichen Wissensquellen bereitstehen.
+3. Testen Sie übereinstimmende und nicht übereinstimmende Flow-Nachrichten.
+4. Testen Sie den Helpdesk und die Authentifizierungspfade, sofern diese
+   aktiviert sind.
+5. Öffnen Sie **Publish**.
 
-1. Wählen Sie in **Publish** die Option Website-Floater.
-2. Kopieren Sie das bereitgestellte Snippet.
-3. Fügen Sie es in den Teil Ihrer Website ein, der auf jeder Seite angezeigt
-   wird, auf der Sie den Assistenten haben möchten – in der Regel in die
-   gemeinsame Kopfzeile der Vorlage Ihrer Website.
+## Zulässige Domains konfigurieren
 
-Das Snippet lädt das Widget und verweist mithilfe der Assistenten-Kennung auf
-Ihren Assistenten, sodass der richtige Assistent angezeigt wird.
+Fügen Sie jede Website-Ursprungsdomain hinzu, die den Assistenten einbetten
+kann. Verwenden Sie genau das Schema und den Host, die der Browser sendet.
 
-## Der Inline-Frame
+Fügen Sie keine allgemeine Domain hinzu, wenn nur eine Anwendung das Widget
+benötigt.
 
-Wenn Sie möchten, dass der Assistent innerhalb der Seite platziert wird, anstatt
-über ihr zu schweben, verwenden Sie die Option Inline-Frame. Sie erhalten einen
-Rahmen, den Sie dort platzieren, wo der Chat angezeigt werden soll. Dies ist
-nützlich für eine spezielle Hilfeseite oder eine Support-Ecke in Ihrer App.
+## Erstellen Sie die Veröffentlichung
 
-## Nach der Veröffentlichung
+1. Wählen Sie **Publish**.
+2. Bestätigen Sie die Veröffentlichungsaktion.
+3. Kopieren Sie den Einbettungscode.
+4. Fügen Sie den Code zu einer zulässigen Website hinzu.
+5. Öffnen Sie die Website in einer privaten Browsersitzung.
+6. Senden Sie eine Testnachricht.
 
-- Besuchen Sie eine Seite, die das Snippet enthält, und vergewissern Sie sich,
-  dass das Widget angezeigt wird und sich öffnet.
-- Stellen Sie ihm ein paar echte Fragen und prüfen Sie, ob die Antworten und
-  Quellen korrekt aussehen.
-- Beobachten Sie die ersten Gespräche im [Posteingang](/operations/inbox), um zu
-  sehen, wie Besucher ihn nutzen, und passen Sie bei Bedarf das Wissen oder die
-  Abläufe an.
+Spätere Änderungen am Entwurf wirken sich nicht auf diese Veröffentlichung aus.
+Veröffentlichen Sie erneut, um einen neuen unveränderlichen Snapshot zu
+erstellen und zu aktivieren.
 
-<Callout title="One assistant, many places">
-Because the snippet references the assistant by its identifier, you can place the
-same assistant on several pages or sites. Update the assistant once and every
-placement reflects the change.
+## Eine Veröffentlichung wiederherstellen
+
+Wählen Sie eine frühere Veröffentlichung aus, wenn Sie deren Konfiguration
+wiederherstellen müssen. Durch die Wiederherstellungsaktion wird diese
+unveränderliche Version wieder aktiv.
+
+## Veröffentlichung aufheben
+
+Verwenden Sie **Unpublish**, um die Widget-Konfiguration offline zu schalten.
+Der vorhandene Einbettungscode kann nach dem Vorgang keinen aktiven Assistenten
+laden.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
 </Callout>
-
-## Halten Sie die Kennung griffbereit
-
-Für die Veröffentlichung wird die Kennung des Assistenten verwendet, die Sie von
-der Assistentenkarte oder aus dem Editor kopieren können. Wenn Sie das Widget
-jemals verschieben oder neu installieren müssen, benötigen Sie lediglich diese
-Kennung, um ein neues Snippet auf denselben Assistenten zu verweisen.

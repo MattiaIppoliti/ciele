@@ -1,0 +1,78 @@
+---
+title: API v1
+description: Chiama l'attuale API di amministrazione di Ciele con una chiave API dell'organizzazione.
+---
+
+L'API di Ciele utilizza JSON su HTTP. Tutti i percorsi della versione 1 iniziano
+con `/api/v1`.
+
+## Scopri la distribuzione
+
+Utilizza questi endpoint pubblici prima di generare un client:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` elenca la versione dell'API e i domini disponibili. `openapi.json`
+restituisce il contratto leggibile dalla macchina per la distribuzione.
+
+## Autentica una richiesta
+
+Invia la chiave API come token bearer:
+
+```bash
+curl https://platform.ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Per l'auto-hosting, sostituisci `https://platform.ciele.app` con l'origine
+pubblica di Ciele.
+
+## Errori di risposta
+
+Gli errori utilizzano un unico involucro JSON:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+I codici di stato più comuni sono:
+
+| Stato | Significato |
+| --- | --- |
+| `400` | I dati della richiesta non sono validi. |
+| `401` | La chiave risulta mancante, non valida o revocata. |
+| `403` | Il ruolo chiave non consente l'operazione. |
+| `404` | La risorsa non esiste nell'Organizzazione. |
+| `409` | La richiesta è in conflitto con lo stato corrente. |
+
+## Impaginazione
+
+Le operazioni di elenco accettano i parametri `limit` e `cursor` quando
+l'endpoint supporta l'impaginazione. Utilizza il cursore restituito per la
+richiesta successiva.
+
+## Riprova in sicurezza
+
+Le route di mutazione possono accettare un'intestazione `Idempotency-Key`.
+Riutilizza lo stesso valore solo quando riprovi la stessa operazione logica.
+
+## Domini correnti
+
+- Assistenti: elenca, leggi, crea, aggiorna, duplica ed elimina.
+- Flussi: elenca, leggi, crea, aggiorna, riordina ed elimina.
+- Knowledge: gestisci raccolte, fonti e FAQ.
+- Pubblicazione: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
+  una pubblicazione.
+- Posta in arrivo: elenca, leggi ed esporta le Conversazioni.
+- Miglioramenti: elenca, leggi e aggiorna gli elementi.
+
+Utilizza il documento OpenAPI per i campi di richiesta e gli schemi di risposta
+esatti.

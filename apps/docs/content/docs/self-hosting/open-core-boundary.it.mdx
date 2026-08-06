@@ -1,66 +1,29 @@
 ---
-title: Il confine dell'open-core
-description: Esattamente ciò che è contenuto nell'edizione open source e ciò che appartiene al servizio gestito Ciele Cloud.
+title: Limite open source
+description: Identifica il core pubblico e la directory enterprise separata.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Il core pubblico di Ciele utilizza la licenza `AGPL-3.0-only`. Il suo sorgente
+include l'applicazione del prodotto e i pacchetti runtime condivisi.
 
-Ciele segue un modello open-core: il prodotto è open source e un piccolo set di
-funzionalità commerciali, utili solo per un servizio multi-tenant gestito, si
-trova al di fuori del repository open source. Questa pagina traccia il confine
-con precisione.
+Il repository può contenere anche una directory `ee/` separata. Quella directory
+ha le proprie note di licenza e non fa parte del core AGPL.
 
-## Nell'edizione open source (AGPL-3.0)
+## Regola per la documentazione pubblica
 
-L'intero prodotto utilizzato dai tuoi visitatori e amministratori è open source:
+La documentazione Open Source descrive solo i componenti necessari per
+compilare, eseguire e comprendere il core pubblico.
 
-- La **console di amministrazione** e l'**editor** dell'assistente con anteprima
-  in tempo reale.
-- Il **widget di chat** e il suo runtime.
-- Il **flow router** e le azioni di flusso.
-- La pipeline di **conoscenza** e recupero, che include la scansione di siti
-  web, file e FAQ, con citazioni delle fonti.
-- **Help desks** e canali di escalation.
-- Le superfici operative: **inbox**, **miglioramenti**, **approfondimenti** e
-  **avvisi**.
-- **Multi-tenancy** con organizzazioni, membri, ruoli e sicurezza a livello di
-  riga.
-- Pubblicazione sul tuo sito web con uno snippet di incorporamento.
+Non elenca gli elementi interni dell'azienda. Leggi il file di licenza in
+ciascuna area di codice prima di ridistribuire o modificare quell'area.
 
-Se una funzionalità è documentata nella [Documentazione](/) principale senza una
-nota relativa all'edizione gestita, fa parte di questo core open source.
+## Principali aree open source
 
-## Solo cloud (non nell'albero open source)
-
-Queste sono le funzionalità del servizio gestito. Sono escluse dal codice open
-source e non vengono mai create in una distribuzione self-hosted:
-
-- **Plans and billing** — piani di abbonamento, pagamento e fatturazione.
-- **Usage metering and enforced limits** — quote mensili per piano e relativi
-  limiti massimi.
-- **The cross-organization operations surface** utilizzato per eseguire il
-  servizio gestito.
-- **Managed single sign-on onboarding** per la console di amministrazione.
-- **Hosting, upgrades, backups, and support** con un impegno di servizio.
-
-<Callout title="How the split is enforced in the code">
-Enterprise code lives under a dedicated path and is excluded when the public
-open-source tree is assembled, so an open-source checkout simply does not contain
-it. The enterprise database migrations are a separate chain applied only where
-they exist; a self-hosted deployment has no such directory and creates none of
-those tables. See [Database](/self-hosting/database).
-</Callout>
-
-## Perché il limite è dove si trova
-
-Tutto ciò di cui un'organizzazione in self-hosting ha bisogno per eseguire gli
-assistenti per i propri utenti è nel core open source. Le funzionalità
-disponibili solo su Cloud sono quelle legate al fatto che Ciele gestisce il
-servizio *per altre organizzazioni*: addebita il costo, limita l'utilizzo tra i
-tenant e garantisce la disponibilità. Escluderle dal repository open source
-significa che l'edizione open source è completa e autonoma secondo le sue
-regole, mentre l'edizione gestita aggiunge solo ciò di cui un servizio gestito
-ha bisogno.
-
-Se vuoi queste funzionalità gestite senza doverle sviluppare tu, usa
-[Ciele Cloud](/cloud).
+- `apps/web` contiene l'applicazione del prodotto e i percorsi API.
+- `apps/docs` contiene questo sito di documentazione.
+- `packages` contiene pacchetti di prodotto condivisi e pacchetti di accesso
+  programmatico.
+- `services` contiene servizi worker opzionali.
+- `supabase` contiene le migrazioni dello schema e la configurazione dei dati
+  locali.
+- `deploy` contiene l'esempio di distribuzione su host singolo.

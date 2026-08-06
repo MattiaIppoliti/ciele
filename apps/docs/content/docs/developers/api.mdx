@@ -1,0 +1,70 @@
+---
+title: API v1
+description: Call the current Ciele administration API with an Organization API key.
+---
+
+The Ciele API uses JSON over HTTP. All version 1 routes start with `/api/v1`.
+
+## Discover the deployment
+
+Use these public endpoints before you generate a client:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` lists the API version and the available domains. `openapi.json` returns the machine-readable contract for the deployment.
+
+## Authenticate a request
+
+Send the API key as a bearer token:
+
+```bash
+curl https://platform.ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+For self-hosting, replace `https://platform.ciele.app` with the public Ciele origin.
+
+## Response errors
+
+Errors use one JSON envelope:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Common status codes are:
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The request data is not valid. |
+| `401` | The key is missing, invalid, or revoked. |
+| `403` | The key Role does not permit the operation. |
+| `404` | The resource does not exist in the Organization. |
+| `409` | The request conflicts with the current state. |
+
+## Pagination
+
+List operations accept `limit` and `cursor` parameters when the endpoint supports pagination. Use the returned cursor for the next request.
+
+## Safe retries
+
+Mutation routes can accept an `Idempotency-Key` header. Reuse the same value only when you retry the same logical operation.
+
+## Current domains
+
+- Assistants: list, read, create, update, duplicate, and delete.
+- Flows: list, read, create, update, reorder, and delete.
+- Knowledge: manage Collections, Sources, and FAQs.
+- Publication: read status, publish, unpublish, and restore a publication.
+- Inbox: list, read, and export Conversations.
+- Improvements: list, read, and update items.
+
+Use the OpenAPI document for exact request fields and response schemas.

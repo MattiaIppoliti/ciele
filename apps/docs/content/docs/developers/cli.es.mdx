@@ -1,0 +1,80 @@
+---
+title: Ciele CLI
+description: Gestiona Ciele desde un terminal o una tarea automatizada.
+---
+
+El comando `ciele` utiliza las mismas operaciones de API que la consola de
+administración. La CLI es compatible con el servicio alojado y con las
+instalaciones autoalojadas.
+
+## Requisitos
+
+- Utiliza Node.js 22.6 o una versión posterior cuando ejecutes la CLI desde este
+  repositorio.
+- Crea una [clave API de organización](/developers/api-keys).
+
+## Inicia sesión
+
+Para el servicio alojado, ejecuta:
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+Para una instalación autohospedada, añade su origen público:
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+```
+
+El comando `login` valida la clave antes de escribir `~/.ciele/config.json`. En
+los sistemas compatibles, el modo de archivo es `0600`.
+
+La CLI resuelve una clave en este orden:
+
+1. La opción `--api-key`.
+2. La variable de entorno `CIELE_API_KEY`.
+3. El archivo de configuración guardado.
+
+La CLI utiliza el mismo orden para `--base-url`, `CIELE_BASE_URL` y el origen
+guardado. El origen alojado es el valor predeterminado final.
+
+## Usar la salida de automatización
+
+Añade `--json` a un comando para recibir una salida legible por máquina.
+
+| Código de salida | Significado |
+| --- | --- |
+| `0` | La operación se ha completado. |
+| `1` | El servidor ha devuelto un error. |
+| `2` | La entrada del comando no es válida. |
+| `3` | Error de autenticación. |
+
+## Comandos comunes
+
+```bash
+ciele assistants list --all
+ciele flows list <assistant-id>
+ciele collections list <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+ciele conversations list --assistant <assistant-id>
+ciele improvements list
+```
+
+Los comandos que eliminan datos requieren `--yes`. No se puede eliminar el flujo
+de comportamiento predeterminado.
+
+## Ejemplo de comprobación de CI
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Guarda todos los valores en el almacén de secretos de CI. No escribas una clave
+en un archivo de flujo de trabajo.

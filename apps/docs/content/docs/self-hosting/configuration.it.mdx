@@ -1,75 +1,53 @@
 ---
 title: Configurazione
-description: Le variabili di ambiente che una distribuzione Ciele self-hosted legge per il suo database, i provider di IA e i segreti operativi.
+description: Configura origini, segreti, account, modelli, e-mail e worker opzionali.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Lo script bootstrap scrive `deploy/.env`. Usa `deploy/.env.example` come
+riferimento alla variabile corrente.
 
-Una distribuzione self-hosted viene configurata interamente tramite variabili di
-ambiente. Copia `apps/web/.env.example` in `apps/web/.env.local` e inserisci i
-valori di cui hai bisogno. Il file di esempio viene fornito con impostazioni
-predefinite funzionanti per lo sviluppo locale, quindi su uno stack di database
-locale la maggior parte di queste è già impostata per te.
+## Origini pubbliche
 
-## Database
+Imposta `PUBLIC_URL` sull'origine pubblica dell'applicazione. Imposta
+`SUPABASE_PUBLIC_URL` sull'origine del gateway del database accessibile dal
+browser.
 
-Imposta entrambi e il livello dati passerà automaticamente dal negozio demo al
-tuo database. Lasciali vuoti per rimanere in modalità demo.
+Ricompila l'applicazione dopo aver modificato `SUPABASE_PUBLIC_URL`. Il bundle
+del browser contiene questo valore in fase di compilazione.
 
-| Variabile | Scopo |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | L'URL del tuo progetto Supabase. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | La chiave anonima pubblica per l'accesso dal browser. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Chiave solo server per il runtime del widget e per le letture con privilegi. Non esporla mai al browser. |
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
 
-Vedi [Database](/self-hosting/database) per il provisioning e le migrazioni.
+## Segreti generati
 
-## Provider di IA
+Lo stack richiede Postgres, JSON Web Token, ruolo di servizio, crittografia
+dell'applicazione e segreti cron. Lascia che li generi lo script di bootstrap.
 
-Gli assistenti chiamano un provider di IA per generare le risposte. Fornisci
-almeno una chiave della piattaforma oppure indica un qualsiasi endpoint
-compatibile con OpenAI per l'esecuzione completamente locale.
+Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` in modo
+indipendente. Insieme formano un'unica configurazione di firma.
 
-| Variabile | Scopo |
-| --- | --- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Chiave della piattaforma utilizzata quando un assistente non ha una connessione al provider per organizzazione. |
-| `ANTHROPIC_API_KEY` | Provider aggiuntivo facoltativo. |
-| `OPENAI_API_KEY` | Provider aggiuntivo opzionale. |
+## Account ed e-mail
 
-<Callout title="Run fully local, no cloud AI">
-Set `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_CHAT_MODEL` to route
-answers through any server that speaks the OpenAI chat API — a local runner, a
-self-hosted model server, or a gateway. Add `OPENAI_COMPATIBLE_EMBEDDING_MODEL`
-(and `OPENAI_COMPATIBLE_EMBEDDING_DIMS`) to enable semantic knowledge search;
-without an embedding model, knowledge search falls back to lexical matching. An
-API key is only needed if your server enforces one.
-</Callout>
+Il primo account diventa il proprietario dell'organizzazione. Imposta
+`DISABLE_SIGNUP=true` dopo che gli account richiesti esistono.
 
-Le organizzazioni possono anche importare le proprie chiavi dall'interno della
-console: si tratta di una funzionalità del prodotto e non di una configurazione
-di distribuzione.
+Senza la configurazione SMTP, `MAILER_AUTOCONFIRM=true` conferma automaticamente
+i nuovi account.
 
-## Segreti e operazioni
+Le azioni e-mail in fase di esecuzione utilizzano `RESEND_API_KEY` e
+`EMAIL_FROM`. Segnalano un risultato non configurato quando uno dei due valori è
+assente.
 
-| Variabile | Scopo |
-| --- | --- |
-| `APP_ENCRYPTION_KEY` | Protegge le chiavi del provider per ogni organizzazione quando sono inattive (AES-256-GCM). Senza di essa, tali chiavi vengono archiviate come testo in chiaro contrassegnato con un avviso. Generane uno con `openssl rand -base64 32`. |
-| `PLATFORM_OWNER_EMAIL` | Il primo utente che si registra con questa email diventa il proprietario della piattaforma. |
-| `CRON_SECRET` | Segreto condiviso a protezione delle route API di manutenzione e cron. |
+## Endpoint del modello
 
-## Acquisizione della conoscenza (opzionale)
+Configura le chiavi dei provider Anthropic, OpenAI o Google. Puoi anche
+configurare un endpoint di chat ed embedding compatibile con OpenAI.
 
-La pipeline di conoscenza per la scansione del sito web può utilizzare un
-crawler esterno. Questi sono opzionali; in loro assenza, viene utilizzato il
-crawler locale integrato.
+La ricerca nella knowledge base utilizza la corrispondenza lessicale quando non
+è disponibile alcun modello di embedding.
 
-| Variabile | Scopo |
-| --- | --- |
-| `APIFY_API_TOKEN` | Token per il provider di crawling di siti web basato su Apify. |
-| `CRAWL4AI_BASE_URL`, `CRAWL4AI_API_TOKEN` | Un worker privato di Crawl4AI; entrambi sono necessari per poterlo selezionare e il token è solo per il server. |
+## TLS
 
-<Callout type="warn" title="Review row-level security before shipping">
-The database ships with permissive row-level-security policies suited to a demo.
-Scope them to authenticated administrators before exposing a deployment to real
-users.
-</Callout>
+Termina TLS in un reverse proxy. Quindi imposta entrambe le variabili di origine
+pubblica sui rispettivi indirizzi HTTPS e ricompila l'applicazione.

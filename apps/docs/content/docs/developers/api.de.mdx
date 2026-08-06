@@ -1,0 +1,80 @@
+---
+title: API v1
+description: Rufen Sie die aktuelle Ciele-Administrations-API mit einem Organisations-API-Schlüssel auf.
+---
+
+Die Ciele-API verwendet JSON über HTTP. Alle Routen der Version 1 beginnen mit
+`/api/v1`.
+
+## Entdecken Sie die Bereitstellung
+
+Verwenden Sie diese öffentlichen Endpunkte, bevor Sie einen Client generieren:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` listet die API-Version und die verfügbaren Domains auf. `openapi.json`
+gibt den maschinenlesbaren Vertrag für die Bereitstellung zurück.
+
+## Authentifizieren Sie eine Anfrage
+
+Senden Sie den API-Schlüssel als Bearer-Token:
+
+```bash
+curl https://platform.ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Ersetzen Sie für Self-Hosting `https://platform.ciele.app` durch den
+öffentlichen Ciele-Ursprung.
+
+## Antwortfehler
+
+Fehler verwenden einen JSON-Umschlag:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Häufige Statuscodes sind:
+
+| Status | Bedeutung |
+| --- | --- |
+| `400` | Die Anforderungsdaten sind ungültig. |
+| `401` | Der Schlüssel fehlt, ist ungültig oder wurde widerrufen. |
+| `403` | Die Schlüsselrolle lässt den Vorgang nicht zu. |
+| `404` | Die Ressource existiert nicht in der Organisation. |
+| `409` | Die Anforderung steht im Widerspruch zum aktuellen Status. |
+
+## Paginierung
+
+Listenoperationen akzeptieren die Parameter `limit` und `cursor`, wenn der
+Endpunkt Paginierung unterstützt. Verwenden Sie den zurückgegebenen Cursor für
+die nächste Anfrage.
+
+## Sichere Wiederholungsversuche
+
+Mutationsrouten können einen `Idempotency-Key`-Header akzeptieren. Verwenden Sie
+denselben Wert nur dann wieder, wenn Sie dieselbe logische Operation erneut
+versuchen.
+
+## Aktuelle Domains
+
+- Assistenten: Auflisten, Lesen, Erstellen, Aktualisieren, Duplizieren und
+  Löschen.
+- Abläufe: Auflisten, Lesen, Erstellen, Aktualisieren, Neu anordnen und Löschen.
+- Wissen: Verwalten Sie Sammlungen, Quellen und FAQs.
+- Veröffentlichung: Status lesen, Veröffentlichung durchführen, Veröffentlichung
+  zurückziehen und Veröffentlichung wiederherstellen.
+- Posteingang: Konversationen auflisten, lesen und exportieren.
+- Verbesserungen: Elemente auflisten, lesen und aktualisieren.
+
+Verwenden Sie das OpenAPI-Dokument für die genauen Anforderungsfelder und
+Antwortschemata.

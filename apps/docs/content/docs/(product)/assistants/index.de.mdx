@@ -1,60 +1,34 @@
 ---
-title: Übersicht über Assistenten
-description: Was ein Assistent ist, wie sein Editor aufgebaut ist und wo sich die einzelnen Einstellungen befinden.
+title: Assistenten
+description: Konfigurieren Sie die Identität, das Modell, das Verhalten, die Tools und die Prüfungen für einen Assistenten.
 ---
 
-Ein Assistent ist eine einzelne Chat-Erfahrung, die Sie von Anfang bis Ende
-gestalten: seinen Namen, was er weiß, wie er antwortet, wann er eskaliert, wie
-er aussieht und wo er erscheint. All dies erledigen Sie im Assistenten-Editor.
+Ein Assistant ist die wichtigste Konfigurationseinheit in Ciele. Jeder Assistent
+verfügt über eigenes Wissen, eigene Flows, eigene Entwurfseinstellungen und
+einen eigenen Veröffentlichungsverlauf.
 
-## Die Setup-Abschnitte
+## Einrichtungsabschnitte
 
-Der Editor gruppiert die Einstellungen links in Abschnitte. Die Abschnitte, die
-Sie am häufigsten verwenden werden, sind:
+| Abschnitt | Zweck |
+| --- | --- |
+| Allgemein | Legen Sie Identität, Modell, Wissens-Engine und Konversationsstandards fest. |
+| Wissen | Quellen und FAQs hinzufügen. |
+| Flows | Routing und Antworten definieren. |
+| Tools & Skills | Steuern Sie Runtime-Tools, API-Integration und wiederverwendbare Anweisungen. |
+| Ziele | Planen Sie deterministische Antwortprüfungen. |
+| Helpdesks für Assistenten | Wählen Sie Helpdesks für die Eskalation aus. |
+| Stil | Legen Sie die Markenfarbe und die Position des Launchers fest. |
+| Authentifizierung | Fordern Sie für Besucher eine Anmeldung mit Microsoft Entra. |
+| Veröffentlichen | Erstellen und verwalten Sie den Live-Snapshot. |
 
-- **General** umfasst die Identität des Assistenten, seine Begrüßungsnachricht,
-  die Startschaltflächen und seinen Antwortstil. Siehe
-  [Allgemeine Einstellungen](/assistants/general-settings).
-- In **Knowledge** fügen Sie die Quellen hinzu, aus denen der Assistent
-  antwortet. Siehe [Wissen](/knowledge).
-- In **Flows** definieren Sie die Regeln, die steuern, wie der Assistent
-  antwortet. Siehe [Flows](/flows).
-- Mit **Tools & Skills** können Sie die integrierten Tools des Assistenten
-  aktivieren oder deaktivieren, Ihr eigenes HTTP-Tool hinzufügen, das der
-  Assistent aufrufen kann, und wiederverwendbare Skills anhängen – Playbooks,
-  die Ihr Unternehmen einmal erstellt und für alle Assistenten freigibt.
-- **Goals** enthält die Fragen, von denen Sie erwarten, dass der Assistent sie
-  richtig beantwortet. Sie werden nach einem Zeitplan erneut überprüft, und ein
-  Ziel, das zu scheitern beginnt, löst eine Warnung aus.
-- In **Help Desks** wählen Sie aus, welche Eskalationsziele dieser Assistent
-  anbietet. Siehe
-  [Einen Helpdesk verbinden](/help-desks/connect-to-an-assistant).
-- **Style** und die Farboptionen unter Allgemein steuern das Erscheinungsbild
-  des Widgets. Siehe [Darstellung](/assistants/appearance).
-- **Publish** liefert Ihnen den Code-Schnipsel zum Einbetten des Assistenten.
-  Siehe [Veröffentlichen](/publishing).
+Änderungen wirken sich sofort auf die Vorschau aus. Das Live-Widget ändert sich
+erst nach der Veröffentlichung.
 
-## Die Live-Vorschau
+## Einen Assistenten duplizieren
 
-Jede Änderung, die Sie vornehmen, wird im Vorschaubereich auf der rechten Seite
-angezeigt. Verwenden Sie sie, um die Begrüßungsnachricht zu überprüfen, die
-Startschaltflächen auszuprobieren und die Farben zu bestätigen, bevor Sie
-veröffentlichen. Die Vorschau verhält sich wie das eigentliche Widget und ist
-damit der schnellste Weg, um Ihre Arbeit zu überprüfen.
+Durch Duplizieren werden Konfiguration und Flows kopiert. Wissensinhalte werden
+dabei nicht kopiert.
 
-## Eine empfohlene Reihenfolge
-
-Wenn Sie zum ersten Mal einen Assistenten konfigurieren, funktioniert diese
-Reihenfolge gut:
-
-1. Legen Sie die Identität und die Begrüßungsnachricht in **General** fest.
-2. Fügen Sie **Knowledge** hinzu, damit der Assistent etwas hat, woraus er
-   antworten kann.
-3. Testen Sie in der Vorschau, indem Sie ein paar echte Fragen stellen.
-4. Fügen Sie **Flows** für alle Nachrichtentypen hinzu, die eine spezielle
-   Behandlung erfordern.
-5. Richten Sie **Help Desks** für die Eskalation ein.
-6. Passen Sie **Style** an.
-7. Gehen Sie zu **Publish** und betten Sie das Widget ein.
-8. Sobald es live ist, fügen Sie ein paar **Goals** hinzu, damit Sie erfahren,
-   wann eine gute Antwort keine mehr ist.
+Überprüfen Sie den neuen Assistenten vor der Veröffentlichung. Fügen Sie
+insbesondere die erforderlichen Quellen hinzu und bestätigen Sie die
+Helpdesk-Verbindungen.

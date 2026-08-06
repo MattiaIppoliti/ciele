@@ -1,92 +1,41 @@
 ---
-title: Upgrade durchführen
-description: Holen Sie sich eine neue Version von Ciele – wie Releases veröffentlicht werden, was ein Upgrade mit Ihrer Datenbank macht und wie Sie ein Backup erstellen und ein Rollback durchführen.
+title: Upgrade
+description: Wenden Sie eine neue Repository-Version und die dazugehörigen ausstehenden Migrationen an.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Vor dem Upgrade
 
-Ciele wird als getaggte Releases veröffentlicht. Jedes Release ist ein einzelner
-Commit im öffentlichen Repository plus ein `vMAJOR.MINOR.PATCH`-Tag, sodass die
-Frage „Welche Version führe ich aus?“ immer eine genaue Antwort hat:
+1. Lesen Sie die Release-Änderungen.
+2. Erfassen Sie den aktuellen Commit oder das aktuelle Tag.
+3. Sichern Sie die Datenbank und die hochgeladenen Dateien.
+4. Testen Sie den Wiederherstellungsprozess.
+5. Planen Sie ein akzeptables Servicefenster.
 
-```sh
-git describe --tags
-```
+## Version anwenden
 
-Verknüpfen Sie Ihre Bereitstellung mit einem Tag, anstatt den Standard-Branch zu
-verfolgen, und Sie entscheiden, wann Sie wechseln möchten.
-
-## Aktualisieren einer Docker-Bereitstellung
-
-```sh
-git fetch --tags
-git checkout v0.2.0        # the release you want
+```bash
+git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Dadurch wird das App-Image neu erstellt und der Stack neu gestartet. Der
-`migrate`-Dienst wird zuerst ausgeführt, wendet nur die Migrationen an, die Sie
-noch nicht haben, und beendet sich; die App startet, sobald dies abgeschlossen
-ist. Sie führen Migrationen nicht manuell aus.
+Der Dienst `migrate` wendet nur ausstehende Migrationen an. Überprüfen Sie das
+Ergebnis, bevor Sie die Anwendung als fehlerfrei akzeptieren.
 
-Wenn Sie das [Workers-Profil](/self-hosting/workers) aktiviert haben, baut
-`--build` auch diese Images neu – es ist kein separater Schritt erforderlich.
-
-## Aktualisieren einer Quellbereitstellung
-
-Direktes Ausführen der Apps statt in Compose:
-
-```sh
-git fetch --tags && git checkout v0.2.0
-pnpm install
-pnpm build
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
 ```
 
-Wenden Sie ausstehende Migrationen auf Ihre Datenbank an, bevor Sie den neuen
-Build starten – unter [Database](/self-hosting/database) erfahren Sie, wie der
-nach Dateinamen sortierte Runner funktioniert und wie er verfolgt, was er
-bereits angewendet hat.
+## Überprüfen Sie das Ergebnis
 
-## Erstellen Sie zuerst ein Backup
+1. Melden Sie sich bei der Administratorkonsole an.
+2. Öffnen Sie einen Assistenten.
+3. Testvorschau.
+4. Öffnen Sie ein veröffentlichtes Widget.
+5. Rufen Sie `GET /api/v1/meta` auf, wenn programmgesteuerte Clients verwendet
+   werden.
 
-Ein Upgrade, das Migrationen anwendet, ändert Ihr Schema. Erstellen Sie jedes
-Mal einen Dump, bevor Sie beginnen:
-
-```sh
-docker compose -f deploy/docker-compose.yml exec -T postgres \
-  pg_dump -U postgres postgres | gzip > ciele-$(date +%F).sql.gz
-```
-
-Zwei Volumes enthalten alles, was wichtig ist: `postgres-data` (die Datenbank)
-und `storage-data` (hochgeladene Dateien). Sichern Sie beide – ein reiner
-Datenbank-Dump stellt Ihre Assistenten, Konversationen und Wissensdatensätze
-wieder her, aber nicht die Dateien, die dahinter stehen.
-
-<Callout type="warn" title="Migrations move forward only">
-There is no down-migration path. Rolling back to an earlier version means
-restoring the backup you took before the upgrade, not re-running the runner in
-reverse. This is why the dump above is not optional.
-</Callout>
-
-## Wiederherstellen
-
-```sh
-docker compose -f deploy/docker-compose.yml down
-git checkout v0.1.0
-gunzip -c ciele-2026-07-25.sql.gz | docker compose -f deploy/docker-compose.yml \
-  exec -T postgres psql -U postgres postgres
-docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-Stellen Sie den Dump wieder her, der der Version entspricht, auf die Sie
-zurücksetzen möchten. Ein neuerer Dump enthält ein neueres Schema, das der
-ältere Code nicht versteht.
-
-## Was Sie vor einem kleineren Upgrade lesen sollten
-
-Versionshinweise werden zu jedem Tag veröffentlicht und weisen auf alles hin,
-was eine Entscheidung Ihrerseits erfordert – eine neue erforderliche
-Umgebungsvariable, eine geänderte Standardeinstellung, eine Migration, die eine
-große Tabelle neu schreibt. Überfliegen Sie sie, bevor Sie eine Bereitstellung
-aktualisieren, auf die andere angewiesen sind. Patch-Releases sind Routine,
-kleinere Releases gelegentlich nicht.
+Stellen Sie kein altes Anwendungs-Image auf einer inkompatiblen migrierten
+Datenbank wieder her. Verwenden Sie die Release-Anweisungen für einen
+unterstützten Rollback-Pfad.

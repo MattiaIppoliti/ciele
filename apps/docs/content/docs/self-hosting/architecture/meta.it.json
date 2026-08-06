@@ -1,6 +1,6 @@
 {
   "title": "Architettura",
-  "description": "Come viene assemblata la codebase",
+  "description": "Come viene assemblato il codebase",
   "pages": [
     "index",
     "repository-map",

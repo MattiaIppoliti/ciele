@@ -1,65 +1,50 @@
 ---
-title: Creare un flusso
-description: "Crea un flusso con il generatore in tre passaggi: trigger, condizioni e risposta."
+title: Crea un Flow
+description: Configura un trigger, le condizioni disponibili e le azioni di risposta ordinate.
 ---
 
-Crei un flusso in tre passaggi: scegli cosa lo avvia, aggiungi condizioni
-facoltative e definisci la risposta. Apri un assistente, seleziona **Flows**,
-quindi crea un nuovo flusso per aprire il generatore.
+## Crea il flusso
 
-## Passaggio 1: trigger
+1. Apri un Assistente.
+2. Seleziona **Flows**.
+3. Crea un Flow.
+4. Inserisci un nome e una descrizione chiari.
+5. Seleziona un trigger.
 
-Il trigger è l'evento che rende un flusso idoneo all'esecuzione. Il trigger più
-comune è quando un visitatore invia un messaggio, mentre altri trigger
-riguardano momenti come l'apertura della chat. Scegli il trigger che si adatta a
-ciò a cui vuoi che il flusso reagisca. Per la maggior parte delle regole che
-rispondono a domande, il trigger del messaggio è la scelta giusta.
+La descrizione aiuta Intent Classification a selezionare un flusso di messaggi.
+Indica l'intento del Visitatore e l'ambito richiesto.
 
-## Passaggio 2: Condizioni
+## Aggiungi condizioni per i messaggi
 
-Le condizioni sono facoltative. Limitano un flusso in modo che venga eseguito
-solo in situazioni specifiche. Puoi richiedere che una qualsiasi condizione
-corrisponda, oppure che corrispondano tutte, e puoi anche combinarne diverse
-insieme.
+I flussi di messaggi supportano questi tipi di condizione:
 
-La condizione che utilizzerai più spesso descrive il **contesto della
-conversazione**: spieghi, in un linguaggio semplice, il tipo di messaggio che
-questo flusso dovrebbe gestire e puoi fornire alcuni messaggi di esempio che
-dovrebbero corrispondere e alcuni che non dovrebbero. Questi esempi affinano la
-corrispondenza in modo che il flusso si attivi per le domande giuste.
+| Condizione | Comportamento attuale |
+| --- | --- |
+| Contesto della conversazione | Aggiunge esempi semantici alla Classificazione degli intenti. Non è un hard gate. |
+| URL | Applica un hard gate di tipo Matches, Contains o Regex. |
+| Pianificazione | Applica un hard gate di inizio, fine e fuso orario. |
 
-Lascia vuote le condizioni quando un flusso deve essere applicato in modo
-generico e aggiungile quando hai bisogno di precisione.
+Seleziona **Any condition matches** o **All conditions match** quando il flusso
+contiene più di una condizione.
 
-## Passaggio 3: Risposta
+Le condizioni URL e Schedule rimuovono un Flow non idoneo prima della
+classificazione. Una condizione soddisfatta non obbliga il Flow a vincere.
 
-La risposta è ciò che il flusso fa effettivamente. È un elenco ordinato di
-azioni, che vengono eseguite dall'alto verso il basso. Una risposta deve
-contenere almeno un'azione.
+## Aggiungi azioni di risposta
 
-I modelli più comuni includono:
+1. Aggiungi le azioni richieste.
+2. Metti le azioni nel loro ordine di esecuzione.
+3. Configura tutti i campi obbligatori.
+4. Salva il Flow.
+5. Testa un messaggio corrispondente e uno non corrispondente.
 
-- Un singolo **messaggio fisso** per una regola che risponde sempre allo stesso
-  modo.
-- Una **ricerca nella tua conoscenza** per una regola che dovrebbe fornire una
-  risposta utile e fondata.
-- Un messaggio seguito da **pulsanti** che indirizzano i visitatori al passaggio
-  successivo.
-- Un'**escalation** quando una regola deve trasferire il visitatore al tuo team.
+L'editor limita i Flow proattivi a una sola azione di notifica. Il server
+applica la stessa regola quando salva o invia un Flow.
 
-Vedi [Azioni del flusso](/flows/actions) per ogni azione e le relative
-impostazioni.
+## Riordina i flussi
 
-## Salva, ordina e prova
+Trascina un Flow per modificare la priorità di instradamento dei messaggi. Il
+flusso di comportamento predefinito rimane per ultimo.
 
-Quando salvi un flusso, questo viene aggiunto all'elenco. Trascinalo per
-impostarne la priorità rispetto agli altri flussi, ricordando che vince la prima
-corrispondenza. Quindi provalo nell'anteprima live inviando messaggi che
-dovrebbero e non dovrebbero attivarlo. Modifica la descrizione e gli esempi
-finché non si attiva esattamente quando vuoi.
-
-<Callout title="Start simple">
-A small number of clear flows is easier to reason about than many overlapping
-ones. Add a flow when you have a specific behavior in mind, and lean on the
-Default behavior for everything else.
-</Callout>
+Disabilita un Flow quando devi interromperne il routing senza eliminarne la
+configurazione.

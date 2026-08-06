@@ -1,132 +1,43 @@
 ---
-title: Collega Microsoft Entra ID
-description: Registra un'applicazione in Microsoft Entra e richiedi alle persone di effettuare l'accesso prima di chattare.
+title: Microsoft Entra ID
+description: Configura la connessione OpenID Connect corrente per l'accesso dei visitatori.
 ---
 
-Microsoft Entra ID (precedentemente Azure Active Directory) è il provider di
-identità che molte organizzazioni utilizzano già per il Single Sign-On.
-Collegandolo, le persone possono accedere al tuo assistente con il loro account
-di lavoro esistente e l'assistente può visualizzare il loro ruolo e il loro
-profilo. La connessione utilizza OpenID Connect, quindi per la configurazione
-basta registrare un'applicazione in Entra e incollare alcuni valori
-nell'assistente.
+Microsoft Entra ID è il provider di identità disponibile per i visitatori.
 
-Per registrare un'applicazione, devi avere accesso come amministratore al tuo
-tenant Microsoft Entra e accesso alla pagina **Authentication** dell'assistente
-in Ciele.
+## Crea l'applicazione Entra
 
-## Prima di iniziare
+1. Registra un'applicazione web riservata in Microsoft Entra ID.
+2. Aggiungi l'URL di callback di Ciele indicato nel modulo del provider.
+3. Crea un client secret.
+4. Registra l'ID tenant e l'ID client.
 
-1. Apri l'assistente, quindi seleziona **Authentication**.
-2. Scegli Microsoft Entra come provider di identità. La pagina mostra un **URL
-   di reindirizzamento** (a volte chiamato URL di callback o di risposta) per
-   questo assistente. Tieni aperta questa pagina: nel passaggio successivo
-   incollerai questo valore in Entra e poi riporterai i valori qui.
+Utilizza l'URL di callback esatto. Uno schema, un host, un percorso o una porta
+diversi impediscono la risposta di autorizzazione.
 
-<Callout title="Keep the redirect URL exact">
-Copy the redirect URL exactly as shown, including `https://` and any path. Entra
-matches it character for character, and a mismatch is the most common reason sign
-in fails.
-</Callout>
+## Configura Ciele
 
-## Passaggio 1: registra un'applicazione in Entra
+1. Apri **Settings**.
+2. Apri la configurazione dell'autenticazione dei visitatori.
+3. Seleziona **Microsoft Entra ID**.
+4. Inserisci l'ID tenant.
+5. Inserisci l'ID client.
+6. Inserisci il client secret.
+7. Salva la connessione.
 
-1. Accedi al
-   [centro di amministrazione di Microsoft Entra](https://entra.microsoft.com)
-   come amministratore.
-2. Vai su **Identity**, poi su **Applications**, quindi su **App registrations**
-   e seleziona **New registration**.
-3. Assegna all'applicazione un **nome** che il tuo team riconoscerà, ad esempio
-   `Ciele Assistant`.
-4. In **Supported account types**, scegli l'opzione che corrisponde a chi
-   dovrebbe essere in grado di accedere. Per una singola organizzazione, scegli
-   gli account presenti solo in questa directory organizzativa.
-5. In **Redirect URI**, seleziona la piattaforma **Web** e incolla l'URL di
-   reindirizzamento che hai copiato dalla pagina di autenticazione
-   dell'assistente.
-6. Seleziona **Register**.
+Ciele utilizza il flusso del codice di autorizzazione con Proof Key for Code
+Exchange (PKCE). Richiede solo l'ambito `openid`.
 
-## Passaggio 2: raccogli gli identificatori del client e del tenant
+## Impostazione server richiesta
 
-Dopo la registrazione, arrivi alla pagina **Overview** dell'applicazione.
+Imposta `APP_ENCRYPTION_KEY` sulla distribuzione di Ciele. Ciele utilizza questa
+chiave per proteggere il cookie del gate di autenticazione e i segreti
+memorizzati.
 
-1. Copia il **Application (client) ID**.
-2. Copia il **Directory (tenant) ID**.
+## Verifica la connessione
 
-Conserva entrambi i valori: li incollerai nell'assistente a breve.
-
-## Passaggio 3: Crea un client secret
-
-1. Nell'applicazione, apri **Certificates & secrets**.
-2. Seleziona **New client secret**, aggiungi una breve descrizione e scegli una
-   scadenza che si adatti alla politica della tua organizzazione.
-3. Seleziona **Add**, quindi copia immediatamente il segreto **Value**. Viene
-   mostrato una sola volta, quindi copia subito questo e non l'ID della chiave
-   segreta.
-
-<Callout type="warn" title="Secrets expire">
-A client secret has an expiry date. Set a reminder to create a new secret and
-update it in the assistant before the old one expires, otherwise sign in will stop
-working when it lapses. Clearing the connection later is covered under
-[Alerts](/operations/alerts), which flags a connection that has stopped working.
-</Callout>
-
-## Passaggio 4: Scegli cosa può leggere l'assistente
-
-L'assistente ha bisogno degli ambiti di accesso di base per identificare una
-persona.
-
-1. Apri **API permissions**.
-2. Verifica che le autorizzazioni delegate includano **openid**, **profile** ed
-   **email**. Queste consentono all'assistente di leggere chi è una persona. Di
-   solito sono presenti per impostazione predefinita.
-3. Se vuoi che l'assistente reagisca ai gruppi o ai ruoli di una persona, apri
-   **Token configuration** e aggiungi un'**attributo gruppi** (o gli attributi
-   opzionali che la tua organizzazione utilizza per i ruoli). Questo è ciò che
-   fa funzionare le [condizioni di flusso](/flows/building-a-flow) basate su
-   gruppi e ruoli per le persone che hanno effettuato l'accesso.
-4. Se la tua organizzazione lo richiede, concedi il consenso dell'amministratore
-   per le autorizzazioni.
-
-## Passaggio 5: completa la connessione in Ciele
-
-Torna alla pagina **Authentication** dell'assistente e inserisci i valori di
-Entra:
-
-1. **Client ID**: l'ID dell'applicazione (client) del passaggio 2.
-2. **Tenant ID**: l'ID della directory (tenant) del passaggio 2.
-3. **Client secret**: il valore segreto del passaggio 3.
-4. **Scopes**: lascia gli ambiti di accesso predefiniti, a meno che la tua
-   configurazione non ne richieda di più.
-5. Salva la connessione.
-
-## Passaggio 6: prova l'accesso
-
-1. Apri l'anteprima live dell'assistente o una pagina in cui è pubblicato.
-2. Il widget mostra una scheda **Connect Your Account**. Selezionala.
-3. Accedi con un account Microsoft dal tuo tenant.
-4. Verifica che la conversazione continui e, se hai configurato i gruppi, che un
-   flusso basato sui ruoli si comporti come previsto.
-
-## Risoluzione dei problemi
-
-- **Redirect URI mismatch.** L'errore indica un URL di risposta che non
-  corrisponde. Copia nuovamente l'URL di reindirizzamento dalla pagina di
-  autenticazione e assicurati che il valore in Entra sotto la piattaforma
-  **Web** sia identico.
-- **Sign in works but roles do not.** Aggiungi il **claim groups** in **Token
-  configuration** (Passaggio 4). Senza di essa, l'assistente vede la persona ma
-  non i suoi gruppi.
-- **Sign in stopped working after a while.** Probabilmente il client secret è
-  scaduto. Crea un nuovo segreto in **Certificates & secrets** e aggiornalo
-  nella pagina Autenticazione.
-- **Admin consent required.** Un amministratore deve concedere il consenso per
-  le autorizzazioni dell'applicazione una volta, in **API permissions**.
-
-## Cosa succede dopo
-
-- Personalizza le risposte con i dati personali di una persona utilizzando
-  **User data** nella stessa pagina di autenticazione.
-- Utilizza il ruolo della persona nelle regole nella pagina
-  [Flussi](/flows/building-a-flow), in modo che l'assistente risponda in modo
-  diverso ai membri e ai visitatori anonimi.
+1. Richiedi l'autenticazione su una bozza di Assistente.
+2. Apri l'anteprima in una sessione del browser senza effettuare l'accesso.
+3. Completa l'accesso a Microsoft.
+4. Verifica che la chat diventi disponibile.
+5. Verifica che un'altra Organizzazione non possa riutilizzare il cookie gate.

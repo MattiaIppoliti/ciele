@@ -1,0 +1,50 @@
+---
+title: Notificaciones
+description: Envía un mensaje proactivo cuando se produzca un evento en la página o en el chat.
+---
+
+Una notificación es la única acción de respuesta para un flujo proactivo. No
+llama a un modelo de IA.
+
+## Selecciona un activador proactivo
+
+Utiliza uno de estos desencadenantes:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+## Configura la notificación
+
+1. Crea o abre un flujo.
+2. Selecciona un activador proactivo.
+3. Introduce el título de la notificación.
+4. Introduce el contenido de la notificación.
+5. Selecciona la regla de entrega.
+6. Elige si los usuarios pueden responder.
+7. Añade botones cuando sea necesario.
+8. Guarda y prueba el flujo en la vista previa.
+
+Ciele emite el contenido configurado textualmente. El título puede contener 100
+caracteres. El contenido puede tener 5000 caracteres.
+
+## Comportamiento de entrega
+
+El servidor vuelve a comprobar el desencadenante y el estado de entrega antes de
+escribir un mensaje. Los eventos de cliente reproducidos no omiten esta
+comprobación.
+
+La vista previa ignora la regla de entrega. Este comportamiento permite a un
+administrador probar la notificación más de una vez.
+
+La última configuración de respuesta a la notificación controla el editor. Una
+respuesta posterior habilitada para responder puede volver a abrir el editor.
+
+## Análisis
+
+Una notificación no es una respuesta de IA. Las sesiones de solo notificación no
+aumentan el volumen de respuestas ni la tasa de resolución de la IA.
+
+La métrica **Notifications Sent** registra las notificaciones entregadas. La
+bandeja de entrada marca una sesión como **Notification only** hasta que un
+visitante responda.

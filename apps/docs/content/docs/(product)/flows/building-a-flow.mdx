@@ -1,57 +1,44 @@
 ---
-title: Building a flow
-description: "Create a flow with the three step builder: trigger, conditions, and response."
+title: Build a Flow
+description: Configure one trigger, available conditions, and ordered response actions.
 ---
 
-You build a flow in three steps: choose what starts it, add optional conditions,
-and define the response. Open an assistant, select **Flows**, then create a new
-flow to open the builder.
+## Create the Flow
 
-## Step 1: Trigger
+1. Open an Assistant.
+2. Select **Flows**.
+3. Create a Flow.
+4. Enter a clear name and description.
+5. Select one trigger.
 
-The trigger is the event that makes a flow eligible to run. The most common
-trigger is when a visitor sends a message, and other triggers cover moments such
-as the chat opening. Choose the trigger that fits what you want the flow to react
-to. For most rules that answer questions, the message trigger is the right choice.
+The description helps Intent Classification select a message Flow. State the Visitor intent and the required scope.
 
-## Step 2: Conditions
+## Add message conditions
 
-Conditions are optional. They narrow a flow so it runs only in specific
-situations. You can require that any condition matches, or that all of them match,
-and you can stack several together.
+Message Flows support these condition types:
 
-The condition you will use most describes the **context of the conversation**: you
-explain, in plain language, the kind of message this flow should handle, and you
-can give a few example messages that should match and a few that should not. These
-examples sharpen the match so the flow fires on the right questions.
+| Condition | Current behavior |
+| --- | --- |
+| Conversation context | Adds semantic examples to Intent Classification. It is not a hard gate. |
+| URL | Applies a Matches, Contains, or Regex hard gate. |
+| Schedule | Applies a start, end, and timezone hard gate. |
 
-Leave conditions empty when a flow should apply broadly, and add them when you need
-precision.
+Select **Any condition matches** or **All conditions match** when the Flow contains more than one condition.
 
-## Step 3: Response
+URL and Schedule conditions remove an ineligible Flow before classification. A satisfied condition does not force the Flow to win.
 
-The response is what the flow actually does. It is an ordered list of actions, and
-they run top to bottom. A response must have at least one action.
+## Add response actions
 
-Common patterns include:
+1. Add the required actions.
+2. Put the actions in their execution order.
+3. Configure every required field.
+4. Save the Flow.
+5. Test one matching and one non-matching message.
 
-- A single **fixed message** for a rule that always replies the same way.
-- A **search of your knowledge** for a rule that should give a helpful, grounded
-  answer.
-- A message followed by **buttons** that point visitors to the next step.
-- An **escalation** when a rule should hand the visitor to your team.
+The editor limits proactive Flows to one Notification action. The server applies the same rule when it saves or dispatches a Flow.
 
-See [Flow actions](/flows/actions) for every action and its settings.
+## Reorder Flows
 
-## Save, order, and test
+Drag a Flow to change message routing priority. The Default behavior Flow remains last.
 
-When you save a flow, it joins the list. Drag it to set its priority relative to
-the other flows, remembering that the first match wins. Then test it in the live
-preview by sending messages that should and should not trigger it. Adjust the
-description and examples until it fires exactly when you intend.
-
-<Callout title="Start simple">
-A small number of clear flows is easier to reason about than many overlapping
-ones. Add a flow when you have a specific behavior in mind, and lean on the
-Default behavior for everything else.
-</Callout>
+Disable a Flow when you must stop its routing without deleting its configuration.

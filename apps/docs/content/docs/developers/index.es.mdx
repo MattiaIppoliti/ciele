@@ -1,0 +1,54 @@
+---
+title: Herramientas para desarrolladores
+description: Utiliza una clave de API con la API de Ciele, la CLI o el servidor MCP.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Ciele ofrece tres interfaces para la administración programática. Cada interfaz
+utiliza las mismas operaciones y comprobaciones de roles que la consola de
+administración.
+
+<Cards>
+  <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
+  <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
+  <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
+  <Card title="AI clients" href="/developers/ai-clients" description="Configure supported clients and use copyable prompts." />
+</Cards>
+
+## Modelo de conexión común
+
+Las tres interfaces requieren una clave de API de organización. El rol asignado
+controla las operaciones que la clave puede realizar.
+
+```mermaid
+flowchart TB
+  subgraph Clients
+    CLI["Ciele CLI"]
+    MCP["Ciele MCP server"]
+    HTTP["HTTP client"]
+  end
+  API["Ciele API v1"]
+  OPS["Shared operations"]
+  DB[("Organization data")]
+  CLI --> API
+  MCP --> API
+  HTTP --> API
+  API --> OPS
+  OPS --> DB
+```
+
+El servicio alojado utiliza `https://platform.ciele.app` de forma
+predeterminada. Una instalación autoalojada utiliza su propio origen público.
+
+<Callout title="Use the minimum Role">
+Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
+</Callout>
+
+## Dominios disponibles
+
+La API actual incluye Asistentes, Flujos, Conocimiento, publicación,
+conversaciones de la Bandeja de entrada y Mejoras.
+
+La API no expone todas las funciones de la consola. Por ejemplo, la subida de
+avatares y la creación de mejoras siguen siendo exclusivas de la consola.

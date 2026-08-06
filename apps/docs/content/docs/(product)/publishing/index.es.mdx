@@ -1,52 +1,49 @@
 ---
-title: Publicación
-description: Coloca un asistente en tu sitio web con un fragmento de incrustación, como un widget flotante o un marco en línea.
+title: Publica un Asistente
+description: Crea una instantánea inmutable del widget y controla dónde se puede ejecutar.
 ---
 
-Al publicar, tu asistente pasa de la vista previa a tu sitio web activo. Abre un
-asistente y selecciona **Publish** para obtener el fragmento que necesitas. Cada
-opción abre un cuadro de diálogo con un fragmento que copias en tu sitio.
+Una publicación congela la configuración actual del asistente. El widget en vivo
+lee la publicación activa en lugar del borrador.
 
-## El widget flotante
+## Prepara la publicación
 
-El widget flotante añade un botón de inicio a tus páginas. Cuando un visitante
-lo selecciona, la ventana de chat se abre sobre la página.
+1. Prueba el borrador en Vista previa.
+2. Confirma que las Fuentes de conocimiento necesarias estén listas.
+3. Prueba los mensajes de flujo coincidentes y no coincidentes.
+4. Prueba el Help Desk y las rutas de autenticación cuando estén habilitadas.
+5. Abre **Publish**.
 
-1. En **Publish**, elige la opción de widget flotante para sitio web.
-2. Copia el fragmento proporcionado.
-3. Pégalo en la parte de tu sitio que aparece en todas las páginas donde quieras
-   que esté el asistente, normalmente en el encabezado compartido de la
-   plantilla de tu sitio.
+## Configura los dominios permitidos
 
-El fragmento carga el widget y lo dirige a tu asistente mediante su
-identificador, de modo que aparezca el asistente correcto.
+Añade cada origen de sitio web que pueda incrustar el Asistente. Utiliza
+exactamente el esquema y el host que envía el navegador.
 
-## El marco en línea
+No añadas un dominio amplio cuando solo una aplicación necesite el widget.
 
-Si quieres que el asistente aparezca dentro de la página en lugar de flotar
-sobre ella, utiliza la opción de marco en línea. Te proporciona un marco que
-colocas donde quieras que aparezca el chat, lo cual es útil para una página de
-ayuda dedicada o para un rincón de soporte de tu aplicación.
+## Crea la publicación
 
-## Después de publicar
+1. Selecciona **Publish**.
+2. Confirma la acción de publicación.
+3. Copia el código de incrustación.
+4. Añade el código a un sitio web permitido.
+5. Abre el sitio web en una sesión privada del navegador.
+6. Envía un mensaje de prueba.
 
-- Visita una página que incluya el fragmento y confirma que el widget aparece y
-  se abre.
-- Hazle algunas preguntas reales y comprueba que las respuestas y las fuentes
-  sean correctas.
-- Observa las primeras conversaciones en la
-  [Bandeja de entrada](/operations/inbox) para ver cómo lo usan los visitantes y
-  ajusta el conocimiento o los flujos según sea necesario.
+Los cambios posteriores en el borrador no modifican esta Publicación. Vuelve a
+publicar para crear y activar una nueva instantánea inmutable.
 
-<Callout title="One assistant, many places">
-Because the snippet references the assistant by its identifier, you can place the
-same assistant on several pages or sites. Update the assistant once and every
-placement reflects the change.
+## Restaurar una publicación
+
+Selecciona una publicación anterior cuando debas restaurar su configuración. La
+acción de restauración vuelve a activar esa versión inmutable.
+
+## Anular la publicación
+
+Utiliza **Unpublish** para desconectar la configuración del widget. El código de
+incrustación existente no puede cargar un Asistente activo después de la
+operación.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
 </Callout>
-
-## Ten el identificador a mano
-
-La publicación utiliza el identificador del asistente, que puedes copiar de la
-tarjeta del asistente o del editor. Si alguna vez necesitas mover o reinstalar
-el widget, ese identificador es todo lo que necesitas para dirigir un nuevo
-fragmento al mismo asistente.

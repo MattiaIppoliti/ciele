@@ -1,42 +1,33 @@
 ---
 title: Avvisi
-description: Rileva tempestivamente i problemi operativi, come una connessione le cui credenziali hanno smesso di funzionare.
+description: Esamina i guasti rilevati che richiedono l'intervento dell'amministratore.
 ---
 
-Gli avvisi mantengono i tuoi assistenti in salute, segnalando i problemi che
-richiedono attenzione. Quando qualcosa va storto dietro le quinte, ad esempio
-una connessione le cui credenziali hanno smesso di funzionare, Ciele genera un
-avviso in modo che tu possa intervenire prima che ciò influisca sui visitatori.
-Apri **Alerts** dalla barra laterale. Un badge mostra il numero di avvisi
-attualmente attivi.
+Alerts registra i problemi operativi attuali e quelli risolti. Un badge può
+mostrare il numero di avvisi attivi.
 
-## Leggi gli avvisi
+## Viste degli avvisi
 
-Gli avvisi sono organizzati in modo che tu possa concentrarti su ciò che
-richiede un intervento.
+- **Needs attention** mostra gli avvisi attivi.
+- **Resolved** mostra gli avvisi risolti.
+- **All** mostra entrambi gli stati.
 
-- **Needs attention** elenca i problemi attivi.
-- **Resolved** elenca i problemi che non sono più attivi.
-- **All** mostra entrambi.
+Ogni avviso contiene il tipo, il titolo, i dettagli, l'ora di rilevamento e lo
+stato corrente.
 
-Ogni avviso descrive il tipo di problema, fornisce un breve titolo e dettagli, e
-mostra quando è stato rilevato e il suo stato attuale.
+I fallimenti delle aspettative degli obiettivi generano avvisi. Anche altre
+operazioni monitorate possono generare un avviso quando la loro implementazione
+corrente segnala un errore.
 
 ## Risolvi un avviso
 
-Un avviso può essere cancellato in due modi.
+1. Apri l'avviso.
+2. Leggi la causa registrata e l'elemento interessato.
+3. Correggi l'obiettivo, la connessione, la sorgente o altre impostazioni di
+   configurazione.
+4. Ripeti l'operazione interessata.
+5. Verifica che il problema non si verifichi più.
+6. Contrassegna l'avviso come risolto quando necessario.
 
-- Risolvi il problema alla base, ad esempio aggiorna la connessione che ha dato
-  errore. Quando il problema si risolve da solo, l'avviso viene risolto
-  automaticamente.
-- Se hai gestito il problema al di fuori di Ciele, contrassegnalo come risolto
-  dall'avviso.
-
-Puoi anche aprire un avviso per ottenere maggiori dettagli quando hai bisogno di
-capire esattamente cosa è successo.
-
-<Callout title="Check alerts before they bite">
-An unattended alert often means an integration is quietly failing. A quick glance
-at the Alerts badge as part of your routine keeps small problems from becoming
-visitor facing ones.
-</Callout>
+Non risolvere un avviso solo per rimuovere il suo badge. Per prima cosa,
+conferma l'operazione interessata.

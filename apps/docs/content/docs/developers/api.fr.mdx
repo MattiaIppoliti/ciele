@@ -1,0 +1,79 @@
+---
+title: API v1
+description: Appelez l'API d'administration Ciele actuelle avec une clé API d'organisation.
+---
+
+L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
+par `/api/v1`.
+
+## Découvrez le déploiement
+
+Utilisez ces points de terminaison publics avant de générer un client :
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` répertorie la version de l'API et les domaines disponibles.
+`openapi.json` renvoie le contrat lisible par machine pour le déploiement.
+
+## Authentifier une requête
+
+Envoyez la clé API en tant que jeton au porteur :
+
+```bash
+curl https://platform.ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Pour l'auto-hébergement, remplacez `https://platform.ciele.app` par l'origine
+publique de Ciele.
+
+## Erreurs de réponse
+
+Les erreurs utilisent une enveloppe JSON :
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Les codes d'état courants sont :
+
+| Statut | Signification |
+| --- | --- |
+| `400` | Les données de la requête ne sont pas valides. |
+| `401` | La clé est manquante, invalide ou révoquée. |
+| `403` | Le rôle de la clé ne permet pas l'opération. |
+| `404` | La ressource n'existe pas dans l'organisation. |
+| `409` | La requête est en conflit avec l'état actuel. |
+
+## Pagination
+
+Les opérations de liste acceptent les paramètres `limit` et `cursor` lorsque le
+point de terminaison prend en charge la pagination. Utilisez le curseur renvoyé
+pour la prochaine requête.
+
+## Nouvelles tentatives sécurisées
+
+Les routes de mutation peuvent accepter un en-tête `Idempotency-Key`. Réutilisez
+la même valeur uniquement lorsque vous réessayez la même opération logique.
+
+## Domaines actuels
+
+- Assistants : liste, lecture, création, mise à jour, duplication et
+  suppression.
+- Flux : lister, lire, créer, mettre à jour, réorganiser et supprimer.
+- Connaissances : gérez les collections, les sources et les FAQ.
+- Publication : lire le statut, publier, annuler la publication et restaurer une
+  publication.
+- Boîte de réception : listez, lisez et exportez les conversations.
+- Améliorations : listez, lisez et mettez à jour les éléments.
+
+Utilisez le document OpenAPI pour connaître les champs de requête et les schémas
+de réponse exacts.

@@ -1,65 +1,44 @@
 ---
 title: Impostazioni generali
-description: Imposta l'identità dell'assistente, il messaggio di benvenuto, la dichiarazione di non responsabilità, lo stile di risposta e le opzioni di conversazione.
+description: Configura l'identità, il modello, il motore di conoscenza e il contenuto predefinito della chat dell'Assistente.
 ---
 
-La sezione Generale definisce chi è l'assistente e come si presenta. Apri un
-assistente, quindi seleziona **General** nel pannello di configurazione.
+Apri un Assistente e seleziona **General**.
+
+## Selezione del runtime
+
+Seleziona la connessione al provider e il modello per l'Assistente. Seleziona
+**Graph** o **Vector** come motore di conoscenza principale.
+
+Il recupero del grafo utilizza il Knowledge Graph quando sono disponibili i
+servizi di grafo. Il recupero vettoriale utilizza gli embedding di concetti
+indicizzati e il fallback lessicale.
 
 ## Identità
 
-- **Assistant title** è il nome dell'assistente.
-- **Nickname** è il nome breve mostrato nell'intestazione del widget, dove i
-  visitatori lo vedono.
-- **Description** spiega lo scopo dell'assistente. Scrivi in modo chiaro e
-  conciso.
+Configura questi campi:
 
-## Messaggio di benvenuto
+- **Title** identifica l'Assistente nella console.
+- **Nickname** appare nel widget.
+- **Description** registra lo scopo dell'Assistente.
+- **Avatar** fornisce l'immagine dell'Assistente.
 
-Il messaggio di benvenuto è la prima cosa che un visitatore legge quando apre la
-chat. Lo scrivi in un editor di testo RTF, quindi puoi usare grassetto, corsivo,
-titoli, elenchi, virgolette e link. Usalo per definire le aspettative: in cosa
-può aiutarti l'assistente e come contattare una persona, se necessario.
+## Impostazioni predefinite della conversazione
 
-## Dichiarazione di non responsabilità per l'IA
+- **Welcome message** appare all'inizio di una chat.
+- **AI disclaimer** aggiunge il testo di divulgazione configurato.
+- **Answering style** fornisce istruzioni per le risposte standard.
+- **Simplified thinking** converte l'avanzamento in fase di esecuzione in
+  passaggi più brevi rivolti al visitatore.
+- **Suggested questions** controlla i suggerimenti di follow-up generati.
+- **Quick replies** aggiunge azioni iniziali configurate.
 
-Il disclaimer appare sotto le risposte dell'assistente. Usalo per ricordare ai
-visitatori che le risposte sono generate dall'IA e per indirizzarli a fonti
-autorevoli quando l'accuratezza è importante.
+## Salva e pubblica
 
-## Stile di risposta
+1. Modifica un gruppo di impostazioni.
+2. Salva la bozza.
+3. Prova la bozza in Anteprima.
+4. Pubblica l'Assistente quando il risultato è corretto.
 
-Lo stile di risposta è una guida in formato libero su tono e formato. Descrivi
-come vuoi che l'assistente si esprima e strutturi le sue risposte, ad esempio in
-modo breve e amichevole, oppure formale e approfondito. Questa guida viene
-applicata in aggiunta alle istruzioni della piattaforma, quindi modella ogni
-risposta generata senza ignorare le regole di sicurezza.
-
-<Callout title="Verbatim vs generated">
-Fixed messages you set in a Flow are shown word for word. The answering style
-only affects answers the assistant generates, such as those produced when it
-searches your knowledge. See [Flow actions](/flows/actions).
-</Callout>
-
-## Pulsanti di avvio
-
-I pulsanti di avvio sono risposte rapide che vengono mostrate all'inizio di una
-conversazione. Offrono ai visitatori un modo semplice per iniziare. Ogni
-pulsante ha un tipo che ne determina la funzione. Vedi
-[Pulsanti di avvio](/assistants/quick-replies) per la configurazione completa.
-
-## Opzioni di conversazione
-
-Il gruppo Configurazione contiene i pulsanti di attivazione/disattivazione che
-modificano l'esperienza di chat. A seconda della configurazione, queste possono
-includere la lingua della finestra di chat, una visualizzazione dell'avanzamento
-che riformula il pensiero dell'assistente in aggiornamenti brevi e leggibili e
-altri comportamenti. Attiva solo ciò che sarà utile ai tuoi visitatori e
-conferma ogni opzione nell'anteprima in tempo reale.
-
-## Il lanciatore della chat
-
-L'interruttore **Enable chat launcher** controlla se il pulsante di chat mobile
-viene visualizzato. Disattivalo se prevedi di aprire l'assistente in un altro
-modo, ad esempio tramite il tuo pulsante, e attivalo per il widget mobile
-standard.
+Il widget live continua a utilizzare la Pubblicazione precedente fino al
+completamento del passaggio 4.

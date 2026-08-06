@@ -1,61 +1,33 @@
 ---
-title: Présentation de l'authentification
-description: Demandez aux visiteurs de se connecter avant de discuter et personnalisez les réponses en fonction de leur profil.
+title: Authentification des visiteurs
+description: Exigez la connexion à Microsoft Entra avant qu'un visiteur puisse utiliser un assistant.
 ---
 
-Par défaut, un assistant est accessible à toute personne pouvant accéder à la
-page sur laquelle il se trouve. Lorsque vous avez besoin de savoir qui est à
-l'autre bout de la conversation, vous pouvez connecter votre fournisseur
-d'identité et exiger que les utilisateurs se connectent avant de discuter. Cela
-permet à l'assistant de confirmer l'identité d'une personne, de s'adapter à son
-rôle et de personnaliser ses réponses à l'aide des informations de son profil.
+L'authentification des visiteurs est facultative. Les visiteurs anonymes
+reçoivent un identifiant de visiteur persistant provenant du stockage local de
+la page hôte.
 
-Vous configurez cela pour chaque assistant. Ouvrez un assistant, puis
-sélectionnez **Authentication**.
+Le produit actuel prend en charge une connexion Microsoft Entra au niveau de
+l'organisation. Un Assistant peut exiger cette connexion avant le début du chat.
 
-## Ce que vous apporte la connexion d'un fournisseur d'identité
+## Limite d'identité actuelle
 
-- **Sign in before chat.** Les visiteurs voient une carte **Connect Your
-  Account** dans le widget et ne peuvent poursuivre qu'après s'être connectés
-  avec votre fournisseur d'identité.
-- **Roles and groups.** Les groupes auxquels une personne appartient peuvent
-  être intégrés à la conversation, de sorte qu'un [flux](/flows/building-a-flow)
-  peut traiter un membre différemment d'un visiteur anonyme.
-- **Personalized answers.** Les informations de profil, telles que le nom, sont
-  mises à la disposition de l'assistant, ce qui permet d'adresser directement
-  les réponses à la personne concernée.
+Ciele demande l'étendue `openid` et valide le jeton d'identification renvoyé.
+L'identité authentifiée utilise l'identifiant du sujet du jeton.
 
-<Callout title="Single sign-on, one connection">
-The connection uses OpenID Connect, the standard behind most single sign-on
-setups. Once your identity provider is connected, people sign in with the account
-they already use, and no separate password is created for the assistant.
-</Callout>
+La connexion actuelle n'importe pas les champs de profil, l'adresse e-mail, les
+groupes ni les rôles d'application. Elle ne personnalise pas les réponses à
+partir de ces attributs.
 
-## Deux paramètres connexes
+## Exiger la connexion
 
-- **Authentication** connecte le fournisseur d'identité qui contrôle l'accès au
-  chat. C'est ce que décrivent les guides de cette section.
-- **User data** vous permet d'importer des informations personnelles afin que
-  l'assistant puisse les insérer dans ses réponses, à la manière d'un
-  publipostage. Utilisez-le lorsque vous souhaitez obtenir des réponses faisant
-  référence aux informations personnelles d'une personne.
+1. Configurez Microsoft Entra dans les paramètres de l'organisation.
+2. Ouvrez l'Assistant.
+3. Sélectionnez **Authentication**.
+4. Activez l'obligation de connexion.
+5. Enregistrez le brouillon.
+6. Testez le flux de connexion en mode Aperçu.
+7. Publiez l'Assistant.
 
-## Guides
-
-<Cards>
-  <Card
-    title="Connectez Microsoft Entra ID"
-    href="/authentication/microsoft-entra-id"
-    description="Enregistrez une application dans Microsoft Entra et exigez une connexion avant le chat."
-  />
-</Cards>
-
-## Après la connexion
-
-- Ouvrez l'aperçu du widget et vérifiez que la carte **Connect Your Account**
-  s'affiche.
-- Connectez-vous avec un compte de test et vérifiez que la conversation se
-  poursuit.
-- Si vous utilisez des rôles, vérifiez qu'un [flux](/flows/building-a-flow) qui
-  contrôle le rôle de l'utilisateur se comporte comme prévu pour les personnes
-  connectées.
+La passerelle d'authentification utilise un cookie d'organisation chiffré. La
+session expire au bout de 12 heures.

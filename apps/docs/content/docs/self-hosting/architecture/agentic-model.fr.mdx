@@ -1,332 +1,59 @@
 ---
-title: Le modèle agentique
-description: La manière dont le modèle est choisi, ce qu'il est autorisé à décider, les couches de requêtes et les outils avec lesquels il fonctionne, les budgets qui le limitent et la boucle nocturne qui l'évalue.
+title: Modèle agentique
+description: Comprenez la résolution du fournisseur, l'utilisation des outils, les limites, les traces et les citations.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Le runtime utilise l'abstraction de fournisseur du SDK Vercel AI. Les
+adaptateurs de fournisseurs actuels incluent Anthropic, OpenAI, Google et un
+point de terminaison compatible avec OpenAI.
 
-Un agent, dans sa forme la plus simple, est un modèle doté d'outils qui
-fonctionne en boucle : il répond, ou il appelle un outil, et tout ce que l'outil
-renvoie lui revient jusqu'à ce qu'il réponde. C'est vraiment cette boucle qui
-s'exécute ici. Cette page traite de tout ce qui est construit autour de cette
-boucle : quel modèle finit par répondre, ce que le modèle est autorisé à
-décider, ce qu'il peut atteindre, où il est limité et comment ses réponses sont
-évaluées par la suite.
+## Limites génératives
 
-La page [chat runtime](/self-hosting/architecture/chat-runtime) décrit le
-mécanisme par lequel passe un message. Cette page concerne le modèle qui se
-trouve à l'intérieur.
+Le runtime n'effectue un appel au modèle qu'au sein d'une action générative ou
+d'une classification d'intention. Les actions déterministes ne transmettent pas
+leur contenu à un modèle.
 
-## Ce que le modèle décide, et ce qu'il ne décide jamais
+La réponse de base utilise un appel de chat et aucun outil. La recherche de
+connaissances utilise une boucle d'outils limitée.
 
-La chose la plus utile à savoir sur cette architecture est de savoir où se situe
-la limite. L'autonomie est accordée délibérément, une décision à la fois.
+## Boucle de recherche dans Knowledge
 
-| Le modèle décide | Le code décide |
-|---|---|
-| À quel flux appartient le message | Quelles actions sont ensuite exécutées et dans quel ordre |
-| S'il faut appeler un outil, et avec quels arguments | Quels outils existent au cours de ce tour |
-| Ce qu'il faut rechercher, et s'il faut effectuer une nouvelle recherche | La limite stricte du nombre de recherches autorisées par tour |
-| La formulation d'une réponse générative | Si la génération est autorisée à cette étape |
-| Quels faits récupérés utiliser | Quelles sources sont citées — uniquement ce qui a été réellement lu |
-| Rien après la rédaction de la réponse | Persistance, effets secondaires, escalade, notation |
+1. Le modèle reçoit les instructions de l'assistant et les descriptions des
+   outils disponibles.
+2. Le modèle effectue une recherche dans Knowledge ou lit une fenêtre Source
+   sélectionnée.
+3. Le runtime enregistre les événements du cycle de vie de l'outil.
+4. Le modèle peut répéter la recherche dans la limite du nombre d'étapes.
+5. Le runtime génère la réponse finale et les citations nommées.
 
-Deux conséquences qu'il convient d'intérioriser. Le texte configuré n'est jamais
-réécrit : une action de message envoie sa copie mot pour mot, de sorte que la
-formulation d'un administrateur est à l'abri de toute paraphrase. Et un modèle
-ne peut jamais élargir sa propre portée : un outil qui ne lui a pas été fourni
-n'existe pas pour lui, et aucun résultat d'outil ne lui en accorde un nouveau.
+Le panneau Thinking représente ces événements enregistrés relatifs à la
+progression et aux outils. Le raisonnement simplifié réécrit le texte de
+progression pour l'affichage Visiteur.
 
-## Choisir le modèle qui répond
+## Outils d'intégration d'API
 
-Un assistant désigne un fournisseur et un modèle, mais cette préférence marque
-le *début* de la résolution, et non son aboutissement.
+Un Assistant peut enregistrer un catalogue d'API. Le catalogue décrit son URL de
+base, son identifiant protégé et les points de terminaison disponibles.
 
-<Mermaid
-  title="Résolution du modèle qui répond à un tour"
-  chart={`
-flowchart TB
-  T["A turn needs a model"]
-  P{"Credential for the<br/>assistant's provider?"}
-  A{"Credential for any<br/>other provider?"}
-  RUN["Generate on the<br/>assistant's own model"]
-  FB["Generate on a fallback<br/>provider, cheap tier"]
-  KW["Keyword router<br/>no generation at all"]
+Le modèle peut inspecter les détails de l'API et interroger un point de
+terminaison enregistré. Le moteur d'exécution valide chaque chemin d'accès par
+rapport au catalogue avant la sortie du réseau.
 
-  T --> P
-  P -->|"yes"| RUN
-  P -->|"no"| A
-  A -->|"yes"| FB
-  A -->|"no"| KW
-`}
-/>
+Les lecteurs fenêtrés renvoient une plage de contenu demandée et une longueur
+totale. Ce contrat permet au modèle d'inspecter de grandes charges utiles d'API
+et de connaissances sans troncature silencieuse.
 
-Au sein d'un même fournisseur, le runtime utilise le premier identifiant qu'il
-trouve, dans cet ordre :
+## Comportement en cas d'échec
 
-1. Une CLI de fournisseur connectée détectée sur la machine exécutant la console
-   — **uniquement sur la surface de prévisualisation**, jamais pour le trafic
-   publié.
-2. L'identifiant propre à l'organisation : une clé API qu'elle a fournie, ou un
-   identifiant fédéré lorsque le fournisseur en prend en charge un.
-3. La clé de plateforme de l'environnement du déploiement.
+Le routeur de mots-clés gère la classification lorsqu'aucun modèle de
+classificateur n'est disponible ou que la classification échoue. La recherche de
+connaissances peut utiliser le repli lexical sans vecteurs d'embedding.
 
-Quatre familles de fournisseurs sont prises en charge : Anthropic, OpenAI,
-Google et **tout serveur compatible avec l'API OpenAI** — c'est ainsi qu'un
-déploiement s'exécute entièrement en local sur son propre serveur d'inférence,
-configuré soit au niveau de l'organisation, soit via les variables
-d'environnement `OPENAI_COMPATIBLE_*` dans
-[Configuration](/self-hosting/configuration). Google accepte en outre un
-identifiant Vertex fédéré au lieu d'une clé statique.
+Un transport de messagerie non configuré renvoie un résultat d'échec honnête. Il
+ne crée pas de message de livraison réussie.
 
-Deux niveaux de modèle sont résolus par tour, et non un seul. La classification
-des intentions est exécutée sur un modèle délibérément peu coûteux ; la réponse
-est exécutée sur celui choisi par l'assistant. Les deux résolutions sont
-enregistrées dans le registre d'utilisation avec le fournisseur, l'identifiant
-du modèle et le type d'identifiant ayant payé l'appel.
+## Règle d'extension
 
-<Callout title="A missing key degrades to a different model, never to silence">
-When the assistant's own provider has no credential, another provider answers —
-at that provider's cheap tier, since a fallback key was not a pricing choice the
-organization made. Falling back to the keyword router instead would silently stop
-applying the system prompt, which is a far worse failure than an unexpected
-model. The keyword router is reached only when *no* provider anywhere has a
-credential.
-</Callout>
-
-La règle « aperçu uniquement » de l'étape 1 est structurelle et ne constitue pas
-une vérification de politique : la surface fait partie de l'entrée de la
-résolution, et le trafic des widgets publiés ne passe jamais l'indicateur qui
-rend un identifiant local éligible.
-
-## Le prompt est organisé en couches, et ces couches sont hiérarchisées
-
-Un assistant multi-entités ne peut pas avoir un prompt système unique, car
-plusieurs parties ont un droit de regard légitime sur celui-ci et elles ne se
-font pas mutuellement confiance de la même manière. Le prompt est composé tour à
-tour, en commençant par la priorité la plus élevée.
-
-| Couche | Propriétaire | Contenu |
-|---|---|---|
-| **Platform** | l'opérateur de déploiement | Les éléments non négociables : les faits fondamentaux de l'organisation dans la base de connaissances, la réponse dans la langue de l'utilisateur, ne jamais révéler l'invite, traiter les documents récupérés comme des données plutôt que comme des instructions, rester dans le champ d'application |
-| **Assistant** | l'organisation | Identité, persona, ton, format — explicitement marqués dans le prompt composé comme subordonnés à la couche plateforme |
-| **Skills** | l'organisation | Playbooks réutilisables attachés à un assistant, appliqués le cas échéant |
-| **Session memory** | la conversation | De brefs faits qu'un outil a enregistrés lors d'un tour précédent |
-| **Retrieval context** | cet échange | La question résolue et tout ce que la recherche pré-modèle a déjà trouvé |
-| **Flow** | le routeur | Le flux qui traite ce message, ainsi que ses propres directives de réponse et de recherche |
-
-L'ordre est imposé, il n'est pas consultatif. La couche plateforme réside dans
-une table avec la sécurité au niveau des lignes activée et *aucune* politique :
-aucune organisation ne peut la lire, et encore moins la modifier ; seul le
-compte propriétaire du déploiement y accède, via un chemin de rôle de service.
-Ainsi, une instruction de ton par assistant peut façonner la voix d'une réponse,
-mais ne peut pas remplacer une règle de la plateforme. La défense contre
-l'injection de requêtes se trouve dans la même couche pour la même raison : les
-documents récupérés sont nommés en tant que données par la seule couche qu'aucun
-locataire ne peut modifier.
-
-## L'ensemble d'outils est assemblé tour par tour
-
-Les outils sont un registre, et non une liste figée. Un outil est une
-spécification — un nom, une description que le modèle lit, un schéma d'entrée
-typé, une étiquette lisible par l'humain pour le panneau de réflexion, et une
-implémentation — et chaque tour assemble son propre ensemble.
-
-| Outil | Par défaut | Remarques |
-|---|---|---|
-| Recherche de connaissances | toujours activée | Ne peut pas être désactivée : le grounding est un invariant d'exécution |
-| Mémoire de session | activée | Enregistre un bref fait pour les tours ultérieurs de cette conversation |
-| Récupérer une URL | **désactivé** | L'accès réseau sortant est facultatif, par assistant |
-| Outils HTTP personnalisés | tels que configurés | Définis par les administrateurs ; les paramètres que le modèle remplit deviennent une chaîne de requête ou un corps JSON |
-
-Chaque outil, à l'exception de la recherche de connaissances, est enveloppé par
-la même instrumentation, et c'est dans cet enveloppement que réside une grande
-partie de la fiabilité : il émet les événements de début et de fin que le widget
-affiche sous forme d'étapes visibles, il chronomètre l'appel et **contient des
-erreurs**. Un outil de lancement renvoie une valeur d'erreur au modèle et marque
-son étape comme ayant échoué ; il n'annule pas le tour. Le modèle lit l'échec et
-le contourne, exactement comme il le ferait avec un outil qui aurait signalé «
-not found ».
-
-La recherche de connaissances est l'exception délibérée. Son cycle de vie, son
-verdict de couverture et sa comptabilité budgétaire résident plutôt dans une
-primitive de recherche partagée, de sorte que les recherches du modèle lui-même
-et celles amorcées par le moteur d'exécution avant même que le modèle ne
-s'exécute ne peuvent pas diverger. Consultez le
-[knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) pour savoir
-ce qu'une recherche fait réellement.
-
-### L'accès à l'extérieur est une action contrôlée
-
-La récupération d'une URL et l'appel d'un outil HTTP personnalisé passent tous
-deux par une seule passerelle de sortie, partagée avec le robot d'indexation de
-sites Web et l'extraction de connaissances. Il valide la cible au moment de la
-résolution DNS, fixe la connexion aux adresses qu'il a validées afin que la
-cible ne puisse pas changer entre la vérification et la connexion, revalide
-chaque saut de redirection et limite à la fois le temps et la taille de la
-réponse. Un hôte bloqué et un hôte inaccessible renvoient le *même* message.
-L'outil ne peut donc pas être utilisé pour cartographier un réseau privé.
-
-## L'autonomie est limitée par la conception
-
-La boucle est ouverte quant à sa forme et fermée quant à son coût. Plusieurs
-limites indépendantes s'appliquent, et aucune d'entre elles ne dépend du fait
-que le modèle choisisse de s'arrêter.
-
-<Mermaid
-  title="Un passage dans la boucle de l'agent, et les portes qui la terminent"
-  chart={`
-flowchart TB
-  IN["Messages + layered prompt<br/>+ this turn's toolset"]
-  STEP["Model step"]
-  KIND{"Tool call<br/>or text?"}
-  TOOL["Run the tool<br/>timed · errors contained"]
-  GATE{"Search budget or<br/>step cap reached?"}
-  TEXT["Answer text, streamed"]
-  FIN["Reply parts + citations"]
-
-  IN --> STEP --> KIND
-  KIND -->|"tool call"| TOOL --> GATE
-  GATE -->|"no"| STEP
-  KIND -->|"text"| TEXT
-  GATE -->|"yes"| TEXT
-  TEXT --> FIN
-`}
-/>
-
-| Limite | Effet |
-|---|---|
-| Budget de recherche | Au maximum six recherches de connaissances par tour — comptées spécifiquement, de sorte que les appels d'outils non liés ne peuvent pas consommer le budget de récupération |
-| Limite d'étapes | Un plafond distinct sur le nombre total d'étapes, de sorte qu'un modèle qui n'effectue jamais de recherche ne peut pas non plus boucler en boucle indéfiniment |
-| Limites par appel | Chaque appel d'outil sortant est soumis à un délai d'expiration et à une taille de réponse maximale |
-| Refus | Un refus de fournisseur est un motif de fin distinct, auquel il est répondu honnêtement et qui offre une issue humaine — jamais réessayé auprès d'un autre fournisseur |
-| Troncature | Une réponse coupée par la limite de sortie l'indique, plutôt que de prétendre que rien n'a été trouvé |
-| Fin vide | Si une porte met fin à la boucle avant que du texte ne soit diffusé, le tour répond tout de même : soit par une question de clarification ciblée, soit par un avertissement indiquant ce qui a été recherché et ce qui manque |
-
-Lorsque le budget est épuisé, le modèle en est *informé* dans le résultat même
-de l'outil : « Ne cherche plus, réponds avec ce que tu as et dis honnêtement si
-cela ne suffit pas ». Limiter une boucle et laisser le modèle découvrir le mur
-en le heurtant produit de moins bonnes réponses que de la limiter et de le dire.
-
-## État qui n'est pas un message
-
-La transcription n'est pas le seul élément dont une conversation se souvient.
-Chaque conversation comporte un petit conteneur d'état, chargé avant l'exécution
-du tour et réécrit après la persistance du message de l'assistant — et
-uniquement si un outil l'a réellement modifié. Ainsi, un tour en lecture seule
-n'entraîne aucune écriture supplémentaire et un tour ayant échoué n'entraîne
-jamais une demi-écriture de l'état. L'outil de mémoire y ajoute des faits
-plafonnés et dédupliqués, que l'invite du tour suivant injecte en tant que
-couche de mémoire de session.
-
-Cela empêche « l'état égal à la transcription » de devenir un plafond sans
-laisser la transcription se développer pour le supporter.
-
-## Le raisonnement rendu visible sans appel à un second modèle
-
-Les modèles narrent souvent avant d'appeler un outil. Seul le flux de texte est
-consommé et cette narration apparaît dans la bulle de réponse ; le moteur
-d'exécution consomme quant à lui le flux complet et, lorsqu'un appel d'outil
-arrive, il reclassifie le texte diffusé jusqu'alors en tant que *pensée*. Le
-client le déplace dans le panneau de réflexion et la réponse redémarre à zéro
-après le retour de l'outil.
-
-Un type d'événement supplémentaire permet d'obtenir l'ensemble de l'interface
-utilisateur de raisonnement : pas d'appel à un second modèle, pas de résumeur
-séparé. Le vocabulaire complet des événements se trouve dans
-[Request flows](/self-hosting/architecture/request-flows).
-
-## Rien ne corrige ses propres devoirs
-
-La génération est la voie rapide ; la qualité est une boucle distincte, plus
-lente, qui s'exécute selon un calendrier. La réponse d'un visiteur n'attend
-jamais cette étape.
-
-<Mermaid
-  title="La boucle de qualité planifiée"
-  chart={`
-flowchart TB
-  TICK["Nightly tick"]
-  GOALS["Standing goals<br/>replayed headlessly"]
-  VER["Answer verifier<br/>an independent second read"]
-  TRUST["Trust tiers<br/>rolling pass rate per flow"]
-  COMP["Weekly digest<br/>at most three proposals"]
-  OUT["Alerts · Improvements"]
-  NEXT["Next turn: a watch-tier flow<br/>always offers human escalation"]
-
-  TICK --> GOALS --> VER --> TRUST --> COMP --> OUT
-  TRUST --> NEXT
-`}
-/>
-
-- **Standing goals** sont des questions avec des attentes vérifiables, relues
-  par le moteur réel par rapport à l'instantané publié de l'assistant, avec un
-  historique vide et sans aucune donnée persistante. La notation est une
-  fonction pure de la réponse : si une vérification ne peut pas être écrite sous
-  forme de code, elle n'a pas sa place dans un objectif.
-- **The verifier** relit les réponses génératives récentes avec une entrée
-  délibérément restreinte : la question, la réponse et le contenu cité sont
-  récupérés à nouveau au moment de la notation. Il ne voit jamais les requêtes
-  du modèle de réponse ni les traces d'outils, car la confiance n'est pas une
-  preuve.
-- **Trust** est un taux de réussite glissant par flux, calculé sur ses derniers
-  signaux notés : les verdicts du vérificateur ainsi que les commentaires
-  explicites des visiteurs, un verdict étant gagnant lorsque les deux ont noté
-  la même réponse. Trois niveaux : un taux de réussite élevé et constant sur un
-  nombre suffisant d'exécutions permet d'atteindre le niveau le plus élevé ; un
-  nombre trop faible d'exécutions ou un taux trop bas place l'assistant au
-  niveau `watch` ; et tout ce qui se situe entre les deux correspond au niveau
-  intermédiaire. Un flux sans historique n'a rien obtenu et commence au niveau
-  `watch`. La fenêtre est glissante : la confiance peut donc être perdue comme
-  elle peut être gagnée.
-- **The tier has exactly one runtime effect today** : les réponses génératives
-  d'un flux de niveau `watch` offrent toujours la possibilité d'une intervention
-  humaine. Délibérément un comportement étroit plutôt qu'un commutateur
-  d'autonomie large.
-- **The weekly digest** transforme les échecs de la semaine en trois
-  propositions au maximum : une suggestion de FAQ, un ajustement de flux, un
-  changement de style de réponse, un nouvel objectif. Chacune d'entre elles est
-  présentée comme un élément d'amélioration étiqueté. Rien n'est jamais appliqué
-  automatiquement. Un humain accepte une proposition en effectuant le travail,
-  ou la rejette en l'archivant.
-
-<Callout title="Read this section as a design stance, not a feature list">
-Every part of it exists to keep an unattended agent honest: it is graded by
-something that did not write the answer, its autonomy is measured rather than
-assumed, and its self-improvement requires a human signature.
-</Callout>
-
-## Extension de l'agent
-
-Les raccords sont essentiels. Chacun de ces éléments est un ajout, et non une
-modification de la boucle :
-
-- **A new tool** — ajoutez une spécification au registre. Les événements de
-  cycle de vie, le confinement des erreurs et la progression du panneau de
-  réflexion sont inclus.
-- **An organization-defined tool** — un administrateur décrit un point de
-  terminaison HTTP dans la console. Aucun déploiement.
-- **A new capability with its own configuration** — ajoutez une action de flux,
-  afin que l'administrateur qui a câblé le flux décide toujours s'il doit
-  s'exécuter.
-- **An external tool server** — un client de type MCP s'intègre en tant que
-  *fournisseur* d'outils : répertoriez ses outils au début d'un tour et
-  répartissez-les dans l'ensemble assemblé. Le protocole d'événements couvre
-  déjà leur progression, et c'est à cela que sert la jointure du registre.
-- **Headless callers** — le point d'entrée du moteur est sans interface
-  utilisateur. Tout ce qui peut fournir un assistant, ses flux et ses
-  informations d'identification obtient l'agent complet ; c'est ainsi que la
-  relecture des objectifs et la suite de tests hors ligne le pilotent.
-
-## Les invariants de cette couche
-
-1. Les flux routent ; le modèle, non. Le nouveau comportement génératif se situe
-   **à l'intérieur** d'une action, jamais au-dessus du routeur.
-2. L'outil de recherche de connaissances ne peut pas être désactivé. Le
-   grounding n'est pas un paramètre.
-3. Les citations sont collectées à partir de ce que le modèle a réellement lu,
-   et ne sont jamais reconstruites par la suite.
-4. Les effets secondaires sont décrits pendant le tour et appliqués après la
-   validation de la réponse.
-5. Rien ne note ses propres réponses, et rien n'applique ses propres
-   propositions.
+Ajoutez un nouvel outil d'agent via le registre d'outils et son wrapper de cycle
+de vie. Gardez les contrôles d'autorisation, de propriété, de validation des
+entrées et de sortie en dehors du contrôle du modèle.

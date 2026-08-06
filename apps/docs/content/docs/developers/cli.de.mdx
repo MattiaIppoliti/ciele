@@ -1,0 +1,83 @@
+---
+title: Ciele CLI
+description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten Job.
+---
+
+Der Befehl `ciele` verwendet dieselben API-Operationen wie die
+Administratorkonsole. Die CLI unterstützt den gehosteten Dienst sowie selbst
+gehostete Installationen.
+
+## Anforderungen
+
+- Verwenden Sie Node.js 22.6 oder höher, wenn Sie die CLI aus diesem Repository
+  ausführen.
+- Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
+
+## Anmelden
+
+Führen Sie für den gehosteten Dienst Folgendes aus:
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+Fügen Sie für eine selbst gehostete Installation deren öffentlichen Ursprung
+hinzu:
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+```
+
+Der Befehl `login` validiert den Schlüssel, bevor er `~/.ciele/config.json`
+schreibt. Auf unterstützten Systemen ist der Dateimodus `0600`.
+
+Die CLI löst einen Schlüssel in dieser Reihenfolge auf:
+
+1. Die Option `--api-key`.
+2. Die Umgebungsvariable `CIELE_API_KEY`.
+3. Die gespeicherte Konfigurationsdatei.
+
+Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
+den gespeicherten Ursprung. Der gehostete Ursprung ist die letzte
+Standardeinstellung.
+
+## Automatisierungs-Ausgabe verwenden
+
+Fügen Sie `--json` zu einem Befehl hinzu, um eine maschinenlesbare Ausgabe zu
+erhalten.
+
+| Exit-Code | Bedeutung |
+| --- | --- |
+| `0` | Der Vorgang wurde abgeschlossen. |
+| `1` | Der Server hat einen Fehler zurückgegeben. |
+| `2` | Die Befehlseingabe ist ungültig. |
+| `3` | Authentifizierung fehlgeschlagen. |
+
+## Häufige Befehle
+
+```bash
+ciele assistants list --all
+ciele flows list <assistant-id>
+ciele collections list <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+ciele conversations list --assistant <assistant-id>
+ciele improvements list
+```
+
+Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltens-Flow kann
+nicht gelöscht werden.
+
+## Beispiel für eine CI-Prüfung
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Speichern Sie alle Werte im CI-Secret-Store. Schreiben Sie keinen Schlüssel in
+eine Workflow-Datei.

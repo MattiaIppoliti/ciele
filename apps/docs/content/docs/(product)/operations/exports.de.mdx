@@ -1,0 +1,44 @@
+---
+title: Exporte
+description: Erstellen und laden Sie strukturierte Konversationsexporte herunter.
+---
+
+Exporte erstellen herunterladbare Datensätze für ausgewählte Konversationen.
+Ciele erstellt den Export als Hintergrundjob.
+
+## Einen Export erstellen
+
+1. Öffnen Sie **Insights**.
+2. Wählen Sie **Exports**.
+3. Wählen Sie den Exportbereich „Conversations“ oder einen der verfügbaren
+   Exportbereiche aus.
+4. Starten Sie den Export.
+5. Warten Sie, bis der Auftragsstatus „Bereit“ lautet.
+6. Laden Sie die Datei herunter, bevor der Link abläuft.
+
+Für den Download wird eine zeitlich begrenzte signierte URL verwendet. Starten
+Sie einen neuen Export, wenn der Link nicht mehr gültig ist.
+
+## Inhalte exportieren
+
+Jeder Gesprächsdatensatz verwendet das aktuelle Exportformat mit 29 Feldern. Der
+Datensatz enthält Informationen zu Konversation, Assistent, Besucher, Sitzung
+und Ergebnis.
+
+Die Details zur Begründung hängen vom API-Schlüssel oder der Mitgliederrolle ab.
+Eine niedrigere Rolle kann keine versteckte Begründung über eine Exportoption
+anfordern.
+
+## API- und CLI-Zugriff
+
+Die API akzeptiert ausgewählte Conversation-IDs unter
+`POST /api/v1/conversations/export`.
+
+Die CLI kann dieselbe Datensatzform in eine Datei schreiben:
+
+```bash
+ciele conversations export <conversation-id> --out export.json
+```
+
+Das MCP-Tool `read_inbox` kann auch einen Export anfordern. Dieses Tool ist
+immer schreibgeschützt.

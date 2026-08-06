@@ -1,50 +1,27 @@
 ---
 title: Websites
-description: Crawl your website and knowledge base so the assistant learns from your pages.
+description: Add a website URL and monitor its ingestion status.
 ---
 
-Websites are often the richest source of knowledge you already have. Ciele can
-crawl a site you own and turn its pages into knowledge the assistant answers from.
-Open an assistant, select **Knowledge**, then open the **Websites** tab.
+## Add a website Source
 
-## Add a website
+1. Open the Assistant.
+2. Select **Knowledge**.
+3. Add a website Source.
+4. Enter the page URL.
+5. Start ingestion.
+6. Wait until the Source status is **Ready**.
+7. Ask a question that the page answers.
+8. Confirm the returned Source citation.
 
-1. Select add a website.
-2. Enter a **name** so you can recognize the source later.
-3. Enter the **address** of the site or section to crawl.
-4. Set any options that apply to your site, such as marking it as protected by a
-   login or allowing files found on the pages to be imported.
-5. Confirm the copyright statement, then select **Add Website**.
+The crawler retrieves the configured website content. A JavaScript-rendering worker is required for pages that need browser rendering.
 
-Once added, the site is crawled and its pages become available to the assistant.
-Sites can be recrawled on a regular basis so ongoing changes flow through.
+## Recrawl a Source
 
-## Control what gets crawled
+Use **Recrawl** when the source website content changes. Ciele restarts the crawl and replaces the indexed content after successful ingestion.
 
-Large sites often contain pages you do not want in the assistant's knowledge. Two
-kinds of rules help you focus the crawl.
+The API and CLI support recrawl only for website Sources.
 
-- **Positive rules** describe the pages you want to include.
-- **Negative rules** describe the pages you want to exclude.
+## Source access
 
-Use these to keep the assistant focused on the sections that matter, and to leave
-out pages such as archives or utility pages.
-
-## Advanced crawl settings
-
-For sites that need gentler handling, additional settings let you slow the crawl
-down, extend how long each page is allowed to load, and wait a little longer
-before reading a page so content that loads late is captured. Reach for these only
-if a normal crawl misses content or the target site is sensitive to load.
-
-## Add a specific list of pages
-
-If you only want a handful of pages rather than a whole crawl, you can provide a
-list of exact addresses instead. Give the list a name, paste one address per line,
-set the same options as above, and continue. This is ideal when the useful content
-lives on a few known pages.
-
-<Callout title="Only crawl sites you own or are allowed to use">
-Add sites you own or have permission to use. The copyright confirmation is there
-to keep your knowledge base on the right side of that line.
-</Callout>
+The crawler must reach the URL from the deployment network. Authentication-protected content is not available without a supported access path.

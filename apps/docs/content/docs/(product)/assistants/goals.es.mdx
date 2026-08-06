@@ -1,0 +1,47 @@
+---
+title: Objetivos
+description: Programa comprobaciones periódicas para las respuestas importantes del Asistente.
+---
+
+Un objetivo formula una pregunta permanente y compara la respuesta con
+expectativas deterministas. Cuando un objetivo falla, se genera una alerta.
+
+## Crea un objetivo
+
+1. Abre un Asistente.
+2. Selecciona **Goals**.
+3. Selecciona **Create Goal**.
+4. Introduce la pregunta que Ciele debe hacer.
+5. Añade una o más expectativas.
+6. Guarda el objetivo.
+
+## Expectativas disponibles
+
+| Expectativa | Comprobación |
+| --- | --- |
+| Debe citar una fuente | La respuesta contiene al menos una cita de fuente. |
+| La URL citada contiene | Una URL citada contiene el texto configurado. |
+| La respuesta contiene | La respuesta contiene cada fragmento de texto configurado. |
+| Respuesta sin alternativa | El tiempo de ejecución no devolvió su resultado alternativo. |
+
+Ciele siempre comprueba si hay una respuesta que no sea de reserva. Otras
+expectativas dependen de la configuración del Objetivo.
+
+## Estado del objetivo
+
+Un Objetivo activo se ejecuta según su programación. Ciele puede poner en
+cuarentena un Objetivo después de problemas de ejecución repetidos.
+
+Un objetivo en cuarentena no continúa con su programación normal. Revisa el
+Objetivo y su Alerta antes de volver a activarlo.
+
+## Revisar un fallo
+
+1. Abre **Alerts**.
+2. Selecciona el error del objetivo.
+3. Revisa la respuesta y la expectativa que no se cumplió.
+4. Corrige el Conocimiento, el Flujo o el Objetivo.
+5. Vuelve a ejecutar el objetivo.
+
+Los objetivos utilizan comprobaciones exactas. No utilizan un calificador de
+modelos abierto.

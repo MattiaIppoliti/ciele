@@ -1,86 +1,102 @@
 ---
 title: Flow-Aktionen
-description: Die Bausteine, die ein Flow als Reaktion auf eine Nachricht ausführt, reichen von festen Nachrichten bis hin zu Wissenssuche und Eskalation.
+description: Wählen Sie Antwortaktionen aus, die die aktuelle Laufzeit ausführen kann.
 ---
 
-Aktionen sind die Schritte, die ein Flow ausführt, wenn er übereinstimmt. Sie
-fügen sie im Antwortschritt des Flow-Builders hinzu, und sie werden in der
-Reihenfolge ausgeführt, in der Sie sie platzieren. Auf dieser Seite wird
-beschrieben, welche Aktionen Sie verwenden können und wann Sie zu welcher
-greifen sollten.
+Message-Flow-Aktionen werden der Reihe nach ausgeführt. Nicht-generative
+Aktionen verwenden den konfigurierten Inhalt, ohne das Modell umzuschreiben.
+
+## Verfügbare Aktionen
+
+| Aktion | Modellverwendung | Aktuelles Verhalten |
+| --- | :---: | --- |
+| Nachricht | Nein | Gibt den konfigurierten Text wortgetreu wieder. |
+| Schaltfläche | Nein | Fügt eine Link-Schaltfläche oder eine Schaltfläche hinzu, die Text in den Chat sendet. |
+| Knowledge durchsuchen | Ja | Führt die Knowledge-Agent-Schleife aus und gibt Zitate zurück. |
+| Follow-ups | Optional | Verwendet konfigurierte Fragen oder generiert vorgeschlagene Fragen. |
+| Iframe | Nein | Betten Sie konfigurierte externe Inhalte in den Chat ein. |
+| API-Anforderung | Nein | Ruft einen konfigurierten HTTP-Endpunkt auf und bildet dessen Ergebnis ab. |
+| E-Mail senden | Nein | Sendet E-Mails über den konfigurierten Resend-Transport. |
+| Verbesserung | Nein | Erstellt eine Verbesserung für die entsprechende Antwort. |
+| Übergabe | Abhängig vom Ziel | Wird einmal in einem anderen veröffentlichten Assistenten fortgesetzt. |
+
+Der integrierte Basic Interaction Flow verwendet ebenfalls **Basic reply**. Die
+Helpdesk-Empfehlung verwendet eine Laufzeitaktion, die die Direktaktionsauswahl
+nicht anzeigt.
 
 ## Nachricht
 
-Sendet eine Nachricht an den Besucher. Eine Nachricht kann Wort für Wort
-angezeigt werden, genau so, wie Sie sie geschrieben haben. Das ist ideal, wenn
-der Wortlaut präzise sein muss. Verwenden Sie feste Nachrichten für Richtlinien,
-Haftungsausschlüsse und jede Antwort, die niemals variieren sollte.
+Geben Sie den genauen Text ein, den Ciele senden muss. Die Laufzeit umformuliert
+diesen Text nicht.
 
-## Wissen durchsuchen
+## Einfache Antwort
 
-Durchsucht Ihr Wissen, findet die relevantesten Passagen und verfasst darauf
-basierend eine Antwort mit Quellenangaben. Dies ist die Aktion, die hilfreiche,
-natürlich klingende Antworten aus Ihren Inhalten generiert. Dies ist auch das,
-was das Standardverhalten verwendet. Mit Optionen können Sie sie an die
-Eskalation binden und an die Qualitätsverfolgung für Antworten, sodass ein
-schwaches Ergebnis zu einer Nachverfolgung führen kann.
+Die einfache Antwort kümmert sich um kurze Begrüßungen, Dankes- und
+Verabschiedungsformeln. Sie verwendet einen Modellaufruf und keine
+Knowledge-Tools, Zitate oder Thinking-Ereignisse.
 
-## Folgeaktionen
+Geben Sie festen Aktionstext ein, um das Modell zu überspringen. Der gleiche
+Text dient als Fallback, wenn kein Chat-Modell verfügbar ist.
 
-Bietet nach einer Antwort vorgeschlagene Folgefragen an. Dadurch bleibt das
-Gespräch in Gang, indem der Besucher zu verwandten Themen hingeführt wird, bei
-denen der Assistent helfen kann.
+## Wissenssuche
+
+Search Knowledge nutzt verfügbare Knowledge-Tools bis zur maximalen Anzahl von
+Laufzeit-Schritten. Es kann benannte Source-Zitate und Thinking Steps
+zurückgeben.
+
+Verwenden Sie die Einstellungen für ungelöste Anfragen, um eine Eskalation an
+den Helpdesk anzubieten oder eine Verbesserung zu erstellen.
 
 ## Schaltfläche
 
-Zeigt eine anklickbare Schaltfläche an, die zu einer bestimmten Stelle führt,
-beispielsweise zu einer Seite auf Ihrer Website oder zu einem Formular.
-Verwenden Sie es, um dem Besucher nach einer Nachricht einen klaren nächsten
-Schritt zu geben.
+Konfigurieren Sie ein Label und ein Ziel. Ein Ziel kann einen Link öffnen oder
+konfigurierten Text in die Konversation senden.
+
+## Folgefragen
+
+Geben Sie feste Folgefragen ein oder aktivieren Sie die Generierung. Generierte
+Folgefragen verwenden das konfigurierte schnelle Modell.
 
 ## Iframe
 
-Bettet externe Inhalte in das Chat-Fenster ein, z. B. eine Seite oder ein
-Widget, das der Besucher sehen soll, ohne die Konversation zu verlassen.
+Konfigurieren Sie den Titel, den HTTPS-Link, die Lightbox-Einstellung und die
+Höhe. Die Host-Site kann das Einbetten weiterhin durch ihre Sicherheits-Header
+verhindern.
 
 ## API-Anfrage
 
-Ruft einen externen Dienst auf und kann das Ergebnis in der Konversation
-verwenden. Verwenden Sie dies, um etwas in einem anderen System nachzuschlagen,
-während der Besucher wartet. Sie konfigurieren die Adresse und die Methode der
-Anfrage.
+Konfigurieren Sie die Methode, den Endpunkt, die Authentifizierung, die Header,
+die Abfrageparameter, den JSON-Body und den JSON-Pfad der Antwort.
+
+Vorlagenvariablen können Werte aus dem aktuellen Kontext liefern. Verwenden Sie
+**Test API**, bevor Sie den Flow speichern.
+
+Die Aktion kann separate Erfolgs- und Fehlermeldungen anzeigen. Für die
+endgültige URL gelten weiterhin die Regeln für den Netzwerkausgang.
+
+## E-Mail senden
+
+Konfigurieren Sie Empfänger, Betreff, Text und das Verhalten für die
+Antwortadresse. Die Laufzeitumgebung verwendet Resend, wenn ihr Transport
+konfiguriert ist.
+
+Wenn der Transport nicht konfiguriert ist, meldet die Aktion, dass sie die
+E-Mail nicht gesendet hat. Sie bestätigt die Zustellung nicht.
 
 ## Verbesserung
 
-Markiert die aktuelle Antwort zur Überprüfung, indem ein Element auf Ihrem Board
-„Verbesserungen“ erstellt wird. Verwenden Sie dies für Abläufe, bei denen Sie
-die Antwortqualität genau im Blick behalten möchten. Siehe
-[Verbesserungen](/operations/improvements).
+Die Aktion erstellt eine Verbesserungsaufgabe. Sie fügt selbst keinen sichtbaren
+Antworttext hinzu.
 
 ## Übergabe
 
-Überträgt die Konversation an einen anderen Assistenten. Verwenden Sie diese
-Option, wenn ein anderer Assistent besser geeignet ist, die Konversation
-fortzusetzen, beispielsweise ein auf ein bestimmtes Thema spezialisierter
-Assistent.
+Wählen Sie einen anderen Assistenten in derselben Organisation aus. Das Ziel
+muss über eine aktuelle Veröffentlichung verfügen.
 
-## Eskalation und E-Mail senden
+Ciele führt dieselbe Besuchernachricht einmal durch den Ziel-Assistenten. Es
+führt keine zweite Übergabe ab diesem Zielzug fort.
 
-Die Eskalation verbindet den Besucher über Ihre konfigurierten
-[Help Desks](/help-desks) mit Ihrem Team. Eine Aktion zum Senden einer E-Mail
-kann einen Empfänger benachrichtigen, wenn ein Flow ausgeführt wird. Verwenden
-Sie diese, um sicherzustellen, dass zum richtigen Zeitpunkt ein Mensch
-informiert wird.
+## Reihenfolge der Aktionen
 
-## Aktionen kombinieren
-
-Aktionen sind in Kombination am wirkungsvollsten. Ein einzelner Flow kann eine
-kurze Nachricht senden, Ihre Wissensdatenbank nach Details durchsuchen,
-Folgefragen stellen und mit einer Eskalationsschaltfläche enden. Da Aktionen der
-Reihe nach ausgeführt werden, bestimmen Sie die genaue Form der Antwort.
-
-<Callout title="Order matters">
-Actions run from top to bottom. Put a framing message before a knowledge search,
-and put buttons or escalation after the answer so they appear as the natural next
-step.
-</Callout>
+Fügen Sie Rahmentext vor „Search knowledge“ ein. Platzieren Sie Schaltflächen
+und Folgemaßnahmen nach der Antwort, die sie unterstützen.

@@ -1,81 +1,102 @@
 ---
 title: Azioni del flusso
-description: I blocchi costitutivi che un flusso esegue in risposta a un messaggio, dai messaggi fissi alla ricerca nella knowledge base e all'escalation.
+description: Seleziona le azioni di risposta che il runtime corrente può eseguire.
 ---
 
-Le azioni sono i passaggi che un flusso esegue quando trova una corrispondenza.
-Le aggiungi nella fase di risposta del generatore di flussi e vengono eseguite
-nell'ordine in cui le posizioni. Questa pagina descrive le azioni che puoi
-utilizzare e quando ricorrere a ciascuna di esse.
+Le azioni del flusso di messaggi vengono eseguite in ordine. Le azioni non
+generative utilizzano il contenuto configurato senza riscrivere il modello.
+
+## Azioni disponibili
+
+| Azione | Utilizzo del modello | Comportamento attuale |
+| --- | :---: | --- |
+| Messaggio | No | Emette il testo configurato parola per parola. |
+| Pulsante | No | Aggiunge un pulsante di collegamento o un pulsante che invia testo in chat. |
+| Cerca nella conoscenza | Sì | Esegue il ciclo dell'agente Knowledge e restituisce citazioni. |
+| Follow-up | Opzionale | Utilizza le domande configurate o genera domande suggerite. |
+| Iframe | No | Incorpora nel chat il contenuto esterno configurato. |
+| Richiesta API | No | Chiama un endpoint HTTP configurato e mappa il suo risultato. |
+| Invia e-mail | No | Invia un'e-mail tramite il trasporto Resend configurato. |
+| Miglioramento | No | Crea un Miglioramento per la risposta applicabile. |
+| Passaggio di consegne | Dipende dalla destinazione | Continua una volta in un altro Assistente pubblicato. |
+
+Anche il flusso di interazione di base integrato utilizza **Basic reply**. La
+raccomandazione dell'Help Desk utilizza un'azione di runtime che il selettore di
+azioni dirette non mostra.
 
 ## Messaggio
 
-Invia un messaggio al visitatore. Un messaggio può essere mostrato parola per
-parola, esattamente come l'hai scritto, il che è l'ideale quando la formulazione
-deve essere precisa. Utilizza messaggi fissi per le politiche, le dichiarazioni
-di non responsabilità e qualsiasi risposta che non debba mai variare.
+Inserisci il testo esatto che Ciele deve inviare. Il runtime non parafrasa
+questo testo.
 
-## Cerca nella conoscenza
+## Risposta di base
 
-Cerca nella tua conoscenza, trova i passaggi più pertinenti e scrive una
-risposta basata su di essi, con le relative fonti. Questa è l'azione che genera
-risposte utili e naturali a partire dai tuoi contenuti. È anche ciò che utilizza
-il comportamento predefinito. Le opzioni ti consentono di collegarla
-all'escalation e al monitoraggio della qualità delle risposte, in modo che un
-risultato insoddisfacente possa portare a un follow-up.
+La risposta di base gestisce brevi saluti, ringraziamenti e congedi. Utilizza
+una chiamata al modello e non utilizza strumenti di Knowledge, citazioni o
+eventi di Thinking.
 
-## Follow-up
+Inserisci il testo dell'azione fissa per saltare il modello. Lo stesso testo
+fornisce il fallback quando non è disponibile alcun modello di chat.
 
-Dopo una risposta, suggerisce le domande successive. Questo mantiene viva la
-conversazione, spingendo il visitatore verso argomenti correlati per i quali
-l'assistente può essere d'aiuto.
+## Cerca nella Knowledge Base
+
+Search knowledge utilizza gli strumenti Knowledge disponibili fino al limite di
+passaggi del runtime. Può restituire citazioni di fonti nominate e passaggi di
+ragionamento.
+
+Utilizza le impostazioni per le query non risolte per offrire l'escalation
+all'Help Desk o creare un Miglioramento.
 
 ## Pulsante
 
-Mostra un pulsante cliccabile che rimanda a una destinazione, ad esempio una
-pagina del tuo sito o un modulo. Usalo per indicare chiaramente al visitatore il
-passo successivo dopo un messaggio.
+Configura un'etichetta e una destinazione. Una destinazione può aprire un link o
+inviare il testo configurato nella Conversazione.
+
+## Domande di follow-up
+
+Inserisci domande di follow-up fisse o abilita la generazione. Le domande di
+follow-up generate utilizzano il modello veloce configurato.
 
 ## Iframe
 
-Incorpora contenuti esterni all'interno della finestra di chat, come una pagina
-o un widget che vuoi mostrare al visitatore senza che debba uscire dalla
-conversazione.
+Configura il titolo, il link HTTPS, le preferenze della lightbox e l'altezza. Il
+sito host può comunque impedire l'incorporamento tramite le sue intestazioni di
+sicurezza.
 
 ## Richiesta API
 
-Chiama un servizio esterno e può utilizzare il risultato nella conversazione.
-Usalo per cercare qualcosa in un altro sistema mentre il visitatore attende.
-Configuri l'indirizzo e il metodo della richiesta.
+Configura il metodo, l'endpoint, l'autenticazione, le intestazioni, i parametri
+di query, il corpo JSON e il percorso JSON di risposta.
+
+Le variabili del template possono fornire valori dal contesto corrente. Usa
+**Test API** prima di salvare il Flow.
+
+L'azione può mostrare messaggi separati di successo e di errore. Le regole di
+uscita della rete si applicano comunque all'URL finale.
+
+## Invia e-mail
+
+Configura i destinatari, l'oggetto, il corpo e il comportamento di risposta. Il
+runtime utilizza Resend quando il suo trasporto configurato.
+
+Quando il trasporto non è configurato, l'azione segnala di non aver inviato
+l'e-mail. Non conferma la consegna.
 
 ## Miglioramento
 
-Contrassegna la risposta corrente per la revisione creando un elemento sulla tua
-bacheca Miglioramenti. Usalo nei flussi in cui vuoi tenere d'occhio la qualità
-delle risposte. Vedi [Miglioramenti](/operations/improvements).
+L'azione crea un'attività di miglioramento. Non aggiunge da sola un testo di
+risposta visibile.
 
 ## Passaggio di consegne
 
-Trasferisce la conversazione a un altro assistente. Usa questa opzione quando un
-altro assistente è più adatto a proseguire, ad esempio uno specializzato in un
-determinato argomento.
+Seleziona un altro Assistente nella stessa Organizzazione. La destinazione deve
+avere una Pubblicazione corrente.
 
-## Escalation e Invia email
+Ciele fa passare lo stesso messaggio del Visitatore attraverso l'Assistente di
+destinazione una sola volta. Non prosegue con un secondo passaggio di consegne
+da quel turno di destinazione.
 
-L'escalation collega il visitatore al tuo team attraverso gli
-[Help Desk](/help-desks) che hai configurato. Un'azione di invio e-mail può
-notificare a una destinazione l'esecuzione di un flusso. Usale per assicurarti
-che una persona venga informata al momento giusto.
+## Ordine delle azioni
 
-## Combinare le azioni
-
-Le azioni sono più efficaci se combinate. Un singolo flusso potrebbe inviare un
-breve messaggio, cercare i dettagli nella tua knowledge base, proporre domande
-di follow-up e terminare con un pulsante di escalation. Poiché le azioni vengono
-eseguite in ordine, hai il controllo sulla forma esatta della risposta.
-
-<Callout title="Order matters">
-Actions run from top to bottom. Put a framing message before a knowledge search,
-and put buttons or escalation after the answer so they appear as the natural next
-step.
-</Callout>
+Inserisci il testo introduttivo prima di Cerca nella knowledge base. Metti i
+pulsanti e i follow-up dopo la risposta che supportano.

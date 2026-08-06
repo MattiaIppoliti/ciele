@@ -1,57 +1,38 @@
 ---
-title: Descripción general de los servicios de asistencia
-description: Configura destinos de escalamiento para que los visitantes puedan contactar con tu equipo a través de los canales adecuados.
+title: Centros de ayuda
+description: Ofrece a los visitantes una ruta configurada para contactar con un equipo humano.
 ---
 
-Un asistente debe conocer sus límites. Cuando no puede ayudar, o cuando un
-visitante simplemente quiere hablar con una persona, la conversación llega a tu
-equipo a través de un servicio de asistencia. Un Help Desk es un destino de
-escalamiento que pertenece a tu organización y agrupa uno o más canales que un
-visitante puede usar.
+Un Help Desk agrupa los canales de contacto, la disponibilidad, los campos de
+formulario y la configuración de escalamiento. Una organización puede conectar
+un servicio de asistencia a varios asistentes.
 
-Gestionas los servicios de asistencia desde el área **Help Desks** de la barra
-lateral, donde se enumeran todos los servicios de tu organización. Desde ahí
-puedes crear una mesa de ayuda o abrir una para editarla.
+## Comportamiento actual del canal
+
+| Canal | Resultado del visitante |
+| --- | --- |
+| Correo electrónico | Ciele envía un correo electrónico de escalamiento cuando el transporte de correo electrónico está configurado. |
+| Teléfono | El widget muestra el contacto telefónico configurado. |
+| Chat en vivo | El widget muestra la ruta de contacto configurada para el chat en vivo. |
+| Enlace externo | El widget abre el destino configurado. |
+
+Configura un canal solo después de probar su ruta completa para visitantes.
+
+## Selección de escalamiento
+
+Un Asistente puede mostrar una acción **Contact support** siempre disponible.
+Ciele puede recomendar un servicio de asistencia conectado a partir de su
+descripción y del contexto de la conversación.
+
+El visitante selecciona un canal disponible. A continuación, el widget muestra
+el formulario configurado o la acción de contacto.
 
 ## Crea un servicio de asistencia
 
-1. Abre **Help Desks** en la barra lateral.
-2. Crea una nueva mesa de ayuda y asígnale un **nombre** y una **descripción**.
-   La descripción es importante, porque un asistente puede usarla para decidir
-   cuándo es este el servicio de asistencia adecuado que ofrecer.
-3. Añade uno o más canales, como se describe a continuación.
-
-## Canales de soporte
-
-Un canal es una forma única de contactar con tu equipo. Cada canal tiene un
-nombre, que se convierte en la etiqueta del botón que ve un visitante, además de
-ajustes específicos para su tipo. Los tipos de canal disponibles cubren las
-formas habituales en que las personas piden ayuda:
-
-- **Email** envía la solicitud a una dirección de destino.
-- **Phone number** muestra un número al que el visitante puede llamar.
-- **Live chat** abre una dirección de chat en vivo.
-- **Create a ticket** crea una incidencia en tu sistema de gestión de
-  incidencias conectado.
-- **External link** abre una dirección web en una nueva pestaña.
-- **Salesforce Chat Handover** se conecta a un chat integrado de Salesforce.
-- **API endpoint** envía la solicitud a un servicio que tú especifiques.
-
-Añade los canales que tu equipo realmente supervisa y ordénalos de modo que la
-opción preferida aparezca en primer lugar.
-
-## Crear un canal nuevo frente a editar un canal
-
-Cuando añades un nuevo canal, un breve proceso de configuración te guía primero
-por sus ajustes esenciales y, una vez que los aspectos básicos están listos,
-desbloquea el resto. Cuando abres un canal existente, todos sus ajustes están
-disponibles a la vez y puedes guardar tus cambios directamente.
-
-## Qué viene después
-
-- Da forma a la información que recopiles y a cuándo está abierto un canal en
-  [Formularios y disponibilidad](/help-desks/forms-and-availability).
-- Conecta un sistema de tickets y genera automáticamente mejoras en
-  [Tickets y mejoras](/help-desks/ticketing-and-improvements).
-- Ofrece un servicio de asistencia desde un asistente en
-  [Conectar un servicio de asistencia a un asistente](/help-desks/connect-to-an-assistant).
+1. Abre **Help Desks**.
+2. Crea un servicio de asistencia.
+3. Introduce un nombre y una descripción de enrutamiento.
+4. Añade un canal compatible.
+5. Configura la disponibilidad y los campos del formulario.
+6. Conecta el Help Desk a un Asistente.
+7. Prueba la escalada en Vista previa.

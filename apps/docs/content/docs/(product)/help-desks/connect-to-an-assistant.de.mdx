@@ -1,48 +1,29 @@
 ---
-title: Verbinden Sie einen Helpdesk mit einem Assistenten
-description: Wählen Sie aus, welche Helpdesks ein Assistent anbietet und wie er eskaliert.
+title: Einen Helpdesk verbinden
+description: Stellen Sie einem Assistenten einen Helpdesk zur Verfügung.
 ---
 
-Helpdesks gehören zu Ihrer Organisation, und jeder Assistent wählt aus, welche
-er anbietet. So können Sie eine gemeinsame Bibliothek von Helpdesks pflegen und
-für jeden Assistenten die passende Teilmenge auswählen. Öffnen Sie einen
-Assistenten und wählen Sie **Help Desks** in der Setup-Leiste aus.
+## Verbinden Sie den Helpdesk
 
-## Wählen Sie die Helpdesks aus, die ein Assistent anbietet
+1. Öffnen Sie den Assistant.
+2. Wählen Sie **Assistant Help Desks**.
+3. Wählen Sie den gewünschten Helpdesk aus.
+4. Speichern Sie den Entwurf.
+5. Öffnen Sie die Vorschau.
+6. Wählen Sie **Contact support**.
+7. Bestätigen Sie den erwarteten Helpdesk und die erwarteten Kanäle.
 
-Im Abschnitt „Help Desks“ des Assistenten wählen Sie aus, welche Help Desks
-Ihrer Organisation dieser Assistent empfehlen darf. Wenn der Assistent
-beschließt, zu eskalieren, wählt er unter den ausgewählten Desks auf Grundlage
-ihrer Beschreibungen und des Kontexts der Konversation aus. Achten Sie daher
-darauf, dass diese Beschreibungen korrekt sind.
+Die Helpdesk-Beschreibung hilft der Laufzeitumgebung, einen Desk für die
+Konversation zu empfehlen. Verwenden Sie eine präzise Beschreibung des
+Geltungsbereichs.
 
-Sie können die Liste filtern, um zu sehen, was ausgewählt ist, was noch
-bearbeitet werden muss und was insgesamt verfügbar ist. So können Sie die
-Eskalationsoptionen eines Assistenten ganz einfach auf dem neuesten Stand
-halten.
+## Verfügbarkeit testen
 
-## Eskalationsverhalten
+Testen Sie einen verfügbaren Kanal und einen nicht verfügbaren Kanal.
+Vergewissern Sie sich, dass das Widget den korrekten nächsten verfügbaren
+Zeitpunkt anzeigt.
 
-Im selben Abschnitt legen Sie fest, wie der Assistent Eskalationen handhabt.
+## Veröffentlichen Sie die Verbindung
 
-- Mit einer Empfehlungsoption kann der Assistent den am besten geeigneten Desk
-  vorschlagen, wenn er nicht antworten kann, wobei er diesen anhand der
-  Desk-Beschreibungen auswählt.
-- Sie können steuern, ob eine immer verfügbare Eskalationsschaltfläche angezeigt
-  wird.
-- Sie können die Beschriftung der Kontakt-Schaltfläche so einstellen, dass sie
-  zu Ihrer Stimme passt.
-
-## Wie die Eskalation den Besucher erreicht
-
-Sobald Desks ausgewählt und die Eskalation konfiguriert ist, kann der Besucher
-Ihr Team auf die von Ihnen festgelegten Arten erreichen: über eine
-Eskalations-[Startschaltfläche](/assistants/quick-replies), über die
-Eskalationsoption im Chat oder wenn ein [Flow](/flows/actions) eskaliert. Die
-Kanäle, die ein Besucher sieht, stammen von den Desks, die Sie hier ausgewählt
-haben.
-
-<Callout title="Keep descriptions sharp">
-The assistant relies on desk and channel descriptions to route escalations well.
-Clear, specific descriptions lead to better recommendations.
-</Callout>
+Veröffentlichen Sie den Assistenten nach dem Vorschautest. Ein Live-Widget
+verwendet in seiner aktiven Veröffentlichung weiterhin die Helpdesks.

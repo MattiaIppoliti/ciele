@@ -1,0 +1,47 @@
+---
+title: Objectifs
+description: Planifiez des vérifications récurrentes pour les réponses importantes de l'Assistant.
+---
+
+Un objectif pose une question permanente et vérifie la réponse par rapport à des
+attentes déterministes. Un objectif qui échoue génère une alerte.
+
+## Créez un objectif
+
+1. Ouvrez un Assistant.
+2. Sélectionnez **Goals**.
+3. Sélectionnez **Create Goal**.
+4. Saisissez la question que Ciele doit poser.
+5. Ajoutez une ou plusieurs attentes.
+6. Enregistrez l'objectif.
+
+## Attentes disponibles
+
+| Attente | Vérification |
+| --- | --- |
+| Doit citer une source | La réponse contient au moins une citation de source. |
+| L'URL citée contient | Une URL citée contient le texte configuré. |
+| La réponse contient | La réponse contient chaque fragment de texte configuré. |
+| Réponse sans solution de secours | Le moteur d'exécution n'a pas renvoyé son résultat de secours. |
+
+Ciele vérifie toujours qu'il n'y a pas de réponse de secours. Les autres
+attentes dépendent de la configuration de l'objectif.
+
+## Statut de l'objectif
+
+Un objectif actif s'exécute selon son calendrier. Ciele peut mettre un objectif
+en quarantaine après des problèmes d'exécution répétés.
+
+Un objectif mis en quarantaine ne poursuit pas son programme normal. Examinez
+l'objectif et son alerte avant de le réactiver.
+
+## Examiner un échec
+
+1. Ouvrez **Alerts**.
+2. Sélectionnez l'échec de l'objectif.
+3. Examinez la réponse et l'attente non satisfaite.
+4. Corrigez la Connaissance, le Flux ou l'Objectif.
+5. Exécutez à nouveau l'objectif.
+
+Les objectifs utilisent des vérifications exactes. Ils n'utilisent pas de
+correcteur de modèle ouvert.

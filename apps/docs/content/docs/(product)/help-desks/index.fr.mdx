@@ -1,59 +1,38 @@
 ---
-title: Présentation des centres d'assistance
-description: Configurez des destinations d'escalade afin que les visiteurs puissent joindre votre équipe par les bons canaux.
+title: Centres d'assistance
+description: Offrez aux visiteurs un chemin configuré pour contacter une équipe humaine.
 ---
 
-Un assistant doit connaître ses limites. Lorsqu'il ne peut pas apporter son
-aide, ou lorsqu'un visiteur souhaite simplement parler à une personne, un centre
-d'assistance permet de faire parvenir la conversation à votre équipe. Un centre
-d'assistance est une destination d'escalade qui appartient à votre organisation
-et regroupe un ou plusieurs canaux qu'un visiteur peut utiliser.
+Un centre d'assistance regroupe les canaux de contact, la disponibilité, les
+champs de formulaire et les paramètres d'escalade. Une organisation peut
+connecter un centre d'assistance à plusieurs assistants.
 
-Vous gérez les centres d'assistance depuis la zone **Help Desks** de la barre
-latérale, qui répertorie tous les centres de votre organisation. De là, vous
-pouvez créer un centre d'assistance ou en ouvrir un pour le modifier.
+## Comportement actuel du canal
+
+| Canal | Résultat pour le visiteur |
+| --- | --- |
+| E-mail | Ciele envoie un e-mail de remontée lorsque le transport d'e-mails est configuré. |
+| Téléphone | Le widget affiche le contact téléphonique configuré. |
+| Chat en direct | Le widget affiche le chemin de contact configuré pour le chat en direct. |
+| Lien externe | Le widget ouvre la destination configurée. |
+
+Ne configurez un canal qu'après avoir testé son parcours visiteur complet.
+
+## Sélection de l'escalade
+
+Un Assistant peut afficher une action **Contact support** toujours disponible.
+Ciele peut recommander un service d'assistance connecté à partir de sa
+description et du contexte de la conversation.
+
+Le visiteur sélectionne un canal disponible. Le widget affiche alors le
+formulaire configuré ou l'action de contact.
 
 ## Créez un centre d'assistance
 
-1. Ouvrez **Help Desks** dans la barre latérale.
-2. Créez un nouveau centre d'assistance et donnez-lui un **nom** et une
-   **description**. La description est importante, car un assistant peut
-   l'utiliser pour décider quand ce centre d'assistance est le bon à proposer.
-3. Ajoutez un ou plusieurs canaux, décrits ci-dessous.
-
-## Canaux d'assistance
-
-Un canal est un moyen unique de joindre votre équipe. Chaque canal a un nom, qui
-devient le libellé du bouton visible par le visiteur, ainsi que des paramètres
-spécifiques à son type. Les types de canaux disponibles couvrent les moyens les
-plus courants par lesquels les utilisateurs demandent de l'aide :
-
-- **Email** envoie la demande à une adresse de destination.
-- **Phone number** affiche un numéro que le visiteur peut appeler.
-- **Live chat** ouvre une adresse de chat en direct.
-- **Create a ticket** crée un ticket dans votre système de gestion des tickets
-  connecté.
-- **External link** ouvre une adresse Web dans un nouvel onglet.
-- **Salesforce Chat Handover** se connecte à un chat intégré Salesforce.
-- **API endpoint** envoie la demande au service que vous avez spécifié.
-
-Ajoutez les canaux que votre équipe surveille réellement et classez-les de
-manière à ce que l'option préférée apparaisse en premier.
-
-## Création d'un nouveau canal ou modification d'un canal existant
-
-Lorsque vous ajoutez un nouveau canal, un court processus de configuration vous
-guide d'abord à travers ses paramètres essentiels, puis débloque le reste une
-fois les bases en place. Lorsque vous ouvrez un canal existant, tous ses
-paramètres sont disponibles immédiatement et vous pouvez enregistrer vos
-modifications directement.
-
-## Les prochaines étapes
-
-- Façonnez les informations que vous collectez et le moment où un canal est
-  ouvert dans
-  [Formulaires et disponibilité](/help-desks/forms-and-availability).
-- Connectez un système de tickets et générez automatiquement des améliorations
-  dans [Tickets et améliorations](/help-desks/ticketing-and-improvements).
-- Proposez un service d'assistance depuis un assistant dans
-  [Connecter un service d'assistance à un assistant](/help-desks/connect-to-an-assistant).
+1. Ouvrez **Help Desks**.
+2. Créez un centre d'assistance.
+3. Saisissez un nom et une description du routage.
+4. Ajoutez un canal pris en charge.
+5. Configurez la disponibilité et les champs du formulaire.
+6. Connectez le centre d'assistance à un assistant.
+7. Testez l'escalade en mode Aperçu.

@@ -1,0 +1,55 @@
+---
+title: Tools und Fähigkeiten
+description: Steuern Sie Runtime-Tools und fügen Sie einem Assistenten wiederverwendbare Anweisungen hinzu.
+---
+
+Öffnen Sie einen Assistenten und wählen Sie **Tools & Skills**. In diesem
+Abschnitt werden die Laufzeitfunktionen und wiederverwendbare Anweisungen
+gesteuert.
+
+## Integrierte Tools
+
+| Tool | Standard | Aktuelles Verhalten |
+| --- | :---: | --- |
+| Knowledge durchsuchen | Ein | Durchsucht verknüpftes Knowledge und gibt zitierte Antworten zurück. |
+| Sitzungsspeicher | Ein | Verwendet Informationen aus der aktuellen Gesprächssitzung. |
+| URL abrufen | Aus | Liest eine URL, wenn die Laufzeitumgebung das Tool auswählt. |
+
+Die Wissenssuche ist immer verfügbar. Sie können die anderen integrierten Tools
+aktivieren oder deaktivieren.
+
+## Konfigurieren Sie eine API-Integration
+
+Ein Assistent kann eine registrierte API-Integration verwenden. Die Integration
+enthält eine Basis-URL, geschützte Anmeldeinformationen und beschriebene
+Endpunkte.
+
+Definieren Sie für jeden Endpunkt die Methode, den Pfad, den Zweck, die
+Parameter und die Antwortform. Die Laufzeit validiert jeden angeforderten Pfad
+anhand dieses Katalogs.
+
+Der Agent kann die Endpunkt-Details überprüfen, bevor er eine Anfrage sendet.
+Große Antworten bleiben über Fenster-Lesevorgänge verfügbar.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Eine Organisations-Skill anhängen
+
+Eine Skill ist eine wiederverwendbare Anweisungsvorlage. Eine Organisation kann
+dieselbe Skill mehreren Assistenten zuweisen.
+
+1. Öffnen Sie **Tools & Skills**.
+2. Suchen Sie die erforderliche Organisations-Skill.
+3. Weisen Sie die Skill dem Assistenten zu.
+4. Testen Sie das Ergebnis in der Vorschau.
+5. Veröffentlichen Sie den Assistenten, wenn das Ergebnis korrekt ist.
+
+Änderungen an Skills sind in der Vorschau sofort verfügbar. Das veröffentlichte
+Widget verwendet den letzten Veröffentlichungs-Snapshot.
+
+## Testen Sie die Konfiguration
+
+Stellen Sie eine Frage, die jedes aktivierte Tool erfordert. Überprüfen Sie vor
+der Veröffentlichung das Thinking-Panel und die Quellen.

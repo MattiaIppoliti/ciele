@@ -1,48 +1,38 @@
 ---
 title: Utilisation et limites
-description: Comment Ciele Cloud mesure l'utilisation mensuelle par rapport au quota de votre abonnement et ce qui se passe lorsque vous atteignez la limite.
+description: Examinez l'utilisation récente de l'IA, de l'intégration et du scraping par rapport aux limites actuelles.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Ouvrez **Settings > Usage**. La page affiche les données d'utilisation
+disponibles pour les 30 derniers jours.
 
-<Callout title="Ciele Cloud only">
-Usage metering and enforced limits are part of the managed edition. A self-hosted
-open-source deployment has no usage caps — its capacity is bounded only by the
-infrastructure and AI provider keys you configure.
-</Callout>
+## Compteurs d'utilisation
 
-Chaque forfait Ciele Cloud inclut un quota d'utilisation mensuel. Ciele mesure
-l'utilisation de votre organisation au fur et à mesure des conversations et la
-compare au quota de votre abonnement, ce qui évite les surprises et le comptage
-manuel.
+Ciele mesure ces groupes de ressources séparément :
 
-## Ce qui est pris en compte dans l'utilisation
+- Utilisation du modèle d'IA
+- utilisation de l'intégration
+- utilisation du scraping
 
-L'utilisation est mesurée par le travail d'IA que vos assistants effectuent pour
-le compte de vos visiteurs, principalement les réponses générées par les
-assistants. La console affiche votre utilisation actuelle pour la période de
-facturation, afin que vous sachiez toujours où vous en êtes.
+La page indique si l'opération a été financée par le financement de la
+plateforme Ciele ou par les identifiants de l'organisation.
 
-## Suivre votre utilisation
+Les crédits représentent le coût estimé en cents. Ils ne correspondent pas au
+nombre de réponses de l'Assistant.
 
-Vous pouvez consulter à tout moment l'utilisation pour la période en cours dans
-la console. Surveillez-la si vous menez une campagne, lancez un nouvel assistant
-ou prévoyez un pic d'utilisation, afin de pouvoir passer à un
-[plan](/cloud/plans-and-billing) supérieur avant d'épuiser votre allocation.
+## Limites
 
-## Atteindre la limite
+La page compare l'utilisation actuelle aux limites disponibles du forfait. Elle
+peut également afficher le budget quotidien de l'organisation.
 
-Lorsque votre utilisation approche du quota de votre forfait, Ciele l'affiche
-dans la console. Lorsque le quota est atteint, le plafond de l'abonnement
-s'applique pour le reste de la période de facturation. La mise à niveau vers un
-forfait avec un quota plus élevé rétablit immédiatement la capacité ; sinon, le
-quota est réinitialisé au début de la période de facturation suivante.
+Les lignes quotidiennes utilisent le temps universel coordonné (UTC). Utilisez
+cette limite lorsque vous comparez les données Ciele avec une facture de
+fournisseur.
 
-## Maintenir une utilisation efficace
+## Examinez l'utilisation inattendue
 
-Les mêmes pratiques qui améliorent les réponses permettent également de
-maintenir une utilisation efficace : des [connaissances](/knowledge) ciblées
-pour que la recherche reste pertinente, des [flux](/flows) qui traitent
-directement les questions courantes et des [services d'assistance](/help-desks)
-qui transfèrent les demandes de manière transparente lorsqu'un humain est la
-prochaine étape appropriée.
+1. Sélectionnez le compteur concerné.
+2. Identifiez le jour UTC et la source de financement.
+3. Examinez l'activité de l'Assistant pour la même période.
+4. Vérifiez la connexion du fournisseur sélectionné.
+5. Ajustez le budget de l'organisation lorsque vous y êtes autorisé.

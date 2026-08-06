@@ -1,68 +1,50 @@
 ---
-title: Création d'un flux
-description: "Créez un flux avec le générateur en trois étapes : déclencheur, conditions et réponse."
+title: Créez un flux
+description: Configurez un déclencheur, les conditions disponibles et les actions de réponse ordonnées.
 ---
 
-Vous créez un flux en trois étapes : choisissez ce qui le déclenche, ajoutez des
-conditions facultatives et définissez la réponse. Ouvrez un assistant,
-sélectionnez **Flows**, puis créez un nouveau flux pour ouvrir le générateur.
+## Créez le flux
 
-## Étape 1 : Déclencheur
+1. Ouvrez un Assistant.
+2. Sélectionnez **Flows**.
+3. Créez un flux.
+4. Saisissez un nom et une description clairs.
+5. Sélectionnez un déclencheur.
 
-Le déclencheur est l'événement qui rend un flux éligible à l'exécution. Le
-déclencheur le plus courant est l'envoi d'un message par un visiteur. D'autres
-déclencheurs couvrent des moments tels que l'ouverture du chat. Choisissez le
-déclencheur qui correspond à l'élément auquel vous souhaitez que le flux
-réagisse. Pour la plupart des règles qui répondent à des questions, le
-déclencheur de message est le bon choix.
+La description aide Intent Classification à sélectionner un flux de messages.
+Indiquez l'intention du visiteur et la portée requise.
 
-## Étape 2 : Conditions
+## Ajoutez des conditions de message
 
-Les conditions sont facultatives. Elles restreignent un flux afin qu'il ne
-s'exécute que dans des situations spécifiques. Vous pouvez exiger qu'une
-condition quelconque soit remplie, ou que toutes les conditions soient remplies,
-et vous pouvez en combiner plusieurs.
+Les flux de messages prennent en charge les types de conditions suivants :
 
-La condition que vous utiliserez le plus décrit le **contexte de la
-conversation** : vous expliquez, en termes simples, le type de message que ce
-flux doit traiter, et vous pouvez donner quelques exemples de messages qui
-doivent correspondre et quelques exemples de messages qui ne doivent pas
-correspondre. Ces exemples affinent la correspondance afin que le flux se
-déclenche sur les bonnes questions.
+| Condition | Comportement actuel |
+| --- | --- |
+| Contexte de la conversation | Ajoute des exemples sémantiques à la classification des intentions. Il ne s'agit pas d'un filtre strict. |
+| URL | Applique un critère strict de type Correspond, Contient ou Regex. |
+| Planification | Applique une condition stricte de début, de fin et de fuseau horaire. |
 
-Laissez les conditions vides lorsqu'un flux doit s'appliquer de manière
-générale, et ajoutez-les lorsque vous avez besoin de précision.
+Sélectionnez **Any condition matches** ou **All conditions match** lorsque le
+flux contient plus d'une condition.
 
-## Étape 3 : Réponse
+Les conditions URL et Schedule suppriment un flux non éligible avant la
+classification. Une condition satisfaite ne force pas le flux à gagner.
 
-La réponse est ce que le flux fait réellement. Il s'agit d'une liste ordonnée
-d'actions, qui s'exécutent de haut en bas. Une réponse doit comporter au moins
-une action.
+## Ajoutez des actions de réponse
 
-Les modèles courants comprennent :
+1. Ajoutez les actions requises.
+2. Placez les actions dans leur ordre d'exécution.
+3. Configurez tous les champs obligatoires.
+4. Enregistrez le flux.
+5. Testez un message correspondant et un message non correspondant.
 
-- Un seul **message fixe** pour une règle qui répond toujours de la même
-  manière.
-- Une **recherche dans vos connaissances** pour une règle qui devrait fournir
-  une réponse utile et fondée.
-- Un message suivi de **boutons** qui dirigent les visiteurs vers l'étape
-  suivante.
-- Une **escalade** lorsqu'une règle doit transférer le visiteur à votre équipe.
+L'éditeur limite les flux proactifs à une action de notification. Le serveur
+applique la même règle lorsqu'il enregistre ou distribue un flux.
 
-Consultez [Actions de flux](/flows/actions) pour chaque action et ses
-paramètres.
+## Réorganiser les flux
 
-## Enregistrez, ordonnez et testez
+Faites glisser un flux pour modifier la priorité de routage des messages. Le
+flux de comportement par défaut reste en dernier.
 
-Lorsque vous enregistrez un flux, il est ajouté à la liste. Faites-le glisser
-pour définir sa priorité par rapport aux autres flux, en gardant à l'esprit que
-la première correspondance l'emporte. Testez-le ensuite dans l'aperçu en direct
-en envoyant des messages qui devraient et ne devraient pas le déclencher.
-Ajustez la description et les exemples jusqu'à ce qu'il se déclenche exactement
-au moment souhaité.
-
-<Callout title="Start simple">
-A small number of clear flows is easier to reason about than many overlapping
-ones. Add a flow when you have a specific behavior in mind, and lean on the
-Default behavior for everything else.
-</Callout>
+Désactivez un flux lorsque vous devez arrêter son routage sans supprimer sa
+configuration.

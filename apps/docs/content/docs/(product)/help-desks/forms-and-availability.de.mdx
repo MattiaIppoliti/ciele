@@ -1,55 +1,35 @@
 ---
 title: Formulare und Verfügbarkeit
-description: Legen Sie fest, welche Daten ein Kanal von einem Besucher erfasst, welche Gesprächsdaten angehängt werden sollen und wann er geöffnet ist.
+description: Erfassen Sie die erforderlichen Eskalationsdaten und zeigen Sie an, wann ein Kanal verfügbar ist.
 ---
 
-Jeder Kanal kann mehr als nur eine Nachricht weiterleiten. Sie können genau die
-Details erfassen, die Ihr Team benötigt, nützlichen Kontext aus der Konversation
-anhängen und steuern, wann der Kanal verfügbar ist. Diese Optionen finden Sie in
-den Registerkarten des Kanal-Editors.
+## Formularfelder hinzufügen
 
-## Erstellen Sie das Formular
+Fügen Sie nur die Daten hinzu, die das empfangende Team benötigt. Markieren Sie
+ein Feld als Pflichtfeld, wenn der Kanal ohne dieses Feld nicht funktionieren
+kann.
 
-Das Formular füllt ein Besucher aus, wenn er den Kanal nutzt. Es beginnt mit
-sinnvollen Standardeinstellungen und Sie gestalten es mit einem Builder.
-
-1. Öffnen Sie einen Kanal und gehen Sie zu dessen Registerkarte „Formular“.
-2. Fügen Sie ein Feld mit **Add field** hinzu.
-3. Wählen Sie den **Feldtyp** aus. Zu den Typen gehören Freitext, längerer Text,
-   Kontaktdaten, eine Telefonnummer, eine Dropdown-Liste mit Optionen sowie
-   Rollen- oder Identitätsfelder, die bei Verfügbarkeit aus dem Profil eines
-   Besuchers ausgefüllt werden können.
-4. Legen Sie den **Namen** des Feldes, einen optionalen **Platzhalter** sowie
-   Kennzeichnungen fest, z. B. ob das Feld **erforderlich** ist und ob es im
-   Formular angezeigt werden soll.
-
-Sie können auch die Nachricht festlegen, die ein Besucher nach dem Absenden
-sieht, damit er weiß, dass seine Anfrage eingegangen ist und was als Nächstes
-passiert.
+Testen Sie das Formular als Besucher. Vergewissern Sie sich, dass Pflichtfelder
+eine unvollständige Übermittlung verhindern.
 
 ## Gesprächsdaten anhängen
 
-Für Kanäle wie E-Mail und API-Endpunkte können Sie Kontext aus der Konversation
-an die Anfrage anhängen, die Ihr Team erhält. Dies kann eine Zusammenfassung des
-Chats, den vollständigen Verlauf, Informationen über den Besucher und Metadaten
-zur Sitzung umfassen. Durch das Anhängen von Kontext muss Ihr Team den Besucher
-nicht bitten, sich zu wiederholen.
+Ein Helpdesk kann konfigurierte Konversationsinformationen an eine Eskalation
+anhängen. Zu den verfügbaren Daten können eine Zusammenfassung, ein Verlauf,
+Benutzerdaten und Metadaten gehören.
 
-## Verfügbarkeit festlegen
+Wählen Sie die Mindestdaten aus, die das empfangende Team benötigt. Überprüfen
+Sie die Auswahl anhand Ihrer Datenschutzanforderungen.
 
-Ein Kanal kann jederzeit verfügbar sein oder auf bestimmte Zeiten beschränkt
-werden.
+## Verfügbarkeit konfigurieren
 
-1. Öffnen Sie einen Kanal und gehen Sie zur Registerkarte „Verfügbarkeit“.
-2. Wählen Sie **immer verfügbar** oder legen Sie **begrenzte
-   Verfügbarkeitszeiten** für jeden Wochentag fest.
-3. Fügen Sie besondere Termine hinzu, an denen der Zeitplan abweicht,
-   beispielsweise Feiertage.
+Legen Sie den Kanalzeitplan und die Zeitzone fest. Das Widget zeigt an, ob der
+Kanal verfügbar ist, und kann den nächsten verfügbaren Zeitpunkt anzeigen.
 
-Wenn ein Kanal außerhalb seiner Zeiten liegt, wird er nicht angeboten, wodurch
-verhindert wird, dass Besucher auf einen Kanal zugreifen, den niemand sieht.
+Verwenden Sie die Zeitzone des Teams, das die Eskalation erhält. Testen Sie die
+Grenze am Anfang und am Ende eines Verfügbarkeitsfensters.
 
-<Callout title="Collect only what you need">
-Every extra field is friction for the visitor. Ask for the minimum that lets your
-team act, and rely on attached conversation data for the rest.
-</Callout>
+## E-Mail-Zustellung
+
+Der E-Mail-Kanal erfordert einen konfigurierten Resend-Transport. Wenn dieser
+fehlt, meldet Ciele, dass die E-Mail nicht versendet wurde.

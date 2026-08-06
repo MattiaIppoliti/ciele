@@ -1,48 +1,37 @@
 ---
 title: Domande frequenti
-description: Scrivi coppie precise di domande e risposte per guidare l'assistente nelle domande più comuni.
+description: Aggiungi coppie di domande e risposte approvate a una Knowledge Collection.
 ---
 
-Le FAQ ti permettono di controllare con precisione il modo in cui l'assistente
-risponde a domande specifiche. Ogni FAQ è una domanda abbinata alla risposta che
-vuoi che l'assistente utilizzi. Apri un assistente, seleziona **Knowledge** e
-poi apri la scheda **FAQs**.
+Una FAQ contiene una domanda e una risposta selezionata. Utilizza le FAQ per i
+contenuti che richiedono una risposta esatta e approvata.
 
-## Aggiungi una singola FAQ
+## Aggiungi una FAQ
 
-1. Seleziona Aggiungi una FAQ, quindi scegli l'opzione a voce singola.
-2. Scrivi la **domanda** come la porrebbe un visitatore.
-3. Scrivi la **risposta** nell'editor di testo RTF. Una risposta esaustiva
-   fornisce all'assistente più elementi su cui lavorare, quindi cerca di dare
-   una risposta completa anziché una singola riga.
-4. Salva la FAQ.
+1. Apri l'Assistente.
+2. Seleziona **Knowledge**.
+3. Aggiungi una FAQ.
+4. Inserisci la domanda.
+5. Inserisci la risposta approvata.
+6. Salva la FAQ.
 
-L'assistente utilizza le tue FAQ insieme alle sue altre conoscenze, quindi una
-FAQ ben scritta lo indirizza verso la risposta che preferisci per quella
-domanda.
+## Importa le FAQ
 
-## Importa molte FAQ contemporaneamente
+Prepara un file CSV con queste colonne:
 
-Se hai già un elenco di domande e risposte, puoi importarle in blocco invece di
-doverle digitare singolarmente.
+```csv
+question,answer
+When does enrollment close?,Enrollment closes on October 31.
+```
 
-1. Seleziona Aggiungi una FAQ, quindi scegli l'opzione di importazione.
-2. Fornisci il tuo file di domande e risposte nel formato previsto.
-3. Conferma l'importazione.
+Importa il file nella raccolta richiesta. Correggi le righe che non contengono
+entrambi i valori.
 
-Questo è il modo più veloce per creare un ampio set di FAQ, ad esempio quando
-sposti contenuti di aiuto esistenti in Ciele.
+## Usa una risposta rapida FAQ
 
-## Quando usare una FAQ
+Una risposta rapida FAQ restituisce la risposta curata parola per parola. Non
+effettua alcuna chiamata al modello di chat e include la citazione della fonte
+FAQ.
 
-Le FAQ sono lo strumento giusto quando:
-
-- Una domanda ha una sola risposta corretta che vuoi venga utilizzata ogni
-  volta.
-- La risposta non è indicata chiaramente in nessun altro punto della tua
-  knowledge base.
-- Vuoi definire il tono o la formulazione per un argomento delicato.
-
-Puoi anche far apparire istantaneamente una specifica FAQ da un
-[pulsante di avvio](/assistants/quick-replies), che offre ai visitatori un
-percorso con un solo tocco per accedere a una risposta comune.
+Utilizza una risposta rapida **Send Text** quando il testo deve invece entrare
+nel router Flow normale.

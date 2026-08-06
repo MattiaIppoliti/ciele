@@ -1,88 +1,78 @@
 ---
 title: Flow actions
-description: The building blocks a flow runs in response to a message, from fixed messages to knowledge search and escalation.
+description: Select response actions that the current runtime can execute.
 ---
 
-Actions are the steps a flow runs when it matches. You add them in the response
-step of the flow builder, and they run in the order you place them. This page
-describes the actions you can use and when to reach for each.
+Message Flow actions run in order. Non-generative actions use the configured content without model rewriting.
+
+## Available actions
+
+| Action | Model use | Current behavior |
+| --- | :---: | --- |
+| Message | No | Emits the configured text verbatim. |
+| Button | No | Adds a link button or a button that sends text into chat. |
+| Search knowledge | Yes | Runs the Knowledge agent loop and returns citations. |
+| Follow-ups | Optional | Uses configured questions or generates suggested questions. |
+| Iframe | No | Embeds configured external content in the chat. |
+| API request | No | Calls a configured HTTP endpoint and maps its result. |
+| Send email | No | Sends mail through the configured Resend transport. |
+| Improvement | No | Creates an Improvement for the applicable answer. |
+| Handover | Depends on target | Continues one time in another published Assistant. |
+
+The built-in Basic Interaction Flow also uses **Basic reply**. Help Desk recommendation uses a runtime action that the direct action picker does not show.
 
 ## Message
 
-Sends a message to the visitor. A message can be shown word for word, exactly as
-you wrote it, which is ideal when the wording must be precise. Use fixed messages
-for policies, disclaimers, and any reply that should never vary.
+Enter the exact text that Ciele must send. The runtime does not paraphrase this text.
 
 ## Basic reply
 
-Answers conversational courtesy — a greeting, a thank you, a goodbye — without
-searching anything. A visitor who types "hi" has not asked a question, so there is
-nothing to look up, and searching anyway only makes the reply slower. This action
-writes one short sentence or two in the visitor's own language, in your assistant's
-voice, and invites the real question. It shows no thinking steps and no sources,
-because it used neither.
+Basic reply handles short greetings, thanks, and farewells. It uses one model call and no Knowledge tools, citations, or Thinking events.
 
-It belongs to the built-in **Basic Interaction** flow, which sits first in your
-flow list. You can disable that flow if you would rather every message go through
-your knowledge, reorder it against your own flows, or type an exact reply into the
-action to pin the wording instead of having it generated.
+Enter fixed action text to skip the model. The same text provides the fallback when no chat model is available.
 
 ## Search knowledge
 
-Searches your knowledge, finds the most relevant passages, and writes an answer
-grounded in them, with sources. This is the action that produces helpful, natural
-answers from your content. It is also what the Default behavior uses. Options let
-you tie it to escalation and to answer quality tracking, so a weak result can lead
-to a follow up.
+Search knowledge uses available Knowledge tools for up to the runtime step limit. It can return named Source citations and Thinking Steps.
 
-## Follow ups
-
-Offers suggested next questions after an answer. This keeps a conversation moving
-by nudging the visitor toward related topics the assistant can help with.
+Use its unresolved-query settings to offer Help Desk escalation or create an Improvement.
 
 ## Button
 
-Shows a clickable button that links somewhere, for example a page on your site or
-a form. Use it to give the visitor a clear next step after a message.
+Configure a label and target. A target can open a link or send configured text into the Conversation.
+
+## Follow-ups
+
+Enter fixed follow-up questions or enable generation. Generated follow-ups use the configured fast model.
 
 ## Iframe
 
-Embeds external content inside the chat window, such as a page or a widget you
-want the visitor to see without leaving the conversation.
+Configure the title, HTTPS link, lightbox preference, and height. The host site can still prevent embedding through its security headers.
 
 ## API request
 
-Calls an external service and can use the result in the conversation. Use this to
-look something up in another system while the visitor waits. You configure the
-address and method of the request.
+Configure the method, endpoint, authentication, headers, query parameters, JSON body, and response JSON path.
+
+Template variables can supply values from the current context. Use **Test API** before you save the Flow.
+
+The action can show separate success and failure messages. Network egress rules still apply to the final URL.
+
+## Send email
+
+Configure recipients, subject, body, and reply-to behavior. The runtime uses Resend when its transport is configured.
+
+When the transport is not configured, the action reports that it did not send the email. It does not claim delivery.
 
 ## Improvement
 
-Flags the current answer for review by creating an item on your Improvements
-board. Use this on flows where you want to keep a close eye on answer quality. See
-[Improvements](/operations/improvements).
+The action creates an Improvement task. It does not add visible reply text by itself.
 
 ## Handover
 
-Transfers the conversation to another assistant. Use this when a different
-assistant is better suited to continue, for example a specialized one for a
-particular topic.
+Select another Assistant in the same Organization. The target must have a current Publication.
 
-## Escalation and Send email
+Ciele runs the same Visitor message through the target Assistant one time. It does not continue a second handover from that target turn.
 
-Escalation connects the visitor to your team through your configured
-[Help Desks](/help-desks). A send email action can notify a destination when
-a flow runs. Use these to make sure a human is looped in at the right moment.
+## Action order
 
-## Combining actions
-
-Actions are most powerful in combination. A single flow might send a short
-message, search your knowledge for the details, offer follow up questions, and end
-with an escalation button. Because actions run in order, you control the exact
-shape of the reply.
-
-<Callout title="Order matters">
-Actions run from top to bottom. Put a framing message before a knowledge search,
-and put buttons or escalation after the answer so they appear as the natural next
-step.
-</Callout>
+Put framing text before Search knowledge. Put buttons and follow-ups after the answer that they support.

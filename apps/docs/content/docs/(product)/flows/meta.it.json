@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "building-a-flow",
-    "actions"
+    "actions",
+    "notifications"
   ]
 }

@@ -1,0 +1,47 @@
+---
+title: Ziele
+description: Planen Sie wiederholbare Überprüfungen für wichtige Antworten des Assistenten.
+---
+
+Ein Goal stellt eine wiederkehrende Frage und prüft die Antwort anhand
+deterministischer Erwartungen. Ein fehlgeschlagenes Ziel löst eine Warnung aus.
+
+## Erstellen Sie ein Ziel
+
+1. Öffnen Sie einen Assistenten.
+2. Wählen Sie **Goals**.
+3. Wählen Sie **Create Goal**.
+4. Geben Sie die Frage ein, die Ciele stellen muss.
+5. Fügen Sie eine oder mehrere Erwartungen hinzu.
+6. Speichern Sie das Ziel.
+
+## Verfügbare Erwartungen
+
+| Erwartung | Überprüfung |
+| --- | --- |
+| Muss eine Quelle zitieren | Die Antwort enthält mindestens eine Quellenangabe. |
+| Zitierte URL enthält | Eine zitierte URL enthält den konfigurierten Text. |
+| Antwort enthält | Die Antwort enthält jedes konfigurierte Textfragment. |
+| Nicht-Fallback-Antwort | Die Laufzeit hat ihr Fallback-Ergebnis nicht zurückgegeben. |
+
+Ciele prüft immer, ob eine Nicht-Fallback-Antwort vorliegt. Weitere Erwartungen
+hängen von der Zielkonfiguration ab.
+
+## Zielstatus
+
+Ein aktives Ziel wird nach seinem Zeitplan ausgeführt. Ciele kann ein Ziel nach
+wiederholten Ausführungsproblemen unter Quarantäne stellen.
+
+Ein in Quarantäne gestelltes Ziel wird nicht mehr gemäß seinem normalen Zeitplan
+ausgeführt. Überprüfen Sie das Ziel und die zugehörige Warnung, bevor Sie es
+erneut aktivieren.
+
+## Einen Fehler überprüfen
+
+1. Öffnen Sie **Alerts**.
+2. Wählen Sie den Goal-Fehler aus.
+3. Überprüfen Sie die Antwort und die nicht erfüllte Erwartung.
+4. Korrigieren Sie das Wissen, den Flow oder das Ziel.
+5. Führen Sie das Ziel erneut aus.
+
+Ziele verwenden exakte Prüfungen. Sie verwenden keinen offenen Modell-Grader.

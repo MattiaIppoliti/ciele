@@ -1,43 +1,32 @@
 ---
 title: Usage and limits
-description: How Ciele Cloud meters monthly usage against your plan's allowance and what happens when you reach the cap.
+description: Review recent AI, embedding, and scraping use against current limits.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Open **Settings > Usage**. The page reads the latest 30 days of available usage data.
 
-<Callout title="Ciele Cloud only">
-Usage metering and enforced limits are part of the managed edition. A self-hosted
-open-source deployment has no usage caps — its capacity is bounded only by the
-infrastructure and AI provider keys you configure.
-</Callout>
+## Usage meters
 
-Every Ciele Cloud plan includes a monthly usage allowance. Ciele meters your
-organization's usage as conversations happen and compares it against your plan's
-allowance, so there are no surprises and no manual counting.
+Ciele measures these resource groups separately:
 
-## What counts as usage
+- AI model use
+- embedding use
+- scraping use
 
-Usage is measured by the AI work your assistants do on behalf of your visitors —
-principally the answers assistants generate. The console shows your current usage
-for the billing period so you always know where you stand.
+The page identifies whether Ciele platform funding or Organization credentials funded the operation.
 
-## Watching your usage
+Credits represent estimated cost in cents. They are not a count of Assistant answers.
 
-You can see usage for the current period in the console at any time. Watch it if
-you are running a campaign, launching a new assistant, or otherwise expecting a
-spike, so you can move to a larger [plan](/cloud/plans-and-billing) before you run
-out of allowance.
+## Limits
 
-## Reaching the cap
+The page compares current use with available plan limits. It can also show the Organization daily budget.
 
-As your usage nears the plan allowance, Ciele surfaces it in the console. When the
-allowance is reached, the plan's cap applies for the rest of the billing period.
-Upgrading to a plan with a larger allowance restores capacity immediately; the
-allowance otherwise resets at the start of the next billing period.
+Daily rows use Coordinated Universal Time (UTC). Use this boundary when you compare Ciele data with a provider invoice.
 
-## Keeping usage efficient
+## Investigate unexpected use
 
-The same practices that make answers better also keep usage efficient: focused
-[knowledge](/knowledge) so retrieval stays on target, [flows](/flows) that handle
-common questions directly, and [help desks](/help-desks) that hand off cleanly
-when a human is the right next step.
+1. Select the affected meter.
+2. Identify the UTC day and funding source.
+3. Review Assistant activity for the same period.
+4. Check the selected provider connection.
+5. Adjust the Organization budget when authorized.

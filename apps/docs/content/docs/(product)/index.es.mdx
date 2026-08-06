@@ -1,83 +1,37 @@
 ---
-title: Te damos la bienvenida a Ciele
-description: Crea, prueba y publica asistentes de IA que respondan a partir de tu propio contenido, enruten las conversaciones con reglas y las escalen a tu equipo cuando sea necesario.
+title: Documentación de Ciele
+description: Crea, prueba, publica y opera asistentes de IA basados en datos.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
-import { BookOpen, Boxes, Cloud } from 'lucide-react';
+import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
-Ciele es una plataforma para crear asistentes de IA que están presentes en tu
-sitio web y en tus aplicaciones. Cada asistente responde a las preguntas
-utilizando tu propio contenido, sigue las reglas que definas y pasa la
-conversación a tu equipo cuando el siguiente paso correcto es una persona.
+Ciele ayuda a una organización a crear asistentes de IA para sitios web y
+aplicaciones. Cada Asistente utiliza Conocimiento, Flujos, herramientas y Help
+Desks configurados.
 
-Lo configuras todo desde una única consola de administración: lo que sabe el
-asistente, cómo responde, cuándo deriva la conversación y dónde aparece. Una
-vista previa en vivo muestra al asistente exactamente como lo verán tus
-visitantes mientras realizas cambios.
+La consola de administración contiene una Vista previa. Utiliza la Vista previa
+para probar los cambios antes de crear una publicación.
 
-## Tres secciones, un producto
-
-El selector en la parte superior de la barra lateral te permite pasar de una a
-otra. Todo lo que aparece en **Documentation** se aplica independientemente de
-la edición que utilices.
+## Secciones de la documentación
 
 <Cards>
-  <Card
-    icon={<BookOpen />}
-    title="Documentación"
-    href="/getting-started"
-    description="Qué hace el producto y cómo usar cada una de sus partes: asistentes, conocimiento, flujos, servicios de asistencia, publicación y operaciones diarias."
-  />
-  <Card
-    icon={<Cloud />}
-    title="Ciele Cloud"
-    href="/cloud"
-    description="El mismo núcleo, totalmente gestionado. Planes y facturación, límites de uso, inicio de sesión único gestionado y cómo contactar con el servicio de asistencia."
-  />
-  <Card
-    icon={<Boxes />}
-    title="Código abierto"
-    href="/self-hosting"
-    description="Ejecuta el núcleo AGPL-3.0 en tu propia infraestructura: instalación, configuración, base de datos, trabajadores, actualizaciones y arquitectura."
-  />
+  <Card icon={<BookOpen />} title="Product" href="/getting-started" description="Configure and operate an Assistant." />
+  <Card icon={<Terminal />} title="Developers" href="/developers" description="Use the API, CLI, and MCP server." />
+  <Card icon={<Cloud />} title="Ciele Cloud" href="/cloud" description="Manage a hosted plan, billing, and usage." />
+  <Card icon={<Boxes />} title="Open Source" href="/self-hosting" description="Install and operate the open-source edition." />
 </Cards>
 
-La opción que necesites dependerá de dónde se ejecute el producto: un **núcleo
-de código abierto** que alojes tú mismo bajo AGPL-3.0 o **Ciele Cloud**, el
-mismo producto operado para ti. [Editions](/editions) traza la línea con
-precisión.
+## Tareas principales
 
-## Qué puedes hacer con Ciele
+- Crea un Asistente y selecciona su modelo.
+- Añade sitios web, archivos, texto y preguntas frecuentes a Knowledge.
+- Enruta los mensajes a través de flujos ordenados.
+- Envía notificaciones proactivas a partir de eventos de página y chat.
+- Conecta a los visitantes con un servicio de asistencia.
+- Publica una instantánea de configuración inmutable.
+- Revisa Conversaciones, Mejoras, Información, Exportaciones, Objetivos y
+  Alertas.
 
-- Crea un asistente o varios, cada uno con su propia identidad, conocimientos y
-  reglas.
-- Proporciona a cada asistente conocimientos de tus sitios web, tus archivos y
-  pares de preguntas y respuestas seleccionados.
-- Controla las conversaciones con Flows, un conjunto ordenado de reglas que
-  decide cómo responde el asistente a cada mensaje.
-- Deriva a tu equipo a través de los Help Desks, con canales como el correo
-  electrónico, el teléfono, el chat en vivo y los tickets de soporte.
-- Publica el asistente en tu sitio web con un pequeño fragmento de código, luego
-  revisa cada conversación, supervisa la calidad de las respuestas y lee los
-  análisis.
-
-## A quién va dirigida esta documentación
-
-Esta documentación está dirigida a dos públicos a la vez. Si estás evaluando
-Ciele, las primeras secciones explican qué hace la plataforma y cómo encajan sus
-componentes. Si ya estás usando Ciele, cada sección también te muestra cómo usar
-la función dentro de la aplicación, paso a paso. Esto es válido tanto si
-ejecutas la edición de código abierto por tu cuenta como si usas Ciele Cloud.
-
-## Empieza aquí
-
-<Cards>
-  <Card title="Getting started" href="/getting-started" description="Core concepts and your first assistant, from empty console to live widget." />
-  <Card title="Assistants" href="/assistants" description="Create assistants and shape their identity, replies, and appearance." />
-  <Card title="Knowledge" href="/knowledge" description="Give an assistant its sources: websites, files, and FAQs." />
-  <Card title="Flows" href="/flows" description="Route conversations with rules and decide how each message is answered." />
-  <Card title="Help Desks" href="/help-desks" description="Set up escalation to your team through channels, forms, and tickets." />
-  <Card title="Publishing" href="/publishing" description="Embed the assistant on your website and in your apps." />
-  <Card title="Editions" href="/editions" description="Open-source self-hosting versus the managed Ciele Cloud, and what each includes." />
-</Cards>
+Empieza con [Primeros pasos](/getting-started). Lee [Ediciones](/editions) antes
+de seleccionar una instalación alojada o autoalojada.

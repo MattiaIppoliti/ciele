@@ -1,58 +1,33 @@
 ---
 title: Sites Web
-description: Analysez votre site Web et votre base de connaissances pour que l'assistant apprenne à partir de vos pages.
+description: Ajoutez l'URL d'un site Web et suivez son état d'ingestion.
 ---
 
-Les sites Web sont souvent la source de connaissances la plus riche dont vous
-disposez déjà. Ciele peut explorer un site que vous possédez et transformer ses
-pages en connaissances à partir desquelles l'assistant répond. Ouvrez un
-assistant, sélectionnez **Knowledge**, puis ouvrez l'onglet **Websites**.
+## Ajoutez une source de site Web
 
-## Ajouter un site Web
+1. Ouvrez l'Assistant.
+2. Sélectionnez **Knowledge**.
+3. Ajoutez une source de site Web.
+4. Saisissez l'URL de la page.
+5. Lancez l'ingestion.
+6. Attendez que le statut de la source soit **Ready**.
+7. Posez une question à laquelle la page répond.
+8. Confirmez la citation de la Source renvoyée.
 
-1. Sélectionnez Ajouter un site Web.
-2. Saisissez un **nom** afin de pouvoir reconnaître la source ultérieurement.
-3. Saisissez l'**adresse** du site ou de la section à explorer.
-4. Définissez toutes les options applicables à votre site, par exemple en le
-   marquant comme protégé par une connexion ou en autorisant l'importation des
-   fichiers présents sur les pages.
-5. Confirmez la déclaration de droits d'auteur, puis sélectionnez **Add
-   Website**.
+Le robot d'indexation récupère le contenu du site Web configuré. Un worker de
+rendu JavaScript est requis pour les pages qui nécessitent un rendu par le
+navigateur.
 
-Une fois ajouté, le site est analysé et ses pages deviennent disponibles pour
-l'assistant. Les sites peuvent être explorés à nouveau régulièrement afin que
-les modifications en cours soient prises en compte.
+## Analyser à nouveau une source
 
-## Contrôlez ce qui est exploré
+Utilisez **Recrawl** lorsque le contenu du site Web source change. Ciele relance
+l'analyse et remplace le contenu indexé après une ingestion réussie.
 
-Les grands sites contiennent souvent des pages que vous ne souhaitez pas inclure
-dans les connaissances de l'assistant. Deux types de règles vous aident à cibler
-l'analyse.
+L'API et la CLI prennent en charge la réanalyse uniquement pour les sources de
+type site Web.
 
-- **Positive rules** décrivent les pages que vous souhaitez inclure.
-- **Negative rules** décrivent les pages que vous souhaitez exclure.
+## Accès à la source
 
-Utilisez-les pour que l'assistant se concentre sur les sections importantes et
-pour exclure les pages telles que les archives ou les pages utilitaires.
-
-## Paramètres avancés d'analyse
-
-Pour les sites qui nécessitent un traitement plus délicat, des paramètres
-supplémentaires vous permettent de ralentir l'exploration, de prolonger le temps
-de chargement de chaque page et d'attendre un peu plus longtemps avant de lire
-une page afin que le contenu qui se charge tardivement soit pris en compte. N'y
-avez recours que si une analyse normale omet du contenu ou si le site cible est
-sensible au chargement.
-
-## Ajoutez une liste spécifique de pages
-
-Si vous ne souhaitez qu'une poignée de pages plutôt qu'une analyse complète,
-vous pouvez à la place fournir une liste d'adresses exactes. Donnez un nom à la
-liste, collez une adresse par ligne, définissez les mêmes options que ci-dessus
-et continuez. C'est la solution idéale lorsque le contenu utile se trouve sur
-quelques pages connues.
-
-<Callout title="Only crawl sites you own or are allowed to use">
-Add sites you own or have permission to use. The copyright confirmation is there
-to keep your knowledge base on the right side of that line.
-</Callout>
+Le robot d'indexation doit accéder à l'URL depuis le réseau de déploiement. Le
+contenu protégé par authentification n'est pas disponible sans un chemin d'accès
+pris en charge.

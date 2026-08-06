@@ -1,219 +1,63 @@
 ---
-title: Die Chat-Laufzeit
-description: Wie eine Nachricht an einen Flow weitergeleitet wird, wie Flow-Aktionen versendet werden und was die Abrufschleife tut, bevor eine Antwort geschrieben wird.
+title: Chat-Laufzeit
+description: Verstehen Sie den aktuellen Trigger-Dispatch, das Flow-Routing, die Bedingungen und die geordneten Aktionen.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Nachrichtenpfad
 
-Alles, was zwischen „a message arrived“ und „reply parts are ready“ passiert,
-befindet sich in einem Modul. Es ist der dichteste Teil der Codebasis und
-derjenige mit einer erzwungenen öffentlichen Oberfläche – zwei Einstiegspunkte,
-ein Server-Barrel und ein Client-sicheres Barrel, mit einer Lint-Regel, die
-alles ablehnt, was an ihnen vorbeikommt.
-
-## Flows leiten weiter; das Modell nicht
-
-Die zentrale Invariante ist, dass [flows](/flows) ein **autoritativer Router**
-sind. Ein Modell entscheidet, *welcher* Flow antwortet, und anschließend werden
-die Aktionen dieses Flows der Reihe nach ausgeführt. Das Modell überschreibt
-niemals den Flow und wählt niemals aus, was als Nächstes zu tun ist.
-
-<Mermaid
-  title="Weiterleiten einer Nachricht an einen Flow"
-  chart={`
+```mermaid
 flowchart TB
   MSG["Visitor message"]
-  RESOLVE{"Is a model<br/>available?"}
-  CLASSIFY["Classify intent<br/>flows rendered as a catalogue,<br/>with conditions and examples"]
-  KEYWORD["Keyword router<br/>token scoring, built-in triggers"]
-  MATCHED{"A flow<br/>matched?"}
-  DEFAULT["Default behaviour<br/>the locked catch-all"]
-  RUN["Run the flow's actions,<br/>in order"]
-  PARTS["Reply parts + events"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+```
 
-  MSG --> RESOLVE
-  RESOLVE -->|"yes"| CLASSIFY
-  RESOLVE -->|"no"| KEYWORD
-  CLASSIFY -->|"empty or error"| KEYWORD
-  CLASSIFY --> MATCHED
-  KEYWORD --> MATCHED
-  MATCHED -->|"yes"| RUN
-  MATCHED -->|"no"| DEFAULT
-  DEFAULT --> RUN
-  RUN --> PARTS
-`}
-/>
+`messageFlowCandidates` liefert Kandidaten an beide Routing-Engines. Diese
+Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen
+Router-Ergebnissen führen.
 
-Es gibt zwei Router und einen Aktionspfad. Der Klassifizierer ist die normale
-Route; der Schlüsselwort-Router ist die Ausweichlösung, wenn nirgendwo ein
-Modell konfiguriert ist, wenn die Kandidatenmenge leer zurückgegeben wird oder
-wenn Klassifizierungsfehler auftreten. Beide speisen dasselbe Aktionsregister,
-sodass eine Bereitstellung ohne KI-Anbieter weiterhin Flows ausführt, dieselben
-Ereignisse ausgibt und identisch rendert – sie antwortet lediglich mit
-abgerufenem Text anstelle von generierter Prosa.
+Der Konversationskontext liefert semantische Beispiele für die Klassifizierung.
+Es fungiert nicht als unabhängiges Boolesches Gate.
 
-<Callout title="Why the fallback matters even in production">
-It is what makes the whole product testable offline. The test suite routes
-messages, dispatches actions, and asserts reply parts with no network and no keys.
-</Callout>
+## Höflichkeits-Shortcut
 
-## Aktionen sind eine Registrierung, kein Schalter
+Der integrierte Basic Interaction Flow kann eine kurze, reine
+Höflichkeitsnachricht vor der Intent Classification verarbeiten. Ein früherer
+berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
 
-Die Engine durchläuft die Aktionsliste des Flows und sucht jede Aktion in einer
-Registrierung, die nach Aktionstyp geordnet ist. Jeder Handler ist ein Adapter
-mit einer Signatur: Er empfängt einen Kontext, gibt seine eigenen
-Wire-Ereignisse aus, gibt die Antwortteile zur Persistierung zurück und kann
-einen verzögerten Effekt anfordern oder den Rest des Flows anhalten.
+Die Verknüpfung wird nicht aktiviert, wenn der Assistent eine Frage stellt oder
+wenn eine Nachricht eine Informationsanfrage enthält.
 
-<Mermaid
-  title="Aktionsversand und verzögerte Effekte"
-  chart={`
-flowchart LR
-  REG{"Registry<br/>lookup"}
-  H1["custom_message<br/><i>verbatim</i>"]
-  H2["search_knowledge<br/><i>generative</i>"]
-  H3["suggest_help_desk"]
-  H4["follow_up_questions"]
-  H5["show_button · iframe"]
-  H6["api_request"]
-  H7["improvement"]
-  H8["send_email"]
-  H9["handover<br/><i>halts</i>"]
+## Proaktiver Pfad
 
-  PARTS["Reply parts"]
-  EFF["Requested<br/>effects"]
-  DONE["Persist, then<br/>apply effects"]
+Die Einbettung meldet Seitenlade-, Verweilzeit- und Chat-Öffnungsereignisse. Der
+Server validiert den konfigurierten Trigger und den Zustellstatus.
 
-  REG --> H1 & H2 & H3 & H4 & H5 & H6 & H7 & H8 & H9
-  H1 & H2 & H3 & H4 & H5 & H6 & H9 --> PARTS
-  H7 & H8 --> EFF
-  PARTS --> DONE
-  EFF --> DONE
-`}
-/>
+Ein proaktiver Flow enthält eine Notification-Aktion und keine Bedingungen. Die
+Aktion gibt konfigurierten Inhalt ohne Modellaufruf aus.
 
-| Aktion | Was sie tut |
-|---|---|
-| `custom_message` | Sendet den konfigurierten Text **wörtlich**. Wird niemals von einem Modell umgeschrieben. |
-| `search_knowledge` | Der generative Abrufschritt: Suchen, dann eine zitierte Antwort schreiben |
-| `suggest_help_desk` | Bietet eine Eskalationsschaltfläche |
-| `follow_up_questions` | Bietet bis zu drei vorgeschlagene Folgefragen |
-| `show_button` / `iframe` | Rendert eine Link-Schaltfläche oder einen eingebetteten Frame |
-| `api_request` | Ruft einen externen Endpunkt auf und kann das Ergebnis in die Antwort zurückeinspeisen |
-| `improvement` | Reicht stillschweigend ein Antwortqualitäts-Element zur Überprüfung ein |
-| `send_email` | Leitet die Konversation per E-Mail weiter |
-| `handover` | Bestätigt und stoppt den Ablauf |
+## Ausführung von Aktionen
 
-Daraus ergeben sich zwei Dinge. Das Hinzufügen eines Aktionstyps besteht aus
-**einem Adapter plus einem Registry-Eintrag** – nicht aus einer Änderung an zwei
-Stellen, die auseinanderlaufen können. Und Handler bleiben rein: Da ein Side
-Effect *angefordert* und nicht ausgeführt wird, kann ein Handler im Unit-Test
-getestet werden, indem man festlegt, welchen Effekt er angefordert hat, ohne
-dass eine Datenbank in Sicht ist.
+Aktionen werden in der gespeicherten Reihenfolge ausgeführt. Jede Aktion gibt
+strukturierte Antwortteile oder einen stillen Effekt zurück.
 
-## Innerhalb einer generativen Antwort
+Generative Arbeit bleibt innerhalb von Basic Reply, Search Knowledge,
+generierten Follow-ups und unterstützten Empfehlungspfaden.
 
-`search_knowledge` ist der Ort, an dem die Generierung stattfinden darf, und es
-handelt sich um eine Schleife und nicht um einen einzelnen Aufruf. Der
-Abrufschritt versteht die Frage im Kontext, sucht, bewertet, ob er genug hat,
-formuliert neu, wenn dies nicht der Fall ist, und schreibt erst dann.
+## Übergabe
 
-<Mermaid
-  title="Der Abrufschritt hinter einer zitierten Antwort"
-  chart={`
-flowchart TB
-  IN["The question + conversation context"]
-  FRAME["Build a context frame<br/>what is this turn actually about?"]
-  UQ["Understand the query<br/>intent and search terms"]
-  CLARIFY1{"Too ambiguous<br/>to search?"}
-  ASK["Ask a clarifying question"]
-  PASS["Search pass<br/>vector + lexical retrieval"]
-  SCORE{"Coverage<br/>good enough?"}
-  BUDGET{"Passes<br/>left?"}
-  REFORM["Reformulate the query"]
-  GEN["Generate the answer<br/>grounded in what was retrieved"]
-  CAVEAT["Add a best-effort caveat"]
-  CITE["Project retrieved chunks<br/>to their sources"]
-  OUT["Answer + citations<br/>(+ escalation chip if nothing grounded it)"]
+Handover lädt einen veröffentlichten Ziel-Assistenten in derselben Organisation.
+Sie führt die Besuchernachricht einmal durch diesen Zielassistenten.
 
-  IN --> FRAME --> UQ --> CLARIFY1
-  CLARIFY1 -->|"yes"| ASK
-  CLARIFY1 -->|"no"| PASS
-  PASS --> SCORE
-  SCORE -->|"no"| BUDGET
-  BUDGET -->|"yes"| REFORM --> PASS
-  BUDGET -->|"no"| CAVEAT --> GEN
-  SCORE -->|"yes"| GEN
-  GEN --> CITE --> OUT
-`}
-/>
-
-Die Schleife ist begrenzt: Es gibt eine maximale Anzahl von Suchdurchläufen und
-ein einziges Budget-Gate, das alle durchlaufen. Eine schwierige Frage kostet
-also mehr als eine einfache, aber niemals unbegrenzt mehr. Die
-Coverage-Bewertung, die Neuformulierung und die Clarify-Entscheidung sind
-allesamt reine Funktionen, die die Schleife konsultiert – modellfrei und daher
-für sich allein testbar.
-
-Wenn nichts, was abgerufen wurde, tatsächlich die Antwort begründet, kann die
-Aktion eine Eskalationsschaltfläche anhängen und ein Verbesserungselement
-einreichen, sodass eine nicht beantwortbare Frage zu zwei nützlichen Ergebnissen
-wird, anstatt zu einer selbstbewussten falschen Antwort.
-
-## Tools und Fähigkeiten
-
-Neben dem Abrufen kann ein Assistent auch Tools erhalten – HTTP-Endpunkte, die
-so gut beschrieben sind, dass ein Modell sie aufrufen kann. Das Toolset wird pro
-Durchlauf aus der eigenen Konfiguration des Assistenten und den gemeinsamen
-Skills der Organisation zusammengestellt, wobei dieselben Lebenszyklusereignisse
-(`tool-start`, `tool-end`) auftreten, die das Widget als sichtbare Schritte
-darstellt.
-
-<Mermaid
-  title="Was ein Turn zusammenstellt, bevor er ausgeführt wird"
-  chart={`
-flowchart LR
-  A["Assistant config<br/>enabled tools"] --> TS["Per-turn toolset"]
-  S["Organization skills<br/>shared definitions"] --> TS
-  BI["Built-in tools<br/>e.g. knowledge search"] --> TS
-  TS --> TURN["The turn"]
-  SESSION["Turn session<br/>state carried across steps"] --> TURN
-  PROMPT["Platform prompt<br/>+ the assistant's answering style"] --> TURN
-`}
-/>
-
-Die Prompt-Struktur ist bewusst mehrschichtig aufgebaut: Eine Plattformebene
-liegt über dem individuellen Antwortstil des Assistenten, sodass eine Anweisung
-zum Tonfall für den jeweiligen Assistenten zwar eine Antwort beeinflussen kann,
-aber nicht die Regeln der Plattform außer Kraft setzen kann.
-[Das agentische Modell](/self-hosting/architecture/agentic-model) deckt die
-gesamte Präzedenzkette ab, wie ein Provider und ein Modell für einen Turn
-aufgelöst werden, sowie die Budgets und die Bewertungsschleife rund um den
-Agenten selbst.
-
-## Was gespeichert, aber noch nicht bearbeitet wird
-
-Ehrlichkeit in dieser Hinsicht ist nützlicher als ein Diagramm, das mehr
-impliziert als der Code:
-
-- **Non-message triggers.** Ein Flow kann so konfiguriert werden, dass er beim
-  Laden der Seite, beim Öffnen des Chats oder nach einer Verweilzeit ausgelöst
-  wird. Diese Einstellungen werden gespeichert, aber derzeit konkurrieren nur
-  durch Nachrichten ausgelöste Flows um die Nachricht eines Besuchers.
-- **Richer conditions.** Die Konversationskontext-Bedingung eines Flows wird dem
-  Klassifizierer als Routing-Kontext übergeben – sie *beeinflusst* die Auswahl,
-  anstatt als festes Gate zu fungieren. Die anderen Bedingungstypen im Builder
-  werden noch nicht ausgewertet.
-
-## Die Regeln, die nicht gebrochen werden dürfen
-
-1. Flows leiten weiter, das Modell nicht. Die Klassifizierung wählt den Flow
-   aus; die Aktionen des Flows werden dann der Reihe nach ausgeführt.
-2. `custom_message` ist wörtlich.
-3. Neues generatives Verhalten findet **innerhalb** einer Aktion statt. Niemals
-   oberhalb des Routers.
-
-Die dritte ist die, an die Sie denken sollten, wenn Sie die Laufzeit erweitern.
-Eine neue Funktion, die Text generiert, gehört in einen Handler, in dem der
-Flow, der sie aufgerufen hat, weiterhin entscheidet, ob sie überhaupt ausgeführt
-wird.
+Die Zielausführung ignoriert eine weitere Übergabe. Diese Regel verhindert eine
+unbegrenzte Assistant-Kette.

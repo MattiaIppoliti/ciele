@@ -1,185 +1,53 @@
 ---
 title: Flujos de solicitudes
-description: Qué sucede realmente cuando un visitante envía un mensaje de chat y cuando un administrador guarda una edición en la consola. Los dos flujos a los que da servicio el resto del sistema.
+description: Realiza un seguimiento de las solicitudes de administrador, API, widget y MCP a través de los límites actuales.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Operación del administrador
 
-Casi todo el tráfico corresponde a dos tipos de solicitud: el mensaje de chat de
-un visitante y la edición de un miembro. Merece la pena rastrearlos de principio
-a fin, porque casi todas las decisiones de diseño en el código base se derivan
-de uno de ellos.
-
-## Un visitante envía un mensaje de chat
-
-El widget realiza una publicación en un punto final por asistente y lee una
-respuesta en streaming. Fíjate en lo que carga el punto final: la
-**publicación** más reciente del asistente —una instantánea inmutable— y no la
-configuración en vivo que un miembro podría estar editando en ese momento.
-
-<Mermaid
-  title="Un turno de chat, desde la pulsación de una tecla hasta la respuesta persistente"
-  chart={`
+```mermaid
 sequenceDiagram
-  autonumber
-  participant B as Widget
-  participant R as Chat endpoint
-  participant T as Turn
-  participant E as Runtime
-  participant DB as Postgres
-  participant AI as Provider
+  actor Admin
+  participant Web as Next.js console
+  participant Auth as Session and capability check
+  participant Ops as Shared operation
+  participant Db as Organization data
+  Admin->>Web: Submit configured action
+  Web->>Auth: Resolve member and Role
+  Auth->>Ops: Provide validated context
+  Ops->>Db: Read or mutate tenant data
+  Db-->>Web: Return result
+  Web-->>Admin: Refresh affected view
+```
 
-  B->>R: message + visitorId
-  R->>DB: latest publication
-  Note over B,R: no snapshot → 404 · CORS from it
-  R->>T: start turn
-  T->>DB: get/create conversation
-  T->>DB: append the message
-  T-->>B: turn (conversation id)
-  T->>E: route
-  E->>AI: classify
-  AI-->>E: the matching flow
-  E-->>B: flow
-  loop each action
-    E-->>B: step · tool events
-    E->>DB: retrieve knowledge
-    E->>AI: generate
-    E-->>B: text · parts
-  end
-  T->>DB: persist the answer
-  T->>T: apply effects
-  T-->>B: done
-`}
-/>
+Las acciones del servidor resuelven la sesión del miembro antes de llamar a una
+operación compartida. La seguridad a nivel de fila de la base de datos sigue
+formando parte del límite de datos de la consola.
 
-Algunas consecuencias de este orden:
+## Operación de la API
 
-- **The conversation id arrives before the answer does.** El primer evento lo
-  lleva, y así es como la vista previa en vivo de la consola puede dirigir un
-  turno en curso sin bifurcar una nueva conversación.
-- **Effects run after the answer is committed**, nunca antes. Una acción que
-  debería crear un elemento de seguimiento o enviar un correo electrónico no lo
-  hace por sí misma: *solicita* un efecto, y la solicitud se aplica una vez que
-  el mensaje existe. Por lo tanto, una mejora se vincula a un ID de mensaje real
-  y no se envía ningún correo para un turno que haya fallado a mitad de camino.
-- **A failing action degrades to a fallback**, porque cada uno está encapsulado
-  individualmente. Una acción fallida no hace que se pierda el turno.
+La API v1 aplica un hash a la clave de portador y resuelve su Organización y
+Rol. Valida la entrada antes de llamar a la misma operación que la consola.
 
-### El formato wire
+La API utiliza un contenedor de base de datos anclado a la organización. El
+contenedor reemplaza los argumentos de la organización y comprueba la propiedad
+para el acceso basado en identificadores.
 
-Tanto el widget público como el panel de vista previa de la consola leen el
-mismo flujo JSON delimitado por nuevas líneas, y ambos lo decodifican con el
-mismo módulo cliente. Esa es la razón por la que la vista previa y la producción
-se renderizan de forma idéntica: hay un productor y un consumidor de este
-contrato.
+## CLI y MCP
 
-| Evento | Significado |
-|---|---|
-| `turn` | El identificador de la conversación, antes de que comience la generación |
-| `flow` | Qué flujo se seleccionó y si era el de reserva |
-| `step` | Un paso de razonamiento visible |
-| `tool-start` / `tool-end` | Una invocación de herramienta que se abre y se cierra, con un breve resultado |
-| `thought` | Razonamiento previo a la llamada a una herramienta; integrado en el panel de pensamiento |
-| `text-start` / `text-delta` / `text-end` | El texto de la respuesta, transmitido |
-| `part` | Una parte de respuesta no textual: citas, botones, seguimientos, un chip de escalada |
-| `done` / `error` | Terminal, con el ID de mensaje persistente |
+La CLI y el servidor MCP usan `@ciele/client`. El cliente envía solicitudes
+autenticadas por portador a la API v1.
 
-<Callout title="Publication snapshots are why editing is safe">
-Because the widget reads the latest publication rather than the live row, an
-administrator can edit an assistant all afternoon without visitors seeing
-anything change. The new configuration goes live at the moment of publish — and
-publishing is also the moment the cached snapshot is invalidated, so "latest"
-stays exact without a database round trip per request.
-</Callout>
+El conmutador de solo lectura MCP rechaza las acciones de mutación antes de que
+el cliente envíe una solicitud. Las comprobaciones de rol del lado del servidor
+siguen aplicándose a todas las solicitudes aceptadas.
 
-## Un miembro guarda una edición
+## Turno del widget
 
-Las páginas de la consola se renderizan en el servidor y se leen a través de un
-identificador de datos con ámbito de solicitud vinculado a la sesión del
-solicitante, por lo que la seguridad a nivel de fila se aplica a las lecturas.
-Las escrituras siguen un camino diferente: son acciones del servidor, y cada una
-con ámbito de organización se abre con la misma llamada de autorización.
+La incrustación carga la configuración activa de la publicación. La ruta de chat
+conserva el turno del visitante y llama al tiempo de ejecución del turno de
+conversación.
 
-<Mermaid
-  title="Una lectura de consola y una escritura de consola"
-  chart={`
-flowchart TB
-  M["Member's browser"]
-
-  subgraph read["Read — a console page"]
-    direction TB
-    MW["middleware<br/>validate the session locally"]
-    LOGIN["no session →<br/>/login?next=…"]
-    P["Server Component"]
-    RD["Read through the<br/>caller-scoped handle"]
-    RLS["Row-level security:<br/>this organization's<br/>rows only"]
-    MW -->|"no"| LOGIN
-    MW -->|"yes"| P --> RD --> RLS
-  end
-
-  subgraph write["Write — a server action"]
-    direction TB
-    G["Authorization guard<br/>re-derive the session<br/>check role → capability"]
-    DENY["denied →<br/>throw"]
-    OK["allowed → returns the<br/>caller-scoped handle"]
-    MUT["Mutate"]
-    REV["Revalidate the<br/>affected paths"]
-    G -->|"no"| DENY
-    G -->|"yes"| OK --> MUT --> REV
-  end
-
-  M -->|"navigate"| MW
-  M -->|"submit"| G
-  RLS --> HTML["Rendered page"]
-  REV --> UI["Updated UI"]
-`}
-/>
-
-El guard rederiva la sesión en lugar de confiar en lo que haya enviado el
-cliente y devuelve el identificador de datos como valor de retorno. Se trata de
-una pequeña decisión de diseño con una propiedad útil: una acción no puede
-acceder a la base de datos *sin* pasar primero la comprobación, porque es la
-comprobación la que le proporciona el identificador.
-
-### Roles y capacidades
-
-Los roles están clasificados y las capacidades son umbrales dentro de esa
-clasificación. La misma jerarquía existe en SQL, por lo que la base de datos
-está en consonancia con la aplicación.
-
-<Mermaid
-  title="Rangos de roles y las capacidades que desbloquean"
-  chart={`
-flowchart TB
-  V["Viewer"] --> E["Editor"] --> A["Admin"] --> O["Owner"]
-
-  E -.-> CE["edit assistants, flows,<br/>knowledge, help desks"]
-  A -.-> CP["publish, delete assistants"]
-  A -.-> CM["invite members,<br/>manage provider keys"]
-  O -.-> CR["change roles"]
-`}
-/>
-
-Cada rol incluye todo lo que está por debajo de él. Ampliar el modelo —por
-ejemplo, añadiendo un nivel de agente de soporte o uno solo para análisis—
-implica editar la tabla de roles y los umbrales de capacidades, no auditar
-acciones individuales.
-
-## Trabajo programado
-
-Todo lo que no deba ejecutarse a partir de una solicitud se ejecuta en su lugar
-mediante un temporizador. Cada tarea es un punto de conexión HTTP autenticado,
-lo que significa que el programador puede ser Vercel Cron, un contenedor que
-ejecute `curl` o cualquier otra cosa que pueda realizar una solicitud.
-
-| Punto de conexión | Hace |
-|---|---|
-| `/api/cron/finalize-crawls` | Cierra los rastreos cuyas páginas han llegado |
-| `/api/cron/sweep-recrawls` | Vuelve a rastrear las fuentes de los sitios web según su programación |
-| `/api/cron/run-exports` | Genera los archivos de exportación en cola |
-| `/api/cron/rollup-usage` | Agrega el uso en filas diarias |
-| `/api/cron/verify-goals` | Vuelve a comprobar los objetivos del asistente |
-
-El trabajo de rastreo se reclama con un contrato renovable y un orden de menor
-intento de rastreo reciente, por lo que dos barridos simultáneos no pueden
-finalizar el mismo rastreo y ninguna fuente puede quedar sin recursos.
+El tiempo de ejecución selecciona un flujo, ejecuta acciones, transmite eventos
+de respuesta y almacena partes de respuesta. El widget representa las mismas
+partes estructuradas.

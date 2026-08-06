@@ -1,181 +1,56 @@
 ---
 title: Pipeline de connaissances
-description: Comment un site Web, un fichier ou une FAQ devient du texte consultable, et comment une réponse générée obtient des citations qui renvoient à une source nommée.
+description: Suivez une Source depuis son ingestion jusqu'à une réponse citée de l'Assistant.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Ingestion
 
-La [connaissance](/knowledge) entre dans le système en tant que **source**, est
-enrichie en **concepts** et est stockée sous forme de **blocs** incorporés. La
-récupération parcourt cette chaîne dans l'autre sens, ce qui permet à une
-réponse de citer une source nommée plutôt qu'un fragment de texte opaque.
-
-## D'une source à du texte interrogeable
-
-Aucun élément de ce pipeline ne s'exécute sur la requête qui l'a lancé. L'ajout
-d'une source l'enregistre et met une tâche en file d'attente ; le pipeline vide
-ensuite cette file d'attente, et la console interroge l'état de la source
-pendant ce temps.
-
-<Mermaid
-  title="Ingestion : une source se transforme en de nombreux fragments incorporés"
-  chart={`
+```mermaid
 flowchart TB
-  IN["A member adds a source<br/>text · file · link · website"]
-  ROW["Create the source row<br/>status: processing"]
-  Q["Queue an ingestion job"]
-  EX{"Extractor,<br/>by source kind"}
-  T["text"]
-  U["link"]
-  F["file"]
-  W["website"]
-  OKF["Enrich into concepts<br/>markdown + front matter"]
-  CH["Split into chunks"]
-  EM["Embed each chunk"]
-  PERSIST["One write path<br/>create concept + index it"]
-  DB[("concepts + concept_chunks<br/>with a vector index")]
-  DONE["status: ready"]
-  ERR["status: error<br/>+ reason"]
+  SOURCE["Website, file, text, or FAQ"]
+  EXTRACT["Extract normalized content"]
+  CONCEPT["Create OKF Concepts"]
+  INDEX["Store lexical and vector indexes"]
+  GRAPH["Update optional graph data"]
+  READY["Set Source status to Ready"]
+  SOURCE --> EXTRACT
+  EXTRACT --> CONCEPT
+  CONCEPT --> INDEX
+  CONCEPT --> GRAPH
+  INDEX --> READY
+  GRAPH --> READY
+```
 
-  IN --> ROW --> Q
-  Q -->|"off the request path"| EX
-  EX --> T & U & F & W --> OKF
-  OKF --> CH --> EM --> PERSIST --> DB --> DONE
-  Q -.->|"failure anywhere"| ERR
-`}
-/>
+Knowledge utilise des Concepts au format Open Knowledge Format (OKF). Un Concept
+conserve une référence à sa Source d'origine.
 
-Deux couches effectuent le travail ici, et toutes deux sont des registres plutôt
-que des conditions :
+L'ingestion de FAQ crée un Concept organisé avec la provenance de la question et
+de la réponse. L'ingestion de fichiers et de sites Web préserve l'objet Source
+d'origine, le cas échéant.
 
-- **Extraction** est un extracteur par type de source. L'ajout d'un nouveau type
-  de source implique l'ajout d'un extracteur, et non la modification d'un
-  analyseur qui gère déjà quatre autres formats.
-- **Persistence** est un chemin d'écriture unique. Chaque chemin qui apporte des
-  connaissances — une source enrichie, une page explorée, une FAQ rédigée à la
-  main — passe par la même fonction qui crée le concept et l'indexe. Il n'existe
-  pas d'autre moyen d'écrire un concept, c'est pourquoi un bloc sans index n'est
-  pas un état que le système peut atteindre.
+## Récupération
 
-Un concept peut être exclu de la recherche sans être supprimé ; c'est le
-mécanisme qui permet de masquer une page explorée à partir de laquelle vous ne
-souhaitez pas obtenir de réponse.
+Le moteur d'exécution peut récupérer des Concepts via la recherche vectorielle
+et le repli lexical. Le mode Graphique peut ajouter une navigation à travers les
+relations indexées entre Concepts.
 
-## Analyse d'un site Web
+Un indice contextuel peut limiter la récupération à une collection pertinente ou
+à un contexte de type cours lorsque le moteur d'exécution en fournit un.
 
-Les sources Web sont les seules à présenter une réelle diversité opérationnelle.
-L'indexation est donc une matrice de fournisseurs derrière un cycle de vie
-unique. Une source choisit un fournisseur — ou laisse le choix automatique,
-auquel cas une politique de capacité pure en sélectionne un au début de
-l'analyse et enregistre celui qu'elle a choisi.
+La recherche approfondie améliore la navigation dans les connaissances dans les
+limites du moteur d'exécution. Il n'effectue pas de requêtes sur le Web public.
 
-<Mermaid
-  title="La sélection du robot d'indexation et les contrôles de sécurité que chaque fournisseur doit passer"
-  chart={`
-flowchart TB
-  SRC["Website source<br/>provider: automatic | local | rendered | managed"]
-  POL{"Automatic?"}
-  CAP["Capability policy<br/>needs a browser? files?<br/>a login? a proxy?"]
-  PICK["Resolve one provider<br/>and persist the choice"]
+## Résolution des citations
 
-  GUARD["Target validation<br/>HTTP(S) only · no credentials in the URL<br/>no loopback, private, link-local, or metadata address<br/>reject hosts that resolve privately"]
+La réponse finale cite des Sources nommées, et non des extraits de recherche
+opaques. Les identifiants de citation sont résolus via le Concept jusqu'à sa
+Source d'origine.
 
-  L["Local crawler<br/>in-process, same origin"]
-  R["Rendered crawler<br/>browser worker"]
-  M["Managed crawler<br/>external service"]
+Le visiteur peut ouvrir l'affichage des sources après la réponse. La boîte de
+réception stocke les mêmes éléments de citation avec la conversation.
 
-  PAGES["One concept per page"]
+## Suppression et nouvelle analyse
 
-  SRC --> POL
-  POL -->|"yes"| CAP --> PICK
-  POL -->|"no"| PICK
-  PICK --> GUARD
-  GUARD --> L & R & M
-  L & R & M --> PAGES
-`}
-/>
-
-Chaque fournisseur passe la même validation avant qu'une cible ne soit soumise.
-Le robot d'indexation local revalide en outre chaque redirection, reste sur
-l'origine de départ, fixe ses connexions à l'adresse qui a passé la validation,
-plafonne la taille de la réponse et applique les délais par page et les délais
-totaux.
-
-<Callout title="Where the boundary actually is">
-The remote providers receive an already-validated hostname and resolve it inside
-their own network. Address pinning for those crawls is therefore outside this
-process's control — worth knowing if your threat model cares. Worker credentials
-are server-only and are stripped from any error, alert, or telemetry a member can
-see.
-</Callout>
-
-Le réindexation remplace les pages précédentes au lieu de les compléter. Ainsi,
-lorsqu'une page disparaît d'un site, elle n'est plus prise en compte.
-
-## Vecteurs d'embedding
-
-Chaque fragment est stocké dans une colonne vectorielle avec un index, à une
-largeur fixe. Un fournisseur dont les vecteurs sont plus courts est complété par
-des zéros jusqu'à atteindre cette largeur ; la similitude cosinus n'est pas
-affectée par ce remplissage, de sorte qu'un seul index sert tous les
-fournisseurs.
-
-<Mermaid
-  title="Préférence de fournisseur d'embeddings, et solution de secours en l'absence de préférence"
-  chart={`
-flowchart TB
-  CH["A chunk of text"]
-  RES{"Which provider<br/>can embed?"}
-  O["OpenAI"]
-  G["Google"]
-  N["None configured"]
-  PAD["Pad to the fixed width"]
-  VEC[("Vector column<br/>one shared index")]
-  LEX["Lexical search<br/>no vector stored"]
-
-  CH --> RES
-  RES --> O --> PAD
-  RES --> G --> PAD
-  RES --> N --> LEX
-  PAD --> VEC
-`}
-/>
-
-Le remplissage est un compromis délibéré : un index partagé et aucune migration
-en cas de changement de fournisseur, au prix de réserves lors de la comparaison
-de vecteurs produits par différents modèles. Si aucun fournisseur d'intégration
-n'est configuré, la récupération se réduit à une recherche lexicale plutôt que
-d'échouer — le même principe que le routeur de mots-clés dans le
-[chat runtime](/self-hosting/architecture/chat-runtime).
-
-Une organisation peut également désigner la connexion du fournisseur qui
-effectue son intégration, indépendamment du fournisseur qui répond au chat.
-
-## Récupération et citations
-
-La récupération est une recherche de similarité sur des segments, limitée à
-l'assistant et à la collection sélectionnée, complétée par des correspondances
-lexicales lorsque les résultats vectoriels sont insuffisants. Les concepts
-exclus sont filtrés en SQL plutôt qu'a posteriori.
-
-<Mermaid
-  title="D'une requête à une puce de citation"
-  chart={`
-flowchart TB
-  Q["Query"] --> EMB["Embed the query"]
-  EMB --> MATCH["Similarity search<br/>scoped by assistant + collection"]
-  MATCH --> TOPUP["Top up with lexical matches"]
-  TOPUP --> RESOLVE["Resolve chunk → concept → source"]
-  RESOLVE --> ANSWER["Grounded answer"]
-  RESOLVE --> CITE["Citation chips<br/>named sources"]
-`}
-/>
-
-L'étape de résolution est la plus importante. Les résultats ne sont jamais
-transmis au modèle — ni au lecteur — sous forme de simples fragments ; chacun
-d'entre eux est porteur du concept dont il est issu et de la source à partir de
-laquelle ce concept a été construit. C'est pourquoi le même composant de
-citation s'affiche dans le widget, dans l'aperçu de la console et dans la
-transcription de la [boîte de réception](/operations/inbox) : il n'y a qu'une
-seule forme à afficher, car les citations sont toujours résolues en un même
-élément.
+La suppression d'une Source retire les Concepts associés du graphe actif et des
+données de recherche. La nouvelle analyse du site Web relance l'extraction et
+l'indexation pour cette Source.

@@ -1,79 +1,55 @@
 ---
 title: Conceptos básicos
-description: El vocabulario que verás en Ciele y cómo se relacionan entre sí los distintos elementos.
+description: Aprende los términos estables que Ciele utiliza en el producto y en la documentación.
 ---
-
-Ciele utiliza un pequeño conjunto de términos de forma coherente en todo el
-producto. Si los aprendes una vez, te resultará más fácil seguir el resto de las
-páginas.
 
 ## Organización
 
-Una organización es tu espacio de trabajo. Es la propietaria de tus asistentes,
-tus miembros, tus servicios de asistencia y tus datos. Todo lo que creas
-pertenece a una organización y los datos permanecen aislados entre
-organizaciones.
-
-## Miembro y rol
-
-Un miembro es una persona que pertenece a tu organización. Cada miembro tiene un
-rol que controla lo que puede ver y modificar. Los roles van desde el control
-total hasta el acceso de solo lectura. Consulta
-[Miembros y roles](/organization/members-and-roles).
+Una Organización posee miembros, Asistentes, Help Desks, conexiones con
+proveedores, claves de API, Habilidades y datos operativos.
 
 ## Asistente
 
-Un Asistente es una experiencia de chat de IA única: un widget con el que hablan
-los visitantes. Una organización puede tener muchos asistentes, cada uno con su
-propio nombre, conocimientos, reglas y apariencia. Configuras un asistente en su
-editor, que tiene una vista previa en tiempo real a la derecha.
+Un Asistente es un agente conversacional configurado. Tiene identidad,
+conocimiento, flujos, herramientas, un modelo, apariencia y estado de
+publicación.
 
-## Visitante y conversación
+## Colección de conocimientos
 
-Un visitante es cualquier persona que hable con un asistente publicado. Una
-conversación es el intercambio completo entre un visitante y un asistente,
-incluidos todos los mensajes, las fuentes citadas y cualquier derivación. Las
-conversaciones aparecen en la bandeja de entrada.
+Una colección de conocimientos pertenece a un asistente. Contiene Fuentes,
+Conceptos y preguntas frecuentes seleccionadas que se utilizan para dar
+respuestas fundamentadas.
 
-## Conocimiento y fuente
+## Flujo
 
-El conocimiento es todo aquello a lo que un asistente puede recurrir para
-responder: sitios web, archivos y preguntas frecuentes. Cuando el asistente
-utiliza un elemento de conocimiento en una respuesta, puede citar la Fuente para
-que el visitante vea de dónde procede la información.
+Un flujo es una regla de enrutamiento ordenada. Contiene un desencadenante,
+condiciones disponibles y acciones de respuesta ordenadas.
 
-## Flujo y comportamiento predeterminado
+El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
+mensaje apto cuando ningún flujo anterior gana.
 
-Un flujo es una regla. Tiene una descripción del tipo de mensaje que gestiona,
-condiciones opcionales y un conjunto de acciones que se ejecutan. Los flujos
-están ordenados y el primero que coincida gana. El comportamiento predeterminado
-es la regla integrada que se encuentra al final y que gestiona cualquier mensaje
-con el que no coincida ningún flujo.
+## Publicación
 
-## Acción de flujo
+Una publicación es una instantánea inmutable del asistente. El widget utiliza la
+Publicación activa, no el borrador actual del administrador.
 
-Una acción de flujo es un paso que ejecuta el asistente cuando coincide un
-flujo. Algunos ejemplos son enviar un mensaje fijo, buscar en tu conocimiento,
-mostrar botones o escalar. Consulta [Acciones de flujo](/flows/actions).
+## Conversación
 
-## Mesa de ayuda
+Una Conversación almacena los mensajes del Visitante y del Asistente, las partes
+de las respuestas, las citas, los seguimientos del tiempo de ejecución y los
+metadatos de la sesión.
 
-Un servicio de asistencia es un destino de escalamiento que pertenece a tu
-organización. Agrupa uno o más canales, como el correo electrónico o el chat en
-vivo, que un visitante puede usar para ponerse en contacto con tu equipo. Los
-asistentes eligen qué servicios de asistencia ofrecen. Consulta
-[Help Desks](/help-desks).
+## Servicio de asistencia
 
-## Widget
-
-El Widget es el asistente tal y como lo ven tus visitantes: el botón de inicio y
-la ventana de chat en tu sitio. Tú controlas sus colores y su posición, y lo
-publicas con un fragmento de incrustación.
+Un Help Desk define uno o más canales de contacto. Un Asistente puede sugerir un
+Help Desk relevante durante la escalada.
 
 ## Mejora
 
-Una mejora es un elemento que se rastrea para mejorar las respuestas. Se puede
-crear automáticamente cuando una respuesta no es suficiente o un visitante
-escala, o manualmente cuando alguien marca una respuesta. Las mejoras avanzan
-por un panel sencillo desde «abierta» hasta «completada». Consulta
-[Mejoras](/operations/improvements).
+Una mejora es un elemento de revisión para un problema de calidad de respuesta.
+Puede enlazar al mensaje exacto de la conversación.
+
+## Objetivo y alerta
+
+Un objetivo ejecuta una comprobación programada de respuestas. Cuando un
+objetivo falla, se crea una alerta para un administrador.

@@ -1,137 +1,44 @@
 ---
-title: Microsoft Entra ID verbinden
-description: Registrieren Sie eine Anwendung in Microsoft Entra und verlangen Sie, dass sich Personen anmelden, bevor sie chatten.
+title: Microsoft Entra ID
+description: Konfigurieren Sie die aktuelle OpenID Connect-Verbindung für die Besucher-Anmeldung.
 ---
 
-Microsoft Entra ID (ehemals Azure Active Directory) ist der Identitätsanbieter,
-den viele Unternehmen bereits für Single Sign-On nutzen. Wenn Sie eine
-Verbindung herstellen, können sich Personen mit ihrem bestehenden Arbeitskonto
-bei Ihrem Assistenten anmelden, und der Assistent kann ihre Rolle und ihr Profil
-sehen. Die Verbindung nutzt OpenID Connect. Daher müssen Sie für die Einrichtung
-lediglich eine Anwendung in Entra registrieren und einige Werte in den
-Assistenten einfügen.
+Microsoft Entra ID ist der verfügbare Identitätsanbieter für Besucher.
 
-Sie benötigen Administratorzugriff auf Ihren Microsoft-Entra-Mandanten, um eine
-Anwendung zu registrieren, sowie Zugriff auf die **Authentication**-Seite des
-Assistenten in Ciele.
+## Erstellen Sie die Entra-Anwendung
 
-## Bevor Sie beginnen
+1. Registrieren Sie eine vertrauliche Webanwendung in Microsoft Entra ID.
+2. Fügen Sie die im Anbieterformular angezeigte Ciele-Callback-URL hinzu.
+3. Erstellen Sie ein Client-Geheimnis.
+4. Notieren Sie die Mandanten-ID und die Client-ID.
 
-1. Öffnen Sie den Assistenten und wählen Sie dann **Authentication**.
-2. Wählen Sie Microsoft Entra als Identitätsanbieter aus. Die Seite zeigt eine
-   **Weiterleitungs-URL** (manchmal auch als Callback- oder Antwort-URL
-   bezeichnet) für diesen Assistenten an. Lassen Sie diese Seite geöffnet. Im
-   nächsten Schritt fügen Sie diesen Wert in Entra ein und bringen dann die
-   Werte hierher zurück.
+Verwenden Sie die genaue Callback-URL. Ein anderes Schema, ein anderer Host, ein
+anderer Pfad oder ein anderer Port verhindert die Autorisierungsantwort.
 
-<Callout title="Keep the redirect URL exact">
-Copy the redirect URL exactly as shown, including `https://` and any path. Entra
-matches it character for character, and a mismatch is the most common reason sign
-in fails.
-</Callout>
+## Ciele konfigurieren
 
-## Schritt 1: Registrieren Sie eine Anwendung in Entra
+1. Öffnen Sie **Settings**.
+2. Öffnen Sie die Konfiguration für die Besucherauthentifizierung.
+3. Wählen Sie **Microsoft Entra ID**.
+4. Geben Sie die Mandanten-ID ein.
+5. Geben Sie die Client-ID ein.
+6. Geben Sie das Client-Geheimnis ein.
+7. Speichern Sie die Verbindung.
 
-1. Melden Sie sich als Administrator beim
-   [Microsoft Entra Admin Center](https://entra.microsoft.com) an.
-2. Gehen Sie zu **Identity**, dann zu **Applications**, dann zu **App
-   registrations** und wählen Sie **New registration**.
-3. Geben Sie der Anwendung einen **Namen**, den Ihr Team erkennt, z. B.
-   `Ciele Assistant`.
-4. Wählen Sie unter **Supported account types** die Option aus, die angibt, wer
-   sich anmelden können soll. Wählen Sie für eine einzelne Organisation nur
-   Konten in diesem Organisationsverzeichnis aus.
-5. Wählen Sie unter **Redirect URI** die Plattform **Web** aus und fügen Sie die
-   Umleitungs-URL ein, die Sie von der Authentifizierungsseite des Assistenten
-   kopiert haben.
-6. Wählen Sie **Register**.
+Ciele verwendet den Autorisierungscode-Flow mit Proof Key for Code Exchange
+(PKCE). Es wird nur der Bereich `openid` angefordert.
 
-## Schritt 2: Erfassen Sie die Client- und Mandanten-IDs
+## Erforderliche Servereinstellung
 
-Nach der Registrierung landen Sie auf der **Overview**-Seite der Anwendung.
+Legen Sie `APP_ENCRYPTION_KEY` in der Ciele-Bereitstellung fest. Ciele verwendet
+diesen Schlüssel, um das Authentication-Gate-Cookie und gespeicherte Geheimnisse
+zu schützen.
 
-1. Kopieren Sie die **Application (client) ID**.
-2. Kopieren Sie die **Directory (tenant) ID**.
+## Testen Sie die Verbindung
 
-Behalten Sie beide Werte, Sie werden sie in Kürze in den Assistenten einfügen.
-
-## Schritt 3: Erstellen Sie ein Client-Geheimnis
-
-1. Öffnen Sie in der Anwendung **Certificates & secrets**.
-2. Wählen Sie **New client secret** aus, fügen Sie eine kurze Beschreibung hinzu
-   und wählen Sie ein Ablaufdatum, das der Richtlinie Ihrer Organisation
-   entspricht.
-3. Wählen Sie **Add** aus und kopieren Sie dann sofort das Geheimnis **Value**.
-   Es wird nur einmal angezeigt. Kopieren Sie daher jetzt dieses und nicht die
-   geheime ID.
-
-<Callout type="warn" title="Secrets expire">
-A client secret has an expiry date. Set a reminder to create a new secret and
-update it in the assistant before the old one expires, otherwise sign in will stop
-working when it lapses. Clearing the connection later is covered under
-[Alerts](/operations/alerts), which flags a connection that has stopped working.
-</Callout>
-
-## Schritt 4: Wählen Sie aus, was der Assistent lesen kann
-
-Der Assistent benötigt die grundlegenden Anmeldeberechtigungen, um eine Person
-zu identifizieren.
-
-1. Öffnen Sie **API permissions**.
-2. Vergewissern Sie sich, dass die delegierten Berechtigungen **openid**,
-   **profile** und **email** enthalten. Damit kann der Assistent erkennen, wer
-   jemand ist. Sie sind in der Regel standardmäßig vorhanden.
-3. Wenn Sie möchten, dass der Assistent auf die Gruppen oder Rollen einer Person
-   reagiert, öffnen Sie **Token configuration** und fügen Sie einen
-   **Gruppenanspruch** hinzu (oder die optionalen Ansprüche, die Ihre
-   Organisation für Rollen verwendet). Dadurch funktionieren gruppen- und
-   rollenbasierte [Flow-Bedingungen](/flows/building-a-flow) für angemeldete
-   Personen.
-4. Wenn Ihre Organisation dies verlangt, erteilen Sie die Admin-Zustimmung für
-   die Berechtigungen.
-
-## Schritt 5: Schließen Sie die Verbindung in Ciele ab
-
-Kehren Sie zur **Authentication**-Seite des Assistenten zurück und geben Sie die
-Werte aus Entra ein:
-
-1. **Client ID**: die Anwendungs-ID (Client-ID) aus Schritt 2.
-2. **Tenant ID**: die Directory-(Mandanten-)ID aus Schritt 2.
-3. **Client secret**: der geheime Wert aus Schritt 3.
-4. **Scopes**: Behalten Sie die standardmäßigen Anmeldebereiche bei, es sei
-   denn, Ihre Konfiguration erfordert weitere.
-5. Speichern Sie die Verbindung.
-
-## Schritt 6: Testanmeldung
-
-1. Öffnen Sie die Live-Vorschau des Assistenten oder eine Seite, auf der er
-   veröffentlicht ist.
-2. Das Widget zeigt eine **Connect Your Account**-Karte an. Wählen Sie diese
-   aus.
-3. Melden Sie sich mit einem Microsoft-Konto aus Ihrem Mandanten an.
-4. Vergewissern Sie sich, dass die Konversation fortgesetzt wird und, falls Sie
-   Gruppen konfiguriert haben, dass ein rollenbasierter Ablauf wie erwartet
-   funktioniert.
-
-## Fehlerbehebung
-
-- **Redirect URI mismatch.** Der Fehler nennt eine Antwort-URL, die nicht
-  übereinstimmt. Kopieren Sie die Weiterleitungs-URL erneut von der
-  Authentifizierungsseite und stellen Sie sicher, dass der Wert in Entra unter
-  der **Web**-Plattform identisch ist.
-- **Sign in works but roles do not.** Fügen Sie den **Gruppenanspruch** in
-  **Token configuration** hinzu (Schritt 4). Ohne sie sieht der Assistent die
-  Person, aber nicht ihre Gruppen.
-- **Sign in stopped working after a while.** Das Client-Geheimnis ist
-  wahrscheinlich abgelaufen. Erstellen Sie ein neues Secret in **Certificates &
-  secrets** und aktualisieren Sie es auf der Authentifizierungsseite.
-- **Admin consent required.** Ein Administrator muss in **API permissions**
-  einmalig die Zustimmung zu den Berechtigungen der Anwendung erteilen.
-
-## Was als Nächstes kommt
-
-- Personalisieren Sie Antworten mit den individuellen Daten einer Person
-  mithilfe von **User data** auf derselben Authentifizierungsseite.
-- Verwenden Sie die Rolle der Person in Regeln auf der Seite
-  [Flows](/flows/building-a-flow), damit der Assistent Mitgliedern und anonymen
-  Besuchern unterschiedlich antwortet.
+1. Fordern Sie die Authentifizierung für einen Entwurfs-Assistenten an.
+2. Öffnen Sie die Vorschau in einer Browser-Sitzung, in der Sie abgemeldet sind.
+3. Schließen Sie die Microsoft-Anmeldung ab.
+4. Vergewissern Sie sich, dass der Chat verfügbar wird.
+5. Vergewissern Sie sich, dass eine andere Organisation das Gate-Cookie nicht
+   wiederverwenden kann.

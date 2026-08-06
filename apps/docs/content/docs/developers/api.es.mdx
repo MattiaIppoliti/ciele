@@ -1,0 +1,78 @@
+---
+title: API v1
+description: Llama a la API de administración actual de Ciele con una clave de API de organización.
+---
+
+La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
+comienzan con `/api/v1`.
+
+## Descubre la implementación
+
+Utiliza estos puntos de conexión públicos antes de generar un cliente:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` enumera la versión de la API y los dominios disponibles. `openapi.json`
+devuelve el contrato legible por máquina para la implementación.
+
+## Autenticar una solicitud
+
+Envía la clave de la API como token de portador:
+
+```bash
+curl https://platform.ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Para el autoalojamiento, sustituye `https://platform.ciele.app` por el origen
+público de Ciele.
+
+## Errores de respuesta
+
+Los errores utilizan una envoltura JSON:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Los códigos de estado habituales son:
+
+| Estado | Significado |
+| --- | --- |
+| `400` | Los datos de la solicitud no son válidos. |
+| `401` | La clave falta, no es válida o está revocada. |
+| `403` | El rol de la clave no permite la operación. |
+| `404` | El recurso no existe en la Organización. |
+| `409` | La solicitud entra en conflicto con el estado actual. |
+
+## Paginación
+
+Las operaciones de lista aceptan los parámetros `limit` y `cursor` cuando el
+punto de conexión admite la paginación. Utiliza el cursor devuelto para la
+siguiente solicitud.
+
+## Reintentos seguros
+
+Las rutas de mutación pueden aceptar un encabezado `Idempotency-Key`. Reutiliza
+el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
+
+## Dominios actuales
+
+- Asistentes: enumerar, leer, crear, actualizar, duplicar y eliminar.
+- Flujos: enumerar, leer, crear, actualizar, reordenar y eliminar.
+- Conocimiento: gestiona Colecciones, Fuentes y Preguntas frecuentes.
+- Publicación: leer el estado, publicar, anular la publicación y restaurar una
+  publicación.
+- Bandeja de entrada: enumera, lee y exporta conversaciones.
+- Mejoras: enumerar, leer y actualizar elementos.
+
+Utiliza el documento OpenAPI para conocer los campos de solicitud y los esquemas
+de respuesta exactos.

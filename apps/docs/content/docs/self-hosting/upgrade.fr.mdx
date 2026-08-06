@@ -1,93 +1,40 @@
 ---
 title: Mise à niveau
-description: "Adoptez une nouvelle version de Ciele : comment les versions sont publiées, ce qu'une mise à niveau fait à votre base de données, et comment effectuer une sauvegarde et une restauration."
+description: Appliquez une nouvelle version du dépôt ainsi que ses migrations en attente.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Avant la mise à niveau
 
-Ciele est publié sous forme de versions étiquetées. Chaque version correspond à
-une validation unique sur le dépôt public, accompagnée d'une balise
-`vMAJOR.MINOR.PATCH`. Ainsi, la question « Quelle version est-ce que j'utilise ?
-» a toujours une réponse exacte :
+1. Lisez les modifications de la version.
+2. Enregistrez la validation ou l'étiquette actuelle.
+3. Sauvegardez la base de données et les fichiers téléchargés.
+4. Testez le processus de restauration.
+5. Planifiez une fenêtre de maintenance acceptable.
 
-```sh
-git describe --tags
-```
+## Appliquer la version
 
-Épinglez votre déploiement à une balise plutôt que de suivre la branche par
-défaut, et vous décidez quand passer à la version suivante.
-
-## Mettre à niveau un déploiement Docker
-
-```sh
-git fetch --tags
-git checkout v0.2.0        # the release you want
+```bash
+git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-Cela reconstruit l'image de l'application et redémarre la pile. Le service
-`migrate` s'exécute en premier, applique uniquement les migrations que vous
-n'avez pas déjà, puis se ferme ; l'application démarre une fois cette opération
-terminée. Vous n'exécutez pas de migrations manuellement.
+Le service `migrate` applique uniquement les migrations en attente. Examinez son
+résultat avant d'accepter l'application comme étant en bon état.
 
-Si vous avez activé le [profil workers](/self-hosting/workers), `--build`
-reconstruit également ces images, sans étape distincte.
-
-## Mettre à niveau un déploiement source
-
-Exécuter les applications directement plutôt que dans Compose :
-
-```sh
-git fetch --tags && git checkout v0.2.0
-pnpm install
-pnpm build
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
 ```
 
-Appliquez les migrations en attente à votre base de données avant de lancer la
-nouvelle compilation. Consultez [Database](/self-hosting/database) pour savoir
-comment fonctionne le runner ordonné par nom de fichier et comment il garde la
-trace de ce qu'il a déjà appliqué.
+## Vérifiez le résultat
 
-## Effectuez d'abord une sauvegarde
+1. Connectez-vous à la console d'administration.
+2. Ouvrez un Assistant.
+3. Aperçu de test.
+4. Ouvrez un widget publié.
+5. Appelez `GET /api/v1/meta` lorsque des clients programmatiques sont utilisés.
 
-Une mise à niveau qui applique des migrations modifie votre schéma. Effectuez
-une sauvegarde avant de commencer, à chaque fois :
-
-```sh
-docker compose -f deploy/docker-compose.yml exec -T postgres \
-  pg_dump -U postgres postgres | gzip > ciele-$(date +%F).sql.gz
-```
-
-Deux volumes contiennent tout ce qui compte : `postgres-data` (la base de
-données) et `storage-data` (les fichiers importés). Sauvegardez les deux : un
-simple dump de la base de données restaurera vos assistants, vos conversations
-et vos enregistrements de connaissances, mais pas les fichiers sous-jacents.
-
-<Callout type="warn" title="Migrations move forward only">
-There is no down-migration path. Rolling back to an earlier version means
-restoring the backup you took before the upgrade, not re-running the runner in
-reverse. This is why the dump above is not optional.
-</Callout>
-
-## Restauration
-
-```sh
-docker compose -f deploy/docker-compose.yml down
-git checkout v0.1.0
-gunzip -c ciele-2026-07-25.sql.gz | docker compose -f deploy/docker-compose.yml \
-  exec -T postgres psql -U postgres postgres
-docker compose -f deploy/docker-compose.yml up -d --build
-```
-
-Restaurez la sauvegarde correspondant à la version vers laquelle vous souhaitez
-revenir. Une version plus récente de la sauvegarde contient un schéma plus
-récent, que l'ancien code ne comprendra pas.
-
-## Ce qu'il faut lire avant une mise à jour mineure
-
-Les notes de version sont publiées sur chaque balise et signalent tout ce qui
-nécessite une décision de votre part : une nouvelle variable d'environnement
-requise, une valeur par défaut modifiée, une migration qui réécrit une table
-volumineuse. Parcourez-les avant de mettre à niveau un déploiement dont
-dépendent des utilisateurs ; les versions correctives sont courantes, les
-versions mineures le sont parfois moins.
+Ne restaurez pas une ancienne image d'application sur une base de données migrée
+incompatible. Utilisez les instructions de version pour un chemin de
+restauration pris en charge.

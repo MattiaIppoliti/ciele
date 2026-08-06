@@ -1,70 +1,25 @@
 ---
 title: Ediciones
-description: "Ciele está disponible en dos ediciones: el núcleo de código abierto que puedes autoalojar y Ciele Cloud, el servicio totalmente gestionado. Esta página explica lo que incluye cada una."
+description: Selecciona Ciele Cloud o utiliza la edición de código abierto.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele tiene una edición gestionada en la nube y una edición de código abierto
+autoalojada. Ambas ediciones utilizan el mismo núcleo de producto de código
+abierto.
 
-Ciele está disponible en dos ediciones que comparten el mismo producto y la
-misma documentación. Todo lo que hay en esta sección **Documentation**
-—asistentes, conocimiento, flujos, servicios de asistencia, publicación y
-operaciones— funciona de la misma manera en ambas. Las ediciones difieren
-únicamente en **quién ejecuta el software** y en un pequeño conjunto de
-**funciones exclusivas de la versión administrada**.
+| Área | Ciele Cloud | Código abierto |
+| --- | --- | --- |
+| Funcionamiento del producto | Ciele opera el servicio. | Tu equipo opera el servicio. |
+| Suscripción | Un plan de Ciele controla el uso incluido. | No es necesario suscribirse a Ciele. |
+| Infraestructura | Ciele selecciona y mantiene la implementación. | Tu equipo proporciona y mantiene la implementación. |
+| Credenciales de modelo | Utiliza modelos de plan o conexiones de proveedores compatibles. | Configura el proveedor compatible o los puntos de conexión locales compatibles. |
+| Actualizaciones | El servicio gestionado recibe las versiones implementadas. | Tu equipo selecciona y aplica las versiones. |
+| Licencia | Se aplican los términos del servicio. | El núcleo utiliza únicamente AGPL-3.0. |
 
-## El núcleo de código abierto
+La documentación pública de código abierto describe únicamente los archivos del
+repositorio de código abierto. No describe los detalles de la implementación
+empresarial.
 
-El núcleo de Ciele es de código abierto bajo la licencia **AGPL-3.0**. Es el
-producto completo con el que interactúan un visitante y un administrador: la
-consola de administración, el widget de chat, el enrutador de flujos, la
-canalización de conocimiento y recuperación, y las superficies de operaciones
-(bandeja de entrada, mejoras, información, alertas). Puedes ejecutarlo en tu
-propia infraestructura sin coste de licencia.
-
-Consulta [Código abierto](/self-hosting) para saber cómo instalar, configurar y
-operar una implementación autoalojada, y para conocer exactamente dónde se
-encuentra el límite del núcleo abierto.
-
-## Ciele Cloud
-
-Ciele Cloud es el mismo núcleo, alojado y operado para ti, más las funciones
-comerciales que solo tienen sentido para un servicio multiusuario gestionado. No
-tienes que instalar ni aplicar parches; simplemente inicias sesión y empiezas a
-crear.
-
-La edición administrada añade:
-
-- **Plans and billing** — planes de suscripción, facturación y pago, gestionados
-  en la consola. Consulta [Planes y facturación](/cloud/plans-and-billing).
-- **Usage limits** — cuotas por plan que miden y limitan el uso mensual.
-  Consulta [Uso y límites](/cloud/usage-and-limits).
-- **Managed single sign-on** — incorporación de la organización mediante SSO
-  realizada por ti. Consulta
-  [Equipo e inicio de sesión único](/cloud/team-and-sso).
-- **Operations and support**: alojamiento, actualizaciones, copias de seguridad
-  y un canal de asistencia con un compromiso de servicio. Consulta
-  [Soporte](/cloud/support).
-
-Estas funciones se encuentran fuera del núcleo de código abierto y no se crean
-en una implementación autoalojada.
-
-## ¿Qué edición estoy usando?
-
-Si te registraste en el servicio alojado y nunca instalaste nada, estás en
-**Ciele Cloud**. Si tu organización ejecuta Ciele en sus propios servidores,
-estás en la edición **de código abierto**. La facturación, los límites de uso y
-el SSO gestionado solo aparecen en Ciele Cloud.
-
-<Callout title="Same docs, both editions">
-Feature pages that describe a managed-only capability say so at the top. Where a
-page has no such note, the feature is part of the open-source core and behaves the
-same wherever Ciele runs.
-</Callout>
-
-## ¿Qué sigue?
-
-<Cards>
-  <Card title="Open Source" href="/self-hosting" description="Install, configure, and operate a self-hosted deployment, and see the open-core boundary." />
-  <Card title="Ciele Cloud" href="/cloud" description="Plans, usage limits, managed single sign-on, and support for the hosted service." />
-</Cards>
+Utiliza [Ciele Cloud](/cloud) para obtener información sobre los planes
+alojados. Utiliza [Open Source](/self-hosting) para obtener instrucciones de
+instalación y funcionamiento.

@@ -1,53 +1,39 @@
 ---
 title: Mejoras
-description: Realiza un seguimiento de las respuestas deficientes y resuélvelas en un panel, desde que están abiertas hasta que están finalizadas.
+description: Realiza un seguimiento y completa el trabajo para corregir las respuestas deficientes del Asistente.
 ---
 
-El tablero de Mejoras es donde se gestiona la calidad de las respuestas. Cada
-elemento representa algo que vale la pena corregir en la respuesta del
-asistente, y el tablero mueve los elementos de abierto a hecho. Abre
-**Improvements** desde la barra lateral.
+Una mejora registra un problema de calidad de respuesta. Puede incluir mensajes
+vinculados, Fuentes, una descripción y una solución sugerida.
 
-## De dónde provienen las mejoras
+## Fuentes de mejoras
 
-Las mejoras provienen de tres lugares:
+- Una acción de flujo de mejora crea un elemento.
+- Un servicio de asistencia puede crear un elemento después de la escalada.
+- Un administrador puede marcar una respuesta desde la bandeja de entrada.
+- La búsqueda de conocimiento puede crear un elemento para una consulta sin
+  resolver cuando está configurada.
 
-- Un **flujo** con una acción de mejora marca una respuesta para su revisión.
-- Un **help desk** configurado para generar mejoras automáticamente crea una a
-  partir de la última respuesta antes de una escalada. Consulta
-  [Gestión de tickets y mejoras](/help-desks/ticketing-and-improvements).
-- Una persona **marca una respuesta** manualmente mientras lee la
-  [Bandeja de entrada](/operations/inbox).
+## Gestionar un elemento
 
-Como provienen de conversaciones reales, las mejoras apuntan a problemas con los
-que realmente se topan tus visitantes.
+Abre un elemento para revisar sus mensajes vinculados y la solución sugerida
+disponible. Puedes cambiar su estado, prioridad, etiquetas, responsable y fecha
+de vencimiento.
 
-## El panel
+La API, la CLI y el servidor MCP pueden enumerar, leer y actualizar las mejoras
+existentes. La creación de mejoras sigue siendo una operación en tiempo de
+ejecución del producto.
 
-Los elementos se organizan en carriles que representan su estado, pasando de
-trabajo abierto a en curso y revisión, hasta terminado, con un archivo para los
-elementos que quieres conservar pero dejar de lado. Cada carril muestra cuántos
-elementos contiene y puedes exportar un informe para un carril.
+## Corrige la respuesta
 
-Cada elemento contiene los detalles que necesitas para actuar: un título, la
-frecuencia con la que se ha producido el problema, una prioridad, etiquetas y
-una persona asignada de entre los miembros de tu organización. Utiliza la
-búsqueda y los filtros de la parte superior para centrarte en lo que importa
-ahora.
+1. Lee la conversación vinculada.
+2. Identifica la fuente, la pregunta frecuente, el flujo o la instrucción
+   incorrectos.
+3. Corrige el borrador de la configuración.
+4. Haz la pregunta original en Vista previa.
+5. Confirma la respuesta y las Fuentes.
+6. Publica el Asistente.
+7. Marca la mejora como completada.
 
-## Trabaja en un elemento
-
-Abre un elemento para ver su descripción completa y los mensajes que lo
-activaron, incluidas las respuestas implicadas y sus fuentes, con un enlace a la
-conversación para obtener contexto. Establece su prioridad, etiquetas,
-responsable y fecha límite, y luego trabaja en la solución. Cuando se haya
-corregido el conocimiento o el flujo subyacente, marca el elemento como
-completado.
-
-## El ciclo de mejora
-
-Las mejoras cierran el ciclo entre lo que experimentan los visitantes y lo que
-tú cambias. Una respuesta deficiente se convierte en un elemento, el elemento
-guía una corrección de tu conocimiento o de tus flujos y el siguiente visitante
-recibe una respuesta mejor. Trabajar en el panel con regularidad es el hábito
-más eficaz para mejorar la calidad de las respuestas.
+Revisa las correcciones sugeridas generadas antes de usarlas. La sugerencia
+guardada no es un cambio de publicación.

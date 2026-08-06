@@ -1,0 +1,54 @@
+---
+title: Herramientas y habilidades
+description: Controla las herramientas de tiempo de ejecución y adjunta instrucciones reutilizables a un Asistente.
+---
+
+Abre un Asistente y selecciona **Tools & Skills**. Esta sección controla las
+capacidades de tiempo de ejecución y las instrucciones reutilizables.
+
+## Herramientas integradas
+
+| Herramienta | Predeterminado | Comportamiento actual |
+| --- | :---: | --- |
+| Buscar en el conocimiento | Activado | Busca en el conocimiento conectado y devuelve respuestas citadas. |
+| Memoria de sesión | Activada | Utiliza información de la sesión de conversación actual. |
+| Obtener URL | Desactivado | Lee una URL cuando el tiempo de ejecución selecciona la herramienta. |
+
+La búsqueda en Knowledge siempre está disponible. Puedes activar o desactivar
+las demás herramientas integradas.
+
+## Configura una integración de API
+
+Un Asistente puede usar una integración de API registrada. La integración
+contiene una URL base, una credencial protegida y puntos de conexión descritos.
+
+Para cada punto de conexión, define el método, la ruta, el propósito, los
+parámetros y la forma de la respuesta. El tiempo de ejecución valida cada ruta
+solicitada con este catálogo.
+
+El agente puede inspeccionar los detalles del punto de conexión antes de enviar
+una solicitud. Las respuestas grandes siguen estando disponibles mediante
+lecturas en ventanas.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Adjuntar una habilidad de organización
+
+Una Skill es una plantilla de instrucciones reutilizable. Una Organización puede
+asignar la misma Habilidad a varios Asistentes.
+
+1. Abre **Tools & Skills**.
+2. Busca la habilidad de organización necesaria.
+3. Asigna la Skill al Asistente.
+4. Prueba el resultado en Vista previa.
+5. Publica el Asistente cuando el resultado sea correcto.
+
+Los cambios en las habilidades están disponibles en Vista previa de inmediato.
+El widget publicado utiliza la última instantánea de publicación.
+
+## Prueba la configuración
+
+Haz una pregunta que requiera cada herramienta habilitada. Revisa el panel
+Pensamiento y las Fuentes antes de publicar.

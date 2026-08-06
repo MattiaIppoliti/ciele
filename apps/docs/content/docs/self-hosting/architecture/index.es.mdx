@@ -1,203 +1,49 @@
 ---
 title: Arquitectura
-description: "Un recorrido visual por cómo se estructura una implementación de Ciele: las aplicaciones, la base de datos, los procesos en segundo plano y las conexiones entre ellos."
+description: Comprender los componentes de código abierto actuales y sus límites de tiempo de ejecución.
 ---
 
-import { Cards, Card } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
+Ciele es un monorepositorio de TypeScript con una aplicación de producto
+Next.js, paquetes compartidos, Postgres y trabajadores opcionales.
 
-Esta sección es para quienes ejecutan Ciele en su propia infraestructura o
-modifican su código. Describe la implementación tal y como es en realidad: qué
-procesos existen, con qué se comunica cada uno y dónde están los límites. Las
-páginas de características de la [Documentación](/) principal describen lo que
-hace el producto; estas páginas describen cómo está construido.
+## Límites principales
 
-<Callout title="Read the code when the two disagree">
-These diagrams are maintained alongside the source, but the source is the
-authority. Every page names the files it describes so you can check.
-</Callout>
-
-## La aplicación de un vistazo
-
-Empieza aquí. Esta es la aplicación completa en una imagen: todos los
-subsistemas principales y la dirección en la que viajan las solicitudes a través
-de ellos. Cada capa que aparece a continuación es el tema de una de las páginas
-de esta sección.
-
-<Mermaid
-  title="La aplicación, capa por capa"
-  chart={`
+```mermaid
 flowchart TB
-  S["<b>Surfaces</b><br/>chat widget · admin console · embed and iframe"]
-  E["<b>Request handling</b><br/>session gate → server components (reads)<br/>server actions (writes) · route handlers (chat · cron)"]
-  G["<b>Authorization</b><br/>role → capability · one guard for every write"]
-  R["<b>Chat runtime</b><br/>flow router · action registry · agentic search"]
-  K["<b>Knowledge</b><br/>ingestion jobs · crawler matrix · chunking and embeddings"]
-  O["<b>Operations</b><br/>publishing · insights and exports · improvements and alerts"]
-  D["<b>Data layer</b><br/>one interface · two implementations"]
-  P[("<b>Postgres + pgvector</b><br/>row-level security")]
-  X["<b>External</b><br/>AI providers · sites you crawl · email · ticketing"]
+  UI["Administrator console and widget"]
+  API["Server actions and API v1"]
+  OPS["Shared operations"]
+  RUNTIME["Flow and agent runtime"]
+  DB["Database access"]
+  PG[("Postgres and storage")]
+  WORKERS["Optional workers"]
+  UI --> API
+  API --> OPS
+  API --> RUNTIME
+  OPS --> DB
+  RUNTIME --> DB
+  DB --> PG
+  RUNTIME --> WORKERS
+```
 
-  S --> E --> G --> R
-  E --> D
-  R --> K
-  R --> O
-  R --> D
-  K --> D
-  O --> D
-  D --> P
-  R --> X
-  K --> X
-  O --> X
-`}
-/>
+El enrutador Flow sigue siendo autoritativo. Un modelo puede clasificar la
+intención, generar acciones seleccionadas y llamar a herramientas registradas.
 
-Léelo de arriba abajo. **Surfaces** son lo único que toca un navegador.
-**Request handling** separa las lecturas de las escrituras: las páginas leen,
-las acciones escriben y los controladores de rutas llevan el chat y el trabajo
-programado. **Authorization** es un guardián por el que pasa cada escritura con
-ámbito de organización. Las bandas **chat runtime**, **knowledge** y
-**operations** son donde reside el comportamiento. Todo llega a Postgres a
-través de una única interfaz de **capa de datos**, nunca directamente.
+El modelo no puede reemplazar el orden de Flow, las condiciones objetivas, la
+configuración de acciones, la autorización de la organización ni las
+comprobaciones de salida de red.
 
-Lo que el diagrama omite es tan informativo como lo que muestra. Ninguna
-superficie llega por sí sola al tiempo de ejecución o a la base de datos, nada
-escribe sin pasar por el guardián y solo las tres bandas del medio se comunican
-con el mundo exterior.
+## Lee la arquitectura
 
-## Toda la implementación, en una imagen
-
-Ese es el software. Esto es lo que realmente ejecutas: una aplicación Next.js,
-una base de datos Postgres y unos cuantos trabajos programados. Todo lo demás es
-opcional.
-
-<Mermaid
-  title="Una implementación autoalojada y sus dependencias externas"
-  chart={`
-flowchart TB
-  V["Visitor<br/>widget on your site"]
-  M["Member<br/>admin console"]
-
-  subgraph app["Your deployment"]
-    direction TB
-    W["<b>apps/web</b><br/>console · widget · API"]
-    C["Scheduled jobs<br/>/api/cron/*"]
-    K["Workers<br/>services/ · optional"]
-  end
-
-  PG[("Postgres + pgvector<br/>Auth · RLS · Storage")]
-  AI["AI providers"]
-  SITE["Sites you crawl"]
-  MAIL["Email"]
-
-  V -->|"embed script"| W
-  M -->|"signed in"| W
-  W --> PG
-  C --> PG
-  K --> PG
-  W --> AI
-  W --> SITE
-  W --> MAIL
-`}
-/>
-
-La aplicación es deliberadamente aburrida de operar: es un servidor Next.js
-estándar, no mantiene ningún estado propio y todos los datos duraderos residen
-en Postgres. Escálala ejecutando más copias.
-
-## Los procesos
-
-| Proceso | Qué es | Requerido |
-|---|---|---|
-| **Web app** | La consola de administración, el widget de chat público y la API HTTP, en una sola aplicación Next.js | Sí |
-| **Postgres** | Cada fila de datos duraderos, con seguridad a nivel de fila y pgvector para su recuperación | Sí |
-| **Scheduled jobs** | Puntos de conexión HTTP en `/api/cron/*` invocados por un temporizador: finalización de rastreo, barridos de rastreo repetido, exportaciones, acumulación de uso, comprobaciones de objetivos | Recomendado |
-| **Docs site** | Esta documentación, una aplicación Next.js independiente | No |
-| **Workers** | Contenedores bajo `services/` para un rastreo más intenso y trabajo con grafos | No |
-
-La [pila de Docker Compose](/self-hosting/installation) conecta los tres
-primeros de forma predeterminada y deja a los trabajadores detrás de un perfil
-de inclusión voluntaria.
-
-## Dos límites que impone el conjunto de herramientas
-
-La mayor parte de la base de código es código de aplicación ordinario que puedes
-leer de principio a fin. Dos módulos son diferentes: su superficie pública está
-restringida, por lo que puedes confiar en ella y cambiar todo lo que hay detrás.
-
-<Mermaid
-  title="Los dos límites de módulo impuestos"
-  chart={`
-flowchart TB
-  UI["Console pages · API routes<br/>server actions"]
-
-  subgraph rt["Chat runtime"]
-    direction TB
-    RTB["Two entry points:<br/>server barrel · client barrel"]
-    RTI["Internals: router, actions,<br/>retrieval, crawlers, embeddings"]
-    RTB --> RTI
-  end
-
-  subgraph db["Data layer"]
-    direction TB
-    DBI["One interface<br/>every query in the app"]
-    IMPL1["Postgres"]
-    IMPL2["In-memory"]
-    DBI --> IMPL1
-    DBI --> IMPL2
-  end
-
-  UI --> RTB
-  UI --> DBI
-  RTI --> DBI
-  UI -.->|"lint error"| RTI
-`}
-/>
-
-- **The data layer** es una interfaz con dos implementaciones. La real se
-  comunica con Postgres con seguridad a nivel de fila; la que está en memoria
-  permite que toda la aplicación arranque sin base de datos, que es como se
-  ejecuta una nueva copia de la fuente sin ninguna configuración. Una suite de
-  pruebas compartida se ejecuta en ambos, por lo que no pueden desviarse.
-- **The chat runtime** expone exactamente dos puntos de entrada —un barril de
-  servidor y un barril seguro para el cliente— y una regla de lint rechaza las
-  importaciones que los superen. Una prueba bloquea la superficie exportada, por
-  lo que ampliarla es un acto deliberado y no un accidente.
-
-Ambos límites existen por la misma razón: son las partes con más probabilidades
-de ser reemplazadas y aquellas en las que una fuga se extendería más.
-
-## Qué hacer a continuación
-
-<Cards>
-  <Card
-    title="Mapa del repositorio"
-    href="/self-hosting/architecture/repository-map"
-    description="La estructura de directorios, cómo dependen los espacios de trabajo entre sí y qué módulos tienen más peso."
-  />
-  <Card
-    title="Flujos de solicitudes"
-    href="/self-hosting/architecture/request-flows"
-    description="Qué sucede con el mensaje de chat de un visitante y con la edición de un administrador, paso a paso."
-  />
-  <Card
-    title="El entorno de ejecución del chat"
-    href="/self-hosting/architecture/chat-runtime"
-    description="El enrutamiento de flujos, el registro de acciones y el bucle de recuperación que hay detrás de una respuesta."
-  />
-  <Card
-    title="El modelo agentico"
-    href="/self-hosting/architecture/agentic-model"
-    description="Cómo se elige un modelo, qué se le permite decidir, los presupuestos que lo limitan y el bucle que lo califica."
-  />
-  <Card
-    title="Canal de conocimiento"
-    href="/self-hosting/architecture/knowledge-pipeline"
-    description="Cómo una fuente se convierte en texto en el que se puede buscar y cómo una respuesta obtiene sus citas."
-  />
-  <Card
-    title="Modelo de datos"
-    href="/self-hosting/architecture/data-model"
-    description="Las tablas, cómo se aíslan los inquilinos y cómo se aplican las migraciones."
-  />
-</Cards>
+- [El mapa del repositorio](/self-hosting/architecture/repository-map) localiza
+  la propiedad del código.
+- [Request flows](/self-hosting/architecture/request-flows) rastrea las
+  solicitudes de la consola, la API y los widgets.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) explica los
+  activadores, el enrutamiento y las acciones.
+- [Modelo agentico](/self-hosting/architecture/agentic-model) explica la
+  ejecución del modelo y de la herramienta.
+- [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explica la
+  ingesta y la recuperación.
+- [Modelo de datos](/self-hosting/architecture/data-model) explica las
+  relaciones entre el inquilino y la conversación.

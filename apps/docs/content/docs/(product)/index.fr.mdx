@@ -1,85 +1,37 @@
 ---
-title: Bienvenue sur Ciele
-description: Créez, testez et publiez des assistants IA qui répondent à partir de votre propre contenu, orientent les conversations selon des règles et les transmettent à votre équipe si nécessaire.
+title: Documentation Ciele
+description: Créez, testez, publiez et exploitez des assistants IA ancrés.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
-import { BookOpen, Boxes, Cloud } from 'lucide-react';
+import { BookOpen, Boxes, Cloud, Terminal } from 'lucide-react';
 
-Ciele est une plateforme permettant de créer des assistants IA qui s'intègrent à
-votre site Web et à vos applications. Chaque assistant répond aux questions en
-utilisant votre propre contenu, suit les règles que vous définissez et transmet
-la conversation à votre équipe lorsqu'un humain est la bonne étape suivante.
+Ciele aide une organisation à créer des assistants IA pour ses sites Web et ses
+applications. Chaque Assistant utilise des Connaissances, des Flux, des outils
+et des Help Desks configurés.
 
-Vous configurez tout depuis une console d'administration unique : ce que
-l'assistant sait, comment il répond, quand il transmet à votre équipe et où il
-apparaît. Un aperçu en direct affiche l'assistant exactement tel que vos
-visiteurs le verront pendant que vous apportez des modifications.
+La console d'administration contient un aperçu. Utilisez l'Aperçu pour tester
+les modifications avant de créer une publication.
 
-## Trois sections, un seul produit
-
-Le sélecteur en haut de la barre latérale permet de passer de l'une à l'autre.
-Tout ce qui figure dans **Documentation** s'applique quelle que soit l'édition
-que vous utilisez.
+## Sections de la documentation
 
 <Cards>
-  <Card
-    icon={<BookOpen />}
-    title="Documentation"
-    href="/getting-started"
-    description="Ce que fait le produit et comment utiliser chacune de ses composantes : assistants, connaissances, flux, centres d'assistance, publication et opérations quotidiennes."
-  />
-  <Card
-    icon={<Cloud />}
-    title="Ciele Cloud"
-    href="/cloud"
-    description="Le même cœur, entièrement géré. Forfaits et facturation, limites d'utilisation, authentification unique gérée et comment contacter l'assistance."
-  />
-  <Card
-    icon={<Boxes />}
-    title="Open source"
-    href="/self-hosting"
-    description="Exécutez le noyau AGPL-3.0 sur votre propre infrastructure : installation, configuration, base de données, workers, mises à niveau et architecture."
-  />
+  <Card icon={<BookOpen />} title="Product" href="/getting-started" description="Configure and operate an Assistant." />
+  <Card icon={<Terminal />} title="Developers" href="/developers" description="Use the API, CLI, and MCP server." />
+  <Card icon={<Cloud />} title="Ciele Cloud" href="/cloud" description="Manage a hosted plan, billing, and usage." />
+  <Card icon={<Boxes />} title="Open Source" href="/self-hosting" description="Install and operate the open-source edition." />
 </Cards>
 
-Votre choix dépend de l'endroit où le produit est exécuté : un **noyau open
-source** que vous hébergez vous-même sous licence AGPL-3.0, ou **Ciele Cloud**,
-le même produit exploité pour vous. [Editions](/editions) définit précisément la
-limite.
+## Tâches principales
 
-## Ce que vous pouvez faire avec Ciele
+- Créez un Assistant et sélectionnez son modèle.
+- Ajoutez des sites Web, des fichiers, du texte et des FAQ à Knowledge.
+- Acheminez les messages via des flux ordonnés.
+- Envoyez des notifications proactives à partir d'événements de page et de chat.
+- Connectez les visiteurs à un service d'assistance.
+- Publiez un instantané de configuration immuable.
+- Passez en revue les conversations, les améliorations, les informations, les
+  exportations, les objectifs et les alertes.
 
-- Créez un ou plusieurs assistants, chacun doté de sa propre identité, de ses
-  propres connaissances et de ses propres règles.
-- Alimentez chaque assistant avec les connaissances issues de vos sites Web, de
-  vos fichiers et de paires de questions-réponses soigneusement sélectionnées.
-- Contrôlez les conversations avec Flows, un ensemble ordonné de règles qui
-  détermine la manière dont l'assistant répond à chaque message.
-- Faites remonter les demandes à votre équipe via les Help Desks, en utilisant
-  des canaux tels que l'e-mail, le téléphone, le chat en direct et les tickets
-  d'assistance.
-- Publiez l'assistant sur votre site Web à l'aide d'un petit extrait de code,
-  puis examinez chaque conversation, suivez la qualité des réponses et consultez
-  les analyses.
-
-## À qui s'adresse cette documentation
-
-Cette documentation s'adresse à deux publics à la fois. Si vous évaluez Ciele,
-les premières sections expliquent ce que fait la plateforme et comment les
-éléments s'articulent. Si vous utilisez déjà Ciele, chaque section vous montre
-également, étape par étape, comment utiliser la fonctionnalité dans
-l'application. Cela s'applique aussi bien si vous exécutez vous-même l'édition
-open source que si vous utilisez Ciele Cloud.
-
-## Commencez ici
-
-<Cards>
-  <Card title="Getting started" href="/getting-started" description="Core concepts and your first assistant, from empty console to live widget." />
-  <Card title="Assistants" href="/assistants" description="Create assistants and shape their identity, replies, and appearance." />
-  <Card title="Knowledge" href="/knowledge" description="Give an assistant its sources: websites, files, and FAQs." />
-  <Card title="Flows" href="/flows" description="Route conversations with rules and decide how each message is answered." />
-  <Card title="Help Desks" href="/help-desks" description="Set up escalation to your team through channels, forms, and tickets." />
-  <Card title="Publishing" href="/publishing" description="Embed the assistant on your website and in your apps." />
-  <Card title="Editions" href="/editions" description="Open-source self-hosting versus the managed Ciele Cloud, and what each includes." />
-</Cards>
+Commencez par [Premiers pas](/getting-started). Lisez [Editions](/editions)
+avant de choisir une installation hébergée ou auto-hébergée.

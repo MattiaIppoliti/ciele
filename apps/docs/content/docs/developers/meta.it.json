@@ -1,0 +1,14 @@
+{
+  "title": "Sviluppatori",
+  "description": "Utilizza l'API, la CLI e il server MCP",
+  "icon": "Terminal",
+  "root": true,
+  "pages": [
+    "index",
+    "api-keys",
+    "api",
+    "cli",
+    "mcp",
+    "ai-clients"
+  ]
+}

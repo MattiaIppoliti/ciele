@@ -1,59 +1,32 @@
 ---
 title: Websites
-description: Durchforsten Sie Ihre Website und Ihre Wissensdatenbank, damit der Assistent von Ihren Seiten lernt.
+description: Fügen Sie eine Website-URL hinzu und überwachen Sie deren Aufnahmestatus.
 ---
 
-Websites sind oft die reichhaltigste Wissensquelle, die Sie bereits haben. Ciele
-kann eine Website, die Ihnen gehört, durchforsten und ihre Seiten in Wissen
-verwandeln, aus dem der Assistent antwortet. Öffnen Sie einen Assistenten,
-wählen Sie **Knowledge** aus und öffnen Sie dann die Registerkarte **Websites**.
+## Fügen Sie eine Website-Quelle hinzu
 
-## Fügen Sie eine Website hinzu
+1. Öffnen Sie den Assistenten.
+2. Wählen Sie **Knowledge**.
+3. Fügen Sie eine Website-Quelle hinzu.
+4. Geben Sie die Seiten-URL ein.
+5. Starten Sie die Aufnahme.
+6. Warten Sie, bis der Status der Quelle **Ready** lautet.
+7. Stellen Sie eine Frage, die die Seite beantwortet.
+8. Bestätigen Sie die zurückgegebene Quellenangabe.
 
-1. Wählen Sie „Website hinzufügen“ aus.
-2. Geben Sie einen **Namen** ein, damit Sie die Quelle später wiedererkennen
-   können.
-3. Geben Sie die **Adresse** der zu durchsuchenden Website oder des zu
-   durchsuchenden Abschnitts ein.
-4. Legen Sie alle Optionen fest, die für Ihre Website gelten, z. B. die
-   Kennzeichnung als durch eine Anmeldung geschützt oder die Erlaubnis, auf den
-   Seiten gefundene Dateien zu importieren.
-5. Bestätigen Sie die Urheberrechtserklärung und wählen Sie dann **Add
-   Website**.
+Der Crawler ruft den konfigurierten Website-Inhalt ab. Für Seiten, die ein
+Browser-Rendering erfordern, ist ein JavaScript-Rendering-Worker erforderlich.
 
-Nach dem Hinzufügen wird die Website gecrawlt und ihre Seiten stehen dem
-Assistenten zur Verfügung. Websites können regelmäßig erneut gecrawlt werden,
-sodass laufende Änderungen berücksichtigt werden.
+## Eine Quelle erneut crawlen
 
-## Steuern Sie, was gecrawlt wird
+Verwenden Sie **Recrawl**, wenn sich der Inhalt der Quell-Website ändert. Ciele
+startet das Crawlen neu und ersetzt den indizierten Inhalt nach erfolgreicher
+Aufnahme.
 
-Große Websites enthalten oft Seiten, die der Assistent nicht kennen soll. Zwei
-Arten von Regeln helfen Ihnen, das Crawlen gezielt einzustellen.
+Die API und die CLI unterstützen das erneute Crawlen nur für Website-Quellen.
 
-- **Positive rules** beschreiben die Seiten, die Sie einbeziehen möchten.
-- **Negative rules** beschreiben die Seiten, die Sie ausschließen möchten.
+## Quellzugriff
 
-Verwenden Sie diese, damit sich der Assistent auf die wichtigen Abschnitte
-konzentriert, und um Seiten wie Archive oder Hilfsseiten auszuschließen.
-
-## Erweiterte Crawl-Einstellungen
-
-Für Websites, die eine schonendere Behandlung erfordern, können Sie mit
-zusätzlichen Einstellungen das Crawlen verlangsamen, die Ladezeit für jede Seite
-verlängern und etwas länger warten, bevor eine Seite gelesen wird, damit auch
-Inhalte erfasst werden, die später geladen werden. Greifen Sie nur dann darauf
-zurück, wenn ein normales Crawlen Inhalte übersieht oder die Zielseite
-empfindlich auf Ladezeiten reagiert.
-
-## Fügen Sie eine spezifische Liste von Seiten hinzu
-
-Wenn Sie nur eine Handvoll Seiten statt eines vollständigen Crawls möchten,
-können Sie stattdessen eine Liste mit genauen Adressen angeben. Geben Sie der
-Liste einen Namen, fügen Sie eine Adresse pro Zeile ein, legen Sie die gleichen
-Optionen wie oben fest und fahren Sie fort. Dies ist ideal, wenn sich die
-nützlichen Inhalte auf einigen wenigen bekannten Seiten befinden.
-
-<Callout title="Only crawl sites you own or are allowed to use">
-Add sites you own or have permission to use. The copyright confirmation is there
-to keep your knowledge base on the right side of that line.
-</Callout>
+Der Crawler muss die URL aus dem Bereitstellungsnetzwerk erreichen.
+Authentifizierungspflichtige Inhalte sind ohne einen unterstützten Zugriffspfad
+nicht verfügbar.

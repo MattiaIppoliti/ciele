@@ -1,0 +1,42 @@
+---
+title: AI providers
+description: Connect a model provider and select the model for each Assistant.
+---
+
+Ciele uses one provider abstraction for Anthropic, OpenAI, and Google models. An Assistant selects its provider connection and model.
+
+## Provider connection types
+
+| Type | Use |
+| --- | --- |
+| Platform plan | Uses models supplied by the managed Ciele plan. |
+| Subscription | Uses a member subscription for Preview only. |
+| API key | Uses an Organization-managed provider key. |
+
+A Subscription connection does not serve a published widget. Select a Platform plan or API-key connection for published traffic.
+
+## Add an API-key connection
+
+1. Open **Settings**.
+2. Select **AI Provider**.
+3. Add a provider connection.
+4. Select Anthropic, OpenAI, or Google.
+5. Enter the required provider credential.
+6. Save the connection.
+
+Ciele encrypts the credential before storage. Do not reuse a personal key that has unrelated permissions.
+
+## Select an Assistant model
+
+1. Open the Assistant.
+2. Select **General**.
+3. Select the provider connection.
+4. Select an available model.
+5. Test the Assistant in Preview.
+6. Publish the Assistant.
+
+The published widget uses the provider and model in its publication snapshot. Later General changes require another publication.
+
+<Callout title="Provider accounts are separate">
+Ciele API keys control Ciele administration. Provider API keys authorize model use. One credential cannot replace the other.
+</Callout>

@@ -1,0 +1,51 @@
+---
+title: Benachrichtigungen
+description: Senden Sie eine proaktive Nachricht, wenn ein Seiten- oder Chat-Ereignis eintritt.
+---
+
+Eine Benachrichtigung ist die einzige Antwortaktion für einen proaktiven Flow.
+Es ruft kein KI-Modell auf.
+
+## Wählen Sie einen proaktiven Trigger aus
+
+Verwenden Sie einen dieser Trigger:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+## Konfigurieren Sie die Benachrichtigung
+
+1. Erstellen oder öffnen Sie einen Flow.
+2. Wählen Sie einen proaktiven Auslöser aus.
+3. Geben Sie den Titel der Benachrichtigung ein.
+4. Geben Sie den Inhalt der Benachrichtigung ein.
+5. Wählen Sie die Zustellregel aus.
+6. Wählen Sie aus, ob Benutzer antworten können.
+7. Fügen Sie bei Bedarf Schaltflächen hinzu.
+8. Speichern Sie den Flow und testen Sie ihn in der Vorschau.
+
+Ciele gibt den konfigurierten Inhalt wortgetreu wieder. Der Titel darf 100
+Zeichen enthalten. Der Inhalt darf 5.000 Zeichen umfassen.
+
+## Verhalten bei der Zustellung
+
+Der Server überprüft den Trigger- und Zustellstatus erneut, bevor er eine
+Nachricht schreibt. Wiederholte Client-Ereignisse umgehen diese Prüfung nicht.
+
+Die Vorschau ignoriert die Zustellregel. Dieses Verhalten ermöglicht es einem
+Administrator, die Benachrichtigung mehr als einmal zu testen.
+
+Die neueste Einstellung für die Benachrichtigungsantwort steuert den Composer.
+Eine spätere Antwort mit aktivierter Antwortfunktion kann den Composer erneut
+öffnen.
+
+## Analytik
+
+Eine Benachrichtigung ist keine KI-Antwort. Sitzungen, die nur aus
+Benachrichtigungen bestehen, erhöhen weder das Antwortvolumen noch die
+KI-Lösungsrate.
+
+Die Metrik **Notifications Sent** erfasst zugestellte Benachrichtigungen. Der
+Posteingang markiert eine Sitzung als **Notification only**, bis ein Besucher
+antwortet.

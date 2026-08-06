@@ -1,0 +1,55 @@
+---
+title: Outils et compétences
+description: Contrôlez les outils d'exécution et associez des instructions réutilisables à un Assistant.
+---
+
+Ouvrez un Assistant et sélectionnez **Tools & Skills**. Cette section contrôle
+les capacités d'exécution et les instructions réutilisables.
+
+## Outils intégrés
+
+| Outil | Par défaut | Comportement actuel |
+| --- | :---: | --- |
+| Recherche de connaissances | Activée | Recherche les connaissances connectées et renvoie les réponses citées. |
+| Mémoire de session | Activée | Utilise les informations de la session de conversation en cours. |
+| Récupérer l'URL | Désactivé | Lit une URL lorsque le moteur d'exécution sélectionne l'outil. |
+
+La recherche dans la base de connaissances est toujours disponible. Vous pouvez
+activer ou désactiver les autres outils intégrés.
+
+## Configurez une intégration d'API
+
+Un Assistant peut utiliser une intégration d'API enregistrée. L'intégration
+contient une URL de base, un identifiant protégé et des points de terminaison
+décrits.
+
+Pour chaque point de terminaison, définissez la méthode, le chemin, l'objectif,
+les paramètres et la forme de la réponse. Le moteur d'exécution valide chaque
+chemin demandé par rapport à ce catalogue.
+
+L'agent peut inspecter les détails du point de terminaison avant d'envoyer une
+requête. Les réponses volumineuses restent disponibles via des lectures
+fenêtrées.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Associer une compétence d'organisation
+
+Une compétence est un modèle d'instruction réutilisable. Une Organisation peut
+associer la même Compétence à plusieurs Assistants.
+
+1. Ouvrez **Tools & Skills**.
+2. Recherchez la compétence d'organisation requise.
+3. Associez la compétence à l'assistant.
+4. Testez le résultat en mode Aperçu.
+5. Publiez l'Assistant lorsque le résultat est correct.
+
+Les modifications apportées aux compétences sont immédiatement disponibles dans
+l'aperçu. Le widget publié utilise le dernier instantané de publication.
+
+## Testez la configuration
+
+Posez une question qui nécessite chacun des outils activés. Examinez le panneau
+Raisonnement et les Sources avant de publier.

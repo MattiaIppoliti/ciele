@@ -1,45 +1,32 @@
 ---
 title: Inbox
-description: Read the conversations your assistants had with visitors, with sources, session details, and escalation status.
+description: Inspect Conversations, Sources, runtime traces, and session metadata.
 ---
 
-The Inbox is where you read what actually happened: every conversation between a
-visitor and your assistants. It is the best way to understand how visitors phrase
-questions and where the assistant does well or falls short. Open **Inbox** from the
-sidebar.
+The Inbox stores Visitor and Assistant turns. Open a Conversation to inspect the exact stored transcript.
 
-## Browse conversations
+## Conversation list
 
-The conversation list groups recent activity so the newest is easy to find. Each
-entry shows the visitor, a preview of the message, and a timestamp. Use the tools
-at the top to narrow the list:
+Use search and available filters to narrow the list. Each row identifies recent activity and its current Conversation state.
 
-- **Date range** limits the list to a period.
-- **Search** finds conversations by their content.
-- **Filters** narrow by the attributes that matter to you.
-- **Exports** let you take conversation data out for deeper analysis.
+A session that contains only proactive Notifications has the **Notification only** marker. It becomes a normal Conversation after a Visitor replies.
 
-## Read a conversation
+## Conversation detail
 
-Open a conversation to see the full transcript. Alongside the messages you get:
+The detail view can show:
 
-- **Workflow markers** that show which flow handled each turn, so you can see your
-  rules in action.
-- **Sources** on each generated answer, so you can check where the information came
-  from.
-- **Feedback** such as thumbs up or down when a visitor left it.
+- Visitor and Assistant messages
+- the Flow that handled a turn
+- named Source citations
+- Visitor feedback
+- escalation state
+- launch and device metadata
+- stored Thinking information when the member Role permits access
 
-A side panel gives context about the conversation and the session, including
-details about how the visitor reached the assistant and where the conversation
-stands, including whether it was escalated.
+Verbatim Message actions and Basic replies do not contain a Thinking trace. Search knowledge answers can contain tool and progress events.
 
-## Turn insight into action
+## Create quality work
 
-The Inbox pairs naturally with the Improvements board. When you spot an answer that
-missed, you can flag it for improvement so it becomes a tracked item to fix. See
-[Improvements](/operations/improvements).
+Use the available Improvement action when an answer needs correction. The new item links back to the affected Conversation message.
 
-<Callout title="Read real questions often">
-Nothing teaches you more about an assistant than the words visitors actually use.
-A few minutes in the Inbox regularly will surface most of what needs tuning.
-</Callout>
+Use [Exports](/operations/exports) when you need structured records outside the Inbox.

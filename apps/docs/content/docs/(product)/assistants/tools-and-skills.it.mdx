@@ -1,0 +1,54 @@
+---
+title: Strumenti e competenze
+description: Controlla gli strumenti di runtime e allega istruzioni riutilizzabili a un Assistente.
+---
+
+Apri un Assistente e seleziona **Tools & Skills**. Questa sezione controlla le
+funzionalità di runtime e le istruzioni riutilizzabili.
+
+## Strumenti integrati
+
+| Strumento | Predefinito | Comportamento attuale |
+| --- | :---: | --- |
+| Cerca nella Knowledge Base | Attivo | Cerca nella Knowledge Base collegata e restituisce le risposte citate. |
+| Memoria di sessione | Attiva | Utilizza le informazioni della sessione di conversazione corrente. |
+| Recupera URL | Disattivato | Legge un URL quando il runtime seleziona lo strumento. |
+
+La ricerca nella Knowledge Base è sempre disponibile. Puoi abilitare o
+disabilitare gli altri strumenti integrati.
+
+## Configura un'integrazione API
+
+Un Assistente può utilizzare un'integrazione API registrata. L'integrazione
+contiene un URL di base, una credenziale protetta ed endpoint descritti.
+
+Per ogni endpoint, definisci il metodo, il percorso, lo scopo, i parametri e il
+formato della risposta. Il runtime convalida ogni percorso richiesto rispetto a
+questo catalogo.
+
+L'agente può ispezionare i dettagli dell'endpoint prima di inviare una
+richiesta. Le risposte di grandi dimensioni rimangono disponibili tramite
+letture a finestra.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Associa una Skill dell'organizzazione
+
+Una Skill è un modello di istruzioni riutilizzabile. Un'Organizzazione può
+associare la stessa Skill a più Assistenti.
+
+1. Apri **Tools & Skills**.
+2. Trova la Skill dell'Organizzazione richiesta.
+3. Associa la Skill all'Assistente.
+4. Verifica il risultato in Anteprima.
+5. Pubblica l'Assistente quando il risultato è corretto.
+
+Le modifiche alle competenze sono immediatamente disponibili in Anteprima. Il
+widget pubblicato utilizza l'ultima istantanea di pubblicazione.
+
+## Prova la configurazione
+
+Poni una domanda che richieda l'utilizzo di ogni strumento abilitato. Controlla
+il pannello Thinking e le Sources prima di pubblicare.

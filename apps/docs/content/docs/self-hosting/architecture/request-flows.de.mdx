@@ -1,186 +1,52 @@
 ---
 title: Anforderungsabläufe
-description: Was tatsächlich passiert, wenn ein Besucher eine Chat-Nachricht sendet und wenn ein Administrator eine Änderung in der Konsole speichert. Die beiden Abläufe, die vom Rest des Systems bedient werden.
+description: Verfolgen Sie Administrator-, API-, Widget- und MCP-Anfragen über die aktuellen Grenzen hinweg.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Administratorvorgang
 
-Zwei Anforderungsarten machen fast den gesamten Datenverkehr aus: die
-Chat-Nachricht eines Besuchers und die Bearbeitung eines Mitglieds. Es lohnt
-sich, sie von Anfang bis Ende zu verfolgen, denn fast jede Designentscheidung in
-der Codebasis folgt auf eine dieser beiden.
-
-## Ein Besucher sendet eine Chat-Nachricht
-
-Das Widget sendet an einen Endpunkt für jeden einzelnen Assistenten und liest
-eine Streaming-Antwort. Beachten Sie, was der Endpunkt lädt: die neueste
-**Veröffentlichung** des Assistenten – einen unveränderlichen Snapshot – und
-nicht die Live-Konfiguration, die ein Mitglied gerade bearbeiten könnte.
-
-<Mermaid
-  title="Ein Chat-Turn, vom Tastendruck bis zur persistenten Antwort"
-  chart={`
+```mermaid
 sequenceDiagram
-  autonumber
-  participant B as Widget
-  participant R as Chat endpoint
-  participant T as Turn
-  participant E as Runtime
-  participant DB as Postgres
-  participant AI as Provider
+  actor Admin
+  participant Web as Next.js console
+  participant Auth as Session and capability check
+  participant Ops as Shared operation
+  participant Db as Organization data
+  Admin->>Web: Submit configured action
+  Web->>Auth: Resolve member and Role
+  Auth->>Ops: Provide validated context
+  Ops->>Db: Read or mutate tenant data
+  Db-->>Web: Return result
+  Web-->>Admin: Refresh affected view
+```
 
-  B->>R: message + visitorId
-  R->>DB: latest publication
-  Note over B,R: no snapshot → 404 · CORS from it
-  R->>T: start turn
-  T->>DB: get/create conversation
-  T->>DB: append the message
-  T-->>B: turn (conversation id)
-  T->>E: route
-  E->>AI: classify
-  AI-->>E: the matching flow
-  E-->>B: flow
-  loop each action
-    E-->>B: step · tool events
-    E->>DB: retrieve knowledge
-    E->>AI: generate
-    E-->>B: text · parts
-  end
-  T->>DB: persist the answer
-  T->>T: apply effects
-  T-->>B: done
-`}
-/>
+Serveraktionen lösen die Mitgliedersitzung auf, bevor sie eine freigegebene
+Operation aufrufen. Die Sicherheit auf Datenbankzeilenebene bleibt Teil der
+Konsolendatengrenze.
 
-Einige Konsequenzen dieser Reihenfolge:
+## API-Operation
 
-- **The conversation id arrives before the answer does.** Das erste Ereignis
-  trägt es, wodurch die Live-Vorschau der Konsole einen laufenden Chat-Turn
-  steuern kann, ohne eine neue Konversation zu forken.
-- **Effects run after the answer is committed**, nie zuvor. Eine Aktion, die ein
-  Folgeelement erstellen oder eine E-Mail senden soll, führt dies nicht selbst
-  aus – sie *fordert* eine Wirkung an, und die Anforderung wird angewendet,
-  sobald die Nachricht existiert. Eine Verbesserung verweist also auf eine echte
-  Nachrichten-ID, und es wird keine E-Mail für einen Chat-Turn versendet, der
-  auf halbem Weg fehlgeschlagen ist.
-- **A failing action degrades to a fallback**, da jede einzeln verpackt ist.
-  Eine fehlerhafte Aktion führt nicht zum Verlust des Zuges.
+API v1 hasht den Bearer-Schlüssel und löst seine Organisation und Rolle auf. Sie
+validiert die Eingabe, bevor sie dieselbe Operation wie die Konsole aufruft.
 
-### Das Wire-Format
+Die API verwendet einen an die Organisation gebundenen Datenbank-Wrapper. Der
+Wrapper ersetzt die Argumente der Organisation und prüft die Inhaberschaft für
+den Zugriff auf Basis von Identifikatoren.
 
-Sowohl das öffentliche Widget als auch das Vorschaufenster der Konsole lesen
-denselben durch Zeilenumbrüche getrennten JSON-Stream und dekodieren ihn mit
-demselben Client-Modul. Das ist der Grund, warum Vorschau und Produktion
-identisch rendern – es gibt einen Produzenten und einen Konsumenten dieses
-Vertrags.
+## CLI und MCP
 
-| Ereignis | Bedeutung |
-|---|---|
-| `turn` | Die Konversations-ID, bevor die Generierung beginnt |
-| `flow` | Welcher Flow ausgewählt wurde und ob es sich um den Fallback handelte |
-| `step` | Ein sichtbarer Denkschritt |
-| `tool-start` / `tool-end` | Ein Tool-Aufruf, der beginnt und endet, mit einem kurzen Ergebnis |
-| `thought` | Begründung, die einem Tool-Aufruf vorausging; in das Thinking-Panel eingefügt |
-| `text-start` / `text-delta` / `text-end` | Der Antworttext, gestreamt |
-| `part` | Ein nicht-textlicher Antwortteil: Zitate, Schaltflächen, Follow-ups, ein Eskalations-Chip |
-| `done` / `error` | Terminal mit der persistenten Nachrichten-ID |
+Der CLI- und der MCP-Server verwenden `@ciele/client`. Der Client sendet
+Bearer-authentifizierte Anfragen an API v1.
 
-<Callout title="Publication snapshots are why editing is safe">
-Because the widget reads the latest publication rather than the live row, an
-administrator can edit an assistant all afternoon without visitors seeing
-anything change. The new configuration goes live at the moment of publish — and
-publishing is also the moment the cached snapshot is invalidated, so "latest"
-stays exact without a database round trip per request.
-</Callout>
+Der schreibgeschützte MCP-Schalter lehnt Mutationsaktionen ab, bevor der Client
+eine Anfrage sendet. Serverseitige Rollenprüfungen gelten weiterhin für jede
+akzeptierte Anfrage.
 
-## Ein Mitglied speichert eine Bearbeitung
+## Widget-Zug
 
-Konsolenseiten werden serverseitig gerendert und über einen an die Sitzung des
-Aufrufers gebundenen Daten-Handle auf Anforderungsebene gelesen, sodass für
-Lesevorgänge Sicherheit auf Zeilenebene gilt. Schreibvorgänge folgen einem
-anderen Weg: Sie sind Serveraktionen, und jede Aktion auf Organisationsebene
-beginnt mit demselben Autorisierungsaufruf.
+Das Embed lädt die aktive Publication-Konfiguration. Die Chat-Route speichert
+den Besucherzug und ruft die Laufzeitumgebung für den Gesprächszug auf.
 
-<Mermaid
-  title="Ein Konsolen-Lesevorgang und ein Konsolen-Schreibvorgang"
-  chart={`
-flowchart TB
-  M["Member's browser"]
-
-  subgraph read["Read — a console page"]
-    direction TB
-    MW["middleware<br/>validate the session locally"]
-    LOGIN["no session →<br/>/login?next=…"]
-    P["Server Component"]
-    RD["Read through the<br/>caller-scoped handle"]
-    RLS["Row-level security:<br/>this organization's<br/>rows only"]
-    MW -->|"no"| LOGIN
-    MW -->|"yes"| P --> RD --> RLS
-  end
-
-  subgraph write["Write — a server action"]
-    direction TB
-    G["Authorization guard<br/>re-derive the session<br/>check role → capability"]
-    DENY["denied →<br/>throw"]
-    OK["allowed → returns the<br/>caller-scoped handle"]
-    MUT["Mutate"]
-    REV["Revalidate the<br/>affected paths"]
-    G -->|"no"| DENY
-    G -->|"yes"| OK --> MUT --> REV
-  end
-
-  M -->|"navigate"| MW
-  M -->|"submit"| G
-  RLS --> HTML["Rendered page"]
-  REV --> UI["Updated UI"]
-`}
-/>
-
-Der Guard leitet die Sitzung neu ab, anstatt dem zu vertrauen, was der Client
-gesendet hat, und gibt den Daten-Handle als Rückgabewert zurück. Das ist eine
-kleine Designentscheidung mit einer nützlichen Eigenschaft: Eine Aktion kann
-nicht auf die Datenbank zugreifen, *ohne* zuerst die Prüfung zu bestehen, denn
-die Prüfung gibt ihr den Handle.
-
-### Rollen und Berechtigungen
-
-Rollen sind in Ränge eingeteilt, und Berechtigungen sind Schwellenwerte
-innerhalb dieser Ränge. Die gleiche Rangfolge gibt es in SQL, sodass die
-Datenbank mit der Anwendung übereinstimmt.
-
-<Mermaid
-  title="Rollenränge und die Berechtigungen, die sie freischalten"
-  chart={`
-flowchart TB
-  V["Viewer"] --> E["Editor"] --> A["Admin"] --> O["Owner"]
-
-  E -.-> CE["edit assistants, flows,<br/>knowledge, help desks"]
-  A -.-> CP["publish, delete assistants"]
-  A -.-> CM["invite members,<br/>manage provider keys"]
-  O -.-> CR["change roles"]
-`}
-/>
-
-Jede Rolle umfasst alles, was darunter liegt. Wenn Sie das Modell erweitern –
-etwa durch Hinzufügen einer Ebene für Support-Mitarbeiter oder einer reinen
-Analyse-Ebene – müssen Sie die Rollentabelle und die Berechtigungsschwellenwerte
-bearbeiten, nicht einzelne Aktionen prüfen.
-
-## Geplante Aufgaben
-
-Alles, was nicht auf eine Anforderung hin ausgeführt werden darf, wird
-stattdessen über einen Timer ausgeführt. Jeder Job ist ein authentifizierter
-HTTP-Endpunkt. Das bedeutet, dass der Scheduler Vercel Cron, ein Container, auf
-dem `curl` läuft, oder alles andere sein kann, was eine Anfrage stellen kann.
-
-| Endpunkt | Funktion |
-|---|---|
-| `/api/cron/finalize-crawls` | Schließt Crawls, deren Seiten angekommen sind |
-| `/api/cron/sweep-recrawls` | Durchforstet Website-Quellen nach ihrem Zeitplan erneut |
-| `/api/cron/run-exports` | Erzeugt die in der Warteschlange befindlichen Exportdateien |
-| `/api/cron/rollup-usage` | Aggregiert die Nutzung in tägliche Zeilen |
-| `/api/cron/verify-goals` | Überprüft die Ziele des Assistenten erneut |
-
-Crawls werden mit einer verlängerbaren Lease und in der Reihenfolge der zuletzt
-durchgeführten Versuche beansprucht, sodass zwei gleichzeitige Durchläufe nicht
-denselben Crawl abschließen können und keine Quelle ausgelassen wird.
+Die Laufzeit wählt einen Flow aus, führt Aktionen aus, streamt
+Antwort-Ereignisse und speichert Antwortteile. Das Widget rendert dieselben
+strukturierten Teile.

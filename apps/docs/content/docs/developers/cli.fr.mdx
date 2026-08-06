@@ -1,0 +1,80 @@
+---
+title: Ciele CLI
+description: Gérez Ciele depuis un terminal ou une tâche automatisée.
+---
+
+La commande `ciele` utilise les mêmes opérations d'API que la console
+d'administration. La CLI prend en charge le service hébergé et les installations
+auto-hébergées.
+
+## Prérequis
+
+- Utilisez Node.js 22.6 ou une version ultérieure lorsque vous exécutez la CLI à
+  partir de ce dépôt.
+- Créez une [clé API d'organisation](/developers/api-keys).
+
+## Se connecter
+
+Pour le service hébergé, exécutez :
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+Pour une installation auto-hébergée, ajoutez son origine publique :
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+```
+
+La commande `login` valide la clé avant d'écrire `~/.ciele/config.json`. Sur les
+systèmes pris en charge, le mode de fichier est `0600`.
+
+La CLI résout une clé dans cet ordre :
+
+1. L'option `--api-key`.
+2. La variable d'environnement `CIELE_API_KEY`.
+3. Le fichier de configuration enregistré.
+
+La CLI utilise le même ordre pour `--base-url`, `CIELE_BASE_URL` et l'origine
+enregistrée. L'origine hébergée est la valeur par défaut finale.
+
+## Utiliser la sortie d'automatisation
+
+Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
+
+| Code de sortie | Signification |
+| --- | --- |
+| `0` | L'opération est terminée. |
+| `1` | Le serveur a renvoyé une erreur. |
+| `2` | L'entrée de la commande n'est pas valide. |
+| `3` | L'authentification a échoué. |
+
+## Commandes courantes
+
+```bash
+ciele assistants list --all
+ciele flows list <assistant-id>
+ciele collections list <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+ciele conversations list --assistant <assistant-id>
+ciele improvements list
+```
+
+Les commandes qui suppriment des données nécessitent `--yes`. Le flux de
+comportement par défaut ne peut pas être supprimé.
+
+## Exemple de vérification CI
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Stockez toutes les valeurs dans le magasin de secrets CI. N'écrivez pas de clé
+dans un fichier de workflow.

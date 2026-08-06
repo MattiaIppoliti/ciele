@@ -33,6 +33,20 @@ const CONTENT = path.join(ROOT, 'content/docs');
 const CACHE_FILE = path.join(import.meta.dirname, '.translation-cache.json');
 const UI_STRINGS_FILE = path.join(ROOT, 'src/lib/ui-strings.ts');
 
+/** OneDrive and antivirus scanners can hold a generated file for a short time. */
+async function writeGeneratedFile(file, content) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await writeFile(file, content);
+      return;
+    } catch (error) {
+      const retryable = ['EBUSY', 'EPERM', 'UNKNOWN'].includes(error?.code);
+      if (!retryable || attempt === 5) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 200));
+    }
+  }
+}
+
 /**
  * Locale → Lara language tag, the name the language calls itself, and the
  * register to address the reader in.
@@ -223,6 +237,7 @@ async function callLara(lara, group, target, extraInstructions) {
       ),
       style: 'faithful',
       priority: 'background',
+      noTrace: true,
     },
   );
   const translated = Array.isArray(response.translation)
@@ -424,16 +439,16 @@ async function main() {
         console.error(`✗ [${target}] ${rel}\n    ${problems.join('\n    ')}`);
         continue;
       }
-      await writeFile(out, output);
+      await writeGeneratedFile(out, output);
       cache[key] = fingerprint;
       written++;
       console.log(`✓ [${target}] ${rel}`);
-      await writeFile(CACHE_FILE, `${JSON.stringify(cache, null, 2)}\n`);
+      await writeGeneratedFile(CACHE_FILE, `${JSON.stringify(cache, null, 2)}\n`);
     }
   }
 
   if (args.ui && !args.dry) {
-    await writeFile(UI_STRINGS_FILE, await generateUiStrings(lara, targets));
+    await writeGeneratedFile(UI_STRINGS_FILE, await generateUiStrings(lara, targets));
     console.log('✓ src/lib/ui-strings.ts');
   }
 

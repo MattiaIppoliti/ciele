@@ -1,56 +1,36 @@
 ---
-title: Pulsanti di avvio
-description: Offri ai visitatori modi rapidi per avviare una conversazione con i pulsanti di avvio predefiniti.
+title: Risposte rapide
+description: Aggiungi pulsanti di avvio che inviano un messaggio di testo o restituiscono una risposta selezionata tra le FAQ.
 ---
 
-I pulsanti di avvio compaiono quando un visitatore apre la chat. Sono un modo
-amichevole per guidare le persone verso ciò che il tuo assistente sa fare
-meglio. Li gestisci nella sezione **General** dell'editor dell'assistente.
+Le risposte rapide vengono visualizzate vicino al messaggio di benvenuto.
+Aiutano un Visitatore a iniziare un'attività comune.
 
-## Aggiungi un pulsante
+## Invia un testo
 
-1. Nella sezione Generale, trova l'elenco dei pulsanti di avvio.
-2. Seleziona **Add button**.
-3. Assegna un **nome** al pulsante. Questa è l'etichetta che vede il visitatore.
-4. Scegli un **tipo**, quindi inserisci le impostazioni specifiche per quel
-   tipo.
-5. Salva il pulsante.
+Una risposta rapida **Send Text** invia il testo configurato come messaggio del
+Visitatore. Il normale router Flow gestisce quindi quel messaggio.
 
-Puoi aggiungere diversi pulsanti e riordinarli in modo che quelli più utili
-vengano visualizzati per primi.
+Utilizza questo tipo quando l'Assistente deve interpretare il testo iniziale
+attraverso le sue normali regole di routing.
 
-## Tipi di pulsanti
+## Domande frequenti
 
-Ogni pulsante esegue una di queste quattro azioni.
+Una risposta rapida **FAQ** restituisce la risposta FAQ curata parola per
+parola. Non chiama il modello di chat.
 
-### Invia testo in chat
+La risposta include la citazione della fonte delle FAQ. Utilizza questo tipo
+quando una risposta approvata deve rimanere esatta.
 
-Il pulsante invia un messaggio nella chat per il visitatore, come se lo avesse
-digitato lui. Usalo per far concentrare l'assistente su un argomento specifico.
-Ad esempio, un pulsante denominato "Prezzi" può inviare il messaggio "Parlami
-dei tuoi prezzi" in modo che l'assistente risponda immediatamente a questa
-domanda.
+## Aggiungi una risposta rapida
 
-### Escalation
+1. Apri **General**.
+2. Trova **Quick replies**.
+3. Aggiungi un elemento **Send Text** o **FAQ**.
+4. Inserisci l'etichetta visibile.
+5. Seleziona o inserisci il contenuto richiesto.
+6. Salva la bozza.
+7. Prova il pulsante in Anteprima.
 
-Il pulsante collega il visitatore al tuo team attraverso le opzioni di
-escalation che hai configurato. Usalo quando vuoi un modo chiaro e sempre
-visibile per contattare una persona. Si basa sui tuoi [Help Desk](/help-desks).
-
-### Apri link esterno
-
-Il pulsante apre un indirizzo web in una nuova scheda. Usalo per indirizzare i
-visitatori a una pagina del tuo sito, a un modulo o a qualsiasi risorsa esterna.
-
-### Domande frequenti
-
-Il pulsante mostra una specifica coppia domanda-risposta tratta dalla tua
-knowledge base. Usalo per dare una risposta immediata e precisa a una domanda
-frequente. Consulta le [FAQ](/knowledge/faqs).
-
-## Suggerimenti
-
-- Mantieni le etichette brevi in modo che si adattino perfettamente al widget.
-- Inizia con le domande che i visitatori pongono più spesso.
-- Abbina un pulsante "Invia testo in chat" a una conoscenza approfondita, in
-  modo che l'assistente abbia pronta una buona risposta.
+Mantieni le etichette brevi. L'etichetta deve descrivere l'azione che si
+verifica dopo la selezione.

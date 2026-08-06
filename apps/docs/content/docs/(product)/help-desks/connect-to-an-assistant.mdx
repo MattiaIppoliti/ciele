@@ -1,42 +1,24 @@
 ---
-title: Connect a help desk to an assistant
-description: Choose which help desks an assistant offers and how it escalates.
+title: Connect a Help Desk
+description: Make a Help Desk available to one Assistant.
 ---
 
-Help desks belong to your organization, and each assistant chooses which ones it
-offers. This lets you maintain a shared library of desks and pick the right
-subset per assistant. Open an assistant and select **Help Desks** in the setup
-rail.
+## Connect the Help Desk
 
-## Select the desks an assistant offers
+1. Open the Assistant.
+2. Select **Assistant Help Desks**.
+3. Select the required Help Desk.
+4. Save the draft.
+5. Open Preview.
+6. Select **Contact support**.
+7. Confirm the expected Help Desk and channels.
 
-From the assistant's Help Desks section you pick which of your organization's desks
-this assistant may recommend. When the assistant decides to escalate, it chooses
-among the selected desks based on their descriptions and the context of the
-conversation, so keep those descriptions accurate.
+The Help Desk description helps the runtime recommend a desk for the Conversation. Use a precise scope description.
 
-You can filter the list to see what is selected, what still needs attention, and
-everything available, which makes it easy to keep an assistant's escalation options
-up to date.
+## Test availability
 
-## Escalation behavior
+Test one available channel and one unavailable channel. Confirm that the widget shows the correct next available time.
 
-The same section controls how the assistant handles escalation.
+## Publish the connection
 
-- A recommendation option lets the assistant suggest the most suitable desk when it
-  cannot answer, chosen from the desk descriptions.
-- You can control whether an always available escalation button is shown.
-- You can set the label of the contact button so it fits your voice.
-
-## How escalation reaches the visitor
-
-Once desks are selected and escalation is configured, the visitor can reach your
-team in the ways you set up: through an escalation
-[starter button](/assistants/quick-replies), through the escalation option in
-the chat, or when a [flow](/flows/actions) escalates. The channels a visitor
-sees come from the desks you selected here.
-
-<Callout title="Keep descriptions sharp">
-The assistant relies on desk and channel descriptions to route escalations well.
-Clear, specific descriptions lead to better recommendations.
-</Callout>
+Publish the Assistant after the Preview test. A live widget continues to use the Help Desks in its active Publication.

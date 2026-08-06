@@ -1,80 +1,103 @@
 ---
 title: Acciones de flujo
-description: Los bloques de construcción que ejecuta un flujo en respuesta a un mensaje, desde mensajes fijos hasta la búsqueda de conocimiento y la escalada.
+description: Selecciona las acciones de respuesta que el tiempo de ejecución actual puede ejecutar.
 ---
 
-Las acciones son los pasos que ejecuta un flujo cuando coincide. Las añades en
-el paso de respuesta del generador de flujos y se ejecutan en el orden en que
-las colocas. Esta página describe las acciones que puedes usar y cuándo recurrir
-a cada una.
+Las acciones de Message Flow se ejecutan en orden. Las acciones no generativas
+utilizan el contenido configurado sin reescribir el modelo.
+
+## Acciones disponibles
+
+| Acción | Uso del modelo | Comportamiento actual |
+| --- | :---: | --- |
+| Mensaje | No | Emite el texto configurado textualmente. |
+| Botón | No | Añade un botón de enlace o un botón que envía texto al chat. |
+| Buscar en el conocimiento | Sí | Ejecuta el bucle del agente de conocimiento y devuelve citas. |
+| Seguimientos | Opcional | Utiliza las preguntas configuradas o genera preguntas sugeridas. |
+| Iframe | No | Incrusta en el chat el contenido externo configurado. |
+| Solicitud de API | No | Llama a un punto de conexión HTTP configurado y mapea su resultado. |
+| Enviar correo electrónico | No | Envía correo a través del transporte Resend configurado. |
+| Mejora | No | Crea una Mejora para la respuesta correspondiente. |
+| Traspaso | Depende del destino | Continúa una vez en otro Asistente publicado. |
+
+El flujo de interacción básico integrado también usa **Basic reply**. La
+recomendación de Help Desk utiliza una acción de tiempo de ejecución que el
+selector de acciones directas no muestra.
 
 ## Mensaje
 
-Envía un mensaje al visitante. Un mensaje se puede mostrar palabra por palabra,
-exactamente como lo escribiste, lo cual es ideal cuando la redacción debe ser
-precisa. Utiliza mensajes fijos para las políticas, los descargos de
-responsabilidad y cualquier respuesta que nunca deba variar.
+Introduce el texto exacto que Ciele debe enviar. El tiempo de ejecución no
+parafrasea este texto.
 
-## Buscar en el conocimiento
+## Respuesta básica
 
-Busca en tu conocimiento, encuentra los pasajes más relevantes y escribe una
-respuesta basada en ellos, con fuentes. Esta es la acción que genera respuestas
-útiles y naturales a partir de tu contenido. También es lo que utiliza el
-comportamiento predeterminado. Las opciones te permiten vincularlo a la escalada
-y al seguimiento de la calidad de las respuestas, de modo que un resultado
-deficiente pueda dar lugar a un seguimiento.
+La respuesta básica gestiona saludos breves, agradecimientos y despedidas.
+Utiliza una llamada al modelo y no emplea herramientas de conocimiento, citas ni
+eventos de pensamiento.
 
-## Seguimientos
+Introduce el texto de acción fija para omitir el modelo. El mismo texto
+proporciona la respuesta alternativa cuando no hay ningún modelo de chat
+disponible.
 
-Ofrece sugerencias de preguntas posteriores después de una respuesta. Esto
-mantiene viva la conversación al guiar al visitante hacia temas relacionados con
-los que el asistente puede ayudar.
+## Búsqueda de conocimiento
+
+Search knowledge utiliza las herramientas de conocimiento disponibles hasta el
+límite de pasos de tiempo de ejecución. Puede devolver citas de fuente con
+nombre y pasos de razonamiento.
+
+Utiliza su configuración de consultas no resueltas para derivar el caso al
+servicio de asistencia o crear una mejora.
 
 ## Botón
 
-Muestra un botón en el que se puede hacer clic y que enlaza a algún lugar, por
-ejemplo, a una página de tu sitio web o a un formulario. Úsalo para indicarle al
-visitante claramente el siguiente paso después de un mensaje.
+Configura una etiqueta y un destino. Un destino puede abrir un enlace o enviar
+texto configurado a la conversación.
+
+## Preguntas de seguimiento
+
+Introduce preguntas de seguimiento fijas o habilita su generación. Las preguntas
+de seguimiento generadas utilizan el modelo rápido configurado.
 
 ## Iframe
 
-Incrusta contenido externo dentro de la ventana de chat, como una página o un
-widget que quieras que el visitante vea sin salir de la conversación.
+Configura el título, el enlace HTTPS, la preferencia de lightbox y la altura. El
+sitio de alojamiento aún puede impedir la incrustación mediante sus encabezados
+de seguridad.
 
 ## Solicitud de API
 
-Llama a un servicio externo y puede usar el resultado en la conversación.
-Utiliza esto para buscar algo en otro sistema mientras el visitante espera.
-Configuras la dirección y el método de la solicitud.
+Configura el método, el punto de conexión, la autenticación, los encabezados,
+los parámetros de consulta, el cuerpo JSON y la ruta JSON de respuesta.
+
+Las variables de plantilla pueden proporcionar valores del contexto actual. Usa
+**Test API** antes de guardar el flujo.
+
+La acción puede mostrar mensajes separados de éxito y error. Las reglas de
+salida de red siguen aplicándose a la URL final.
+
+## Enviar correo electrónico
+
+Configura los destinatarios, el asunto, el cuerpo y el comportamiento de
+respuesta. El tiempo de ejecución utiliza Resend cuando su transporte está
+configurado.
+
+Cuando el transporte no está configurado, la acción informa de que no ha enviado
+el correo electrónico. No confirma la entrega.
 
 ## Mejora
 
-Marca la respuesta actual para su revisión creando un elemento en tu panel de
-Mejoras. Utiliza esto en los flujos en los que quieras vigilar de cerca la
-calidad de las respuestas. Consulta [Mejoras](/operations/improvements).
+La acción crea una tarea de mejora. No añade por sí misma texto de respuesta
+visible.
 
-## Transferencia
+## Traspaso
 
-Transfiere la conversación a otro asistente. Utiliza esta opción cuando otro
-asistente sea más adecuado para continuar, por ejemplo, uno especializado en un
-tema en particular.
+Selecciona otro Asistente de la misma Organización. El destino debe tener una
+Publicación actual.
 
-## Escalada y Envío de correo electrónico
+Ciele ejecuta el mismo mensaje de visitante a través del asistente de destino
+una vez. No continúa con un segundo traspaso desde ese turno de destino.
 
-La escalada conecta al visitante con tu equipo a través de los
-[Help Desks](/help-desks) que hayas configurado. Una acción de envío de correo
-electrónico puede notificar a un destinatario cuando se ejecuta un flujo. Úsalas
-para asegurarte de que una persona esté al tanto en el momento adecuado.
+## Orden de las acciones
 
-## Combinar acciones
-
-Las acciones son más potentes cuando se combinan. Un solo flujo podría enviar un
-mensaje breve, buscar los detalles en tu base de conocimientos, ofrecer
-preguntas de seguimiento y terminar con un botón de escalada. Como las acciones
-se ejecutan en orden, tú controlas la forma exacta de la respuesta.
-
-<Callout title="Order matters">
-Actions run from top to bottom. Put a framing message before a knowledge search,
-and put buttons or escalation after the answer so they appear as the natural next
-step.
-</Callout>
+Coloca el texto de contexto antes de Buscar en el conocimiento. Coloca los
+botones y los seguimientos después de la respuesta a la que dan soporte.

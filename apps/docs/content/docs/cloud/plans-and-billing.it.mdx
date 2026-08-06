@@ -1,50 +1,35 @@
 ---
 title: Piani e fatturazione
-description: Scegli un piano di abbonamento e gestisci i pagamenti e le fatture della tua organizzazione su Ciele Cloud.
+description: Seleziona un piano gestito e controlla l'attuale account di fatturazione Stripe.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Apri **Settings > Billing** nell'edizione gestita. La pagina mostra lo stato
+attuale del piano e le voci di catalogo disponibili.
 
-<Callout title="Ciele Cloud only">
-Plans and billing are part of the managed edition. A self-hosted open-source
-deployment has no subscription, no billing, and no plan — you run the software
-under the AGPL-3.0 license at no license cost.
-</Callout>
+## Avvia o modifica un piano
 
-Su Ciele Cloud ogni organizzazione ha un piano di abbonamento. Il piano
-definisce ciò che la tua organizzazione può fare e quanto può utilizzare in un
-mese, ed è qui che vengono gestiti i pagamenti e le fatture.
+1. Verifica i limiti e il prezzo del piano disponibile.
+2. Seleziona il piano che ti serve.
+3. Completa il pagamento su Stripe quando richiesto.
+4. Torna a Ciele.
+5. Conferma lo stato attivo del piano.
 
-## Scegli un piano
+Ciele riconcilia lo stato di fatturazione con Stripe. Non dare per scontato che
+un reindirizzamento del browser completato dimostri l'attivazione del piano.
 
-I piani differiscono principalmente per le
-[quote di utilizzo](/cloud/usage-and-limits), per la dimensione del team e per
-il numero di assistenti che possono gestire. Puoi iniziare con un piano base e
-passare a un livello superiore man mano che il tuo utilizzo aumenta; la modifica
-avrà effetto a partire dal periodo di fatturazione successivo.
+## Account di fatturazione
 
-## Gestione dei pagamenti
+Quando Stripe restituisce i dati, la pagina può mostrare:
 
-La fatturazione viene gestita dalle impostazioni dell'organizzazione nella
-console:
+- informazioni sul rinnovo
+- il riepilogo aggiornato della carta di pagamento
+- fatture
+- azioni di modifica del piano
 
-- **Payment method.** Aggiungi o aggiorna la carta registrata per la tua
-  organizzazione.
-- **Invoices.** Controlla e scarica le fatture precedenti per il tuo archivio.
-- **Plan changes.** Aggiorna o modifica il tuo piano; la console mostra cosa
-  cambia e quando la modifica entra in vigore.
+I campi di fatturazione possono rimanere assenti quando Stripe non li ha
+forniti.
 
-## Chi può gestire la fatturazione
+## Edizione self-hosted
 
-La fatturazione è una responsabilità a livello di organizzazione, quindi è
-limitata ai membri con un ruolo amministrativo. Consulta
-[Membri e ruoli](/organization/members-and-roles) per scoprire come i ruoli
-controllano l'accesso. Un membro senza il ruolo corretto può utilizzare il
-prodotto normalmente, ma non vedrà i controlli di fatturazione.
-
-## Quando un piano raggiunge il suo limite
-
-I piani includono quote di utilizzo mensili. Man mano che ti avvicini e li
-raggiungi, Ciele misura l'utilizzo e applica il limite del piano. Cosa succede
-al raggiungimento del limite e come monitorare il tuo utilizzo durante il mese è
-spiegato in [Utilizzo e limiti](/cloud/usage-and-limits).
+L'edizione self-hosted non mostra il catalogo dei piani gestiti né l'account di
+abbonamento.

@@ -11,6 +11,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "translate:docs": "node scripts/translate-docs.mjs",
+    "check:ste": "node scripts/check-ste.mjs",
+    "check:links": "node scripts/check-links.mjs",
     "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {

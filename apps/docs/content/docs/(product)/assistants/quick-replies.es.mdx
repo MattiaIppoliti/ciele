@@ -1,57 +1,36 @@
 ---
-title: Botones de inicio
-description: Ofrece a los visitantes formas rápidas de iniciar una conversación con botones de inicio escritos.
+title: Respuestas rápidas
+description: Añade botones de inicio que envíen texto o devuelvan una respuesta seleccionada de las preguntas frecuentes.
 ---
 
-Los botones de inicio aparecen cuando un visitante abre el chat. Son una forma
-amigable de guiar a las personas hacia lo que tu asistente hace mejor. Los
-gestionas en la sección **General** del editor de asistentes.
+Las respuestas rápidas aparecen cerca del mensaje de bienvenida. Ayudan a un
+visitante a iniciar una tarea habitual.
 
-## Añade un botón
+## Enviar texto
 
-1. En General, busca la lista de botones de inicio.
-2. Selecciona **Add button**.
-3. Ponle un **nombre** al botón. Esta es la etiqueta que ve el visitante.
-4. Elige un **tipo** y, a continuación, completa la configuración específica de
-   ese tipo.
-5. Guarda el botón.
+Una respuesta rápida **Send Text** envía su texto configurado como mensaje al
+visitante. A continuación, el enrutador Flow normal gestiona ese mensaje.
 
-Puedes añadir varios botones y reordenarlos para que los más útiles aparezcan
-primero.
+Utiliza este tipo cuando el Asistente deba interpretar el texto inicial mediante
+sus reglas de enrutamiento habituales.
 
-## Tipos de botones
+## Preguntas frecuentes
 
-Cada botón realiza una de cuatro acciones.
+Una respuesta rápida **FAQ** devuelve textualmente la respuesta seleccionada de
+las preguntas frecuentes. No llama al modelo de chat.
 
-### Enviar texto al chat
+La respuesta incluye la cita de la fuente de las preguntas frecuentes. Utiliza
+este tipo cuando una respuesta aprobada deba permanecer exacta.
 
-El botón envía un mensaje al chat para el visitante, como si lo hubiera escrito
-él. Utiliza esta opción para que el asistente se centre en un tema específico.
-Por ejemplo, un botón llamado «Precios» puede enviar el mensaje «Háblame de tus
-precios» para que el asistente responda a esa pregunta de inmediato.
+## Añade una respuesta rápida
 
-### Escalada
+1. Abre **General**.
+2. Busca **Quick replies**.
+3. Añade un elemento **Send Text** o **FAQ**.
+4. Introduce la etiqueta visible.
+5. Selecciona o introduce el contenido requerido.
+6. Guarda el borrador.
+7. Prueba el botón en Vista previa.
 
-El botón conecta al visitante con tu equipo a través de las opciones de
-escalamiento que hayas configurado. Utiliza esta opción cuando quieras una forma
-clara y siempre visible de contactar con una persona. Se basa en tus
-[Help Desks](/help-desks).
-
-### Abrir enlace externo
-
-El botón abre una dirección web en una nueva pestaña. Utiliza esta opción para
-enviar a los visitantes a una página de tu sitio, a un formulario o a cualquier
-recurso externo.
-
-### Preguntas frecuentes
-
-El botón muestra un par específico de pregunta y respuesta de tu conocimiento.
-Utiliza esta opción para dar una respuesta instantánea y exacta a una pregunta
-frecuente. Consulta las [Preguntas frecuentes](/knowledge/faqs).
-
-## Consejos
-
-- Mantén las etiquetas cortas para que encajen bien en el widget.
-- Empieza con las preguntas que más hacen los visitantes.
-- Combina un botón «Enviar texto al chat» con un conocimiento sólido para que el
-  asistente tenga preparada una buena respuesta.
+Mantén las etiquetas cortas. La etiqueta debe describir la acción que se produce
+después de la selección.

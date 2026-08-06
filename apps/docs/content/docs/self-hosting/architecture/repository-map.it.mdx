@@ -1,169 +1,45 @@
 ---
 title: Mappa del repository
-description: La struttura delle directory del monorepo, come le workspace dipendono l'una dall'altra e quali moduli rappresentano la maggior parte del codebase.
+description: Individua l'applicazione open source corrente, i pacchetti, i worker, lo schema e i file di distribuzione.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Files, Folder, File } from 'fumadocs-ui/components/files';
+## Applicazioni
 
-Ciele è un monorepo di workspace pnpm basato su Turbo. Due applicazioni Next.js,
-tre pacchetti condivisi, le migrazioni del database, lo stack di container e le
-immagini dei worker.
+| Percorso | Responsabilità |
+| --- | --- |
+| `apps/web` | Console di amministrazione, runtime dei widget, pagine pubbliche, azioni del server e API v1. |
+| `apps/docs` | Applicazione di documentazione Fumadocs e pipeline di traduzione. |
 
-## L'albero
+## Pacchetti condivisi
 
-<Files>
-  <Folder name="apps" defaultOpen>
-    <Folder name="web" defaultOpen>
-      <File name="src/app/(admin)/ — the authenticated console" />
-      <File name="src/app/widget/ — the public chat page" />
-      <File name="src/app/api/ — widget, preview, and cron endpoints" />
-      <File name="src/app/actions.ts — every mutation, one file" />
-      <File name="src/components/ — console, editor, chat, and widget UI" />
-      <File name="src/lib/runtime/ — the chat runtime (enforced module)" />
-      <File name="src/lib/ — auth, authorization, data access, exports" />
-      <File name="src/middleware.ts — the authentication gate" />
-    </Folder>
-    <Folder name="docs">
-      <File name="content/docs/ — this documentation, as MDX" />
-      <File name="src/ — the Fumadocs site" />
-    </Folder>
-  </Folder>
-  <Folder name="packages" defaultOpen>
-    <Folder name="db">
-      <File name="src/types.ts — domain types and the data interface" />
-      <File name="src/supabase.ts — the Postgres implementation" />
-      <File name="src/mock.ts — the in-memory implementation" />
-      <File name="src/engine.ts — the keyword router fallback" />
-      <File name="src/db-contract.suite.ts — one suite, both implementations" />
-    </Folder>
-    <Folder name="ui">
-      <File name="shared primitives, used by both apps" />
-    </Folder>
-    <Folder name="charts">
-      <File name="chart and metric components" />
-    </Folder>
-  </Folder>
-  <Folder name="supabase" defaultOpen>
-    <File name="migrations/ — the schema, applied in filename order" />
-    <File name="seed.sql — demo data" />
-  </Folder>
-  <Folder name="deploy">
-    <File name="docker-compose.yml — the self-host stack" />
-    <File name="bootstrap.sh — generates secrets and starts everything" />
-  </Folder>
-  <Folder name="services">
-    <File name="crawl4ai-worker/ — browser-rendered crawling" />
-    <File name="graph-worker/ — knowledge-graph processing" />
-  </Folder>
-  <Folder name="docs">
-    <File name="ARCHITECTURE.md, adr/, runbooks/ — engineering notes" />
-  </Folder>
-</Files>
+| Percorso | Responsabilità |
+| --- | --- |
+| `packages/core` | Tipi di dominio, regole pure Flow, impostazioni predefinite, condizioni e logica di analisi. |
+| `packages/db` | Interfacce di persistenza, archiviazione simulata e implementazione di Supabase. |
+| `packages/agent` | Esecuzione di turn, provider di modelli, strumenti di Knowledge, importazione e valutazione. |
+| `packages/ops` | Operazioni dell'organizzazione condivisa utilizzate dalle azioni della console e dall'API v1. |
+| `packages/client` | Client tipizzato per API v1. |
+| `packages/cli` | Interfaccia terminale sul client tipizzato. |
+| `packages/mcp` | Adattatore MCP locale a sette strumenti sul client tipizzato. |
+| `packages/ui` | Componenti condivisi dell'interfaccia utente. |
+| `packages/charts` | Visualizzazioni analitiche condivise. |
 
-<Callout title="Enterprise code is not in an open-source checkout">
-A small set of managed-service features lives under dedicated paths that are
-removed when the public tree is assembled, so an open-source checkout simply does
-not contain them — nor the database migrations that belong to them. See
-[The open-core boundary](/self-hosting/open-core-boundary).
-</Callout>
+## Servizi e infrastruttura
 
-## Come le aree di lavoro dipendono l'una dall'altra
+| Percorso | Responsabilità |
+| --- | --- |
+| `services/graph-worker` | Servizio opzionale di estrazione e recupero di grafi. |
+| `services/crawl4ai` | Configurazione opzionale del crawler con rendering JavaScript. |
+| `supabase/migrations` | Modifiche ordinate allo schema del database. |
+| `deploy` | Script di distribuzione e bootstrap Docker Compose su host singolo. |
 
-Il grafo delle dipendenze è volutamente poco profondo. Nessun elemento condiviso
-dipende da un'applicazione e il pacchetto di dati non dipende da nulla di
-interno, il che consente alla sua suite di test di essere eseguita in modo
-isolato.
+## Direzione della dipendenza
 
-<Mermaid
-  title="Dipendenze dell'area di lavoro (le frecce puntano alla dipendenza)"
-  chart={`
-flowchart BT
-  WEB["apps/web<br/>console · widget · API"]
-  DOCS["apps/docs<br/>documentation site"]
-  DB["packages/db<br/>data interface + two implementations"]
-  UI["packages/ui<br/>shared primitives"]
-  CH["packages/charts<br/>chart components"]
-  SQL[("supabase/migrations<br/>the schema")]
+Le regole pure vanno in `packages/core`. Il comportamento di persistenza
+appartiene a `packages/db`.
 
-  WEB --> DB
-  WEB --> UI
-  DOCS --> UI
-  DB -.->|"must match"| SQL
-`}
-/>
+Le mutazioni riutilizzabili vanno inserite in `packages/ops`. Il comportamento
+del modello e del recupero appartiene a `packages/agent`.
 
-`packages/charts` viene utilizzato dalla console delle operazioni gestite, che
-si trova al di fuori dell'albero open source; viene fornito nel workspace ma non
-viene importato da nessun elemento in un checkout open source.
-
-## All'interno dell'applicazione web
-
-L'applicazione è strutturata in modo pulito: le route leggono attraverso un
-gestore di dati nell'ambito della richiesta, le mutazioni passano attraverso un
-unico guard di autorizzazione e tutto ciò che è generativo si trova dietro il
-modulo di runtime.
-
-<Mermaid
-  title="Livelli all'interno di app/web"
-  chart={`
-flowchart TB
-  MW["middleware.ts + lib/auth.ts<br/>session gate — who is this?"]
-
-  MW --> RSC["Server Components<br/>app/(admin)/** — reads"]
-  MW --> ACT["Server Actions<br/>app/actions.ts — writes"]
-  MW --> API["Route handlers<br/>app/api/** — chat · cron"]
-
-  ACT --> AZ["lib/authz.ts + lib/rbac.ts<br/>may they do this?"]
-  API --> RT["lib/runtime/<br/>chat · retrieval · crawling · jobs"]
-  ACT --> RT
-
-  RSC --> DATA["lib/data.ts<br/>request-scoped data handle"]
-  AZ --> DATA
-  RT --> DATA
-  DATA --> PG[("Postgres<br/>row-level security")]
-`}
-/>
-
-Da questa struttura derivano tre proprietà che vale la pena conoscere prima di
-apportare qualsiasi modifica:
-
-- **There is no client-side write path.** I browser chiamano le azioni del
-  server; le azioni del server eseguono le mutazioni. Aggiungere una modifica
-  significa aggiungere un'azione, non un endpoint.
-- **Every organization-scoped mutation starts at one guard.** Il controllo di
-  autorizzazione è una singola funzione, quindi la modifica del modello di ruolo
-  interessa due file anziché ogni sito di chiamata.
-- **Reads carry the caller's identity into Postgres**, quindi la sicurezza a
-  livello di riga si applica a loro. L'isolamento del tenant viene applicato sia
-  nel database che nell'applicazione.
-
-## Dove si concentra il peso
-
-I numeri riportati di seguito provengono da un'analisi statica del codice
-sorgente dell'applicazione — simboli, importazioni e chiamate tra di essi —
-aggregati per area. Sono una misura approssimativa di quanto ogni area sia
-connessa, il che è un buon indicatore di "quanta parte del sistema se ne
-accorgerà se cambio questo".
-
-| Area | Connessione relativa | Cosa c'è lì |
-|---|---:|---|
-| `lib/runtime/` | ●●●●●●●●●● | Routing, azioni, recupero, crawling, incorporamenti, job |
-| `components/ui/` | ●●●●● | Primitive condivise, utilizzate ovunque |
-| `components/assistant/` | ●● | L'editor dell'assistente: generale, conoscenza, flussi, pubblicazione |
-| `app/actions.ts` | ●● | Ogni modifica al prodotto, in un unico file |
-| `app/(admin)/` | ●● | Le pagine della console |
-| `app/api/` | ● | Endpoint per widget, anteprima e cron |
-
-Due voci meritano un commento. `lib/runtime/` è di gran lunga la parte più densa
-del codebase: è qui che risiede quasi tutto il comportamento, ed è proprio per
-questo che la sua superficie pubblica è bloccata. E `app/actions.ts` è il
-singolo *file* più connesso: si tratta di una scelta deliberata, non di un caso,
-poiché una singola superficie di mutazione è ciò che rende verificabile
-l'affermazione "ogni mutazione è autorizzata".
-
-<Callout title="Reproducing this yourself">
-Any call-graph tool over `apps/web/src` will show the same shape. The point of
-the table is the ordering, not the exact figures — treat it as a map of where to
-tread carefully.
-</Callout>
+Gli adattatori di superficie in `apps/web`, `packages/cli` e `packages/mcp` non
+devono creare un comportamento di dominio separato.

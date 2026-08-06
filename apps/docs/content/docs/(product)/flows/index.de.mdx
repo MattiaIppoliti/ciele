@@ -1,58 +1,38 @@
 ---
-title: Übersicht über Flows
-description: Wie Ciele anhand eines geordneten Regelwerks entscheidet, was ein Assistent mit jeder Nachricht macht.
+title: Flows
+description: Leiten Sie Nachrichten und proaktive Ereignisse an geordnete Antwortaktionen weiter.
 ---
 
-Mit Flows steuern Sie das Verhalten eines Assistenten. Ein Flow ist eine Regel,
-die besagt: „Wenn eine Nachricht so aussieht, führe diese Aktionen aus.“ Flows
-sind geordnet, und der erste, der mit einer Nachricht übereinstimmt, gewinnt.
-Dadurch wird ein Assistent vorhersehbar: Sie können sich die Liste ansehen und
-wissen, wie er jede Art von Frage behandeln wird.
+Ein Flow enthält einen Trigger, verfügbare Bedingungen und geordnete Aktionen.
+Der Router verarbeitet aktivierte Flows in der konfigurierten Reihenfolge.
 
-Öffnen Sie einen Assistenten und wählen Sie **Flows**, um die Liste anzuzeigen.
+## Nachrichtenflüsse
 
-## So funktioniert das Routing
+Der **User sends a message**-Trigger verwendet die Intent-Klassifizierung. Ein
+Modellklassifikator wählt den besten geeigneten Flow aus, wenn ein Modell
+verfügbar ist.
 
-Für jede eingehende Nachricht liest der Assistent die Flow-Liste durch und wählt
-den ersten Flow aus, dessen Beschreibung mit der Nachricht übereinstimmt.
-Anschließend führt er die Aktionen dieses Flows der Reihe nach aus. Da der
-Abgleich auf der Bedeutung der Nachricht basiert, beschreiben Sie jeden Flow in
-einfacher Sprache, anstatt Schlüsselwörter zu schreiben.
+Der Keyword-Router bietet ein Offline- und Fehler-Fallback. Beide Router
+verwenden denselben Kandidatenfilter.
 
-## Das Standardverhalten
+Der gesperrte **Default behavior**-Flow bleibt der letzte. Er verarbeitet eine
+berechtigte Nachricht, wenn kein früherer Flow gewinnt.
 
-Ganz unten in der Liste befindet sich der **Default behavior**. Es handelt sich
-um eine integrierte Regel, die immer an letzter Stelle steht und jede Nachricht
-verarbeitet, zu der kein anderer Flow passt. Das Standardverhalten antwortet aus
-Ihrem Wissen heraus. Deshalb funktioniert ein Assistent, sobald er über Wissen
-verfügt, auch ohne benutzerdefinierte Flows.
+## Proaktive Flows
 
-Sie können das Standardverhalten nicht entfernen, aber Sie können sich darauf
-als Ihr Sicherheitsnetz verlassen, während Sie darüber spezifischere Flows
-hinzufügen.
+Diese Trigger klassifizieren eine Nachricht nicht:
 
-## Feste Antworten im Vergleich zu generierten Antworten
+- **On page load**
+- **Time on page**
+- **Chat opens**
 
-Mit Flows können Sie zwei Arten von Antworten kombinieren:
+Ein proaktiver Flow hat keine Bedingungen und enthält eine
+Benachrichtigungsaktion. Siehe [Benachrichtigungen](/flows/notifications).
 
-- **Fixed replies** werden genau so angezeigt, wie Sie sie geschrieben haben.
-  Verwenden Sie diese, wenn der Wortlaut genau sein muss, beispielsweise bei
-  einer Grundsatzerklärung oder einem rechtlichen Hinweis.
-- **Generated answers** werden vom Assistenten aus Ihrem Wissen heraus verfasst.
-  Verwenden Sie diese, wenn Sie eine hilfreiche, natürliche Antwort wünschen,
-  die sich an die Frage anpasst.
+## Reihenfolge der Flows
 
-Diese Mischung gibt Ihnen Kontrolle, wo Sie sie brauchen, und Flexibilität in
-allen anderen Bereichen.
+Platzieren Sie spezifische Nachrichten-Flows vor allgemeinen Nachrichten-Flows.
+Die Reihenfolge steuert auch die integrierte Verknüpfung „Basic Interaction“.
 
-## Lesen der Flow-Liste
-
-Jeder Flow in der Liste zeigt seinen Namen, eine kurze Beschreibung dessen,
-worauf er zutrifft, und die Aktionen, die er ausführen wird. Sie können Flows
-neu anordnen, um die Priorität zu ändern, und Sie können einen Flow aktivieren
-oder deaktivieren, ohne ihn zu löschen. Ein deaktivierter Flow wird beim Routing
-übersprungen.
-
-Fahren Sie mit [Einen Flow erstellen](/flows/building-a-flow) fort, um einen
-Flow zu erstellen, und mit [Flow-Aktionen](/flows/actions) für die vollständige
-Liste der Aktionen, die ein Flow ausführen kann.
+Ein früherer übereinstimmender benutzerdefinierter Flow kann eine
+Höflichkeitsnachricht vor dem integrierten Basic Interaction Flow verarbeiten.

@@ -1,74 +1,53 @@
 ---
 title: Konfiguration
-description: Die Umgebungsvariablen, die eine selbst gehostete Ciele-Bereitstellung für ihre Datenbank, KI-Anbieter und Betriebsgeheimnisse ausliest.
+description: Konfigurieren Sie Ursprünge, Secrets, Konten, Modelle, E-Mail und optionale Worker.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+Das Bootstrap-Skript schreibt `deploy/.env`. Verwenden Sie `deploy/.env.example`
+als Referenz für die aktuelle Variable.
 
-Eine selbst gehostete Bereitstellung wird vollständig über Umgebungsvariablen
-konfiguriert. Kopieren Sie `apps/web/.env.example` nach `apps/web/.env.local`
-und tragen Sie die benötigten Werte ein. Die Beispieldatei wird mit
-funktionsfähigen Standardwerten für die lokale Entwicklung geliefert. Auf einem
-lokalen Datenbank-Stack sind die meisten davon also bereits für Sie festgelegt.
+## Öffentliche Ursprünge
 
-## Datenbank
+Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungs-Ursprung. Setzen Sie
+`SUPABASE_PUBLIC_URL` auf den Ursprung des vom Browser zugänglichen
+Datenbank-Gateways.
 
-Legen Sie beide fest, und die Datenschicht wechselt automatisch vom Demo-Store
-zu Ihrer Datenbank. Lassen Sie sie leer, um im Demo-Modus zu bleiben.
+Erstellen Sie die Anwendung neu, nachdem Sie `SUPABASE_PUBLIC_URL` geändert
+haben. Das Browser-Bundle enthält diesen Wert zum Zeitpunkt des Builds.
 
-| Variable | Zweck |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Die URL Ihres Supabase-Projekts. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Der öffentliche Anon-Schlüssel für den Browserzugriff. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Nur-Server-Schlüssel für die Widget-Laufzeit und privilegierte Lesezugriffe. Stellen Sie ihn niemals dem Browser zur Verfügung. |
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
 
-Informationen zu Bereitstellung und Migrationen finden Sie unter
-[Datenbank](/self-hosting/database).
+## Generierte Geheimnisse
 
-## KI-Anbieter
+Der Stack benötigt Postgres, JSON Web Token, Service-Rolle,
+Anwendungsverschlüsselung und Cron-Geheimnisse. Lassen Sie das Bootstrap-Skript
+sie generieren.
 
-Assistenten rufen einen KI-Anbieter auf, um Antworten zu generieren. Geben Sie
-mindestens einen Plattformschlüssel an oder verweisen Sie auf einen beliebigen
-OpenAI-kompatiblen Endpunkt, um vollständig lokal auszuführen.
+Ändern Sie `JWT_SECRET`, `ANON_KEY` oder `SERVICE_ROLE_KEY` nicht unabhängig
+voneinander. Sie bilden eine Signaturkonfiguration.
 
-| Variable | Zweck |
-| --- | --- |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Plattformschlüssel, der verwendet wird, wenn ein Assistent keine organisationsspezifische Anbieterverbindung hat. |
-| `ANTHROPIC_API_KEY` | Optionaler zusätzlicher Anbieter. |
-| `OPENAI_API_KEY` | Optionaler zusätzlicher Anbieter. |
+## Konten und E-Mail
 
-<Callout title="Run fully local, no cloud AI">
-Set `OPENAI_COMPATIBLE_BASE_URL` and `OPENAI_COMPATIBLE_CHAT_MODEL` to route
-answers through any server that speaks the OpenAI chat API — a local runner, a
-self-hosted model server, or a gateway. Add `OPENAI_COMPATIBLE_EMBEDDING_MODEL`
-(and `OPENAI_COMPATIBLE_EMBEDDING_DIMS`) to enable semantic knowledge search;
-without an embedding model, knowledge search falls back to lexical matching. An
-API key is only needed if your server enforces one.
-</Callout>
+Das erste Konto wird zum Eigentümer der Organisation. Legen Sie
+`DISABLE_SIGNUP=true` fest, nachdem die erforderlichen Konten vorhanden sind.
 
-Organisationen können auch ihre eigenen Schlüssel aus der Konsole mitbringen.
-Dies ist eine Produktfunktion und keine Bereitstellungskonfiguration.
+Ohne SMTP-Konfiguration bestätigt `MAILER_AUTOCONFIRM=true` neue Konten
+automatisch.
 
-## Geheimnisse und Operationen
+E-Mail-Aktionen zur Laufzeit verwenden `RESEND_API_KEY` und `EMAIL_FROM`. Sie
+melden ein nicht konfiguriertes Ergebnis, wenn einer der Werte fehlt.
 
-| Variable | Zweck |
-| --- | --- |
-| `APP_ENCRYPTION_KEY` | Versiegelt Provider-Schlüssel pro Organisation im Ruhezustand (AES-256-GCM). Ohne diese Funktion werden solche Schlüssel als markierter Klartext mit einer Warnung gespeichert. Generieren Sie einen mit `openssl rand -base64 32`. |
-| `PLATFORM_OWNER_EMAIL` | Der erste Benutzer, der sich mit dieser E-Mail-Adresse anmeldet, wird zum Plattformbesitzer. |
-| `CRON_SECRET` | Gemeinsames Geheimnis zum Schutz der Wartungs- und Cron-API-Routen. |
+## Modell-Endpunkte
 
-## Wissensaufnahme (optional)
+Konfigurieren Sie die Provider-Schlüssel für Anthropic, OpenAI oder Google. Sie
+können auch einen OpenAI-kompatiblen Chat- und Embedding-Endpunkt konfigurieren.
 
-Die Website-Crawl-Wissens-Pipeline kann einen externen Crawler verwenden. Diese
-sind optional; ohne sie wird der integrierte lokale Crawler verwendet.
+Die Wissenssuche verwendet lexikalischen Abgleich, wenn kein Embedding-Modell
+verfügbar ist.
 
-| Variable | Zweck |
-| --- | --- |
-| `APIFY_API_TOKEN` | Token für den Apify-basierten Website-Crawl-Anbieter. |
-| `CRAWL4AI_BASE_URL`, `CRAWL4AI_API_TOKEN` | Ein privater Crawl4AI-Worker; beide sind erforderlich, damit er ausgewählt werden kann, und das Token ist nur für den Server bestimmt. |
+## TLS
 
-<Callout type="warn" title="Review row-level security before shipping">
-The database ships with permissive row-level-security policies suited to a demo.
-Scope them to authenticated administrators before exposing a deployment to real
-users.
-</Callout>
+Terminieren Sie TLS in einem Reverse-Proxy. Setzen Sie dann beide öffentlichen
+Origin-Variablen auf ihre HTTPS-Adressen und bauen Sie die Anwendung neu.

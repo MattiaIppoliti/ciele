@@ -1,42 +1,32 @@
 ---
 title: Alertas
-description: Detecta a tiempo los problemas operativos, como una conexión cuyas credenciales hayan dejado de funcionar.
+description: Revisa los fallos detectados que requieren la intervención del administrador.
 ---
 
-Las alertas mantienen tus asistentes en buen estado al mostrar los problemas que
-requieren atención. Cuando algo sale mal en segundo plano, por ejemplo, una
-conexión cuyas credenciales han dejado de funcionar, Ciele genera una alerta
-para que puedas actuar antes de que afecte a los visitantes. Abre **Alerts**
-desde la barra lateral. Una insignia muestra cuántas alertas están activas en
-ese momento.
+Alertas registra los problemas operativos actuales y los resueltos. Una insignia
+puede mostrar el número de alertas activas.
 
-## Lee las alertas
+## Vistas de alertas
 
-Las alertas están organizadas para que puedas centrarte en lo que requiere
-acción.
+- **Needs attention** muestra las alertas activas.
+- **Resolved** muestra las alertas resueltas.
+- **All** muestra ambos estados.
 
-- **Needs attention** muestra los problemas activos.
-- **Resolved** enumera los problemas que ya no están activos.
-- **All** muestra ambos.
+Cada alerta contiene su tipo, título, detalle, hora de detección y estado
+actual.
 
-Cada alerta describe el tipo de problema, proporciona un título breve y
-detalles, e indica cuándo se detectó y su estado actual.
+Los fallos en las expectativas de los objetivos generan alertas. Otras
+operaciones supervisadas también pueden crear una alerta cuando su
+implementación actual notifica un fallo.
 
 ## Resolver una alerta
 
-Hay dos formas de eliminar una alerta.
+1. Abre la alerta.
+2. Lee la causa registrada y el elemento afectado.
+3. Corrige el objetivo, la conexión, la fuente u otra configuración.
+4. Repite la operación afectada.
+5. Confirma que el problema ya no se produce.
+6. Marca la alerta como resuelta cuando sea necesario.
 
-- Soluciona el problema subyacente; por ejemplo, actualiza la conexión que ha
-  fallado. Cuando el problema se resuelve por sí solo, la alerta se resuelve
-  automáticamente.
-- Si has resuelto el problema fuera de Ciele, márcalo como resuelto desde la
-  alerta.
-
-También puedes abrir una alerta para obtener más detalles cuando necesites
-entender exactamente lo que ha ocurrido.
-
-<Callout title="Check alerts before they bite">
-An unattended alert often means an integration is quietly failing. A quick glance
-at the Alerts badge as part of your routine keeps small problems from becoming
-visitor facing ones.
-</Callout>
+No resuelvas una alerta solo para eliminar su insignia. Primero, confirma la
+operación afectada.

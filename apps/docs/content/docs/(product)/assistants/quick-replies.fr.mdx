@@ -1,59 +1,36 @@
 ---
-title: Boutons de démarrage
-description: Offrez aux visiteurs des moyens rapides d'entamer une conversation grâce à des boutons de démarrage pré-remplis.
+title: Réponses rapides
+description: Ajoutez des boutons de démarrage qui envoient du texte ou renvoient une réponse sélectionnée parmi les FAQ.
 ---
 
-Les boutons de démarrage apparaissent lorsqu'un visiteur ouvre le chat. Ils
-permettent de guider les utilisateurs de manière conviviale vers les tâches que
-votre assistant maîtrise le mieux. Vous les gérez dans la section **General** de
-l'éditeur d'assistant.
+Les réponses rapides apparaissent à côté du message de bienvenue. Elles aident
+un Visiteur à démarrer une tâche courante.
 
-## Ajoutez un bouton
+## Envoyer un texte
 
-1. Dans Général, recherchez la liste des boutons de démarrage.
-2. Sélectionnez **Add button**.
-3. Donnez un **nom** au bouton. C'est le libellé que le visiteur voit.
-4. Choisissez un **type**, puis renseignez les paramètres spécifiques à ce type.
-5. Enregistrez le bouton.
+Une réponse rapide **Send Text** envoie le texte configuré en tant que message
+du visiteur. Le routeur Flow standard traite ensuite ce message.
 
-Vous pouvez ajouter plusieurs boutons et les réorganiser pour que les plus
-utiles apparaissent en premier.
+Utilisez ce type lorsque l'Assistant doit interpréter le texte de départ selon
+ses règles de routage habituelles.
 
-## Types de boutons
+## FAQ
 
-Chaque bouton effectue l'une des quatre actions suivantes.
+Une réponse rapide **FAQ** renvoie textuellement la réponse FAQ sélectionnée.
+Elle n'appelle pas le modèle de chat.
 
-### Envoyer du texte dans le chat
+La réponse inclut la citation de la source FAQ. Utilisez ce type lorsqu'une
+réponse approuvée doit rester exacte.
 
-Le bouton envoie un message dans le chat pour le visiteur, comme s'il l'avait
-tapé lui-même. Utilisez cette fonctionnalité pour orienter l'assistant vers un
-sujet spécifique. Par exemple, un bouton nommé « Pricing » peut envoyer le
-message « Tell me about your pricing » afin que l'assistant réponde
-immédiatement à cette question.
+## Ajoutez une réponse rapide
 
-### Remontée d'information
+1. Ouvrez **General**.
+2. Recherchez **Quick replies**.
+3. Ajoutez un élément **Send Text** ou **FAQ**.
+4. Saisissez le libellé visible.
+5. Sélectionnez ou saisissez le contenu requis.
+6. Enregistrez le brouillon.
+7. Testez le bouton en mode Aperçu.
 
-Le bouton met le visiteur en relation avec votre équipe via les options
-d'escalade que vous avez configurées. Utilisez cette option lorsque vous
-souhaitez disposer d'un moyen clair et toujours visible de joindre un humain. Il
-s'appuie sur vos [Help Desks](/help-desks).
-
-### Ouvrir un lien externe
-
-Le bouton ouvre une adresse Web dans un nouvel onglet. Utilisez cette option
-pour diriger les visiteurs vers une page de votre site, un formulaire ou toute
-autre ressource externe.
-
-### FAQ
-
-Le bouton fait apparaître une paire spécifique de question-réponse issue de
-votre base de connaissances. Utilisez-le pour apporter une réponse instantanée
-et exacte à une question courante. Consultez la [FAQ](/knowledge/faqs).
-
-## Conseils
-
-- Utilisez des libellés courts pour qu'ils s'intègrent parfaitement dans le
-  widget.
-- Commencez par les questions que les visiteurs posent le plus souvent.
-- Associez un bouton « Envoyer un texte dans le chat » à des connaissances
-  solides afin que l'assistant ait une bonne réponse prête.
+Utilisez des libellés courts. Le libellé doit décrire l'action qui se produit
+après la sélection.

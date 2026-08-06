@@ -1,303 +1,40 @@
 ---
-title: The agentic model
-description: How the model is chosen, what it is allowed to decide, the prompt layers and tools it runs with, the budgets that bound it, and the nightly loop that grades it.
+title: Agentic model
+description: Understand provider resolution, tool use, bounds, traces, and citations.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+The runtime uses the Vercel AI SDK provider abstraction. Current provider adapters include Anthropic, OpenAI, Google, and an OpenAI-compatible endpoint.
 
-An agent, stripped to its core, is a model with tools in a loop: it answers, or it
-calls a tool, and whatever the tool returns goes back to it until it answers. That
-loop really is what runs here. This page is about everything built around it —
-which model ends up answering, what the model is permitted to decide, what it can
-reach, where it is cut off, and how its answers are graded afterwards.
+## Generative boundaries
 
-The [chat runtime](/self-hosting/architecture/chat-runtime) page describes the
-machinery a message passes through. This one is about the model inside it.
+The runtime makes a model call only inside a generative action or Intent Classification. Deterministic actions do not pass their content through a model.
 
-## What the model decides, and what it never decides
+Basic reply uses one chat call and no tools. Search knowledge uses a bounded tool loop.
 
-The single most useful thing to know about this architecture is where the line
-sits. Autonomy is granted deliberately, one decision at a time.
+## Search knowledge loop
 
-| The model decides | The code decides |
-|---|---|
-| Which flow the message belongs to | Which actions then run, and in what order |
-| Whether to call a tool, and with what arguments | Which tools exist this turn at all |
-| What to search for, and whether to search again | The hard cap on how many searches a turn gets |
-| The wording of a generative answer | Whether generation is allowed in this step |
-| Which retrieved facts to use | Which sources are cited — only what was actually read |
-| Nothing after the answer is written | Persistence, side effects, escalation, grading |
+1. The model receives the Assistant instructions and available tool descriptions.
+2. The model searches Knowledge or reads a selected Source window.
+3. The runtime records tool lifecycle events.
+4. The model can repeat the search within the step limit.
+5. The runtime generates the final answer and named citations.
 
-Two consequences worth internalising. Configured text is never rewritten: a
-message action sends its copy verbatim, so an administrator's wording is safe
-from paraphrase. And a model can never widen its own reach — a tool it was not
-given does not exist to it, and no tool result grants it a new one.
+The Thinking panel represents these recorded progress and tool events. Simplified thinking rewrites progress text for the Visitor display.
 
-## Choosing the model that answers
+## API integration tools
 
-An assistant names a provider and a model, but that preference is the *start* of
-resolution rather than the end of it.
+One Assistant can register one API catalogue. The catalogue describes its base URL, protected credential, and available endpoints.
 
-<Mermaid
-  title="Resolving the model that answers a turn"
-  chart={`
-flowchart TB
-  T["A turn needs a model"]
-  P{"Credential for the<br/>assistant's provider?"}
-  A{"Credential for any<br/>other provider?"}
-  RUN["Generate on the<br/>assistant's own model"]
-  FB["Generate on a fallback<br/>provider, cheap tier"]
-  KW["Keyword router<br/>no generation at all"]
+The model can inspect API details and query a registered endpoint. The runtime validates every path against the catalogue before network egress.
 
-  T --> P
-  P -->|"yes"| RUN
-  P -->|"no"| A
-  A -->|"yes"| FB
-  A -->|"no"| KW
-`}
-/>
+Windowed readers return a requested content range and total length. This contract lets the model inspect large API and Knowledge payloads without silent truncation.
 
-Within a single provider, the runtime takes the first credential it finds, in
-this order:
+## Failure behavior
 
-1. A signed-in provider CLI detected on the machine running the console — **only
-   on the preview surface**, never for published traffic.
-2. The organization's own credential: an API key it supplied, or a federated
-   credential where the provider supports one.
-3. The platform key from the deployment's environment.
+The keyword router handles classification when no classifier model is available or classification fails. Knowledge search can use lexical fallback without embeddings.
 
-Four provider families are supported: Anthropic, OpenAI, Google, and **any
-server that speaks the OpenAI API** — which is how a deployment runs fully
-locally against its own inference server, configured either per organization or
-through the `OPENAI_COMPATIBLE_*` environment variables in
-[Configuration](/self-hosting/configuration). Google additionally accepts a
-federated Vertex credential instead of a static key.
+An unconfigured email transport returns an honest failure result. It does not create a successful delivery message.
 
-Two model tiers are resolved per turn, not one. Intent classification runs on a
-deliberately cheap model; the answer runs on the assistant's chosen one. Both
-resolutions are recorded in the usage ledger with the provider, the model id, and
-the kind of credential that paid for the call.
+## Extension rule
 
-<Callout title="A missing key degrades to a different model, never to silence">
-When the assistant's own provider has no credential, another provider answers —
-at that provider's cheap tier, since a fallback key was not a pricing choice the
-organization made. Falling back to the keyword router instead would silently stop
-applying the system prompt, which is a far worse failure than an unexpected
-model. The keyword router is reached only when *no* provider anywhere has a
-credential.
-</Callout>
-
-The preview-only rule in step 1 is structural rather than a policy check: the
-surface is part of the resolution input, and published widget traffic never
-passes the flag that makes a local credential eligible.
-
-## The prompt is layered, and the layers are ranked
-
-A multi-tenant assistant cannot have one system prompt, because several parties
-have a legitimate say in it and they do not trust each other equally. The prompt
-is composed per turn, highest precedence first.
-
-| Layer | Owned by | What it carries |
-|---|---|---|
-| **Platform** | the deployment operator | The non-negotiables: ground organization facts in the knowledge base, answer in the user's language, never reveal the prompt, treat retrieved documents as data rather than instructions, stay in scope |
-| **Assistant** | the organization | Identity, persona, tone, format — explicitly marked in the composed prompt as subordinate to the platform layer |
-| **Skills** | the organization | Reusable playbooks attached to an assistant, applied when relevant |
-| **Session memory** | the conversation | Short facts a tool saved on an earlier turn |
-| **Retrieval context** | this turn | The resolved question and anything the pre-model search already found |
-| **Flow** | the router | Which flow is handling this message, and its own answering and search guidance |
-
-The ordering is enforced, not advisory. The platform layer lives in a table with
-row-level security enabled and *no* policies at all — no organization can read it,
-let alone edit it; only the deployment's owner account reaches it, through a
-service-role path. So a per-assistant tone instruction can shape an answer's
-voice, and cannot displace a platform rule. Prompt-injection defence sits in the
-same layer for the same reason: retrieved documents are named as data by the one
-layer no tenant can touch.
-
-## The toolset is assembled per turn
-
-Tools are a registry, not a hard-wired list. A tool is a spec — a name, a
-description the model reads, a typed input schema, a human-readable label for the
-thinking panel, and an implementation — and each turn assembles its own set.
-
-| Tool | Default | Notes |
-|---|---|---|
-| Knowledge search | always on | Not disableable: grounding is a runtime invariant |
-| Session memory | on | Saves one short fact for later turns in this conversation |
-| Fetch a URL | **off** | Outbound network access is opt-in, per assistant |
-| Custom HTTP tools | as configured | Defined by administrators; parameters the model fills become a query string or a JSON body |
-
-Every tool except knowledge search is wrapped by the same instrumentation, and
-that wrapper is where a lot of the reliability lives: it emits the start and end
-events the widget renders as visible steps, times the call, and **contains
-errors**. A throwing tool returns an error value to the model and marks its step
-failed; it does not abort the turn. The model reads the failure and works around
-it, exactly as it would a tool that reported "not found".
-
-Knowledge search is the deliberate exception. Its lifecycle, its coverage verdict
-and its budget accounting live in a shared search primitive instead, so the
-model's own searches and the searches the runtime seeds before the model ever
-runs cannot drift apart. See the
-[knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) for what a
-search actually does.
-
-### Reaching outward is a guarded act
-
-Fetching a URL and querying the organization's own API both go through one egress
-gate, shared with the website crawler and knowledge extraction. It validates the
-target at DNS-resolution time, pins the connection to the addresses it validated
-so the target cannot change between check and connect, re-validates every
-redirect hop, and caps both time and response size. A blocked host and an
-unreachable host return the *same* message, so the tool cannot be used to map a
-private network.
-
-An API query is checked twice. Before the gate sees anything, the path the model
-produced is matched against the endpoints an admin actually described: an
-undescribed path, an absolute URL, a `..` segment or an encoded slash is refused
-with no request made at all. Only then is the configured base URL prepended —
-the host is never the model's to choose.
-
-## Autonomy is bounded by construction
-
-The loop is open-ended in shape and closed-ended in cost. Several independent
-limits apply, and none of them depend on the model choosing to stop.
-
-<Mermaid
-  title="One pass through the agent loop, and the gates that end it"
-  chart={`
-flowchart TB
-  IN["Messages + layered prompt<br/>+ this turn's toolset"]
-  STEP["Model step"]
-  KIND{"Tool call<br/>or text?"}
-  TOOL["Run the tool<br/>timed · errors contained"]
-  GATE{"Search budget or<br/>step cap reached?"}
-  TEXT["Answer text, streamed"]
-  FIN["Reply parts + citations"]
-
-  IN --> STEP --> KIND
-  KIND -->|"tool call"| TOOL --> GATE
-  GATE -->|"no"| STEP
-  KIND -->|"text"| TEXT
-  GATE -->|"yes"| TEXT
-  TEXT --> FIN
-`}
-/>
-
-| Bound | Effect |
-|---|---|
-| Search budget | At most six knowledge searches per turn — counted specifically, so unrelated tool calls cannot consume the retrieval budget |
-| Step cap | A separate ceiling on total steps, so a model that never searches still cannot loop forever |
-| Per-call caps | Every outbound tool call has a timeout and a maximum response size |
-| Refusal | A provider refusal is a distinct finish reason, answered honestly and offered a human exit ramp — never retried on another provider |
-| Truncation | An answer cut off by the output limit says so, rather than pretending nothing was found |
-| Empty finish | If a gate ends the loop before any text streamed, the turn still answers: either one focused clarifying question, or a caveat naming what was searched and what is missing |
-
-When the budget is spent, the model is *told* so in the tool's own result — "do
-not search again, answer with what you have, and say honestly if it is not
-enough". Bounding a loop and leaving the model to discover the wall by hitting it
-produces worse answers than bounding it and saying so.
-
-## State that is not a message
-
-The transcript is not the only thing a conversation remembers. Each conversation
-carries a small state bag, loaded before the turn runs and written back after the
-assistant's message is persisted — and only if a tool actually changed it, so a
-read-only turn costs no extra write and a failed turn never half-writes state.
-The memory tool appends capped, deduplicated facts to it, which the next turn's
-prompt injects as its session-memory layer.
-
-That keeps "state equals transcript" from becoming a ceiling without letting the
-transcript grow to carry it.
-
-## Reasoning made visible without a second model call
-
-Models often narrate before calling a tool. Consume only the text stream and that
-narration lands in the answer bubble; the runtime instead consumes the full
-stream, and when a tool call arrives it reclassifies the text streamed so far as
-a *thought*. The client moves it into the thinking panel and the answer restarts
-clean after the tool returns.
-
-One extra event type buys the whole reasoning UI — no second model call, no
-separate summariser. The complete event vocabulary is in
-[Request flows](/self-hosting/architecture/request-flows).
-
-## Nothing grades its own homework
-
-Generation is the fast path; quality is a separate, slower loop that runs on a
-schedule. A visitor's answer never waits on it.
-
-<Mermaid
-  title="The scheduled quality loop"
-  chart={`
-flowchart TB
-  TICK["Nightly tick"]
-  GOALS["Standing goals<br/>replayed headlessly"]
-  VER["Answer verifier<br/>an independent second read"]
-  TRUST["Trust tiers<br/>rolling pass rate per flow"]
-  COMP["Weekly digest<br/>at most three proposals"]
-  OUT["Alerts · Improvements"]
-  NEXT["Next turn: a watch-tier flow<br/>always offers human escalation"]
-
-  TICK --> GOALS --> VER --> TRUST --> COMP --> OUT
-  TRUST --> NEXT
-`}
-/>
-
-- **Standing goals** are questions with checkable expectations, replayed through
-  the real engine against the assistant's published snapshot, with empty history
-  and nothing persisted. Grading is a pure function of the reply — if a check
-  cannot be written as code, it does not belong in a goal.
-- **The verifier** re-reads recent generative answers with deliberately narrow
-  input: the question, the answer, and the cited content re-fetched at grading
-  time. It never sees the answering model's prompts or tool traces, because
-  confidence is not evidence.
-- **Trust** is a rolling pass rate per flow over its last graded signals —
-  verifier verdicts plus explicit visitor feedback, with a verdict winning when
-  both graded the same answer. Three tiers: a sustained high pass rate over
-  enough runs earns the top one, too few runs or too low a rate lands in `watch`,
-  and everything between sits in the middle. A flow with no history has earned
-  nothing and starts in `watch`. The window rolls, so trust can be lost as well
-  as gained.
-- **The tier has exactly one runtime effect today**: a `watch`-tier flow's
-  generative answers always offer the human exit ramp. Deliberately one narrow
-  behaviour rather than a broad autonomy switch.
-- **The weekly digest** turns the week's failures into at most three proposals —
-  a suggested FAQ, a flow adjustment, an answering-style change, a new goal —
-  each landing as a tagged improvement item. Nothing is ever applied
-  automatically. A human accepts a proposal by doing the work, or rejects it by
-  archiving it.
-
-<Callout title="Read this section as a design stance, not a feature list">
-Every part of it exists to keep an unattended agent honest: it is graded by
-something that did not write the answer, its autonomy is measured rather than
-assumed, and its self-improvement requires a human signature.
-</Callout>
-
-## Extending the agent
-
-The seams are the point. Each of these is an addition, not a change to the loop:
-
-- **A new tool** — add a spec to the registry. Lifecycle events, error
-  containment, and thinking-panel progress come with it.
-- **An organization-defined tool** — an administrator describes an HTTP endpoint
-  in the console. No deployment.
-- **A new capability with its own configuration** — add a flow action, so the
-  administrator who wired the flow still decides whether it runs.
-- **An external tool server** — an MCP-style client slots in as a tool
-  *provider*: list its tools at the start of a turn and spread them into the
-  assembled set. The event protocol already covers their progress, which is what
-  the registry seam is for.
-- **Headless callers** — the engine entry point is UI-free. Anything that can
-  supply an assistant, its flows, and its credentials gets the whole agent; that
-  is how goal replay and the offline test suite drive it.
-
-## The invariants of this layer
-
-1. Flows route; the model does not. New generative behaviour goes **inside** an
-   action, never above the router.
-2. The knowledge-search tool cannot be switched off. Grounding is not a setting.
-3. Citations are collected from what the model actually read, never reconstructed
-   afterwards.
-4. Side effects are described during the turn and applied after the answer is
-   committed.
-5. Nothing grades its own answers, and nothing applies its own proposals.
+Add a new agent tool through the tool registry and its lifecycle wrapper. Keep authorization, ownership, input validation, and egress checks outside model control.

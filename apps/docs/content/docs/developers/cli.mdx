@@ -1,0 +1,73 @@
+---
+title: Ciele CLI
+description: Manage Ciele from a terminal or an automated job.
+---
+
+The `ciele` command uses the same API operations as the administrator console. The CLI supports the hosted service and self-hosted installations.
+
+## Requirements
+
+- Use Node.js 22.6 or later when you run the CLI from this repository.
+- Create an [Organization API key](/developers/api-keys).
+
+## Sign in
+
+For the hosted service, run:
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+For a self-hosted installation, add its public origin:
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+```
+
+The `login` command validates the key before it writes `~/.ciele/config.json`. On supported systems, the file mode is `0600`.
+
+The CLI resolves a key in this order:
+
+1. The `--api-key` option.
+2. The `CIELE_API_KEY` environment variable.
+3. The saved configuration file.
+
+The CLI uses the same order for `--base-url`, `CIELE_BASE_URL`, and the saved origin. The hosted origin is the final default.
+
+## Use automation output
+
+Add `--json` to a command to receive machine-readable output.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | The operation completed. |
+| `1` | The server returned an error. |
+| `2` | The command input is not valid. |
+| `3` | Authentication failed. |
+
+## Common commands
+
+```bash
+ciele assistants list --all
+ciele flows list <assistant-id>
+ciele collections list <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+ciele conversations list --assistant <assistant-id>
+ciele improvements list
+```
+
+Commands that delete data require `--yes`. The Default behavior Flow cannot be deleted.
+
+## Example CI check
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Store all values in the CI secret store. Do not write a key in a workflow file.

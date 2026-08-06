@@ -1,47 +1,31 @@
 ---
 title: Improvements
-description: Track and resolve weak answers on a board, from open to done.
+description: Track and complete work that corrects weak Assistant answers.
 ---
 
-The Improvements board is where answer quality gets managed. Each item represents
-something worth fixing about how the assistant answered, and the board moves items
-from open to done. Open **Improvements** from the sidebar.
+An Improvement records one answer-quality problem. It can include linked messages, Sources, a description, and a suggested fix.
 
-## Where improvements come from
+## Sources of Improvements
 
-Improvements arrive from three places:
+- An Improvement Flow action creates an item.
+- A Help Desk can create an item after escalation.
+- An administrator can flag an answer from the Inbox.
+- Search knowledge can create an item for an unresolved query when configured.
 
-- A **flow** with an improvement action flags an answer for review.
-- A **help desk** set to auto generate improvements creates one from the last
-  answer before an escalation. See
-  [Ticketing and improvements](/help-desks/ticketing-and-improvements).
-- A person **flags an answer** manually while reading the
-  [Inbox](/operations/inbox).
+## Manage an item
 
-Because they come from real conversations, improvements point at problems your
-visitors actually hit.
+Open an item to review its linked messages and available suggested fix. You can change its status, priority, tags, assignee, and due date.
 
-## The board
+The API, CLI, and MCP server can list, read, and update existing Improvements. Improvement creation remains a product-runtime operation.
 
-Items are organized into lanes that represent their status, moving from open work
-through in progress and review to done, with an archive for items you want to keep
-but set aside. Each lane shows how many items it holds, and you can export a report
-for a lane.
+## Correct the answer
 
-An item carries the details you need to act: a title, how often the problem
-occurred, a priority, tags, and an assignee drawn from your organization's members.
-Use the search and filters at the top to focus on what matters now.
+1. Read the linked Conversation.
+2. Identify the incorrect Source, FAQ, Flow, or instruction.
+3. Correct the draft configuration.
+4. Ask the original question in Preview.
+5. Confirm the answer and Sources.
+6. Publish the Assistant.
+7. Mark the Improvement as complete.
 
-## Work an item
-
-Open an item to see its full description and the messages that triggered it,
-including the answers involved and their sources, with a link back to the
-conversation for context. Set its priority, tags, assignee, and due date, then work
-the fix. When the underlying knowledge or flow is corrected, mark the item done.
-
-## The improvement loop
-
-Improvements close the loop between what visitors experience and what you change.
-A weak answer becomes an item, the item guides a fix to your knowledge or flows,
-and the next visitor gets a better answer. Working the board regularly is the
-single most effective habit for raising answer quality.
+Review generated suggested fixes before you use them. The stored suggestion is not a publication change.

@@ -1,65 +1,50 @@
 ---
-title: Crear un flujo
-description: "Crea un flujo con el generador de tres pasos: desencadenante, condiciones y respuesta."
+title: Crea un flujo
+description: Configura un desencadenante, las condiciones disponibles y las acciones de respuesta ordenadas.
 ---
 
-Creas un flujo en tres pasos: eliges qué lo inicia, añades condiciones
-opcionales y defines la respuesta. Abre un asistente, selecciona **Flows** y, a
-continuación, crea un nuevo flujo para abrir el generador.
+## Crea el flujo
 
-## Paso 1: Activador
+1. Abre un Asistente.
+2. Selecciona **Flows**.
+3. Crea un flujo.
+4. Introduce un nombre y una descripción claros.
+5. Selecciona un desencadenante.
 
-El desencadenante es el evento que hace que un flujo pueda ejecutarse. El
-desencadenante más común es cuando un visitante envía un mensaje, y otros
-desencadenantes cubren momentos como la apertura del chat. Elige el
-desencadenante que se ajuste a aquello a lo que quieres que reaccione el flujo.
-Para la mayoría de las reglas que responden a preguntas, el desencadenante de
-mensaje es la opción correcta.
+La descripción ayuda a Intent Classification a seleccionar un flujo de mensajes.
+Indica la intención del visitante y el ámbito requerido.
 
-## Paso 2: Condiciones
+## Añade condiciones de mensaje
 
-Las condiciones son opcionales. Restringen un flujo para que se ejecute solo en
-situaciones específicas. Puedes exigir que coincida cualquier condición o que
-coincidan todas, y puedes combinar varias.
+Los flujos de mensajes admiten estos tipos de condiciones:
 
-La condición que más vas a usar describe el **contexto de la conversación**:
-explicas, en un lenguaje sencillo, el tipo de mensaje que debe gestionar este
-flujo, y puedes dar algunos ejemplos de mensajes que deberían coincidir y otros
-que no. Estos ejemplos afinan la coincidencia para que el flujo se active con
-las preguntas correctas.
+| Condición | Comportamiento actual |
+| --- | --- |
+| Contexto de la conversación | Añade ejemplos semánticos a la clasificación de intenciones. No es una puerta rígida. |
+| URL | Aplica una puerta dura de Coincidencia, Contiene o Regex. |
+| Programación | Aplica una puerta rígida de inicio, finalización y zona horaria. |
 
-Deja las condiciones vacías cuando un flujo deba aplicarse de forma general y
-añádelas cuando necesites precisión.
+Selecciona **Any condition matches** o **All conditions match** cuando el flujo
+contenga más de una condición.
 
-## Paso 3: Respuesta
+Las condiciones URL y Schedule eliminan un flujo no elegible antes de la
+clasificación. Una condición satisfecha no obliga al flujo a ganar.
 
-La respuesta es lo que realmente hace el flujo. Es una lista ordenada de
-acciones que se ejecutan de arriba abajo. Una respuesta debe tener al menos una
-acción.
+## Añade acciones de respuesta
 
-Los patrones habituales incluyen:
+1. Añade las acciones necesarias.
+2. Coloca las acciones en su orden de ejecución.
+3. Configura todos los campos obligatorios.
+4. Guarda el flujo.
+5. Prueba un mensaje que coincida y otro que no coincida.
 
-- Un único **mensaje fijo** para una regla que siempre responde de la misma
-  manera.
-- Una **búsqueda en tu conocimiento** para una regla que debería dar una
-  respuesta útil y fundamentada.
-- Un mensaje seguido de **botones** que dirigen a los visitantes al siguiente
-  paso.
-- Una **escalada** cuando una regla deba derivar al visitante a tu equipo.
+El editor limita los Flows proactivos a una acción de Notificación. El servidor
+aplica la misma regla cuando guarda o envía un Flow.
 
-Consulta [Acciones de flujo](/flows/actions) para ver cada acción y su
+## Reordena los flujos
+
+Arrastra un flujo para cambiar la prioridad de enrutamiento de los mensajes. El
+flujo de comportamiento predeterminado permanece en último lugar.
+
+Desactiva un flujo cuando debas detener su enrutamiento sin eliminar su
 configuración.
-
-## Guarda, ordena y prueba
-
-Cuando guardas un flujo, se añade a la lista. Arrástralo para establecer su
-prioridad en relación con los demás flujos, recordando que la primera
-coincidencia gana. Luego pruébalo en la vista previa en vivo enviando mensajes
-que deberían activarlo y otros que no. Ajusta la descripción y los ejemplos
-hasta que se active exactamente cuando quieras.
-
-<Callout title="Start simple">
-A small number of clear flows is easier to reason about than many overlapping
-ones. Add a flow when you have a specific behavior in mind, and lean on the
-Default behavior for everything else.
-</Callout>

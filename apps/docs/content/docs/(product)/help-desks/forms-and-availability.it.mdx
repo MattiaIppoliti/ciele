@@ -1,54 +1,34 @@
 ---
 title: Moduli e disponibilità
-description: Decidi quali informazioni raccogliere da un visitatore tramite un canale, quali dati di conversazione allegare e quando il canale è aperto.
+description: Raccogli i dati di escalation richiesti e mostra quando un canale è disponibile.
 ---
 
-Ogni canale può fare molto più che inoltrare un messaggio. Puoi raccogliere i
-dettagli esatti di cui il tuo team ha bisogno, allegare un contesto utile tratto
-dalla conversazione e controllare quando il canale è disponibile. Queste opzioni
-si trovano nelle schede dell'editor del canale.
+## Aggiungi campi al modulo
 
-## Crea il modulo
+Aggiungi solo i dati di cui il team ricevente ha bisogno. Contrassegna un campo
+come obbligatorio quando il canale non può funzionare senza di esso.
 
-Il modulo è ciò che un visitatore compila quando utilizza il canale. Inizia con
-impostazioni predefinite ragionevoli e lo modelli con un generatore.
-
-1. Apri un canale e vai alla sua scheda Modulo.
-2. Aggiungi un campo con **Add field**.
-3. Scegli il **tipo di campo**. I tipi includono testo libero, testo lungo,
-   dettagli di contatto, un numero di telefono, un menu a discesa di opzioni e
-   campi relativi a ruolo o identità che possono essere compilati dal profilo di
-   un visitatore, se disponibile.
-4. Imposta il **nome** del campo, un **placeholder** facoltativo e i flag, ad
-   esempio se il campo è **obbligatorio** e se deve essere visualizzato nel
-   modulo.
-
-Puoi anche impostare il messaggio che un visitatore vede dopo l'invio, in modo
-che sappia che la sua richiesta è stata ricevuta e cosa succede dopo.
+Prova il modulo come Visitatore. Verifica che i campi obbligatori impediscano un
+invio incompleto.
 
 ## Allega i dati della conversazione
 
-Per canali come l'e-mail e gli endpoint API, puoi allegare il contesto della
-conversazione alla richiesta che il tuo team riceve. Questo può includere un
-riepilogo della chat, la cronologia completa, informazioni sul visitatore e
-metadati sulla sessione. Allegare il contesto evita al tuo team di chiedere al
-visitatore di ripetere ciò che ha detto.
+Un Help Desk può allegare a un'escalation le informazioni configurate della
+Conversazione. I dati disponibili possono includere un riepilogo, la cronologia,
+i dati dell'utente e i metadati.
 
-## Imposta la disponibilità
+Seleziona i dati minimi richiesti dal team ricevente. Verifica che la selezione
+sia conforme ai tuoi requisiti di privacy.
 
-Un canale può essere disponibile in qualsiasi momento o limitato a orari
-specifici.
+## Configura la disponibilità
 
-1. Apri un canale e vai alla sua scheda di disponibilità.
-2. Scegli **sempre disponibile** oppure imposta **orario limitato** per ogni
-   giorno della settimana.
-3. Aggiungi date speciali in cui l'orario è diverso, come ad esempio i giorni
-   festivi.
+Imposta la programmazione del canale e il fuso orario. Il widget mostra se il
+canale è disponibile e può indicare il suo prossimo orario disponibile.
 
-Quando un canale è al di fuori del suo orario, non viene offerto, il che
-impedisce ai visitatori di accedere a un canale che nessuno sta guardando.
+Utilizza il fuso orario del team che riceve l'escalation. Verifica il limite
+all'inizio e alla fine di una finestra di disponibilità.
 
-<Callout title="Collect only what you need">
-Every extra field is friction for the visitor. Ask for the minimum that lets your
-team act, and rely on attached conversation data for the rest.
-</Callout>
+## Invio di e-mail
+
+Il canale Email richiede un trasporto Resend configurato. Quando è assente,
+Ciele segnala che l'e-mail non è stata inviata.

@@ -1,199 +1,58 @@
 ---
 title: Modello di dati
-description: Le tabelle e come sono collegate tra loro, come le righe di un'organizzazione vengono tenute separate da quelle di un'altra e come lo schema viene applicato a un database.
+description: Comprendi le relazioni principali tra tenant, configurazione, Knowledge e Conversation.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+## Proprietà del tenant
 
-Ogni byte durevole risiede in Postgres. Ci sono circa quaranta tabelle e quasi
-tutte dipendono da uno di due elementi fondamentali: un'**organizzazione** o
-un'**assistente**. Impara queste due colonne portanti e il resto dello schema
-verrà da sé.
+Un'Organizzazione è il tenant principale. I membri si uniscono a
+un'Organizzazione con un solo Ruolo.
 
-## I due punti di ancoraggio
+I record di proprietà dell'organizzazione includono Assistenti, Help Desk,
+connessioni ai provider, chiavi API, Competenze, Miglioramenti, Obiettivi,
+Avvisi e record di utilizzo.
 
-Quasi tutte le tabelle sono raggiungibili da un'organizzazione. Queste sono le
-righe di proprietà diretta proprietà di un'organizzazione:
+## Configurazione dell'assistente
 
-<Mermaid
-  title="Ciò che possiede un'organizzazione (ogni freccia è uno-a-molti)"
-  chart={`
-flowchart LR
-  O["organizations"]
-  P["profiles"]
-  OM["organization_members"]
-  OI["organization_invites"]
-  A["assistants"]
-  KC["knowledge_collections"]
-  PC["provider_connections"]
-  HD["help_desks"]
-  SC["support_channels"]
+```mermaid
+erDiagram
+  ORGANIZATION ||--o{ ASSISTANT : owns
+  ASSISTANT ||--o{ FLOW : routes
+  ASSISTANT ||--o{ PUBLICATION : snapshots
+  ASSISTANT ||--o{ COLLECTION : knows
+  COLLECTION ||--o{ SOURCE : contains
+  SOURCE ||--o{ CONCEPT : produces
+  ASSISTANT ||--o{ CONVERSATION : serves
+  CONVERSATION ||--o{ MESSAGE : stores
+```
 
-  O --> OM
-  P --> OM
-  O --> OI
-  O --> A
-  O --> KC
-  O --> PC
-  O --> HD --> SC
-`}
-/>
+Una Pubblicazione memorizza un'istantanea immutabile della configurazione
+dell'Assistente. Le bozze rimangono modificabili dopo la pubblicazione.
 
-E questa è la catena che vale la pena conoscere a memoria: il percorso da un
-assistente a una citazione e da una risposta a un elemento di revisione:
+Un Flow memorizza un trigger, la configurazione delle condizioni e le azioni
+ordinate. La convalida in fase di esecuzione impone coppie valide di trigger e
+azioni.
 
-<Mermaid
-  title="Da un assistente a una risposta citata e da una risposta a un elemento di revisione"
-  chart={`
-flowchart TB
-  A["assistants"]
-  F["flows"]
-  PB["publications"]
-  CV["conversations"]
-  MS["messages"]
-  IM["improvement_messages"]
-  IMP["improvements"]
+## Dati di conversazione
 
-  A -->|"routes with"| F
-  A -->|"snapshots into"| PB
-  A -->|"answers in"| CV
-  CV -->|"contains"| MS
-  MS -->|"flagged in"| IM
-  IMP -->|"collects"| IM
+Una Conversazione appartiene all'Assistente che la gestisce e tiene traccia di
+una sessione del Visitatore. I messaggi memorizzano parti digitate per testo,
+citazioni, pulsanti, tracce e altre risposte.
 
-  KC["knowledge_collections"]
-  S["sources"]
-  C["concepts"]
-  CH["concept_chunks"]
+Lo stato della sessione registra anche l'invio di notifiche proattive. Una
+Notifica non crea un messaggio Visitatore.
 
-  KC -->|"gathers"| S
-  S -->|"enriches into"| C
-  C -->|"splits into"| CH
-`}
-/>
+## Credenziali programmatiche
 
-Le due catene si incontrano al momento del recupero anziché tramite una chiave
-esterna: un blocco viene risolto nel suo concetto e nella sua fonte, e questi
-diventano le citazioni su un messaggio (vedi
-[Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline)).
+Un record di chiave API appartiene a un'Organizzazione e memorizza un hash
+segreto, un Ruolo, il creatore e lo stato di revoca. Il segreto in chiaro non
+viene memorizzato.
 
-Le righe di contenuto utilizzano una chiave primaria costituita da un breve
-testo anziché un UUID, motivo per cui l'ID di un assistente è leggibile e
-copiabile nella console. Le tabelle dell'organizzazione, dei membri e degli
-inviti utilizzano gli UUID di Postgres.
+## Isolamento
 
-## L'intero schema, per area
+L'accesso autenticato alla console utilizza la sicurezza a livello di riga, ove
+applicabile. I percorsi dei ruoli di servizio devono aggiungere un limite
+esplicito per l'organizzazione.
 
-| Area | Tabelle | Cosa contiene |
-|---|---|---|
-| **Tenancy and identity** | `organizations`, `organization_members`, `organization_invites`, `profiles`, `sso_connections`, `platform_settings` | Organizzazioni, i loro membri e inviti in sospeso, e un mirror della tabella degli utenti di autenticazione a cui le policy possono essere unite |
-| **Assistants and routing** | `assistants`, `flows`, `publications`, `assistant_access`, `assistant_skills`, `skills`, `assistant_goals`, `assistant_goal_runs`, `flow_trust`, `flow_trust_events` | Configurazione dell'assistente, i suoi flussi e le istantanee immutabili fornite dal widget; inoltre, strumenti, competenze condivise e obiettivi |
-| **Knowledge and retrieval** | `knowledge_collections`, `sources`, `concepts`, `concept_chunks` | Le raccolte, le fonti al loro interno, i concetti in cui si trasforma ciascuna fonte e i blocchi incorporati che supportano la ricerca |
-| **Conversations** | `conversations`, `messages`, `runtime_events` | Ogni conversazione e messaggio, con il flusso che ha prodotto ciascuna risposta e gli eventi di runtime alla base |
-| **Answer quality** | `improvements`, `improvement_counters`, `improvement_messages`, `improvement_proposals`, `answer_verdicts`, `answer_verifier_claims`, `compost_runs`, `compost_claims` | Il tracker dei miglioramenti, la sua numerazione per organizzazione, le proposte e la verifica delle risposte |
-| **Escalation** | `help_desks`, `support_channels` | Help desk e i loro canali di supporto testuali |
-| **Operations** | `alerts`, `background_jobs`, `export_jobs`, `ai_usage`, `usage_daily`, `org_budgets` | Avvisi sullo stato di salute, attività in background in coda, file di esportazione e contabilizzazione dell'utilizzo |
-| **Provider access** | `provider_connections`, `local_connector_devices`, `local_connector_pairings`, `local_inference_jobs` | Connessioni con i provider e record relativi all'accesso ai modelli gestiti localmente |
-
-## Come i tenant rimangono separati
-
-L'isolamento viene applicato due volte, deliberatamente. L'applicazione verifica
-le capacità prima di una modifica e il database rifiuta le righe al di fuori
-dell'organizzazione del chiamante, indipendentemente da ciò che l'applicazione
-ha richiesto.
-
-<Mermaid
-  title="Due gate indipendenti sulla stessa riga"
-  chart={`
-flowchart TB
-  REQ["A request"]
-  APP{"Application:<br/>does this role have<br/>the capability?"}
-  SQL{"Postgres:<br/>is the caller a member<br/>of this row's organization?"}
-  ROW[("The row")]
-  NO1["Rejected in the action"]
-  NO2["Invisible to the query"]
-
-  REQ --> APP
-  APP -->|"no"| NO1
-  APP -->|"yes"| SQL
-  SQL -->|"no"| NO2
-  SQL -->|"yes"| ROW
-`}
-/>
-
-La sicurezza a livello di riga è attiva per ogni tabella. I membri possono
-leggere all'interno della propria organizzazione, gli editor e i ruoli superiori
-possono creare e aggiornare, mentre gli amministratori e i ruoli superiori
-possono eliminare. Le scritture che non devono essere falsificabili — un
-contatore monotono, per esempio — passano attraverso funzioni che vengono
-eseguite con diritti elevati, piuttosto che attraverso una policy che dovrebbe
-fidarsi del chiamante.
-
-Le funzioni helper richiamate dalle policy risiedono in uno schema privato, non
-in quello pubblico, quindi non fanno parte della superficie API esposta dal
-database.
-
-### Segreti
-
-L'applicazione cripta due tipi di valori prima che raggiungano Postgres: le
-chiavi API del provider e le credenziali per l'integrazione del ticketing. Sono
-sigillati con crittografia autenticata utilizzando una chiave dell'ambiente,
-quindi il database contiene sempre e solo testo cifrato e un dump del database
-non rivela le credenziali.
-
-<Callout title="Set the encryption key before storing any credential">
-The key comes from configuration, not from the database. Rotating it without
-re-sealing existing rows makes them unreadable — see
-[Configuration](/self-hosting/configuration).
-</Callout>
-
-## Come viene applicato lo schema
-
-Le migrazioni sono semplici file SQL applicati in ordine di nome file. **Non**
-vengono applicate manualmente e nemmeno con il comando push della CLI di
-Supabase: la cronologia live di questo progetto è stata in parte scritta fuori
-banda, con nomi e prefissi numerici duplicati che la cronologia basata sulla
-chiave di versione della CLI non è in grado di rappresentare.
-
-<Mermaid
-  title="Il migration applier"
-  chart={`
-flowchart TB
-  START["Run the applier<br/>against a database URL"]
-  LOCK["Take an advisory lock<br/>so concurrent runs are safe"]
-  LIST["List migration files<br/>in filename order"]
-  BASE{"Listed in the<br/>baseline file?"}
-  RECORD["Record it without running it"]
-  LEDGER{"Already in<br/>the ledger?"}
-  SKIP["Skip"]
-  TX["Run it in its own transaction —<br/>which also writes the ledger row"]
-  FAIL["Failed: no ledger row,<br/>so the next run retries it"]
-  EE["Then the enterprise chain,<br/>where one exists"]
-
-  START --> LOCK --> LIST --> BASE
-  BASE -->|"yes"| RECORD
-  BASE -->|"no"| LEDGER
-  LEDGER -->|"yes"| SKIP
-  LEDGER -->|"no"| TX
-  TX -->|"error"| FAIL
-  TX --> EE
-`}
-/>
-
-Le proprietà rilevanti dal punto di vista operativo:
-
-- **The ledger is keyed by filename**, in uno schema privato. Ciò che è stato
-  eseguito è un dato di fatto nel database, non un'ipotesi.
-- **Each migration is its own transaction**, e quella transazione scrive la riga
-  del libro mastro. Una migrazione che fallisce non lascia nulla, quindi se
-  esegui nuovamente l'applier, riproverà esattamente la stessa operazione.
-- **Concurrent runs are safe**, tramite un blocco consultivo e un nuovo
-  controllo all'interno della transazione.
-- **New migrations use a timestamp prefix** e finiscono nella stessa modifica
-  del codice che ne ha bisogno.
-- **The enterprise chain, where present, is applied strictly after the whole
-  open-source chain** e utilizza lo stesso ledger. Un checkout open source non
-  ha una directory di questo tipo e applica solo la catena open source.
-
-Vedi [Database](/self-hosting/database) per eseguire questa operazione sul tuo
-Postgres.
+L'API v1 utilizza l'Organizzazione determinata dalla chiave API. Non accetta
+come autorità un'Organizzazione selezionata dal chiamante.

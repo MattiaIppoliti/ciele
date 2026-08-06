@@ -1,38 +1,27 @@
 ---
 title: Alerts
-description: Catch operational problems early, such as a connection whose credentials stopped working.
+description: Review detected failures that require administrator action.
 ---
 
-Alerts keep your assistants healthy by surfacing problems that need attention. When
-something goes wrong behind the scenes, for example a connection whose credentials
-stopped working, Ciele raises an alert so you can act before it affects visitors.
-Open **Alerts** from the sidebar. A badge shows how many alerts are currently
-active.
+Alerts records current and resolved operational problems. A badge can show the number of active Alerts.
 
-## Read the alerts
+## Alert views
 
-Alerts are organized so you can focus on what needs action.
+- **Needs attention** shows active Alerts.
+- **Resolved** shows cleared Alerts.
+- **All** shows both states.
 
-- **Needs attention** lists active issues.
-- **Resolved** lists issues that are no longer active.
-- **All** shows both.
+Each Alert contains its type, title, detail, detection time, and current status.
 
-Each alert describes the type of issue, gives a short title and detail, and shows
-when it was detected and its current status.
+Goal expectation failures create Alerts. Other monitored operations can also create an Alert when their current implementation reports a failure.
 
-## Resolve an alert
+## Resolve an Alert
 
-There are two ways an alert clears.
+1. Open the Alert.
+2. Read its recorded cause and affected item.
+3. Correct the Goal, connection, Source, or other configuration.
+4. Repeat the affected operation.
+5. Confirm that the problem no longer occurs.
+6. Mark the Alert as resolved when required.
 
-- Fix the underlying problem, for example refresh the connection that failed. When
-  the issue clears on its own, the alert resolves automatically.
-- If you have handled the issue outside Ciele, mark it as resolved from the alert.
-
-You can also open an alert for more detail when you need to understand exactly what
-happened.
-
-<Callout title="Check alerts before they bite">
-An unattended alert often means an integration is quietly failing. A quick glance
-at the Alerts badge as part of your routine keeps small problems from becoming
-visitor facing ones.
-</Callout>
+Do not resolve an Alert only to remove its badge. Confirm the affected operation first.

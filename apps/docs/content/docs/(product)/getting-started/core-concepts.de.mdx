@@ -1,80 +1,54 @@
 ---
 title: Kernkonzepte
-description: Das Vokabular, das Sie in Ciele sehen werden, und wie die einzelnen Teile zusammenhängen.
+description: Lernen Sie die festen Begriffe, die Ciele im Produkt und in der Dokumentation verwendet.
 ---
-
-Ciele verwendet im gesamten Produkt einheitlich eine kleine Anzahl von
-Begriffen. Wenn Sie diese einmal gelernt haben, können Sie alle anderen Seiten
-leichter nachvollziehen.
 
 ## Organisation
 
-Eine Organisation ist Ihr Arbeitsbereich. Sie ist Eigentümerin Ihrer
-Assistenten, Ihrer Mitglieder, Ihrer Helpdesks und Ihrer Daten. Alles, was Sie
-erstellen, gehört zu einer Organisation, und die Daten bleiben zwischen den
-Organisationen isoliert.
-
-## Mitglied und Rolle
-
-Ein Mitglied ist eine Person, die zu Ihrer Organisation gehört. Jedes Mitglied
-hat eine Rolle, die steuert, was es sehen und ändern kann. Die Rollen reichen
-von der Vollzugriffsberechtigung bis hin zum schreibgeschützten Zugriff. Siehe
-[Mitglieder und Rollen](/organization/members-and-roles).
+Eine Organisation besitzt Mitglieder, Assistenten, Helpdesks,
+Provider-Verbindungen, API-Schlüssel, Skills und Betriebsdaten.
 
 ## Assistent
 
-Ein Assistent ist eine einzelne KI-Chat-Erfahrung: ein Widget, mit dem Besucher
-sprechen. Eine Organisation kann viele Assistenten haben, jeder mit seinem
-eigenen Namen, Wissen, eigenen Regeln und seinem eigenen Erscheinungsbild. Sie
-konfigurieren einen Assistenten in seinem Editor, der rechts eine Live-Vorschau
-bietet.
+Ein Assistent ist ein konfigurierter Konversationsagent. Er verfügt über eine
+Identität, Wissen, Flows, Tools, ein Modell, ein Erscheinungsbild und einen
+Veröffentlichungsstatus.
 
-## Besucher und Konversation
+## Wissenssammlung
 
-Ein Besucher ist jede Person, die mit einem veröffentlichten Assistenten
-spricht. Eine Konversation ist der vollständige Austausch zwischen einem
-Besucher und einem Assistenten, einschließlich jeder Nachricht, der zitierten
-Quellen und jeder Eskalation. Gespräche werden im Posteingang angezeigt.
+Eine Wissenssammlung gehört zu einem Assistenten. Sie enthält Quellen, Konzepte
+und kuratierte FAQs, die für fundierte Antworten verwendet werden.
 
-## Wissen und Quelle
+## Flow
 
-Wissen ist alles, worauf ein Assistent bei der Beantwortung zurückgreifen kann:
-Websites, Dateien und FAQs. Wenn der Assistent eine Wissensquelle in einer
-Antwort verwendet, kann er die Quelle zitieren, sodass der Besucher sieht, woher
-die Informationen stammen.
+Ein Flow ist eine geordnete Routing-Regel. Er enthält einen Trigger, verfügbare
+Bedingungen und geordnete Antwortaktionen.
 
-## Flow und Standardverhalten
+Der gesperrte **Default behavior**-Flow bleibt an letzter Stelle. Er verarbeitet
+eine berechtigte Nachricht, wenn kein früherer Flow gewinnt.
 
-Ein Flow ist eine Regel. Er enthält eine Beschreibung der Art der Nachricht, die
-er verarbeitet, optionale Bedingungen und eine Reihe von Aktionen, die
-ausgeführt werden sollen. Flows sind geordnet, und der erste, der übereinstimmt,
-gewinnt. Das Standardverhalten ist die integrierte Regel ganz am Ende, die jede
-Nachricht verarbeitet, für die kein Flow übereinstimmt.
+## Veröffentlichung
 
-## Flow-Aktion
+Eine Veröffentlichung ist ein unveränderlicher Snapshot eines Assistenten. Das
+Widget verwendet die aktive Veröffentlichung, nicht den aktuellen
+Administrator-Entwurf.
 
-Eine Flow-Aktion ist ein Schritt, den der Assistent ausführt, wenn ein Flow
-zutrifft. Beispiele hierfür sind das Senden einer festgelegten Nachricht, die
-Suche in Ihrer Wissensdatenbank, das Anzeigen von Schaltflächen oder die
-Eskalation. Siehe [Flow-Aktionen](/flows/actions).
+## Konversation
+
+Eine Konversation speichert Nachrichten von Besuchern und Assistenten,
+Antwortteile, Zitate, Laufzeit-Traces und Sitzungs-Metadaten.
 
 ## Helpdesk
 
-Ein Helpdesk ist ein Eskalationsziel, das zu Ihrer Organisation gehört. Er fasst
-einen oder mehrere Kanäle wie E-Mail oder Live-Chat zusammen, über die ein
-Besucher Ihr Team erreichen kann. Assistenten wählen aus, welche Helpdesks sie
-anbieten. Siehe [Help Desks](/help-desks).
-
-## Widget
-
-Das Widget ist der Assistent, wie ihn Ihre Besucher sehen: die Startschaltfläche
-und das Chat-Fenster auf Ihrer Website. Sie steuern seine Farben und Position
-und veröffentlichen es mit einem Einbettungs-Snippet.
+Ein Helpdesk definiert einen oder mehrere Kontaktkanäle. Ein Assistent kann
+während der Eskalation einen relevanten Helpdesk vorschlagen.
 
 ## Verbesserung
 
-Eine Verbesserung ist ein verfolgtes Element, um Antworten zu verbessern. Sie
-kann automatisch erstellt werden, wenn eine Antwort nicht ausreicht oder ein
-Besucher eskaliert, oder manuell, wenn jemand eine Antwort markiert.
-Verbesserungen werden auf einem einfachen Board von „Offen“ nach „Erledigt“
-verschoben. Siehe [Verbesserungen](/operations/improvements).
+Eine Verbesserung ist ein Überprüfungselement für ein Problem mit der
+Antwortqualität. Sie kann auf die genaue Konversationsnachricht verweisen.
+
+## Ziel und Warnung
+
+Ein Ziel führt eine geplante Antwortprüfung durch. Ein fehlgeschlagenes Ziel
+erzeugt eine Warnung für einen Administrator.

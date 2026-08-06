@@ -1,0 +1,36 @@
+---
+title: Chiavi API
+description: Crea e revoca le credenziali dell'organizzazione per l'accesso programmatico.
+---
+
+Una chiave API consente a un programma di accedere a un'Organizzazione. Ciele
+memorizza solo l'hash del segreto.
+
+## Crea una chiave
+
+1. Apri **Settings**.
+2. Seleziona **API Keys**.
+3. Seleziona **Create API key**.
+4. Inserisci un nome per la chiave.
+5. Seleziona il ruolo minimo richiesto.
+6. Copia il segreto in un archivio sicuro per le credenziali.
+
+Ciele mostra il segreto `ciele_sk_...` una sola volta. Non potrai recuperare lo
+stesso segreto in un secondo momento.
+
+Il ruolo selezionato non può essere superiore al tuo. Ciele verifica il ruolo
+per ogni operazione API.
+
+## Revoca una chiave
+
+1. Apri **Settings > API Keys**.
+2. Trova la chiave.
+3. Seleziona **Revoke**.
+4. Conferma l'azione.
+
+La revoca blocca le nuove richieste che utilizzano la chiave. Ciele conserva il
+record della chiave per le informazioni di audit.
+
+<Callout type="warn" title="Protect the secret">
+Do not put an API key in source control, public logs, prompts, or screenshots. Use an environment variable or a secret store.
+</Callout>

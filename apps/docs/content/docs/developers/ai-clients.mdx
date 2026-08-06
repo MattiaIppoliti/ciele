@@ -1,0 +1,232 @@
+---
+title: Connect AI clients
+description: Connect supported AI clients to the local Ciele MCP server.
+---
+
+The Ciele MCP server uses the local `stdio` transport. The client must start the server as a child process.
+
+This page reflects client documentation checked on August 6, 2026. Client interfaces and configuration formats can change.
+
+## Compatibility
+
+| Client | Direct connection | Configuration |
+| --- | :---: | --- |
+| Claude Code | Yes | Local `stdio` server |
+| Codex CLI, Codex app, and Codex IDE extension | Yes | Shared Codex MCP configuration |
+| ChatGPT desktop app | Yes | Shared local Codex MCP configuration |
+| Cursor | Yes | Local `stdio` server |
+| OpenCode | Yes | Local MCP server |
+| GitHub Copilot in VS Code | Yes | Local `stdio` server |
+| GitHub Copilot CLI | Yes | Local `stdio` server |
+| ChatGPT web | No direct connection | ChatGPT requires a remote MCP endpoint. |
+| Pi | No built-in procedure | Use the Ciele CLI or install a reviewed Pi extension. |
+
+The current Ciele server does not provide a remote HTTP transport. Therefore, ChatGPT web cannot connect to it directly.
+
+## Prepare the connection
+
+1. Install Node.js 22.6 or later.
+2. Clone the Ciele repository.
+3. Create a viewer [API key](/developers/api-keys).
+4. Resolve the absolute path to `packages/mcp/bin/ciele-mcp.mjs`.
+5. Set `CIELE_MCP_READ_ONLY=1` for the first connection.
+
+Replace `<repo>` and the example origin in each configuration.
+
+## Claude Code
+
+Run this command:
+
+```bash
+claude mcp add ciele \
+  --env CIELE_API_KEY=ciele_sk_... \
+  --env CIELE_BASE_URL=https://ciele.example.edu \
+  --env CIELE_MCP_READ_ONLY=1 \
+  -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+Open `/mcp` in Claude Code. Confirm that the `ciele` server shows seven tools.
+
+See the [Claude Code MCP guide](https://docs.anthropic.com/en/docs/claude-code/mcp) for client options and configuration scopes.
+
+## Codex and ChatGPT desktop
+
+Run this command for Codex CLI:
+
+```bash
+codex mcp add ciele \
+  --env CIELE_API_KEY=ciele_sk_... \
+  --env CIELE_BASE_URL=https://ciele.example.edu \
+  --env CIELE_MCP_READ_ONLY=1 \
+  -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+Codex CLI, the Codex app, the Codex IDE extension, and ChatGPT desktop share the same Codex MCP configuration.
+
+You can also edit `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.ciele]
+command = "node"
+args = ["<repo>/packages/mcp/bin/ciele-mcp.mjs"]
+default_tools_approval_mode = "writes"
+
+[mcp_servers.ciele.env]
+CIELE_API_KEY = "ciele_sk_..."
+CIELE_BASE_URL = "https://ciele.example.edu"
+CIELE_MCP_READ_ONLY = "1"
+```
+
+Run `codex mcp list` or open `/mcp` to check the connection.
+
+See the [Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp) for current client settings.
+
+## Cursor
+
+Create `.cursor/mcp.json` in a project. You can also use the global Cursor configuration.
+
+```json
+{
+  "mcpServers": {
+    "ciele": {
+      "command": "node",
+      "args": ["<repo>/packages/mcp/bin/ciele-mcp.mjs"],
+      "env": {
+        "CIELE_API_KEY": "ciele_sk_...",
+        "CIELE_BASE_URL": "https://ciele.example.edu",
+        "CIELE_MCP_READ_ONLY": "1"
+      }
+    }
+  }
+}
+```
+
+Open **Settings > MCP**. Enable `ciele` and review each requested tool call.
+
+See the [Cursor MCP guide](https://docs.cursor.com/context/model-context-protocol) for global configuration and client security information.
+
+## OpenCode
+
+Add this server to `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "ciele": {
+        "type": "local",
+        "command": ["node", "<repo>/packages/mcp/bin/ciele-mcp.mjs"],
+        "environment": {
+          "CIELE_API_KEY": "{env:CIELE_API_KEY}",
+          "CIELE_BASE_URL": "https://ciele.example.edu",
+          "CIELE_MCP_READ_ONLY": "1"
+        }
+      }
+    }
+  }
+}
+```
+
+Run `opencode2 mcp list` to check the connection.
+
+See the [OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers) for the current version 2 schema.
+
+## GitHub Copilot in VS Code
+
+Create `.vscode/mcp.json`:
+
+```json
+{
+  "inputs": [
+    {
+      "id": "ciele-key",
+      "type": "promptString",
+      "password": true,
+      "description": "Ciele API key"
+    }
+  ],
+  "servers": {
+    "ciele": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["<repo>/packages/mcp/bin/ciele-mcp.mjs"],
+      "env": {
+        "CIELE_API_KEY": "${input:ciele-key}",
+        "CIELE_BASE_URL": "https://ciele.example.edu",
+        "CIELE_MCP_READ_ONLY": "1"
+      }
+    }
+  }
+}
+```
+
+Run **MCP: List Servers** from the Command Palette. Start `ciele` and inspect its output when a connection fails.
+
+See the [VS Code MCP guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers) for configuration locations and trust controls.
+
+## GitHub Copilot CLI
+
+Run the interactive `/mcp add` command. Select a local `stdio` server and enter the Ciele command.
+
+You can also start with this command:
+
+```bash
+copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+Add the three Ciele environment variables through the Copilot MCP configuration. Do not put the API key in source control.
+
+See the [GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers) for the current configuration format.
+
+## Copyable prompts
+
+Start every new connection with this read-only check:
+
+```text
+Call ciele_identity. Show the deployment version, available domains,
+Organization ID, and Role. Do not change data.
+```
+
+Use this prompt to review Assistants:
+
+```text
+List all Ciele Assistants. For each Assistant, list its enabled Flows.
+Identify duplicate or unclear Flow names. Do not change data.
+```
+
+Use this prompt to review Knowledge ingestion:
+
+```text
+List the Knowledge Collections for Assistant <assistant-id>.
+List each Source and its ingestion status.
+Report Sources that are not ready. Do not retry or delete a Source.
+```
+
+Use this prompt after you enable write access:
+
+```text
+Create one FAQ in Collection <collection-id>.
+Question: "When does enrollment close?"
+Answer: "Enrollment closes on <date>."
+Show the proposed tool input and ask for approval before the call.
+```
+
+Use this prompt before publication:
+
+```text
+Read the publication status for Assistant <assistant-id>.
+Summarize the current live version. Do not publish or unpublish anything.
+```
+
+<Callout type="warn" title="Review write operations">
+Read the proposed tool input before you approve it. API Roles and MCP read-only mode are independent controls.
+</Callout>
+
+## Unsupported direct connections
+
+ChatGPT web requires a remote MCP endpoint. The current Ciele MCP server provides only local `stdio`.
+
+Pi does not include a built-in MCP connection procedure. Pi extensions can add MCP support, but Ciele does not ship or test such an extension.
+
+For both clients, use `ciele ... --json` through an approved shell workflow. You can also call the [HTTP API](/developers/api) directly.

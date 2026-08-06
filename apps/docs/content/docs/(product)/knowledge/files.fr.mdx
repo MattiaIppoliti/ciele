@@ -1,43 +1,40 @@
 ---
-title: Fichiers
-description: Téléchargez des documents et d'autres fichiers afin que l'assistant puisse y puiser pour répondre.
+title: Fichiers et texte
+description: Téléchargez un fichier ou ajoutez du texte à une collection de connaissances d'assistant.
 ---
 
-Lorsque vos connaissances se trouvent dans des documents plutôt que sur le Web,
-importez-les directement. Ouvrez un assistant, sélectionnez **Knowledge**, puis
-ouvrez l'onglet **Files**.
+## Téléchargez un fichier
 
-## Télécharger des fichiers
+1. Ouvrez l'Assistant.
+2. Sélectionnez **Knowledge**.
+3. Ajoutez une source de fichier.
+4. Sélectionnez le fichier.
+5. Lancez l'ingestion.
+6. Attendez que le statut de la Source soit **Ready**.
+7. Testez une réponse et sa citation.
 
-1. Faites glisser les fichiers dans la zone de téléchargement ou sélectionnez-la
-   pour parcourir vos fichiers.
-2. Attendez que chaque fichier ait fini d'être traité. Une fois traité, son
-   contenu fait partie des connaissances de l'assistant.
+Ciele stocke le fichier d'origine et en extrait le texte pris en charge pour
+l'ingestion. L'état Source indique si l'extraction et l'indexation sont
+terminées.
 
-Les fichiers importés sont traités de la même manière que toute autre source :
-l'assistant les lit pour répondre aux questions et peut les citer dans ses
-réponses.
+## Ajouter du texte collé
 
-## Ce que vous pouvez importer
+Utilisez une source de texte pour du contenu court qui ne nécessite pas de
+fichier séparé.
 
-Les formats de documents courants fonctionnent bien, notamment les documents
-texte, les feuilles de calcul et les diaporamas. Veillez à ce que chaque fichier
-respecte la limite de taille indiquée dans la zone de téléchargement. Si un
-fichier est très volumineux, le diviser en documents ciblés permet souvent
-d'obtenir de meilleures réponses, car chaque document traite d'un sujet précis.
+1. Ajoutez une source de texte.
+2. Saisissez un nom de source facultatif.
+3. Collez le texte.
+4. Lancez l'ingestion.
 
-## Maintenir les fichiers à jour
+Utilisez un nom de source stable. Le nom peut apparaître dans les citations des
+visiteurs.
 
-Les fichiers ne se mettent pas à jour automatiquement. Lorsque le contenu d'un
-document change, importez la nouvelle version afin que l'assistant réponde en se
-basant sur les informations les plus récentes. Si la
-[Boîte de réception](/operations/inbox) indique que l'assistant fournit des
-réponses obsolètes, vérifiez si le fichier source doit être actualisé.
+## Remplacez le contenu obsolète
 
-## Fichiers, sites Web et FAQ
+Supprimez l'ancienne Source avant de vous fier à une solution de remplacement.
+Confirmez ensuite que la nouvelle Source est **Ready** et qu'elle produit des
+citations correctes.
 
-- Utilisez **Files** pour le contenu qui existe déjà sous forme de documents.
-- Utilisez [Websites](/knowledge/websites) pour le contenu en ligne qui évolue
-  au fil du temps.
-- Utilisez les [FAQ](/knowledge/faqs) lorsque vous souhaitez obtenir une réponse
-  exacte à une question spécifique.
+La suppression d'une Source supprime ses Concepts du graphe de connaissances
+actif et de l'index de recherche.
