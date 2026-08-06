@@ -109,11 +109,17 @@ describe("middleware local connector relay", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("serves the security and legal pages without a session", async () => {
+  it("serves every public marketing page without a session", async () => {
     for (const path of [
       "/security",
+      "/security/gdpr",
+      "/security/responsible-disclosure",
       "/policies/privacy",
       "/policies/terms-of-service",
+      "/pricing",
+      "/enterprise",
+      "/features/flows",
+      "/api/cookie-consent",
     ]) {
       const response = await middleware(
         new NextRequest(`https://ciele.example.com${path}`)

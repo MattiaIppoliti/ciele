@@ -1,10 +1,19 @@
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CONSOLE_PATH_PREFIXES, isConsolePath } from "./console-routes";
+import {
+  CONSOLE_PATH_PREFIXES,
+  MARKETING_PATH_PREFIXES,
+  isConsolePath,
+  isMarketingPath,
+} from "./console-routes";
 
 const ADMIN_GROUP = fileURLToPath(
   new URL("../app/(admin)/", import.meta.url),
+);
+
+const MARKETING_GROUP = fileURLToPath(
+  new URL("../app/(marketing)/", import.meta.url),
 );
 
 /**
@@ -49,5 +58,42 @@ describe("console routes", () => {
   it("does not match a public path that merely starts like a console one", () => {
     expect(isConsolePath("/insights-report")).toBe(false);
     expect(isConsolePath("/setup-guide")).toBe(false);
+  });
+});
+
+/**
+ * The marketing list drives the auth gate in `middleware.ts`: anything the
+ * public home links to has to stay reachable signed-out. Reading the group off
+ * disk is what keeps a new marketing section from silently landing behind
+ * /login (which is exactly how /features and /enterprise did).
+ */
+describe("marketing routes", () => {
+  it("lists every top-level (marketing) route segment", () => {
+    const onDisk = readdirSync(MARKETING_GROUP, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `/${entry.name}`)
+      .sort();
+
+    expect([...MARKETING_PATH_PREFIXES].sort()).toEqual(onDisk);
+  });
+
+  it("claims each marketing subtree", () => {
+    for (const path of [
+      "/features",
+      "/features/flows",
+      "/enterprise",
+      "/pricing",
+      "/security",
+      "/security/gdpr",
+      "/policies/privacy",
+    ]) {
+      expect(isMarketingPath(path)).toBe(true);
+    }
+  });
+
+  it("leaves the console, the root and lookalike paths alone", () => {
+    for (const path of ["/", "/assistants", "/home", "/security-report"]) {
+      expect(isMarketingPath(path)).toBe(false);
+    }
   });
 });

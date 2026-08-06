@@ -1,21 +1,20 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isMarketingPath } from "@/lib/console-routes";
 
+// The whole `(marketing)` route group is public through `isMarketingPath`
+// (pinned to the filesystem); these are the one-off public paths outside it.
 const PUBLIC_PATHS = [
   // Marketing home — also reachable by signed-in users who want to see it.
   /^\/home$/,
-  // Public pricing — a signed-out visitor comparing plans must never be
-  // bounced to /login.
-  /^\/pricing$/,
   // Checkout gates itself (see the route): letting middleware bounce it would
   // drop the ?plan= the buyer just picked, since the /login redirect below
   // carries only the pathname.
   /^\/api\/ee\/stripe\/checkout$/,
-  // The rest of the (marketing) route group: static security/legal pages the
-  // home footer's "Legal" column links to. No private data, so a signed-out
-  // visitor must reach them instead of bouncing to /login?next=.
-  /^\/security$/,
-  /^\/policies\//,
+  // The consent banner runs on the public site, so the visitors whose choice it
+  // records are anonymous by definition; the route is its own trust boundary
+  // (same-origin + size cap + schema check) and answers 204 regardless.
+  /^\/api\/cookie-consent$/,
   /^\/login/,
   // Self-serve signup is closed; /signup is a redirect stub to /contact/sales
   // (see app/signup/page.tsx). Public so signed-out visitors reach the redirect.
@@ -94,7 +93,8 @@ export async function middleware(request: NextRequest) {
   const user = data?.claims ?? null;
 
   const { pathname } = request.nextUrl;
-  const isPublic = PUBLIC_PATHS.some((re) => re.test(pathname));
+  const isPublic =
+    isMarketingPath(pathname) || PUBLIC_PATHS.some((re) => re.test(pathname));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
