@@ -5,6 +5,10 @@ The v1-perimeter operation catalogue (#620, spec #617). One row per operation in
 and the MCP tools all mirror. A domain slice extends this table in the same PR
 that ships its operations.
 
+**Connection architecture & diagrams**: [`connections.md`](connections.md).
+**Hooking up an AI client** (Claude Code, Cursor, Copilot, Codex, …):
+[`connect-ai-clients.md`](connect-ai-clients.md).
+
 **The machine-readable contract (#626)** is `GET /api/v1/openapi.json`, built
 from the endpoint registry in `apps/web/src/lib/api-v1/openapi.ts` — request
 bodies render from the same zod schemas the operations validate with, and a

@@ -1,0 +1,98 @@
+---
+title: "ciele CLI & MCP — connection architecture"
+---
+
+### What this shows
+
+How the `ciele` CLI and the ciele MCP server connect to a deployment — SaaS
+(`platform.ciele.app`) or self-hosted — and what stands between an API key and
+the database. Both clients share one typed client (`@ciele/client`), one HTTP
+surface (`/api/v1`), and one operations layer (`@ciele/ops`); the diagrams below
+are the reference for `docs/api/connections.md` and the AI-client integration
+guide.
+
+### The connection stack
+
+<Diagram id="connection-stack" caption="One path for every programmatic caller: bearer key → /api/v1 → operations → org-pinned Db. RBAC is the key's Role; tenancy is the org-pinned wrapper.">
+
+```html
+<div class="diagram-panel" data-rough>
+  <div class="stack-row clients">
+    <div class="diagram-card"><strong>ciele CLI</strong><span class="diagram-muted">login · assistants · flows · sources · faqs · publish · conversations · improvements</span></div>
+    <div class="diagram-card"><strong>ciele MCP server</strong><span class="diagram-muted">7 coarse tools · stdio · read-only switch</span></div>
+    <div class="diagram-card"><strong>your scripts / CI</strong><span class="diagram-muted">curl · SDKs from openapi.json</span></div>
+  </div>
+  <div class="stack-arrow">▼ <span class="diagram-pill">@ciele/client</span> — Bearer ciele_sk_… · CIELE_BASE_URL</div>
+  <div class="diagram-box http">
+    <strong>apps/web · /api/v1</strong>
+    <div class="stack-row inner">
+      <div class="diagram-node">auth: hash lookup → org + Role</div>
+      <div class="diagram-node">capability gate (403)</div>
+      <div class="diagram-node">zod validation (400)</div>
+      <div class="diagram-node">Idempotency-Key</div>
+    </div>
+  </div>
+  <div class="stack-arrow">▼ same operation objects the admin UI runs</div>
+  <div class="diagram-box ops">
+    <strong>@ciele/ops — operations layer</strong>
+    <span class="diagram-muted">(context, validated input) → result · declares capability + mutated entities · effects via ports (jobs, OKF persist, crawl, cache invalidation, emails)</span>
+  </div>
+  <div class="stack-arrow">▼ tenancy boundary</div>
+  <div class="diagram-box db">
+    <strong>org-pinned Db wrapper</strong>
+    <span class="diagram-muted">fail-closed allow-list · org args replaced, id args resolved → owner checked · stands in for RLS on the service-role client</span>
+  </div>
+  <div class="stack-arrow">▼</div>
+  <div class="diagram-node solo">Postgres (Supabase / self-hosted compose)</div>
+</div>
+```
+
+```css
+.diagram-panel { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.stack-row { display: flex; gap: 12px; }
+.stack-row > * { flex: 1; }
+.stack-row.inner { gap: 8px; margin-top: 8px; }
+.diagram-card { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; }
+.stack-arrow { text-align: center; color: var(--wf-muted); font-size: 12px; }
+.diagram-box { padding: 10px 12px; }
+.diagram-node.solo { align-self: center; padding: 8px 24px; }
+```
+
+</Diagram>
+
+### CLI: login and a mutating command
+
+<Mermaid id="cli-flow" caption="ciele login validates before storing; a later command resolves credentials flag → env → config file, so CI never needs the file and a laptop never needs the env." source={"sequenceDiagram\n  participant U as You\n  participant CLI as ciele CLI\n  participant CFG as ~/.ciele/config.json\n  participant API as /api/v1 (SaaS or self-host)\n  U->>CLI: ciele login --key ciele_sk_… [--base-url …]\n  CLI->>API: GET /whoami (Bearer key)\n  API-->>CLI: { organizationId, role, keyId }\n  CLI->>CFG: save key + base URL (0600)\n  U->>CLI: ciele flows create <assistantId> --name \"Fees intent\"\n  CLI->>CLI: resolve key: --api-key → CIELE_API_KEY → config\n  CLI->>API: POST /assistants/{id}/flows\n  API->>API: key hash → org+role · capability edit · zod · #541 rule\n  API-->>CLI: 201 Flow JSON\n  CLI-->>U: table (or --json) · exit 0/1/2/3"} />
+
+### MCP: an agent operating the Organization
+
+<Mermaid id="mcp-flow" caption="The MCP server is a thin stdio adapter over the same client; read-only mode refuses mutating actions before any request leaves the process." source={"sequenceDiagram\n  participant A as AI client (Claude Code, Cursor, …)\n  participant M as ciele-mcp (stdio)\n  participant API as /api/v1\n  A->>M: initialize / tools list\n  M-->>A: 7 tools (identity, assistants, flows, knowledge, publish, inbox, improvements)\n  A->>M: tools/call manage_knowledge {action add_faq, …}\n  alt CIELE_MCP_READ_ONLY=1 and action mutates\n    M-->>A: error result — refused locally, zero network\n  else allowed\n    M->>API: POST /collections/{id}/faqs (Bearer key)\n    API-->>M: 201 / error envelope\n    M-->>A: JSON text content (or isError)\n  end"} />
+
+### Where each client plugs in
+
+<Table
+  id="client-matrix"
+  columns={["AI client", "Mechanism", "Config surface"]}
+  rows={[
+    ["Claude Code", "stdio MCP", "claude mcp add ciele -e CIELE_API_KEY=… -- node …/ciele-mcp.mjs"],
+    ["Claude Desktop", "stdio MCP", "claude_desktop_config.json → mcpServers.ciele"],
+    ["Cursor", "stdio MCP", ".cursor/mcp.json → mcpServers.ciele"],
+    ["VS Code / GitHub Copilot", "stdio MCP", ".vscode/mcp.json → servers.ciele"],
+    ["OpenAI Codex CLI", "stdio MCP", "~/.codex/config.toml → [mcp_servers.ciele]"],
+    ["Windsurf", "stdio MCP", "~/.codeium/windsurf/mcp_config.json"],
+    ["Zed", "stdio MCP", "settings.json → context_servers.ciele"],
+    ["OpenCode", "stdio MCP", "opencode.json → mcp.ciele"],
+    ["Gemini CLI", "stdio MCP", "~/.gemini/settings.json → mcpServers.ciele"],
+    ["Anything else / Pi", "stdio MCP or raw HTTP", "generic stdio config, or call /api/v1 with the key directly"],
+  ]}
+/>
+
+<Callout id="key-facts" tone="decision">
+
+Three properties every integration inherits, by construction: **(1)** the key's
+Role is the only permission model — a viewer-tier key cannot mutate anywhere,
+no per-client configuration involved; **(2)** SaaS and self-host differ only by
+`CIELE_BASE_URL`; **(3)** `CIELE_MCP_READ_ONLY=1` is enforced inside the MCP
+process, before any request leaves it — safe default for exploratory agents.
+
+</Callout>

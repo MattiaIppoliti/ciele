@@ -141,8 +141,10 @@ ciele flows create <assistantId> --name "Fees intent"
 
 3. **MCP** (`packages/mcp`): the stdio server takes the same two variables,
    plus `CIELE_MCP_READ_ONLY=1` to let an agent explore without writing.
-   Configuration snippets for Claude Code / Claude Desktop are in
-   `packages/mcp/README.md`.
+   Per-client setup (Claude Code, Claude Desktop, Cursor, VS Code/Copilot,
+   Codex, Windsurf, Zed, OpenCode, Gemini CLI, …):
+   [`docs/api/connect-ai-clients.md`](../docs/api/connect-ai-clients.md);
+   architecture diagrams: [`docs/api/connections.md`](../docs/api/connections.md).
 
 Version skew: a newer CLI against an older self-hosted server should call
 `GET /api/v1/meta` first — `domains` lists what this deployment actually
