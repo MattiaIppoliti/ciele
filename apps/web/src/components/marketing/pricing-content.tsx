@@ -18,6 +18,7 @@ import {
   type BouncyAccordionItem,
 } from "@/components/motion/bouncy-accordion";
 import { GridBeam } from "@/components/motion/grid-beam";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { CodeBlock } from "@/components/ui/code-block";
 import { CTA_CLASS, PlanTilt, TIERS, type Tier } from "./plan-cards";
 import { PlanPicker } from "./plan-picker";
@@ -430,20 +431,14 @@ export function PricingContent({
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
-        <div className="max-w-3xl">
-          <p className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
-            Pricing
-          </p>
-          <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            Pricing that scales with your usage
-          </h1>
+        <MarketingHero eyebrow="Pricing" title="Pricing that scales with your usage">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
             Every plan includes the whole product, assistants, knowledge, flows,
             inbox and insights, for as many members as you like. What changes is
             how much AI work the plan funds each month, and how deeply Ciele
             plugs into your existing systems.
           </p>
-        </div>
+        </MarketingHero>
 
         <PlanPicker
           billingEnabled={billingEnabled}

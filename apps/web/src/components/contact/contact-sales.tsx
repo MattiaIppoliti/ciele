@@ -1,6 +1,7 @@
 import { Clock, PhoneCall } from "lucide-react";
 import { AuthGrid } from "@/components/auth/auth-grid";
 import { GhostMark } from "@/components/auth/ghost-mark";
+import { MarketingScene } from "@/components/home/marketing-scene";
 import { Link } from "@/components/ui/link";
 import { ContactSalesForm } from "@/components/contact/contact-sales-form";
 
@@ -33,7 +34,7 @@ function GridStrip() {
 
 export function ContactSales() {
   return (
-    <div className="dark text-foreground relative h-full overflow-y-auto bg-[#080808]">
+    <MarketingScene className="dark text-foreground bg-[#080808]">
       {/* The animated grid belongs to the page surround only. The framed
           contact form remains quiet, with its square bands limited to top and bottom. */}
       <AuthGrid tone="dark" />
@@ -106,6 +107,6 @@ export function ContactSales() {
           <GridStrip />
         </div>
       </div>
-    </div>
+    </MarketingScene>
   );
 }

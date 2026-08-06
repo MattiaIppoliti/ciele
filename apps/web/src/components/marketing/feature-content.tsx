@@ -6,6 +6,7 @@ import { FEATURES, type FeatureEntry } from "@/components/marketing/feature-cata
 import { FeaturePoints } from "@/components/marketing/feature-points";
 import { FeatureWindow } from "@/components/marketing/feature-window";
 import { KanbanMock } from "@/components/marketing/feature-mocks";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 
 /* A feature page is one claim, one picture of the screen that backs it, and
    three supporting points — in that order, so a visitor can stop reading as
@@ -16,17 +17,15 @@ export function FeatureContent({ feature }: { feature: FeatureEntry }) {
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <p className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
-            {feature.eyebrow}
-          </p>
-          <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            {feature.headline}
-          </h1>
+        <MarketingHero
+          className="max-w-2xl"
+          eyebrow={feature.eyebrow}
+          title={feature.headline}
+        >
           <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
             {feature.standfirst}
           </p>
-        </div>
+        </MarketingHero>
 
         <div className="mt-14">
           <FeatureWindow shot={feature.shot} label={feature.label} />

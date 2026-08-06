@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 
 /** One block of body content inside a legal section. */
 export type LegalBlock =
@@ -114,20 +115,14 @@ export function LegalDoc({
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
-        <div className="max-w-3xl">
-          <p className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
-            {eyebrow}
-          </p>
-          <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            {title}
-          </h1>
+        <MarketingHero eyebrow={eyebrow} title={title}>
           <p className="text-muted-foreground mt-4 text-sm">
             Last updated {lastUpdated}
           </p>
           <div className="text-muted-foreground mt-8 text-base leading-relaxed">
             {intro}
           </div>
-        </div>
+        </MarketingHero>
 
         <div className="mt-16 flex flex-col gap-12 lg:flex-row lg:gap-16">
           {/* Table of contents */}

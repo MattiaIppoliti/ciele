@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { BouncyAccordion, type BouncyAccordionItem } from "@/components/motion/bouncy-accordion";
 import { CtaSection } from "@/components/marketing/cta-section";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
 
 interface Capability {
@@ -203,13 +204,7 @@ export function SecurityContent() {
         {/* Hero — centred over the full column, the same shape every other
             marketing page opens with. Left-aligned in a max-w-3xl box left the
             whole page hugging the left half of a wide screen. */}
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
-            Security
-          </p>
-          <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            Security you can trace
-          </h1>
+        <MarketingHero eyebrow="Security" title="Security you can trace">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
             Ciele is built so organizations can trust their AI assistants: tenant
             data is isolated at the database layer, access is scoped by role,
@@ -225,7 +220,7 @@ export function SecurityContent() {
             certifications are not complete yet, and we will not claim otherwise.
             The practices below are in place today.
           </p>
-        </div>
+        </MarketingHero>
 
         {/* Capability grid */}
         <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

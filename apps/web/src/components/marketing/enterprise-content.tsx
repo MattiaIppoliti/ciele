@@ -2,6 +2,7 @@ import { MousePointerClick } from "lucide-react";
 import { AdminMetrics } from "@/components/marketing/admin-metrics";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { GovernanceOrbit } from "@/components/marketing/governance-orbit";
+import { MarketingHero } from "@/components/marketing/marketing-hero";
 
 interface Column {
   title: string;
@@ -68,21 +69,21 @@ export function EnterpriseContent() {
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-muted-foreground flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-wider">
+        <MarketingHero
+          className="max-w-2xl"
+          eyebrow={
+            <>
               <MousePointerClick className="size-3.5" strokeWidth={1.75} />
               Governance
-            </p>
-            <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-              Enterprise governance
-            </h1>
-          </div>
-          <p className="text-muted-foreground max-w-md text-base leading-relaxed">
+            </>
+          }
+          title="Enterprise governance"
+        >
+          <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
             Every assistant, knowledge source and conversation configured, monitored and
             governed from one control plane your whole institution shares.
           </p>
-        </div>
+        </MarketingHero>
 
         <section className="mt-12">
           <GovernanceOrbit />

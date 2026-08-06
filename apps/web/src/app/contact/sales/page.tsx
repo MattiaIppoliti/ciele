@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContactSales } from "@/components/contact/contact-sales";
+import "../../(marketing)/home.css";
 
 export const metadata: Metadata = {
   title: "Contact Sales | Ciele",
