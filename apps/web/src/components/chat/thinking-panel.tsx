@@ -116,12 +116,12 @@ export function ThinkingPanel({
       <button
         type="button"
         onClick={() => setUserOpen(!userOpen)}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex min-h-7 w-full items-center gap-2 text-left"
         aria-expanded={open}
       >
         <span
-          className={`inline-flex items-center gap-1 rounded-full border bg-background ${
-            soloIcon ? "p-0.5" : "py-1 pr-2 pl-1"
+          className={`inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full border bg-background ${
+            soloIcon ? "p-1" : "py-1 pr-2 pl-1"
           }`}
         >
           <span className="flex -space-x-1.5">
@@ -134,7 +134,7 @@ export function ThinkingPanel({
                 />
               ))
             ) : (
-              <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" />
+              <LoaderCircle className="size-5 shrink-0 animate-spin text-muted-foreground" />
             )}
           </span>
           <span className="sr-only">
@@ -146,11 +146,11 @@ export function ThinkingPanel({
             </span>
           )}
         </span>
-        <span className="text-sm font-medium text-muted-foreground">
+        <span className="flex min-w-0 items-center text-sm leading-5 font-medium text-muted-foreground">
           {finished ? (
             (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)
           ) : (
-            <span className="inline-flex items-center gap-1.5">
+            <span className="flex min-w-0 items-center gap-1.5">
               {/* The thinking orb (vendored thinking-orbs) sits between the
                   icon pill and the live label, its animation tracking what
                   the agent is doing: searching for knowledge lookups,
@@ -161,7 +161,9 @@ export function ThinkingPanel({
                 size={20}
                 className="shrink-0"
               />
-              <ThinkingShimmer>{liveTraceLabel(steps)}</ThinkingShimmer>
+              <ThinkingShimmer className="leading-5">
+                {liveTraceLabel(steps)}
+              </ThinkingShimmer>
             </span>
           )}
         </span>
