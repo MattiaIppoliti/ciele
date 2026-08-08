@@ -5,26 +5,43 @@ description: Understand current trigger dispatch, Flow routing, conditions, and 
 
 ## Message path
 
-```mermaid
+<Mermaid
+  title="How a Visitor message reaches stored reply parts"
+  chart={`
 flowchart TB
   MSG["Visitor message"]
   CAND["Enabled candidate Flows"]
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
+  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> ACTIONS
+  CLASSIFY --> CONTEXT
+  CONTEXT --> ACTIONS
   ACTIONS --> PARTS
-```
+`}
+/>
 
 `messageFlowCandidates` supplies candidates to both routing engines. This boundary prevents objective conditions from producing different router results.
 
 Conversation context supplies semantic examples to classification. It does not act as an independent boolean gate.
+
+## Identity-bound context
+
+A valid Widget SSO gate supplies an Organization-scoped subject. An optional verified claim can match user-scoped Entity Records.
+
+Selected Entities produce generated filter and text-search tools. User-scoped tools omit the identity attribute from model-facing input.
+
+The server adds the verified identity filter after validating tool input. The model cannot omit or override it.
+
+On a new Conversation's first turn, the runtime can inject up to five relevant long-term memories. A built-in memory search tool covers later recall.
+
+Both memory paths require the Organization toggle and a verified SSO subject.
 
 ## Courtesy shortcut
 

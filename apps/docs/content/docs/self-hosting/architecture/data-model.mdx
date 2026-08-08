@@ -7,11 +7,13 @@ description: Understand the main tenant, configuration, Knowledge, and Conversat
 
 An Organization is the primary tenant. Members join an Organization with one Role.
 
-Organization-owned records include Assistants, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
+Organization-owned records include Assistants, Entities, Memories, Help Desks, provider connections, API keys, Skills, Improvements, Goals, Alerts, and usage records.
 
 ## Assistant configuration
 
-```mermaid
+<Mermaid
+  title="The main tenant and runtime relationships"
+  chart={`
 erDiagram
   ORGANIZATION ||--o{ ASSISTANT : owns
   ASSISTANT ||--o{ FLOW : routes
@@ -21,17 +23,30 @@ erDiagram
   SOURCE ||--o{ CONCEPT : produces
   ASSISTANT ||--o{ CONVERSATION : serves
   CONVERSATION ||--o{ MESSAGE : stores
-```
+  ORGANIZATION ||--o{ ENTITY : defines
+  ENTITY ||--o{ RECORD : contains
+  ORGANIZATION ||--o{ MEMORY : isolates
+  CONVERSATION ||--o{ MEMORY : originates
+`}
+/>
 
-A Publication stores an immutable Assistant configuration snapshot. Draft records remain editable after publication.
+A Publication stores an immutable Assistant configuration snapshot. Draft records remain editable after Publication.
 
 A Flow stores one trigger, condition configuration, and ordered actions. Runtime validation enforces valid trigger and action pairs.
+
+An Assistant selects Entity schemas for its next Publication. The schema snapshot controls generated tools, while each query reads current Records.
+
+Shared Entities expose common Organization data. User-scoped Entities name one identity attribute for server-bound filtering.
 
 ## Conversation data
 
 A Conversation belongs to the serving Assistant and tracks one Visitor session. Messages store typed parts for text, citations, buttons, traces, and other replies.
 
 Session state also records proactive Notification delivery. A Notification does not create a Visitor message.
+
+Long-term Memories belong to one Organization and verified SSO subject. They store a durable fact, embedding, timestamps, and source Conversation provenance.
+
+The runtime caps each subject at 200 memories. Deletion removes a fact from future prompt injection and memory searches.
 
 ## Programmatic credentials
 

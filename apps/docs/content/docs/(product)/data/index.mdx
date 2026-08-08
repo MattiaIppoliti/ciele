@@ -1,0 +1,61 @@
+---
+title: Data and memory
+description: Ground answers in structured Records and remember signed-in Visitors across Conversations.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Brain, Database } from 'lucide-react';
+
+Ciele can combine Organization Records with durable facts about signed-in Visitors. These features use verified identity and remain under Organization control.
+
+<Mermaid
+  title="How structured data and long-term memory reach an Assistant"
+  chart={`
+flowchart TB
+  subgraph SETUP["Admin setup"]
+    ID["Entra subject<br/>optional identity claim"]
+    DATA["Entity schema<br/>CSV Records"]
+    SELECT["Select Entity<br/>in Tools & Skills"]
+  end
+  PUB["Publish the tool set"]
+  subgraph TURN["Signed-in Widget turn"]
+    SHARED["Shared lookup<br/>or text search"]
+    SCOPED["User-scoped lookup<br/>server identity filter"]
+    TRACE["Thinking and Inbox<br/>show tool calls"]
+  end
+  subgraph MEMORY["Long-term memory"]
+    QUIET["Conversation stays quiet"]
+    PROMOTE["Extract and store<br/>durable facts"]
+    RECALL["Next Conversation<br/>recalls relevant facts"]
+  end
+  DATA --> SELECT
+  SELECT --> PUB
+  PUB --> SHARED
+  PUB --> SCOPED
+  ID --> SCOPED
+  SHARED --> TRACE
+  SCOPED --> TRACE
+  TRACE --> QUIET
+  QUIET --> PROMOTE
+  PROMOTE --> RECALL
+`}
+/>
+
+The Publication controls which Entity tools exist. Record values remain live, so a later CSV import can change answers without another Publication.
+
+Identity filters are applied on the server. A model cannot select another Visitor's identity or remove the filter.
+
+<Cards>
+  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
+  <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
+</Cards>
+
+## Two kinds of memory
+
+**Session memory** belongs to one Conversation. It does not follow a Visitor into a new Conversation.
+
+**Long-term memory** belongs to a verified SSO subject within one Organization. It can support later Conversations when the Organization enables it.
+
+<Callout title="Signed-in Visitors only">
+Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+</Callout>

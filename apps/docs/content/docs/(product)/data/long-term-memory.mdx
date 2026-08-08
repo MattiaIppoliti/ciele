@@ -1,0 +1,80 @@
+---
+title: Long-term memory
+description: Remember durable facts for signed-in Visitors and erase them when required.
+---
+
+Long-term memory carries durable facts into later Conversations. It works only for Visitors signed in through the Widget's SSO gate.
+
+The feature is off by default. Anonymous Visitors never produce or recall long-term memories.
+
+## Enable long-term memory
+
+1. Open **Settings**.
+2. Select **AI Providers**.
+3. Find **Long-term memory**.
+4. Enable **Remember signed-in users across conversations**.
+
+The Organization needs a working provider connection. Memory extraction uses the classifier-tier model and counts against the daily AI budget.
+
+## What Ciele remembers
+
+Ciele promotes explicit facts that can remain useful after the current Conversation. Examples include a contact preference or a standing instruction.
+
+The extractor avoids one-time requests, questions, guesses, and statements made only by the Assistant. Many Conversations produce no durable facts.
+
+Each stored memory keeps provenance to its source Conversation. Exact duplicate facts are removed during storage.
+
+One signed-in Visitor can hold up to 200 memories. New writes remove the oldest facts after that limit.
+
+## Promotion and recall
+
+<Mermaid
+  title="The promote and recall lifecycle"
+  chart={`
+flowchart TB
+  TURN["Signed-in Conversation"]
+  QUIET["15 minutes without a new message"]
+  JOB["Durable promote_memories job"]
+  GATE["Check toggle, subject, model, and budget"]
+  STORE["Extract, embed, deduplicate, and store"]
+  NEXT["First turn of a later Conversation"]
+  PROMPT["Inject up to five relevant memories"]
+  TOOL["searchMemories handles later recall"]
+  TURN --> QUIET
+  QUIET --> JOB
+  JOB --> GATE
+  GATE --> STORE
+  STORE --> NEXT
+  NEXT --> PROMPT
+  PROMPT --> TOOL
+`}
+/>
+
+A promotion job waits until the Conversation stays quiet for 15 minutes. A newer message supersedes an older pending job.
+
+The first turn of a later Conversation can receive up to five relevant memories. The runtime can search the same subject's memories later.
+
+Recall never crosses an Organization or SSO subject boundary.
+
+## Let a Visitor inspect and delete memories
+
+A signed-in Visitor can open the Widget history panel. The **Memory** folder appears when long-term memory is enabled.
+
+The folder lists remembered facts for that Visitor. Select the delete control beside a fact to forget it.
+
+Deletion removes the fact from future prompt recall and memory searches.
+
+## Handle an erasure request
+
+1. Open **Settings**.
+2. Select **AI Providers**.
+3. Find **Remembered users**.
+4. Search by user ID or identity claim.
+5. Review the stored facts.
+6. Delete one memory or select **Delete all memories for this user**.
+
+A full wipe is immediate. Organization members can manage memories only inside their Organization.
+
+<Callout title="Disabling and deleting are different">
+Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.
+</Callout>

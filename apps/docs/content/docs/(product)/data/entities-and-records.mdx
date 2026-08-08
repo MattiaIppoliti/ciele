@@ -1,0 +1,82 @@
+---
+title: Entities and Records
+description: Define typed Organization data, import CSV rows, and expose safe retrieval tools.
+---
+
+An Entity describes one kind of structured Organization data. Its Records contain the values an Assistant can query.
+
+An **Orders** Entity might contain `order_id`, `status`, `total`, and `customer_email` attributes.
+
+## Create an Entity
+
+1. Open **Settings**.
+2. Select **Data**.
+3. Select **New entity**.
+4. Enter a name and description.
+5. Add each attribute key, label, and type.
+6. Select the key attribute.
+7. Select **Shared** or **User-scoped**.
+8. Select **Create entity**.
+
+Attributes support text, number, date, and boolean values. The key attribute identifies one Record within the Entity.
+
+An Entity's attributes, key, and scope become fixed after creation. Create another Entity when that structure must change.
+
+## Edit or delete an Entity
+
+Open an Entity and select **Edit** to change its name or description. Its attributes, key attribute, and scope stay fixed.
+
+Select **Delete** to remove the Entity and all of its Records.
+
+## Choose the scope
+
+| Scope | Use it for | Runtime behavior |
+| --- | --- | --- |
+| Shared | Catalogues, schedules, locations, and common reference data | Any Visitor served by the Assistant can query matching Records. |
+| User-scoped | Orders, accounts, applications, and other per-Visitor data | The server restricts every query to the verified signed-in Visitor. |
+
+A user-scoped Entity also needs an identity attribute. Its values must match the configured [Entra identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim).
+
+## Import Records from CSV
+
+1. Open the Entity.
+2. Select **Import CSV**.
+3. Choose a CSV file or paste its text.
+4. Confirm that every header matches an attribute key or label. Matching is case-insensitive.
+5. Select **Import**.
+6. Review the imported and rejected row counts.
+
+Imports upsert by the key attribute. Re-importing the same key updates its Record instead of creating a duplicate.
+
+Valid rows still import when other rows fail validation. The report lists a reason for each rejected row.
+
+An unknown CSV column rejects the import. Remove it or add the corresponding attribute to a new Entity.
+
+Select **Records** to browse the first 50 Records in key order.
+
+## Connect an Entity to an Assistant
+
+1. Open the Assistant.
+2. Select **Tools & Skills**.
+3. Find **Data**.
+4. Select each Entity the Assistant may query.
+5. Test exact lookup and text search in Preview.
+6. Publish the Assistant.
+
+Each selected Entity can provide an exact filter tool. Entities with text attributes also provide a keyword search tool.
+
+The selected Entity schemas enter the Publication snapshot. Unselected Entities produce no tools.
+
+Record content is read live. Importing updated Records does not require another Publication.
+
+## Protect user-scoped Records
+
+User-scoped tools exist only when the turn contains a verified identity claim. Anonymous Visitors do not receive those tools.
+
+The identity attribute is removed from the model-facing tool input. The server adds the verified value to every query.
+
+If the claim is missing, the user-scoped tools stay unavailable. Shared Entity tools can still operate.
+
+<Callout title="Identity cannot come from the prompt">
+Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.
+</Callout>

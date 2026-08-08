@@ -35,3 +35,13 @@ docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
 ```
 
 Do not expose worker ports or tokens to the public network.
+
+## Long-term memory jobs
+
+Long-term memory uses the built-in durable job ledger. It does not require the optional `workers` profile.
+
+Each signed-in turn schedules a `promote_memories` job after a 15-minute quiet window. The `cron` profile drains these jobs through the existing scheduled route.
+
+Keep `cron` in `COMPOSE_PROFILES` when long-term memory is enabled. The default self-host configuration already includes it.
+
+The job skips extraction when memory is disabled or the daily token budget is exhausted. It also skips when no suitable model connection exists.

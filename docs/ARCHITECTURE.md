@@ -252,8 +252,15 @@ only the OSS chain. Grouped:
   `status`, `config` jsonb, crawl finalizer lease/attempt timestamps) → `concepts`
   (`frontmatter` jsonb, `body` md, `path`, `excluded`) →
   `concept_chunks` (`embedding vector(1536)`, **HNSW** `vector_cosine_ops` index). RPC `match_chunks`.
-- **Conversations**: `conversations` (subject member|visitor, `metadata` jsonb, `pinned`),
+- **Structured data**: `entities` (typed schema, key attribute, shared or user-scoped) →
+  `entity_records` (live `data` jsonb, unique key per Entity). Selected Entity schemas enter
+  `assistants.tools` and Publications; Record values do not.
+- **Conversations**: `conversations` (subject member|visitor|sso, optional verified identity claim,
+  `metadata` jsonb, `pinned`),
   `messages` (`content` jsonb parts, `flow_id`/`flow_name`, `feedback` −1|0|1).
+- **Long-term memory**: `memories` (Organization + SSO subject, fact, source Conversation,
+  `embedding vector(1536)`, **HNSW** cosine index). RPC `match_memories`; provider settings store
+  the Organization-level `memory_enabled` switch.
 - **Provider connections**: `provider_connections` (`type` platform|subscription|api_key|federated,
   `provider`, `encrypted_key`, `config`). `api_key` stores encrypted BYOK secrets; `federated`
   stores only non-secret tenant enterprise config and must have `encrypted_key = null`.
@@ -449,6 +456,15 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   written back **after** the assistant message persists and only when a tool marked it dirty. The
   `remember` built-in appends capped (20), deduped facts (≤500 chars) that the next turn injects as
   its session-memory layer.
+- **Identity-bound Entity tools** (`entity-tools.ts`): an Assistant's selected Entity schemas
+  generate exact-filter tools and, when text attributes exist, search tools. Shared tools query live
+  Records. User-scoped tools remove the identity attribute from model-facing input and add the
+  verified Widget SSO claim server-side; a missing claim means the tool is not registered.
+- **Long-term memory** (`memories.ts` + durable `promote_memories` jobs): after a Conversation stays
+  quiet for 15 minutes, the classifier tier can extract durable Visitor facts, embed them, remove
+  exact duplicates, and cap each Organization/SSO subject at 200. The first turn of a later
+  Conversation injects up to five relevant facts; a memory-search tool supports later recall.
+  Extraction and recall are disabled by default and never run for anonymous Visitors.
 - **Bounds**: `MAX_SEARCH_PASSES = 6` `searchKnowledge` calls per turn — counted specifically, so
   non-search tools cannot consume retrieval budget — plus `stepCountIs(MAX_SEARCH_PASSES + 6)` as
   the runaway guard, per-call timeouts and response caps, and explicit handling for a refusal
@@ -488,7 +504,8 @@ Route handler (app/api/widget/[assistantId]/chat/route.ts, maxDuration 300s, COR
   │  1. load latest Publication snapshot (NOT live config), resolve connections
   ▼
 Conversation Turn module (packages/agent/src/turn.ts → streamConversationTurn)
-  │  2. get/create conversation (reused only if subject+assistant match), append user message
+  │  2. verify the Widget subject and optional identity claim; get/create the matching conversation
+  │     and append the Visitor message
   │  3. runAssistantChat({ assistant, flows, connections, message, history, searchKnowledge, emit })
   │        emit → ndjson: turn, flow, notice*/thought*/tool-*, text-delta*, part*, done
   │  4. persist assistant message (content parts, flow_id/flow_name), applyEffects, emit done
@@ -497,7 +514,8 @@ Browser renders stream incrementally; feedback via POST /api/widget/{id}/feedbac
 ```
 
 Steps 2–4 — the **Conversation Turn** (see context.md) — live in one module,
-`packages/agent/src/turn.ts`: get-or-create conversation, history assembly, knowledge-search wiring,
+`packages/agent/src/turn.ts`: verified-subject threading, get-or-create conversation, history assembly,
+Knowledge, Entity, and memory-tool wiring,
 user/assistant message persistence, deferred-effects application, and the ndjson stream framing
 (`NDJSON_HEADERS` + one JSON `RuntimeEvent` per line). The two chat entrypoints are thin adapters
 over this seam and differ only in what they feed it.
@@ -645,7 +663,9 @@ differ in theming/interactivity for other reply parts but not for citations.
 ## 9. Publishing model (immutable snapshots)
 
 `publishAssistantAction` captures a **`Publication`**: a versioned, immutable jsonb snapshot of the
-assistant config + all flows + collection references. The snapshot's field selection lives in one
+assistant config + all flows + collection references. Selected Entity schemas also enter the
+snapshot, but Entity Record values remain live so imports do not require another Publication. The
+snapshot's field selection lives in one
 tested place — **`buildPublicationConfig(assistant, flows, collections)`** (`packages/db/publication.ts`),
 so a newly-added `Assistant` field can't silently be omitted from new Publications (a unit test asserts
 the captured key set). The widget always serves the **latest** Publication (`/widget/[id]` and
@@ -711,7 +731,8 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
 - **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` always on, `remember` on,
   `fetchUrl` opt-in, plus the API catalogue triad and the two windowed readers when an integration
-  and a document reader are wired), org Skills layered into the prompt and
+  and a document reader are wired), generated Entity tools with server-bound identity filters,
+  opt-in SSO long-term-memory promotion and recall, org Skills layered into the prompt and
   snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
   search budget. **[target]** an MCP tool *provider* — the registry seam exists, the client does not.
 - **Quality loop** (§5.5): standing goals, the independent answer verifier, per-flow trust tiers, and

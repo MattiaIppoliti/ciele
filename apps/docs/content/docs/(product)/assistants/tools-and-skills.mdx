@@ -15,6 +15,18 @@ Open an Assistant and select **Tools & Skills**. This section controls runtime c
 
 Search knowledge is always available. You can enable or disable the other built-in tools.
 
+## Connect structured data
+
+The **Data** section lists Entities imported through **Settings → Data**. Select each Entity that this Assistant may query.
+
+Each selected Entity provides an exact filter tool. An Entity with text attributes also provides a keyword search tool.
+
+Shared Entities are available to every Visitor served by the Assistant. User-scoped Entities require a verified [identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim).
+
+The Entity selection and schema enter the next Publication snapshot. Record content remains live after Publication.
+
+See [Entities and Records](/data/entities-and-records) for CSV imports, scope choices, and identity filtering.
+
 ## Configure one API integration
 
 An Assistant can use one registered API integration. The integration contains a base URL, a protected credential, and described endpoints.
@@ -37,8 +49,10 @@ A Skill is a reusable instruction template. An Organization can attach the same 
 4. Test the result in Preview.
 5. Publish the Assistant when the result is correct.
 
-Skill changes are available in Preview immediately. The published widget uses the last publication snapshot.
+Skill changes are available in Preview immediately. The published Widget uses the last Publication snapshot.
 
 ## Test the configuration
 
 Ask one question that requires each enabled tool. Inspect the Thinking panel and Sources before you publish.
+
+For structured data, test an exact attribute lookup and a text search. Test user-scoped access with two different signed-in accounts.
