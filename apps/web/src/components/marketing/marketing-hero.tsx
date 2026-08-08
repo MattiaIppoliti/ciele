@@ -18,7 +18,7 @@ export function MarketingHero({
       <p className="text-muted-foreground flex items-center justify-center gap-2 font-mono text-xs font-medium uppercase tracking-wider">
         {eyebrow}
       </p>
-      <h1 className="text-foreground mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+      <h1 className="from-foreground to-foreground/25 mt-4 bg-gradient-to-b bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl">
         {title}
       </h1>
       {children}

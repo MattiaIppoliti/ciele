@@ -1,6 +1,7 @@
 import type {
   Concept,
   ConceptFrontmatter,
+  Entity,
   Improvement,
   ImprovementPatch,
   Role,
@@ -47,6 +48,8 @@ export interface OperationContext {
 }
 
 export interface OperationPorts {
+  /** Read the org's Entities when freezing a Publication snapshot. */
+  listPublicationEntities?(organizationId: string): Promise<Entity[]>;
   /** Reclaim a deleted Collection's derived graph dataset (ADR-0017). */
   purgeCollectionGraph?(collectionId: string): Promise<void>;
   /** Retire one deleted Concept's graph document (ADR-0017). */

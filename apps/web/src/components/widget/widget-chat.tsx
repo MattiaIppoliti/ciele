@@ -38,7 +38,7 @@ import {
   triggerReportKey,
   type TriggerReport,
 } from "@/lib/widget-triggers";
-import type { WidgetConversationSummary } from "./widget-history";
+import type { WidgetConversationSummary, WidgetMemory } from "./widget-history";
 import {
   ArrowRight,
   ExternalLink,
@@ -563,6 +563,10 @@ export function WidgetChat({
     authenticated: boolean;
     provider: string | null;
   } | null>(requireSignIn ? null : { authenticated: true, provider: null });
+  // Memory folder availability (#666): true only for SSO-signed users of an
+  // org whose long-term memory toggle is on — resolved server-side.
+  const [memoriesOn, setMemoriesOn] = useState(false);
+  const [memories, setMemories] = useState<WidgetMemory[]>([]);
 
   const refreshGate = useCallback(async () => {
     try {
@@ -573,21 +577,25 @@ export function WidgetChat({
       const data = (await res.json()) as {
         authenticated: boolean;
         provider: string | null;
+        memories?: boolean;
       };
       setGate({ authenticated: data.authenticated, provider: data.provider });
+      setMemoriesOn(Boolean(data.memories));
     } catch {
       // Leave the gate as-is; the chat API is the authoritative enforcer.
     }
   }, [assistantId]);
 
   useEffect(() => {
-    if (!requireSignIn) return;
     let cancelled = false;
     fetch(`/api/widget/${assistantId}/session`, { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (cancelled || !data) return;
-        setGate({ authenticated: data.authenticated, provider: data.provider });
+        if (requireSignIn) {
+          setGate({ authenticated: data.authenticated, provider: data.provider });
+        }
+        setMemoriesOn(Boolean(data.memories));
       })
       .catch(() => {});
     return () => {
@@ -784,8 +792,36 @@ export function WidgetChat({
     }
   }
 
+  async function refreshMemories() {
+    if (!memoriesOn) return;
+    try {
+      const response = await fetch(`/api/widget/${assistantId}/memories`, {
+        cache: "no-store",
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      setMemories(data.memories ?? []);
+    } catch {
+      /* folder simply stays as-is */
+    }
+  }
+
+  async function deleteMemory(id: string) {
+    try {
+      const response = await fetch(
+        `/api/widget/${assistantId}/memories?id=${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
+      if (response.ok) {
+        setMemories((prev) => prev.filter((m) => m.id !== id));
+      }
+    } catch {
+      /* leave the list untouched */
+    }
+  }
+
   async function toggleHistory() {
-    if (!historyOpen) await refreshHistory();
+    if (!historyOpen) await Promise.all([refreshHistory(), refreshMemories()]);
     setHistoryOpen(!historyOpen);
   }
 
@@ -949,6 +985,9 @@ export function WidgetChat({
           activeId={conversationId}
           onSelect={loadConversation}
           onNewChat={newChat}
+          memoryFolder={
+            memoriesOn ? { memories, onDelete: deleteMemory } : null
+          }
         />
       ) : (
       <>

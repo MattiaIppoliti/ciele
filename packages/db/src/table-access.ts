@@ -3,6 +3,8 @@ import type {
   LocalConnectorDevice,
   LocalConnectorPairing,
   LocalInferenceJob,
+  Entity,
+  EntityInput,
   Skill,
 } from "@agent-hub/core";
 import { shortId } from "@agent-hub/core";
@@ -21,6 +23,11 @@ import { shortId } from "@agent-hub/core";
  * (plus a store binding in the mock), not three hand-written methods.
  */
 export interface DbTableMap {
+  entities: {
+    row: Entity;
+    insert: EntityInput & { organizationId: string };
+    update: Partial<Pick<Entity, "name" | "description">>;
+  };
   /**
    * Append-only consent evidence. `update` and `delete` exist on the accessor
    * because every mapped table shares the five operations, but nothing should
@@ -142,6 +149,14 @@ export interface DbTableSpec<K extends DbTableName> {
 }
 
 export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
+  entities: {
+    table: "entities",
+    id: "shortId",
+    defaults: { description: "", identityAttribute: null },
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
   cookieConsentRecords: {
     table: "cookie_consent_records",
     id: "uuid",

@@ -3,6 +3,7 @@ import type {
   BudgetEnforcement,
   ConversationMetadata,
   ConversationSubject,
+  EntitySnapshot,
   Flow,
   FlowTrigger,
   ProactiveTriggerContext,
@@ -18,7 +19,7 @@ import {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
-import type { ChatReplyPart } from "./types";
+import type { ChatReplyPart, MemorySearcher } from "./types";
 import { contactLabel } from "./actions";
 import { meterUsage } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
@@ -35,6 +36,8 @@ import {
 import { applyEffects } from "./effects";
 import { buildTemplateContext } from "./template";
 import { createTurnSession } from "./session";
+import { enqueueMemoryPromotionJob } from "./jobs";
+import { MEMORY_RECALL_LIMIT } from "./memories";
 import { EMPTY_TURN_TRACE, foldTraceEvent, type TurnTrace } from "./stream";
 import { prepareTraceForStorage } from "./trace";
 import { alertKeys, signalHealth } from "./health";
@@ -79,11 +82,30 @@ export interface ConversationTurnInput {
   flows: Flow[];
   /** Attached Skills — a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
+  /**
+   * Selected shared Entities (#665) — a Publication snapshot (widget) or
+   * live rows (preview). Each yields auto-generated retrieval tools whose
+   * Record content is always read live through `db`.
+   */
+  entities?: EntitySnapshot[];
   connections: ProviderConnection[];
   organizationId: string;
-  /** Who is speaking: a Visitor (widget) or a Member (preview). */
+  /**
+   * Who is speaking: a Visitor (widget), a Member (preview), or an SSO-signed
+   * end-user ("sso" — the widget gate verified them, #662).
+   */
   subjectType: ConversationSubject;
   subjectId: string;
+  /**
+   * Verified SSO identity for "sso"-subject turns (#662): threaded from the
+   * sealed gate cookie, never client- or model-supplied. Downstream per-user
+   * capabilities (long-term memory, user-scoped records) key on it —
+   * always together with the Organization, never on the subject alone.
+   */
+  verifiedIdentity?: {
+    subjectId: string;
+    claim?: { name: string; value: string };
+  };
   /**
    * Conversation to continue. Reused only when it belongs to the same
    * subject and assistant; otherwise a fresh Conversation is started.
@@ -587,7 +609,8 @@ export async function streamConversationTurn(
     : null;
   if (
     conversation &&
-    (conversation.subjectId !== subjectId ||
+    (conversation.subjectType !== subjectType ||
+      conversation.subjectId !== subjectId ||
       conversation.assistantId !== assistant.id)
   ) {
     conversation = null;
@@ -639,6 +662,52 @@ export async function streamConversationTurn(
     },
   });
 
+  const stored = await db.listRecentMessages(
+    conversation.id,
+    RECENT_HISTORY_LIMIT
+  );
+
+  // Long-term memory (#664): applies only to SSO-signed subjects whose org
+  // enabled the capability (off by default). The toggle read fails open to
+  // "off" — memory problems must never take the assistant down.
+  const memorySubjectId =
+    subjectType === "sso" && input.verifiedIdentity
+      ? input.verifiedIdentity.subjectId
+      : null;
+  const memoryEnabled = memorySubjectId
+    ? await db.getMemoryEnabled(input.organizationId).catch(() => false)
+    : false;
+  let searchMemories: MemorySearcher | undefined;
+  let longTermMemory: string[] | undefined;
+  if (memoryEnabled && memorySubjectId) {
+    searchMemories = async (query: string) => {
+      const embedding = await embedText(query, input.connections, {
+        db,
+        organizationId: input.organizationId,
+        assistantId: assistant.id,
+        conversationId: conversation!.id,
+      });
+      return db.searchMemories({
+        organizationId: input.organizationId,
+        subjectId: memorySubjectId,
+      }, {
+        embedding,
+        text: query,
+        limit: MEMORY_RECALL_LIMIT,
+      });
+    };
+    // Recall on the conversation's first turn: the top-k memories relevant
+    // to the opening message become the "Long-term memory" prompt block;
+    // later turns rely on the searchMemories tool instead.
+    if (stored.length === 0) {
+      try {
+        const recalled = await searchMemories(message);
+        if (recalled.length > 0) longTermMemory = recalled.map((r) => r.text);
+      } catch (error) {
+        console.error("[runtime] long-term memory recall failed:", error);
+      }
+    }
+  }
   /**
    * The windowed knowledge reader (spec #559): a search returns the matching
    * chunk, this returns the whole document behind it so the model can walk it by
@@ -680,10 +749,7 @@ export async function streamConversationTurn(
   // before the model runs. A read failure leaves the catalogue tools
   // unregistered rather than failing a turn that can still answer from
   // knowledge.
-  const [stored, apiIntegration] = await Promise.all([
-    db.listRecentMessages(conversation.id, RECENT_HISTORY_LIMIT),
-    db.getApiIntegration(assistant.id).catch(() => null),
-  ]);
+  const apiIntegration = await db.getApiIntegration(assistant.id).catch(() => null);
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
   const session = createTurnSession(conversation.id, conversation.sessionState);
@@ -732,12 +798,30 @@ export async function streamConversationTurn(
   return new ReadableStream({
     async start(controller) {
       let toolCalls = 0;
-      // The turn folds the events it is emitting through the SAME fold the
-      // chat clients use (stream.ts), so what the Inbox reads back later is
-      // what the visitor watched happen — not a second reconstruction of it.
+      // Tool-call audit trail (#665): the same lifecycle events the Thinking
+      // panel streams, collected so the persisted assistant message carries
+      // how the answer was produced (Inbox transcript).
+      const auditedCalls = new Map<
+        string,
+        { tool: string; label: string; ok: boolean; summary?: string }
+      >();
       let trace: TurnTrace = EMPTY_TURN_TRACE;
       const emit = (event: RuntimeEvent) => {
-        if (event.type === "tool-start") toolCalls += 1;
+        if (event.type === "tool-start") {
+          toolCalls += 1;
+          auditedCalls.set(event.callId, {
+            tool: event.tool,
+            label: event.label,
+            ok: false,
+          });
+        }
+        if (event.type === "tool-end") {
+          const call = auditedCalls.get(event.callId);
+          if (call) {
+            call.ok = event.ok;
+            if (event.summary) call.summary = event.summary;
+          }
+        }
         trace = foldTraceEvent(trace, event);
         controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
       };
@@ -758,10 +842,16 @@ export async function streamConversationTurn(
         /** Bookkeeping between persist and `done` (usage ledger, session, effects). */
         afterPersist?: (messageId: string) => Promise<void>;
       }): Promise<void> => {
+        // The audit part is persistence-only: never emitted on the wire (the
+        // live Thinking panel already streamed each call).
+        const parts: ChatReplyPart[] =
+          auditedCalls.size > 0
+            ? [...turn.parts, { type: "tool_calls", calls: [...auditedCalls.values()] }]
+            : turn.parts;
         const saved = await db.appendMessage({
           conversationId,
           role: "assistant",
-          content: turn.parts,
+          content: parts,
           flowId: turn.flowId,
           flowName: turn.flowName,
           // Null for a turn that did no agentic work (a verbatim message, a
@@ -914,6 +1004,20 @@ export async function streamConversationTurn(
           session,
           alreadyClarified,
           skills: input.skills,
+          longTermMemory,
+          searchMemories,
+          // Entity tools (#665): the tool SET comes from the snapshot/live
+          // config; Record CONTENT reads live through the turn's db.
+          entities: input.entities,
+          queryEntityRecords: (entityId, query) =>
+            db.queryEntityRecords(entityId, query),
+          // Entity tool policy input (#667): the verified subject type and
+          // claim decide which tool variants exist — never the model.
+          toolSubject: {
+            type: subjectType,
+            subjectId: input.verifiedIdentity?.subjectId ?? null,
+            claimValue: input.verifiedIdentity?.claim?.value ?? null,
+          },
           escalationDesks,
           emit,
           signal,
@@ -1062,6 +1166,22 @@ export async function streamConversationTurn(
                 organizationId: input.organizationId,
                 messageId,
               });
+            }
+            // Memory promotion (#664): enqueue the durable extraction job,
+            // due once the conversation goes quiet — background only, so a
+            // failure to enqueue never breaks the chat.
+            if (memoryEnabled && memorySubjectId) {
+              try {
+                await enqueueMemoryPromotionJob(
+                  {
+                    conversationId,
+                    organizationId: input.organizationId,
+                  },
+                  { db }
+                );
+              } catch (error) {
+                console.error("[runtime] memory-promotion enqueue failed:", error);
+              }
             }
           },
         });

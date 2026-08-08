@@ -3,11 +3,20 @@ import { z } from "zod";
 import type {
   ApiIntegration,
   Assistant,
+  EntitySnapshot,
   KnowledgeSearchResult,
 } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "./session";
-import type { KnowledgeDocument, KnowledgeSearcher, RuntimeEvent } from "./types";
+import type {
+  EntityRecordsFetcher,
+  KnowledgeDocument,
+  KnowledgeSearcher,
+  MemorySearcher,
+  RuntimeEvent,
+  ToolSubject,
+} from "./types";
+import { entityToolSpecs } from "./entity-tools";
 import {
   MAX_SEARCH_PASSES,
   readyToAnswerTool,
@@ -48,6 +57,10 @@ export interface ToolRuntimeContext {
   assistant: Assistant;
   session: TurnSession;
   searchKnowledge?: KnowledgeSearcher;
+  searchMemories?: MemorySearcher;
+  entities?: EntitySnapshot[];
+  queryEntityRecords?: EntityRecordsFetcher;
+  toolSubject?: ToolSubject;
   /**
    * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
    * reader. A port rather than a `Db` handle, like `searchKnowledge` — absent
@@ -131,6 +144,23 @@ const FETCH_MAX_CHARS = 6_000;
 const FETCH_MAX_RESPONSE_BYTES = 1024 * 1024;
 /** One message for every egress-policy block — "blocked" must be indistinguishable from "down". */
 const EGRESS_BLOCKED_MESSAGE = "This host is not reachable from the assistant";
+
+const searchMemoriesSpec: RuntimeToolSpec = {
+  name: "searchMemories",
+  description:
+    "Search durable facts saved about this signed-in user from earlier conversations.",
+  inputSchema: z.object({ query: z.string() }),
+  label: () => "Searching long-term memory",
+  summarize: (output) => {
+    const count = (output as { memories?: unknown[] })?.memories?.length;
+    return typeof count === "number" ? `${count} memories` : undefined;
+  },
+  async execute(input, ctx) {
+    if (!ctx.searchMemories) return { memories: [] };
+    const rows = await ctx.searchMemories(String(input.query ?? ""));
+    return { memories: rows.map((row) => row.text) };
+  },
+};
 
 /**
  * The Simplified-thinking narration field (#560), spliced onto every tool's input
@@ -527,6 +557,9 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
     // to the search-pass primitive rather than through `instrument`.
     searchKnowledge: searchKnowledgeTool(ctx),
   };
+  if (ctx.searchMemories) {
+    toolset[searchMemoriesSpec.name] = instrument(searchMemoriesSpec, ctx);
+  }
   for (const spec of BUILT_IN_SPECS) {
     const enabled =
       overrides[spec.name as keyof typeof overrides] ??
@@ -545,9 +578,41 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   // with a described catalogue behind them: an assistant with no integration
   // must not be told an API exists. This is the ONLY way an org reaches its own
   // HTTP API from a turn — the per-endpoint custom tools it replaced are gone.
-  if (ctx.apiIntegration && ctx.apiIntegration.endpoints.length > 0) {
+  const integrationNeedsIdentity = ctx.apiIntegration?.endpoints.some((endpoint) =>
+    endpoint.params?.some((param) =>
+      param.value?.includes("{{identity.")
+    )
+  );
+  const verifiedSso = ctx.toolSubject?.type === "sso" && Boolean(ctx.toolSubject.subjectId);
+  if (
+    ctx.apiIntegration &&
+    ctx.apiIntegration.endpoints.length > 0 &&
+    (!integrationNeedsIdentity || verifiedSso)
+  ) {
     for (const spec of API_CATALOG_SPECS) {
       toolset[spec.name] = instrument(spec, ctx);
+    }
+  }
+  if (ctx.queryEntityRecords) {
+    const subject = ctx.toolSubject;
+    for (const entity of ctx.entities ?? []) {
+      const specs: RuntimeToolSpec[] =
+        entity.scope === "shared"
+          ? entityToolSpecs(entity, ctx.queryEntityRecords)
+          : subject?.type === "sso" && subject.claimValue
+            ? entityToolSpecs(entity, ctx.queryEntityRecords, {
+                value: subject.claimValue,
+              })
+            : subject?.type === "member"
+              ? entityToolSpecs(entity, ctx.queryEntityRecords, null, {
+                  crossRecord: true,
+                })
+              : [];
+      for (const spec of specs) {
+        const suffix = entity.id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8);
+        const name = toolset[spec.name] ? `${spec.name}_${suffix}` : spec.name;
+        if (!toolset[name]) toolset[name] = instrument({ ...spec, name }, ctx);
+      }
     }
   }
   // The terminal tool — mandatory when a turn has a terminal declaration to

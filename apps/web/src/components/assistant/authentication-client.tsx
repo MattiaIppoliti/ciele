@@ -20,6 +20,13 @@ import {
 } from "@agent-hub/ui";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   disconnectSsoConnectionAction,
   setAssistantRequireSignInAction,
   setSsoConnectionAction,
@@ -34,6 +41,19 @@ interface ConnectionView {
   config: EntraSsoConfig;
   validationStatus: SsoValidationStatus;
 }
+
+/**
+ * Identity-claim choices (#662). "none" keeps the personalization-free
+ * default: only the opaque subject is captured at sign-in.
+ */
+const IDENTITY_CLAIMS: Array<{ value: string; label: string }> = [
+  { value: "none", label: "Off — subject only" },
+  { value: "email", label: "Email address (email claim)" },
+  { value: "preferred_username", label: "Username (preferred_username claim)" },
+];
+
+const claimLabel = (value: string) =>
+  IDENTITY_CLAIMS.find((c) => c.value === value)?.label ?? value;
 
 const PROVIDERS: Array<{
   kind: SsoProviderKind;
@@ -94,6 +114,7 @@ export function AuthenticationClient({
   const [clientId, setClientId] = useState("");
   const [tenantId, setTenantId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [identityClaim, setIdentityClaim] = useState("none");
 
   const origin = useSyncExternalStore(
     NOOP_SUBSCRIBE,
@@ -119,6 +140,7 @@ export function AuthenticationClient({
         clientId,
         tenantId,
         clientSecret,
+        identityClaim: identityClaim === "none" ? undefined : identityClaim,
       });
       if (result.error) {
         toast.error(result.error);
@@ -127,7 +149,8 @@ export function AuthenticationClient({
       setClientId("");
       setTenantId("");
       setClientSecret("");
-      toast.success("Connection saved, validate it to confirm the credentials.");
+      setIdentityClaim("none");
+      toast.success("Connection saved — validate it to confirm the credentials.");
       router.refresh();
     });
 
@@ -216,6 +239,18 @@ export function AuthenticationClient({
                 </code>
               </div>
             </div>
+            <div className="space-y-1.5">
+              <Label>Identity claim</Label>
+              <code className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs">
+                {connection.config.identityClaim
+                  ? claimLabel(connection.config.identityClaim)
+                  : "Off — subject only"}
+              </code>
+              <p className="text-muted-foreground text-xs">
+                When on, the verified claim identifies the signed-in user to
+                per-user features. Reconnect to change it.
+              </p>
+            </div>
             <p className="text-muted-foreground text-xs">
               Client secret is stored securely and never shown again.
             </p>
@@ -262,6 +297,29 @@ export function AuthenticationClient({
                 onChange={(e) => setClientSecret(e.target.value)}
                 placeholder="Value from Certificates & secrets"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label id="sso-identity-claim">Identity claim</Label>
+              <Select
+                value={identityClaim}
+                onValueChange={(v) => setIdentityClaim(v ?? "none")}
+              >
+                <SelectTrigger aria-labelledby="sso-identity-claim">
+                  <SelectValue>{(v: string) => claimLabel(v)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {IDENTITY_CLAIMS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-muted-foreground text-xs">
+                Optional. Verifies a claim at sign-in so per-user features can
+                match the signed-in user to your data. Off keeps sign-in
+                anonymous beyond the opaque subject.
+              </p>
             </div>
             <Button
               onClick={connect}

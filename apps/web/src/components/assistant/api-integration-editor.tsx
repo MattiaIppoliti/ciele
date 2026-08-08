@@ -61,7 +61,7 @@ interface EndpointDraft {
   method: ApiEndpointSpec["method"];
   path: string;
   purpose: string;
-  /** One per line: `name | path|query | type | description | required` */
+  /** One per line: `name | path|query|header | type | description | required | server value` */
   params: string;
   /** Comma-separated. */
   responseKeys: string;
@@ -90,6 +90,7 @@ function draftFrom(endpoint: ApiEndpointSpec): EndpointDraft {
           p.type ?? "string",
           p.description ?? "",
           p.required ? "required" : "",
+          p.value ?? "",
         ]
           .join(" | ")
           .replace(/(\s\|\s*)+$/, "")
@@ -118,18 +119,24 @@ function parseParams(text: string): ApiEndpointSpec["params"] {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const [name = "", where = "", type = "", description = "", flag = ""] = line
+      const [name = "", where = "", type = "", description = "", flag = "", value = ""] = line
         .split("|")
         .map((part) => part.trim());
       return {
         name,
-        in: where.toLowerCase() === "path" ? ("path" as const) : ("query" as const),
+        in:
+          where.toLowerCase() === "path"
+            ? ("path" as const)
+            : where.toLowerCase() === "header"
+              ? ("header" as const)
+              : ("query" as const),
         type:
           type === "number" || type === "boolean"
             ? (type as "number" | "boolean")
             : ("string" as const),
         description: description || undefined,
         required: flag.toLowerCase() === "required",
+        ...(value ? { value } : {}),
       };
     })
     .filter((param) => param.name);
@@ -436,13 +443,14 @@ export function ApiIntegrationEditor({
             </div>
             <div className="space-y-2">
               <Label>
-                Parameters, one per line: name | path or query | string, number
-                or boolean | description | required
+                Parameters, one per line: name | path, query or header | type |
+                description | required | server value. Server values may use
+                {" {{identity.subject}} or {{identity.claim}}"}.
               </Label>
               <Textarea
                 rows={2}
                 placeholder={
-                  "ticketId | path | string | The ticket identifier\nlimit | query | number | How many to return"
+                  "ticketId | path | string | The ticket identifier\ncustomer | header | string | | required | {{identity.claim}}"
                 }
                 value={draft.params}
                 disabled={!canEdit}

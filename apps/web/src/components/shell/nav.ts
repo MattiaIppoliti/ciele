@@ -4,6 +4,7 @@ import {
   BookText,
   ChartLine,
   CircleHelp,
+  Database,
   Compass,
   FlaskConical,
   LayoutGrid,
@@ -50,6 +51,7 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   { label: "Inbox", icon: Archive, href: "/inbox" },
   { label: "Improvements", icon: FlaskConical, href: "/improvements" },
   { label: "Insights", icon: ChartLine, href: "/insights" },
+  { label: "Data Assistant", icon: Database, href: "/data-assistant" },
   { label: "Alerts", icon: Bell, href: "/alerts", bottom: true },
   {
     label: "Settings",

@@ -45,6 +45,7 @@ function seedFor(
     conversations: conversations.map((c) => ({
       id: c.id,
       assistantId: c.assistantId,
+      subjectType: c.subjectType,
       subjectId: c.subjectId,
       createdAt: c.createdAt,
       metadata: c.metadata,

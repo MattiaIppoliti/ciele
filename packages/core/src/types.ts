@@ -325,6 +325,8 @@ export type BuiltInToolName =
 export interface AssistantTools {
   /** Built-in enablement overrides; unset = runtime default. */
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
+  /** Entity schemas selected for generated Record-retrieval tools. */
+  entities?: string[];
 }
 
 /** Declared type of a catalogued endpoint parameter, shown to the model. */
@@ -339,8 +341,13 @@ export interface ApiEndpointParam {
   name: string;
   description?: string;
   type?: ApiParamType;
-  in?: "path" | "query";
+  in?: "path" | "query" | "header";
   required?: boolean;
+  /**
+   * Server-pinned value. It is hidden from the model and may interpolate
+   * `{{identity.subject}}` or `{{identity.claim}}` from a verified SSO turn.
+   */
+  value?: string;
 }
 
 /**
@@ -467,6 +474,118 @@ export type SkillPatch = Partial<Pick<Skill, "name" | "description" | "prompt">>
 
 /** What the runtime needs of an attached skill (frozen into Publications). */
 export type SkillSnapshot = Pick<Skill, "id" | "name" | "description" | "prompt">;
+
+// ---------------------------------------------------------------------------
+// Entities + Records — org-level structured business data (#663).
+
+export type EntityAttributeType = "text" | "number" | "date" | "boolean";
+
+export interface EntityAttribute {
+  key: string;
+  label: string;
+  type: EntityAttributeType;
+}
+
+export type EntityScope = "shared" | "user";
+
+export interface Entity {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  attributes: EntityAttribute[];
+  keyAttribute: string;
+  scope: EntityScope;
+  identityAttribute: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type EntityRecordValue = string | number | boolean | null;
+
+export interface EntityRecord {
+  id: string;
+  entityId: string;
+  key: string;
+  values: Record<string, EntityRecordValue>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EntityInput {
+  name: string;
+  description?: string;
+  attributes: EntityAttribute[];
+  keyAttribute: string;
+  scope: EntityScope;
+  identityAttribute?: string | null;
+}
+
+export type EntitySnapshot = Pick<
+  Entity,
+  "id" | "name" | "description" | "attributes" | "scope" | "identityAttribute"
+>;
+
+export interface EntityRecordQuery {
+  filters?: Record<string, EntityRecordValue>;
+  search?: string;
+  limit?: number;
+}
+
+export interface EntitySyncConfig {
+  entityId: string;
+  url: string;
+  sealedHeaders: string | null;
+  cadenceHours: number;
+  prune: boolean;
+  mapping: Record<string, string>;
+  lastSyncedAt: string | null;
+}
+
+export type EntitySyncConfigInput = Omit<
+  EntitySyncConfig,
+  "entityId" | "lastSyncedAt"
+>;
+
+export interface EntitySyncRun {
+  id: string;
+  entityId: string;
+  status: "succeeded" | "failed";
+  upserted: number;
+  pruned: number;
+  rejected: string[];
+  error: string | null;
+  finishedAt: string;
+}
+
+export interface Memory {
+  id: string;
+  organizationId: string;
+  subjectId: string;
+  text: string;
+  conversationId: string | null;
+  createdAt: string;
+}
+
+export interface MemorySubjectRef {
+  organizationId: string;
+  subjectId: string;
+}
+
+export const MEMORIES_PER_SUBJECT_CAP = 200;
+
+export interface MemorySearchResult {
+  id: string;
+  text: string;
+  similarity: number;
+}
+
+export interface MemorySubjectSummary {
+  subjectId: string;
+  claimValue: string | null;
+  memoryCount: number;
+  lastMemoryAt: string;
+}
 
 /**
  * Local-connector relay (personal AI subscriptions that stay on a Member's
@@ -733,6 +852,8 @@ export type SsoProviderKind = "entra" | "clerk" | "workos";
 export interface EntraSsoConfig {
   clientId: string;
   tenantId: string;
+  /** Optional verified token claim used by identity-scoped tools. */
+  identityClaim?: string;
 }
 
 /** Non-secret, provider-specific connection settings (grows with clerk/workos). */
@@ -1099,6 +1220,8 @@ export interface PublicationConfig {
   collections: Array<{ id: string; name: string }>;
   /** Attached Skills frozen at publish time (older snapshots lack it). */
   skills?: SkillSnapshot[];
+  /** Entity schemas frozen at publish time; Record values remain live. */
+  entities?: EntitySnapshot[];
 }
 
 export interface Publication {
@@ -1122,7 +1245,9 @@ export type SourceStatus = "processing" | "ready" | "error";
 export type BackgroundJobKind =
   | "ingest_source"
   | "graph_sync_concept"
-  | "draft_improvement_proposal";
+  | "draft_improvement_proposal"
+  | "promote_memories"
+  | "sync_entity_records";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface CrawlFinalizeClaim {
@@ -1312,7 +1437,7 @@ export interface KnowledgeSearchResult {
   engine?: KnowledgeEngine;
 }
 
-export type ConversationSubject = "member" | "visitor";
+export type ConversationSubject = "member" | "visitor" | "sso";
 
 /** Best-effort session context captured when a conversation starts. */
 export interface ConversationMetadata {
@@ -1360,6 +1485,9 @@ export interface ConversationMetadata {
   externalUserData?: Record<string, string>;
   /** Where those fields came from (CSV upload name, LMS, integration). */
   externalUserDataSourceNames?: string[];
+  /** Verified SSO claim persisted for Inbox display and identity-aware tools. */
+  ssoClaimName?: string;
+  ssoClaimValue?: string;
 }
 
 export interface Conversation {
@@ -1829,7 +1957,8 @@ export type AiUsageStage =
   | "compost"
   | "improvement_proposal"
   | "graph_search"
-  | "graph_cognify";
+  | "graph_cognify"
+  | "memory_extract";
 
 /**
  * Which credential answered a metered model call — the platform env key

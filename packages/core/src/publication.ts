@@ -1,5 +1,6 @@
 import type {
   Assistant,
+  Entity,
   Flow,
   KnowledgeCollection,
   PublicationConfig,
@@ -19,7 +20,14 @@ export function buildPublicationConfig(
   assistant: Assistant,
   flows: Flow[],
   collections: KnowledgeCollection[],
-  skills: SkillSnapshot[] = []
+  skills: SkillSnapshot[] = [],
+  /**
+   * The Entities the assistant selected (#665, #667). Shared-scope ones are
+   * available to every turn; user-scoped ones reach the Widget only when the
+   * turn carries a verified identity claim — the runtime's registration
+   * policy enforces that, the snapshot just carries the schema.
+   */
+  entities: Entity[] = []
 ): PublicationConfig {
   return {
     assistant: {
@@ -52,6 +60,14 @@ export function buildPublicationConfig(
       name: s.name,
       description: s.description,
       prompt: s.prompt,
+    })),
+    entities: entities.map((e) => ({
+      id: e.id,
+      name: e.name,
+      description: e.description,
+      attributes: e.attributes,
+      scope: e.scope,
+      identityAttribute: e.identityAttribute,
     })),
   };
 }

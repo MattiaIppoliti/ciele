@@ -37,6 +37,12 @@ export interface SsoGatePayload {
   organizationId: string;
   subjectId: string;
   provider: SsoProviderKind;
+  /**
+   * Verified identity claim captured at sign-in (#662), present only when the
+   * connection opted in AND the ID token carried it. Sealed inside the gate
+   * cookie, so it is as tamper-evident as the subject itself.
+   */
+  claim?: { name: string; value: string };
   /** Unix seconds; the gate is invalid past this even if the cookie lingers. */
   exp: number;
 }
@@ -97,8 +103,23 @@ export function isGateValidForOrg(
   cookieValue: string | undefined,
   organizationId: string
 ): boolean {
+  return gateForOrg(cookieValue, organizationId) !== null;
+}
+
+/**
+ * The identity-bearing variant of the gate check (#662): returns the full
+ * verified gate payload (subject + optional identity claim) when the cookie
+ * is valid, unexpired, and minted for this Organization — null otherwise.
+ * Routes that thread identity into the turn use this; pure yes/no gating
+ * keeps `isGateValidForOrg`.
+ */
+export function gateForOrg(
+  cookieValue: string | undefined,
+  organizationId: string
+): SsoGatePayload | null {
   const gate = openGate(cookieValue);
-  return gate !== null && gate.organizationId === organizationId;
+  if (!gate || gate.organizationId !== organizationId) return null;
+  return gate;
 }
 
 type CookieOptions = {

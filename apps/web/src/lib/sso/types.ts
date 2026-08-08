@@ -70,9 +70,16 @@ export interface SsoCallbackParams {
   state: string;
 }
 
-/** The minimal, personalization-free result a gate needs. */
+/**
+ * The result a gate needs. `subjectId` is always the verified OIDC `sub`.
+ * `identityClaimValue` is present only when the connection opted into an
+ * identity claim (config.identityClaim, #662) AND the ID token carried it —
+ * a configured-but-missing claim fails soft (sign-in still succeeds; per-user
+ * features that need the claim simply stay off for this user).
+ */
 export interface SsoAuthResult {
   subjectId: string;
+  identityClaimValue?: string;
 }
 
 /** Thrown by an adapter when a callback cannot be trusted (bad state, invalid token, …). */

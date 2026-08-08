@@ -23,6 +23,7 @@ export {
   sealGate,
   openGate,
   isGateValidForOrg,
+  gateForOrg,
   txnCookieOptions,
   gateCookieOptions,
   type SsoTxnPayload,

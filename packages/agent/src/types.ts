@@ -4,6 +4,10 @@ import type {
   AiUsageStage,
   ApiIntegration,
   Assistant,
+  ConversationSubject,
+  EntityRecord,
+  EntityRecordQuery,
+  EntitySnapshot,
   Flow,
   FlowAction,
   FlowButtonIcon,
@@ -35,6 +39,17 @@ export type ChatReplyPart =
       icon?: FlowButtonIcon;
     }
   | { type: "follow_ups"; action: "follow_up_questions"; questions: string[] }
+  /**
+   * Tool-call audit trail (#665): the turn's instrumented tool calls,
+   * persisted with the assistant message so the Inbox transcript shows how
+   * the answer was produced. Appended by the Conversation Turn from the
+   * tool-start/tool-end lifecycle events; the widget renders nothing for it
+   * (the live Thinking panel is its surface).
+   */
+  | {
+      type: "tool_calls";
+      calls: Array<{ tool: string; label: string; ok: boolean; summary?: string }>;
+    }
   | {
       type: "button";
       /** `notification` when the button came from a proactive nudge (#544). */
@@ -239,6 +254,29 @@ export type RuntimeEvent =
   | { type: "done"; conversationId: string; messageId: string | null }
   | { type: "error"; message: string };
 
+/**
+ * Who a turn verifiably speaks for (#667/#668/#669, ADR-0020): resolved
+ * server-side from the session or the sealed SSO gate cookie — never from
+ * request bodies or model output. The tool-registration policy reads it to
+ * decide which Entity/custom-tool variants exist in the turn.
+ */
+export interface ToolSubject {
+  type: ConversationSubject;
+  /** The verified OIDC subject when type === "sso"; never client-supplied. */
+  subjectId: string | null;
+  /** The verified identity-claim value, when the SSO connection opted in. */
+  claimValue: string | null;
+}
+
+/** Mid-conversation long-term memory recall (#664), pre-scoped to the turn's subject. */
+export type MemorySearcher = (query: string) => Promise<Array<{ text: string }>>;
+
+/** Live Entity-Record read for the auto-generated Entity tools (#665). */
+export type EntityRecordsFetcher = (
+  entityId: string,
+  query: EntityRecordQuery
+) => Promise<EntityRecord[]>;
+
 export interface HistoryMessage {
   role: "user" | "assistant";
   text: string;
@@ -321,6 +359,32 @@ export interface ActionContext {
   alreadyClarified?: boolean;
   /** Skills attached to the assistant, layered into the system prompt. */
   skills: SkillSnapshot[];
+  /**
+   * Long-term memories recalled for the turn's SSO subject (#664), layered
+   * into the system prompt as the "Long-term memory" block. Absent when the
+   * org toggle is off, the subject is anonymous, or nothing was relevant.
+   */
+  longTermMemory?: string[];
+  /**
+   * Mid-conversation long-term memory recall for the `searchMemories` tool
+   * (#664). Present only under the same gate as `longTermMemory` — its
+   * presence is what registers the tool.
+   */
+  searchMemories?: MemorySearcher;
+  /**
+   * Selected shared Entities (#665): the Publication snapshot on the widget,
+   * live rows in Preview. With `queryEntityRecords`, each yields the
+   * auto-generated retrieval tools.
+   */
+  entities?: EntitySnapshot[];
+  /** Live Record read for the Entity tools, bound over the turn's Db. */
+  queryEntityRecords?: EntityRecordsFetcher;
+  /**
+   * Who the turn verifiably speaks for (#667/#668): the registration
+   * policy — not the model — reads this to decide which tool variants
+   * exist in the turn (ADR-0020).
+   */
+  toolSubject?: ToolSubject;
   /**
    * Reply parts already produced earlier in this same turn — the same array
    * the engine accumulates into, so a later action can ground itself in what

@@ -22,9 +22,12 @@ import {
   restartWebsiteCrawl,
 } from "./ingest";
 import {
+  enqueueDueEntitySyncs,
   type RunDueJobsResult,
+  runDueEntitySyncJobs,
   runDueGraphSyncJobs,
   runDueIngestJobs,
+  runDueMemoryPromotionJobs,
   runDueProposalJobs,
 } from "./jobs";
 
@@ -121,6 +124,8 @@ export interface FinalizeDueCrawlsReport {
   jobs: RunDueJobsResult;
   graphSync: RunDueJobsResult;
   proposals: RunDueJobsResult;
+  memories: RunDueJobsResult;
+  entitySyncs: RunDueJobsResult & { enqueued: number };
   crawls: { swept: number; settled: number; results: FinalizedCrawlResult[] };
 }
 
@@ -152,6 +157,15 @@ export async function finalizeDueCrawls(
   const proposals = await runDueProposalJobs(
     { db },
     { workerId: `${workerId}-proposals`, limit: 10 }
+  );
+  const memories = await runDueMemoryPromotionJobs(
+    { db },
+    { workerId: `${workerId}-memories`, limit: 20 }
+  );
+  const syncsEnqueued = await enqueueDueEntitySyncs({ db });
+  const entitySyncs = await runDueEntitySyncJobs(
+    { db },
+    { workerId: `${workerId}-entity-sync`, limit: 10 }
   );
 
   const claimedAt = options.now ?? new Date();
@@ -189,6 +203,8 @@ export async function finalizeDueCrawls(
     jobs,
     graphSync,
     proposals,
+    memories,
+    entitySyncs: { ...entitySyncs, enqueued: syncsEnqueued.enqueued },
     crawls: { swept: pending.length, settled, results },
   };
 }

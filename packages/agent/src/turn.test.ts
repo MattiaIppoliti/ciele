@@ -41,7 +41,9 @@ async function fixture() {
 async function runTurn(input: {
   assistant: Assistant;
   flows: Flow[];
+  subjectType?: "visitor" | "sso";
   subjectId?: string;
+  verifiedIdentity?: { subjectId: string; claim?: { name: string; value: string } };
   conversationId?: string | null;
   message?: string;
   faqQuestion?: boolean;
@@ -53,8 +55,9 @@ async function runTurn(input: {
     flows: input.flows,
     connections: [],
     organizationId: DEMO_ORG.id,
-    subjectType: "visitor",
+    subjectType: input.subjectType ?? "visitor",
     subjectId: input.subjectId ?? "visitor-1",
+    verifiedIdentity: input.verifiedIdentity,
     conversationId: input.conversationId ?? null,
     message: input.message ?? "hello there",
     faqQuestion: input.faqQuestion,
@@ -303,6 +306,31 @@ describe("streamConversationTurn", () => {
     expect(await db.listMessages(first.conversationId)).toHaveLength(2);
   });
 
+  it("starts a fresh conversation when the subject type differs", async () => {
+    const { assistant, flows } = await fixture();
+    const first = doneEvent(
+      await runTurn({
+        assistant,
+        flows,
+        subjectType: "sso",
+        subjectId: "shared-identifier",
+        verifiedIdentity: { subjectId: "shared-identifier" },
+      })
+    );
+    const anonymous = doneEvent(
+      await runTurn({
+        assistant,
+        flows,
+        subjectType: "visitor",
+        subjectId: "shared-identifier",
+        conversationId: first.conversationId,
+      })
+    );
+
+    expect(anonymous.conversationId).not.toBe(first.conversationId);
+    expect(await db.listMessages(first.conversationId)).toHaveLength(2);
+  });
+
   it("starts a fresh conversation when the conversation belongs to another assistant", async () => {
     const a = await fixture();
     const b = await fixture();
@@ -360,6 +388,61 @@ describe("streamConversationTurn", () => {
     expect(raw.endsWith("\n")).toBe(true);
     for (const line of raw.trim().split("\n")) {
       expect(() => JSON.parse(line)).not.toThrow();
+    }
+  });
+});
+
+describe("long-term memory gate (#664)", () => {
+  const queuedPromotionJobs = () =>
+    db.claimBackgroundJobs({
+      kind: "promote_memories",
+      workerId: "turn-test",
+      // Far future so jobs delayed by the quiet window are claimable.
+      now: new Date(Date.now() + 3_600_000).toISOString(),
+      staleBefore: new Date(0).toISOString(),
+      limit: 50,
+    });
+
+  it("enqueues a promotion job for an SSO turn when the org toggle is on", async () => {
+    const { assistant, flows } = await fixture();
+    await db.setMemoryEnabled(DEMO_ORG.id, true);
+    try {
+      await runTurn({
+        assistant,
+        flows,
+        subjectType: "sso",
+        subjectId: "entra-sub-42",
+        verifiedIdentity: { subjectId: "entra-sub-42" },
+      });
+      const jobs = await queuedPromotionJobs();
+      expect(jobs.length).toBeGreaterThan(0);
+      expect(jobs[0].payload).toMatchObject({
+        kind: "promote_memories",
+        organizationId: DEMO_ORG.id,
+      });
+    } finally {
+      await db.setMemoryEnabled(DEMO_ORG.id, false);
+    }
+  });
+
+  it("enqueues nothing for anonymous visitors or while the toggle is off", async () => {
+    const { assistant, flows } = await fixture();
+    // Toggle on, but anonymous visitor: no job.
+    await db.setMemoryEnabled(DEMO_ORG.id, true);
+    try {
+      await runTurn({ assistant, flows, subjectId: "visitor-mem" });
+      // Toggle off, SSO subject: no job either.
+      await db.setMemoryEnabled(DEMO_ORG.id, false);
+      await runTurn({
+        assistant,
+        flows,
+        subjectType: "sso",
+        subjectId: "entra-sub-43",
+        verifiedIdentity: { subjectId: "entra-sub-43" },
+      });
+      expect(await queuedPromotionJobs()).toHaveLength(0);
+    } finally {
+      await db.setMemoryEnabled(DEMO_ORG.id, false);
     }
   });
 });

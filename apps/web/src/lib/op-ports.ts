@@ -31,6 +31,8 @@ export function webOperationPorts(
   }
 ): OperationPorts {
   return {
+    listPublicationEntities: (organizationId) =>
+      db.table("entities").list({ organizationId }),
     purgeCollectionGraph: (collectionId) =>
       enqueueGraphSyncJob({ op: "purge", collectionId }, { db }),
     removeConceptGraph: (collectionId, conceptId) =>

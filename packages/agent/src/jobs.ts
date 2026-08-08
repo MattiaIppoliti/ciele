@@ -13,6 +13,8 @@ import {
 } from "./graph-sync";
 import { draftImprovementProposal } from "./improvement-proposal";
 import { ingestSource } from "./ingest";
+import { MEMORY_QUIET_MS, promoteConversationMemories } from "./memories";
+import { runEntitySync } from "./entity-sync";
 
 /**
  * The durable job ledger (ADR-0008), generic over `kind`: claim/lease,
@@ -197,6 +199,72 @@ const draftProposalHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
+// promote_memories — extracts durable per-user facts from a Conversation that
+// went quiet (#664). Best-effort: the handler itself resolves every gate
+// (SSO subject, org toggle, budget, superseded-by-a-later-turn) into a no-op
+// success, so only genuine model/db failures retry.
+// ---------------------------------------------------------------------------
+
+const PROMOTE_MEMORIES_KIND = "promote_memories" as const;
+
+type PromoteMemoriesJob = {
+  kind: typeof PROMOTE_MEMORIES_KIND;
+  conversationId: string;
+  organizationId: string;
+};
+
+const promoteMemoriesHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<PromoteMemoriesJob>;
+    if (!payload.conversationId || !payload.organizationId) {
+      throw new Error("Invalid promote-memories job payload");
+    }
+    await promoteConversationMemories({
+      db: deps.db,
+      conversationId: payload.conversationId,
+      organizationId: payload.organizationId,
+      enqueuedAt: record.createdAt,
+    });
+  },
+  // No onTerminalFailure: memories are additive and re-derivable — the next
+  // conversation's job extracts again; the ledger row is the signal.
+};
+
+// ---------------------------------------------------------------------------
+// sync_entity_records — one Record sync run for an Entity's REST/JSON source
+// (#670). The handler itself no-ops duplicate sweep enqueues (cadence check)
+// and missing configs; genuine fetch/map/db failures record a failed run,
+// raise the Alert, and rethrow so the ledger applies backoff/retry.
+// ---------------------------------------------------------------------------
+
+const ENTITY_SYNC_KIND = "sync_entity_records" as const;
+
+type EntitySyncJob = {
+  kind: typeof ENTITY_SYNC_KIND;
+  entityId: string;
+  organizationId: string;
+  /** "Sync now" bypasses the cadence check. */
+  force?: boolean;
+};
+
+const entitySyncHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<EntitySyncJob>;
+    if (!payload.entityId || !payload.organizationId) {
+      throw new Error("Invalid entity-sync job payload");
+    }
+    await runEntitySync({
+      db: deps.db,
+      entityId: payload.entityId,
+      organizationId: payload.organizationId,
+      force: payload.force ?? false,
+    });
+  },
+  // No onTerminalFailure: every failed attempt already recorded a run and
+  // raised the keyed Alert; the next successful run auto-resolves it.
+};
+
+// ---------------------------------------------------------------------------
 // The registry + the generic lifecycle.
 // ---------------------------------------------------------------------------
 
@@ -204,6 +272,8 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   ingest_source: ingestSourceHandler,
   graph_sync_concept: graphSyncHandler,
   draft_improvement_proposal: draftProposalHandler,
+  promote_memories: promoteMemoriesHandler,
+  sync_entity_records: entitySyncHandler,
 };
 
 async function runClaimedJob(
@@ -340,6 +410,85 @@ export async function runDueProposalJobs(
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
 ): Promise<RunDueJobsResult> {
   return runDueJobs(deps, { ...options, kinds: [DRAFT_PROPOSAL_KIND] });
+}
+
+/**
+ * Enqueues a memory-promotion job for a Conversation, due once the quiet
+ * window elapses (#664). Every SSO turn enqueues one; the handler defers to
+ * the freshest job when later messages exist, so re-enqueueing is cheap and
+ * only the conversation's final turn extracts. Durable row first; the
+ * `after()` accelerator also drains any older job whose window has elapsed.
+ */
+export async function enqueueMemoryPromotionJob(
+  job: { conversationId: string; organizationId: string },
+  deps: JobDeps,
+  options: { delayMs?: number } = {}
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    kind: PROMOTE_MEMORIES_KIND,
+    payload: { kind: PROMOTE_MEMORIES_KIND, ...job },
+    nextRunAt: new Date(
+      Date.now() + (options.delayMs ?? MEMORY_QUIET_MS)
+    ).toISOString(),
+  });
+  getRuntimeHost().scheduleAfterResponse(() =>
+    runDueJobs(deps, { kinds: [PROMOTE_MEMORIES_KIND], limit: 5 })
+  );
+}
+
+/** Drains due memory-promotion jobs — the cron backstop for `after()`. */
+export async function runDueMemoryPromotionJobs(
+  deps: JobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: [PROMOTE_MEMORIES_KIND] });
+}
+
+/**
+ * Enqueues one Entity sync run (#670). "Sync now" passes force: true to
+ * bypass the cadence check; the cron sweep enqueues without it, so a
+ * duplicate enqueue inside the window resolves to a handler no-op.
+ */
+export async function enqueueEntitySyncJob(
+  job: { entityId: string; organizationId: string; force?: boolean },
+  deps: JobDeps
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    kind: ENTITY_SYNC_KIND,
+    payload: { kind: ENTITY_SYNC_KIND, ...job },
+    nextRunAt: new Date().toISOString(),
+  });
+  getRuntimeHost().scheduleAfterResponse(() =>
+    runDueJobs(deps, { kinds: [ENTITY_SYNC_KIND], limit: 3 })
+  );
+}
+
+/**
+ * The cron sweep's enqueue source (#670): every configured sync whose
+ * cadence has elapsed gets a job row. Rides the existing cron surface — no
+ * new scheduler.
+ */
+export async function enqueueDueEntitySyncs(
+  deps: JobDeps,
+  now: Date = new Date()
+): Promise<{ enqueued: number }> {
+  const due = await deps.db.listDueEntitySyncConfigs(now.toISOString());
+  for (const item of due) {
+    await deps.db.createBackgroundJob({
+      kind: ENTITY_SYNC_KIND,
+      payload: { kind: ENTITY_SYNC_KIND, ...item },
+      nextRunAt: now.toISOString(),
+    });
+  }
+  return { enqueued: due.length };
+}
+
+/** Drains due Entity sync jobs — the cron backstop for `after()`. */
+export async function runDueEntitySyncJobs(
+  deps: JobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: [ENTITY_SYNC_KIND] });
 }
 
 /** Drains due graph-sync jobs — the cron backstop for the host after-response accelerator. */

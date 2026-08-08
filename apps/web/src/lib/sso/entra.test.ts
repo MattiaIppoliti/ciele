@@ -40,9 +40,17 @@ async function keyMaterial() {
 
 async function signIdToken(
   privateKey: CryptoKey,
-  claims: { aud?: string; nonce?: string; expired?: boolean } = {}
+  claims: {
+    aud?: string;
+    nonce?: string;
+    expired?: boolean;
+    extra?: Record<string, unknown>;
+  } = {}
 ) {
-  const jwt = new SignJWT({ nonce: claims.nonce ?? transient.nonce })
+  const jwt = new SignJWT({
+    nonce: claims.nonce ?? transient.nonce,
+    ...claims.extra,
+  })
     .setProtectedHeader({ alg: "RS256" })
     .setIssuer(ISSUER)
     .setAudience(claims.aud ?? CLIENT_ID)
@@ -86,12 +94,75 @@ describe("Entra SSO adapter", () => {
       expect(q.get("code_challenge")).not.toBe(t.codeVerifier);
       expect(t.redirectUri).toBe(transient.redirectUri);
     });
+
+    it("widens the scope when an identity claim is configured (#662)", async () => {
+      const provider = createEntraProvider();
+      const { authorizationUrl } = await provider.initiate(
+        { ...creds, config: { ...creds.config, identityClaim: "email" } },
+        { redirectUri: transient.redirectUri }
+      );
+      expect(new URL(authorizationUrl).searchParams.get("scope")).toBe(
+        "openid profile email"
+      );
+    });
   });
 
   describe("handleCallback", () => {
     it("exchanges the code and returns sub from a valid id_token", async () => {
       const { privateKey, jwks } = await keyMaterial();
       const idToken = await signIdToken(privateKey);
+      const provider = createEntraProvider({
+        fetch: tokenFetch(idToken),
+        jwks: () => jwks,
+      });
+      const result = await provider.handleCallback(
+        creds,
+        { code: "auth-code", state: transient.state },
+        transient
+      );
+      expect(result).toEqual({ subjectId: SUB });
+    });
+
+    it("returns the configured identity claim when the token carries it (#662)", async () => {
+      const { privateKey, jwks } = await keyMaterial();
+      const idToken = await signIdToken(privateKey, {
+        extra: { email: "person@example.com" },
+      });
+      const provider = createEntraProvider({
+        fetch: tokenFetch(idToken),
+        jwks: () => jwks,
+      });
+      const result = await provider.handleCallback(
+        { ...creds, config: { ...creds.config, identityClaim: "email" } },
+        { code: "auth-code", state: transient.state },
+        transient
+      );
+      expect(result).toEqual({
+        subjectId: SUB,
+        identityClaimValue: "person@example.com",
+      });
+    });
+
+    it("fails soft when the configured claim is missing from the token", async () => {
+      const { privateKey, jwks } = await keyMaterial();
+      const idToken = await signIdToken(privateKey); // no email claim
+      const provider = createEntraProvider({
+        fetch: tokenFetch(idToken),
+        jwks: () => jwks,
+      });
+      const result = await provider.handleCallback(
+        { ...creds, config: { ...creds.config, identityClaim: "email" } },
+        { code: "auth-code", state: transient.state },
+        transient
+      );
+      expect(result).toEqual({ subjectId: SUB });
+    });
+
+    it("ignores token claims when no identity claim is configured", async () => {
+      const { privateKey, jwks } = await keyMaterial();
+      const idToken = await signIdToken(privateKey, {
+        extra: { email: "person@example.com" },
+      });
       const provider = createEntraProvider({
         fetch: tokenFetch(idToken),
         jwks: () => jwks,

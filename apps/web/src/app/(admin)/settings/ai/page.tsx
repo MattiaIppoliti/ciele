@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { AiSettingsClient } from "@/components/settings/ai-settings-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { BudgetCard } from "@/components/settings/budget-card";
+import { MemoryCard } from "@/components/settings/memory-card";
+import { MemorySubjectsCard } from "@/components/settings/memory-subjects-card";
 import { EmbeddingConnectionCard } from "@/components/settings/embedding-connection-card";
 import { PlatformPromptCard } from "@/components/settings/platform-prompt-card";
 import { requirePageMember } from "@/lib/authz";
@@ -39,12 +41,16 @@ export default async function AiSettingsPage() {
     usedToday,
     usedTodayEur,
     compostOptOut,
+    memoryEnabled,
+    memorySubjects,
     localSubscriptionStatuses,
   ] = await Promise.all([
     db.getOrgBudget(organizationId),
     db.getOrgTokensUsedToday(organizationId),
     db.getOrgCostUsedToday(organizationId),
     db.getCompostOptOut(organizationId),
+    db.getMemoryEnabled(organizationId),
+    db.listMemorySubjects(organizationId),
     personalSubscriptionsAllowed && localSubscriptionTestEnabled
       ? listLocalSubscriptionStatuses()
       : [],
@@ -81,6 +87,8 @@ export default async function AiSettingsPage() {
           compostOptOut={compostOptOut}
           canManage={canManage}
         />
+        <MemoryCard memoryEnabled={memoryEnabled} canManage={canManage} />
+        <MemorySubjectsCard subjects={memorySubjects} canEdit={canManage} />
         {storedPlatformPrompt !== null && (
           <PlatformPromptCard
             storedPrompt={storedPlatformPrompt}

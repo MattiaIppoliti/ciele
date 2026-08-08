@@ -1,17 +1,26 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const mocks = vi.hoisted(() => ({ resolveWidgetContext: vi.fn() }));
-
-vi.mock("@/lib/widget-db", () => ({
-  resolveWidgetContext: mocks.resolveWidgetContext,
-  widgetOptions: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  resolveWidgetContext: vi.fn(),
+  streamConversationTurn: vi.fn(),
 }));
+
+// Keep the real widgetSubject/subjectOwnsConversation — the gate-to-subject
+// resolution (#662) is exactly what these tests exercise.
+vi.mock("@/lib/widget-db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/widget-db")>();
+  return {
+    ...actual,
+    resolveWidgetContext: mocks.resolveWidgetContext,
+    widgetOptions: vi.fn(),
+  };
+});
 // The turn machinery is irrelevant to the gate check (which runs first).
 vi.mock("@agent-hub/agent", () => ({
   NDJSON_HEADERS: {},
   sessionMetadata: vi.fn(() => ({})),
-  streamConversationTurn: vi.fn(),
+  streamConversationTurn: mocks.streamConversationTurn,
 }));
 
 import { sessionMetadata } from "@agent-hub/agent";
@@ -62,8 +71,11 @@ afterAll(() => {
   else process.env.APP_ENCRYPTION_KEY = priorKey;
 });
 
-describe("widget chat route, SSO gate enforcement", () => {
-  beforeEach(() => mocks.resolveWidgetContext.mockReset());
+describe("widget chat route — SSO gate enforcement", () => {
+  beforeEach(() => {
+    mocks.resolveWidgetContext.mockReset();
+    mocks.streamConversationTurn.mockReset();
+  });
 
   it("401s an enforced assistant when no gate cookie is present", async () => {
     mocks.resolveWidgetContext.mockResolvedValue(contextWith(true));
@@ -104,6 +116,70 @@ describe("widget chat route, SSO gate enforcement", () => {
     mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
     const res = await post(undefined, {});
     expect(res.status).toBe(400); // reaches body validation, never 401
+  });
+
+  it("401s an enforced assistant even on a malformed body (gate precedes parse)", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(true));
+    const res = await POST(
+      new NextRequest("https://platform.ciele.app/api/widget/a1/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+      { params: Promise.resolve({ assistantId: "a1" }) }
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("400s a malformed body on an open assistant instead of throwing", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
+    const res = await POST(
+      new NextRequest("https://platform.ciele.app/api/widget/a1/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+      { params: Promise.resolve({ assistantId: "a1" }) }
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("threads the verified subject + claim into the turn (#662)", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(true));
+    mocks.streamConversationTurn.mockResolvedValue(new ReadableStream());
+    const gate = sealGate({
+      organizationId: ORG,
+      subjectId: "entra-sub-9",
+      provider: "entra",
+      claim: { name: "email", value: "person@example.com" },
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const res = await post(`${SSO_GATE_COOKIE}=${gate}`, {
+      visitorId: "v1",
+      message: "hi",
+    });
+    expect(res.status).toBe(200);
+    const input = mocks.streamConversationTurn.mock.calls[0][0];
+    // The gate's verified subject replaces the client-supplied visitor id.
+    expect(input.subjectType).toBe("sso");
+    expect(input.subjectId).toBe("entra-sub-9");
+    expect(input.verifiedIdentity).toEqual({
+      subjectId: "entra-sub-9",
+      claim: { name: "email", value: "person@example.com" },
+    });
+    expect(input.metadata.ssoClaimValue).toBe("person@example.com");
+    expect(input.metadata.userEmail).toBe("person@example.com");
+  });
+
+  it("keeps anonymous traffic on the visitor subject", async () => {
+    mocks.resolveWidgetContext.mockResolvedValue(contextWith(false));
+    mocks.streamConversationTurn.mockResolvedValue(new ReadableStream());
+    const res = await post(undefined, { visitorId: "v1", message: "hi" });
+    expect(res.status).toBe(200);
+    const input = mocks.streamConversationTurn.mock.calls[0][0];
+    expect(input.subjectType).toBe("visitor");
+    expect(input.subjectId).toBe("v1");
+    expect(input.verifiedIdentity).toBeUndefined();
   });
 });
 

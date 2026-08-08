@@ -146,6 +146,23 @@ export interface ApiQueryRequest {
   body?: unknown;
 }
 
+export interface ApiQueryIdentity {
+  subjectId: string;
+  claimValue: string | null;
+}
+
+const IDENTITY_PLACEHOLDER_RE = /\{\{\s*identity\.(subject|claim)\s*\}\}/g;
+
+function pinnedValue(value: string, identity?: ApiQueryIdentity): string | null {
+  let unavailable = false;
+  const resolved = value.replace(IDENTITY_PLACEHOLDER_RE, (_match, key: string) => {
+    const replacement = key === "subject" ? identity?.subjectId : identity?.claimValue;
+    if (!replacement) unavailable = true;
+    return replacement ?? "";
+  });
+  return unavailable ? null : resolved;
+}
+
 /**
  * Runs one catalogued query. Never throws for a refusal or a network failure —
  * both come back as `errorCode` with `ok: false`, so the tool layer can tell the
@@ -155,7 +172,8 @@ export interface ApiQueryRequest {
 export async function queryApiEndpoint(
   integration: ApiIntegration,
   request: ApiQueryRequest,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  identity?: ApiQueryIdentity
 ): Promise<ApiQueryOutcome> {
   const refuse = (errorCode: ApiQueryErrorCode): ApiQueryOutcome => ({
     ok: false,
@@ -167,11 +185,19 @@ export async function queryApiEndpoint(
   });
 
   // 1. The catalogue decides, before a URL exists.
-  const match = resolveCatalogPath(
-    integration.endpoints,
-    request.path,
-    request.method
-  );
+  let requestedPath = request.path;
+  const endpoints = integration.endpoints.map((endpoint) => {
+    let path = endpoint.path;
+    for (const param of endpoint.params ?? []) {
+      if (param.value === undefined || param.in !== "path") continue;
+      const value = pinnedValue(param.value, identity);
+      if (value === null) continue;
+      path = path.replace(`{${param.name}}`, encodeURIComponent(value));
+    }
+    if (requestedPath === endpoint.path) requestedPath = path;
+    return { ...endpoint, path };
+  });
+  const match = resolveCatalogPath(endpoints, requestedPath, request.method);
   if (!match.ok) return refuse(match.reason);
 
   // 2. The base URL is ours, not the model's.
@@ -182,6 +208,12 @@ export async function queryApiEndpoint(
     if (!name.trim() || value === undefined || value === null) continue;
     url.searchParams.set(name, String(value));
   }
+  for (const param of match.endpoint.params ?? []) {
+    if (param.value === undefined || param.in !== "query") continue;
+    const value = pinnedValue(param.value, identity);
+    if (value === null) return refuse("not_configured");
+    url.searchParams.set(param.name, value);
+  }
 
   const method = match.endpoint.method;
   const isBodyless = method === "GET" || method === "DELETE";
@@ -190,6 +222,12 @@ export async function queryApiEndpoint(
     ...(isBodyless ? {} : { "content-type": "application/json" }),
     ...integrationAuthHeaders(integration),
   };
+  for (const param of match.endpoint.params ?? []) {
+    if (param.value === undefined || param.in !== "header") continue;
+    const value = pinnedValue(param.value, identity);
+    if (value === null) return refuse("not_configured");
+    headers[param.name] = sanitizeHeaderValue(value);
+  }
   try {
     // The credential header name is admin-supplied, so it goes through the same
     // allow-list every configured header does.

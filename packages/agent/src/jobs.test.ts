@@ -199,6 +199,8 @@ describe("runDueJobs (generic ledger)", () => {
       "draft_improvement_proposal",
       "graph_sync_concept",
       "ingest_source",
+      "promote_memories",
+      "sync_entity_records",
     ]);
     expect(result).toEqual({ claimed: 0, succeeded: 0, failed: 0, retried: 0 });
   });

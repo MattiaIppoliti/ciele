@@ -42,6 +42,8 @@ export const alertKeys = {
   goal: (goalId: string) => `goal:${goalId}`,
   /** Graph knowledge worker reachability, per organization (ADR-0017). */
   graphWorker: (organizationId: string) => `graph-worker:${organizationId}`,
+  /** Per-Entity Record sync lifecycle (sync failed / recovered, #670). */
+  entitySync: (entityId: string) => `entity-sync:${entityId}`,
 } as const;
 
 export type HealthSignal =

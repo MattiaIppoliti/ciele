@@ -25,6 +25,7 @@
 
 // The domain vocabulary — every noun in CONTEXT.md, as a type.
 export * from "./types";
+export { coerceEntityValue } from "./entity-values";
 
 // Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the
 // read-time derivations over it (trust tier, lifecycle status, staleness).
@@ -149,7 +150,7 @@ export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
 export type { MeteredUnit } from "./pricing";
 
 // Short opaque ids for domain objects.
-export { shortId } from "./id";
+export { monotonicNow, shortId } from "./id";
 
 // Who paid for a model call. Exhaustive over `AiCredentialKind` by construction,
 // so adding a credential kind without attributing it is a compile error.

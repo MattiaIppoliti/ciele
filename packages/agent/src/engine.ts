@@ -6,6 +6,7 @@ import type {
   Flow,
   FlowAction,
   FlowRoutingContext,
+  EntitySnapshot,
   Provider,
   ProviderConnection,
   SkillSnapshot,
@@ -17,7 +18,6 @@ import {
   messageFlowCandidates,
 } from "@agent-hub/core";
 import { z } from "zod";
-
 import type { ChatReplyPart } from "./types";
 import type { TurnSession } from "./session";
 import {
@@ -380,6 +380,20 @@ export async function runAssistantChat(options: {
   alreadyClarified?: boolean;
   /** Skills attached to the assistant (live rows or a Publication snapshot). */
   skills?: SkillSnapshot[];
+  /** Long-term memories recalled for the turn's SSO subject (#664). */
+  longTermMemory?: string[];
+  /**
+   * Mid-conversation long-term memory recall (#664); presence registers the
+   * `searchMemories` tool. Provided by the Conversation Turn under its gate
+   * (org toggle on + verified SSO subject).
+   */
+  searchMemories?: ActionContext["searchMemories"];
+  /** Selected shared Entities (#665): snapshot on the widget, live in Preview. */
+  entities?: EntitySnapshot[];
+  /** Live Record read for the auto-generated Entity tools (#665). */
+  queryEntityRecords?: ActionContext["queryEntityRecords"];
+  /** Who the turn verifiably speaks for — Entity tool policy input (#667). */
+  toolSubject?: ActionContext["toolSubject"];
   /**
    * The desks this assistant may recommend ("AI recommended help desk"):
    * id + name + description candidates resolved by the Conversation Turn.
@@ -414,6 +428,11 @@ export async function runAssistantChat(options: {
     session,
     alreadyClarified = false,
     skills = [],
+    longTermMemory,
+    searchMemories,
+    entities = [],
+    queryEntityRecords,
+    toolSubject,
     escalationDesks = [],
     emit,
     signal,
@@ -549,6 +568,11 @@ export async function runAssistantChat(options: {
       searchKnowledge,
       session,
       skills,
+      longTermMemory,
+      searchMemories,
+      entities,
+      queryEntityRecords,
+      toolSubject,
       priorParts: parts,
       emit,
       signal,
@@ -656,6 +680,11 @@ export async function runAssistantChat(options: {
     session,
     alreadyClarified,
     skills,
+    longTermMemory,
+    searchMemories,
+    entities,
+    queryEntityRecords,
+    toolSubject,
     priorParts: parts,
     emit,
     signal,

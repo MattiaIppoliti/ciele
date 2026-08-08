@@ -101,6 +101,7 @@ export function buildSystemPrompt(
   context?: {
     skills?: SkillSnapshot[];
     memory?: string[];
+    longTermMemory?: string[];
     flowStyle?: FlowStyleContext;
     /** Pre-rendered context frame for this turn (query-understanding.ts). */
     retrievalContext?: string;
@@ -122,6 +123,7 @@ export function buildSystemPrompt(
   const searchGuidelines = flowStyle?.searchGuidelines?.trim();
   const skills = (context?.skills ?? []).filter((s) => s.prompt.trim());
   const memory = context?.memory ?? [];
+  const longTermMemory = context?.longTermMemory ?? [];
   const retrievalContext = context?.retrievalContext?.trim();
   const phase = context?.phase ?? "gather";
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
@@ -150,6 +152,13 @@ export function buildSystemPrompt(
           "",
           "# Session memory (facts remembered earlier in this conversation)",
           ...memory.map((fact) => `- ${fact}`),
+        ]
+      : []),
+    ...(longTermMemory.length > 0
+      ? [
+          "",
+          "# Long-term memory (facts remembered from this user's past conversations)",
+          ...longTermMemory.map((fact) => `- ${fact}`),
         ]
       : []),
     ...(retrievalContext ? ["", retrievalContext] : []),
@@ -231,6 +240,8 @@ export interface AgenticSearchTurnInput {
   searchKnowledge?: KnowledgeSearcher;
   session: TurnSession;
   skills: SkillSnapshot[];
+  /** Durable facts recalled for this SSO subject from earlier conversations. */
+  longTermMemory?: string[];
   /**
    * Whether an earlier turn in THIS conversation already asked the Visitor to
    * clarify (derived from the persisted parts upstream). The anti-loop
@@ -301,6 +312,7 @@ export async function runAgenticSearch(
     chatModel,
     session,
     skills,
+    longTermMemory = [],
     alreadyClarified = false,
     flowStyle,
     contactLabel,
@@ -334,6 +346,7 @@ export async function runAgenticSearch(
   // the moment of writing, not in the gather prompt where it would compete with
   // tool selection for the whole loop.
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
+  const memory = [...longTermMemory, ...session.memory()];
 
   // The live signals retrieval may use, stated for the model rather than
   // resolved for it: the anchored Knowledge Collection and the session memory.
@@ -342,7 +355,7 @@ export async function runAgenticSearch(
   const frame = buildContextFrame({
     collectionId,
     history,
-    memory: session.memory(),
+    memory,
   });
   const retrievalContext = describeContextFrame(frame);
 
@@ -385,6 +398,7 @@ export async function runAgenticSearch(
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       skills,
       memory: session.memory(),
+      longTermMemory,
       flowStyle,
       retrievalContext,
       phase: "gather",
@@ -505,6 +519,7 @@ export async function runAgenticSearch(
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       skills,
       memory: session.memory(),
+      longTermMemory,
       flowStyle,
       phase: "write",
     }),

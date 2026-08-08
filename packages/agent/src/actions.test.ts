@@ -774,6 +774,28 @@ describe("buildSystemPrompt (prompt layering)", () => {
     expect(prompt).not.toContain("answering-style instructions");
   });
 
+  it("renders the long-term memory block below the session memory (#664)", () => {
+    const prompt = buildSystemPrompt(
+      "PLATFORM RULES",
+      makeAssistant(),
+      makeFlow({ name: "Default behavior" }),
+      {
+        memory: ["Session: asked about invoices today"],
+        longTermMemory: ["Prefers email over phone"],
+      }
+    );
+    const sessionIdx = prompt.indexOf("# Session memory");
+    const longTermIdx = prompt.indexOf(
+      "# Long-term memory (facts remembered from this user's past conversations)"
+    );
+    expect(prompt).toContain("- Prefers email over phone");
+    expect(longTermIdx).toBeGreaterThan(sessionIdx);
+
+    // Omitted entirely when nothing was recalled.
+    const without = buildSystemPrompt("P", makeAssistant(), makeFlow(), {});
+    expect(without).not.toContain("# Long-term memory");
+  });
+
   it("layers attached skills between the style and the flow context", () => {
     const prompt = buildSystemPrompt(
       "PLATFORM RULES",

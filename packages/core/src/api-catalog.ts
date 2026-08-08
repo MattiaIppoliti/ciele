@@ -59,7 +59,11 @@ export function endpointQueryParams(
 ): ApiEndpointParam[] {
   const inPath = new Set(endpointPathParams(endpoint));
   return (endpoint.params ?? []).filter(
-    (param) => param.in !== "path" && !inPath.has(param.name)
+    (param) =>
+      param.in !== "path" &&
+      param.in !== "header" &&
+      !inPath.has(param.name) &&
+      param.value === undefined
   );
 }
 
@@ -184,7 +188,9 @@ export function apiCatalogSummary(
       method: endpoint.method,
       path: endpoint.path,
       purpose: endpoint.purpose,
-      pathParams: endpointPathParams(endpoint),
+      pathParams: endpointPathParams(endpoint).filter(
+        (name) => !endpoint.params?.some((param) => param.name === name && param.value !== undefined)
+      ),
       queryParams: endpointQueryParams(endpoint).map((p) => p.name),
       responseKeys: endpoint.responseKeys ?? [],
     })),
@@ -200,7 +206,7 @@ export interface ApiEndpointDetail {
   purpose: string;
   parameters: Array<{
     name: string;
-    in: "path" | "query";
+    in: "path" | "query" | "header";
     type: string;
     required: boolean;
     description: string;
@@ -214,9 +220,10 @@ export function apiEndpointDetail(endpoint: ApiEndpointSpec): ApiEndpointDetail 
   const declared = new Map(
     (endpoint.params ?? []).map((param) => [param.name, param])
   );
-  const parameters: ApiEndpointDetail["parameters"] = pathNames.map((name) => {
+  const parameters: ApiEndpointDetail["parameters"] = pathNames.flatMap((name) => {
     const param = declared.get(name);
-    return {
+    if (param?.value !== undefined) return [];
+    return [{
       name,
       in: "path" as const,
       type: param?.type ?? "string",
@@ -224,7 +231,7 @@ export function apiEndpointDetail(endpoint: ApiEndpointSpec): ApiEndpointDetail 
       // without it, whatever the catalogue happens to say.
       required: true,
       description: param?.description ?? "",
-    };
+    }];
   });
   for (const param of endpointQueryParams(endpoint)) {
     parameters.push({
@@ -245,4 +252,3 @@ export function apiEndpointDetail(endpoint: ApiEndpointSpec): ApiEndpointDetail 
     responseKeys: endpoint.responseKeys ?? [],
   };
 }
-

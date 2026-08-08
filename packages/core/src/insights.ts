@@ -110,6 +110,10 @@ export function filterConversations(
   const from = filters.from ? new Date(`${filters.from}T00:00:00`) : null;
   const to = filters.to ? new Date(`${filters.to}T23:59:59.999`) : null;
   return conversations.filter((c) => {
+    // Staff (member-subject) conversations — admin Preview, the org-staff
+    // data assistant — never distort customer analytics (#668). Mirrors the
+    // subject_type condition in the SQL get_insights_overview.
+    if (c.subjectType === "member") return false;
     const created = new Date(c.createdAt);
     if (from && created < from) return false;
     if (to && created > to) return false;

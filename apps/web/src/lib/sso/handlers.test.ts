@@ -168,6 +168,42 @@ describe("handleSsoCallback", () => {
     expect(res.cookies.get("sso_txn")?.value).toBe("");
   });
 
+  it("mints the gate with the verified identity claim when configured (#662)", async () => {
+    mocks.getSsoConnection.mockResolvedValue({
+      ...connection,
+      config: { ...connection.config, identityClaim: "email" },
+    });
+    mocks.getSsoProvider.mockReturnValue({
+      kind: "entra",
+      initiate: vi.fn(),
+      handleCallback: vi.fn().mockResolvedValue({
+        subjectId: "sub-1",
+        identityClaimValue: "person@example.com",
+      }),
+    });
+
+    const res = await handleSsoCallback(callbackRequest("state-1"), "entra");
+    const gate = openGate(res.cookies.get("sso_gate")?.value);
+    expect(gate?.claim).toEqual({ name: "email", value: "person@example.com" });
+  });
+
+  it("mints a claim-free gate when the adapter returns no claim value", async () => {
+    mocks.getSsoConnection.mockResolvedValue({
+      ...connection,
+      config: { ...connection.config, identityClaim: "email" },
+    });
+    mocks.getSsoProvider.mockReturnValue({
+      kind: "entra",
+      initiate: vi.fn(),
+      handleCallback: vi.fn().mockResolvedValue({ subjectId: "sub-1" }),
+    });
+
+    const res = await handleSsoCallback(callbackRequest("state-1"), "entra");
+    const gate = openGate(res.cookies.get("sso_gate")?.value);
+    expect(gate?.subjectId).toBe("sub-1");
+    expect(gate?.claim).toBeUndefined();
+  });
+
   it("redirects to returnTo in the top-level (no-opener) flow", async () => {
     mocks.getSsoProvider.mockReturnValue({
       kind: "entra",

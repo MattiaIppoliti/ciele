@@ -1,3 +1,4 @@
+import { entityRecordValuesEqual } from "./entity-records";
 import type {
   AiUsageInput,
   Alert,
@@ -17,6 +18,10 @@ import type {
   CrawlFinalizeClaim,
   DefaultFlowSpec,
   DueCompostAssistant,
+  Entity,
+  EntityRecord,
+  EntitySyncConfig,
+  EntitySyncRun,
   ExportJob,
   Flow,
   FlowInput,
@@ -37,6 +42,9 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  Memory,
+  MemorySearchResult,
+  MemorySubjectSummary,
   OrgApiKey,
   OrgApiKeyInput,
   Organization,
@@ -71,6 +79,8 @@ import {
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
   isProactiveMessage,
+  MEMORIES_PER_SUBJECT_CAP,
+  monotonicNow,
   nextCrawlDue,
   okfActor,
   shortId,
@@ -214,6 +224,19 @@ interface MockStore {
   skills: Map<string, Skill>;
   /** assistantId → ordered attached skill ids. */
   assistantSkills: Map<string, string[]>;
+  entities: Map<string, Entity>;
+  entityRecords: Map<string, EntityRecord>;
+  /** Per-Entity sync sources + run reports (#670). */
+  entitySyncConfigs: Map<string, EntitySyncConfig>;
+  entitySyncRuns: Map<string, EntitySyncRun>;
+  /** Long-term memories (#664), keyed by memory id. */
+  memories: Map<string, Memory>;
+  /** `${organizationId}:${subjectId}` → latest complete memory erasure. */
+  memoryErasedAt: Map<string, string>;
+  /** Org-level data assistant Entity selection (#668). */
+  dataAssistantEntities: Map<string, string[]>;
+  /** Org ids whose long-term memory toggle is on (off by default). */
+  memoryEnabled: Set<string>;
   localConnectorPairings: Map<string, LocalConnectorPairing>;
   localConnectorDevices: Map<string, LocalConnectorDevice>;
   localInferenceJobs: Map<string, LocalInferenceJob>;
@@ -442,6 +465,14 @@ function emptyStore(): MockStore {
     publications: new Map(),
     skills: new Map(),
     assistantSkills: new Map(),
+    entities: new Map(),
+    entityRecords: new Map(),
+    entitySyncConfigs: new Map(),
+    entitySyncRuns: new Map(),
+    memories: new Map(),
+    memoryErasedAt: new Map(),
+    dataAssistantEntities: new Map(),
+    memoryEnabled: new Set(),
     localConnectorPairings: new Map(),
     localConnectorDevices: new Map(),
     localInferenceJobs: new Map(),
@@ -1420,6 +1451,7 @@ function getStore(): MockStore {
 const MOCK_TABLE_STORES: {
   [K in DbTableName]: () => Map<string, DbTableRow<K>>;
 } = {
+  entities: () => getStore().entities,
   cookieConsentRecords: () => getStore().cookieConsentRecords,
   skills: () => getStore().skills,
   localConnectorPairings: () => getStore().localConnectorPairings,
@@ -1464,7 +1496,7 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
         createdAt: now,
         ...(spec.touchesUpdatedAt ? { updatedAt: now } : {}),
         ...spec.defaults,
-        ...defined(values),
+        ...defined(values as unknown as Record<string, unknown>),
         id: newTableRowId(spec),
       } as unknown as DbTableRow<K> & { id: string };
       store().set(row.id, row);
@@ -1485,6 +1517,12 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
 
     async delete(id) {
       store().delete(id);
+      // Mirror the database FK cascade for mapped Entity rows.
+      if (name === "entities") {
+        for (const [recordId, record] of getStore().entityRecords) {
+          if (record.entityId === id) getStore().entityRecords.delete(recordId);
+        }
+      }
     },
   };
 }
@@ -4187,6 +4225,322 @@ export const mockDb: Db = {
 
   async setAssistantSkills(assistantId, skillIds) {
     getStore().assistantSkills.set(assistantId, [...skillIds]);
+  },
+
+  // --- Entities + Records (#663) ----------------------------------------
+
+  async upsertEntityRecords(entityId, rows) {
+    const store = getStore();
+    const now = new Date().toISOString();
+    const byKey = new Map(
+      [...store.entityRecords.values()]
+        .filter((r) => r.entityId === entityId)
+        .map((r) => [r.key, r])
+    );
+    let written = 0;
+    for (const row of rows) {
+      const existing = byKey.get(row.key);
+      if (existing) {
+        if (entityRecordValuesEqual(existing.values, row.values)) continue;
+        store.entityRecords.set(existing.id, {
+          ...existing,
+          values: row.values,
+          updatedAt: now,
+        });
+        written += 1;
+      } else {
+        const record: EntityRecord = {
+          id: shortId(),
+          entityId,
+          key: row.key,
+          values: row.values,
+          createdAt: now,
+          updatedAt: now,
+        };
+        store.entityRecords.set(record.id, record);
+        byKey.set(record.key, record);
+        written += 1;
+      }
+    }
+    return written;
+  },
+
+  async listEntityRecords(entityId, opts) {
+    const limit = opts?.limit ?? 50;
+    const offset = opts?.offset ?? 0;
+    return [...getStore().entityRecords.values()]
+      .filter((r) => r.entityId === entityId)
+      .sort((a, b) => (a.key < b.key ? -1 : 1))
+      .slice(offset, offset + limit);
+  },
+
+  async countEntityRecords(entityId) {
+    return [...getStore().entityRecords.values()].filter(
+      (r) => r.entityId === entityId
+    ).length;
+  },
+
+  async queryEntityRecords(entityId, query) {
+    const filters = Object.entries(query.filters ?? {});
+    const search = query.search?.trim().toLowerCase();
+    const textKeys = new Set(
+      (getStore().entities.get(entityId)?.attributes ?? [])
+        .filter((attribute) => attribute.type === "text")
+        .map((attribute) => attribute.key)
+    );
+    return [...getStore().entityRecords.values()]
+      .filter((r) => r.entityId === entityId)
+      .filter((r) => filters.every(([key, value]) => r.values[key] === value))
+      .filter(
+        (r) =>
+          !search ||
+          Object.entries(r.values).some(
+            ([key, value]) =>
+              textKeys.has(key) &&
+              value != null &&
+              String(value).toLowerCase().includes(search)
+          )
+      )
+      .sort((a, b) => (a.key < b.key ? -1 : 1))
+      .slice(0, query.limit ?? 20);
+  },
+
+  // --- Long-term memories (#664) ----------------------------------------
+
+  async getMemoryEnabled(organizationId) {
+    return getStore().memoryEnabled.has(organizationId);
+  },
+
+  async setMemoryEnabled(organizationId, enabled) {
+    const store = getStore();
+    if (enabled) store.memoryEnabled.add(organizationId);
+    else store.memoryEnabled.delete(organizationId);
+  },
+
+  async upsertMemories(subject, items) {
+    const store = getStore();
+    const { organizationId, subjectId } = subject;
+    const erasedAt = store.memoryErasedAt.get(`${organizationId}:${subjectId}`);
+    const existing = new Set(
+      [...store.memories.values()]
+        .filter((m) => m.organizationId === organizationId && m.subjectId === subjectId)
+        .map((m) => m.text)
+    );
+    let inserted = 0;
+    for (const item of items) {
+      const sourceConversation = item.conversationId
+        ? store.conversations.get(item.conversationId)
+        : null;
+      if (
+        erasedAt &&
+        sourceConversation &&
+        sourceConversation.createdAt <= erasedAt
+      ) {
+        continue;
+      }
+      const text = item.text.trim();
+      if (!text || existing.has(text)) continue;
+      existing.add(text);
+      const memory: Memory = {
+        id: shortId(),
+        organizationId,
+        subjectId,
+        text,
+        conversationId: item.conversationId ?? null,
+        createdAt: new Date(monotonicNow()).toISOString(),
+      };
+      store.memories.set(memory.id, memory);
+      inserted += 1;
+    }
+    // Cap enforcement: drop-oldest beyond MEMORIES_PER_SUBJECT_CAP.
+    const all = [...store.memories.values()]
+      .filter((m) => m.organizationId === organizationId && m.subjectId === subjectId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+    for (const stale of all.slice(0, Math.max(0, all.length - MEMORIES_PER_SUBJECT_CAP))) {
+      store.memories.delete(stale.id);
+    }
+    return inserted;
+  },
+
+  async listMemories({ organizationId, subjectId }) {
+    return [...getStore().memories.values()]
+      .filter((m) => m.organizationId === organizationId && m.subjectId === subjectId)
+      .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+  },
+
+  async deleteMemory(id) {
+    getStore().memories.delete(id);
+  },
+
+  // --- Synced Record ingestion (#670) ------------------------------------
+
+  async getEntitySyncConfig(entityId) {
+    return getStore().entitySyncConfigs.get(entityId) ?? null;
+  },
+
+  async upsertEntitySyncConfig(entityId, input) {
+    const store = getStore();
+    const existing = store.entitySyncConfigs.get(entityId);
+    const config: EntitySyncConfig = {
+      entityId,
+      url: input.url,
+      sealedHeaders: input.sealedHeaders ?? null,
+      cadenceHours: input.cadenceHours,
+      prune: input.prune,
+      mapping: { ...input.mapping },
+      lastSyncedAt: existing?.lastSyncedAt ?? null,
+    };
+    store.entitySyncConfigs.set(entityId, config);
+    return config;
+  },
+
+  async deleteEntitySyncConfig(entityId) {
+    getStore().entitySyncConfigs.delete(entityId);
+  },
+
+  async markEntitySynced(entityId, at) {
+    const store = getStore();
+    const config = store.entitySyncConfigs.get(entityId);
+    if (config) store.entitySyncConfigs.set(entityId, { ...config, lastSyncedAt: at });
+  },
+
+  async listDueEntitySyncConfigs(now) {
+    const store = getStore();
+    const due: Array<{ entityId: string; organizationId: string }> = [];
+    for (const config of store.entitySyncConfigs.values()) {
+      const entity = store.entities.get(config.entityId);
+      if (!entity) continue;
+      if (config.lastSyncedAt) {
+        const nextAt =
+          new Date(config.lastSyncedAt).getTime() +
+          config.cadenceHours * 3_600_000;
+        if (nextAt > new Date(now).getTime()) continue;
+      }
+      due.push({ entityId: config.entityId, organizationId: entity.organizationId });
+    }
+    return due;
+  },
+
+  async recordEntitySyncRun(entityId, run) {
+    const store = getStore();
+    const record: EntitySyncRun = {
+      id: shortId(),
+      entityId,
+      status: run.status,
+      upserted: run.upserted,
+      pruned: run.pruned,
+      rejected: [...run.rejected],
+      error: run.error ?? null,
+      finishedAt: new Date(monotonicNow()).toISOString(),
+    };
+    store.entitySyncRuns.set(record.id, record);
+    return record;
+  },
+
+  async listEntitySyncRuns(entityId, limit = 20) {
+    return [...getStore().entitySyncRuns.values()]
+      .filter((r) => r.entityId === entityId)
+      .sort((a, b) => (a.finishedAt > b.finishedAt ? -1 : 1))
+      .slice(0, limit);
+  },
+
+  async pruneEntityRecords(entityId, seenKeys) {
+    const store = getStore();
+    const seen = new Set(seenKeys);
+    let removed = 0;
+    for (const [id, record] of store.entityRecords) {
+      if (record.entityId !== entityId) continue;
+      if (seen.has(record.key)) continue;
+      store.entityRecords.delete(id);
+      removed += 1;
+    }
+    return removed;
+  },
+
+  async getDataAssistantEntityIds(organizationId) {
+    return getStore().dataAssistantEntities.get(organizationId) ?? [];
+  },
+
+  async setDataAssistantEntityIds(organizationId, entityIds) {
+    getStore().dataAssistantEntities.set(organizationId, [...entityIds]);
+  },
+
+  async listMemorySubjects(organizationId) {
+    const store = getStore();
+    const bySubject = new Map<string, { count: number; last: string }>();
+    for (const memory of store.memories.values()) {
+      if (memory.organizationId !== organizationId) continue;
+      const entry = bySubject.get(memory.subjectId);
+      if (!entry) {
+        bySubject.set(memory.subjectId, { count: 1, last: memory.createdAt });
+      } else {
+        entry.count += 1;
+        if (memory.createdAt > entry.last) entry.last = memory.createdAt;
+      }
+    }
+    const claimFor = (subjectId: string): string | null => {
+      let claim: string | null = null;
+      let latest = "";
+      for (const conversation of store.conversations.values()) {
+        if (conversation.subjectType !== "sso") continue;
+        if (conversation.subjectId !== subjectId) continue;
+        const assistant = store.assistants.get(conversation.assistantId);
+        if (assistant?.organizationId !== organizationId) continue;
+        const value = conversation.metadata.ssoClaimValue;
+        if (value && conversation.createdAt > latest) {
+          latest = conversation.createdAt;
+          claim = value;
+        }
+      }
+      return claim;
+    };
+    const summaries: MemorySubjectSummary[] = [...bySubject.entries()].map(
+      ([subjectId, entry]) => ({
+        subjectId,
+        claimValue: claimFor(subjectId),
+        memoryCount: entry.count,
+        lastMemoryAt: entry.last,
+      })
+    );
+    return summaries.sort((a, b) => (a.lastMemoryAt > b.lastMemoryAt ? -1 : 1));
+  },
+
+  async deleteSubjectMemories({ organizationId, subjectId }) {
+    const store = getStore();
+    store.memoryErasedAt.set(
+      `${organizationId}:${subjectId}`,
+      new Date(monotonicNow()).toISOString()
+    );
+    for (const [id, memory] of store.memories) {
+      if (memory.organizationId === organizationId && memory.subjectId === subjectId) {
+        store.memories.delete(id);
+      }
+    }
+  },
+
+  async searchMemories({ organizationId, subjectId }, query) {
+    // Lexical scoring only (the demo store has no vectors) — token overlap,
+    // mirroring the mock searchChunks.
+    const tokens = query.text
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((t) => t.length > 2);
+    const results: MemorySearchResult[] = [];
+    for (const memory of getStore().memories.values()) {
+      if (memory.organizationId !== organizationId) continue;
+      if (memory.subjectId !== subjectId) continue;
+      const haystack = memory.text.toLowerCase();
+      const hits = tokens.filter((t) => haystack.includes(t)).length;
+      if (hits === 0) continue;
+      results.push({
+        id: memory.id,
+        text: memory.text,
+        similarity: hits / Math.max(tokens.length, 1),
+      });
+    }
+    return results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, query.limit ?? 5);
   },
 
   // --- Generic table access (ADR-0016) ---------------------------------

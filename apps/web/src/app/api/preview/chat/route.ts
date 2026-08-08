@@ -56,12 +56,20 @@ export async function POST(request: NextRequest) {
     return new Response("Not found", { status: 404 });
   }
 
-  const [flows, connections, skills, personalSubscriptionsAllowed] = await Promise.all([
-    db.listFlows(assistant.id),
-    db.listProviderConnections(session.organization.id),
-    db.listAssistantSkills(assistant.id),
-    db.getPersonalAiSubscriptionsAllowed(session.organization.id),
-  ]);
+  const [flows, connections, skills, orgEntities, personalSubscriptionsAllowed] =
+    await Promise.all([
+      db.listFlows(assistant.id),
+      db.listProviderConnections(session.organization.id),
+      db.listAssistantSkills(assistant.id),
+      db.table("entities").list({ organizationId: session.organization.id }),
+      db.getPersonalAiSubscriptionsAllowed(session.organization.id),
+    ]);
+  // Live counterpart of the Publication's entity snapshot (#665): the
+  // assistant's selected shared Entities, re-read per message like flows.
+  const selectedEntityIds = assistant.tools?.entities ?? [];
+  const entities = orgEntities.filter(
+    (e) => selectedEntityIds.includes(e.id)
+  );
   const directLocal =
     personalSubscriptionsAllowed &&
     isLocalSubscriptionDirectEnabled() &&
@@ -116,6 +124,7 @@ export async function POST(request: NextRequest) {
     assistant: effectiveAssistant,
     flows,
     skills,
+    entities,
     connections,
     organizationId: session.organization.id,
     subjectType: "member",

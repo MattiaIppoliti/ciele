@@ -5,8 +5,7 @@ import {
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
-import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
-import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
+import { resolveWidgetContext, widgetOptions, widgetSubject } from "@/lib/widget-db";
 
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -26,22 +25,22 @@ export async function POST(
   const { db, publication, cors } = ctx;
   const config = publication.config;
 
+  // Who is speaking (#662): a valid SSO gate replaces the client-generated
+  // visitor id with the verified subject; anonymous traffic is unchanged.
+  // Resolved from cookies only, so the gate check runs before the body is
+  // even parsed — an enforced assistant 401s whatever the payload looks like.
+  const gated = widgetSubject(request, config.assistant.organizationId, "");
+
   // The authoritative gate: an enforced assistant answers nothing until the
   // visitor holds a valid gate cookie for its org (the widget UI is only UX).
-  if (
-    config.assistant.requireSignIn &&
-    !isGateValidForOrg(
-      request.cookies.get(SSO_GATE_COOKIE)?.value,
-      config.assistant.organizationId
-    )
-  ) {
+  if (config.assistant.requireSignIn && !gated.gate) {
     return Response.json(
       { error: "sign_in_required" },
       { status: 401, headers: cors }
     );
   }
 
-  const body = (await request.json()) as {
+  let body: {
     visitorId: string;
     conversationId?: string | null;
     collectionId?: string | null;
@@ -54,9 +53,18 @@ export async function POST(
      */
     pageUrl?: string | null;
   };
+  try {
+    body = await request.json();
+  } catch {
+    return new Response("Bad request", { status: 400, headers: cors });
+  }
   const message = (body.message ?? "").trim();
   const visitorId = (body.visitorId ?? "").trim();
-  if (!message || !visitorId) {
+  const subject = gated.gate
+    ? gated
+    : { ...gated, id: visitorId };
+
+  if (!message || !subject.id) {
     return new Response("Bad request", { status: 400, headers: cors });
   }
 
@@ -71,20 +79,39 @@ export async function POST(
     config.assistant.organizationId
   );
 
+  // The verified identity claim rides the conversation's session context so
+  // the Inbox (and template variables) can show who was signed in. Verified
+  // server-side from the sealed gate — never a client-supplied value.
+  const metadata = sessionMetadata(request.headers);
+  if (subject.gate?.claim) {
+    metadata.ssoClaimName = subject.gate.claim.name;
+    metadata.ssoClaimValue = subject.gate.claim.value;
+    if (subject.gate.claim.name === "email" && !metadata.userEmail) {
+      metadata.userEmail = subject.gate.claim.value;
+    }
+  }
+
   const stream = await streamConversationTurn({
     db,
     assistant,
     flows: config.flows,
     skills: config.skills ?? [],
+    entities: config.entities ?? [],
     connections,
     organizationId: config.assistant.organizationId,
-    subjectType: "visitor",
-    subjectId: visitorId,
+    subjectType: subject.type,
+    subjectId: subject.id,
+    verifiedIdentity: subject.gate
+      ? { subjectId: subject.gate.subjectId, claim: subject.gate.claim }
+      : undefined,
     conversationId: body.conversationId,
     collectionId: body.collectionId,
     message,
     faqQuestion: body.faq === true,
-    metadata: sessionMetadata(request.headers, body.pageUrl ?? undefined),
+    metadata: {
+      ...sessionMetadata(request.headers, body.pageUrl ?? undefined),
+      ...metadata,
+    },
     signal: request.signal,
   });
 

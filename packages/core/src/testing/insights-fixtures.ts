@@ -75,6 +75,16 @@ export const CHANNELS: OrgWebsiteSource[] = [
 export function fixtureConversations(): InboxConversation[] {
   seq = 0;
   return [
+    // Staff conversation (admin Preview / data assistant, #668): both
+    // implementations must exclude it from every aggregate.
+    conv({
+      assistantId: "a1",
+      subjectType: "member",
+      subjectId: "staff-1",
+      createdAt: "2026-06-02T10:00:00.000Z",
+      metadata: { userRole: "student", language: "en" },
+      feedback: 1,
+    }),
     conv({
       assistantId: "a1",
       subjectId: "u1",

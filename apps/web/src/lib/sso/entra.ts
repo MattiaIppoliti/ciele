@@ -72,12 +72,15 @@ export function createEntraProvider(deps: EntraDeps = {}): SsoProvider {
         createHash("sha256").update(codeVerifier).digest()
       );
       const url = new URL(endpoints(tenantId).authorize);
+      // The identity claim (#662) needs the profile/email scopes; the
+      // personalization-free default keeps the minimal "openid".
+      const scope = cfg(creds).identityClaim ? "openid profile email" : "openid";
       url.search = new URLSearchParams({
         client_id: clientId,
         response_type: "code",
         redirect_uri: ctx.redirectUri,
         response_mode: "query",
-        scope: "openid",
+        scope,
         state,
         nonce,
         code_challenge: codeChallenge,
@@ -127,6 +130,8 @@ export function createEntraProvider(deps: EntraDeps = {}): SsoProvider {
 
       let sub: unknown;
       let tokenNonce: unknown;
+      let claimValue: unknown;
+      const identityClaim = cfg(creds).identityClaim;
       try {
         const { payload } = await jwtVerify(token.id_token, getJwks(tenantId), {
           issuer: endpoints(tenantId).issuer,
@@ -134,6 +139,7 @@ export function createEntraProvider(deps: EntraDeps = {}): SsoProvider {
         });
         sub = payload.sub;
         tokenNonce = payload.nonce;
+        if (identityClaim) claimValue = payload[identityClaim];
       } catch (err) {
         throw new SsoCallbackError(
           `id_token verification failed: ${(err as Error).message}`
@@ -145,7 +151,14 @@ export function createEntraProvider(deps: EntraDeps = {}): SsoProvider {
       if (typeof sub !== "string" || !sub) {
         throw new SsoCallbackError("id_token missing sub");
       }
-      return { subjectId: sub };
+      return {
+        subjectId: sub,
+        // Fail soft: a configured claim the token doesn't carry (or carries as
+        // a non-string) yields no value, never a failed sign-in.
+        ...(typeof claimValue === "string" && claimValue
+          ? { identityClaimValue: claimValue }
+          : {}),
+      };
     },
 
     logoutUrl(creds, ctx) {

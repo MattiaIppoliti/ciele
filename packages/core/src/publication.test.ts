@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildPublicationConfig } from "./publication";
-import type { Assistant, Flow, KnowledgeCollection } from "./types";
+import type { Assistant, Entity, Flow, KnowledgeCollection } from "./types";
 
 /**
  * The Publication snapshot builder (context.md: Publication). The point of the
@@ -125,5 +125,56 @@ describe("buildPublicationConfig", () => {
 
   it("defaults skills to an empty snapshot list", () => {
     expect(buildPublicationConfig(makeAssistant(), [], []).skills).toEqual([]);
+  });
+
+  it("freezes selected Entities to their tool-generation fields, user-scoped included (#665, #667)", () => {
+    const shared: Entity = {
+      id: "en-1",
+      organizationId: "org-1",
+      name: "Products",
+      description: "The catalog",
+      attributes: [
+        { key: "sku", label: "SKU", type: "text" },
+        { key: "price", label: "Price", type: "number" },
+      ],
+      keyAttribute: "sku",
+      scope: "shared",
+      identityAttribute: null,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-06-01T00:00:00Z",
+    };
+    const userScoped: Entity = {
+      ...shared,
+      id: "en-2",
+      name: "Orders",
+      scope: "user",
+      identityAttribute: "email",
+    };
+    const config = buildPublicationConfig(makeAssistant(), [], [], [], [shared, userScoped]);
+    // The tool-generation slice only (no key attribute, no timestamps).
+    // User-scoped Entities freeze too (#667): the runtime's registration
+    // policy — not the snapshot — decides whether a turn may use them.
+    expect(config.entities).toEqual([
+      {
+        id: "en-1",
+        name: "Products",
+        description: "The catalog",
+        attributes: shared.attributes,
+        scope: "shared",
+        identityAttribute: null,
+      },
+      {
+        id: "en-2",
+        name: "Orders",
+        description: "The catalog",
+        attributes: shared.attributes,
+        scope: "user",
+        identityAttribute: "email",
+      },
+    ]);
+  });
+
+  it("defaults entities to an empty snapshot list", () => {
+    expect(buildPublicationConfig(makeAssistant(), [], []).entities).toEqual([]);
   });
 });

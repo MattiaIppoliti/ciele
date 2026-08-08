@@ -33,14 +33,21 @@ export const publishAssistantOp = defineOperation({
   ],
   run: async (ctx, { assistantId }) => {
     const assistant = await requireAssistant(ctx, assistantId);
-    const [flows, collections, skills] = await Promise.all([
+    const selected = new Set(assistant.tools?.entities ?? []);
+    const [flows, collections, skills, orgEntities] = await Promise.all([
       ctx.db.listFlows(assistantId),
       ctx.db.listCollections(assistantId),
       ctx.db.listAssistantSkills(assistantId),
+      selected.size === 0
+        ? Promise.resolve([])
+        : ctx.ports?.listPublicationEntities
+          ? ctx.ports.listPublicationEntities(assistant.organizationId)
+          : ctx.db.table("entities").list({ organizationId: assistant.organizationId }),
     ]);
+    const entities = orgEntities.filter((entity) => selected.has(entity.id));
     const publication = await ctx.db.createPublication(
       assistantId,
-      buildPublicationConfig(assistant, flows, collections, skills)
+      buildPublicationConfig(assistant, flows, collections, skills, entities)
     );
     await ctx.ports?.invalidatePublication?.(assistantId);
     return { version: publication.version, publicationId: publication.id };

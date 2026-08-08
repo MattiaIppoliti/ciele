@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { revalidateTag, unstable_cache, updateTag } from "next/cache";
-import { type Conversation, type Publication } from "@agent-hub/core";
+import { type Conversation, type ConversationSubject, type Publication } from "@agent-hub/core";
 import { createDb, getMockDb, isSupabaseConfigured, type Db } from "@agent-hub/db";
+import { SSO_GATE_COOKIE, gateForOrg, type SsoGatePayload } from "@/lib/sso";
 
 let widgetDb: Db | null = null;
 
@@ -120,15 +121,55 @@ export async function resolveWidgetContext(
  * was started by them. Shared by the history endpoint and the escalation
  * operation.
  */
-export function visitorOwnsConversation(
+/** A conversation subject reference: who a request claims to speak for. */
+export interface SubjectRef {
+  type: ConversationSubject;
+  id: string;
+}
+
+/** Who a widget request speaks for — see {@link widgetSubject}. */
+export interface WidgetSubject extends SubjectRef {
+  /** The verified gate payload when type === "sso" (identity claim included). */
+  gate: SsoGatePayload | null;
+}
+
+/**
+ * Resolve the subject a widget request speaks for (#662): a valid SSO gate
+ * for the assistant's Organization replaces the client-generated visitor id
+ * with the verified OIDC subject — the gate is authoritative and cannot be
+ * spoofed or overridden by request-body values. Without a gate, the visitor
+ * id stands as before.
+ */
+export function widgetSubject(
+  request: { cookies: { get(name: string): { value: string } | undefined } },
+  organizationId: string,
+  visitorId: string
+): WidgetSubject {
+  const gate = gateForOrg(
+    request.cookies.get(SSO_GATE_COOKIE)?.value,
+    organizationId
+  );
+  return gate
+    ? { type: "sso", id: gate.subjectId, gate }
+    : { type: "visitor", id: visitorId, gate: null };
+}
+
+/**
+ * Conversation ownership on the widget surface: the conversation must belong
+ * to this assistant AND to this exact subject (type + id) — an anonymous
+ * visitor can never claim an SSO conversation by guessing its subject id.
+ */
+export function subjectOwnsConversation(
   conversation: Conversation | null,
   assistantId: string,
-  visitorId: string
+  subject: SubjectRef
 ): conversation is Conversation {
   return (
     conversation !== null &&
     conversation.assistantId === assistantId &&
-    conversation.subjectId === visitorId
+    conversation.subjectType === subject.type &&
+    conversation.subjectId === subject.id &&
+    subject.id !== ""
   );
 }
 

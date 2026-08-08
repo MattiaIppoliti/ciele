@@ -17,6 +17,7 @@ import type {
   GoogleVertexFederatedConfig,
   Improvement,
   ImprovementAssociation,
+  Memory,
   ImprovementListItem,
   ImprovementMessageLink,
   ImprovementPatch,
@@ -28,6 +29,10 @@ import type {
   RecrawlSchedule,
   Role,
   Skill,
+  Entity,
+  EntityInput,
+  EntityRecord,
+  EntitySyncRun,
   SkillInput,
   SkillPatch,
   SourceStatus,
@@ -46,7 +51,7 @@ import {
   sealSecret,
   thrownMessage,
 } from "@agent-hub/core";
-import { isSupabaseConfigured, raiseImprovement } from "@agent-hub/db";
+import { isSupabaseConfigured, raiseImprovement, type Db } from "@agent-hub/db";
 
 import { SSO_GATE_COOKIE, getSsoProvider, isGateValidForOrg } from "@/lib/sso";
 import {
@@ -59,6 +64,7 @@ import {
   embedConcept,
   enqueueDraftProposalJob,
   enqueueGraphSyncJob,
+  enqueueEntitySyncJob,
   enqueueIngestJob,
   extractSourceText,
   feedbackScore,
@@ -100,8 +106,10 @@ import {
 } from "@ciele/ops";
 import { persistFaqConcept } from "@/lib/op-ports";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
+import { parseEntityCsv } from "@/lib/entity-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
+import { getWidgetDb } from "@/lib/widget-db";
 import {
   canAssignApiKeyRole,
   canChangeRoles,
@@ -243,6 +251,89 @@ export async function updateCompostOptOutAction(
   await orgMutation(
     { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
     ({ db, session }) => db.setCompostOptOut(session.organization.id, optOut),
+  );
+}
+
+/**
+ * Org-level long-term memory toggle (#664), off by default. While off,
+ * nothing is extracted and nothing is recalled — flipping it on is the one
+ * deliberate act that enables the capability for every assistant.
+ */
+export async function updateMemoryEnabledAction(enabled: boolean): Promise<void> {
+  await orgMutation(
+    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
+    ({ db, session }) => db.setMemoryEnabled(session.organization.id, enabled)
+  );
+}
+
+/**
+ * Admin memory lookup (#666): one subject's stored memories, newest first.
+ * Read-only, so any Member may look — mirroring the memories-table RLS.
+ */
+export async function listSubjectMemoriesAction(
+  subjectId: string
+): Promise<Memory[]> {
+  const { db, session } = await requireMember("member");
+  return db.listMemories({
+    organizationId: session.organization.id,
+    subjectId,
+  });
+}
+
+/**
+ * Erasure, one item (#666). The memory must belong to the given subject in
+ * the caller's Organization — a forged id from another org deletes nothing.
+ */
+export async function deleteSubjectMemoryAction(
+  subjectId: string,
+  memoryId: string
+): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "aiSettings" }] },
+    async ({ db, session }) => {
+      const memories = await db.listMemories({
+        organizationId: session.organization.id,
+        subjectId,
+      });
+      if (!memories.some((m) => m.id === memoryId)) {
+        throw new Error("Memory not found");
+      }
+      await db.deleteMemory(memoryId);
+    }
+  );
+}
+
+/**
+ * Which Entities the org-staff data assistant may query (#668) — an
+ * org-level selection, separate from any customer-facing assistant's
+ * per-assistant selection. Unknown/foreign entity ids are dropped.
+ */
+export async function updateDataAssistantEntitiesAction(
+  entityIds: string[]
+): Promise<void> {
+  await orgMutation(
+    { capability: "manageMembers", entities: [{ kind: "dataAssistant" }] },
+    async ({ db, session }) => {
+      const orgEntities = await db.table("entities").list({
+        organizationId: session.organization.id,
+      });
+      const valid = entityIds.filter((id) =>
+        orgEntities.some((e) => e.id === id)
+      );
+      await db.setDataAssistantEntityIds(session.organization.id, valid);
+    }
+  );
+}
+
+/** Erasure, whole subject (#666): complete and immediate — GDPR requests. */
+export async function wipeSubjectMemoriesAction(subjectId: string): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "aiSettings" }] },
+    ({ db, session }) =>
+      db.deleteSubjectMemories({
+        organizationId: session.organization.id,
+        subjectId,
+      })
   );
 }
 
@@ -686,6 +777,9 @@ export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
 // rank). The `assistantId` only steers revalidation to the editor page the
 // admin is on. The require-sign-in toggle is a per-assistant edit.
 
+/** Claim names are plain JWT claim identifiers — nothing exotic (#662). */
+const IDENTITY_CLAIM_PATTERN = /^[a-zA-Z0-9_.:-]{1,64}$/;
+
 export async function setSsoConnectionAction(
   assistantId: string,
   input: {
@@ -693,7 +787,9 @@ export async function setSsoConnectionAction(
     clientId: string;
     tenantId: string;
     clientSecret: string;
-  },
+    /** Opt-in identity claim to verify at sign-in (#662); omit for subject-only. */
+    identityClaim?: string;
+  }
 ): Promise<{ error?: string }> {
   return orgMutation(
     {
@@ -713,9 +809,17 @@ export async function setSsoConnectionAction(
           error: "Client ID, Tenant ID and Client secret are all required.",
         };
       }
+      const identityClaim = input.identityClaim?.trim();
+      if (identityClaim && !IDENTITY_CLAIM_PATTERN.test(identityClaim)) {
+        return { error: "That identity claim name isn't valid." };
+      }
       await db.setSsoConnection(session.organization.id, {
         provider: input.provider,
-        config: { clientId, tenantId },
+        config: {
+          clientId,
+          tenantId,
+          ...(identityClaim ? { identityClaim } : {}),
+        },
         encryptedSecret: sealSecret(clientSecret),
       });
       return {};
@@ -2301,4 +2405,270 @@ export async function resolveAlertAction(alertId: string): Promise<void> {
     { capability: "edit", entities: [{ kind: "alerts" }] },
     ({ db, session }) => db.resolveAlert(alertId, session.userId),
   );
+}
+
+// --- Entities + Records (org structured data, #663) ---------------------------
+
+/**
+ * Guard shared by every Entity mutation: RLS already walls off other orgs on
+ * Supabase, but the mock store has no RLS — resolve the Entity and check the
+ * Organization explicitly so both implementations behave identically.
+ */
+async function requireOrgEntity(
+  db: Db,
+  organizationId: string,
+  entityId: string
+): Promise<Entity> {
+  const entity = await db.table("entities").get(entityId);
+  if (!entity || entity.organizationId !== organizationId) {
+    throw new Error("Entity not found");
+  }
+  return entity;
+}
+
+export async function createEntityAction(
+  input: EntityInput
+): Promise<{ entity?: Entity; error?: string }> {
+  return orgMutation(
+    {
+      capability: "edit",
+      entities: [{ kind: "dataEntities" }],
+      revalidateIf: (r: { error?: string }) => !r.error,
+    },
+    async ({ db, session }) => {
+      const name = input.name.trim();
+      const attributes = input.attributes
+        .map((a) => ({
+          key: a.key.trim(),
+          label: a.label.trim() || a.key.trim(),
+          type: a.type,
+        }))
+        .filter((a) => a.key !== "");
+      if (!name) return { error: "Give the entity a name." };
+      if (attributes.length === 0) {
+        return { error: "Define at least one attribute." };
+      }
+      if (new Set(attributes.map((a) => a.key.toLowerCase())).size !== attributes.length) {
+        return { error: "Attribute keys must be unique." };
+      }
+      if (!attributes.some((a) => a.key === input.keyAttribute)) {
+        return { error: "Pick one of the attributes as the key." };
+      }
+      if (
+        input.scope === "user" &&
+        !attributes.some((a) => a.key === input.identityAttribute)
+      ) {
+        return { error: "User-scoped entities need an identity attribute." };
+      }
+      const entity = await db.table("entities").insert({
+        organizationId: session.organization.id,
+        name,
+        description: input.description?.trim(),
+        attributes,
+        keyAttribute: input.keyAttribute,
+        scope: input.scope,
+        identityAttribute:
+          input.scope === "user" ? input.identityAttribute : null,
+      });
+      return { entity };
+    }
+  );
+}
+
+export async function updateEntityAction(
+  entityId: string,
+  patch: { name?: string; description?: string }
+): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "dataEntities" }] },
+    async ({ db, session }) => {
+      await requireOrgEntity(db, session.organization.id, entityId);
+      await db.table("entities").update(entityId, {
+        name: patch.name?.trim() || undefined,
+        description: patch.description?.trim(),
+      });
+    }
+  );
+}
+
+export async function deleteEntityAction(entityId: string): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "dataEntities" }] },
+    async ({ db, session }) => {
+      await requireOrgEntity(db, session.organization.id, entityId);
+      await db.table("entities").delete(entityId);
+    }
+  );
+}
+
+export interface EntityImportReport {
+  upserted: number;
+  rejected: string[];
+  error?: string;
+}
+
+/**
+ * CSV import (#663): parse + validate against the Entity's schema, then
+ * upsert idempotently by the key attribute. Bad rows are reported and
+ * skipped; a header-level problem rejects the whole file.
+ */
+export async function importEntityRecordsAction(
+  entityId: string,
+  csvText: string
+): Promise<EntityImportReport> {
+  return orgMutation(
+    {
+      capability: "edit",
+      entities: [{ kind: "dataEntities" }],
+      revalidateIf: (r: EntityImportReport) => r.upserted > 0,
+    },
+    async ({ db, session }) => {
+      const entity = await requireOrgEntity(db, session.organization.id, entityId);
+      const parsed = parseEntityCsv(csvText, entity);
+      if (parsed.rows.length === 0) {
+        return { upserted: 0, rejected: parsed.rejected };
+      }
+      const upserted = await db.upsertEntityRecords(entityId, parsed.rows);
+      return { upserted, rejected: parsed.rejected };
+    }
+  );
+}
+
+/** Records browser read (paged) — any member of the Entity's org. */
+/** The client-facing sync source shape (#670): sealed headers never leave the server. */
+export interface EntitySyncStatus {
+  config:
+    | {
+        url: string;
+        cadenceHours: number;
+        prune: boolean;
+        mapping: Record<string, string>;
+        hasHeaders: boolean;
+        lastSyncedAt: string | null;
+      }
+    | null;
+  runs: EntitySyncRun[];
+}
+
+export async function getEntitySyncStatusAction(
+  entityId: string
+): Promise<EntitySyncStatus> {
+  const { db, session } = await requireMember("member");
+  await requireOrgEntity(db, session.organization.id, entityId);
+  const [config, runs] = await Promise.all([
+    db.getEntitySyncConfig(entityId),
+    db.listEntitySyncRuns(entityId, 5),
+  ]);
+  return {
+    config: config
+      ? {
+          url: config.url,
+          cadenceHours: config.cadenceHours,
+          prune: config.prune,
+          mapping: config.mapping,
+          hasHeaders: Boolean(config.sealedHeaders),
+          lastSyncedAt: config.lastSyncedAt,
+        }
+      : null,
+    runs,
+  };
+}
+
+/**
+ * Configure an Entity's REST/JSON sync source (#670). Auth headers are
+ * sealed before storage (like other stored secrets); an empty header list
+ * keeps any previously sealed headers, since the client never sees them.
+ */
+export async function saveEntitySyncConfigAction(
+  entityId: string,
+  input: {
+    url: string;
+    headers: Array<{ name: string; value: string }>;
+    /** Explicitly drop previously sealed headers (they're otherwise kept). */
+    clearHeaders?: boolean;
+    cadenceHours: number;
+    prune: boolean;
+    mapping: Record<string, string>;
+  }
+): Promise<{ error?: string }> {
+  return orgMutation(
+    { capability: "edit", entities: [{ kind: "dataEntities" }] },
+    async ({ db, session }) => {
+      await requireOrgEntity(db, session.organization.id, entityId);
+      let url: URL;
+      try {
+        url = new URL(input.url);
+      } catch {
+        return { error: "Enter a valid URL." };
+      }
+      if (url.protocol !== "https:" && url.protocol !== "http:") {
+        return { error: "The sync source must be an http(s) URL." };
+      }
+      const cadenceHours = Math.max(1, Math.floor(input.cadenceHours || 24));
+      const meaningful = input.headers.filter((h) => h.name.trim());
+      const existing = await db.getEntitySyncConfig(entityId);
+      const sealedHeaders = input.clearHeaders
+        ? null
+        : meaningful.length > 0
+          ? sealSecret(JSON.stringify(meaningful))
+          : (existing?.sealedHeaders ?? null);
+      await db.upsertEntitySyncConfig(entityId, {
+        url: url.toString(),
+        sealedHeaders,
+        cadenceHours,
+        prune: input.prune,
+        mapping: input.mapping,
+      });
+      return {};
+    }
+  );
+}
+
+export async function deleteEntitySyncConfigAction(entityId: string): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "dataEntities" }] },
+    async ({ db, session }) => {
+      await requireOrgEntity(db, session.organization.id, entityId);
+      await db.deleteEntitySyncConfig(entityId);
+    }
+  );
+}
+
+/**
+ * "Sync now" (#670): enqueues the same durable job the cron sweep runs.
+ * Authorization happens on the caller's RLS-scoped db; the enqueue (and the
+ * `after()` accelerator that drains it) runs on the service-role db, because
+ * the job ledger and run reports are operated by the job layer, not by
+ * member sessions — exactly as the cron sweep does.
+ */
+export async function syncEntityNowAction(entityId: string): Promise<void> {
+  await orgMutation(
+    { capability: "edit", entities: [{ kind: "dataEntities" }] },
+    async ({ db, session }) => {
+      const entity = await requireOrgEntity(db, session.organization.id, entityId);
+      const config = await db.getEntitySyncConfig(entityId);
+      if (!config) throw new Error("Configure a sync source first");
+      await enqueueEntitySyncJob(
+        {
+          entityId,
+          organizationId: entity.organizationId,
+          force: true,
+        },
+        { db: getWidgetDb() }
+      );
+    }
+  );
+}
+
+export async function listEntityRecordsAction(
+  entityId: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<{ records: EntityRecord[]; total: number }> {
+  const { db, session } = await requireMember("member");
+  await requireOrgEntity(db, session.organization.id, entityId);
+  const [records, total] = await Promise.all([
+    db.listEntityRecords(entityId, opts),
+    db.countEntityRecords(entityId),
+  ]);
+  return { records, total };
 }

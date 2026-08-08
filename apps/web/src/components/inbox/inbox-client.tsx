@@ -29,6 +29,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   WandSparkles,
+  Wrench,
   X,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -90,6 +91,11 @@ interface Filters {
   conversationIds: string;
   feedback: "" | "up" | "down";
   escalation: "" | "escalated" | "not_escalated";
+  /**
+   * Staff (member-subject) conversations — admin Preview, the data
+   * assistant — are hidden by default (#668); "include" opts them in.
+   */
+  staff: "" | "include" | "only";
 }
 
 function defaultFilters(): Filters {
@@ -109,6 +115,7 @@ function defaultFilters(): Filters {
     conversationIds: "",
     feedback: "",
     escalation: "",
+    staff: "",
   };
 }
 
@@ -209,7 +216,9 @@ function DateField({
 function subjectName(c: InboxConversation): string {
   if (c.metadata.userName) return c.metadata.userName;
   if (c.metadata.userEmail) return c.metadata.userEmail.split("@")[0];
-  return c.subjectType === "member" ? "Member" : "Visitor";
+  if (c.metadata.ssoClaimValue) return c.metadata.ssoClaimValue;
+  if (c.subjectType === "member") return "Member";
+  return c.subjectType === "sso" ? "Signed-in user" : "Visitor";
 }
 
 function subjectInitials(c: InboxConversation): string {
@@ -325,6 +334,34 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
     // provenance for the one they are questioning, and the chips still link out.
     return (
       <CitationList sources={part.sources} className="max-w-[85%]" collapsible />
+    );
+  }
+  if (part.type === "tool_calls") {
+    // Audit trail (#665): which tools produced this answer.
+    return (
+      <div className="max-w-[85%] rounded-2xl border border-dashed px-3.5 py-2.5">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+          <Wrench className="size-3.5" />
+          Tool calls
+        </p>
+        <ul className="mt-1.5 space-y-1 text-xs">
+          {part.calls.map((call, i) => (
+            <li key={i} className="flex items-center gap-1.5">
+              <span
+                className={
+                  call.ok ? "text-emerald-500" : "text-red-400"
+                }
+              >
+                ●
+              </span>
+              <span className="font-mono font-medium">{call.tool}</span>
+              <span className="text-muted-foreground truncate">
+                {call.summary ? `— ${call.summary}` : `— ${call.label}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   }
   if (part.type === "help_desk") {
@@ -447,6 +484,9 @@ export function InboxClient({
           .some((v) => v!.toLowerCase().includes(userNeedle))
       )
         return false;
+      // Default views hide staff (member-subject) conversations (#668).
+      if (filters.staff === "" && c.subjectType === "member") return false;
+      if (filters.staff === "only" && c.subjectType !== "member") return false;
       if (filters.location && c.metadata.location !== filters.location) return false;
       if (filters.city && c.metadata.city !== filters.city) return false;
       if (filters.role && c.metadata.userRole !== filters.role) return false;
@@ -819,6 +859,18 @@ export function InboxClient({
                   })
                 }
               />
+              <FilterSelect
+                label="Staff conversations"
+                value={filters.staff}
+                placeholder="Hidden (default)"
+                options={[
+                  { value: "include", label: "Include staff" },
+                  { value: "only", label: "Staff only" },
+                ]}
+                onChange={(staff) =>
+                  setFilters({ ...filters, staff: staff as Filters["staff"] })
+                }
+              />
               <div className="flex justify-end pt-1">
                 <Button
                   variant="ghost"
@@ -1109,6 +1161,12 @@ export function InboxClient({
 
             <Card size="sm" className="gap-3 p-4">
               <h3 className="font-semibold">Session</h3>
+              {selected.subjectType === "sso" && (
+                <DetailRow
+                  label="Signed-in user"
+                  value={meta?.ssoClaimValue ?? selected.subjectId}
+                />
+              )}
               <DetailRow label="Launch URL" value={meta?.launchUrl} />
               <div className="grid grid-cols-2 gap-3">
                 <DetailRow label="IP address" value={meta?.ip} />

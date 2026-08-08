@@ -19,22 +19,27 @@ export async function GET(
   if (ctx instanceof Response) return ctx;
 
   const { assistant } = ctx.publication.config;
-  const authenticated =
-    !assistant.requireSignIn ||
-    isGateValidForOrg(
-      request.cookies.get(SSO_GATE_COOKIE)?.value,
-      assistant.organizationId
-    );
+  const gateValid = isGateValidForOrg(
+    request.cookies.get(SSO_GATE_COOKIE)?.value,
+    assistant.organizationId
+  );
+  const authenticated = !assistant.requireSignIn || gateValid;
   // Provider is org-level (not in the Publication snapshot), read live.
   const connection = assistant.requireSignIn
     ? await ctx.db.getSsoConnectionPublic(assistant.organizationId)
     : null;
+  // The Memory folder (#666) shows only to SSO-signed users of an org whose
+  // long-term memory toggle is on — never to anonymous visitors.
+  const memories = gateValid
+    ? await ctx.db.getMemoryEnabled(assistant.organizationId)
+    : false;
 
   return Response.json(
     {
       requireSignIn: assistant.requireSignIn,
       authenticated,
       provider: connection?.provider ?? null,
+      memories,
     },
     { headers: { ...ctx.cors, "Cache-Control": "no-store" } }
   );

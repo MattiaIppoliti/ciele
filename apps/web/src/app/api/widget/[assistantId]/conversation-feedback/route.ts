@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import {
   resolveWidgetContext,
-  visitorOwnsConversation,
+  subjectOwnsConversation,
   widgetOptions,
+  widgetSubject,
 } from "@/lib/widget-db";
 
 /**
@@ -18,7 +19,7 @@ export async function POST(
 ) {
   const ctx = await resolveWidgetContext(request, params);
   if (ctx instanceof Response) return ctx;
-  const { db, assistantId, cors } = ctx;
+  const { db, assistantId, publication, cors } = ctx;
 
   const body = (await request.json()) as {
     conversationId?: string;
@@ -26,12 +27,17 @@ export async function POST(
     text?: string;
   };
   const text = body.text?.trim();
-  if (!body.conversationId || !body.visitorId || !text) {
+  const subject = widgetSubject(
+    request,
+    publication.config.assistant.organizationId,
+    body.visitorId ?? ""
+  );
+  if (!body.conversationId || !subject.id || !text) {
     return new Response("Bad request", { status: 400, headers: cors });
   }
 
   const conversation = await db.getConversation(body.conversationId);
-  if (!visitorOwnsConversation(conversation, assistantId, body.visitorId)) {
+  if (!subjectOwnsConversation(conversation, assistantId, subject)) {
     return new Response("Not found", { status: 404, headers: cors });
   }
 

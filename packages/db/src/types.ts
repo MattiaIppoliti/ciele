@@ -42,6 +42,12 @@ import type {
   CurrentOrg,
   DueCompostAssistant,
   DueRecrawlClaim,
+  EntityRecord,
+  EntityRecordQuery,
+  EntityRecordValue,
+  EntitySyncConfig,
+  EntitySyncConfigInput,
+  EntitySyncRun,
   ExportJob,
   ExportJobFormat,
   ExportJobKind,
@@ -73,6 +79,10 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  Memory,
+  MemorySearchResult,
+  MemorySubjectRef,
+  MemorySubjectSummary,
   OrgApiKey,
   OrgApiKeyInput,
   OrgBudget,
@@ -875,6 +885,64 @@ export interface Db {
   listAssistantSkills(assistantId: string): Promise<Skill[]>;
   /** Replaces the assistant's attached-skill set (ordered). */
   setAssistantSkills(assistantId: string, skillIds: string[]): Promise<void>;
+
+  // Entity CRUD is mechanical and lives at table("entities") (ADR-0016).
+  // Record ingestion/query methods remain behavioural seams.
+  upsertEntityRecords(
+    entityId: string,
+    rows: Array<{ key: string; values: Record<string, EntityRecordValue> }>
+  ): Promise<number>;
+  listEntityRecords(
+    entityId: string,
+    opts?: { limit?: number; offset?: number }
+  ): Promise<EntityRecord[]>;
+  countEntityRecords(entityId: string): Promise<number>;
+  queryEntityRecords(
+    entityId: string,
+    query: EntityRecordQuery
+  ): Promise<EntityRecord[]>;
+
+  getMemoryEnabled(organizationId: string): Promise<boolean>;
+  setMemoryEnabled(organizationId: string, enabled: boolean): Promise<void>;
+  upsertMemories(
+    subject: MemorySubjectRef,
+    items: Array<{
+      text: string;
+      embedding: number[] | null;
+      conversationId?: string | null;
+    }>
+  ): Promise<number>;
+  listMemories(subject: MemorySubjectRef): Promise<Memory[]>;
+  listMemorySubjects(organizationId: string): Promise<MemorySubjectSummary[]>;
+  deleteMemory(id: string): Promise<void>;
+  deleteSubjectMemories(subject: MemorySubjectRef): Promise<void>;
+  searchMemories(
+    subject: MemorySubjectRef,
+    query: { embedding: number[] | null; text: string; limit?: number }
+  ): Promise<MemorySearchResult[]>;
+
+  getEntitySyncConfig(entityId: string): Promise<EntitySyncConfig | null>;
+  upsertEntitySyncConfig(
+    entityId: string,
+    input: EntitySyncConfigInput
+  ): Promise<EntitySyncConfig>;
+  deleteEntitySyncConfig(entityId: string): Promise<void>;
+  markEntitySynced(entityId: string, at: string): Promise<void>;
+  listDueEntitySyncConfigs(
+    now: string
+  ): Promise<Array<{ entityId: string; organizationId: string }>>;
+  recordEntitySyncRun(
+    entityId: string,
+    run: Omit<EntitySyncRun, "id" | "entityId" | "finishedAt">
+  ): Promise<EntitySyncRun>;
+  listEntitySyncRuns(entityId: string, limit?: number): Promise<EntitySyncRun[]>;
+  pruneEntityRecords(entityId: string, seenKeys: string[]): Promise<number>;
+
+  getDataAssistantEntityIds(organizationId: string): Promise<string[]>;
+  setDataAssistantEntityIds(
+    organizationId: string,
+    entityIds: string[]
+  ): Promise<void>;
 
   // Generic table access (ADR-0016) — the seam the plain CRUD passthroughs
   // above migrate onto. Only tables in DbTableMap are reachable; behavioural

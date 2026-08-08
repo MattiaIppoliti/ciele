@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  gateForOrg,
   isGateValidForOrg,
   openGate,
   openTxn,
@@ -77,6 +78,25 @@ describe("SSO cookie sealing", () => {
     });
     it("never trusts an unsigned gate value", () => {
       expect(isGateValidForOrg(`plain:${JSON.stringify(gate)}`, "org-1")).toBe(false);
+    });
+  });
+
+  describe("gateForOrg (#662)", () => {
+    it("returns the full payload, identity claim included", () => {
+      const withClaim: SsoGatePayload = {
+        ...gate,
+        claim: { name: "email", value: "person@example.com" },
+      };
+      expect(gateForOrg(sealGate(withClaim), "org-1")).toEqual(withClaim);
+    });
+    it("returns a claim-free payload as-is", () => {
+      expect(gateForOrg(sealGate(gate), "org-1")).toEqual(gate);
+    });
+    it("rejects an org mismatch and an expired gate", () => {
+      expect(gateForOrg(sealGate(gate), "org-2")).toBeNull();
+      const expired = sealGate({ ...gate, exp: Math.floor(Date.now() / 1000) - 1 });
+      expect(gateForOrg(expired, "org-1")).toBeNull();
+      expect(gateForOrg(undefined, "org-1")).toBeNull();
     });
   });
 });

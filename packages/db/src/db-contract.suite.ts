@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AiUsageStage, FlowCondition } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  MEMORIES_PER_SUBJECT_CAP,
   apiKeySecretHint,
   buildPublicationConfig,
   generateApiKeySecret,
@@ -1041,6 +1042,500 @@ export function describeDbContract(
       });
     });
 
+    describe("entities & records (#663)", () => {
+      const orderEntity = () =>
+        db.table("entities").insert({
+          organizationId: ctx.organizationId,
+          name: "Orders",
+          description: "Customer orders",
+          attributes: [
+            { key: "order_id", label: "Order ID", type: "text" },
+            { key: "status", label: "Status", type: "text" },
+            { key: "total", label: "Total", type: "number" },
+          ],
+          keyAttribute: "order_id",
+          scope: "user",
+          identityAttribute: "order_id",
+        });
+
+      it("round-trips an Entity and scopes lists to the organization", async () => {
+        const entity = await orderEntity();
+        expect(entity.scope).toBe("user");
+        expect(entity.identityAttribute).toBe("order_id");
+        expect(entity.attributes).toHaveLength(3);
+
+        const listed = await db.table("entities").list({
+          organizationId: ctx.organizationId,
+        });
+        expect(listed.some((e) => e.id === entity.id)).toBe(true);
+        // Another organization's scope never surfaces this entity.
+        expect(
+          (await db.table("entities").list({
+            organizationId: ctx.foreignOrganizationId,
+          })).some(
+            (e) => e.id === entity.id
+          )
+        ).toBe(false);
+
+        const renamed = await db.table("entities").update(entity.id, {
+          name: "Sales",
+        });
+        expect(renamed.name).toBe("Sales");
+        expect(renamed.keyAttribute).toBe("order_id");
+      });
+
+      it("upserts records idempotently by key and pages them", async () => {
+        const entity = await orderEntity();
+        const first = await db.upsertEntityRecords(entity.id, [
+          { key: "A-1", values: { order_id: "A-1", status: "shipped", total: 10 } },
+          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
+        ]);
+        expect(first).toBe(2);
+        expect(await db.countEntityRecords(entity.id)).toBe(2);
+        const originalIds = (await db.listEntityRecords(entity.id)).map((r) => r.id);
+
+        // Re-import: same keys, one changed value — no duplicates, stable ids.
+        const changed = await db.upsertEntityRecords(entity.id, [
+          { key: "A-1", values: { order_id: "A-1", status: "refunded", total: 10 } },
+          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
+        ]);
+        expect(changed).toBe(1);
+        const after = await db.listEntityRecords(entity.id);
+        expect(after).toHaveLength(2);
+        expect(after.map((r) => r.id).sort()).toEqual([...originalIds].sort());
+        expect(after.find((r) => r.key === "A-1")?.values.status).toBe("refunded");
+
+        const unchanged = await db.upsertEntityRecords(entity.id, [
+          { key: "A-1", values: { order_id: "A-1", status: "refunded", total: 10 } },
+          { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
+        ]);
+        expect(unchanged).toBe(0);
+
+        // Paging is key-ordered.
+        const page = await db.listEntityRecords(entity.id, { limit: 1, offset: 1 });
+        expect(page.map((r) => r.key)).toEqual(["A-2"]);
+      });
+
+      it("queries records by typed equality filters and keyword search (#665)", async () => {
+        const entity = await orderEntity();
+        await db.upsertEntityRecords(entity.id, [
+          { key: "Q-1", values: { order_id: "Q-1", status: "shipped", total: 10 } },
+          { key: "Q-2", values: { order_id: "Q-2", status: "delayed", total: 25 } },
+          { key: "Q-3", values: { order_id: "Q-3", status: "shipped", total: 25 } },
+        ]);
+
+        // Equality filter on a text attribute.
+        const shipped = await db.queryEntityRecords(entity.id, {
+          filters: { status: "shipped" },
+        });
+        expect(shipped.map((r) => r.key)).toEqual(["Q-1", "Q-3"]);
+
+        // Typed (number) equality composes with the text filter.
+        const shipped25 = await db.queryEntityRecords(entity.id, {
+          filters: { status: "shipped", total: 25 },
+        });
+        expect(shipped25.map((r) => r.key)).toEqual(["Q-3"]);
+
+        // Case-insensitive keyword search over the record's values.
+        const delayed = await db.queryEntityRecords(entity.id, {
+          search: "DELAY",
+        });
+        expect(delayed.map((r) => r.key)).toEqual(["Q-2"]);
+
+        // Search is deliberately limited to attributes declared as text.
+        expect(
+          await db.queryEntityRecords(entity.id, { search: "25" })
+        ).toHaveLength(0);
+
+        // No match → empty, never an error.
+        expect(
+          await db.queryEntityRecords(entity.id, { filters: { status: "lost" } })
+        ).toHaveLength(0);
+
+        // Limit caps the key-ordered result.
+        const capped = await db.queryEntityRecords(entity.id, { limit: 2 });
+        expect(capped.map((r) => r.key)).toEqual(["Q-1", "Q-2"]);
+      });
+
+      it("scopes a user-scoped query to one identity value alongside other filters (#667)", async () => {
+        // The runtime binds the Entity's identity attribute to the turn's
+        // verified claim; this is the query path that binding rides on —
+        // combined identity + attribute filters, and identity + search.
+        const entity = await db.table("entities").insert({
+          organizationId: ctx.organizationId,
+          name: "User orders",
+          description: "Orders owned by a signed-in user",
+          attributes: [
+            { key: "order_id", label: "Order ID", type: "text" },
+            { key: "status", label: "Status", type: "text" },
+            { key: "customer_email", label: "Customer email", type: "text" },
+          ],
+          keyAttribute: "order_id",
+          scope: "user",
+          identityAttribute: "customer_email",
+        });
+        await db.upsertEntityRecords(entity.id, [
+          { key: "U-1", values: { order_id: "U-1", status: "delayed", customer_email: "me@example.com" } },
+          { key: "U-2", values: { order_id: "U-2", status: "delayed", customer_email: "other@example.com" } },
+          { key: "U-3", values: { order_id: "U-3", status: "shipped", customer_email: "me@example.com" } },
+        ]);
+
+        const mine = await db.queryEntityRecords(entity.id, {
+          filters: { customer_email: "me@example.com", status: "delayed" },
+        });
+        expect(mine.map((r) => r.key)).toEqual(["U-1"]);
+
+        // Keyword search composes with the identity filter: the other
+        // subject's delayed order stays unreachable.
+        const searched = await db.queryEntityRecords(entity.id, {
+          search: "delayed",
+          filters: { customer_email: "me@example.com" },
+        });
+        expect(searched.map((r) => r.key)).toEqual(["U-1"]);
+      });
+
+      it("round-trips a sync source config and stamps runs (#670)", async () => {
+        const entity = await orderEntity();
+        expect(await db.getEntitySyncConfig(entity.id)).toBeNull();
+
+        const config = await db.upsertEntitySyncConfig(entity.id, {
+          url: "https://api.example.com/orders",
+          sealedHeaders: "sealed-blob",
+          cadenceHours: 6,
+          prune: true,
+          mapping: { orderNumber: "order_id" },
+        });
+        expect(config).toMatchObject({
+          entityId: entity.id,
+          url: "https://api.example.com/orders",
+          sealedHeaders: "sealed-blob",
+          cadenceHours: 6,
+          prune: true,
+          mapping: { orderNumber: "order_id" },
+          lastSyncedAt: null,
+        });
+
+        // Re-upsert replaces fields but keeps the cadence anchor.
+        await db.markEntitySynced(entity.id, "2026-08-08T10:00:00.000Z");
+        const updated = await db.upsertEntitySyncConfig(entity.id, {
+          url: "https://api.example.com/v2/orders",
+          sealedHeaders: null,
+          cadenceHours: 24,
+          prune: false,
+          mapping: {},
+        });
+        expect(updated.url).toBe("https://api.example.com/v2/orders");
+        expect(updated.lastSyncedAt).toBe("2026-08-08T10:00:00.000Z");
+
+        const run = await db.recordEntitySyncRun(entity.id, {
+          status: "succeeded",
+          upserted: 3,
+          pruned: 1,
+          rejected: ["row 2: total is not a number"],
+          error: null,
+        });
+        expect(run.entityId).toBe(entity.id);
+        expect(run.finishedAt).toBeTruthy();
+        await db.recordEntitySyncRun(entity.id, {
+          status: "failed",
+          upserted: 0,
+          pruned: 0,
+          rejected: [],
+          error: "HTTP 500",
+        });
+        const runs = await db.listEntitySyncRuns(entity.id);
+        expect(runs).toHaveLength(2);
+        expect(runs[0].status).toBe("failed"); // newest first
+
+        await db.deleteEntitySyncConfig(entity.id);
+        expect(await db.getEntitySyncConfig(entity.id)).toBeNull();
+      });
+
+      it("lists due syncs across cadence windows (#670)", async () => {
+        const fresh = await orderEntity();
+        const stale = await orderEntity();
+        const never = await orderEntity();
+        const input = {
+          url: "https://api.example.com/x",
+          sealedHeaders: null,
+          cadenceHours: 12,
+          prune: false,
+          mapping: {},
+        };
+        await db.upsertEntitySyncConfig(fresh.id, input);
+        await db.upsertEntitySyncConfig(stale.id, input);
+        await db.upsertEntitySyncConfig(never.id, input);
+        await db.markEntitySynced(fresh.id, "2026-08-08T09:00:00.000Z");
+        await db.markEntitySynced(stale.id, "2026-08-07T00:00:00.000Z");
+
+        const due = await db.listDueEntitySyncConfigs("2026-08-08T12:00:00.000Z");
+        const ids = due.map((d) => d.entityId);
+        expect(ids).toContain(stale.id); // cadence elapsed
+        expect(ids).toContain(never.id); // never ran
+        expect(ids).not.toContain(fresh.id); // within its window
+        const staleDue = due.find((d) => d.entityId === stale.id);
+        expect(staleDue?.organizationId).toBe(ctx.organizationId);
+      });
+
+      it("prunes Records unseen in the latest run, and only those (#670)", async () => {
+        const entity = await orderEntity();
+        await db.upsertEntityRecords(entity.id, [
+          { key: "P-1", values: { order_id: "P-1", status: "open", total: 1 } },
+          { key: "P-2", values: { order_id: "P-2", status: "open", total: 2 } },
+          { key: "P-3", values: { order_id: "P-3", status: "open", total: 3 } },
+        ]);
+        const removed = await db.pruneEntityRecords(entity.id, ["P-1", "P-3"]);
+        expect(removed).toBe(1);
+        const kept = (await db.listEntityRecords(entity.id)).map((r) => r.key);
+        expect(kept.sort()).toEqual(["P-1", "P-3"]);
+      });
+
+      it("round-trips the org-level data assistant Entity selection (#668)", async () => {
+        expect(await db.getDataAssistantEntityIds(ctx.organizationId)).toEqual([]);
+        const entity = await orderEntity();
+        await db.setDataAssistantEntityIds(ctx.organizationId, [entity.id]);
+        expect(await db.getDataAssistantEntityIds(ctx.organizationId)).toEqual([
+          entity.id,
+        ]);
+        // Cross-org isolation: a foreign organization keeps its own (empty) selection.
+        expect(
+          await db.getDataAssistantEntityIds(ctx.foreignOrganizationId)
+        ).toEqual([]);
+        await db.setDataAssistantEntityIds(ctx.organizationId, []);
+        expect(await db.getDataAssistantEntityIds(ctx.organizationId)).toEqual([]);
+      });
+
+      it("deleting an Entity removes its Records", async () => {
+        const entity = await orderEntity();
+        await db.upsertEntityRecords(entity.id, [
+          { key: "B-1", values: { order_id: "B-1", status: "open", total: 5 } },
+        ]);
+        await db.table("entities").delete(entity.id);
+        expect(await db.table("entities").get(entity.id)).toBeNull();
+        expect(await db.countEntityRecords(entity.id)).toBe(0);
+      });
+    });
+
+    describe("long-term memories (#664)", () => {
+      const subject = () => `entra-sub-${shortId()}`;
+      const memorySubject = (
+        subjectId: string,
+        organizationId = ctx.organizationId
+      ) => ({ organizationId, subjectId });
+
+      it("defaults the org toggle off and round-trips it", async () => {
+        expect(await db.getMemoryEnabled(ctx.organizationId)).toBe(false);
+        await db.setMemoryEnabled(ctx.organizationId, true);
+        expect(await db.getMemoryEnabled(ctx.organizationId)).toBe(true);
+        await db.setMemoryEnabled(ctx.organizationId, false);
+        expect(await db.getMemoryEnabled(ctx.organizationId)).toBe(false);
+      });
+
+      it("upserts memories with provenance, deduplicates on write, lists newest first", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "sso",
+          subjectId: "entra-sub-mem",
+        });
+        const subjectId = subject();
+        const first = await db.upsertMemories(memorySubject(subjectId), [
+          { text: "Prefers email over phone", embedding: null, conversationId: conversation.id },
+          { text: "Runs the Milan branch", embedding: null, conversationId: conversation.id },
+        ]);
+        expect(first).toBe(2);
+
+        // Exact-text dedupe: re-promoting the same fact writes nothing new,
+        // whether the duplicate is pre-existing or inside the same batch.
+        const second = await db.upsertMemories(memorySubject(subjectId), [
+          { text: "Prefers email over phone", embedding: null },
+          { text: "Speaks Italian", embedding: null },
+          { text: "Speaks Italian", embedding: null },
+        ]);
+        expect(second).toBe(1);
+
+        const listed = await db.listMemories(memorySubject(subjectId));
+        expect(listed).toHaveLength(3);
+        expect(listed[0].text).toBe("Speaks Italian"); // newest first
+        const withProvenance = listed.find((m) => m.text === "Runs the Milan branch");
+        expect(withProvenance?.conversationId).toBe(conversation.id);
+        expect(withProvenance?.subjectId).toBe(subjectId);
+        expect(withProvenance?.createdAt).toBeTruthy();
+      });
+
+      it("caps memories per subject by dropping the oldest", async () => {
+        const subjectId = subject();
+        const batch = (from: number, count: number) =>
+          Array.from({ length: count }, (_, i) => ({
+            text: `fact number ${from + i}`,
+            embedding: null,
+          }));
+        await db.upsertMemories(memorySubject(subjectId), batch(0, MEMORIES_PER_SUBJECT_CAP));
+        await db.upsertMemories(memorySubject(subjectId), batch(MEMORIES_PER_SUBJECT_CAP, 2));
+        const listed = await db.listMemories(memorySubject(subjectId));
+        expect(listed).toHaveLength(MEMORIES_PER_SUBJECT_CAP);
+        const texts = listed.map((m) => m.text);
+        expect(texts).toContain(`fact number ${MEMORIES_PER_SUBJECT_CAP + 1}`);
+        expect(texts).not.toContain("fact number 0");
+        expect(texts).not.toContain("fact number 1");
+      });
+
+      it("recalls semantically when embeddings are present (match path on both impls)", async () => {
+        // Orthogonal unit vectors in the platform's 1536-dim convention: the
+        // query leans toward axis 0, so the color memory must rank first —
+        // on the vector path (Supabase match_memories) and the lexical
+        // fallback (mock) alike, since the query keywords agree.
+        const axis = (i: number) => {
+          const v = new Array(1536).fill(0);
+          v[i] = 1;
+          return v;
+        };
+        const query = new Array(1536).fill(0);
+        query[0] = 0.9;
+        query[1] = 0.1;
+
+        const subjectId = subject();
+        await db.upsertMemories(memorySubject(subjectId), [
+          { text: "Favorite color is blue", embedding: axis(0) },
+          { text: "Allergic to peanuts", embedding: axis(1) },
+        ]);
+        const results = await db.searchMemories(memorySubject(subjectId), {
+          embedding: query,
+          text: "favorite color",
+          limit: 1,
+        });
+        expect(results).toHaveLength(1);
+        expect(results[0].text).toBe("Favorite color is blue");
+        expect(results[0].similarity).toBeGreaterThan(0);
+      });
+
+      it("scopes memories to organization and subject, searches lexically, deletes and wipes", async () => {
+        const mine = subject();
+        const other = subject();
+        const assistant = await newAssistant();
+        const sourceConversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "sso",
+          subjectId: mine,
+        });
+        await db.upsertMemories(memorySubject(mine), [
+          {
+            text: "Always ships orders to the Berlin warehouse",
+            embedding: null,
+            conversationId: sourceConversation.id,
+          },
+          { text: "Has a premium plan subscription", embedding: null },
+        ]);
+        await db.upsertMemories(memorySubject(other), [
+          { text: "Berlin warehouse is their favorite topic too", embedding: null },
+        ]);
+
+        // Another subject's memories never surface in list or search.
+        const results = await db.searchMemories(memorySubject(mine), {
+          embedding: null,
+          text: "berlin warehouse shipping",
+        });
+        expect(results.length).toBeGreaterThan(0);
+        expect(results[0].text).toBe("Always ships orders to the Berlin warehouse");
+        expect(
+          (await db.listMemories(memorySubject(other))).some((m) =>
+            m.text.startsWith("Always ships")
+          )
+        ).toBe(false);
+        // A foreign organization's scope sees nothing for the same subject key.
+        expect(
+          await db.listMemories(memorySubject(mine, ctx.foreignOrganizationId))
+        ).toHaveLength(0);
+
+        // Per-memory delete (erasure, one item).
+        const listed = await db.listMemories(memorySubject(mine));
+        await db.deleteMemory(listed[0].id);
+        expect(await db.listMemories(memorySubject(mine))).toHaveLength(1);
+
+        // Full wipe (erasure, whole subject) touches only that subject.
+        await db.deleteSubjectMemories(memorySubject(mine));
+        expect(await db.listMemories(memorySubject(mine))).toHaveLength(0);
+        expect(await db.listMemories(memorySubject(other))).toHaveLength(1);
+
+        // A queued extraction from a pre-erasure Conversation cannot
+        // recreate the deleted subject data after the wipe returns.
+        expect(
+          await db.upsertMemories(memorySubject(mine), [
+            {
+              text: "Always ships orders to the Berlin warehouse",
+              embedding: null,
+              conversationId: sourceConversation.id,
+            },
+          ])
+        ).toBe(0);
+        expect(await db.listMemories(memorySubject(mine))).toHaveLength(0);
+      });
+
+      it("lists memory subjects with counts and the latest SSO claim value (#666)", async () => {
+        const first = subject();
+        const second = subject();
+        await db.upsertMemories(memorySubject(first), [
+          { text: "Prefers pickup over delivery", embedding: null },
+          { text: "Contact hours are afternoons", embedding: null },
+        ]);
+        await db.upsertMemories(memorySubject(second), [
+          { text: "Renewed the annual plan", embedding: null },
+        ]);
+
+        // The claim value rides the subject's latest SSO conversation.
+        const assistant = await newAssistant();
+        await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "sso",
+          subjectId: first,
+          metadata: { ssoClaimName: "email", ssoClaimValue: "person@example.com" },
+        });
+
+        const subjects = await db.listMemorySubjects(ctx.organizationId);
+        const mine = subjects.find((s) => s.subjectId === first);
+        const theirs = subjects.find((s) => s.subjectId === second);
+        expect(mine).toMatchObject({
+          memoryCount: 2,
+          claimValue: "person@example.com",
+        });
+        expect(mine?.lastMemoryAt).toBeTruthy();
+        expect(theirs).toMatchObject({ memoryCount: 1, claimValue: null });
+
+        // Foreign organizations never see these subjects.
+        const foreign = await db.listMemorySubjects(ctx.foreignOrganizationId);
+        expect(foreign.some((s) => s.subjectId === first)).toBe(false);
+
+        // Wiping the subject removes its row entirely.
+        await db.deleteSubjectMemories(memorySubject(first));
+        const after = await db.listMemorySubjects(ctx.organizationId);
+        expect(after.some((s) => s.subjectId === first)).toBe(false);
+      });
+
+      it("serializes a whole-subject wipe against concurrent promotion writes", async () => {
+        const subjectId = subject();
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "sso",
+          subjectId,
+        });
+        const ref = memorySubject(subjectId);
+
+        await Promise.all([
+          db.upsertMemories(ref, [
+            {
+              text: "A promotion racing with erasure",
+              embedding: null,
+              conversationId: conversation.id,
+            },
+          ]),
+          db.deleteSubjectMemories(ref),
+        ]);
+
+        expect(await db.listMemories(ref)).toHaveLength(0);
+      });
+    });
+
     describe("graph learning support", () => {
       it("resolves the conversation a message belongs to", async () => {
         const assistant = await newAssistant();
@@ -1093,6 +1588,36 @@ export function describeDbContract(
           title: "contract",
           metadata: { browser: "Firefox", os: "macOS" },
         });
+
+      it("accepts SSO-signed subjects and keeps them apart from visitors (#662)", async () => {
+        const assistant = await newAssistant();
+        const ssoConversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "sso",
+          subjectId: "entra-sub-1",
+          title: "signed in",
+          metadata: { ssoClaimName: "email", ssoClaimValue: "person@example.com" },
+        });
+        expect(ssoConversation.subjectType).toBe("sso");
+
+        const stored = await db.getConversation(ssoConversation.id);
+        expect(stored?.subjectType).toBe("sso");
+        expect(stored?.metadata.ssoClaimName).toBe("email");
+        expect(stored?.metadata.ssoClaimValue).toBe("person@example.com");
+
+        // The same id under a different subject type is a different subject:
+        // history queries never mix the two.
+        await newConversation(assistant.id);
+        const ssoList = await db.listConversations(
+          assistant.id,
+          "sso",
+          "entra-sub-1"
+        );
+        expect(ssoList.map((c) => c.id)).toEqual([ssoConversation.id]);
+        expect(
+          await db.listConversations(assistant.id, "visitor", "entra-sub-1")
+        ).toEqual([]);
+      });
 
       it("shallow-merges metadata patches", async () => {
         const assistant = await newAssistant();
@@ -2077,6 +2602,7 @@ export function describeDbContract(
           improvement_proposal: true,
           graph_search: true,
           graph_cognify: true,
+          memory_extract: true,
         };
         const stages = Object.keys(allStages) as AiUsageStage[];
         await db.recordAiUsage(

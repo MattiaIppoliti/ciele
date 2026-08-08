@@ -1,12 +1,19 @@
 "use client";
 
-import { MessageSquareText, SquarePen } from "lucide-react";
+import { Brain, MessageSquareText, SquarePen, Trash2 } from "lucide-react";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 
 export interface WidgetConversationSummary {
   id: string;
   title: string;
   updatedAt: string;
+}
+
+/** One remembered fact shown in the Memory folder (#666). */
+export interface WidgetMemory {
+  id: string;
+  text: string;
+  createdAt: string;
 }
 
 /** "Today" / "Yesterday" / "07 Jul 2025" — matches the editor preview. */
@@ -41,11 +48,20 @@ export function WidgetHistory({
   activeId,
   onSelect,
   onNewChat,
+  memoryFolder,
 }: {
   conversations: WidgetConversationSummary[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  /**
+   * The Memory folder (#666): present only for SSO-signed users of an org
+   * with long-term memory on — anonymous visitors never receive one.
+   */
+  memoryFolder?: {
+    memories: WidgetMemory[];
+    onDelete: (id: string) => void;
+  } | null;
 }) {
   const sorted = [...conversations].sort((a, b) =>
     a.updatedAt > b.updatedAt ? -1 : 1
@@ -100,6 +116,38 @@ export function WidgetHistory({
             // sidebar component has no prop to turn its rename menu off).
             className='w-full [&_button[aria-label^="Actions for"]]:hidden'
           />
+        )}
+        {memoryFolder && (
+          <div className="mt-4">
+            <div className="bg-border mx-4 h-px" />
+            <p className="text-muted-foreground flex items-center gap-2 px-4 pt-4 pb-1.5 text-sm">
+              <Brain className="size-4" /> Memory
+            </p>
+            {memoryFolder.memories.length === 0 ? (
+              <p className="text-muted-foreground px-4 py-2 text-sm">
+                Nothing remembered yet.
+              </p>
+            ) : (
+              <ul>
+                {memoryFolder.memories.map((memory) => (
+                  <li
+                    key={memory.id}
+                    className="group flex items-start justify-between gap-3 px-4 py-2 text-[15px]"
+                  >
+                    <span className="min-w-0">{memory.text}</span>
+                    <button
+                      type="button"
+                      onClick={() => memoryFolder.onDelete(memory.id)}
+                      aria-label="Forget this"
+                      className="text-muted-foreground hover:text-destructive shrink-0 pt-0.5 opacity-60 transition-opacity group-hover:opacity-100"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
       <div className="flex justify-center border-t px-4 py-3">

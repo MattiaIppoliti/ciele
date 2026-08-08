@@ -227,7 +227,13 @@ const queryApiSpec: RuntimeToolSpec = {
         query: input.query as Record<string, string | number | boolean>,
         body: input.body,
       },
-      ctx.signal
+      ctx.signal,
+      ctx.toolSubject?.type === "sso" && ctx.toolSubject.subjectId
+        ? {
+            subjectId: ctx.toolSubject.subjectId,
+            claimValue: ctx.toolSubject.claimValue,
+          }
+        : undefined
     );
 
     // A refusal or a transport failure: no status to report, so the model gets

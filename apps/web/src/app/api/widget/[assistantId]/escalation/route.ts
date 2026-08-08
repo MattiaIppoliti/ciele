@@ -3,7 +3,11 @@ import {
   escalateConversation,
   type EscalationRequest,
 } from "@/lib/escalation";
-import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
+import {
+  resolveWidgetContext,
+  widgetOptions,
+  widgetSubject,
+} from "@/lib/widget-db";
 
 /**
  * Widget escalation surface — a thin adapter over `escalateConversation`
@@ -26,11 +30,19 @@ export async function POST(
   if (ctx instanceof Response) return ctx;
   const { db, assistantId, publication, cors } = ctx;
 
+  const body = (await request.json()) as EscalationRequest;
   const outcome = await escalateConversation({
     db,
     assistantId,
     assistant: publication.config.assistant,
-    request: (await request.json()) as EscalationRequest,
+    request: body,
+    // Gate-resolved subject (#662): an SSO-signed user escalates as their
+    // verified subject; anonymous traffic keeps the visitor-id rule.
+    subject: widgetSubject(
+      request,
+      publication.config.assistant.organizationId,
+      (body.visitorId ?? "").trim()
+    ),
   });
 
   switch (outcome.kind) {

@@ -137,8 +137,9 @@ export async function handleSsoCallback(
   if (!provider || !loaded) return failure(returnTo);
 
   let subjectId: string;
+  let identityClaimValue: string | undefined;
   try {
-    ({ subjectId } = await provider.handleCallback(
+    ({ subjectId, identityClaimValue } = await provider.handleCallback(
       loaded.credentials,
       { code, state },
       {
@@ -153,6 +154,11 @@ export async function handleSsoCallback(
     throw err;
   }
 
+  // The claim rides the gate only under its configured name (#662): value
+  // without a still-configured name is dropped, keeping the cookie coherent
+  // with the connection's current settings.
+  const claimName = loaded.credentials.config.identityClaim;
+
   const response = new NextResponse(resultPage(true, returnTo), {
     headers: HTML_HEADERS,
   });
@@ -162,6 +168,9 @@ export async function handleSsoCallback(
       organizationId: txn.organizationId,
       subjectId,
       provider: kind,
+      ...(claimName && identityClaimValue
+        ? { claim: { name: claimName, value: identityClaimValue } }
+        : {}),
       exp: Math.floor(Date.now() / 1000) + SSO_GATE_MAX_AGE,
     }),
     gateCookieOptions

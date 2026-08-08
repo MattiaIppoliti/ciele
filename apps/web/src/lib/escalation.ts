@@ -20,7 +20,7 @@ import {
   missingRequiredFields,
   visibleFormFields,
 } from "./escalation-desks";
-import { visitorOwnsConversation } from "./widget-db";
+import { subjectOwnsConversation, type SubjectRef } from "./widget-db";
 
 /**
  * The "a Visitor escalates a Conversation" transaction, owned in one place
@@ -44,6 +44,13 @@ export interface EscalationRequest {
   channelId?: string;
   fields?: Record<string, string>;
 }
+
+/**
+ * The resolved widget subject (#662), computed by the route from the sealed
+ * SSO gate cookie (never from the request body). When absent, ownership
+ * falls back to the anonymous-visitor rule over `visitorId`.
+ */
+export type EscalationSubject = SubjectRef;
 
 /** What happened, for the route to map 1:1 onto HTTP statuses. */
 export type EscalationOutcome =
@@ -70,6 +77,8 @@ export async function escalateConversation(input: {
   /** The Publication-snapshot assistant (org ownership, email context). */
   assistant: Pick<Assistant, "organizationId" | "title">;
   request: EscalationRequest;
+  /** Gate-resolved subject; defaults to the anonymous visitor (#662). */
+  subject?: EscalationSubject;
   /** Injectable so tests observe the composed email; defaults to the runtime transport. */
   transport?: EmailTransport;
   /** Injectable so tests observe the endpoint call; defaults to the runtime egress. */
@@ -84,10 +93,12 @@ export async function escalateConversation(input: {
     input.endpointTransport ?? sendEscalationApiRequest;
 
   const visitorId = (input.request.visitorId ?? "").trim();
+  const subject: EscalationSubject =
+    input.subject ?? { type: "visitor", id: visitorId };
   const conversationId = (input.request.conversationId ?? "").trim();
   const helpDeskId = (input.request.helpDeskId ?? "").trim();
   const channelId = (input.request.channelId ?? "").trim();
-  if (!visitorId || !helpDeskId || (!conversationId && !channelId)) {
+  if (!subject.id || !helpDeskId || (!conversationId && !channelId)) {
     return { kind: "bad_request" };
   }
 
@@ -96,7 +107,7 @@ export async function escalateConversation(input: {
     : null;
   if (
     conversationId &&
-    !visitorOwnsConversation(conversation, assistantId, visitorId)
+    !subjectOwnsConversation(conversation, assistantId, subject)
   ) {
     return { kind: "not_found" };
   }

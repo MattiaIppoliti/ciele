@@ -84,6 +84,17 @@ export { feedbackScore, forwardGraphFeedback, runGraphLearning } from "./graph-f
 export { enqueueDraftProposalJob, runDueProposalJobs } from "./jobs";
 export { draftImprovementProposal } from "./improvement-proposal";
 
+// Long-term memory promotion (#664) — the cron backstop draining
+// `promote_memories` jobs enqueued when SSO conversations go quiet.
+export { runDueMemoryPromotionJobs } from "./jobs";
+// Synced Record ingestion (#670): enqueue ("sync now" + the cron sweep's
+// due-scan) and the cron drain for the sync_entity_records job kind.
+export {
+  enqueueDueEntitySyncs,
+  enqueueEntitySyncJob,
+  runDueEntitySyncJobs,
+} from "./jobs";
+
 // Which crawler providers the current environment can run — drives the admin
 // Website Source crawler picker (e.g. Crawl4AI is only offered when its worker
 // is configured). Never carries the underlying credentials.

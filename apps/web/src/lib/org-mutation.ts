@@ -68,6 +68,10 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
       return [{ path: `/improvements/${entity.id}` }];
     case "inbox":
       return [{ path: "/inbox" }];
+    case "dataEntities":
+      return [{ path: "/settings/data" }];
+    case "dataAssistant":
+      return [{ path: "/data-assistant" }];
   }
 }
 

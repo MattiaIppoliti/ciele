@@ -42,6 +42,7 @@ function stubDb(overrides: Partial<Db>): Db {
     claimDueRecrawlSources: vi.fn().mockResolvedValue([]),
     claimProcessingCrawlSources: vi.fn().mockResolvedValue([]),
     claimBackgroundJobs: vi.fn().mockResolvedValue([]),
+    listDueEntitySyncConfigs: vi.fn().mockResolvedValue([]),
     ...overrides,
   } as unknown as Db;
 }
@@ -195,6 +196,8 @@ describe("finalizeDueCrawls", () => {
       jobs: NO_JOBS,
       graphSync: NO_JOBS,
       proposals: NO_JOBS,
+      memories: NO_JOBS,
+      entitySyncs: { ...NO_JOBS, enqueued: 0 },
       crawls: { swept: CRAWL_FINALIZE_BATCH_SIZE, settled: 0 },
     });
   });

@@ -32,4 +32,8 @@ export type MutatedEntity =
   /** One Improvement's detail page. */
   | { kind: "improvement"; id: string }
   /** The conversation Inbox. */
-  | { kind: "inbox" };
+  | { kind: "inbox" }
+  /** The org Entities + Records data page (#663). */
+  | { kind: "dataEntities" }
+  /** The org-staff data assistant page (#668). */
+  | { kind: "dataAssistant" };

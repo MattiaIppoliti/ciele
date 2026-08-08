@@ -21,6 +21,10 @@ import type {
   ConceptFrontmatter,
   Conversation,
   ConversationMetadata,
+  EntityRecord,
+  EntityRecordValue,
+  EntitySyncConfig,
+  EntitySyncRun,
   ExportJob,
   Flow,
   FlowAction,
@@ -53,6 +57,7 @@ import type {
   LocalConnectorPairing,
   LocalInferenceJob,
   Member,
+  Memory,
   OrgApiKey,
   OrgApiKeyInput,
   OrganizationPatch,
@@ -95,6 +100,8 @@ import {
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
   isProactiveMessage,
+  MEMORIES_PER_SUBJECT_CAP,
+  monotonicNow,
   normalizeChannelAvailability,
   shortId,
   sortFlows,
@@ -109,7 +116,7 @@ import {
   type DbTableName,
   type DbTableRow,
 } from "./table-access";
-
+import { entityRecordValuesEqual } from "./entity-records";
 import type { Db } from "./types";
 
 interface AssistantRow {
@@ -286,6 +293,92 @@ function toSkill(row: SkillRow): Skill {
     prompt: row.prompt ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
+interface MemoryRow {
+  id: string;
+  organization_id: string;
+  subject_id: string;
+  text: string;
+  conversation_id: string | null;
+  created_at: string;
+}
+
+function toMemory(row: MemoryRow): Memory {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    subjectId: row.subject_id,
+    text: row.text,
+    conversationId: row.conversation_id ?? null,
+    createdAt: row.created_at,
+  };
+}
+
+interface EntityRecordRow {
+  id: string;
+  entity_id: string;
+  record_key: string;
+  values: Record<string, EntityRecordValue>;
+  created_at: string;
+  updated_at: string;
+}
+
+function toEntityRecord(row: EntityRecordRow): EntityRecord {
+  return {
+    id: row.id,
+    entityId: row.entity_id,
+    key: row.record_key,
+    values: row.values ?? {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
+  };
+}
+
+interface EntitySyncConfigRow {
+  entity_id: string;
+  url: string;
+  sealed_headers: string | null;
+  cadence_hours: number;
+  prune: boolean;
+  mapping: Record<string, string> | null;
+  last_synced_at: string | null;
+}
+
+function toEntitySyncConfig(row: EntitySyncConfigRow): EntitySyncConfig {
+  return {
+    entityId: row.entity_id,
+    url: row.url,
+    sealedHeaders: row.sealed_headers,
+    cadenceHours: row.cadence_hours,
+    prune: row.prune,
+    mapping: row.mapping ?? {},
+    lastSyncedAt: row.last_synced_at,
+  };
+}
+
+interface EntitySyncRunRow {
+  id: string;
+  entity_id: string;
+  status: "succeeded" | "failed";
+  upserted: number;
+  pruned: number;
+  rejected: string[] | null;
+  error: string | null;
+  finished_at: string;
+}
+
+function toEntitySyncRun(row: EntitySyncRunRow): EntitySyncRun {
+  return {
+    id: row.id,
+    entityId: row.entity_id,
+    status: row.status,
+    upserted: row.upserted,
+    pruned: row.pruned,
+    rejected: row.rejected ?? [],
+    error: row.error,
+    finishedAt: row.finished_at,
   };
 }
 
@@ -4165,6 +4258,438 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         }))
       );
       if (error) throw error;
+    },
+
+    // --- Entities + Records (#663) ---------------------------------------
+
+    async upsertEntityRecords(entityId, rows) {
+      if (rows.length === 0) return 0;
+      // Manual upsert (select → update/insert) instead of ON CONFLICT: the
+      // update path must never rewrite the row id, and chunked IN-filters
+      // keep statements bounded for large imports.
+      const CHUNK = 200;
+      const now = new Date().toISOString();
+      let written = 0;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const chunk = rows.slice(i, i + CHUNK);
+        const keys = chunk.map((r) => r.key);
+        const { data: existing, error: readError } = await client
+          .from("entity_records")
+          .select("id, record_key, values")
+          .eq("entity_id", entityId)
+          .in("record_key", keys);
+        if (readError) throw readError;
+        const byKey = new Map(
+          (existing as Array<{
+            id: string;
+            record_key: string;
+            values: Record<string, EntityRecordValue>;
+          }>).map((r) => [
+            r.record_key,
+            r,
+          ])
+        );
+        for (const row of chunk) {
+          const existingRow = byKey.get(row.key);
+          if (existingRow) {
+            if (entityRecordValuesEqual(existingRow.values, row.values)) continue;
+            const { error } = await client
+              .from("entity_records")
+              .update({ values: row.values, updated_at: now })
+              .eq("id", existingRow.id);
+            if (error) throw error;
+          } else {
+            const { error } = await client.from("entity_records").insert({
+              id: shortId(),
+              entity_id: entityId,
+              record_key: row.key,
+              values: row.values,
+            });
+            if (error) throw error;
+          }
+          written += 1;
+        }
+      }
+      return written;
+    },
+
+    async listEntityRecords(entityId, opts) {
+      const limit = opts?.limit ?? 50;
+      const offset = opts?.offset ?? 0;
+      const { data, error } = await client
+        .from("entity_records")
+        .select()
+        .eq("entity_id", entityId)
+        .order("record_key", { ascending: true })
+        .range(offset, offset + limit - 1);
+      if (error) throw error;
+      return (data as EntityRecordRow[]).map(toEntityRecord);
+    },
+
+    async countEntityRecords(entityId) {
+      const { count, error } = await client
+        .from("entity_records")
+        .select("id", { count: "exact", head: true })
+        .eq("entity_id", entityId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+
+    async queryEntityRecords(entityId, query) {
+      const { data, error } = await client.rpc("query_entity_records", {
+        p_entity_id: entityId,
+        p_filters: query.filters ?? {},
+        p_search: query.search?.trim() || null,
+        p_limit: query.limit ?? 20,
+      });
+      if (error) throw error;
+      return (data as EntityRecordRow[]).map(toEntityRecord);
+    },
+
+    // --- Long-term memories (#664) ---------------------------------------
+
+    async getMemoryEnabled(organizationId) {
+      const { data, error } = await client
+        .from("organizations")
+        .select("memory_enabled")
+        .eq("id", organizationId)
+        .maybeSingle();
+      if (error) throw error;
+      return Boolean((data as { memory_enabled?: boolean } | null)?.memory_enabled);
+    },
+
+    async setMemoryEnabled(organizationId, enabled) {
+      const { error } = await client
+        .from("organizations")
+        .update({ memory_enabled: enabled })
+        .eq("id", organizationId);
+      if (error) throw error;
+    },
+
+    async upsertMemories(subject, items) {
+      const { organizationId, subjectId } = subject;
+      const { data: existingRows, error: existingError } = await client
+        .from("memories")
+        .select("text")
+        .eq("organization_id", organizationId)
+        .eq("subject_id", subjectId);
+      if (existingError) throw existingError;
+      const existing = new Set(
+        (existingRows as Array<{ text: string }>).map((r) => r.text)
+      );
+
+      // Explicit monotonic created_at stamps keep intra-batch order
+      // deterministic for newest-first listing and drop-oldest capping.
+      const rows: Array<Record<string, unknown>> = [];
+      for (const item of items) {
+        const text = item.text.trim();
+        if (!text || existing.has(text)) continue;
+        existing.add(text);
+        rows.push({
+          id: shortId(),
+          organization_id: organizationId,
+          subject_id: subjectId,
+          text,
+          embedding: item.embedding,
+          conversation_id: item.conversationId ?? null,
+          created_at: new Date(monotonicNow()).toISOString(),
+        });
+      }
+      let inserted = 0;
+      if (rows.length > 0) {
+        const { data, error } = await client
+          .from("memories")
+          .insert(rows)
+          .select("id");
+        if (error) throw error;
+        inserted = data?.length ?? 0;
+      }
+
+      // Cap enforcement: drop the oldest rows beyond the per-subject cap.
+      const { data: overflow, error: overflowError } = await client
+        .from("memories")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("subject_id", subjectId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(MEMORIES_PER_SUBJECT_CAP, MEMORIES_PER_SUBJECT_CAP + 999);
+      if (overflowError) throw overflowError;
+      const staleIds = (overflow as Array<{ id: string }>).map((r) => r.id);
+      if (staleIds.length > 0) {
+        const { error } = await client.from("memories").delete().in("id", staleIds);
+        if (error) throw error;
+      }
+      return inserted;
+    },
+
+    async listMemories({ organizationId, subjectId }) {
+      const { data, error } = await client
+        .from("memories")
+        .select("id, organization_id, subject_id, text, conversation_id, created_at")
+        .eq("organization_id", organizationId)
+        .eq("subject_id", subjectId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false });
+      if (error) throw error;
+      return (data as MemoryRow[]).map(toMemory);
+    },
+
+    async deleteMemory(id) {
+      const { error } = await client.from("memories").delete().eq("id", id);
+      if (error) throw error;
+    },
+
+    // --- Synced Record ingestion (#670) ---------------------------------
+
+    async getEntitySyncConfig(entityId) {
+      const { data, error } = await client
+        .from("entity_sync_configs")
+        .select("*")
+        .eq("entity_id", entityId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toEntitySyncConfig(data as EntitySyncConfigRow) : null;
+    },
+
+    async upsertEntitySyncConfig(entityId, input) {
+      const { data, error } = await client
+        .from("entity_sync_configs")
+        .upsert(
+          {
+            entity_id: entityId,
+            url: input.url,
+            sealed_headers: input.sealedHeaders ?? null,
+            cadence_hours: input.cadenceHours,
+            prune: input.prune,
+            mapping: input.mapping,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "entity_id" }
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      return toEntitySyncConfig(data as EntitySyncConfigRow);
+    },
+
+    async deleteEntitySyncConfig(entityId) {
+      const { error } = await client
+        .from("entity_sync_configs")
+        .delete()
+        .eq("entity_id", entityId);
+      if (error) throw error;
+    },
+
+    async markEntitySynced(entityId, at) {
+      const { error } = await client
+        .from("entity_sync_configs")
+        .update({ last_synced_at: at })
+        .eq("entity_id", entityId);
+      if (error) throw error;
+    },
+
+    async listDueEntitySyncConfigs(now) {
+      const { data, error } = await client
+        .from("entity_sync_configs")
+        .select("entity_id, cadence_hours, last_synced_at, entities!inner(organization_id)");
+      if (error) throw error;
+      const due: Array<{ entityId: string; organizationId: string }> = [];
+      for (const row of data as unknown as Array<{
+        entity_id: string;
+        cadence_hours: number;
+        last_synced_at: string | null;
+        entities: { organization_id: string };
+      }>) {
+        if (row.last_synced_at) {
+          const nextAt =
+            new Date(row.last_synced_at).getTime() + row.cadence_hours * 3_600_000;
+          if (nextAt > new Date(now).getTime()) continue;
+        }
+        due.push({
+          entityId: row.entity_id,
+          organizationId: row.entities.organization_id,
+        });
+      }
+      return due;
+    },
+
+    async recordEntitySyncRun(entityId, run) {
+      const { data, error } = await client
+        .from("entity_sync_runs")
+        .insert({
+          id: shortId(),
+          entity_id: entityId,
+          status: run.status,
+          upserted: run.upserted,
+          pruned: run.pruned,
+          rejected: run.rejected,
+          error: run.error ?? null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return toEntitySyncRun(data as EntitySyncRunRow);
+    },
+
+    async listEntitySyncRuns(entityId, limit = 20) {
+      const { data, error } = await client
+        .from("entity_sync_runs")
+        .select("*")
+        .eq("entity_id", entityId)
+        .order("finished_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data as EntitySyncRunRow[]).map(toEntitySyncRun);
+    },
+
+    async pruneEntityRecords(entityId, seenKeys) {
+      const { data: rows, error: listError } = await client
+        .from("entity_records")
+        .select("id, record_key")
+        .eq("entity_id", entityId);
+      if (listError) throw listError;
+      const seen = new Set(seenKeys);
+      const stale = (rows as Array<{ id: string; record_key: string }>)
+        .filter((r) => !seen.has(r.record_key))
+        .map((r) => r.id);
+      if (stale.length > 0) {
+        const { error } = await client
+          .from("entity_records")
+          .delete()
+          .in("id", stale);
+        if (error) throw error;
+      }
+      return stale.length;
+    },
+
+    async getDataAssistantEntityIds(organizationId) {
+      const { data, error } = await client
+        .from("organizations")
+        .select("data_assistant_entities")
+        .eq("id", organizationId)
+        .maybeSingle();
+      if (error) throw error;
+      const ids = (data as { data_assistant_entities?: unknown } | null)
+        ?.data_assistant_entities;
+      return Array.isArray(ids) ? ids.filter((v): v is string => typeof v === "string") : [];
+    },
+
+    async setDataAssistantEntityIds(organizationId, entityIds) {
+      const { error } = await client
+        .from("organizations")
+        .update({ data_assistant_entities: entityIds })
+        .eq("id", organizationId);
+      if (error) throw error;
+    },
+
+    async listMemorySubjects(organizationId) {
+      const { data, error } = await client
+        .from("memories")
+        .select("subject_id, created_at")
+        .eq("organization_id", organizationId);
+      if (error) throw error;
+      const bySubject = new Map<string, { count: number; last: string }>();
+      for (const row of data as Array<{ subject_id: string; created_at: string }>) {
+        const entry = bySubject.get(row.subject_id);
+        if (!entry) {
+          bySubject.set(row.subject_id, { count: 1, last: row.created_at });
+        } else {
+          entry.count += 1;
+          if (row.created_at > entry.last) entry.last = row.created_at;
+        }
+      }
+      if (bySubject.size === 0) return [];
+
+      // Latest SSO conversation per subject carries the identity-claim value.
+      const { data: convRows, error: convError } = await client
+        .from("conversations")
+        .select("subject_id, metadata, created_at, assistants!inner(organization_id)")
+        .eq("assistants.organization_id", organizationId)
+        .eq("subject_type", "sso")
+        .in("subject_id", [...bySubject.keys()])
+        .order("created_at", { ascending: false });
+      if (convError) throw convError;
+      const claims = new Map<string, string>();
+      for (const row of convRows as Array<{
+        subject_id: string;
+        metadata: ConversationMetadata | null;
+      }>) {
+        if (claims.has(row.subject_id)) continue;
+        const value = row.metadata?.ssoClaimValue;
+        if (value) claims.set(row.subject_id, value);
+      }
+
+      return [...bySubject.entries()]
+        .map(([subjectId, entry]) => ({
+          subjectId,
+          claimValue: claims.get(subjectId) ?? null,
+          memoryCount: entry.count,
+          lastMemoryAt: entry.last,
+        }))
+        .sort((a, b) => (a.lastMemoryAt > b.lastMemoryAt ? -1 : 1));
+    },
+
+    async deleteSubjectMemories({ organizationId, subjectId }) {
+      const { error } = await client.rpc("erase_subject_memories", {
+        p_organization_id: organizationId,
+        p_subject_id: subjectId,
+      });
+      if (error) throw error;
+    },
+
+    async searchMemories({ organizationId, subjectId }, query) {
+      const limit = query.limit ?? 5;
+      let rows: Array<{ id: string; text: string; similarity: number }> = [];
+
+      // Lexical search: also the safety net for vector search, since memories
+      // written while no embedding key was configured have NULL embeddings
+      // and are invisible to match_memories.
+      const lexicalSearch = async (): Promise<typeof rows> => {
+        const tokens = query.text
+          .toLowerCase()
+          .split(/[^\p{L}\p{N}]+/u)
+          .filter((t) => t.length > 2)
+          .slice(0, 5);
+        if (tokens.length === 0) return [];
+        const { data, error } = await client
+          .from("memories")
+          .select("id, text")
+          .eq("organization_id", organizationId)
+          .eq("subject_id", subjectId)
+          .or(tokens.map((t) => `text.ilike.%${t}%`).join(","))
+          .limit(limit);
+        if (error) throw error;
+        return (data as Array<{ id: string; text: string }>).map((r) => ({
+          id: r.id,
+          text: r.text,
+          similarity: 0.5,
+        }));
+      };
+
+      if (query.embedding) {
+        const { data, error } = await client.rpc("match_memories", {
+          p_organization_id: organizationId,
+          p_subject_id: subjectId,
+          p_query_embedding: query.embedding,
+          p_match_count: limit,
+        });
+        if (error) throw error;
+        rows = data as typeof rows;
+        if (rows.length < limit) {
+          const seen = new Set(rows.map((r) => r.id));
+          for (const row of await lexicalSearch()) {
+            if (rows.length >= limit) break;
+            if (seen.has(row.id)) continue;
+            seen.add(row.id);
+            rows.push(row);
+          }
+        }
+      } else {
+        rows = await lexicalSearch();
+      }
+      return rows;
     },
 
     // --- Generic table access (ADR-0016) --------------------------------

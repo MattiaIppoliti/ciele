@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { AssistantTools, BuiltInToolName, Skill } from "@agent-hub/core";
-import { Globe, Pencil, Plus, Trash2 } from "lucide-react";
+import type { AssistantTools, BuiltInToolName, Entity, Skill } from "@agent-hub/core";
+import { Database, Globe, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
   createSkillAction,
@@ -85,6 +85,7 @@ export function ToolsClient({
   skills: initialSkills,
   attachedSkillIds,
   integration,
+  entities = [],
   canEdit,
 }: {
   assistantId: string;
@@ -93,6 +94,7 @@ export function ToolsClient({
   attachedSkillIds: string[];
   /** The assistant's API integration, credential redacted (spec #559). */
   integration: ApiIntegrationView | null;
+  entities?: Entity[];
   canEdit: boolean;
 }) {
   const [tools, setTools] = useState<AssistantTools>(initialTools);
@@ -121,6 +123,19 @@ export function ToolsClient({
         builtIns: { ...latestTools.current.builtIns, [name]: on },
       },
       `${name} ${on ? "enabled" : "disabled"}`
+    );
+  }
+
+  function toggleEntity(entity: Entity, on: boolean) {
+    const current = latestTools.current.entities ?? [];
+    saveTools(
+      {
+        ...latestTools.current,
+        entities: on
+          ? [...current, entity.id]
+          : current.filter((id) => id !== entity.id),
+      },
+      `"${entity.name}" ${on ? "enabled" : "disabled"} for this assistant`
     );
   }
 
@@ -225,6 +240,40 @@ export function ToolsClient({
         integration={integration}
         canEdit={canEdit}
       />
+
+      <section>
+        <h2 className="text-lg font-semibold">Data</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Selected Entity schemas generate Record lookup tools. The schema set
+          freezes when published while Record values stay live.
+        </p>
+        <div className="mt-4 space-y-2">
+          {entities.length === 0 && (
+            <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
+              No Entities yet — create one in Settings → Data.
+            </p>
+          )}
+          {entities.map((entity) => (
+            <label
+              key={entity.id}
+              className="flex items-center gap-3 rounded-lg border px-4 py-3"
+            >
+              <Checkbox
+                checked={(tools.entities ?? []).includes(entity.id)}
+                disabled={!canEdit}
+                onCheckedChange={(on) => toggleEntity(entity, on === true)}
+              />
+              <Database className="text-muted-foreground size-4 shrink-0" />
+              <span className="min-w-0">
+                <span className="block font-medium">{entity.name}</span>
+                <span className="text-muted-foreground block truncate text-xs">
+                  {entity.description || entity.attributes.map((a) => a.label).join(", ")}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </section>
 
       {/* Skills */}
       <section>

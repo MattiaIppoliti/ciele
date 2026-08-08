@@ -32,6 +32,7 @@ import { colorizeOverview } from "@agent-hub/core";
 const MIGRATION_URLS = [
   "../../../../supabase/migrations/20260709205905_insights_sql_reporting.sql",
   "../../../../supabase/migrations/20260729110000_insights_proactive_notifications.sql",
+  "../../../../supabase/migrations/20260808121000_insights_exclude_member.sql",
 ].map((path) => new URL(path, import.meta.url));
 
 // Minimal schema: the columns get_insights_overview touches, nothing else.
@@ -49,6 +50,7 @@ create table public.knowledge_collections (
 create table public.conversations (
   id text primary key,
   assistant_id text not null,
+  subject_type text not null default 'visitor',
   subject_id text,
   created_at timestamptz not null,
   metadata jsonb not null default '{}'::jsonb
@@ -88,6 +90,8 @@ export interface SeedAssistant {
 export interface SeedConversation {
   id: string;
   assistantId: string;
+  /** Defaults to "visitor"; "member" rows must be excluded (#668). */
+  subjectType?: string;
   subjectId: string;
   createdAt: string;
   metadata: ConversationMetadata;
@@ -162,8 +166,8 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
     }
     for (const c of seed.conversations) {
       await db.query(
-        "insert into public.conversations (id, assistant_id, subject_id, created_at, metadata) values ($1, $2, $3, $4, $5)",
-        [c.id, c.assistantId, c.subjectId, c.createdAt, JSON.stringify(c.metadata)]
+        "insert into public.conversations (id, assistant_id, subject_type, subject_id, created_at, metadata) values ($1, $2, $3, $4, $5, $6)",
+        [c.id, c.assistantId, c.subjectType ?? "visitor", c.subjectId, c.createdAt, JSON.stringify(c.metadata)]
       );
     }
     for (const m of seed.messages) {
