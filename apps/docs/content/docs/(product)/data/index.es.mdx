@@ -1,0 +1,69 @@
+---
+title: Datos y memoria
+description: Basa las respuestas en Registros estructurados y recuerda a los Visitantes que han iniciado sesión en todas las Conversaciones.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Brain, Database } from 'lucide-react';
+
+Ciele puede combinar los Registros de la Organización con datos duraderos sobre
+los Visitantes que han iniciado sesión. Estas funciones utilizan la identidad
+verificada y permanecen bajo el control de la Organización.
+
+<Mermaid
+  title="Cómo los datos estructurados y la memoria a largo plazo llegan a un Asistente"
+  chart={`
+flowchart TB
+  subgraph SETUP["Admin setup"]
+    ID["Entra subject<br/>optional identity claim"]
+    DATA["Entity schema<br/>CSV Records"]
+    SELECT["Select Entity<br/>in Tools & Skills"]
+  end
+  PUB["Publish the tool set"]
+  subgraph TURN["Signed-in Widget turn"]
+    SHARED["Shared lookup<br/>or text search"]
+    SCOPED["User-scoped lookup<br/>server identity filter"]
+    TRACE["Thinking and Inbox<br/>show tool calls"]
+  end
+  subgraph MEMORY["Long-term memory"]
+    QUIET["Conversation stays quiet"]
+    PROMOTE["Extract and store<br/>durable facts"]
+    RECALL["Next Conversation<br/>recalls relevant facts"]
+  end
+  DATA --> SELECT
+  SELECT --> PUB
+  PUB --> SHARED
+  PUB --> SCOPED
+  ID --> SCOPED
+  SHARED --> TRACE
+  SCOPED --> TRACE
+  TRACE --> QUIET
+  QUIET --> PROMOTE
+  PROMOTE --> RECALL
+`}
+/>
+
+La Publicación controla qué herramientas de Entidad existen. Los valores de los
+registros permanecen activos, por lo que una importación posterior de CSV puede
+cambiar las respuestas sin necesidad de otra publicación.
+
+Los filtros de identidad se aplican en el servidor. Un modelo no puede
+seleccionar la identidad de otro Visitante ni eliminar el filtro.
+
+<Cards>
+  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
+  <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
+</Cards>
+
+## Dos tipos de memoria
+
+**Session memory** pertenece a una Conversación. No sigue a un Visitante a una
+nueva Conversación.
+
+**Long-term memory** pertenece a un sujeto SSO verificado dentro de una
+Organización. Puede admitir Conversaciones posteriores cuando la Organización lo
+habilite.
+
+<Callout title="Signed-in Visitors only">
+Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+</Callout>

@@ -1,6 +1,6 @@
 {
   "title": "Dokumentation",
-  "description": "Erstellen und betreiben Sie Ihre Assistenten",
+  "description": "Erstellen und starten Sie Ihre Assistenten",
   "icon": "BookOpen",
   "root": true,
   "pages": [
@@ -11,6 +11,7 @@
     "---Erstellen Sie einen Assistenten---",
     "assistants",
     "knowledge",
+    "data",
     "flows",
     "---Verbinden Sie ihn---",
     "help-desks",

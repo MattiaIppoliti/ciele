@@ -1,6 +1,6 @@
 ---
 title: Procesos en segundo plano
-description: Habilita los servicios opcionales de rastreo para la recuperación de grafos y la renderización de JavaScript.
+description: Habilita los servicios opcionales de recuperación de grafos y de rastreo con renderización de JavaScript.
 ---
 
 La pila predeterminada no inicia el perfil `workers`. La búsqueda y la ingesta
@@ -38,3 +38,19 @@ docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
 ```
 
 No expongas los puertos de los trabajadores ni los tokens a la red pública.
+
+## Trabajos de memoria a largo plazo
+
+La memoria a largo plazo utiliza el registro de trabajos duraderos integrado. No
+requiere el perfil opcional `workers`.
+
+Cada turno conectado programa un trabajo `promote_memories` después de una
+ventana de inactividad de 15 minutos. El perfil `cron` drena estos trabajos a
+través de la ruta programada existente.
+
+Mantén `cron` en `COMPOSE_PROFILES` cuando la memoria a largo plazo esté
+habilitada. La configuración predeterminada de autoalojamiento ya lo incluye.
+
+El trabajo omite la extracción cuando la memoria está desactivada o cuando se
+agota el presupuesto diario de tokens. También se omite cuando no existe una
+conexión de modelo adecuada.

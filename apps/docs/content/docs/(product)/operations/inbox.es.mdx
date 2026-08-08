@@ -4,7 +4,7 @@ description: Inspecciona conversaciones, fuentes, trazas de tiempo de ejecución
 ---
 
 La bandeja de entrada almacena los turnos del visitante y del asistente. Abre
-una conversación para inspeccionar la transcripción exacta almacenada.
+una conversación para revisar la transcripción exacta que se ha guardado.
 
 ## Lista de conversaciones
 
@@ -25,17 +25,20 @@ La vista detallada puede mostrar:
 - Comentarios de los visitantes
 - estado de escalada
 - metadatos de lanzamiento y de dispositivo
-- información de Thinking almacenada cuando el rol del miembro permite el acceso
+- el sujeto SSO verificado y la notificación de identidad configurada
+- información de Thinking almacenada cuando el rol de miembro permite el acceso
 
-Las acciones de Mensaje literal y las respuestas Básicas no contienen un rastro
-de Pensamiento. Las respuestas de conocimiento de búsqueda pueden contener
-eventos de herramienta y de progreso.
+Las acciones de Verbatim Message y las respuestas Basic no contienen un rastro
+de Thinking. Las respuestas de búsqueda de conocimiento pueden contener eventos
+de herramienta y de progreso.
+
+Las herramientas de Entidad generada también aparecen en el seguimiento. Sus
+eventos muestran qué datos activos de la Organización respaldaron la respuesta.
 
 ## Crea un trabajo de calidad
 
-Utiliza la acción de Mejora disponible cuando sea necesario corregir una
-respuesta. El nuevo elemento enlaza de nuevo con el mensaje de la conversación
-afectado.
+Utiliza la acción de mejora disponible cuando sea necesario corregir una
+respuesta. El nuevo elemento enlaza con el mensaje de la conversación afectado.
 
 Utiliza [Exports](/operations/exports) cuando necesites registros estructurados
 fuera de la bandeja de entrada.

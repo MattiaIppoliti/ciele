@@ -5,22 +5,27 @@ description: Comprendi l'attuale invio dei trigger, il routing del flusso, le co
 
 ## Percorso del messaggio
 
-```mermaid
+<Mermaid
+  title="Come un messaggio di un Visitatore raggiunge le parti di risposta memorizzate"
+  chart={`
 flowchart TB
   MSG["Visitor message"]
   CAND["Enabled candidate Flows"]
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
+  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> ACTIONS
+  CLASSIFY --> CONTEXT
+  CONTEXT --> ACTIONS
   ACTIONS --> PARTS
-```
+`}
+/>
 
 `messageFlowCandidates` fornisce candidati a entrambi i motori di routing.
 Questo limite impedisce che le condizioni oggettive producano risultati di
@@ -29,11 +34,31 @@ routing diversi.
 Il contesto della conversazione fornisce esempi semantici per la
 classificazione. Non funge da gate booleano indipendente.
 
+## Contesto legato all'identità
+
+Un gate SSO Widget valido fornisce un soggetto con ambito Organization. Un claim
+verificato facoltativo può corrispondere ai record di entità nell'ambito
+dell'utente.
+
+Le Entità selezionate producono strumenti generati di filtro e ricerca testuale.
+Gli strumenti con ambito utente omettono l'attributo identity dall'input rivolto
+al modello.
+
+Il server aggiunge il filtro di identità verificata dopo aver convalidato
+l'input dello strumento. Il modello non può ometterlo o sovrascriverlo.
+
+Al primo turno di una nuova Conversazione, il runtime può inserire fino a cinque
+memorie a lungo termine pertinenti. Uno strumento di ricerca integrato nella
+memoria consente il richiamo successivo.
+
+Entrambi i percorsi di memoria richiedono l'attivazione dell'opzione
+Organizzazione e un soggetto SSO verificato.
+
 ## Scorciatoia di cortesia
 
 Il flusso di interazione di base integrato può gestire un breve messaggio di
-cortesia prima della classificazione dell'intento. Un Flow personalizzato idoneo
-precedente ha comunque la priorità.
+cortesia prima della classificazione dell'intento. Un flusso personalizzato
+idoneo precedente ha comunque la priorità.
 
 La scorciatoia non si attiva dopo una domanda dell'Assistente o per un messaggio
 che contiene una richiesta di informazioni.
@@ -58,8 +83,8 @@ Follow-up generati e percorsi di raccomandazione supportati.
 ## Passaggio di consegne
 
 Handover carica un Assistente di destinazione pubblicato nella stessa
-Organizzazione. Esegue il messaggio del Visitatore attraverso quell'Assistente
-di destinazione una sola volta.
+Organizzazione. Esegue il messaggio del Visitatore attraverso quell'obiettivo
+una volta.
 
 L'esecuzione di destinazione ignora un altro passaggio di consegne. Questa
 regola impedisce una catena di Assistenti illimitata.

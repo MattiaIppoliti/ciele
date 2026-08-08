@@ -1,0 +1,101 @@
+---
+title: Langzeitgedächtnis
+description: Speichert dauerhafte Fakten für angemeldete Besucher und löscht sie bei Bedarf.
+---
+
+Das Langzeitgedächtnis überträgt dauerhafte Fakten in spätere Konversationen.
+Dies funktioniert nur für Besucher, die über das SSO-Gate des Widgets angemeldet
+sind.
+
+Die Funktion ist standardmäßig deaktiviert. Anonyme Besucher erzeugen oder rufen
+niemals Langzeitgedächtnisse ab.
+
+## Langzeitgedächtnis aktivieren
+
+1. Öffnen Sie **Settings**.
+2. Wählen Sie **AI Providers** aus.
+3. Suchen Sie **Long-term memory**.
+4. Aktivieren Sie **Remember signed-in users across conversations**.
+
+Die Organisation benötigt eine funktionierende Provider-Verbindung. Die
+Speicherextraktion verwendet das Classifier-Tier-Modell und wird auf das
+tägliche KI-Budget angerechnet.
+
+## Was Ciele sich merkt
+
+Ciele fördert explizite Fakten, die auch nach der aktuellen Konversation
+nützlich bleiben können. Beispiele hierfür sind eine Kontaktpräferenz oder eine
+Daueranweisung.
+
+Der Extraktor vermeidet einmalige Anfragen, Fragen, Vermutungen und Aussagen,
+die nur vom Assistenten gemacht werden. Viele Gespräche führen zu keinen
+dauerhaften Fakten.
+
+Jede gespeicherte Erinnerung behält den Verweis auf ihre ursprüngliche
+Konversation. Exakte Duplikate von Fakten werden während der Speicherung
+entfernt.
+
+Ein angemeldeter Besucher kann bis zu 200 Erinnerungen speichern. Neue
+Schreibvorgänge entfernen die ältesten Fakten, sobald diese Grenze erreicht ist.
+
+## Heraufstufen und Abrufen
+
+<Mermaid
+  title="Der Lebenszyklus von Promote und Recall"
+  chart={`
+flowchart TB
+  TURN["Signed-in Conversation"]
+  QUIET["15 minutes without a new message"]
+  JOB["Durable promote_memories job"]
+  GATE["Check toggle, subject, model, and budget"]
+  STORE["Extract, embed, deduplicate, and store"]
+  NEXT["First turn of a later Conversation"]
+  PROMPT["Inject up to five relevant memories"]
+  TOOL["searchMemories handles later recall"]
+  TURN --> QUIET
+  QUIET --> JOB
+  JOB --> GATE
+  GATE --> STORE
+  STORE --> NEXT
+  NEXT --> PROMPT
+  PROMPT --> TOOL
+`}
+/>
+
+Ein Heraufstufungsauftrag wartet, bis die Konversation 15 Minuten lang ruhig
+bleibt. Eine neuere Nachricht ersetzt einen älteren ausstehenden Auftrag.
+
+Der erste Beitrag einer späteren Konversation kann bis zu fünf relevante
+Erinnerungen erhalten. Die Laufzeitumgebung kann später die Erinnerungen
+desselben Subjekts durchsuchen.
+
+Recall überschreitet niemals die Grenzen einer Organisation oder eines
+SSO-Benutzers.
+
+## Ermöglichen Sie einem Besucher, Erinnerungen einzusehen und zu löschen
+
+Ein angemeldeter Besucher kann das Widget-Verlaufsfenster öffnen. Der Ordner
+**Memory** wird angezeigt, wenn der Langzeitspeicher aktiviert ist.
+
+Der Ordner listet die gespeicherten Fakten für diesen Besucher auf. Wählen Sie
+das Lösch-Steuerelement neben einer Tatsache aus, um sie zu vergessen.
+
+Durch das Löschen wird die Tatsache aus zukünftigen Prompt-Abrufen und
+Speichersuchen entfernt.
+
+## Bearbeitung einer Löschanfrage
+
+1. Öffnen Sie **Settings**.
+2. Wählen Sie **AI Providers**.
+3. Suchen Sie nach **Remembered users**.
+4. Suchen Sie nach Benutzer-ID oder Identitätsanspruch.
+5. Überprüfen Sie die gespeicherten Fakten.
+6. Löschen Sie einen Speicher oder wählen Sie **Delete all memories for this
+   user**.
+
+Ein vollständiges Löschen erfolgt sofort. Organisationsmitglieder können
+Speicher nur innerhalb ihrer Organisation verwalten.
+
+<Callout title="Disabling and deleting are different">
+Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.
+</Callout>

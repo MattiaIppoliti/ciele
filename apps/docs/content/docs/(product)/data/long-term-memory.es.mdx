@@ -1,0 +1,100 @@
+---
+title: Memoria a largo plazo
+description: Recuerda datos duraderos de los visitantes que han iniciado sesión y los borra cuando es necesario.
+---
+
+La memoria a largo plazo lleva datos duraderos a las conversaciones posteriores.
+Solo funciona para los visitantes que han iniciado sesión a través de la puerta
+SSO del widget.
+
+La función está desactivada de forma predeterminada. Los visitantes anónimos
+nunca generan ni recuperan recuerdos a largo plazo.
+
+## Habilita la memoria a largo plazo
+
+1. Abre **Settings**.
+2. Selecciona **AI Providers**.
+3. Busca **Long-term memory**.
+4. Habilita **Remember signed-in users across conversations**.
+
+La organización necesita una conexión de proveedor que funcione. La extracción
+de memoria utiliza el modelo de niveles de clasificadores y se descuenta del
+presupuesto diario de IA.
+
+## Lo que Ciele recuerda
+
+Ciele promueve hechos explícitos que pueden seguir siendo útiles después de la
+conversación actual. Por ejemplo, una preferencia de contacto o una instrucción
+permanente.
+
+El extractor evita las solicitudes puntuales, las preguntas, las conjeturas y
+las afirmaciones realizadas únicamente por el Asistente. Muchas conversaciones
+no generan hechos duraderos.
+
+Cada recuerdo almacenado conserva la procedencia de su conversación de origen.
+Los hechos duplicados exactos se eliminan durante el almacenamiento.
+
+Un Visitante que haya iniciado sesión puede almacenar hasta 200 recuerdos. Las
+nuevas escrituras eliminan los hechos más antiguos una vez alcanzado ese límite.
+
+## Promoción y recuperación
+
+<Mermaid
+  title="El ciclo de vida de promoción y recuperación"
+  chart={`
+flowchart TB
+  TURN["Signed-in Conversation"]
+  QUIET["15 minutes without a new message"]
+  JOB["Durable promote_memories job"]
+  GATE["Check toggle, subject, model, and budget"]
+  STORE["Extract, embed, deduplicate, and store"]
+  NEXT["First turn of a later Conversation"]
+  PROMPT["Inject up to five relevant memories"]
+  TOOL["searchMemories handles later recall"]
+  TURN --> QUIET
+  QUIET --> JOB
+  JOB --> GATE
+  GATE --> STORE
+  STORE --> NEXT
+  NEXT --> PROMPT
+  PROMPT --> TOOL
+`}
+/>
+
+Una tarea de promoción espera hasta que la conversación permanezca en silencio
+durante 15 minutos. Un mensaje más reciente reemplaza a una tarea pendiente más
+antigua.
+
+El primer turno de una Conversación posterior puede recibir hasta cinco
+recuerdos relevantes. El tiempo de ejecución puede buscar en las memorias del
+mismo sujeto más adelante.
+
+Recall nunca traspasa los límites de una organización o de un sujeto SSO.
+
+## Permite que un visitante inspeccione y elimine recuerdos
+
+Un Visitante que haya iniciado sesión puede abrir el panel de historial del
+Widget. La carpeta **Memory** aparece cuando la memoria a largo plazo está
+habilitada.
+
+La carpeta enumera los hechos recordados para ese Visitante. Selecciona el
+control de eliminación junto a un hecho para olvidarlo.
+
+Al eliminarlo, el dato deja de aparecer en futuras recuperaciones de
+indicaciones y búsquedas en la memoria.
+
+## Gestionar una solicitud de supresión
+
+1. Abre **Settings**.
+2. Selecciona **AI Providers**.
+3. Busca **Remembered users**.
+4. Busca por ID de usuario o por notificación de identidad.
+5. Revisa los datos almacenados.
+6. Elimina una memoria o selecciona **Delete all memories for this user**.
+
+El borrado completo es inmediato. Los miembros de la organización solo pueden
+gestionar memorias dentro de su organización.
+
+<Callout title="Disabling and deleting are different">
+Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.
+</Callout>

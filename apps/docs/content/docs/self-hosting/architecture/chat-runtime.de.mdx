@@ -5,22 +5,27 @@ description: Verstehen Sie den aktuellen Trigger-Dispatch, das Flow-Routing, die
 
 ## Nachrichtenpfad
 
-```mermaid
+<Mermaid
+  title="Wie eine Besuchernachricht gespeicherte Antwortteile erreicht"
+  chart={`
 flowchart TB
   MSG["Visitor message"]
   CAND["Enabled candidate Flows"]
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
+  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> ACTIONS
+  CLASSIFY --> CONTEXT
+  CONTEXT --> ACTIONS
   ACTIONS --> PARTS
-```
+`}
+/>
 
 `messageFlowCandidates` liefert Kandidaten an beide Routing-Engines. Diese
 Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen
@@ -29,11 +34,32 @@ Router-Ergebnissen führen.
 Der Konversationskontext liefert semantische Beispiele für die Klassifizierung.
 Es fungiert nicht als unabhängiges Boolesches Gate.
 
+## Identitätsgebundener Kontext
+
+Ein gültiges Widget-SSO-Gate liefert ein Subjekt im Bereich der Organisation.
+Ein optionaler verifizierter Anspruch kann mit Entity Records auf Benutzerebene
+übereinstimmen.
+
+Ausgewählte Entitäten erzeugen generierte Filter- und Textsuchwerkzeuge. Tools
+im Benutzerbereich lassen das Attribut „identity“ in der modellseitigen Eingabe
+weg.
+
+Der Server fügt den Filter für die verifizierte Identität hinzu, nachdem er die
+Eingabe des Tools validiert hat. Das Modell kann ihn weder auslassen noch
+überschreiben.
+
+Beim ersten Zug einer neuen Konversation kann die Laufzeitumgebung bis zu fünf
+relevante Langzeiterinnerungen einspeisen. Ein integriertes Speichersuchwerkzeug
+ermöglicht den späteren Abruf.
+
+Für beide Speicherpfade sind der Schalter „Organization“ und ein verifizierter
+SSO-Benutzer erforderlich.
+
 ## Höflichkeits-Shortcut
 
 Der integrierte Basic Interaction Flow kann eine kurze, reine
-Höflichkeitsnachricht vor der Intent Classification verarbeiten. Ein früherer
-berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
+Höflichkeitsnachricht verarbeiten, bevor die Intent Classification erfolgt. Ein
+früherer berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
 
 Die Verknüpfung wird nicht aktiviert, wenn der Assistent eine Frage stellt oder
 wenn eine Nachricht eine Informationsanfrage enthält.
@@ -43,8 +69,8 @@ wenn eine Nachricht eine Informationsanfrage enthält.
 Die Einbettung meldet Seitenlade-, Verweilzeit- und Chat-Öffnungsereignisse. Der
 Server validiert den konfigurierten Trigger und den Zustellstatus.
 
-Ein proaktiver Flow enthält eine Notification-Aktion und keine Bedingungen. Die
-Aktion gibt konfigurierten Inhalt ohne Modellaufruf aus.
+Ein proaktiver Flow enthält eine Benachrichtigungsaktion und keine Bedingungen.
+Die Aktion gibt konfigurierten Inhalt ohne Modellaufruf aus.
 
 ## Ausführung von Aktionen
 

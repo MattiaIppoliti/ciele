@@ -30,7 +30,7 @@ docker compose -f deploy/docker-compose.yml up -d
 Die beiden optionalen Worker können etwa 8 GiB Speicher benötigen. Messen Sie
 die tatsächliche Nutzung auf Ihrem ausgewählten Host.
 
-## Überprüfenster Worker
+## Überprüfen Sie den Status des Workers
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps
@@ -39,3 +39,19 @@ docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
 
 Stellen Sie Worker-Ports oder -Token nicht dem öffentlichen Netzwerk zur
 Verfügung.
+
+## Langzeitspeicher-Jobs
+
+Long-term Memory verwendet das integrierte dauerhafte Job-Ledger. Das optionale
+Profil `workers` ist nicht erforderlich.
+
+Jeder angemeldete Turn plant nach einem 15-minütigen Ruhefenster einen
+`promote_memories`-Job. Das `cron`-Profil leitet diese Jobs über die bestehende
+geplante Route weiter.
+
+Behalten Sie `cron` in `COMPOSE_PROFILES` bei, wenn der Langzeitspeicher
+aktiviert ist. Die standardmäßige Self-Host-Konfiguration enthält dies bereits.
+
+Der Job überspringt die Extraktion, wenn der Speicher deaktiviert ist oder das
+tägliche Token-Budget aufgebraucht ist. Er wird auch übersprungen, wenn keine
+geeignete Modellverbindung vorhanden ist.

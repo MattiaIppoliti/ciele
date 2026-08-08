@@ -8,13 +8,15 @@ description: Verstehen Sie die Beziehungen zwischen Hauptmandant, Konfiguration,
 Eine Organisation ist der primäre Mandant. Mitglieder treten einer Organisation
 mit einer Rolle bei.
 
-Zu den Datensätzen im Besitz der Organisation gehören Assistenten, Helpdesks,
-Provider-Verbindungen, API-Schlüssel, Skills, Verbesserungen, Ziele, Warnungen
-und Nutzungsdatensätze.
+Zu den Datensätzen im Besitz der Organisation gehören Assistenten, Entitäten,
+Speicher, Helpdesks, Provider-Verbindungen, API-Schlüssel, Skills,
+Verbesserungen, Ziele, Warnungen und Nutzungsdatensätze.
 
 ## Konfiguration des Assistenten
 
-```mermaid
+<Mermaid
+  title="Die Beziehungen zwischen Hauptmandant und Laufzeit"
+  chart={`
 erDiagram
   ORGANIZATION ||--o{ ASSISTANT : owns
   ASSISTANT ||--o{ FLOW : routes
@@ -24,7 +26,12 @@ erDiagram
   SOURCE ||--o{ CONCEPT : produces
   ASSISTANT ||--o{ CONVERSATION : serves
   CONVERSATION ||--o{ MESSAGE : stores
-```
+  ORGANIZATION ||--o{ ENTITY : defines
+  ENTITY ||--o{ RECORD : contains
+  ORGANIZATION ||--o{ MEMORY : isolates
+  CONVERSATION ||--o{ MEMORY : originates
+`}
+/>
 
 Eine Veröffentlichung speichert einen unveränderlichen Snapshot der
 Assistenten-Konfiguration. Entwurfsdatensätze bleiben nach der Veröffentlichung
@@ -33,6 +40,14 @@ bearbeitbar.
 Ein Flow speichert einen Trigger, eine Bedingungskonfiguration und geordnete
 Aktionen. Die Laufzeitvalidierung erzwingt gültige Trigger-Aktions-Paare.
 
+Ein Assistant wählt Entity-Schemata für seine nächste Veröffentlichung aus. Der
+Schema-Snapshot steuert die generierten Tools, während jede Abfrage die
+aktuellen Datensätze ausliest.
+
+Gemeinsam genutzte Entitäten stellen allgemeine Organisationsdaten bereit.
+Entitäten im Benutzerbereich benennen ein Identitätsattribut für die
+servergebundene Filterung.
+
 ## Gesprächsdaten
 
 Eine Konversation gehört zum bedienenden Assistenten und verfolgt eine
@@ -40,7 +55,14 @@ Besuchersitzung. In Messages werden typisierte Teile für Text, Zitate,
 Schaltflächen, Traces und andere Antworten gespeichert.
 
 Der Sitzungsstatus zeichnet auch die Zustellung proaktiver Benachrichtigungen
-auf. Eine Benachrichtigung erzeugt keine Besuchernachricht.
+auf. Eine Benachrichtigung erstellt keine Besuchernachricht.
+
+Langzeit-Speicher gehören zu einer Organisation und zu einem verifizierten
+SSO-Subjekt. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
+Zeitstempel und die Herkunft der Quell-Konversation.
+
+Die Laufzeit begrenzt jedes Subjekt auf 200 Speicher. Durch das Löschen wird ein
+Fakt aus der zukünftigen Prompt-Einfügung und aus Speichersuchen entfernt.
 
 ## Programmatische Anmeldeinformationen
 

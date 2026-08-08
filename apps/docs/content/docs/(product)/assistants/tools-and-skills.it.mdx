@@ -10,20 +10,40 @@ funzionalità di runtime e le istruzioni riutilizzabili.
 
 | Strumento | Predefinito | Comportamento attuale |
 | --- | :---: | --- |
-| Cerca nella Knowledge Base | Attivo | Cerca nella Knowledge Base collegata e restituisce le risposte citate. |
+| Cerca nella conoscenza | Attivo | Cerca nella Conoscenza connessa e restituisce le risposte citate. |
 | Memoria di sessione | Attiva | Utilizza le informazioni della sessione di conversazione corrente. |
 | Recupera URL | Disattivato | Legge un URL quando il runtime seleziona lo strumento. |
 
 La ricerca nella Knowledge Base è sempre disponibile. Puoi abilitare o
 disabilitare gli altri strumenti integrati.
 
-## Configura un'integrazione API
+## Collega i dati strutturati
 
-Un Assistente può utilizzare un'integrazione API registrata. L'integrazione
-contiene un URL di base, una credenziale protetta ed endpoint descritti.
+La sezione **Data** elenca le Entità importate tramite **Settings → Data**.
+Seleziona ogni Entità che questo Assistente può interrogare.
 
-Per ogni endpoint, definisci il metodo, il percorso, lo scopo, i parametri e il
-formato della risposta. Il runtime convalida ogni percorso richiesto rispetto a
+Ogni Entità selezionata fornisce uno strumento di filtro esatto. Un'Entità con
+attributi di testo fornisce anche uno strumento di ricerca per parole chiave.
+
+Le Entità condivise sono disponibili per ogni Visitatore servito
+dall'Assistente. Le Entità con ambito utente richiedono una
+[dichiarazione di identità](/authentication/microsoft-entra-id#choose-an-identity-claim)
+verificata.
+
+La selezione dell'Entità e lo schema entrano nel successivo snapshot della
+Pubblicazione. Il contenuto del record rimane attivo dopo la pubblicazione.
+
+Consulta [Entities and Records](/data/entities-and-records) per le importazioni
+CSV, le scelte di ambito e il filtro delle identità.
+
+## Configura un'integintegrazione API
+
+Un Assistente può utilizzare una sola integrazione API registrata.
+L'integrazione contiene un URL di base, una credenziale protetta ed endpoint
+descritti.
+
+Per ogni endpoint, definisci il metodo, il percorso, lo scopo, i parametri e la
+forma della risposta. Il runtime convalida ogni percorso richiesto rispetto a
 questo catalogo.
 
 L'agente può ispezionare i dettagli dell'endpoint prima di inviare una
@@ -42,13 +62,17 @@ associare la stessa Skill a più Assistenti.
 1. Apri **Tools & Skills**.
 2. Trova la Skill dell'Organizzazione richiesta.
 3. Associa la Skill all'Assistente.
-4. Verifica il risultato in Anteprima.
+4. Prova il risultato in Anteprima.
 5. Pubblica l'Assistente quando il risultato è corretto.
 
 Le modifiche alle competenze sono immediatamente disponibili in Anteprima. Il
-widget pubblicato utilizza l'ultima istantanea di pubblicazione.
+Widget pubblicato utilizza l'ultima istantanea della Pubblicazione.
 
 ## Prova la configurazione
 
-Poni una domanda che richieda l'utilizzo di ogni strumento abilitato. Controlla
-il pannello Thinking e le Sources prima di pubblicare.
+Poni una domanda che richieda ciascuno strumento abilitato. Controlla il
+pannello Thinking e le Sources prima di pubblicare.
+
+Per i dati strutturati, prova una ricerca esatta per attributo e una ricerca
+testuale. Verifica l'accesso con ambito utente utilizzando due diversi account
+connessi.

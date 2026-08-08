@@ -4,7 +4,7 @@ description: Abilita i servizi opzionali di recupero dei grafi e di crawling con
 ---
 
 Lo stack predefinito non avvia il profilo `workers`. La ricerca e l'ingestione
-di siti web continuano con funzionalità ridotte.
+dei siti web continuano con funzionalità ridotte.
 
 Senza il graph worker, Knowledge utilizza il recupero vettoriale e lessicale.
 Senza Crawl4AI, Ciele utilizza il suo crawler di recupero integrato.
@@ -37,4 +37,20 @@ docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
 ```
 
-Non esporre le porte dei worker o i token alla rete pubblica.
+Non esporre le porte o i token dei worker alla rete pubblica.
+
+## Job di memoria a lungo termine
+
+La memoria a lungo termine utilizza il registro dei job durevoli integrato. Non
+richiede il profilo opzionale `workers`.
+
+Ogni turno connesso pianifica un job `promote_memories` dopo una finestra di
+inattività di 15 minuti. Il profilo `cron` scarica questi lavori attraverso il
+percorso pianificato esistente.
+
+Mantieni `cron` in `COMPOSE_PROFILES` quando la memoria a lungo termine è
+abilitata. La configurazione self-host predefinita lo include già.
+
+Il job salta l'estrazione quando la memoria è disabilitata o il budget
+giornaliero di token è esaurito. Viene saltato anche quando non esiste una
+connessione al modello adatta.

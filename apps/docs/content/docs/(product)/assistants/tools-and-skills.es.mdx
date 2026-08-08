@@ -17,6 +17,28 @@ capacidades de tiempo de ejecución y las instrucciones reutilizables.
 La búsqueda en Knowledge siempre está disponible. Puedes activar o desactivar
 las demás herramientas integradas.
 
+## Conectar datos estructurados
+
+La sección **Data** enumera las Entidades importadas a través de **Settings →
+Data**. Selecciona cada Entidad que este Asistente pueda consultar.
+
+Cada Entidad seleccionada proporciona una herramienta de filtro exacto. Una
+Entidad con atributos de texto también proporciona una herramienta de búsqueda
+por palabras clave.
+
+Las Entidades compartidas están disponibles para todos los Visitantes atendidos
+por el Asistente. Las Entidades con ámbito de usuario requieren una
+[declaración de identidad](/authentication/microsoft-entra-id#choose-an-identity-claim)
+verificada.
+
+La selección de Entidad y el esquema pasan a la siguiente instantánea de
+Publicación. El contenido del registro permanece activo después de la
+publicación.
+
+Consulta [Entidades y registros](/data/entities-and-records) para obtener
+información sobre las importaciones de CSV, las opciones de ámbito y el filtrado
+de identidad.
+
 ## Configura una integración de API
 
 Un Asistente puede usar una integración de API registrada. La integración
@@ -41,14 +63,18 @@ asignar la misma Habilidad a varios Asistentes.
 
 1. Abre **Tools & Skills**.
 2. Busca la habilidad de organización necesaria.
-3. Asigna la Skill al Asistente.
+3. Asigna la Habilidad al Asistente.
 4. Prueba el resultado en Vista previa.
 5. Publica el Asistente cuando el resultado sea correcto.
 
 Los cambios en las habilidades están disponibles en Vista previa de inmediato.
-El widget publicado utiliza la última instantánea de publicación.
+El widget publicado utiliza la última instantánea de la publicación.
 
 ## Prueba la configuración
 
 Haz una pregunta que requiera cada herramienta habilitada. Revisa el panel
 Pensamiento y las Fuentes antes de publicar.
+
+Para datos estructurados, prueba una búsqueda exacta de atributos y una búsqueda
+de texto. Prueba el acceso con ámbito de usuario con dos cuentas diferentes con
+sesión iniciada.

@@ -1,26 +1,31 @@
 ---
 title: Exécution du chat
-description: Comprendre le déclenchement actuel, le routage du flux, les conditions et les actions ordonnées.
+description: Comprendre l'envoi actuel du déclencheur, le routage du flux, les conditions et les actions ordonnées.
 ---
 
 ## Chemin du message
 
-```mermaid
+<Mermaid
+  title="Comment un message Visiteur parvient aux éléments de réponse stockés"
+  chart={`
 flowchart TB
   MSG["Visitor message"]
   CAND["Enabled candidate Flows"]
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
+  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> ACTIONS
+  CLASSIFY --> CONTEXT
+  CONTEXT --> ACTIONS
   ACTIONS --> PARTS
-```
+`}
+/>
 
 `messageFlowCandidates` fournit des candidats aux deux moteurs de routage. Cette
 limite empêche les conditions objectives de produire des résultats de routage
@@ -29,10 +34,30 @@ différents.
 Le contexte de la conversation fournit des exemples sémantiques à la
 classification. Il ne fonctionne pas comme une porte booléenne indépendante.
 
+## Contexte lié à l'identité
+
+Une passerelle SSO Widget valide fournit un sujet au niveau de l'organisation.
+Une revendication vérifiée facultative peut correspondre à des enregistrements
+d'entité au niveau de l'utilisateur.
+
+Les Entités sélectionnées produisent des outils générés de filtrage et de
+recherche textuelle. Les outils au niveau de l'utilisateur omettent l'attribut
+d'identité de l'entrée destinée au modèle.
+
+Le serveur ajoute le filtre d'identité vérifiée après avoir validé l'entrée de
+l'outil. Le modèle ne peut ni l'omettre ni le remplacer.
+
+Au premier tour d'une nouvelle conversation, le moteur d'exécution peut injecter
+jusqu'à cinq souvenirs à long terme pertinents. Un outil de recherche intégré
+dans la mémoire permet le rappel ultérieur.
+
+Les deux chemins de mémoire nécessitent l'activation de l'option Organisation et
+un sujet SSO vérifié.
+
 ## Raccourci de courtoisie
 
 Le flux d'interaction de base intégré peut gérer un court message de courtoisie
-avant la classification des intentions. Un flux personnalisé éligible antérieur
+avant la classification de l'intention. Un flux personnalisé éligible antérieur
 reste prioritaire.
 
 Le raccourci ne s'active pas après une question de l'Assistant ou pour un

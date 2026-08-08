@@ -1,6 +1,6 @@
 ---
 title: Boîte de réception
-description: Examinez les conversations, les sources, les traces d'exécution et les métadonnées de session.
+description: Inspectez les conversations, les sources, les traces d'exécution et les métadonnées de session.
 ---
 
 La boîte de réception stocke les interventions du visiteur et de l'assistant.
@@ -10,7 +10,7 @@ enregistrée.
 ## Liste des conversations
 
 Utilisez la recherche et les filtres disponibles pour affiner la liste. Chaque
-ligne indique l'activité récente et l'état actuel de la conversation.
+ligne identifie l'activité récente et l'état actuel de la conversation.
 
 Une session qui ne contient que des notifications proactives est marquée du
 symbole **Notification only**. Elle devient une Conversation normale dès qu'un
@@ -26,11 +26,17 @@ La vue détaillée peut afficher :
 - Commentaires des visiteurs
 - état de remontée
 - métadonnées de lancement et de l'appareil
+- le sujet SSO vérifié et la revendication d'identité configurée
 - informations Thinking stockées lorsque le rôle du membre autorise l'accès
 
 Les actions de type Verbatim Message et les réponses de type Basic ne
 contiennent pas de trace Thinking. Les réponses de la recherche dans la base de
-connaissances peuvent contenir des événements d'outil et de progression.
+connaissances peuvent contenir des événements relatifs aux outils et à la
+progression.
+
+Les outils Generated Entity apparaissent également dans la trace. Leurs
+événements indiquent quelles données d'organisation en direct ont servi de
+support à la réponse.
 
 ## Créez un travail de qualité
 

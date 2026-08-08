@@ -1,26 +1,31 @@
 ---
 title: Entorno de ejecución del chat
-description: Comprende el envío actual de los disparadores, el enrutamiento de Flow, las condiciones y las acciones ordenadas.
+description: Comprende el envío actual del desencadenante, el enrutamiento del flujo, las condiciones y las acciones ordenadas.
 ---
 
 ## Ruta del mensaje
 
-```mermaid
+<Mermaid
+  title="Cómo llega un mensaje de visitante a las partes de respuesta almacenadas"
+  chart={`
 flowchart TB
   MSG["Visitor message"]
   CAND["Enabled candidate Flows"]
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
+  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> ACTIONS
+  CLASSIFY --> CONTEXT
+  CONTEXT --> ACTIONS
   ACTIONS --> PARTS
-```
+`}
+/>
 
 `messageFlowCandidates` proporciona candidatos a ambos motores de enrutamiento.
 Este límite evita que las condiciones objetivas produzcan resultados de
@@ -28,6 +33,26 @@ enrutamiento diferentes.
 
 El contexto de la conversación proporciona ejemplos semánticos para la
 clasificación. No actúa como una puerta booleana independiente.
+
+## Contexto vinculado a la identidad
+
+Una puerta SSO de widget válida proporciona un sujeto con ámbito de
+organización. Una afirmación verificada opcional puede coincidir con los
+registros de entidad con ámbito de usuario.
+
+Las Entidades seleccionadas producen herramientas generadas de filtro y búsqueda
+de texto. Las herramientas con ámbito de usuario omiten el atributo de identidad
+de la entrada orientada al modelo.
+
+El servidor añade el filtro de identidad verificada después de validar la
+entrada de la herramienta. El modelo no puede omitirlo ni anularlo.
+
+En el primer turno de una nueva conversación, el entorno de ejecución puede
+inyectar hasta cinco recuerdos relevantes a largo plazo. Una herramienta de
+búsqueda de memoria integrada se encarga de la recuperación posterior.
+
+Ambas rutas de memoria requieren el conmutador Organización y un sujeto SSO
+verificado.
 
 ## Atajo de cortesía
 
@@ -61,5 +86,5 @@ compatibles.
 Handover carga un Asistente de destino publicado en la misma Organización.
 Ejecuta el mensaje del visitante a través de ese destino una vez.
 
-La ejecución de destino ignora otro traspaso. Esta regla evita una cadena de
-Asistentes ilimitada.
+La ejecución de destino ignora otro traspaso. Esta regla evita una cadena
+ilimitada de Asistentes.

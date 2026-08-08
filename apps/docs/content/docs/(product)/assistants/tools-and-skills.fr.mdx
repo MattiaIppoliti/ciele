@@ -17,6 +17,25 @@ les capacités d'exécution et les instructions réutilisables.
 La recherche dans la base de connaissances est toujours disponible. Vous pouvez
 activer ou désactiver les autres outils intégrés.
 
+## Connecter des données structurées
+
+La section **Data** répertorie les Entités importées via **Settings → Data**.
+Sélectionnez chaque Entité que cet Assistant peut interroger.
+
+Chaque entité sélectionnée fournit un outil de filtrage exact. Une entité avec
+des attributs de texte fournit également un outil de recherche par mot-clé.
+
+Les Entités partagées sont disponibles pour chaque Visiteur pris en charge par
+l'Assistant. Les Entités à portée utilisateur nécessitent une
+[revendication d'identité](/authentication/microsoft-entra-id#choose-an-identity-claim)
+vérifiée.
+
+La sélection d'entité et le schéma sont intégrés au prochain instantané de
+publication. Le contenu de l'enregistrement reste actif après la publication.
+
+Consultez [Entités et enregistrements](/data/entities-and-records) pour les
+importations CSV, les choix de portée et le filtrage d'identité.
+
 ## Configurez une intégration d'API
 
 Un Assistant peut utiliser une intégration d'API enregistrée. L'intégration
@@ -51,5 +70,9 @@ l'aperçu. Le widget publié utilise le dernier instantané de publication.
 
 ## Testez la configuration
 
-Posez une question qui nécessite chacun des outils activés. Examinez le panneau
-Raisonnement et les Sources avant de publier.
+Posez une question qui nécessite chacun des outils activés. Vérifiez le panneau
+Pensée et les Sources avant de publier.
+
+Pour les données structurées, testez une recherche exacte d'attribut et une
+recherche textuelle. Testez l'accès au niveau de l'utilisateur avec deux comptes
+connectés différents.

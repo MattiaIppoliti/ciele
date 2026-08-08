@@ -1,6 +1,6 @@
 ---
 title: Tools und Fähigkeiten
-description: Steuern Sie Runtime-Tools und fügen Sie einem Assistenten wiederverwendbare Anweisungen hinzu.
+description: Steuern Sie Runtime-Tools und fügen Sie einem Assistant wiederverwendbare Anweisungen hinzu.
 ---
 
 Öffnen Sie einen Assistenten und wählen Sie **Tools & Skills**. In diesem
@@ -17,6 +17,27 @@ gesteuert.
 
 Die Wissenssuche ist immer verfügbar. Sie können die anderen integrierten Tools
 aktivieren oder deaktivieren.
+
+## Strukturierte Daten verbinden
+
+Der Abschnitt **Data** listet Entitäten auf, die über **Settings → Data**
+importiert wurden. Wählen Sie jede Entität aus, die dieser Assistent abfragen
+darf.
+
+Jede ausgewählte Entität bietet ein Tool für die genaue Filterung. Eine Entität
+mit Textattributen bietet auch ein Tool für die Stichwortsuche.
+
+Gemeinsam genutzte Entitäten stehen jedem Besucher zur Verfügung, der vom
+Assistenten bedient wird. Für Entitäten im Benutzerbereich ist ein verifizierter
+[Identitätsanspruch](/authentication/microsoft-entra-id#choose-an-identity-claim)
+erforderlich.
+
+Die Entitätsauswahl und das Schema werden in den nächsten
+Veröffentlichungs-Snapshot übernommen. Der Inhalt des Datensatzes bleibt nach
+der Veröffentlichung live.
+
+Siehe [Entities and Records](/data/entities-and-records) für CSV-Importe,
+Bereichsoptionen und Identitätsfilterung.
 
 ## Konfigurieren Sie eine API-Integration
 
@@ -53,3 +74,7 @@ Widget verwendet den letzten Veröffentlichungs-Snapshot.
 
 Stellen Sie eine Frage, die jedes aktivierte Tool erfordert. Überprüfen Sie vor
 der Veröffentlichung das Thinking-Panel und die Quellen.
+
+Testen Sie für strukturierte Daten eine exakte Attributsuche und eine Textsuche.
+Testen Sie den Zugriff auf Benutzerebene mit zwei verschiedenen angemeldeten
+Konten.

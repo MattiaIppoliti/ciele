@@ -6,16 +6,18 @@ description: Comprenez les relations entre le locataire principal, la configurat
 ## Propriété du locataire
 
 Une organisation est le locataire principal. Les membres rejoignent une
-organisation avec un seul rôle.
+organisation avec un rôle.
 
 Les enregistrements appartenant à l'organisation comprennent les assistants, les
-centres d'assistance, les connexions aux fournisseurs, les clés API, les
-compétences, les améliorations, les objectifs, les alertes et les
-enregistrements d'utilisation.
+entités, les mémoires, les centres d'assistance, les connexions aux
+fournisseurs, les clés API, les compétences, les améliorations, les objectifs,
+les alertes et les enregistrements d'utilisation.
 
 ## Configuration de l'assistant
 
-```mermaid
+<Mermaid
+  title="Relations entre le locataire principal et l'exécution"
+  chart={`
 erDiagram
   ORGANIZATION ||--o{ ASSISTANT : owns
   ASSISTANT ||--o{ FLOW : routes
@@ -25,24 +27,44 @@ erDiagram
   SOURCE ||--o{ CONCEPT : produces
   ASSISTANT ||--o{ CONVERSATION : serves
   CONVERSATION ||--o{ MESSAGE : stores
-```
+  ORGANIZATION ||--o{ ENTITY : defines
+  ENTITY ||--o{ RECORD : contains
+  ORGANIZATION ||--o{ MEMORY : isolates
+  CONVERSATION ||--o{ MEMORY : originates
+`}
+/>
 
 Une Publication stocke un instantané immuable de la configuration de
-l'Assistant. Les enregistrements en brouillon restent modifiables après leur
+l'Assistant. Les enregistrements en brouillon restent modifiables après la
 publication.
 
 Un flux stocke un déclencheur, une configuration de condition et des actions
 ordonnées. La validation à l'exécution impose des paires valides de déclencheurs
 et d'actions.
 
+Un Assistant sélectionne des schémas d'Entité pour sa prochaine Publication.
+L'instantané de schéma contrôle les outils générés, tandis que chaque requête
+lit les enregistrements actuels.
+
+Les Entités partagées exposent les données communes de l'Organisation. Les
+Entités à portée utilisateur désignent un attribut d'identité pour le filtrage
+lié au serveur.
+
 ## Données de conversation
 
-Une Conversation appartient à l'Assistant en service et suit une session
+Une Conversation appartient à l'Assistant qui la sert et suit une session
 Visiteur. Les messages stockent des éléments typés pour le texte, les citations,
 les boutons, les traces et d'autres réponses.
 
-L'état de la session enregistre également la livraison de notifications
-proactives. Une notification ne crée pas de message visiteur.
+L'état de la session enregistre également la livraison proactive de
+notifications. Une Notification ne crée pas de message Visiteur.
+
+Les mémoires à long terme appartiennent à une organisation et à un sujet SSO
+vérifié. Elles stockent un fait durable, l'intégration, les horodatages et la
+provenance de la conversation source.
+
+Le runtime limite chaque sujet à 200 mémoires. La suppression retire un fait de
+l'injection future d'invites et des recherches dans la mémoire.
 
 ## Identifiants programmatiques
 

@@ -32,8 +32,8 @@ Select **Delete** to remove the Entity and all of its Records.
 
 | Scope | Use it for | Runtime behavior |
 | --- | --- | --- |
-| Shared | Catalogues, schedules, locations, and common reference data | Any Visitor served by the Assistant can query matching Records. |
-| User-scoped | Orders, accounts, applications, and other per-Visitor data | The server restricts every query to the verified signed-in Visitor. |
+| **Shared** | Catalogues, schedules, locations, and common reference data | Any Visitor served by the Assistant can query matching Records. |
+| **User-scoped** | Orders, accounts, applications, and other per-Visitor data | The server restricts every query to the verified signed-in Visitor. |
 
 A user-scoped Entity also needs an identity attribute. Its values must match the configured [Entra identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim).
 
@@ -60,7 +60,7 @@ Select **Records** to browse the first 50 Records in key order.
 2. Select **Tools & Skills**.
 3. Find **Data**.
 4. Select each Entity the Assistant may query.
-5. Test exact lookup and text search in Preview.
+5. Test exact lookup and text search in **Preview**.
 6. Publish the Assistant.
 
 Each selected Entity can provide an exact filter tool. Entities with text attributes also provide a keyword search tool.

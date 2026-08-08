@@ -1,6 +1,6 @@
 ---
 title: Microsoft Entra ID
-description: Konfigurieren Sie die aktuelle OpenID Connect-Verbindung für die Besucher-Anmeldung.
+description: Konfigurieren Sie die aktuelle OpenID-Connect-Verbindung für die Besucher-Anmeldung.
 ---
 
 Microsoft Entra ID ist der verfügbare Identitätsanbieter für Besucher.
@@ -23,22 +23,50 @@ anderer Pfad oder ein anderer Port verhindert die Autorisierungsantwort.
 4. Geben Sie die Mandanten-ID ein.
 5. Geben Sie die Client-ID ein.
 6. Geben Sie das Client-Geheimnis ein.
-7. Speichern Sie die Verbindung.
+7. Wählen Sie einen **Identity claim**, wenn Funktionen pro Besucher einen
+   erfordern.
+8. Speichern Sie die Verbindung.
 
 Ciele verwendet den Autorisierungscode-Flow mit Proof Key for Code Exchange
-(PKCE). Es wird nur der Bereich `openid` angefordert.
+(PKCE).
+
+## Wählen Sie einen Identitätsanspruch aus
+
+Der Standardwert ist **Off — subject only**. Ciele speichert dann das
+undurchsichtige OIDC-Subjekt ohne eine für Menschen lesbare Kennung.
+
+Wählen Sie **Email address** oder **Username (preferred_username claim)**, wenn
+ein Assistent angemeldete Besucher mit
+[benutzerbezogenen Datensätzen](/data/entities-and-records#protect-user-scoped-records)
+abgleichen muss.
+
+Ciele verifiziert den ausgewählten Claim innerhalb des signierten ID-Tokens. Der
+Server überträgt ihn in die Konversation und in die Laufzeitphase.
+
+Ein Anforderungstext oder eine Eingabe des Modellierungstools können den
+verifizierten Wert nicht ersetzen. Ein fehlender konfigurierter Anspruch
+deaktiviert Funktionen, die ihn für diesen Besucher erfordern.
+
+Stellen Sie die Entra-Verbindung erneut her, um den Anspruch zu ändern. Ciele
+fordert die Bereiche Profil und E-Mail an, wenn ein Anspruch aktiviert ist.
 
 ## Erforderliche Servereinstellung
 
-Legen Sie `APP_ENCRYPTION_KEY` in der Ciele-Bereitstellung fest. Ciele verwendet
-diesen Schlüssel, um das Authentication-Gate-Cookie und gespeicherte Geheimnisse
-zu schützen.
+Legen Sie `APP_ENCRYPTION_KEY` für die Ciele-Bereitstellung fest. Ciele
+verwendet diesen Schlüssel, um das Authentication-Gate-Cookie und gespeicherte
+Secrets zu schützen.
 
 ## Testen Sie die Verbindung
 
-1. Fordern Sie die Authentifizierung für einen Entwurfs-Assistenten an.
+1. Authentifizierung für einen Entwurfs-Assistenten verlangen.
 2. Öffnen Sie die Vorschau in einer Browser-Sitzung, in der Sie abgemeldet sind.
 3. Schließen Sie die Microsoft-Anmeldung ab.
 4. Vergewissern Sie sich, dass der Chat verfügbar wird.
 5. Vergewissern Sie sich, dass eine andere Organisation das Gate-Cookie nicht
    wiederverwenden kann.
+6. Starten Sie eine Konversation und vergewissern Sie sich, dass im Posteingang
+   der angemeldete Benutzer angezeigt wird.
+
+Testen Sie eine auf Benutzerebene beschränkte Entität, wenn ein
+Identitätsanspruch aktiviert ist. Vergewissern Sie sich, dass ein anderer
+angemeldeter Besucher die Datensätze des ersten Besuchers nicht abrufen kann.

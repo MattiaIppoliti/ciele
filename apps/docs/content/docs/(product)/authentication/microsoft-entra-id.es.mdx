@@ -3,13 +3,13 @@ title: Microsoft Entra ID
 description: Configura la conexión actual de OpenID Connect para el inicio de sesión de visitantes.
 ---
 
-Microsoft Entra ID es el proveedor de identidad para visitantes disponible.
+Microsoft Entra ID es el proveedor de identidad de visitantes disponible.
 
 ## Crea la aplicación de Entra
 
 1. Registra una aplicación web confidencial en Microsoft Entra ID.
-2. Añade la URL de devolución de llamada de Ciele que se muestra en el
-   formulario del proveedor.
+2. Añade la URL de devolución de llamada de Ciele que aparece en el formulario
+   del proveedor.
 3. Crea una clave secreta de cliente.
 4. Anota el ID de inquilino y el ID de cliente.
 
@@ -24,10 +24,30 @@ diferente impide la respuesta de autorización.
 4. Introduce el ID de la cuenta empresarial.
 5. Introduce el ID de cliente.
 6. Introduce el secreto del cliente.
-7. Guarda la conexión.
+7. Elige un **Identity claim** cuando las funciones por visitante lo requieran.
+8. Guarda la conexión.
 
 Ciele utiliza el flujo de código de autorización con Proof Key for Code Exchange
-(PKCE). Solo solicita el ámbito `openid`.
+(PKCE).
+
+## Elige una notificación de identidad
+
+El valor predeterminado es **Off — subject only**. A continuación, Ciele
+almacena el sujeto OIDC opaco sin un identificador legible por humanos.
+
+Elige **Email address** o **Username (preferred_username claim)** cuando un
+Asistente deba hacer coincidir a los Visitantes que han iniciado sesión con
+[Registros con ámbito de usuario](/data/entities-and-records#protect-user-scoped-records).
+
+Ciele verifica la notificación seleccionada dentro del token de identificación
+firmado. El servidor lo lleva a la Conversación y al turno de ejecución.
+
+El cuerpo de una solicitud o la entrada de una herramienta de modelos no pueden
+reemplazar el valor verificado. Si falta una afirmación configurada, se
+desactivan las funciones que la requieren para ese Visitante.
+
+Vuelve a conectar Entra para cambiar la notificación. Ciele solicita los ámbitos
+de perfil y correo electrónico cuando se habilita una notificación.
 
 ## Configuración de servidor requerida
 
@@ -42,3 +62,9 @@ almacenados.
 3. Completa el inicio de sesión de Microsoft.
 4. Confirma que el chat esté disponible.
 5. Confirma que otra organización no pueda reutilizar la cookie de puerta.
+6. Inicia una conversación y confirma que la bandeja de entrada muestra al
+   sujeto que ha iniciado sesión.
+
+Prueba una Entidad con ámbito de usuario cuando esté habilitada una notificación
+de identidad. Confirma que otro visitante que haya iniciado sesión no pueda
+recuperar los registros del primer visitante.

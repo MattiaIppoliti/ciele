@@ -1,0 +1,98 @@
+---
+title: Mémoire à long terme
+description: Mémorisez les informations durables pour les Visiteurs connectés et effacez-les si nécessaire.
+---
+
+La mémoire à long terme conserve des informations durables pour les
+Conversations ultérieures. Elle ne fonctionne que pour les Visiteurs connectés
+via la passerelle SSO du Widget.
+
+La fonctionnalité est désactivée par défaut. Les visiteurs anonymes ne
+produisent ni ne se rappellent jamais de souvenirs à long terme.
+
+## Activer la mémoire à long terme
+
+1. Ouvrez **Settings**.
+2. Sélectionnez **AI Providers**.
+3. Recherchez **Long-term memory**.
+4. Activez **Remember signed-in users across conversations**.
+
+L'organisation a besoin d'une connexion fonctionnelle au fournisseur.
+L'extraction de mémoire utilise le modèle de niveau classificateur et est prise
+en compte dans le budget quotidien de l'IA.
+
+## Ce dont Ciele se souvient
+
+Ciele met en avant des faits explicites qui peuvent rester utiles après la
+Conversation en cours. Il peut s'agir, par exemple, d'une préférence de contact
+ou d'une instruction permanente.
+
+L'extracteur évite les demandes ponctuelles, les questions, les suppositions et
+les déclarations faites uniquement par l'Assistant. De nombreuses conversations
+ne produisent aucun fait durable.
+
+Chaque mémoire stockée conserve la provenance de sa Conversation source. Les
+faits en double exact sont supprimés lors du stockage.
+
+Un Visiteur connecté peut stocker jusqu'à 200 mémoires. Une fois cette limite
+atteinte, les nouvelles écritures suppriment les faits les plus anciens.
+
+## Promotion et rappel
+
+<Mermaid
+  title="Le cycle de vie de la promotion et du rappel"
+  chart={`
+flowchart TB
+  TURN["Signed-in Conversation"]
+  QUIET["15 minutes without a new message"]
+  JOB["Durable promote_memories job"]
+  GATE["Check toggle, subject, model, and budget"]
+  STORE["Extract, embed, deduplicate, and store"]
+  NEXT["First turn of a later Conversation"]
+  PROMPT["Inject up to five relevant memories"]
+  TOOL["searchMemories handles later recall"]
+  TURN --> QUIET
+  QUIET --> JOB
+  JOB --> GATE
+  GATE --> STORE
+  STORE --> NEXT
+  NEXT --> PROMPT
+  PROMPT --> TOOL
+`}
+/>
+
+Une tâche de promotion attend que la conversation reste silencieuse pendant 15
+minutes. Un message plus récent remplace une tâche en attente plus ancienne.
+
+Le premier tour d'une Conversation ultérieure peut recevoir jusqu'à cinq
+souvenirs pertinents. Le moteur d'exécution peut effectuer ultérieurement une
+recherche dans les mémoires du même sujet.
+
+Le rappel ne dépasse jamais les limites d'une organisation ou d'un sujet SSO.
+
+## Autoriser un Visiteur à inspecter et à supprimer des souvenirs
+
+Un Visiteur connecté peut ouvrir le panneau Historique du widget. Le dossier
+**Memory** apparaît lorsque la mémoire à long terme est activée.
+
+Le dossier répertorie les faits mémorisés pour ce Visiteur. Sélectionnez le
+bouton de suppression à côté d'un fait pour l'oublier.
+
+La suppression retire le fait du rappel futur par invite et des recherches en
+mémoire.
+
+## Traiter une demande d'effacement
+
+1. Ouvrez **Settings**.
+2. Sélectionnez **AI Providers**.
+3. Recherchez **Remembered users**.
+4. Recherchez par identifiant d'utilisateur ou par revendication d'identité.
+5. Examinez les faits stockés.
+6. Supprimez une mémoire ou sélectionnez **Delete all memories for this user**.
+
+Un effacement complet est immédiat. Les membres de l'organisation ne peuvent
+gérer les mémoires qu'au sein de leur organisation.
+
+<Callout title="Disabling and deleting are different">
+Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.
+</Callout>

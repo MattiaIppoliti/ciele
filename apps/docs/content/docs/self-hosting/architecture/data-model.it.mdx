@@ -1,5 +1,5 @@
 ---
-title: Modello di dati
+title: Modello dati
 description: Comprendi le relazioni principali tra tenant, configurazione, Knowledge e Conversation.
 ---
 
@@ -8,13 +8,15 @@ description: Comprendi le relazioni principali tra tenant, configurazione, Knowl
 Un'Organizzazione è il tenant principale. I membri si uniscono a
 un'Organizzazione con un solo Ruolo.
 
-I record di proprietà dell'organizzazione includono Assistenti, Help Desk,
-connessioni ai provider, chiavi API, Competenze, Miglioramenti, Obiettivi,
-Avvisi e record di utilizzo.
+I record di proprietà dell'organizzazione includono Assistenti, Entità, Memorie,
+Help Desk, connessioni ai provider, chiavi API, Competenze, Miglioramenti,
+Obiettivi, Avvisi e record di utilizzo.
 
 ## Configurazione dell'assistente
 
-```mermaid
+<Mermaid
+  title="Le relazioni tra tenant principale e runtime"
+  chart={`
 erDiagram
   ORGANIZATION ||--o{ ASSISTANT : owns
   ASSISTANT ||--o{ FLOW : routes
@@ -24,23 +26,43 @@ erDiagram
   SOURCE ||--o{ CONCEPT : produces
   ASSISTANT ||--o{ CONVERSATION : serves
   CONVERSATION ||--o{ MESSAGE : stores
-```
+  ORGANIZATION ||--o{ ENTITY : defines
+  ENTITY ||--o{ RECORD : contains
+  ORGANIZATION ||--o{ MEMORY : isolates
+  CONVERSATION ||--o{ MEMORY : originates
+`}
+/>
 
 Una Pubblicazione memorizza un'istantanea immutabile della configurazione
-dell'Assistente. Le bozze rimangono modificabili dopo la pubblicazione.
+dell'Assistente. I record in bozza rimangono modificabili dopo la pubblicazione.
 
 Un Flow memorizza un trigger, la configurazione delle condizioni e le azioni
-ordinate. La convalida in fase di esecuzione impone coppie valide di trigger e
+ordinate. La convalida in fase di runtime impone coppie valide di trigger e
 azioni.
 
-## Dati di conversazione
+Un Assistente seleziona gli schemi delle Entità per la sua prossima
+Pubblicazione. L'istantanea dello schema controlla gli strumenti generati,
+mentre ogni query legge i Record correnti.
 
-Una Conversazione appartiene all'Assistente che la gestisce e tiene traccia di
-una sessione del Visitatore. I messaggi memorizzano parti digitate per testo,
+Le Entità condivise espongono i dati comuni dell'Organizzazione. Le Entità con
+ambito utente indicano un attributo di identità per il filtraggio vincolato al
+server.
+
+## Dati della conversazione
+
+Una Conversazione appartiene all'Assistente che la serve e tiene traccia di una
+sessione del Visitatore. I messaggi memorizzano parti digitate per testo,
 citazioni, pulsanti, tracce e altre risposte.
 
 Lo stato della sessione registra anche l'invio di notifiche proattive. Una
 Notifica non crea un messaggio Visitatore.
+
+Le Long-term Memories appartengono a una singola Organizzazione e a un soggetto
+SSO verificato. Memorizzano un fatto duraturo, l'incorporamento, le marche
+temporali e la provenienza della Conversazione di origine.
+
+Il runtime limita ogni soggetto a 200 memorie. L'eliminazione rimuove un fatto
+dalla futura inserzione nei prompt e dalle ricerche nella memoria.
 
 ## Credenziali programmatiche
 

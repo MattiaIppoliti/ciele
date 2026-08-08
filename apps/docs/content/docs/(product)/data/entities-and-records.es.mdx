@@ -1,0 +1,103 @@
+---
+title: Entidades y registros
+description: Define datos tipados de la Organización, importa filas CSV y expón herramientas de recuperación seguras.
+---
+
+Una Entidad describe un tipo de datos estructurados de la Organización. Sus
+Registros contienen los valores que un Asistente puede consultar.
+
+Una entidad **Orders** puede contener atributos `order_id`, `status`, `total` y
+`customer_email`.
+
+## Crea una entidad
+
+1. Abre **Settings**.
+2. Selecciona **Data**.
+3. Selecciona **New entity**.
+4. Introduce un nombre y una descripción.
+5. Añade la clave, la etiqueta y el tipo de cada atributo.
+6. Selecciona el atributo clave.
+7. Selecciona **Shared** o **User-scoped**.
+8. Selecciona **Create entity**.
+
+Los atributos admiten valores de texto, número, fecha y booleanos. El atributo
+clave identifica un Registro dentro de la Entidad.
+
+Los atributos, la clave y el ámbito de una Entidad se fijan después de su
+creación. Crea otra Entidad cuando esa estructura deba cambiar.
+
+## Editar o eliminar una Entidad
+
+Abre una Entidad y selecciona **Edit** para cambiar su nombre o descripción. Sus
+atributos, atributo clave y ámbito permanecen fijos.
+
+Selecciona **Delete** para eliminar la Entidad y todos sus Registros.
+
+## Elige el ámbito
+
+| Ámbito | Úsalo para | Comportamiento en tiempo de ejecución |
+| --- | --- | --- |
+| **Shared** | Catálogos, horarios, ubicaciones y datos de referencia comunes | Cualquier visitante atendido por el Asistente puede consultar los Registros coincidentes. |
+| **User-scoped** | Pedidos, cuentas, solicitudes y otros datos por visitante | El servidor restringe cada consulta al visitante verificado que ha iniciado sesión. |
+
+Una Entidad con ámbito de usuario también necesita un atributo de identidad. Sus
+valores deben coincidir con la
+[notificación de identidad de Entra](/authentication/microsoft-entra-id#choose-an-identity-claim)
+configurada.
+
+## Importar registros desde CSV
+
+1. Abre la Entidad.
+2. Selecciona **Import CSV**.
+3. Elige un archivo CSV o pega su texto.
+4. Confirma que cada encabezado coincida con una clave de atributo o una
+   etiqueta. La coincidencia no distingue entre mayúsculas y minúsculas.
+5. Selecciona **Import**.
+6. Revisa el número de filas importadas y rechazadas.
+
+Importa y actualiza por el atributo clave. Al volver a importar la misma clave,
+se actualiza su Registro en lugar de crear un duplicado.
+
+Las filas válidas se importan igualmente cuando otras filas no superan la
+validación. El informe indica un motivo para cada fila rechazada.
+
+Una columna CSV desconocida rechaza la importación. Elimínala o añade el
+atributo correspondiente a una nueva Entidad.
+
+Selecciona **Records** para explorar los primeros 50 registros en orden de
+clave.
+
+## Conecta una Entidad a un Asistente
+
+1. Abre el Asistente.
+2. Selecciona **Tools & Skills**.
+3. Busca **Data**.
+4. Selecciona cada Entidad que el Asistente pueda consultar.
+5. Prueba la búsqueda exacta y la búsqueda de texto en **Preview**.
+6. Publica el Asistente.
+
+Cada Entidad seleccionada puede proporcionar una herramienta de filtro exacto.
+Las entidades con atributos de texto también proporcionan una herramienta de
+búsqueda por palabras clave.
+
+Los esquemas de la Entidad seleccionada entran en la instantánea de Publicación.
+Las Entidades no seleccionadas no generan herramientas.
+
+El contenido del registro se lee en tiempo real. No es necesario realizar otra
+publicación para importar registros actualizados.
+
+## Proteger los registros con ámbito de usuario
+
+Las herramientas con ámbito de usuario solo existen cuando el turno contiene una
+afirmación de identidad verificada. Los visitantes anónimos no reciben esas
+herramientas.
+
+El atributo de identidad se elimina de la entrada de la herramienta orientada al
+modelo. El servidor añade el valor verificado a cada consulta.
+
+Si falta la notificación, las herramientas con ámbito de usuario no estarán
+disponibles. Las herramientas de Entidad compartida aún pueden funcionar.
+
+<Callout title="Identity cannot come from the prompt">
+Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.
+</Callout>

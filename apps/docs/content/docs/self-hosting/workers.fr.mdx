@@ -1,6 +1,6 @@
 ---
 title: Processus d'arrière-plan
-description: Activez les services optionnels de récupération de graphes et d'exploration avec rendu JavaScript.
+description: Activez les services optionnels de récupération de graphes et d'analyse avec rendu JavaScript.
 ---
 
 La pile par défaut ne démarre pas le profil `workers`. La recherche et
@@ -38,3 +38,19 @@ docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
 ```
 
 N'exposez pas les ports ou les jetons des workers au réseau public.
+
+## Tâches de mémoire à long terme
+
+La mémoire à long terme utilise le registre de tâches durable intégré. Le profil
+optionnel `workers` n'est pas requis.
+
+Chaque tour connecté planifie une tâche `promote_memories` après une fenêtre de
+repos de 15 minutes. Le profil `cron` achemine ces tâches via le chemin planifié
+existant.
+
+Conservez `cron` dans `COMPOSE_PROFILES` lorsque la mémoire à long terme est
+activée. La configuration d'auto-hébergement par défaut l'inclut déjà.
+
+La tâche ignore l'extraction lorsque la mémoire est désactivée ou que le budget
+quotidien de jetons est épuisé. Elle est également ignorée lorsqu'il n'existe
+aucune connexion de modèle appropriée.

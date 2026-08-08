@@ -1,0 +1,106 @@
+---
+title: Entitäten und Datensätze
+description: Definieren Sie typisierte Organisationsdaten, importieren Sie CSV-Zeilen und stellen Sie sichere Abruftools bereit.
+---
+
+Eine Entität beschreibt eine Art strukturierter Organisationsdaten. Ihre
+Datensätze enthalten die Werte, die ein Assistent abfragen kann.
+
+Eine **Orders**-Entität kann die Attribute `order_id`, `status`, `total` und
+`customer_email` enthalten.
+
+## Erstellen Sie eine Entität
+
+1. Öffnen Sie **Settings**.
+2. Wählen Sie **Data** aus.
+3. Wählen Sie **New entity** aus.
+4. Geben Sie einen Namen und eine Beschreibung ein.
+5. Fügen Sie für jedes Attribut den Schlüssel, die Bezeichnung und den Typ
+   hinzu.
+6. Wählen Sie das Schlüsselattribut aus.
+7. Wählen Sie **Shared** oder **User-scoped**.
+8. Wählen Sie **Create entity**.
+
+Attribute unterstützen Text-, Zahlen-, Datums- und Boolesche Werte. Das
+Schlüsselattribut identifiziert einen Datensatz innerhalb der Entität.
+
+Die Attribute, der Schlüssel und der Bereich einer Entität werden nach der
+Erstellung festgelegt. Erstellen Sie eine weitere Entität, wenn diese Struktur
+geändert werden muss.
+
+## Eine Entität bearbeiten oder löschen
+
+Öffnen Sie eine Entität und wählen Sie **Edit**, um ihren Namen oder ihre
+Beschreibung zu ändern. Ihre Attribute, ihr Schlüsselattribut und ihr
+Geltungsbereich bleiben unverändert.
+
+Wählen Sie **Delete**, um die Entität und alle ihre Datensätze zu entfernen.
+
+## Wählen Sie den Geltungsbereich
+
+| Geltungsbereich | Verwendung | Laufzeitverhalten |
+| --- | --- | --- |
+| **Shared** | Kataloge, Zeitpläne, Standorte und allgemeine Referenzdaten | Jeder Besucher, der vom Assistenten bedient wird, kann passende Datensätze abfragen. |
+| **User-scoped** | Bestellungen, Konten, Anwendungen und andere Daten pro Besucher | Der Server beschränkt jede Abfrage auf den verifizierten angemeldeten Besucher. |
+
+Eine Entität im Benutzerbereich benötigt außerdem ein Identitätsattribut. Seine
+Werte müssen mit dem konfigurierten
+[Entra-Identitätsanspruch](/authentication/microsoft-entra-id#choose-an-identity-claim)
+übereinstimmen.
+
+## Datensätze aus CSV importieren
+
+1. Öffnen Sie die Entität.
+2. Wählen Sie **Import CSV**.
+3. Wählen Sie eine CSV-Datei aus oder fügen Sie deren Text ein.
+4. Vergewissern Sie sich, dass jede Kopfzeile mit einem Attributschlüssel oder
+   einer Attributbezeichnung übereinstimmt. Bei der Zuordnung wird zwischen
+   Groß- und Kleinschreibung nicht unterschieden.
+5. Wählen Sie **Import**.
+6. Überprüfen Sie die Anzahl der importierten und abgelehnten Zeilen.
+
+Importiert Upsert anhand des Schlüsselattributs. Beim erneuten Import desselben
+Schlüssels wird dessen Datensatz aktualisiert, anstatt ein Duplikat zu
+erstellen.
+
+Gültige Zeilen werden weiterhin importiert, wenn andere Zeilen die Validierung
+nicht bestehen. Der Bericht listet für jede abgelehnte Zeile einen Grund auf.
+
+Eine unbekannte CSV-Spalte führt dazu, dass der Import abgelehnt wird. Entfernen
+Sie sie oder fügen Sie das entsprechende Attribut zu einer neuen Entität hinzu.
+
+Wählen Sie **Records**, um die ersten 50 Datensätze in Schlüsselreihenfolge zu
+durchsuchen.
+
+## Verbinden Sie eine Entität mit einem Assistenten
+
+1. Öffnen Sie den Assistenten.
+2. Wählen Sie **Tools & Skills**.
+3. Suchen Sie nach **Data**.
+4. Wählen Sie jede Entität aus, die der Assistent abfragen kann.
+5. Testen Sie die exakte Suche und die Textsuche in **Preview**.
+6. Veröffentlichen Sie den Assistenten.
+
+Jede ausgewählte Entität kann ein Tool für die genaue Filterung bereitstellen.
+Entitäten mit Textattributen bieten auch ein Tool für die Stichwortsuche.
+
+Die ausgewählten Entitätsschemata gelangen in den Veröffentlichungs-Snapshot.
+Nicht ausgewählte Entitäten erzeugen keine Tools.
+
+Der Inhalt der Datensätze wird live gelesen. Für den Import aktualisierter
+Datensätze ist keine weitere Veröffentlichung erforderlich.
+
+## Schützen Sie benutzerbezogene Datensätze
+
+Tools im Benutzerbereich existieren nur, wenn der Turn einen verifizierten
+Identitätsanspruch enthält. Anonyme Besucher erhalten diese Tools nicht.
+
+Das Attribut „identity“ wird aus der modellseitigen Tool-Eingabe entfernt. Der
+Server fügt den verifizierten Wert jeder Abfrage hinzu.
+
+Wenn der Anspruch fehlt, bleiben die Tools auf Benutzerebene nicht verfügbar.
+Shared-Entity-Tools können weiterhin ausgeführt werden.
+
+<Callout title="Identity cannot come from the prompt">
+Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.
+</Callout>

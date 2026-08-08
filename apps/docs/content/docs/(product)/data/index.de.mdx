@@ -1,0 +1,69 @@
+---
+title: Daten und Speicher
+description: Verankern Sie Antworten in strukturierten Datensätzen und merken Sie sich angemeldete Besucher über Konversationen hinweg.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Brain, Database } from 'lucide-react';
+
+Ciele kann Organisationsdatensätze mit dauerhaften Fakten über angemeldete
+Besucher kombinieren. Diese Funktionen nutzen eine verifizierte Identität und
+bleiben unter der Kontrolle der Organisation.
+
+<Mermaid
+  title="Wie strukturierte Daten und Langzeitspeicher einen Assistenten erreichen"
+  chart={`
+flowchart TB
+  subgraph SETUP["Admin setup"]
+    ID["Entra subject<br/>optional identity claim"]
+    DATA["Entity schema<br/>CSV Records"]
+    SELECT["Select Entity<br/>in Tools & Skills"]
+  end
+  PUB["Publish the tool set"]
+  subgraph TURN["Signed-in Widget turn"]
+    SHARED["Shared lookup<br/>or text search"]
+    SCOPED["User-scoped lookup<br/>server identity filter"]
+    TRACE["Thinking and Inbox<br/>show tool calls"]
+  end
+  subgraph MEMORY["Long-term memory"]
+    QUIET["Conversation stays quiet"]
+    PROMOTE["Extract and store<br/>durable facts"]
+    RECALL["Next Conversation<br/>recalls relevant facts"]
+  end
+  DATA --> SELECT
+  SELECT --> PUB
+  PUB --> SHARED
+  PUB --> SCOPED
+  ID --> SCOPED
+  SHARED --> TRACE
+  SCOPED --> TRACE
+  TRACE --> QUIET
+  QUIET --> PROMOTE
+  PROMOTE --> RECALL
+`}
+/>
+
+Die Veröffentlichung steuert, welche Entity-Tools vorhanden sind. Die Werte der
+Datensätze bleiben live, sodass ein späterer CSV-Import die Antworten ohne eine
+weitere Veröffentlichung ändern kann.
+
+Identitätsfilter werden auf dem Server angewendet. Ein Modell kann weder die
+Identität eines anderen Besuchers auswählen noch den Filter entfernen.
+
+<Cards>
+  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
+  <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
+</Cards>
+
+## Zwei Arten von Speicher
+
+**Session memory** gehört zu einer Konversation. Es folgt einem Besucher nicht
+in eine neue Konversation.
+
+**Long-term memory** gehört zu einem verifizierten SSO-Subjekt innerhalb einer
+Organisation. Es kann spätere Konversationen unterstützen, wenn die Organisation
+dies aktiviert.
+
+<Callout title="Signed-in Visitors only">
+Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+</Callout>
