@@ -5,7 +5,7 @@ import { CURRENT_CONNECTOR_VERSION } from "./local-connector-protocol";
 
 export const CONNECTOR_FILENAME = `ciele-local-connector-${CURRENT_CONNECTOR_VERSION}.mjs`;
 export const CONNECTOR_SHA256 =
-  "442a5e286a9611dbc1090d7ff4b6ecba33c290ba5ee8952e78d491631c6a1d14";
+  "5972915c8baf85636f9ad5f2ae69b2c3c72c42e4a33133106945b37021074b9a";
 
 export function connectorInstallationScope(
   organizationId: string,

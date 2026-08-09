@@ -32,13 +32,13 @@ describe("connector release", () => {
   // next.config.ts's trace list; pinning it here makes a version bump without a
   // matching artifact fail in tests, not only in the standalone Docker build.
   it("derives the filename of the checked-in artifact", () => {
-    expect(CONNECTOR_FILENAME).toBe("ciele-local-connector-0.3.6.mjs");
+    expect(CONNECTOR_FILENAME).toBe("ciele-local-connector-0.3.7.mjs");
   });
 
   it("pins the digest of the versioned public runtime", () => {
     const runtime = readFileSync(
       new URL(
-        "../../public/connectors/ciele-local-connector-0.3.6.mjs",
+        "../../public/connectors/ciele-local-connector-0.3.7.mjs",
         import.meta.url
       )
     );
@@ -53,6 +53,25 @@ describe("connector release", () => {
     expect(runtime.toString("utf8")).toContain("command: process.execPath");
     expect(runtime.toString("utf8")).not.toContain('"-ExecutionPolicy"');
     expect(runtime.toString("utf8")).not.toContain('command: process.env.ComSpec');
+  });
+
+  // An idle connector polling the claim endpoint is the app's largest standing
+  // function cost, so re-cutting the artifact without the backoff is a
+  // regression worth failing on rather than discovering on a compute bill.
+  it("ships a relay poll that backs off when no job is claimed", () => {
+    const runtime = readFileSync(
+      new URL(
+        "../../public/connectors/ciele-local-connector-0.3.7.mjs",
+        import.meta.url
+      )
+    ).toString("utf8");
+
+    expect(runtime).toContain("RELAY_POLL_MAX_MS");
+    expect(runtime).toContain("nextRelayPollAt - RELAY_TICK_MS / 2");
+    expect(runtime).toContain("Math.min(relayPollMs * 2, RELAY_POLL_MAX_MS)");
+    // Probing the local CLIs must stay off the claim path, or its latency lands
+    // on the gap between heartbeats and can push a device past 30s freshness.
+    expect(runtime).toContain("void refreshRelayProviders(relay.scope)");
   });
 
   it("derives a stable account and organization scope", () => {

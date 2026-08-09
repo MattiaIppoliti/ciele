@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { shortId } from "@agent-hub/core";
 import { getMockDb } from "@agent-hub/db";
@@ -11,6 +12,7 @@ vi.mock("./relay-db", () => ({
 }));
 
 import {
+  claimRelayJob,
   createRelayCliRunner,
   listActiveRelayProviders,
 } from "./local-inference-relay";
@@ -46,6 +48,26 @@ async function pairFreshDevice(
 
 function jobsFor(m: ReturnType<typeof member>) {
   return db.table("localInferenceJobs").list({ organizationId: m.organizationId });
+}
+
+/** A device claimRelayJob can authenticate, with the bearer token to call it. */
+async function pairTokenDevice(
+  m: ReturnType<typeof member>,
+  providers: string[]
+) {
+  const token = randomBytes(48).toString("base64url");
+  const device = await db.table("localConnectorDevices").insert({
+    organizationId: m.organizationId,
+    userId: m.userId,
+    tokenHash: createHash("sha256").update(token).digest("hex"),
+    origin: m.origin,
+    providers,
+  });
+  return { authorization: `Bearer ${token}`, deviceId: device.id };
+}
+
+function deviceRow(deviceId: string) {
+  return db.table("localConnectorDevices").get(deviceId);
 }
 
 describe("local inference relay device selection", () => {
@@ -85,6 +107,77 @@ describe("local inference relay device selection", () => {
     await expect(
       runner({ provider: "openai", modelId: "gpt-test", prompt: "hello" })
     ).rejects.toThrow("offline");
+  });
+});
+
+describe("claimRelayJob heartbeat", () => {
+  it("writes the heartbeat on a device that has never been seen", async () => {
+    const m = member();
+    const { authorization, deviceId } = await pairTokenDevice(m, ["openai"]);
+
+    await claimRelayJob({ authorization, providers: ["openai"] });
+
+    expect((await deviceRow(deviceId))?.lastSeenAt).toBeTruthy();
+  });
+
+  it("does not rewrite a heartbeat that is still fresh", async () => {
+    // The connector claims on a timer, so an unconditional write here is one
+    // Postgres round trip per poll, forever, per paired device. The seeded
+    // timestamp is deliberately seconds old: two writes in the same millisecond
+    // would compare equal and let a missing throttle pass unnoticed.
+    const m = member();
+    const { authorization, deviceId } = await pairTokenDevice(m, ["openai"]);
+    const fresh = new Date(Date.now() - 5_000).toISOString();
+    await db.table("localConnectorDevices").update(deviceId, { lastSeenAt: fresh });
+
+    await claimRelayJob({ authorization, providers: ["openai"] });
+
+    expect((await deviceRow(deviceId))?.lastSeenAt).toBe(fresh);
+  });
+
+  it("keeps a throttled device inside the freshness window Preview reads", async () => {
+    // The invariant that makes the throttle safe: skipping writes must never
+    // let a live connector read as offline to listActiveRelayProviders.
+    const m = member();
+    const { authorization, deviceId } = await pairTokenDevice(m, ["openai"]);
+    const fresh = new Date(Date.now() - 5_000).toISOString();
+    await db.table("localConnectorDevices").update(deviceId, { lastSeenAt: fresh });
+
+    await claimRelayJob({ authorization, providers: ["openai"] }); // skips the write
+
+    await expect(listActiveRelayProviders(m)).resolves.toEqual(["openai"]);
+  });
+
+  it("writes again once the heartbeat has gone stale", async () => {
+    const m = member();
+    const { authorization, deviceId } = await pairTokenDevice(m, ["openai"]);
+    const stale = new Date(Date.now() - 60_000).toISOString();
+    await db.table("localConnectorDevices").update(deviceId, { lastSeenAt: stale });
+
+    await claimRelayJob({ authorization, providers: ["openai"] });
+
+    expect((await deviceRow(deviceId))?.lastSeenAt).not.toBe(stale);
+  });
+
+  it("writes immediately when the advertised providers change", async () => {
+    // Providers decide what Preview offers, so this one must not wait out the
+    // throttle the way a plain heartbeat does.
+    const m = member();
+    const { authorization, deviceId } = await pairTokenDevice(m, ["openai"]);
+
+    await claimRelayJob({ authorization, providers: ["openai"] });
+    await claimRelayJob({ authorization, providers: ["openai", "anthropic"] });
+
+    expect((await deviceRow(deviceId))?.providers).toEqual([
+      "openai",
+      "anthropic",
+    ]);
+  });
+
+  it("rejects a poll that carries no valid device token", async () => {
+    await expect(
+      claimRelayJob({ authorization: "Bearer nope", providers: ["openai"] })
+    ).resolves.toBeNull();
   });
 });
 

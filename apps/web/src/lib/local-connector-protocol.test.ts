@@ -59,7 +59,9 @@ describe("connectorNeedsUpgrade", () => {
     expect(connectorNeedsUpgrade("0.3.2")).toBe(true);
     expect(connectorNeedsUpgrade("0.3.4")).toBe(true);
     expect(connectorNeedsUpgrade("0.3.5")).toBe(true);
-    expect(connectorNeedsUpgrade("0.3.6")).toBe(false);
+    // 0.3.6 polls the relay every second regardless of load; 0.3.7 backs off.
+    expect(connectorNeedsUpgrade("0.3.6")).toBe(true);
+    expect(connectorNeedsUpgrade("0.3.7")).toBe(false);
     expect(connectorNeedsUpgrade("unknown")).toBe(true);
   });
 });

@@ -77,3 +77,13 @@ Server Actions live in `src/app/actions.ts`, `src/app/auth/actions.ts`, and rout
   the CPU and trips the default timeout on tests that assert behaviour, not speed.
 - `src/lib/local-connector-runtime.test.ts` spawns the real connector process over HTTP; its waits
   use one `CONNECTOR_DEADLINE_MS` safety net, not a latency assertion.
+- The connector is a **checked-in release artifact**, not built from source, so shipping a change to
+  `public/connectors/*.mjs` is a coordinated bump: rename the artifact, its own `VERSION`,
+  `CURRENT_CONNECTOR_VERSION`, `CONNECTOR_SHA256` (recompute — `shasum -a 256`), and the filename +
+  version rows in `local-connector-installer.test.ts` / `local-connector-protocol.test.ts`. Miss the
+  digest and `/api/local-connector/runtime` 503s; miss `connectorNeedsUpgrade` and every installed
+  connector is told to upgrade to the version it already runs.
+- The connector's relay poll is the app's most-invoked endpoint by an order of magnitude — an idle
+  paired connector bills Vercel functions forever. It backs off 1→12s when no job is claimed, and
+  the ceiling must stay under `DEVICE_FRESH_MS` (30s) in `local-inference-relay.ts` or a healthy
+  connector reads as offline. Anything slow (the local-CLI probe) belongs off that path.

@@ -4,6 +4,8 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
+import { CONNECTOR_FILENAME } from "./local-connector-installer";
+import { CURRENT_CONNECTOR_VERSION } from "./local-connector-protocol";
 
 const ORIGIN = "https://ciele.example.com";
 const TOKEN = "connector_test_token_1234567890";
@@ -135,9 +137,11 @@ if (args.includes("--print")) {
 process.exit(1);
 `
   );
+  // Derived, not spelled out: a version bump should re-point this suite at the
+  // new artifact rather than time out spawning one that is no longer there.
   const runtime = resolve(
     process.cwd(),
-    "public/connectors/ciele-local-connector-0.3.6.mjs"
+    `public/connectors/${CONNECTOR_FILENAME}`
   );
   const child = spawn(
     process.execPath,
@@ -477,7 +481,9 @@ describe.skipIf(process.platform === "win32")("local connector runtime", () => {
       "utf8"
     );
     const status = await (await request("/v1/status")).json();
-    expect(status.version).toBe("0.3.6");
+    // The spawned artifact must report the version the app upgrade-gates on,
+    // or every installed connector is told to upgrade to what it already runs.
+    expect(status.version).toBe(CURRENT_CONNECTOR_VERSION);
 
     expect(status.providers).toEqual(
       expect.arrayContaining([
