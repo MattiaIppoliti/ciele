@@ -151,8 +151,9 @@ export function ImprovementsKanban({
 
   return (
     // Five lanes stretch on a wide screen and scroll horizontally once each
-    // would drop under ~11rem.
-    <div className="grid grid-cols-[repeat(5,minmax(11rem,1fr))] gap-3 overflow-x-auto pb-2">
+    // would drop under ~11rem. A phone always scrolls, so its lanes get a
+    // readable 15rem and snap to the edge instead of stopping mid-card.
+    <div className="no-scrollbar grid snap-x snap-mandatory grid-cols-[repeat(5,minmax(15rem,1fr))] gap-3 overflow-x-auto overscroll-x-contain pb-2 sm:snap-none sm:grid-cols-[repeat(5,minmax(11rem,1fr))]">
       {IMPROVEMENT_STATUSES.map((lane) => {
         const items = improvements.filter(
           (i) => lanes.statusOf(i) === lane.value,
@@ -162,7 +163,7 @@ export function ImprovementsKanban({
           <section
             key={lane.value}
             {...lanes.laneProps(lane.value)}
-            className={`bg-muted/30 flex min-w-0 flex-col rounded-xl border transition-colors ${
+            className={`bg-muted/30 flex min-w-0 snap-start flex-col rounded-xl border transition-colors ${
               isTarget ? "border-primary bg-primary/5" : ""
             }`}
           >

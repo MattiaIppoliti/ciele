@@ -190,7 +190,10 @@ export function PromptInput({
         {...textareaProps}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={handleKeyDown}
-        className="scrollbar-hide block w-full resize-none overflow-y-auto bg-transparent px-2 pt-1.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/55"
+        // 16px below `md`: iOS Safari zooms the page in when a focused field
+        // is smaller than that, and never zooms back out — on the chat
+        // composer, the one control every mobile visitor touches.
+        className="scrollbar-hide block w-full resize-none overflow-y-auto bg-transparent px-2 pt-1.5 text-base leading-6 text-foreground outline-none placeholder:text-muted-foreground/55 md:text-sm"
       />
 
       <div className="mt-1 flex min-h-8 items-center gap-1">

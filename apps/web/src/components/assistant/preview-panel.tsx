@@ -275,12 +275,23 @@ export function PreviewPanel({
   assistant,
   connectorScope,
   startResizing = false,
+  variant = "docked",
 }: {
   assistant: Assistant;
   connectorScope: string | null;
   /** Mount already mid-drag — the panel was opened by dragging the collapsed rail. */
   startResizing?: boolean;
+  /**
+   * `"docked"` is the resizable right-hand column of the assistant editor — a
+   * pointer surface, hidden below `md`. `"page"` is the same preview filling a
+   * route of its own (the "Preview Chatbot" SETUP section), which is how the
+   * preview is reachable at all on a phone or a portrait tablet: it drops the
+   * width, the drag handle and the collapse control, since a page has no
+   * neighbour to take room from.
+   */
+  variant?: "docked" | "page";
 }) {
+  const asPage = variant === "page";
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -754,7 +765,8 @@ export function PreviewPanel({
   // Collapsed: slim rail with a « button that reopens the panel. Dragging the
   // handle also reopens it — the panel grows from the rail under the pointer,
   // fading in, and snaps to PANEL_MIN_WIDTH on release (Spotify-style).
-  if (collapsed) {
+  // A page is never collapsed — there is nothing beside it to make room for.
+  if (collapsed && !asPage) {
     return (
       <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
         <ResizeHandle
@@ -782,16 +794,22 @@ export function PreviewPanel({
   return (
     <aside
       ref={asideRef}
-      style={{ width }}
-      className={`bg-background relative hidden shrink-0 flex-col border-l md:flex ${
-        resizing ? "" : "transition-[width] duration-200 ease-out"
-      }`}
+      style={asPage ? undefined : { width }}
+      className={
+        asPage
+          ? "bg-background relative flex h-full min-h-0 w-full flex-col"
+          : `bg-background relative hidden shrink-0 flex-col border-l md:flex ${
+              resizing ? "" : "transition-[width] duration-200 ease-out"
+            }`
+      }
     >
-      <ResizeHandle
-        resizing={resizing}
-        onPointerDown={() => beginResize()}
-        label="Resize preview panel"
-      />
+      {!asPage && (
+        <ResizeHandle
+          resizing={resizing}
+          onPointerDown={() => beginResize()}
+          label="Resize preview panel"
+        />
+      )}
       {ssoGated && (
         <IdentityGate
           provider={ssoGate?.provider ?? null}
@@ -804,12 +822,18 @@ export function PreviewPanel({
           left edge and must stay fully visible. */}
       <div className="flex min-h-0 w-full flex-1 flex-col items-end overflow-hidden">
       {/* Content keeps its readable min width while the panel is dragged
-          narrower — it slides out of view fading, instead of reflowing. */}
+          narrower — it slides out of view fading, instead of reflowing. As a
+          page there is no drag and no min width to defend: it just fills the
+          route, capped so the chat does not sprawl on a desktop. */}
       <div
-        style={{ width: Math.max(width, PANEL_MIN_WIDTH), opacity: fade }}
-        className={`flex min-h-0 flex-1 flex-col px-5 py-4 ${
-          resizing ? "" : "transition-opacity duration-200 ease-out"
-        }`}
+        style={asPage ? undefined : { width: Math.max(width, PANEL_MIN_WIDTH), opacity: fade }}
+        className={
+          asPage
+            ? "mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-4 sm:px-5"
+            : `flex min-h-0 flex-1 flex-col px-5 py-4 ${
+                resizing ? "" : "transition-opacity duration-200 ease-out"
+              }`
+        }
       >
       <div className="flex items-center justify-between pb-3">
         <h2 className="text-lg font-semibold">Preview</h2>
@@ -819,16 +843,20 @@ export function PreviewPanel({
                 preview conversation, so proactive flows fire again. */}
             <RefreshButton onRefresh={newChat} />
           </Hint>
-          <Hint label="Hide preview">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Hide preview"
-              onClick={() => toggleCollapsed(true)}
-            >
-              <ChevronsRight className="size-4" />
-            </Button>
-          </Hint>
+          {/* Hiding is a docked-panel affordance: the page has the sidebar to
+              navigate away with. */}
+          {!asPage && (
+            <Hint label="Hide preview">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Hide preview"
+                onClick={() => toggleCollapsed(true)}
+              >
+                <ChevronsRight className="size-4" />
+              </Button>
+            </Hint>
+          )}
         </div>
       </div>
 

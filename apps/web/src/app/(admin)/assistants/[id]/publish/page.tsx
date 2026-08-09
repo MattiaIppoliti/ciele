@@ -16,7 +16,7 @@ export default async function PublishPage({
   const publications = await db.listPublications(id);
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Publish</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Publish creates an immutable snapshot, the live widget always serves

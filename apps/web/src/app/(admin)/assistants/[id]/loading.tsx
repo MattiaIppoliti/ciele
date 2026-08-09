@@ -8,7 +8,7 @@ import { Skeleton } from "@agent-hub/ui";
  */
 export default function AssistantSectionLoading() {
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8" aria-busy="true">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8" aria-busy="true">
       <Skeleton className="h-7 w-48" />
       <Skeleton className="mt-2 h-4 w-72" />
       <div className="mt-8 space-y-4">

@@ -232,8 +232,11 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
     <div className="space-y-8 pt-8 pb-24">
       {/* Chat launcher */}
       <Card size="sm" className="gap-0 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+        {/* The switch group never shrinks, so on a narrow screen the copy is
+            what gives — stack them instead of squeezing the paragraph into a
+            one-word column. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h2 className="text-base font-semibold">Enable chat launcher</h2>
             <p className="text-muted-foreground mt-1 max-w-xl text-sm">
               When enabled, shows the chat button. If AI Feedback is also

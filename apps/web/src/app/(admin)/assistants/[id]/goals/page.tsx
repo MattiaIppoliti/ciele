@@ -12,7 +12,7 @@ export default async function GoalsPage({ params }: { params: Promise<{ id: stri
   const goals = await db.listAssistantGoals(id);
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Goals</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Standing golden questions, re-verified on a schedule. A goal that stops

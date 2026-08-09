@@ -20,7 +20,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
   const entities = orgEntities;
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Tools &amp; Skills</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         The agent&apos;s tool registry and reusable prompt skills, what it can

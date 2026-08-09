@@ -147,8 +147,8 @@ export function FlowsList({
 
   return (
     <div className={isPending ? "pointer-events-none opacity-70" : ""}>
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl font-semibold">Flows</h1>
           <p className="text-muted-foreground mt-1 text-sm">
             Drag flows to set priority. The first matching flow wins.
@@ -196,8 +196,11 @@ export function FlowsList({
               </button>
             </Hint>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold">{flow.name}</h2>
+              {/* The name and its badges are a wrapping run, not a fixed row:
+                  on a phone the trigger and trust badges drop to a second line
+                  instead of pushing out past the card's edge. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h2 className="min-w-0 text-base font-semibold">{flow.name}</h2>
                 {flow.builtIn && (
                   <Badge
                     variant="outline"

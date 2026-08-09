@@ -1,6 +1,7 @@
 import { Skeleton } from "@agent-hub/ui";
 
 type AssistantSectionLoadingVariant =
+  | "preview"
   | "general"
   | "knowledge"
   | "flows"
@@ -200,10 +201,31 @@ function PublishSkeleton() {
   );
 }
 
+/** The preview is a chat window, not a settings form: a title, a tall frame
+ * and a composer, so the shape does not jump when the panel mounts. */
+function PreviewSkeleton() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border">
+      <div className="flex items-center justify-center border-b px-4 py-3">
+        <Skeleton className="h-5 w-32" />
+      </div>
+      <div className="flex-1 space-y-3 p-4">
+        <Skeleton className="h-4 w-11/12" />
+        <Skeleton className="h-4 w-4/5" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
+      <div className="p-4">
+        <Skeleton className="h-20 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 const SECTION_BODY: Record<
   AssistantSectionLoadingVariant,
   () => React.ReactNode
 > = {
+  preview: PreviewSkeleton,
   general: GeneralSkeleton,
   knowledge: KnowledgeSkeleton,
   flows: FlowsSkeleton,
@@ -229,9 +251,28 @@ export function AssistantSectionLoading({
   const wide = variant === "knowledge" || variant === "flows";
   const showHeaderAction = variant === "flows";
 
+  // The preview fills its route rather than sitting in a scrolling document,
+  // so it gets a height-filling column and a one-line header instead of the
+  // title-and-blurb every settings section opens with.
+  if (variant === "preview") {
+    return (
+      <div
+        className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-4 py-4 sm:px-5"
+        aria-busy="true"
+        aria-label="Loading assistant section"
+      >
+        <div className="flex items-center justify-between pb-3">
+          <Skeleton className="h-6 w-24" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <SectionBody />
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`mx-auto ${wide ? "max-w-4xl" : "max-w-3xl"} px-8 py-8`}
+      className={`mx-auto ${wide ? "max-w-4xl" : "max-w-3xl"} px-5 py-6 sm:px-8 sm:py-8`}
       aria-busy="true"
       aria-label="Loading assistant section"
     >

@@ -120,7 +120,7 @@ export function NotificationCenter({
   return (
     // right-6 leaves room for the dismiss control, which floats past the
     // banner's own right edge.
-    <div className="pointer-events-none fixed right-6 bottom-4 z-40 flex w-[22rem] max-w-[calc(100vw-3rem)] justify-end">
+    <div className="pointer-events-none fixed right-3 bottom-3 z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] justify-end sm:right-6 sm:bottom-4 sm:max-w-[calc(100vw-3rem)]">
       <NotificationStack
         items={items.map((item) => ({
           id: item.id,

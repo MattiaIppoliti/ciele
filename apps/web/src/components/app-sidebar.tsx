@@ -712,10 +712,64 @@ function SidebarContent({
 }
 
 /**
+ * Off-canvas navigation for phones and portrait tablets, where a 240px
+ * permanent sidebar would leave the page barely a third of the screen.
+ *
+ * It is the *same* `SidebarContent`, always in its full (labelled) form — a
+ * collapsed icon rail is a pointing device's affordance, and there is no
+ * hover to reveal what an icon means on touch. Opened from the top bar's
+ * hamburger; closed by the backdrop, the toggle, Escape, or navigating
+ * (`ShellProvider` closes it on every pathname change).
+ */
+function NavDrawer(props: AppSidebarProps) {
+  const { navDrawerOpen, setNavDrawerOpen } = useShell();
+
+  useEffect(() => {
+    if (!navDrawerOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setNavDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navDrawerOpen, setNavDrawerOpen]);
+
+  if (!navDrawerOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <button
+        type="button"
+        aria-label="Close navigation"
+        onClick={() => setNavDrawerOpen(false)}
+        className="animate-in fade-in absolute inset-0 bg-black/50 duration-150"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation"
+        className="animate-in slide-in-from-left bg-background absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col border-r shadow-2xl duration-200"
+      >
+        <SidebarContent
+          {...props}
+          collapsed={false}
+          expandsOnToggle={false}
+          onToggle={() => setNavDrawerOpen(false)}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
  * Vercel-style shell sidebar with the previous rail's mechanics: drag the
  * right edge to resize, below ICON_ONLY_AT it collapses to an icon rail,
  * past HIDE_AT it hides entirely. While hidden, hovering the left screen
  * edge peeks a floating panel; the top bar shows a reopen button.
+ *
+ * All of that is desktop behaviour (`lg` and up). Below it the sidebar leaves
+ * the layout entirely and navigation moves into `NavDrawer` — dragging a
+ * resize handle and hovering a 6px screen edge are both mouse affordances,
+ * and the space simply isn't there.
  */
 export function AppSidebar(props: AppSidebarProps) {
   const { sidebarDocked, setSidebarDocked } = useShell();
@@ -756,26 +810,29 @@ export function AppSidebar(props: AppSidebarProps) {
   if (sidebarDocked) {
     const collapsed = width < ICON_ONLY_AT;
     return (
-      <aside
-        style={{ width: collapsed ? RAIL_WIDTH : width }}
-        className="bg-background relative flex h-full shrink-0 flex-col border-r"
-      >
-        <SidebarContent
-          {...props}
-          collapsed={collapsed}
-          expandsOnToggle={false}
-          // Toggle fully hides the sidebar (never a rail). Width is preserved
-          // so reopening from the top bar restores the same state — full or
-          // the dragged-down icon rail. Rail is reached only by dragging.
-          onToggle={close}
-        />
-        <ResizeHandle
-          side="right"
-          label="Resize sidebar"
-          resizing={dragging}
-          onPointerDown={() => setDragging(true)}
-        />
-      </aside>
+      <>
+        <aside
+          style={{ width: collapsed ? RAIL_WIDTH : width }}
+          className="bg-background relative hidden h-full shrink-0 flex-col border-r lg:flex"
+        >
+          <SidebarContent
+            {...props}
+            collapsed={collapsed}
+            expandsOnToggle={false}
+            // Toggle fully hides the sidebar (never a rail). Width is preserved
+            // so reopening from the top bar restores the same state — full or
+            // the dragged-down icon rail. Rail is reached only by dragging.
+            onToggle={close}
+          />
+          <ResizeHandle
+            side="right"
+            label="Resize sidebar"
+            resizing={dragging}
+            onPointerDown={() => setDragging(true)}
+          />
+        </aside>
+        <NavDrawer {...props} />
+      </>
     );
   }
 
@@ -783,13 +840,13 @@ export function AppSidebar(props: AppSidebarProps) {
     <>
       {/* Hover zone along the screen edge that reveals the floating panel. */}
       <div
-        className="fixed inset-y-0 left-0 z-40 w-1.5"
+        className="fixed inset-y-0 left-0 z-40 hidden w-1.5 lg:block"
         onMouseEnter={() => setPeek(true)}
       />
       {peek && (
         <div
           onMouseLeave={() => setPeek(false)}
-          className="animate-in fade-in slide-in-from-left-4 bg-background fixed top-3 bottom-3 left-3 z-50 flex w-64 flex-col overflow-hidden rounded-xl border shadow-2xl duration-200"
+          className="animate-in fade-in slide-in-from-left-4 bg-background fixed top-3 bottom-3 left-3 z-50 hidden w-64 flex-col overflow-hidden rounded-xl border shadow-2xl duration-200 lg:flex"
         >
           <SidebarContent
             {...props}
@@ -802,6 +859,7 @@ export function AppSidebar(props: AppSidebarProps) {
           />
         </div>
       )}
+      <NavDrawer {...props} />
     </>
   );
 }

@@ -68,7 +68,10 @@ export function SettingsDialog({
   }, [close]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-8">
+    // A phone has no "over the console" to show: the dialog takes the whole
+    // screen there (no inset, no rounding) and only becomes a floating card
+    // once there is room around it.
+    <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-8">
       <button
         type="button"
         aria-label="Close settings"
@@ -79,17 +82,20 @@ export function SettingsDialog({
         role="dialog"
         aria-modal="true"
         aria-label={scope === "personal" ? "Personal settings" : "Settings"}
-        className="bg-background animate-in fade-in zoom-in-95 relative flex h-full max-h-[46rem] w-full max-w-5xl overflow-hidden rounded-xl border shadow-2xl duration-150"
+        className="bg-background animate-in fade-in zoom-in-95 relative flex h-full w-full max-w-5xl flex-col overflow-hidden border shadow-2xl duration-150 sm:max-h-[46rem] sm:flex-row sm:rounded-xl"
       >
         {/* The rail is chrome, not page content: re-enable the shell's animated
             icons, which `(admin)/layout.tsx` switches off for pages. */}
         <AnimateIcons>
-          <aside className="bg-muted/40 flex w-56 shrink-0 flex-col border-r py-3">
-            <p className="text-muted-foreground px-4 pb-2 text-xs font-semibold tracking-wide uppercase">
+          {/* The rail is a column of tabs on a desktop and a scrollable strip
+              of them on a phone — same rows, laid out along the axis that has
+              room. The scope title is the dialog's heading in both. */}
+          <aside className="bg-muted/40 flex shrink-0 flex-row items-center gap-2 border-b py-2 pr-14 pl-3 sm:w-56 sm:flex-col sm:items-stretch sm:gap-0 sm:border-r sm:border-b-0 sm:py-3 sm:pr-0 sm:pl-0">
+            <p className="text-muted-foreground shrink-0 text-xs font-semibold tracking-wide uppercase sm:px-4 sm:pb-2">
               {scopeTitle(scope)}
             </p>
-            <HoverHighlight className="min-h-0 flex-1 overflow-y-auto px-2">
-              <div className="flex flex-col gap-0.5">
+            <HoverHighlight className="no-scrollbar min-h-0 min-w-0 flex-1 overflow-x-auto sm:overflow-x-visible sm:overflow-y-auto sm:px-2">
+              <div className="flex flex-row gap-1 sm:flex-col sm:gap-0.5">
                 {tabs.map((tab) => (
                   <RailRow
                     key={tab.slug}
@@ -97,10 +103,17 @@ export function SettingsDialog({
                     active={active === tab.slug}
                   />
                 ))}
+                {/* On the strip the cross-scope link is just the last tab; the
+                    column keeps it pinned to the footer below. */}
+                {showCross && (
+                  <span className="contents sm:hidden">
+                    <RailRow tab={cross} active={false} crossScope />
+                  </span>
+                )}
               </div>
             </HoverHighlight>
             {showCross && (
-              <div className="mt-auto border-t px-2 pt-2">
+              <div className="mt-auto hidden border-t px-2 pt-2 sm:block">
                 <HoverHighlight>
                   <RailRow tab={cross} active={false} crossScope />
                 </HoverHighlight>
@@ -109,16 +122,20 @@ export function SettingsDialog({
           </aside>
         </AnimateIcons>
 
+        {/* Anchored to the dialog, not to the content pane: the pane is flush
+            with the dialog's right edge on a desktop, but on a phone the rail
+            strip owns that corner and the button has to sit in it (which is
+            what the rail's `pr-14` reserves room for). */}
+        <button
+          type="button"
+          aria-label="Close settings"
+          onClick={close}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2.5 right-3 z-10 flex size-9 items-center justify-center rounded-lg transition-colors sm:top-3 sm:size-8"
+        >
+          <X className="size-4" />
+        </button>
         <div className="relative flex min-w-0 flex-1 flex-col">
-          <button
-            type="button"
-            aria-label="Close settings"
-            onClick={close}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-3 right-3 z-10 flex size-8 items-center justify-center rounded-lg transition-colors"
-          >
-            <X className="size-4" />
-          </button>
-          <div className="min-h-0 flex-1 overflow-y-auto px-8 py-7">
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-8 sm:py-7">
             {children}
           </div>
         </div>
@@ -146,7 +163,7 @@ function RailRow({
       // by one (it used to take a click per tab visited).
       replace
       data-highlight-row
-      className={`relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+      className={`relative flex shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors sm:shrink sm:whitespace-normal ${
         active
           ? "bg-muted text-foreground"
           : "text-muted-foreground hover:text-foreground"
@@ -155,8 +172,10 @@ function RailRow({
       <AnimatedIcon icon={tab.icon} size={16} className="shrink-0" />
       <span className="min-w-0 flex-1 truncate">
         {tab.label}
+        {/* The hint is a second line under the label — the horizontal strip
+            has no vertical room for it. */}
         {tab.hint && (
-          <span className="text-muted-foreground block truncate text-xs font-normal">
+          <span className="text-muted-foreground hidden truncate text-xs font-normal sm:block">
             {tab.hint}
           </span>
         )}

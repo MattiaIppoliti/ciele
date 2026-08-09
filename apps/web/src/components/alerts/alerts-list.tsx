@@ -59,16 +59,16 @@ export function AlertsList({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
       </header>
-      <p className="text-muted-foreground px-6 text-sm">
+      <p className="text-muted-foreground px-4 text-sm sm:px-6">
         Operational issues that need attention, failing integrations, crawls,
         and AI providers. Alerts clear when you resolve them or the underlying
         issue recovers.
       </p>
 
-      <div className="border-border mt-4 flex items-center gap-1 border-b px-6">
+      <div className="border-border mt-4 flex items-center gap-1 border-b px-4 sm:px-6">
         {tabs.map((t) => (
           <button
             key={t.value}
@@ -85,7 +85,7 @@ export function AlertsList({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         {visible.length === 0 ? (
           <div className="text-muted-foreground flex flex-col items-center gap-2 py-16 text-sm">
             <CircleCheck className="size-8 text-emerald-500" />
@@ -94,34 +94,43 @@ export function AlertsList({
               : "All clear, no alerts need attention."}
           </div>
         ) : (
+          // Five columns need ~800px. Below `lg` each alert becomes a stacked
+          // card instead — the column header disappears with the columns, and
+          // the two timestamps carry their own labels once they no longer sit
+          // under one. `lg:contents` lets the mobile grouping wrapper vanish so
+          // the same cells drop straight into the grid.
           <div className="border-border overflow-hidden rounded-xl border">
-            <div className="text-muted-foreground bg-muted/50 grid grid-cols-[1fr_130px_130px_110px_auto] items-center gap-3 px-4 py-2 text-xs font-medium">
+            <div className="text-muted-foreground bg-muted/50 hidden grid-cols-[1fr_130px_130px_110px_auto] items-center gap-3 px-4 py-2 text-xs font-medium lg:grid">
               <span>Issue</span>
               <span>Detected</span>
               <span>Resolved</span>
               <span>Status</span>
-              <span className="w-40" />
+              <span />
             </div>
             {visible.map((alert) => (
               <div
                 key={alert.id}
-                className="border-border grid grid-cols-[1fr_130px_130px_110px_auto] items-center gap-3 border-t px-4 py-3 text-sm"
+                className="border-border flex flex-col gap-2 border-t px-4 py-3 text-sm lg:grid lg:grid-cols-[1fr_130px_130px_110px_auto] lg:items-center lg:gap-3"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{TYPE_LABELS[alert.type]}</Badge>
                     <span className="truncate font-medium">{alert.title}</span>
                   </div>
-                  <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                  <p className="text-muted-foreground mt-0.5 text-xs lg:truncate">
                     {alert.detail}
                   </p>
                 </div>
-                <span className="text-muted-foreground text-xs">
-                  {formatDateTime(alert.detectedAt)}
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  {alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"}
-                </span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 lg:contents">
+                  <span className="text-muted-foreground text-xs">
+                    <span className="lg:hidden">Detected: </span>
+                    {formatDateTime(alert.detectedAt)}
+                  </span>
+                  <span className="text-muted-foreground text-xs">
+                    <span className="lg:hidden">Resolved: </span>
+                    {alert.resolvedAt ? formatDateTime(alert.resolvedAt) : "N/A"}
+                  </span>
+                </div>
                 <span>
                   {alert.status === "active" ? (
                     <Badge variant="destructive">
@@ -133,7 +142,10 @@ export function AlertsList({
                     </Badge>
                   )}
                 </span>
-                <div className="flex w-40 justify-end gap-2">
+                {/* No fixed width: two buttons never fitted 10rem, so the
+                    resolve action used to overlap the status badge. The
+                    column is `auto`, so it sizes to whatever the row needs. */}
+                <div className="flex flex-wrap gap-2 lg:flex-nowrap lg:justify-end">
                   {canEdit && alert.status === "active" && (
                     <Button
                       variant="outline"

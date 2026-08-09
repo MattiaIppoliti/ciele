@@ -14,6 +14,7 @@ import { isoDay, messageText } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
   Calendar as CalendarIcon,
+  ChevronLeft,
   CirclePlay,
   Download,
   ExternalLink,
@@ -235,7 +236,7 @@ function subjectInitials(c: InboxConversation): string {
 }
 
 const FIELD_CLASS =
-  "h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/50";
+  "h-10 w-full rounded-lg border bg-background px-3 text-base outline-none focus:ring-2 focus:ring-ring/50 md:text-sm";
 
 function FilterSelect({
   label,
@@ -443,6 +444,10 @@ export function InboxClient({
   const [verdicts, setVerdicts] = useState<AnswerVerdict[]>([]);
   const [improveMessageId, setImproveMessageId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Only consulted below `xl`, where the details column is a sheet rather than
+  // a pane. Reset on every selection so a new conversation opens on its
+  // transcript, not on the previous one's metadata.
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const options = useMemo(() => {
     const unique = (values: Array<string | undefined>) =>
@@ -511,6 +516,7 @@ export function InboxClient({
   // tables — so each fetch settles independently instead of one Promise.all.
   async function loadConversation(id: string) {
     setSelectedId(id);
+    setDetailsOpen(false);
     setMessages(null);
     setLinks([]);
     setVerdicts([]);
@@ -667,30 +673,42 @@ export function InboxClient({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
+      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
+        {/* On a phone the search field takes the whole second row and the two
+            menus sit beside it; from `sm` up the group returns to one row
+            pinned right. */}
+        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search conversations..."
-              className="h-10 w-64 rounded-lg pl-9"
+              className="h-10 w-full rounded-lg pl-9 sm:w-64"
             />
           </div>
           <Button
             variant="outline"
-            className="h-10 rounded-lg px-4"
+            aria-label="Filters"
+            className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
             onClick={() => setFiltersOpen((open) => !open)}
           >
-            <ListFilter className="size-4" /> Filters
+            <ListFilter className="size-4" />{" "}
+            <span className="hidden sm:inline">Filters</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<Button variant="outline" className="h-10 rounded-lg px-4" />}
+              render={
+                <Button
+                  variant="outline"
+                  aria-label="Exports"
+                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                />
+              }
             >
-              <Download className="size-4" /> Exports
+              <Download className="size-4" />{" "}
+              <span className="hidden sm:inline">Exports</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={exportCsv}>
@@ -715,7 +733,7 @@ export function InboxClient({
 
         {/* Filters panel */}
         {filtersOpen && (
-          <div className="absolute top-full right-6 z-30 max-h-[70vh] w-96 overflow-y-auto rounded-xl border bg-popover p-5 shadow-xl">
+          <div className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto rounded-xl border bg-popover p-5 shadow-xl sm:right-6 sm:left-auto sm:w-96">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Filters</h2>
               <button
@@ -886,7 +904,7 @@ export function InboxClient({
       </header>
 
       {/* Date range chip */}
-      <div className="shrink-0 px-6 pb-3">
+      <div className="shrink-0 px-4 pb-3 sm:px-6">
         <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
           Date Range:{" "}
           {filters.from ? dayLabel(`${filters.from}T12:00:00`) : "…"} -{" "}
@@ -896,8 +914,15 @@ export function InboxClient({
       </div>
 
       <div className="flex min-h-0 flex-1 border-t">
-        {/* Conversation log */}
-        <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-r">
+        {/* Conversation log. Three panes need ~1100px to all be usable; below
+            `lg` the list and the thread take turns owning the screen, the way
+            a phone mail client does — picking a conversation swaps to it and
+            "All conversations" comes back. */}
+        <aside
+          className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
+            selected ? "hidden" : "flex"
+          }`}
+        >
           <div className="flex items-center gap-2 px-4 py-3">
             <h2 className="text-sm font-semibold">Conversation log</h2>
             <span className="text-muted-foreground text-sm">{filtered.length}</span>
@@ -948,7 +973,11 @@ export function InboxClient({
         </aside>
 
         {/* Thread */}
-        <section className="min-w-0 flex-1 overflow-y-auto px-6 py-4">
+        <section
+          className={`min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:block ${
+            selected ? "block" : "hidden"
+          }`}
+        >
           {!selected && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <span className="text-primary/40 flex size-24 items-center justify-center rounded-full border-2 border-dashed">
@@ -964,6 +993,28 @@ export function InboxClient({
 
           {selected && (
             <div className="space-y-4">
+              {/* The two panes the layout drops below `lg`/`xl` need a way
+                  back in. Each button disappears exactly where its pane
+                  rejoins the flow. */}
+              <div className="flex items-center gap-2 xl:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => setSelectedId(null)}
+                >
+                  <ChevronLeft className="size-4" /> All conversations
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => setDetailsOpen(true)}
+                >
+                  <Info className="size-4" /> Details
+                </Button>
+              </div>
+
               <div className="flex items-center gap-3 rounded-xl border px-4 py-3">
                 <span className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold">
                   {subjectInitials(selected)}
@@ -1142,9 +1193,28 @@ export function InboxClient({
           )}
         </section>
 
-        {/* Details */}
+        {/* Details — docked as a third column only where all three panes fit
+            (`xl`), and reachable everywhere else through the thread's
+            "Details" button, which opens this same content as a sheet. */}
         {selected && (
-          <aside className="w-80 shrink-0 space-y-4 overflow-y-auto border-l bg-muted/40 p-4">
+          <aside
+            className={
+              detailsOpen
+                ? "bg-background animate-in slide-in-from-right fixed inset-y-0 right-0 z-50 w-[22rem] max-w-[88vw] space-y-4 overflow-y-auto border-l p-4 shadow-2xl duration-200 xl:static xl:z-auto xl:w-80 xl:max-w-none xl:shrink-0 xl:animate-none xl:bg-muted/40 xl:shadow-none"
+                : "bg-muted/40 hidden w-80 shrink-0 space-y-4 overflow-y-auto border-l p-4 xl:block"
+            }
+          >
+            <div className="flex items-center justify-between xl:hidden">
+              <h2 className="text-sm font-semibold">Conversation</h2>
+              <button
+                type="button"
+                aria-label="Close details"
+                onClick={() => setDetailsOpen(false)}
+                className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-9 items-center justify-center rounded-lg transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
             <Card size="sm" className="gap-3 p-4">
               <h3 className="font-semibold">Conversation details</h3>
               <DetailRow label="Assistant" value={selected.assistantTitle} />

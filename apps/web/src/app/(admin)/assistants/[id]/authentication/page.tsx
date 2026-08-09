@@ -17,7 +17,7 @@ export default async function AuthenticationPage({
   const connection = await db.getSsoConnection(assistant.organizationId);
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Authentication</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Require visitors to sign in with your identity provider before they can

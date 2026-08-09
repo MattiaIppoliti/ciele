@@ -12,7 +12,7 @@ export function ComingSoon({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-3">
+      <header className="flex shrink-0 items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">

@@ -835,7 +835,7 @@ function WebsitesTab({
       )}
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold">
+        <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
           <span>Name</span>
           <span>Status</span>
           <span>Content</span>
@@ -852,7 +852,7 @@ function WebsitesTab({
           return (
             <div
               key={source.id}
-              className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-t px-4 py-3"
+              className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_auto_auto_auto_auto] md:items-center md:gap-4"
             >
               <span className="min-w-0">
                 <span className="flex items-center gap-2 text-sm font-medium">
@@ -1123,13 +1123,13 @@ function DocumentsTab({
 
       {documents.length > 0 && (
         <div className="overflow-hidden rounded-xl border bg-card">
-          <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold">
+          <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
             <span>Name</span>
             <span>Status</span>
             <span />
           </div>
           {documents.map((source) => (
-            <div key={source.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-t px-4 py-3">
+            <div key={source.id} className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_auto_auto] md:items-center md:gap-4">
               <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
                 <Download className="text-muted-foreground size-4 shrink-0" />
                 <span className="truncate">{source.name}</span>
@@ -1717,7 +1717,7 @@ function FaqsTab({
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold">
+        <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
           <span>Question</span>
           <span>Answer</span>
           <span>Status</span>
@@ -1729,7 +1729,7 @@ function FaqsTab({
         {filtered.map((faq) => {
           const trust = conceptProvenanceView(faq.frontmatter);
           return (
-          <div key={faq.id} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-4 border-t px-4 py-3">
+          <div key={faq.id} className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_1fr_auto_auto] md:items-center md:gap-4">
             <span className="line-clamp-2 text-sm font-medium">{faq.frontmatter.title}</span>
             <span className="text-muted-foreground line-clamp-2 text-sm">{faq.body}</span>
             <span className="flex items-center gap-1.5">

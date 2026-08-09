@@ -26,10 +26,17 @@ export function AssistantTopBarActions({
   useEffect(() => {
     setTopBarActions(
       <>
-        <code className="text-muted-foreground font-mono text-xs">
+        {/* The raw id is reference material, not a control — on a phone header
+            it would crowd out the page title. The copy button next to it still
+            puts it on the clipboard at every size. */}
+        <code className="text-muted-foreground hidden font-mono text-xs md:inline">
           {assistantId}
         </code>
-        <CopyIdButton id={assistantId} />
+        {/* The options menu carries its own "Copy ID", so the standalone
+            button can leave the phone header rather than crowd the title. */}
+        <span className="hidden sm:contents">
+          <CopyIdButton id={assistantId} />
+        </span>
         <AssistantOptionsMenu
           assistantId={assistantId}
           assistantTitle={assistantTitle}

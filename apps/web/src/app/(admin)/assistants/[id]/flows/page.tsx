@@ -17,7 +17,7 @@ export default async function FlowsPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
+    <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
       <FlowsList assistantId={id} flows={flows} trust={trust} />
     </div>
   );

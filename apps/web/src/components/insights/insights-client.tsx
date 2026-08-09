@@ -93,7 +93,7 @@ function formatStat(n: number): string {
 }
 
 const FIELD_CLASS =
-  "h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/50";
+  "h-10 w-full rounded-lg border bg-background px-3 text-base outline-none focus:ring-2 focus:ring-ring/50 md:text-sm";
 
 const SERIES_COLORS: Record<string, string> = {
   Conversations: "#2563eb",
@@ -277,10 +277,12 @@ export function InsightsClient({
   return (
     <div className="flex min-h-full flex-col">
       {/* Header */}
-      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
+      <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Insights</h1>
         {refreshing && <span className="text-muted-foreground text-sm">Updating…</span>}
-        <div className="ml-auto flex items-center gap-2">
+        {/* Four controls, two of them wide date/assistant pickers: they wrap
+            onto their own rows on a phone rather than clipping off-screen. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto sm:flex-nowrap">
           <DateRangeDropdown
             from={filters.from}
             to={filters.to}
@@ -295,16 +297,25 @@ export function InsightsClient({
           />
           <Button
             variant="outline"
-            className="h-10 rounded-lg px-4"
+            aria-label="Filters"
+            className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
             onClick={() => setFiltersOpen((open) => !open)}
           >
-            <ListFilter className="size-4" /> Filters
+            <ListFilter className="size-4" />{" "}
+            <span className="hidden sm:inline">Filters</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
-              render={<Button variant="outline" className="h-10 rounded-lg px-4" />}
+              render={
+                <Button
+                  variant="outline"
+                  aria-label="Export"
+                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                />
+              }
             >
-              <Download className="size-4" /> Export
+              <Download className="size-4" />{" "}
+              <span className="hidden sm:inline">Export</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => exportRows("csv")}>
@@ -319,7 +330,7 @@ export function InsightsClient({
 
         {/* Filters panel */}
         {filtersOpen && (
-          <div className="absolute top-full right-6 z-30 max-h-[70vh] w-96 overflow-y-auto rounded-xl border bg-popover p-5 shadow-xl">
+          <div className="absolute top-full right-4 left-4 z-30 max-h-[70vh] overflow-y-auto rounded-xl border bg-popover p-5 shadow-xl sm:right-6 sm:left-auto sm:w-96">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Filters</h2>
               <button
@@ -448,7 +459,7 @@ export function InsightsClient({
       </header>
 
       {/* Date range chip */}
-      <div className="shrink-0 px-6 pb-4">
+      <div className="shrink-0 px-4 pb-4 sm:px-6">
         <span className="text-primary inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 dark:border-primary/40 dark:bg-primary/15 px-3 py-1.5 text-sm font-medium">
           Date Range: {filters.from || "…"}, {filters.to || "…"}
           <Hint label="Metrics cover conversations started in this range.">
@@ -458,30 +469,30 @@ export function InsightsClient({
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-12 gap-4 border-t px-6 pt-5 pb-6">
+      <div className="grid grid-cols-12 gap-3 border-t px-4 pt-5 pb-6 sm:gap-4 sm:px-6">
         <StatCard
           title="AI Resolution Rate"
           value={stats.resolutionRate === null ? "N/A" : `${stats.resolutionRate} %`}
           valueClass="text-green-600"
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-6 xl:col-span-3"
         />
         <StatCard
           title="Answer Rating"
           subtitle={`${stats.positive} positive and ${stats.negative} negative`}
           value={`${stats.answerRating} %`}
           valueClass="text-green-600"
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-6 xl:col-span-3"
         />
         <StatCard
           icon={Activity}
           title="Number of Conversations"
           value={String(stats.total)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-6 xl:col-span-3"
         />
         <StatCard
           title="Escalated to Human"
           value={String(stats.escalated)}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-6 xl:col-span-3"
         />
 
         <StatCard

@@ -48,7 +48,7 @@ export default async function KnowledgePage({
   const crawlerCapabilities = websiteCrawlerCapabilities();
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
+    <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Knowledge</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         OKF collections powering this assistant&apos;s answers, sources are

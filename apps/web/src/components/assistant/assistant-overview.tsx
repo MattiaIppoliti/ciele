@@ -116,7 +116,7 @@ export function AssistantOverview({
   const doneCount = checklist.filter((step) => step.done).length;
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
+    <div className="mx-auto max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
       <div className="bg-card rounded-xl border shadow-xs">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b px-6 py-4">
           <h1 className="text-sm font-medium">Assistant</h1>

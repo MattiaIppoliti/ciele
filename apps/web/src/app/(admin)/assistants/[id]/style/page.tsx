@@ -11,7 +11,7 @@ export default async function StylePage({ params }: { params: Promise<{ id: stri
   if (!assistant) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">Style</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         The widget&apos;s appearance, brand color and launcher placement.

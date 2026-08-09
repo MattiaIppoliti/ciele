@@ -14,7 +14,7 @@ export default async function GeneralPage({
   if (!assistant) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-8">
+    <div className="mx-auto max-w-3xl px-5 py-6 sm:px-8 sm:py-8">
       <h1 className="text-2xl font-semibold">General Settings</h1>
       <p className="text-muted-foreground mt-1 text-sm">
         Manage your assistant&apos;s name, messaging, and other settings.

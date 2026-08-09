@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
-import { PanelLeftOpen } from "lucide-react";
+import { Menu, PanelLeftOpen } from "lucide-react";
 import { Badge } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
@@ -42,7 +42,8 @@ const subscribeNoop = () => () => {};
 /** Global top bar: scope switcher on the left, page title centered. */
 export function TopBar({ demo }: { demo: boolean }) {
   const pathname = usePathname();
-  const { sidebarDocked, setSidebarDocked, topBarActions } = useShell();
+  const { sidebarDocked, setSidebarDocked, setNavDrawerOpen, topBarActions } =
+    useShell();
   const title = pageTitle(pathname);
   // topBarActions is registered from page components via useEffect, so with
   // selective hydration it can be set before this boundary hydrates. Server
@@ -55,7 +56,18 @@ export function TopBar({ demo }: { demo: boolean }) {
   );
 
   return (
-    <header className="bg-background/95 relative flex h-14 shrink-0 items-center gap-3 border-b px-4 backdrop-blur">
+    <header className="bg-background/95 relative flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur sm:gap-3 sm:px-4">
+      {/* Below `lg` the sidebar is off-canvas, so the hamburger is the only way
+          into navigation and is always present. From `lg` up it disappears and
+          the reopen button takes over — but only while the sidebar is hidden. */}
+      <button
+        type="button"
+        aria-label="Open navigation"
+        onClick={() => setNavDrawerOpen(true)}
+        className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors lg:hidden"
+      >
+        <Menu className="size-5" />
+      </button>
       {!sidebarDocked && (
         <>
           <Hint label="Show sidebar">
@@ -63,27 +75,39 @@ export function TopBar({ demo }: { demo: boolean }) {
               type="button"
               aria-label="Show sidebar"
               onClick={() => setSidebarDocked(true)}
-              className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+              className="text-muted-foreground hover:bg-muted hover:text-foreground z-10 hidden size-8 shrink-0 items-center justify-center rounded-lg transition-colors lg:flex"
             >
               <AnimatedIcon icon={PanelLeftOpen} size={16} />
             </button>
           </Hint>
-          <div className="bg-border h-5 w-px shrink-0" />
+          <div className="bg-border hidden h-5 w-px shrink-0 lg:block" />
         </>
       )}
-      <ScopeSwitcher />
-      <span
-        aria-hidden
-        className="text-muted-foreground/50 shrink-0 text-lg font-light select-none"
-      >
-        /
-      </span>
-      <span className="truncate text-sm font-medium">{title}</span>
-      <div className="z-10 ml-auto flex items-center gap-2">
+      {/* One shrinkable group: on a phone the switcher and the page title share
+          whatever the hamburger and the actions leave, each truncating in
+          place rather than pushing the row wider than the screen. */}
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+        <ScopeSwitcher />
+        <span
+          aria-hidden
+          className="text-muted-foreground/50 shrink-0 text-lg font-light select-none"
+        >
+          /
+        </span>
+        {/* `min-w-0`, or the nowrap title's max-content min-width makes it
+            refuse to shrink and the scope switcher collapses to one letter
+            beside it. Both need to be able to give. */}
+        <span className="min-w-0 truncate text-sm font-medium">{title}</span>
+      </div>
+      <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
         {mounted && topBarActions}
         {demo && (
           <Badge variant="secondary" className="text-muted-foreground">
-            Demo data, Supabase not configured
+            {/* The full sentence needs room the phone header doesn't have. */}
+            <span className="hidden lg:inline">
+              Demo data, Supabase not configured
+            </span>
+            <span className="lg:hidden">Demo</span>
           </Badge>
         )}
       </div>

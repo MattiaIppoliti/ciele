@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Sorts_Mill_Goudy, Host_Grotesk, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { AuthHintScript } from "@/components/auth-hint-script";
@@ -39,6 +39,20 @@ export const metadata: Metadata = {
   description: "Admin superapp to create and manage AI assistants",
 };
 
+/**
+ * The console is a full-height app, not a scrolling document: it must fill the
+ * *visible* viewport on a phone (where the URL bar steals height — hence `dvh`
+ * on the body) and paint under the notch/home indicator rather than letterbox
+ * itself. `maximumScale` is deliberately left at the default so pinch-zoom
+ * keeps working — the reason iOS zooms a focused input is font size, and the
+ * form primitives use 16px on touch instead (see `globals.css`).
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,7 +66,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${hostGrotesk.variable} ${sortsMillGoudy.variable} ${solitus.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="app-backdrop h-screen overflow-hidden font-sans">
+      {/* `h-dvh`, not `h-screen`: on iOS/Android `100vh` is the *largest*
+          viewport (URL bar hidden), so a `h-screen` app shell hides its own
+          bottom row behind the browser chrome until the user scrolls. */}
+      <body className="app-backdrop h-dvh overflow-hidden font-sans">
         {/* Both must stay in the root layout — see theme-script.tsx. */}
         <ThemeScript />
         <AuthHintScript />

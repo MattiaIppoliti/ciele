@@ -59,7 +59,7 @@ export function ScopeSwitcher() {
           render={
             <button
               type="button"
-              className="hover:bg-muted flex h-8 max-w-64 items-center gap-2 rounded-lg px-2 text-sm font-medium transition-colors"
+              className="hover:bg-muted flex h-9 min-w-0 max-w-40 items-center gap-2 rounded-lg px-2 text-sm font-medium transition-colors sm:h-8 sm:max-w-64"
             />
           }
         >

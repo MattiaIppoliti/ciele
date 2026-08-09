@@ -34,7 +34,11 @@ export default async function AdminLayout({
         <TooltipProvider delay={300}>
           <ShellProvider assistants={summaries}>
             <div className="bg-background text-foreground flex h-full">
-              <Suspense fallback={<div className="w-60 shrink-0 border-r" />}>
+              <Suspense
+                fallback={
+                  <div className="hidden w-60 shrink-0 border-r lg:block" />
+                }
+              >
                 <AppSidebar
                   orgId={organizationId}
                   orgName={session.organization.name}

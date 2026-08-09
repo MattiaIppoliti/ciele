@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import type { Assistant } from "@agent-hub/core";
 import { ChevronsLeft } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -36,8 +37,13 @@ export function PreviewPanelLauncher({
   assistant: Assistant;
   connectorScope: string | null;
 }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [viaDrag, setViaDrag] = useState(false);
+  // The "Preview Chatbot" section *is* the preview; docking a second copy of
+  // it alongside would show the same chat twice, with two separate
+  // conversations.
+  const onPreviewRoute = pathname.endsWith("/preview");
 
   // Restore the user's choice; with none stored, start collapsed on narrow
   // viewports so the panel doesn't crush the settings form (client-only to
@@ -59,6 +65,8 @@ export function PreviewPanelLauncher({
     }
     setOpen(true);
   }
+
+  if (onPreviewRoute) return null;
 
   if (open) {
     return (

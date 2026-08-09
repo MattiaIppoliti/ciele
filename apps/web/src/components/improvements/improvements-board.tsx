@@ -162,25 +162,33 @@ export function ImprovementsBoard({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-6 pt-5 pb-3">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Improvements</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
+        {/* Four controls do not fit a phone row beside the title: the search
+            field claims its own full-width row and the icon buttons drop their
+            labels until `sm`. */}
+        <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search improvements..."
-              className="h-10 w-64 rounded-lg pl-9"
+              className="h-10 w-full rounded-lg pl-9 sm:w-64"
             />
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="outline" className="h-10 rounded-lg px-4" />
+                <Button
+                  variant="outline"
+                  aria-label="Filters"
+                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                />
               }
             >
-              <ListFilter className="size-4" /> Filters
+              <ListFilter className="size-4" />{" "}
+              <span className="hidden sm:inline">Filters</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 p-3">
               <label className="mb-1.5 block text-sm font-medium">
@@ -235,10 +243,15 @@ export function ImprovementsBoard({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="outline" className="h-10 rounded-lg px-4" />
+                <Button
+                  variant="outline"
+                  aria-label="Export"
+                  className="h-10 shrink-0 rounded-lg px-3 sm:px-4"
+                />
               }
             >
-              <Download className="size-4" /> Export
+              <Download className="size-4" />{" "}
+              <span className="hidden sm:inline">Export</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
@@ -265,7 +278,7 @@ export function ImprovementsBoard({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="border-input flex h-10 items-center rounded-lg border p-0.5">
+          <div className="border-input flex h-10 shrink-0 items-center rounded-lg border p-0.5">
             {(
               [
                 { mode: "list", icon: GalleryVerticalEnd, label: "List view" },
@@ -292,7 +305,7 @@ export function ImprovementsBoard({
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto border-t px-6 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto border-t px-4 py-4 sm:px-6">
         <div className={view === "kanban" ? "" : "mx-auto max-w-5xl space-y-3"}>
           {view === "kanban" && improvements.length > 0 && (
             <ImprovementsKanban

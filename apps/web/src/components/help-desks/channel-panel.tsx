@@ -216,7 +216,9 @@ function ConfigFields({
         <p className="text-muted-foreground mt-1 text-sm">
           Users will be offered this number for direct support.
         </p>
-        <div className="mt-2 grid grid-cols-[11rem_1fr] gap-3">
+        {/* A country name plus a phone number do not share a phone-width row:
+            the country picker takes its own row until there is space. */}
+        <div className="mt-2 grid gap-3 sm:grid-cols-[11rem_1fr]">
           <Select
             value={country.code}
             onValueChange={(value) => {

@@ -9,6 +9,7 @@ import {
   FlaskConical,
   LayoutGrid,
   Lock,
+  MessageCircle,
   PenTool,
   Phone,
   Plane,
@@ -75,6 +76,15 @@ export interface SetupSection {
 
 /** Assistant SETUP sections (mirrors the reference platform's editor rail). */
 export const SETUP_SECTIONS: SetupSection[] = [
+  // First, and deliberately: the editor's docked preview panel is pointer-only
+  // chrome hidden below `md`, so this route is the only way to reach the live
+  // preview on a phone or a portrait tablet.
+  {
+    label: "Preview Chatbot",
+    slug: "preview",
+    icon: MessageCircle,
+    enabled: true,
+  },
   { label: "General", slug: "general", icon: SlidersHorizontal, enabled: true },
   { label: "Knowledge", slug: "knowledge", icon: BookText, enabled: true },
   { label: "Flows", slug: "flows", icon: Workflow, enabled: true },
