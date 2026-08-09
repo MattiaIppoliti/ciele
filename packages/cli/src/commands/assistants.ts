@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
 import { str, usage, type CommandContext } from "./shared.ts";
@@ -48,7 +49,10 @@ export async function assistants(
     }
     case "update": {
       if (!rest[0]) return usage(deps, "assistants update <id> [--title …]");
-      const patch: Record<string, string> = {};
+      const file = str(flags.file);
+      const patch: Record<string, unknown> = file
+        ? JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>
+        : {};
       for (const [flag, field] of [
         ["title", "title"],
         ["nickname", "nickname"],
@@ -83,7 +87,43 @@ export async function assistants(
       emit(`Created ${copy.id} ("${copy.title}")`, copy);
       return EXIT.ok;
     }
+    case "get-entities": {
+      if (!rest[0]) return usage(deps, "assistants get-entities <id>");
+      const selection = await client.assistants.entities(rest[0]);
+      emit(selection.entityIds.join("\n"), selection);
+      return EXIT.ok;
+    }
+    case "set-entities": {
+      if (!rest[0] || str(flags.ids) === undefined) {
+        return usage(deps, "assistants set-entities <id> --ids <entityId,…>");
+      }
+      const entityIds = (str(flags.ids) ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const selection = await client.assistants.setEntities(rest[0], entityIds);
+      emit(`Selected ${selection.entityIds.length} Entities`, selection);
+      return EXIT.ok;
+    }
+    case "get-skills": {
+      if (!rest[0]) return usage(deps, "assistants get-skills <id>");
+      const result = await client.assistants.skills(rest[0]);
+      emit(result.data.map((skill) => skill.id).join("\n"), result);
+      return EXIT.ok;
+    }
+    case "set-skills": {
+      if (!rest[0] || str(flags.ids) === undefined) {
+        return usage(deps, "assistants set-skills <id> --ids <skillId,…>");
+      }
+      const skillIds = (str(flags.ids) ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const result = await client.assistants.setSkills(rest[0], skillIds);
+      emit(`Selected ${result.data.length} Skills`, result);
+      return EXIT.ok;
+    }
     default:
-      return usage(deps, "assistants <list|get|create|update|delete|duplicate>");
+      return usage(deps, "assistants <list|get|create|update|delete|duplicate|get-entities|set-entities|get-skills|set-skills>");
   }
 }

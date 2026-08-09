@@ -12,11 +12,10 @@ vi.mock("@/lib/widget-db", async (importOriginal) => {
   return {
     ...actual,
     resolveWidgetContext: mocks.resolveWidgetContext,
-    widgetOptions: vi.fn(),
   };
 });
 
-import { DELETE, GET } from "./route";
+import { DELETE, GET, OPTIONS } from "./route";
 import { SSO_GATE_COOKIE, sealGate } from "@/lib/sso";
 
 const ORG = "org-1";
@@ -97,6 +96,14 @@ describe("widget memories route (#666)", () => {
     db = makeDb();
     mocks.resolveWidgetContext.mockReset();
     mocks.resolveWidgetContext.mockResolvedValue(contextWith(db));
+  });
+
+  it("advertises DELETE on cross-origin preflight", async () => {
+    const response = await OPTIONS({
+      headers: new Headers({ origin: "https://campus.example" }),
+    });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-methods")).toContain("DELETE");
   });
 
   it("404s anonymous visitors — no gate, no folder", async () => {

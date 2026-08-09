@@ -12,7 +12,7 @@ utilizan el contenido configurado sin reescribir el modelo.
 | --- | :---: | --- |
 | Mensaje | No | Emite el texto configurado textualmente. |
 | Botón | No | Añade un botón de enlace o un botón que envía texto al chat. |
-| Buscar en el conocimiento | Sí | Ejecuta el bucle del agente de conocimiento y devuelve citas. |
+| Buscar conocimiento | Sí | Ejecuta el bucle del agente de conocimiento y devuelve citas. |
 | Seguimientos | Opcional | Utiliza las preguntas configuradas o genera preguntas sugeridas. |
 | Iframe | No | Incrusta en el chat el contenido externo configurado. |
 | Solicitud de API | No | Llama a un punto de conexión HTTP configurado y mapea su resultado. |
@@ -20,7 +20,7 @@ utilizan el contenido configurado sin reescribir el modelo.
 | Mejora | No | Crea una Mejora para la respuesta correspondiente. |
 | Traspaso | Depende del destino | Continúa una vez en otro Asistente publicado. |
 
-El flujo de interacción básico integrado también usa **Basic reply**. La
+El flujo de interacción básico integrado también utiliza **Basic reply**. La
 recomendación de Help Desk utiliza una acción de tiempo de ejecución que el
 selector de acciones directas no muestra.
 
@@ -51,7 +51,7 @@ servicio de asistencia o crear una mejora.
 ## Botón
 
 Configura una etiqueta y un destino. Un destino puede abrir un enlace o enviar
-texto configurado a la conversación.
+texto configurado a la Conversación.
 
 ## Preguntas de seguimiento
 
@@ -94,8 +94,8 @@ visible.
 Selecciona otro Asistente de la misma Organización. El destino debe tener una
 Publicación actual.
 
-Ciele ejecuta el mismo mensaje de visitante a través del asistente de destino
-una vez. No continúa con un segundo traspaso desde ese turno de destino.
+Ciele pasa el mismo mensaje de visitante por el Asistente de destino una sola
+vez. No continúa con un segundo traspaso desde ese turno de destino.
 
 ## Orden de las acciones
 

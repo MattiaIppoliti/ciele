@@ -23,7 +23,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 
 | Variabile | Requisito | Scopo |
 | --- | --- | --- |
-| `CIELE_API_KEY` | Obbligatorio | Autentica l'organizzazione. |
+| `CIELE_API_KEY` | Obbligatoria | Autentica l'organizzazione. |
 | `CIELE_BASE_URL` | Opzionale | Seleziona un'origine self-hosted. |
 | `CIELE_MCP_READ_ONLY` | Opzionale | Rifiuta le azioni di modifica quando il valore è `1`. |
 
@@ -43,13 +43,30 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_flows` | Elenca, leggi, crea, aggiorna, riordina o elimina i flussi. |
 | `manage_knowledge` | Gestisci raccolte, fonti e FAQ. |
 | `publish_assistant` | Leggi lo stato, pubblica, annulla la pubblicazione o ripristina una pubblicazione. |
-| `read_inbox` | Elenca, leggi o esporta le Conversazioni. |
+| `read_inbox` | Elenca, leggi, esporta, metti in evidenza, annota, valuta o elimina le Conversazioni. |
 | `manage_improvements` | Elenca, leggi o aggiorna i Miglioramenti. |
+| `manage_entities` | Gestisci le entità dell'organizzazione e i record tipizzati. |
+| `manage_memories` | Controlla le impostazioni ed esegui la cancellazione della memoria con ambito. |
+| `manage_sso` | Gestisci le richieste di identità e la connessione SSO dell'organizzazione. |
+| `manage_help_desks` | Gestisci gli help desk, i canali, gli ordini e ServiceNow. |
+| `manage_configuration` | Gestisci le competenze, la selezione delle competenze dell'assistente, gli obiettivi e gli avvisi. |
+| `manage_organization` | Gestisci le impostazioni dell'organizzazione, i membri, gli inviti e le chiavi API. |
+| `manage_integrations` | Gestisci le integrazioni API dell'Assistente e i fornitori di modelli. |
+
+Al momento, il server registra quattordici strumenti. Ogni strumento di dominio
+utilizza un campo `action` per le sue operazioni.
+
+La modalità di sola lettura classifica ogni azione. Consente le azioni di
+elenco, lettura, stato, query ed esportazione, ma rifiuta le mutazioni.
 
 Il server MCP non fornisce un trasporto HTTP remoto. Consulta
 [AI clients](/developers/ai-clients) per informazioni sulla compatibilità.
 
-## Verifica la connessione
+## Controlla la connessione
 
 Chiedi al client di chiamare `ciele_identity`. Conferma l'ID organizzazione, il
 ruolo, la versione API e l'elenco dei domini previsti.
+
+La suite di test del repository avvia anche il processo `stdio` vero e proprio.
+Verifica l'inizializzazione, il rilevamento degli strumenti e una chiamata API
+autenticata.

@@ -1,6 +1,9 @@
-import { getConversationOp } from "@ciele/ops";
+import { deleteConversationOp, getConversationOp, setConversationPinnedOp } from "@ciele/ops";
+import { apiError } from "@/lib/api-v1/http";
 import { runApiOperation } from "@/lib/api-v1/run";
 import { canViewReasoning } from "@/lib/rbac";
+
+type Params = { params: Promise<{ id: string }> };
 
 /**
  * One Conversation's transcript (#624). The stored trace quotes the
@@ -31,4 +34,21 @@ export async function GET(
       ...(includeTrace ? { trace: m.trace } : {}),
     })),
   });
+}
+
+export async function PATCH(request: Request, { params }: Params) {
+  const { id } = await params;
+  const body = await request.json().catch(() => null);
+  if (body === null) return apiError(400, "invalid_input", "Body must be JSON");
+  const outcome = await runApiOperation(request, setConversationPinnedOp, {
+    id,
+    pinned: body.pinned,
+  });
+  return outcome instanceof Response ? outcome : Response.json(outcome.result);
+}
+
+export async function DELETE(request: Request, { params }: Params) {
+  const { id } = await params;
+  const outcome = await runApiOperation(request, deleteConversationOp, { id });
+  return outcome instanceof Response ? outcome : new Response(null, { status: 204 });
 }

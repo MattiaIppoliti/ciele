@@ -106,6 +106,7 @@ import {
   shortId,
   sortFlows,
 } from "@agent-hub/core";
+
 import {
   DB_TABLE_SPECS,
   camelToSnakeKey,
@@ -4438,6 +4439,16 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async deleteMemory(id) {
       const { error } = await client.from("memories").delete().eq("id", id);
       if (error) throw error;
+    },
+
+    async getMemory(id) {
+      const { data, error } = await client
+        .from("memories")
+        .select("id, organization_id, subject_id, text, conversation_id, created_at")
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toMemory(data as MemoryRow) : null;
     },
 
     // --- Synced Record ingestion (#670) ---------------------------------

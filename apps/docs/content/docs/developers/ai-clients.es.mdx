@@ -7,8 +7,7 @@ El servidor Ciele MCP utiliza el transporte local `stdio`. El cliente debe
 iniciar el servidor como un proceso hijo.
 
 Esta página refleja la documentación del cliente revisada el 6 de agosto de
-2026. Las interfaces de los clientes y los formatos de configuración pueden
-cambiar.
+2026. Las interfaces de cliente y los formatos de configuración pueden cambiar.
 
 ## Compatibilidad
 
@@ -22,7 +21,7 @@ cambiar.
 | GitHub Copilot en VS Code | Sí | Servidor `stdio` local |
 | GitHub Copilot CLI | Sí | Servidor `stdio` local |
 | ChatGPT web | Sin conexión directa | ChatGPT requiere un punto de conexión MCP remoto. |
-| Pi | Sin procedimiento integrado | Utiliza la CLI de Ciele o instala una extensión de Pi revisada. |
+| Pi | Sin procedimiento integrado | Utiliza la CLI de Ciele o instala una extensión revisada de Pi. |
 
 El servidor actual de Ciele no proporciona un transporte HTTP remoto. Por lo
 tanto, ChatGPT web no puede conectarse a él directamente.
@@ -31,7 +30,7 @@ tanto, ChatGPT web no puede conectarse a él directamente.
 
 1. Instala Node.js 22.6 o una versión posterior.
 2. Clona el repositorio de Ciele.
-3. Crea un visor [clave API](/developers/api-keys).
+3. Crea una [clave de API](/developers/api-keys) de visor.
 4. Resuelve la ruta absoluta a `packages/mcp/bin/ciele-mcp.mjs`.
 5. Establece `CIELE_MCP_READ_ONLY=1` para la primera conexión.
 
@@ -88,7 +87,7 @@ CIELE_MCP_READ_ONLY = "1"
 Ejecuta `codex mcp list` o abre `/mcp` para comprobar la conexión.
 
 Consulta la [guía de Codex MCP](https://learn.chatgpt.com/docs/extend/mcp) para
-ver la configuración actual del cliente.
+conocer la configuración actual del cliente.
 
 ## Cursor
 
@@ -210,7 +209,7 @@ Call ciele_identity. Show the deployment version, available domains,
 Organization ID, and Role. Do not change data.
 ```
 
-Utiliza esta indicación para revisar los Asistentes:
+Utiliza esta indicación para revisar a los Asistentes:
 
 ```text
 List all Ciele Assistants. For each Assistant, list its enabled Flows.

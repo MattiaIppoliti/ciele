@@ -9,9 +9,28 @@ gehostete Installationen.
 
 ## Anforderungen
 
-- Verwenden Sie Node.js 22.6 oder höher, wenn Sie die CLI aus diesem Repository
-  ausführen.
+- Verwenden Sie Node.js 22.6 oder höher.
 - Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
+
+## Installieren
+
+Erstellen und installieren Sie das eigenständige Paket aus einem
+Repository-Checkout:
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+Das Tar-Archiv enthält seine Laufzeitabhängigkeiten. Der Befehl installed
+benötigt das Repository nicht mehr.
+
+Nachdem `@ciele/cli` in npm veröffentlicht wurde, installiert
+`npm install --global @ciele/cli` dasselbe Artefakt.
+
+Mitwirkende können `node packages/cli/bin/ciele.mjs` auch ausführen, ohne es zu
+installieren.
 
 ## Anmelden
 
@@ -29,6 +48,7 @@ hinzu:
 ciele login \
   --key "$CIELE_API_KEY" \
   --base-url "https://ciele.example.edu"
+ciele doctor
 ```
 
 Der Befehl `login` validiert den Schlüssel, bevor er `~/.ciele/config.json`
@@ -44,7 +64,7 @@ Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
 den gespeicherten Ursprung. Der gehostete Ursprung ist die letzte
 Standardeinstellung.
 
-## Automatisierungs-Ausgabe verwenden
+## Automatisierungsausgabe verwenden
 
 Fügen Sie `--json` zu einem Befehl hinzu, um eine maschinenlesbare Ausgabe zu
 erhalten.
@@ -56,20 +76,49 @@ erhalten.
 | `2` | Die Befehlseingabe ist ungültig. |
 | `3` | Authentifizierung fehlgeschlagen. |
 
-## Häufige Befehle
+`ciele doctor` überprüft die API-Erkennung, die API-Kompatibilität, den
+Schlüssel, seine Rolle und seine Organisation.
+
+## Befehle für Assistenten und Wissen
 
 ```bash
 ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf
 ciele sources get <source-id>
 ciele publish status <assistant-id>
+```
+
+## Befehle für Vorgänge und Organisationen
+
+```bash
 ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
 ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
 ```
 
 Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltens-Flow kann
 nicht gelöscht werden.
+
+Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
+Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
+einen Patch akzeptiert.
 
 ## Beispiel für eine CI-Prüfung
 

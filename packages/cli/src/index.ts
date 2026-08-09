@@ -1,5 +1,9 @@
 import { createInterface } from "node:readline/promises";
-import { CieleApiError, CieleClient } from "@ciele/client";
+import {
+  CieleApiError,
+  CieleClient,
+  DEFAULT_CIELE_BASE_URL,
+} from "@ciele/client";
 // Explicit .ts extensions: the bin runs this via Node's type stripping,
 // where ESM relative specifiers must be fully qualified.
 import { fileConfigStore, type ConfigStore } from "./config.ts";
@@ -8,8 +12,15 @@ import { assistants } from "./commands/assistants.ts";
 import { flows } from "./commands/flows.ts";
 import { collections, faqs, sources } from "./commands/knowledge.ts";
 import { publish } from "./commands/publish.ts";
-import { conversations } from "./commands/inbox.ts";
+import { conversations, messages } from "./commands/inbox.ts";
 import { improvements } from "./commands/improvements.ts";
+import { entities, records } from "./commands/entities.ts";
+import { memories } from "./commands/memories.ts";
+import { sso } from "./commands/sso.ts";
+import { helpDesks } from "./commands/help-desks.ts";
+import { alerts, goals, skills } from "./commands/configuration.ts";
+import { apiKeys, invites, members, organization } from "./commands/organization.ts";
+import { apiIntegrations, providers } from "./commands/integrations.ts";
 import type { CommandContext } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
@@ -24,7 +35,22 @@ const COMMAND_GROUPS: Record<
   faqs,
   publish,
   conversations,
+  messages,
   improvements,
+  entities,
+  records,
+  memories,
+  sso,
+  "help-desks": helpDesks,
+  skills,
+  goals,
+  alerts,
+  organization,
+  members,
+  invites,
+  "api-keys": apiKeys,
+  "api-integrations": apiIntegrations,
+  providers,
 };
 
 /**
@@ -85,12 +111,17 @@ Commands:
   login [--key <ciele_sk_…>] [--base-url <url>]   Store a key (validated first)
   logout                                          Forget the stored key
   whoami                                          The key's org, role and id
+  doctor                                          Verify deployment, API version and key
 
   assistants list [--limit <n>] [--all]
   assistants get|duplicate <id>
   assistants create --title <t> [--nickname] [--description]
-  assistants update <id> [--title|--nickname|--description|--answering-style]
+  assistants update <id> [--file patch.json|--title|--nickname|--description|--answering-style]
   assistants delete <id> --yes
+  assistants get-entities <id>
+  assistants set-entities <id> --ids <entityId,…>
+  assistants get-skills <id>
+  assistants set-skills <id> --ids <skillId,…>
 
   flows list <assistantId>
   flows get <id>
@@ -117,10 +148,45 @@ Commands:
   conversations list [--assistant <id>] [--limit] [--cursor]
   conversations get <id>
   conversations export <id> [<id>…] [--out <file.json>]
+  conversations pin|unpin|feedback|delete <id> [...]
+  messages feedback <id> --value <-1|0|1>
 
   improvements list [--limit] [--cursor]
   improvements get <id>
   improvements update <id> [--status|--priority|--assignee|--due|--title|--description|--tags]
+
+  entities list|get|delete [<id>] [--yes]
+  entities create --file <entity.json>
+  entities update <id> [--name|--description]
+  records list <entityId> [--limit] [--offset]
+  records query <entityId> --file <query.json>
+  records import <entityId> --file <records.csv>
+
+  memories status|enable|disable|subjects
+  memories list <subjectId>
+  memories delete <memoryId> --yes
+  memories wipe <subjectId> --yes
+
+  sso status
+  sso identity <claim|none>                      Configure verified SSO claim
+  sso validate                                   Revalidate stored credentials
+
+  help-desks list|get|create|update|delete
+  help-desks add-channel|update-channel|delete-channel <deskId> [...]
+  help-desks reorder-channels <deskId> --ids <id,id,…>
+  help-desks connect-servicenow <deskId> --file <credentials.json>
+  help-desks disconnect-ticketing <deskId> --yes
+
+  skills list|create|update|delete
+  goals list|create|update|delete <assistantId> [...]
+  alerts list|resolve [<id>]
+
+  organization get|update
+  members list|set-role|remove
+  invites list|create|revoke
+  api-keys list|create|revoke
+  api-integrations get|set|delete <assistantId>
+  providers list|create-api-key|create-compatible|create-federated|delete|set-embedding
 
 Global options:
   --json               Machine-readable output
@@ -142,6 +208,7 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
   const config = deps.config.load();
   const baseUrl =
     str(flags["base-url"]) ?? deps.env.CIELE_BASE_URL ?? config.baseUrl;
+  const resolvedBaseUrl = (baseUrl ?? DEFAULT_CIELE_BASE_URL).replace(/\/+$/, "");
   const apiKey =
     str(flags["api-key"]) ?? deps.env.CIELE_API_KEY ?? config.apiKey;
 
@@ -199,6 +266,30 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
         identity
       );
       return EXIT.ok;
+    }
+
+    if (noun === "doctor") {
+      const [meta, identity] = await Promise.all([client().meta(), client().whoami()]);
+      const result = {
+        ok: meta.api === "ciele" && meta.apiVersion === 1,
+        baseUrl: resolvedBaseUrl,
+        apiVersion: meta.apiVersion,
+        serverVersion: meta.serverVersion,
+        domains: meta.domains,
+        organizationId: identity.organizationId,
+        role: identity.role,
+        keyId: identity.keyId,
+      };
+      emit(
+        [
+          `${result.ok ? "Ready" : "Incompatible"}: ${resolvedBaseUrl}`,
+          `API v${meta.apiVersion} · server ${meta.serverVersion}`,
+          `Organization ${identity.organizationId} · role ${identity.role}`,
+          `Domains: ${meta.domains.join(", ")}`,
+        ].join("\n"),
+        result
+      );
+      return result.ok ? EXIT.ok : EXIT.error;
     }
 
     const group = COMMAND_GROUPS[noun];

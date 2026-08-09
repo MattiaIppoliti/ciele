@@ -23,6 +23,8 @@ export type MutatedEntity =
   | { kind: "aiSettings" }
   /** The org members roster. */
   | { kind: "members" }
+  /** Organization identity shown in settings and the app shell. */
+  | { kind: "organization" }
   /** The org API keys page (#618). */
   | { kind: "apiKeys" }
   /** The operational Alerts page. */

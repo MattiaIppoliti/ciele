@@ -59,7 +59,7 @@ Le operazioni di elenco accettano i parametri `limit` e `cursor` quando
 l'endpoint supporta l'impaginazione. Utilizza il cursore restituito per la
 richiesta successiva.
 
-## Riprova in sicurezza
+## Riprova in modo sicuro
 
 Le route di mutazione possono accettare un'intestazione `Idempotency-Key`.
 Riutilizza lo stesso valore solo quando riprovi la stessa operazione logica.
@@ -68,11 +68,22 @@ Riutilizza lo stesso valore solo quando riprovi la stessa operazione logica.
 
 - Assistenti: elenca, leggi, crea, aggiorna, duplica ed elimina.
 - Flussi: elenca, leggi, crea, aggiorna, riordina ed elimina.
-- Knowledge: gestisci raccolte, fonti e FAQ.
+- Conoscenza: gestisci raccolte, fonti e FAQ.
 - Pubblicazione: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
   una pubblicazione.
-- Posta in arrivo: elenca, leggi ed esporta le Conversazioni.
+- Posta in arrivo: rivedi, esporta, metti in evidenza, annota, valuta ed elimina
+  le Conversazioni.
 - Miglioramenti: elenca, leggi e aggiorna gli elementi.
+- Entità e memorie: gestisci i dati tipizzati dell'organizzazione e la
+  cancellazione della memoria con ambito.
+- SSO: gestisci le richieste di identità, le impostazioni di connessione, la
+  convalida e la disconnessione.
+- Help Desk: gestisci i desk, i canali di escalation, gli ordini e ServiceNow.
+- Configurazione: gestisci le competenze, gli obiettivi dell'assistente e gli
+  avvisi operativi.
+- Organizzazione: gestisci impostazioni, membri, inviti e chiavi API.
+- Integrazioni: gestisci le integrazioni API dell'Assistente e le connessioni ai
+  provider di modelli.
 
 Utilizza il documento OpenAPI per i campi di richiesta e gli schemi di risposta
 esatti.

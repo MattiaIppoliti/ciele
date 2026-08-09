@@ -1,4 +1,5 @@
 import type { Db } from "./types";
+import type { DbTableAccessor } from "./table-access";
 
 /**
  * The org-pinning wrapper for API-key requests (#619, grown per-domain from
@@ -26,6 +27,30 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "createAssistant",
   "listInboxConversations",
   "listImprovements",
+  "getMemoryEnabled",
+  "setMemoryEnabled",
+  "listMemorySubjects",
+  "getSsoConnection",
+  "setSsoConnection",
+  "setSsoConnectionValidation",
+  "listHelpDesks",
+  "createHelpDesk",
+  "listSkills",
+  "createSkill",
+  "listAlerts",
+  "listMembers",
+  "updateMemberRole",
+  "removeMember",
+  "listInvites",
+  "createInvite",
+  "updateOrganization",
+  "listApiKeys",
+  "createApiKey",
+  "clearSsoConnection",
+  "listProviderConnections",
+  "createProviderConnection",
+  "getEmbeddingConnectionId",
+  "setEmbeddingConnectionId",
 ]);
 
 /**
@@ -42,6 +67,10 @@ const ASSISTANT_SCOPED_METHODS = new Set<keyof Db>([
   "createPublication",
   "deletePublications",
   "getLatestPublication",
+  "listAssistantGoals",
+  "createAssistantGoal",
+  "getApiIntegration",
+  "deleteApiIntegration",
 ]);
 
 /** Assistant-id-addressed mutations, same guard as above (single id arg). */
@@ -72,7 +101,14 @@ const SOURCE_ID_METHODS = new Set<keyof Db>(["deleteSource"]);
  * Methods whose first parameter is a conversationId — guarded by resolving
  * conversation → assistant → organization (#624).
  */
-const CONVERSATION_SCOPED_METHODS = new Set<keyof Db>(["listMessages"]);
+const CONVERSATION_SCOPED_METHODS = new Set<keyof Db>([
+  "listMessages",
+  "setConversationPinned",
+  "updateConversationMetadata",
+  "deleteConversation",
+]);
+
+const MESSAGE_SCOPED_METHODS = new Set<keyof Db>(["setMessageFeedback"]);
 
 /**
  * Methods whose first parameter is an improvementId — Improvements carry
@@ -82,6 +118,35 @@ const IMPROVEMENT_SCOPED_METHODS = new Set<keyof Db>([
   "updateImprovement",
   "listImprovementMessages",
   "getImprovementProposal",
+]);
+
+const ENTITY_SCOPED_METHODS = new Set<keyof Db>([
+  "upsertEntityRecords",
+  "listEntityRecords",
+  "countEntityRecords",
+  "queryEntityRecords",
+]);
+
+const HELP_DESK_SCOPED_METHODS = new Set<keyof Db>([
+  "updateHelpDesk",
+  "deleteHelpDesk",
+  "listSupportChannels",
+  "createSupportChannel",
+  "reorderSupportChannels",
+  "setTicketingIntegration",
+  "clearTicketingIntegration",
+]);
+
+const SUPPORT_CHANNEL_SCOPED_METHODS = new Set<keyof Db>([
+  "updateSupportChannel",
+  "deleteSupportChannel",
+]);
+
+const SKILL_SCOPED_METHODS = new Set<keyof Db>(["updateSkill", "deleteSkill"]);
+
+const GOAL_SCOPED_METHODS = new Set<keyof Db>([
+  "updateAssistantGoal",
+  "deleteAssistantGoal",
 ]);
 
 export type OrgPinnedDbErrorReason = "not_exposed" | "cross_org";
@@ -134,6 +199,50 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         return (...args: unknown[]) => call(organizationId, ...args.slice(1));
       }
 
+      if (method === "table") {
+        return (name: unknown) => {
+          if (name !== "entities") {
+            throw new OrgPinnedDbError(`table(${String(name)})`, "not_exposed");
+          }
+          const table = inner.table("entities");
+          const assertOwned = async (operation: string, id: string) => {
+            const entity = await table.get(id);
+            if (!entity || entity.organizationId !== organizationId) {
+              throw new OrgPinnedDbError(operation, "cross_org");
+            }
+          };
+          const pinned: DbTableAccessor<"entities"> = {
+            list: (filter = {}, options) =>
+              table.list({ ...filter, organizationId }, options),
+            get: async (id) => {
+              const entity = await table.get(id);
+              return entity?.organizationId === organizationId ? entity : null;
+            },
+            insert: (values) => table.insert({ ...values, organizationId }),
+            update: async (id, patch) => {
+              await assertOwned("table(entities).update", id);
+              return table.update(id, patch);
+            },
+            delete: async (id) => {
+              await assertOwned("table(entities).delete", id);
+              await table.delete(id);
+            },
+          };
+          return pinned;
+        };
+      }
+
+      if (method === "listMemories" || method === "deleteSubjectMemories") {
+        return (...args: unknown[]) => {
+          const subject = (args[0] ?? {}) as { subjectId?: unknown };
+          return call({
+            ...subject,
+            organizationId,
+            subjectId: String(subject.subjectId ?? ""),
+          });
+        };
+      }
+
       if (method === "getFlow") {
         // Post-check read like getAssistant: foreign rows read as absent.
         return async (...args: unknown[]) => {
@@ -146,6 +255,51 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         };
       }
 
+      if (method === "listOrganizations") {
+        return async () =>
+          (await inner.listOrganizations()).filter(
+            (organization) => organization.id === organizationId
+          );
+      }
+
+      if (method === "revokeInvite") {
+        return async (...args: unknown[]) => {
+          const owned = (await inner.listInvites(organizationId)).some(
+            (invite) => invite.id === String(args[0])
+          );
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+
+      if (method === "revokeApiKey") {
+        return async (...args: unknown[]) => {
+          const owned = (await inner.listApiKeys(organizationId)).some(
+            (key) => key.id === String(args[0])
+          );
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+
+      if (method === "setApiIntegration") {
+        return async (...args: unknown[]) => {
+          const input = args[0] as { assistantId?: unknown; organizationId?: unknown };
+          await assertAssistantOwned(String(prop), input.assistantId);
+          return call({ ...input, organizationId });
+        };
+      }
+
+      if (method === "deleteProviderConnection") {
+        return async (...args: unknown[]) => {
+          const owned = (await inner.listProviderConnections(organizationId)).some(
+            (connection) => connection.id === String(args[0])
+          );
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+
       if (method === "getAssistant") {
         // Post-check read: a foreign row reads as absent, not as an error —
         // the API surface must not disclose that the id exists elsewhere.
@@ -154,6 +308,118 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
           return assistant && assistant.organizationId === organizationId
             ? assistant
             : null;
+        };
+      }
+
+      if (method === "getConversationForMessage") {
+        return async (...args: unknown[]) => {
+          const conversation = await inner.getConversationForMessage(String(args[0]));
+          if (!conversation) return null;
+          const assistant = await inner.getAssistant(conversation.assistantId);
+          return assistant && assistant.organizationId === organizationId
+            ? conversation
+            : null;
+        };
+      }
+
+      if (MESSAGE_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const conversation = await inner.getConversationForMessage(String(args[0]));
+          if (!conversation) throw new OrgPinnedDbError(String(prop), "cross_org");
+          await assertAssistantOwned(String(prop), conversation.assistantId);
+          return call(...args);
+        };
+      }
+
+      if (method === "getHelpDesk") {
+        return async (...args: unknown[]) => {
+          const desk = await inner.getHelpDesk(String(args[0]));
+          return desk && desk.organizationId === organizationId ? desk : null;
+        };
+      }
+
+      if (HELP_DESK_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const desk = await inner.getHelpDesk(String(args[0]));
+          if (!desk || desk.organizationId !== organizationId) {
+            throw new OrgPinnedDbError(String(prop), "cross_org");
+          }
+          return call(...args);
+        };
+      }
+
+      if (SUPPORT_CHANNEL_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const channelId = String(args[0]);
+          const desks = await inner.listHelpDesks(organizationId);
+          let owned = false;
+          for (const desk of desks) {
+            const channels = await inner.listSupportChannels(desk.id);
+            if (channels.some((channel) => channel.id === channelId)) {
+              owned = true;
+              break;
+            }
+          }
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+
+      if (SKILL_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const owned = (await inner.listSkills(organizationId)).some(
+            (skill) => skill.id === String(args[0])
+          );
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+
+      if (GOAL_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const goalId = String(args[0]);
+          const assistants = await inner.listAssistants(organizationId);
+          for (const assistant of assistants) {
+            const goals = await inner.listAssistantGoals(assistant.id);
+            if (goals.some((goal) => goal.id === goalId)) return call(...args);
+          }
+          throw new OrgPinnedDbError(String(prop), "cross_org");
+        };
+      }
+
+      if (method === "resolveAlert") {
+        return async (...args: unknown[]) => {
+          const owned = (await inner.listAlerts(organizationId)).some(
+            (alert) => alert.id === String(args[0])
+          );
+          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          return call(...args);
+        };
+      }
+      if (ENTITY_SCOPED_METHODS.has(method)) {
+        return async (...args: unknown[]) => {
+          const entity = await inner.table("entities").get(String(args[0]));
+          if (!entity || entity.organizationId !== organizationId) {
+            throw new OrgPinnedDbError(String(prop), "cross_org");
+          }
+          return call(...args);
+        };
+      }
+
+      if (method === "deleteMemory") {
+        return async (...args: unknown[]) => {
+          const memory = await inner.getMemory(String(args[0]));
+          if (!memory || memory.organizationId !== organizationId) {
+            throw new OrgPinnedDbError(String(prop), "cross_org");
+          }
+          return call(...args);
+        };
+      }
+
+      if (method === "getMemory") {
+        return async (...args: unknown[]) => {
+          const memory = await inner.getMemory(String(args[0]));
+          return memory && memory.organizationId === organizationId ? memory : null;
         };
       }
 

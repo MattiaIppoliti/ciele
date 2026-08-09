@@ -27,7 +27,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 | `CIELE_BASE_URL` | Facultatif | Sélectionne une origine auto-hébergée. |
 | `CIELE_MCP_READ_ONLY` | Facultatif | Refuse les actions de mutation lorsque la valeur est `1`. |
 
-La vérification en lecture seule est effectuée au sein du processus MCP. Une
+La vérification en lecture seule a lieu à l'intérieur du processus MCP. Une
 mutation refusée n'effectue pas de requête API.
 
 <Callout title="Recommended first connection">
@@ -38,13 +38,26 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Outil | Opérations en cours |
 | --- | --- |
-| `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et au rôle. |
+| `ciele_identity` | Lire les informations sur le déploiement, l'organisation et le rôle. |
 | `manage_assistants` | Lister, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
 | `manage_flows` | Lister, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
 | `manage_knowledge` | Gérez les collections, les sources et les FAQ. |
-| `publish_assistant` | Lire le statut, publier, annuler la publication ou restaurer une publication. |
-| `read_inbox` | Lister, lire ou exporter des conversations. |
+| `publish_assistant` | Lire l'état, publier, annuler la publication ou restaurer une publication. |
+| `read_inbox` | Lister, lire, exporter, épingler, annoter, évaluer ou supprimer des conversations. |
 | `manage_improvements` | Lister, lire ou mettre à jour les améliorations. |
+| `manage_entities` | Gérez les entités de l'organisation et les enregistrements typés. |
+| `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire ciblé. |
+| `manage_sso` | Gérez les demandes d'identité et la connexion SSO de l'organisation. |
+| `manage_help_desks` | Gérez les centres d'assistance, les canaux, les commandes et ServiceNow. |
+| `manage_configuration` | Gérez les compétences, la sélection des compétences de l'assistant, les objectifs et les alertes. |
+| `manage_organization` | Gérez les paramètres de l'organisation, les membres, les invitations et les clés API. |
+| `manage_integrations` | Gérez les intégrations de l'API Assistant et les fournisseurs de modèles. |
+
+Le serveur enregistre actuellement quatorze outils. Chaque outil de domaine
+utilise un champ `action` pour ses opérations.
+
+Le mode lecture seule catégorise chaque action. Il autorise les actions list,
+read, status, query et export, mais refuse les mutations.
 
 Le serveur MCP ne fournit pas de transport HTTP distant. Consultez
 [Clients IA](/developers/ai-clients) pour obtenir des informations sur la
@@ -54,3 +67,6 @@ compatibilité.
 
 Demandez au client d'appeler `ciele_identity`. Confirmez l'ID d'organisation, le
 rôle, la version de l'API et la liste de domaines attendus.
+
+La suite de tests du référentiel lance également le processus `stdio` réel. Elle
+vérifie l'initialisation, la découverte des outils et un appel API authentifié.

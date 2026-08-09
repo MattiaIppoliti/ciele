@@ -25,9 +25,9 @@ Chaque enregistrement de conversation utilise le format d'exportation actuel à
 29 champs. L'enregistrement comprend des informations sur la conversation,
 l'assistant, le visiteur, la session et le résultat.
 
-Les détails du raisonnement dépendent de la clé API ou du rôle du membre. Un
-rôle de niveau inférieur ne peut pas demander le raisonnement masqué via une
-option d'exportation.
+Les détails du raisonnement dépendent de la clé API ou du rôle du rôle du
+membre. Un rôle de niveau inférieur ne peut pas demander le raisonnement masqué
+via une option d'exportation.
 
 ## Accès API et CLI
 
@@ -40,5 +40,5 @@ La CLI peut écrire le même format d'enregistrement dans un fichier :
 ciele conversations export <conversation-id> --out export.json
 ```
 
-L'outil MCP `read_inbox` peut également demander une exportation. Cet outil est
-toujours en lecture seule.
+L'outil MCP `read_inbox` peut également demander une exportation. Son action
+d'exportation reste disponible en mode MCP en lecture seule.

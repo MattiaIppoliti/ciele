@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   ApiIntegration,
   Assistant,
+  EntitySnapshot,
   KnowledgeSearchResult,
 } from "@agent-hub/core";
 
@@ -475,6 +476,71 @@ describe("remember tool", () => {
     await run(buildToolset(ctx), "remember", { fact: "Student of Marketing (A)" });
     expect(ctx.session.memory()).toEqual(["Student of Marketing (A)"]);
     expect(ctx.session.dirty).toBe(true);
+  });
+});
+
+describe("Entity tool registry", () => {
+  const userEntity: EntitySnapshot = {
+    id: "orders",
+    name: "Orders",
+    description: "Customer orders",
+    attributes: [
+      { key: "order_id", label: "Order ID", type: "text" },
+      { key: "customer_email", label: "Customer email", type: "text" },
+    ],
+    scope: "user",
+    identityAttribute: "customer_email",
+  };
+
+  it("registers user-scoped tools for verified SSO claims and staff members", async () => {
+    const queryEntityRecords = vi.fn().mockResolvedValue([]);
+    const signedIn = buildToolset(makeContext({
+      entities: [userEntity],
+      queryEntityRecords,
+      toolSubject: {
+        type: "sso",
+        subjectId: "oidc-user-1",
+        claimValue: "me@example.com",
+      },
+    }).ctx);
+    expect(signedIn).toHaveProperty("filterOrders");
+    expect(schemaFields(signedIn, "filterOrders")).toEqual(["order_id"]);
+    await run(signedIn, "filterOrders", {
+      order_id: "A-1",
+      customer_email: "victim@example.com",
+    });
+    expect(queryEntityRecords).toHaveBeenCalledWith("orders", {
+      filters: { order_id: "A-1", customer_email: "me@example.com" },
+      limit: 20,
+    });
+
+    for (const toolSubject of [
+      undefined,
+      {
+        type: "visitor" as const,
+        subjectId: "visitor-1",
+        claimValue: "me@example.com",
+      },
+      { type: "sso" as const, subjectId: "oidc-user-1", claimValue: null },
+    ]) {
+      const toolset = buildToolset(makeContext({
+        entities: [userEntity],
+        queryEntityRecords,
+        toolSubject,
+      }).ctx);
+      expect(toolset).not.toHaveProperty("filterOrders");
+    }
+
+    const memberTools = buildToolset(makeContext({
+      entities: [userEntity],
+      queryEntityRecords,
+      toolSubject: { type: "member", subjectId: "member-1", claimValue: null },
+    }).ctx);
+    expect(memberTools).toHaveProperty("filterOrders");
+    expect(schemaFields(memberTools, "filterOrders")).toEqual([
+      "order_id",
+      "customer_email",
+    ]);
   });
 });
 

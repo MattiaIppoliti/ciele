@@ -23,7 +23,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 
 | Variable | Requisito | Finalidad |
 | --- | --- | --- |
-| `CIELE_API_KEY` | Obligatorio | Autentica a la organización. |
+| `CIELE_API_KEY` | Obligatorio | Autentica a la Organización. |
 | `CIELE_BASE_URL` | Opcional | Selecciona un origen autoalojado. |
 | `CIELE_MCP_READ_ONLY` | Opcional | Rechaza las acciones de mutación cuando el valor es `1`. |
 
@@ -43,8 +43,21 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_flows` | Enumerar, leer, crear, actualizar, reordenar o eliminar flujos. |
 | `manage_knowledge` | Gestionar colecciones, fuentes y preguntas frecuentes. |
 | `publish_assistant` | Leer el estado, publicar, anular la publicación o restaurar una publicación. |
-| `read_inbox` | Listar, leer o exportar conversaciones. |
+| `read_inbox` | Enumerar, leer, exportar, anclar, anotar, valorar o eliminar conversaciones. |
 | `manage_improvements` | Listar, leer o actualizar mejoras. |
+| `manage_entities` | Gestiona las entidades de la organización y los registros tipificados. |
+| `manage_memories` | Inspecciona la configuración y realiza un borrado de memoria con ámbito. |
+| `manage_sso` | Gestiona las notificaciones de identidad y la conexión SSO de la organización. |
+| `manage_help_desks` | Gestiona los servicios de asistencia, los canales, los pedidos y ServiceNow. |
+| `manage_configuration` | Gestiona las habilidades, la selección de habilidades del asistente, los objetivos y las alertas. |
+| `manage_organization` | Gestiona la configuración de la organización, los miembros, las invitaciones y las claves de API. |
+| `manage_integrations` | Gestiona las integraciones de la API del Asistente y los proveedores de modelos. |
+
+Actualmente, el servidor registra catorce herramientas. Cada herramienta de
+dominio utiliza un campo `action` para sus operaciones.
+
+El modo de solo lectura clasifica cada acción. Permite las acciones de listar,
+leer, estado, consultar y exportar, pero rechaza las mutaciones.
 
 El servidor MCP no proporciona un transporte HTTP remoto. Consulta
 [Clientes de IA](/developers/ai-clients) para obtener información sobre
@@ -52,5 +65,9 @@ compatibilidad.
 
 ## Comprueba la conexión
 
-Pídele al cliente que llame a `ciele_identity`. Confirma el ID de organización,
-el rol, la versión de la API y la lista de dominios esperados.
+Pide al cliente que llame a `ciele_identity`. Confirma el ID de organización, el
+rol, la versión de la API y la lista de dominios esperados.
+
+La suite de pruebas del repositorio también inicia el proceso real de `stdio`.
+Verifica la inicialización, el descubrimiento de herramientas y una llamada a la
+API autenticada.

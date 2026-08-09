@@ -34,7 +34,7 @@ export async function runApiOperation<In, Out>(
 
   const opCtx: OperationContext = {
     organizationId: ctx.organizationId,
-    userId: "",
+    userId: ctx.actorUserId,
     role: ctx.role,
     db: ctx.db,
     // Ports need more Db surface than the pinned view exposes; the raw

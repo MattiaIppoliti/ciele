@@ -9,9 +9,27 @@ self-hosted.
 
 ## Requisiti
 
-- Utilizza Node.js 22.6 o versioni successive quando esegui la CLI da questo
-  repository.
+- Utilizza Node.js 22.6 o versioni successive.
 - Crea una [chiave API dell'organizzazione](/developers/api-keys).
+
+## Installa
+
+Compila e installa il pacchetto standalone da un repository estratto:
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+Il tarball include le sue dipendenze di runtime. Il comando installed non ha più
+bisogno del repository.
+
+Dopo la pubblicazione di `@ciele/cli` su npm, `npm install --global @ciele/cli`
+installa lo stesso artefatto.
+
+I collaboratori possono anche eseguire `node packages/cli/bin/ciele.mjs` senza
+installarlo.
 
 ## Accedi
 
@@ -28,6 +46,7 @@ Per un'installazione self-hosted, aggiungi la sua origine pubblica:
 ciele login \
   --key "$CIELE_API_KEY" \
   --base-url "https://ciele.example.edu"
+ciele doctor
 ```
 
 Il comando `login` convalida la chiave prima di scrivere `~/.ciele/config.json`.
@@ -42,7 +61,7 @@ La CLI risolve una chiave in questo ordine:
 La CLI utilizza lo stesso ordine per `--base-url`, `CIELE_BASE_URL` e l'origine
 salvata. L'origine ospitata è l'ultima opzione predefinita.
 
-## Usa l'output dell'automazione
+## Usa l'output di automazione
 
 Aggiungi `--json` a un comando per ricevere un output leggibile da una macchina.
 
@@ -53,20 +72,48 @@ Aggiungi `--json` a un comando per ricevere un output leggibile da una macchina.
 | `2` | L'input del comando non è valido. |
 | `3` | Autenticazione non riuscita. |
 
-## Comandi comuni
+`ciele doctor` verifica il rilevamento dell'API, la compatibilità dell'API, la
+chiave, il suo ruolo e la sua organizzazione.
+
+## Comandi per assistenti e conoscenze
 
 ```bash
 ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf
 ciele sources get <source-id>
 ciele publish status <assistant-id>
+```
+
+## Comandi Operations e Organization
+
+```bash
 ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
 ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
 ```
 
 I comandi che eliminano i dati richiedono `--yes`. Il flusso di comportamento
 predefinito non può essere eliminato.
+
+Esegui `ciele help` per ogni gruppo di comandi e opzione accettata. Aggiungi
+`--file` quando un comando accetta un input JSON completo o una patch.
 
 ## Esempio di controllo CI
 
@@ -76,5 +123,5 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Memorizza tutti i valori nell'archivio dei segreti CI. Non scrivere una chiave
-in un file di workflow.
+Archivia tutti i valori nell'archivio dei segreti CI. Non scrivere una chiave in
+un file di workflow.

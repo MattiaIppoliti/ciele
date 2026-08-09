@@ -10,15 +10,15 @@ Ciele crea l'esportazione come processo in background.
 
 1. Apri **Insights**.
 2. Seleziona **Exports**.
-3. Seleziona l'ambito Conversazioni o l'ambito di esportazione disponibile.
+3. Seleziona le Conversazioni o l'ambito di esportazione disponibile.
 4. Avvia l'esportazione.
 5. Attendi che lo stato del processo sia pronto.
 6. Scarica il file prima che il link scada.
 
-Il download utilizza un URL firmato con scadenza. Avvia una nuova esportazione
-quando il link non è più valido.
+Il download utilizza un URL firmato con scadenza temporale. Avvia una nuova
+esportazione quando il link non è più valido.
 
-## Esporta contenuto
+## Esporta contenuti
 
 Ogni record di Conversazione utilizza l'attuale formato di esportazione a 29
 campi. Il record include informazioni su conversazione, Assistente, visitatore,
@@ -39,5 +39,5 @@ La CLI può scrivere lo stesso formato di record in un file:
 ciele conversations export <conversation-id> --out export.json
 ```
 
-Anche lo strumento MCP `read_inbox` può richiedere un'esportazione. Questo
-strumento è sempre di sola lettura.
+Anche lo strumento MCP `read_inbox` può richiedere un'esportazione. La sua
+azione di esportazione rimane disponibile in modalità MCP di sola lettura.

@@ -16,19 +16,19 @@ description: Suchen Sie die aktuelle Open-Source-Anwendung, die Pakete, die Work
 | --- | --- |
 | `packages/core` | Domänentypen, reine Flow-Regeln, Standardeinstellungen, Bedingungen und Analyselogik. |
 | `packages/db` | Persistenz-Schnittstellen, Mock-Speicher und Supabase-Implementierung. |
-| `packages/agent` | Turn-Ausführung, Modell-Provider, Wissens-Tools, Erfassung und Auswertung. |
+| `packages/agent` | Turn-Ausführung, Modell-Provider, Wissens-Tools, Aufnahme und Auswertung. |
 | `packages/ops` | Vorgänge der gemeinsamen Organisation, die von Konsolenaktionen und API v1 verwendet werden. |
 | `packages/client` | Typisierter Client für API v1. |
 | `packages/cli` | Terminalschnittstelle über den typisierten Client. |
-| `packages/mcp` | Lokaler MCP-Adapter mit sieben Tools über den typisierten Client. |
+| `packages/mcp` | Lokaler MCP-Adapter mit 14 Tools über den typisierten Client. |
 | `packages/ui` | Gemeinsam genutzte Komponenten der Benutzeroberfläche. |
 | `packages/charts` | Gemeinsam genutzte Analysevisualisierungen. |
 
 ## Dienste und Infrastruktur
 
-| Pfad | Verantwortung |
+| Pfad | Verantwortlichkeit |
 | --- | --- |
-| `services/graph-worker` | Optionaler Dienst zur Extraktion und Abfrage von Graphen. |
+| `services/graph-worker` | Optionaler Dienst zur Extraktion und zum Abruf von Graphen. |
 | `services/crawl4ai` | Optionale Konfiguration des JavaScript-Rendering-Crawlers. |
 | `supabase/migrations` | Geordnete Änderungen am Datenbankschema. |
 | `deploy` | Docker-Compose-Bereitstellung auf einem einzelnen Host und Bootstrap-Skripte. |
@@ -39,7 +39,7 @@ Reine Regeln gehören in `packages/core`. Das Persistenzverhalten gehört in
 `packages/db`.
 
 Wiederverwendbare Mutationen gehören in `packages/ops`. Modell- und
-Abrufverhalten gehören in `packages/agent`.
+Abrufverhalten gehört in `packages/agent`.
 
 Surface-Adapter in `apps/web`, `packages/cli` und `packages/mcp` dürfen kein
 separates Domain-Verhalten erzeugen.

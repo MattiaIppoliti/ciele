@@ -58,6 +58,11 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
       return [{ path: "/settings/ai" }];
     case "members":
       return [{ path: "/settings/members" }];
+    case "organization":
+      return [
+        { path: "/settings/general" },
+        { path: "/", scope: "layout" },
+      ];
     case "apiKeys":
       return [{ path: "/settings/api-keys" }];
     case "alerts":

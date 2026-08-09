@@ -1,34 +1,34 @@
 {
   "name": "@ciele/cli",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "license": "AGPL-3.0-only",
   "type": "module",
   "description": "The ciele CLI — manage your Organization's assistants from the terminal.",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
   "bin": {
-    "ciele": "./bin/ciele.mjs"
+    "ciele": "./dist/ciele.mjs"
   },
-  "exports": {
-    ".": "./src/index.ts"
-  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "engines": {
     "node": ">=22.6"
-  },
-  "dependencies": {
-    "@ciele/client": "workspace:*"
   },
   "devDependencies": {
     "@agent-hub/core": "workspace:*",
     "@agent-hub/eslint-config": "workspace:*",
+    "@ciele/client": "workspace:*",
     "@types/node": "^20.19.43",
+    "esbuild": "^0.27.0",
     "eslint": "^9.39.4",
     "typescript": "^5",
     "vitest": "^4.1.9"
   },
   "scripts": {
+    "build": "node scripts/build.mjs",
     "lint": "eslint",
+    "prepack": "pnpm build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   }

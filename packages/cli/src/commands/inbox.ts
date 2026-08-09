@@ -45,7 +45,42 @@ export async function conversations(
       }
       return EXIT.ok;
     }
+    case "pin":
+    case "unpin": {
+      if (!rest[0]) return usage(deps, `conversations ${verb} <id>`);
+      const conversation = await client.conversations.setPinned(rest[0], verb === "pin");
+      emit(`${verb === "pin" ? "Pinned" : "Unpinned"} ${rest[0]}`, conversation);
+      return EXIT.ok;
+    }
+    case "feedback": {
+      const text = str(flags.text);
+      if (!rest[0] || !text) return usage(deps, "conversations feedback <id> --text <message>");
+      const conversation = await client.conversations.feedback(rest[0], text);
+      emit(`Feedback saved for ${rest[0]}`, conversation);
+      return EXIT.ok;
+    }
+    case "delete":
+      if (!rest[0] || flags.yes !== true) return usage(deps, "conversations delete <id> --yes");
+      await client.conversations.delete(rest[0]);
+      emit(`Deleted ${rest[0]}`, { deleted: rest[0] });
+      return EXIT.ok;
     default:
-      return usage(deps, "conversations <list|get|export>");
+      return usage(deps, "conversations <list|get|export|pin|unpin|feedback|delete>");
   }
+}
+
+export async function messages(
+  verb: string | undefined,
+  ctx: CommandContext
+): Promise<number> {
+  const { client, rest, flags, emit, deps } = ctx;
+  if (verb !== "feedback" || !rest[0]) {
+    return usage(deps, "messages feedback <id> --value <-1|0|1>");
+  }
+  const raw = str(flags.value);
+  const feedback = raw === "-1" ? -1 : raw === "0" ? 0 : raw === "1" ? 1 : null;
+  if (feedback === null) return usage(deps, "messages feedback <id> --value <-1|0|1>");
+  const result = await client.messages.setFeedback(rest[0], feedback);
+  emit(`Feedback saved for ${rest[0]}`, result);
+  return EXIT.ok;
 }

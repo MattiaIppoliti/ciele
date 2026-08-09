@@ -11,13 +11,13 @@ generative utilizzano il contenuto configurato senza riscrivere il modello.
 | Azione | Utilizzo del modello | Comportamento attuale |
 | --- | :---: | --- |
 | Messaggio | No | Emette il testo configurato parola per parola. |
-| Pulsante | No | Aggiunge un pulsante di collegamento o un pulsante che invia testo in chat. |
+| Pulsante | No | Aggiunge un pulsante di collegamento o un pulsante che invia testo nella chat. |
 | Cerca nella conoscenza | Sì | Esegue il ciclo dell'agente Knowledge e restituisce citazioni. |
 | Follow-up | Opzionale | Utilizza le domande configurate o genera domande suggerite. |
-| Iframe | No | Incorpora nel chat il contenuto esterno configurato. |
+| Iframe | No | Incorpora nella chat il contenuto esterno configurato. |
 | Richiesta API | No | Chiama un endpoint HTTP configurato e mappa il suo risultato. |
 | Invia e-mail | No | Invia un'e-mail tramite il trasporto Resend configurato. |
-| Miglioramento | No | Crea un Miglioramento per la risposta applicabile. |
+| Miglioramento | No | Crea un Miglioramento per la risposta pertinente. |
 | Passaggio di consegne | Dipende dalla destinazione | Continua una volta in un altro Assistente pubblicato. |
 
 Anche il flusso di interazione di base integrato utilizza **Basic reply**. La
@@ -32,8 +32,8 @@ questo testo.
 ## Risposta di base
 
 La risposta di base gestisce brevi saluti, ringraziamenti e congedi. Utilizza
-una chiamata al modello e non utilizza strumenti di Knowledge, citazioni o
-eventi di Thinking.
+una chiamata al modello e non utilizza strumenti Knowledge, citazioni o eventi
+Thinking.
 
 Inserisci il testo dell'azione fissa per saltare il modello. Lo stesso testo
 fornisce il fallback quando non è disponibile alcun modello di chat.
@@ -50,7 +50,7 @@ all'Help Desk o creare un Miglioramento.
 ## Pulsante
 
 Configura un'etichetta e una destinazione. Una destinazione può aprire un link o
-inviare il testo configurato nella Conversazione.
+inviare un testo configurato nella Conversazione.
 
 ## Domande di follow-up
 
@@ -77,7 +77,7 @@ uscita della rete si applicano comunque all'URL finale.
 ## Invia e-mail
 
 Configura i destinatari, l'oggetto, il corpo e il comportamento di risposta. Il
-runtime utilizza Resend quando il suo trasporto configurato.
+runtime utilizza Resend quando il suo trasporto è configurato.
 
 Quando il trasporto non è configurato, l'azione segnala di non aver inviato
 l'e-mail. Non conferma la consegna.
@@ -98,5 +98,5 @@ da quel turno di destinazione.
 
 ## Ordine delle azioni
 
-Inserisci il testo introduttivo prima di Cerca nella knowledge base. Metti i
+Inserisci il testo di introduzione prima di Cerca nella knowledge base. Metti i
 pulsanti e i follow-up dopo la risposta che supportano.

@@ -41,11 +41,24 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_flows` | List, read, create, update, reorder, or delete Flows. |
 | `manage_knowledge` | Manage Collections, Sources, and FAQs. |
 | `publish_assistant` | Read status, publish, unpublish, or restore a publication. |
-| `read_inbox` | List, read, or export Conversations. |
+| `read_inbox` | List, read, export, pin, annotate, rate, or delete Conversations. |
 | `manage_improvements` | List, read, or update Improvements. |
+| `manage_entities` | Manage Organization Entities and typed Records. |
+| `manage_memories` | Inspect settings and perform scoped Memory erasure. |
+| `manage_sso` | Manage identity claims and the Organization SSO connection. |
+| `manage_help_desks` | Manage Help Desks, channels, ordering, and ServiceNow. |
+| `manage_configuration` | Manage Skills, Assistant Skill selection, Goals, and Alerts. |
+| `manage_organization` | Manage Organization settings, Members, Invites, and API keys. |
+| `manage_integrations` | Manage Assistant API integrations and model providers. |
+
+The server currently registers fourteen tools. Each domain tool uses an `action` field for its operations.
+
+Read-only mode classifies each action. It permits list, read, status, query, and export actions while refusing mutations.
 
 The MCP server does not provide a remote HTTP transport. See [AI clients](/developers/ai-clients) for compatibility information.
 
 ## Check the connection
 
 Ask the client to call `ciele_identity`. Confirm the expected Organization ID, Role, API version, and domain list.
+
+The repository test suite also starts the real `stdio` process. It verifies initialization, tool discovery, and an authenticated API call.

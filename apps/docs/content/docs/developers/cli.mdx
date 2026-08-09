@@ -7,8 +7,24 @@ The `ciele` command uses the same API operations as the administrator console. T
 
 ## Requirements
 
-- Use Node.js 22.6 or later when you run the CLI from this repository.
+- Use Node.js 22.6 or later.
 - Create an [Organization API key](/developers/api-keys).
+
+## Install
+
+Build and install the standalone package from a repository checkout:
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+The tarball includes its runtime dependencies. The installed command no longer needs the repository.
+
+After `@ciele/cli` is published to npm, `npm install --global @ciele/cli` installs the same artifact.
+
+Contributors can also run `node packages/cli/bin/ciele.mjs` without installing it.
 
 ## Sign in
 
@@ -25,6 +41,7 @@ For a self-hosted installation, add its public origin:
 ciele login \
   --key "$CIELE_API_KEY" \
   --base-url "https://ciele.example.edu"
+ciele doctor
 ```
 
 The `login` command validates the key before it writes `~/.ciele/config.json`. On supported systems, the file mode is `0600`.
@@ -48,19 +65,45 @@ Add `--json` to a command to receive machine-readable output.
 | `2` | The command input is not valid. |
 | `3` | Authentication failed. |
 
-## Common commands
+`ciele doctor` verifies API discovery, API compatibility, the key, its Role, and its Organization.
+
+## Assistant and knowledge commands
 
 ```bash
 ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf
 ciele sources get <source-id>
 ciele publish status <assistant-id>
+```
+
+## Operations and Organization commands
+
+```bash
 ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
 ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
 ```
 
 Commands that delete data require `--yes`. The Default behavior Flow cannot be deleted.
+
+Run `ciele help` for every command group and accepted option. Add `--file` when a command accepts a complete JSON input or patch.
 
 ## Example CI check
 

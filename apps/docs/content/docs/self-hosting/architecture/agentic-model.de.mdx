@@ -11,7 +11,7 @@ OpenAI-kompatibler Endpunkt.
 
 Die Laufzeitumgebung führt einen Modellaufruf nur innerhalb einer generativen
 Aktion oder einer Intent Classification durch. Deterministische Aktionen leiten
-ihren Inhalt nicht durch ein Modell weiter.
+ihren Inhalt nicht über ein Modell weiter.
 
 Die einfache Antwort verwendet einen Chat-Aufruf und keine Tools. Search
 Knowledge verwendet eine begrenzte Tool-Schleife.
@@ -21,7 +21,7 @@ Knowledge verwendet eine begrenzte Tool-Schleife.
 1. Das Modell erhält die Anweisungen für den Assistenten und die Beschreibungen
    der verfügbaren Tools.
 2. Das Modell durchsucht Knowledge oder liest ein ausgewähltes Source-Fenster.
-3. Die Laufzeit zeichnet Ereignisse im Tool-Lebenszyklus auf.
+3. Die Laufzeitumgebung zeichnet Ereignisse im Lebenszyklus des Tools auf.
 4. Das Modell kann die Suche innerhalb der Schrittbegrenzung wiederholen.
 5. Die Laufzeit generiert die endgültige Antwort und benannte Zitate.
 
@@ -34,12 +34,12 @@ Besucheranzeige neu.
 Ein Assistent kann einen API-Katalog registrieren. Der Katalog beschreibt seine
 Basis-URL, seine geschützten Anmeldeinformationen und die verfügbaren Endpunkte.
 
-Das Modell kann API-Details überprüfen und einen registrierten Endpunkt
-abfragen. Die Laufzeitumgebung validiert jeden Pfad anhand des Katalogs, bevor
-er das Netzwerk verlässt.
+Das Modell kann API-Details prüfen und einen registrierten Endpunkt abfragen.
+Die Laufzeit validiert jeden Pfad anhand des Katalogs, bevor er das Netzwerk
+verlässt.
 
-Windowed-Reader geben einen angeforderten Inhaltsbereich und die Gesamtlänge
-zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
+Reader im Fenster-Modus geben einen angeforderten Inhaltsbereich und die
+Gesamtlänge zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
 Wissens-Nutzlasten ohne stille Trunkierung zu untersuchen.
 
 ## Fehlverhalten

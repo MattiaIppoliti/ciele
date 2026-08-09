@@ -22,6 +22,8 @@ export interface ApiKeyContext {
   /** The Role the key acts with (capped at its creator's at mint time). */
   role: Role;
   keyId: string;
+  /** Human who delegated this key; used for audit fields on derived writes. */
+  actorUserId: string;
   /** Org-pinned, fail-closed Db view — the only Db routes may touch. */
   db: Db;
 }
@@ -79,6 +81,7 @@ export async function resolveApiKeyContext(
     organizationId: key.organizationId,
     role: key.role,
     keyId: key.id,
+    actorUserId: key.createdBy,
     db: createOrgPinnedDb(db, key.organizationId),
   };
 }

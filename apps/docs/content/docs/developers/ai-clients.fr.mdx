@@ -1,5 +1,5 @@
 ---
-title: Connecter les clients IA
+title: Connecter des clients IA
 description: Connectez les clients IA pris en charge au serveur Ciele MCP local.
 ---
 
@@ -114,8 +114,9 @@ Ouvrez **Settings > MCP**. Activez `ciele` et examinez chaque appel d'outil
 demandé.
 
 Consultez le
-[guide Cursor MCP](https://docs.cursor.com/context/model-context-protocol) pour
-obtenir des informations sur la configuration globale et la sécurité du client.
+[guide MCP de Cursor](https://docs.cursor.com/context/model-context-protocol)
+pour obtenir des informations sur la configuration globale et la sécurité du
+client.
 
 ## OpenCode
 
@@ -175,7 +176,7 @@ Créez `.vscode/mcp.json` :
 ```
 
 Exécutez **MCP: List Servers** depuis la palette de commandes. Lancez `ciele` et
-inspectez sa sortie lorsqu'une connexion échoue.
+examinez sa sortie lorsqu'une connexion échoue.
 
 Consultez le
 [guide VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
@@ -186,7 +187,7 @@ pour connaître les emplacements de configuration et les contrôles de confiance
 Exécutez la commande interactive `/mcp add`. Sélectionnez un serveur `stdio`
 local et saisissez la commande Ciele.
 
-Vous pouvez également commencer avec cette commande :
+Vous pouvez également commencer par cette commande :
 
 ```bash
 copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
@@ -232,7 +233,7 @@ Answer: "Enrollment closes on <date>."
 Show the proposed tool input and ask for approval before the call.
 ```
 
-Utilisez cette invite avant la publication :
+Utilisez cette requête avant la publication :
 
 ```text
 Read the publication status for Assistant <assistant-id>.

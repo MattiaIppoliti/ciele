@@ -14,13 +14,13 @@ description: Localisez l'application open source actuelle, les paquets, les work
 
 | Chemin | Responsabilité |
 | --- | --- |
-| `packages/core` | Types de domaine, règles pure Flow, valeurs par défaut, conditions et logique d'analyse. |
+| `packages/core` | Types de domaine, règles Pure Flow, valeurs par défaut, conditions et logique d'analyse. |
 | `packages/db` | Interfaces de persistance, stockage fictif et implémentation de Supabase. |
 | `packages/agent` | Exécution de tours, fournisseurs de modèles, outils de connaissances, ingestion et évaluation. |
 | `packages/ops` | Opérations de l'organisation partagée utilisées par les actions de la console et l'API v1. |
 | `packages/client` | Client typé pour l'API v1. |
 | `packages/cli` | Interface terminale via le client typé. |
-| `packages/mcp` | Adaptateur MCP local à sept outils sur le client typé. |
+| `packages/mcp` | Adaptateur MCP local à quatorze outils sur le client typé. |
 | `packages/ui` | Composants partagés de l'interface utilisateur. |
 | `packages/charts` | Visualisations analytiques partagées. |
 
@@ -33,10 +33,10 @@ description: Localisez l'application open source actuelle, les paquets, les work
 | `supabase/migrations` | Modifications ordonnées du schéma de base de données. |
 | `deploy` | Scripts de déploiement et d'amorçage Docker Compose sur un hôte unique. |
 
-## Sens de la dépendance
+## Direction de la dépendance
 
 Les règles pures appartiennent à `packages/core`. Le comportement de persistance
-doit être défini dans `packages/db`.
+appartient à `packages/db`.
 
 Les mutations réutilisables doivent être placées dans `packages/ops`. Le
 comportement de modèle et de récupération doit être défini dans

@@ -102,4 +102,48 @@ describe("CieleClient", () => {
     expect(calls[0].url).toBe("http://localhost:3000/api/v1/meta");
     expect(meta.apiVersion).toBe(1);
   });
+
+  it("exposes Entities, Records, and Memories through typed request groups", async () => {
+    const { calls, fetchImpl } = stub(({ url, method }) => {
+      if (url.endsWith("/memories/settings") && method === "GET") {
+        return { json: { enabled: true } };
+      }
+      return { json: { data: [], nextCursor: null } };
+    });
+    const c = client(fetchImpl);
+
+    await c.entities.list({ limit: 10 });
+    await c.entities.queryRecords("orders", {
+      filters: { status: "delayed" },
+      limit: 5,
+    });
+    await c.entities.importRecords("orders", "order_id,status\nA-1,delayed\n");
+    await c.memories.settings();
+    await c.memories.list("subject@example.com");
+    await c.memories.wipe("subject@example.com");
+    await c.assistants.setEntities("assistant-1", ["orders"]);
+    await c.sso.setIdentityClaim("email");
+    await c.sso.validate();
+
+    expect(calls.map(({ method, url }) => [method, new URL(url).pathname])).toEqual([
+      ["GET", "/api/v1/entities"],
+      ["POST", "/api/v1/entities/orders/records/query"],
+      ["POST", "/api/v1/entities/orders/records/import"],
+      ["GET", "/api/v1/memories/settings"],
+      ["GET", "/api/v1/memories/subjects/subject%40example.com"],
+      ["DELETE", "/api/v1/memories/subjects/subject%40example.com"],
+      ["PATCH", "/api/v1/assistants/assistant-1/entities"],
+      ["PATCH", "/api/v1/sso/identity"],
+      ["POST", "/api/v1/sso/identity/validate"],
+    ]);
+    expect(JSON.parse(calls[1].body!)).toEqual({
+      filters: { status: "delayed" },
+      limit: 5,
+    });
+    expect(JSON.parse(calls[2].body!)).toEqual({
+      csv: "order_id,status\nA-1,delayed\n",
+    });
+    expect(JSON.parse(calls[6].body!)).toEqual({ entityIds: ["orders"] });
+    expect(JSON.parse(calls[7].body!)).toEqual({ identityClaim: "email" });
+  });
 });

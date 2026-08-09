@@ -1,4 +1,4 @@
-import type { Concept, ConceptFrontmatter } from "@agent-hub/core";
+import { openSecret, type Concept, type ConceptFrontmatter } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { OperationPorts } from "@ciele/ops";
 import {
@@ -7,9 +7,12 @@ import {
   persistConcept,
   restartWebsiteCrawl,
   sendEmail,
+  validateProviderApiKey,
+  InvalidProviderKeyError,
 } from "@agent-hub/agent";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import { invalidatePublication } from "@/lib/widget-db";
+import { getSsoProvider } from "@/lib/sso";
 
 /**
  * The one implementation of the operations layer's host ports (#621–#625),
@@ -33,6 +36,29 @@ export function webOperationPorts(
   return {
     listPublicationEntities: (organizationId) =>
       db.table("entities").list({ organizationId }),
+    validateProviderApiKey: async (provider, apiKey) => {
+      try {
+        await validateProviderApiKey(provider, apiKey);
+        return { ok: true };
+      } catch (error) {
+        if (error instanceof InvalidProviderKeyError) {
+          return { ok: false, error: error.message };
+        }
+        throw error;
+      }
+    },
+    validateSsoConnection: async (connection) => {
+      const provider = getSsoProvider(connection.provider);
+      if (!provider?.validate) {
+        return { ok: false, error: "This provider can't be validated." };
+      }
+      return provider.validate({
+        config: connection.config,
+        clientSecret: connection.encryptedSecret
+          ? openSecret(connection.encryptedSecret)
+          : null,
+      });
+    },
     purgeCollectionGraph: (collectionId) =>
       enqueueGraphSyncJob({ op: "purge", collectionId }, { db }),
     removeConceptGraph: (collectionId, conceptId) =>

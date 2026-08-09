@@ -63,9 +63,13 @@ export {
 
 // Inbox domain (#624) — read-only conversation review.
 export {
+  deleteConversationOp,
   getConversationOp,
   listInboxConversationsOp,
   readConversationsForExportOp,
+  sendConversationFeedbackOp,
+  setConversationPinnedOp,
+  setMessageFeedbackOp,
 } from "./inbox";
 
 // Improvements domain (#625) — list / detail / update.
@@ -77,3 +81,105 @@ export {
 } from "./improvements";
 
 export type { OperationPorts } from "./operation";
+
+export {
+  connectServiceNowOp,
+  createHelpDeskOp,
+  createSupportChannelOp,
+  deleteHelpDeskOp,
+  deleteSupportChannelOp,
+  disconnectTicketingIntegrationOp,
+  getHelpDeskOp,
+  helpDeskInputSchema,
+  helpDeskPatchSchema,
+  listHelpDesksOp,
+  reorderSupportChannelsOp,
+  supportChannelInputSchema,
+  supportChannelPatchSchema,
+  updateHelpDeskOp,
+  updateSupportChannelOp,
+} from "./help-desks";
+
+export {
+  createAssistantGoalOp,
+  createSkillOp,
+  deleteAssistantGoalOp,
+  deleteSkillOp,
+  getAssistantSkillsOp,
+  goalExpectationsSchema,
+  listAlertsOp,
+  listAssistantGoalsOp,
+  listSkillsOp,
+  resolveAlertOp,
+  setAssistantSkillsOp,
+  skillInputSchema,
+  skillPatchSchema,
+  updateAssistantGoalOp,
+  updateSkillOp,
+} from "./configuration";
+
+export {
+  createInviteOp,
+  createOrgApiKeyOp,
+  getOrganizationOp,
+  listInvitesOp,
+  listMembersOp,
+  listOrgApiKeysOp,
+  leaveOrganizationOp,
+  organizationPatchSchema,
+  removeMemberOp,
+  revokeInviteOp,
+  revokeOrgApiKeyOp,
+  updateMemberRoleOp,
+  updateOrganizationOp,
+} from "./organization";
+
+export {
+  apiIntegrationInputSchema,
+  createFederatedProviderConnectionOp,
+  createOpenAiCompatibleConnectionOp,
+  createProviderApiKeyOp,
+  deleteApiIntegrationOp,
+  deleteProviderConnectionOp,
+  disconnectSsoConnectionOp,
+  federatedProviderInputSchema,
+  getApiIntegrationOp,
+  getSsoConnectionOp,
+  listProviderConnectionsOp,
+  openAiCompatibleInputSchema,
+  setApiIntegrationOp,
+  setEmbeddingConnectionOp,
+  setSsoConnectionOp,
+  ssoConnectionInputSchema,
+  type ApiIntegrationView,
+  type ProviderConnectionView,
+} from "./integrations";
+
+export {
+  createEntityOp,
+  deleteEntityOp,
+  deleteMemoryOp,
+  entityInputSchema,
+  ENTITY_CSV_MAX_BYTES,
+  ENTITY_IMPORT_MAX_ROWS,
+  entityPatchSchema,
+  entityRecordQuerySchema,
+  getEntityOp,
+  getAssistantEntitiesOp,
+  getMemorySettingsOp,
+  getSsoIdentityOp,
+  importEntityRecordsOp,
+  listEntitiesOp,
+  listEntityRecordsOp,
+  listMemorySubjectsOp,
+  listSubjectMemoriesOp,
+  parseEntityCsv,
+  queryEntityRecordsOp,
+  setMemorySettingsOp,
+  setAssistantEntitiesOp,
+  setSsoIdentityOp,
+  updateEntityOp,
+  validateSsoIdentityOp,
+  wipeSubjectMemoriesOp,
+  type EntityCsvResult,
+} from "./data";

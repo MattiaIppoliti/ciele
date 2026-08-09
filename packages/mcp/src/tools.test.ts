@@ -58,9 +58,16 @@ describe("ciele MCP tools", () => {
     expect([...tools.keys()].sort()).toEqual([
       "ciele_identity",
       "manage_assistants",
+      "manage_configuration",
+      "manage_entities",
       "manage_flows",
+      "manage_help_desks",
       "manage_improvements",
+      "manage_integrations",
       "manage_knowledge",
+      "manage_memories",
+      "manage_organization",
+      "manage_sso",
       "publish_assistant",
       "read_inbox",
     ]);
@@ -114,6 +121,63 @@ describe("ciele MCP tools", () => {
       false
     );
     expect(JSON.parse(calls[5].body!)).toEqual({ conversationIds: ["c1", "c2"] });
+
+    await callTool(
+      tool("manage_entities"),
+      { action: "query_records", entityId: "e1", query: { search: "delayed" } },
+      false
+    );
+    expect(calls[6].url).toContain("/entities/e1/records/query");
+
+    await callTool(
+      tool("manage_memories"),
+      { action: "list", subjectId: "user@example.com" },
+      false
+    );
+    expect(calls[7].url).toContain("/memories/subjects/user%40example.com");
+
+    await callTool(
+      tool("manage_assistants"),
+      { action: "set_entities", id: "a1", entityIds: ["e1"] },
+      false
+    );
+    expect(JSON.parse(calls[8].body!)).toEqual({ entityIds: ["e1"] });
+
+    await callTool(
+      tool("manage_sso"),
+      { action: "set_identity", identityClaim: "email" },
+      false
+    );
+    expect(JSON.parse(calls[9].body!)).toEqual({ identityClaim: "email" });
+
+    await callTool(
+      tool("manage_help_desks"),
+      { action: "create", input: { name: "Admissions" } },
+      false
+    );
+    expect(calls[10]).toMatchObject({ method: "POST" });
+    expect(calls[10].url).toContain("/help-desks");
+
+    await callTool(
+      tool("manage_configuration"),
+      { action: "assistant_skills_set", assistantId: "a1", skillIds: ["s1"] },
+      false
+    );
+    expect(JSON.parse(calls[11].body!)).toEqual({ skillIds: ["s1"] });
+
+    await callTool(
+      tool("manage_organization"),
+      { action: "member_set_role", id: "u1", role: "editor" },
+      false
+    );
+    expect(JSON.parse(calls[12].body!)).toEqual({ role: "editor" });
+
+    await callTool(
+      tool("manage_integrations"),
+      { action: "provider_set_embedding", connectionId: null },
+      false
+    );
+    expect(JSON.parse(calls[13].body!)).toEqual({ connectionId: null });
   });
 
   it("read-only mode refuses every mutation before it reaches the network", async () => {
@@ -126,6 +190,18 @@ describe("ciele MCP tools", () => {
       ["manage_knowledge", { action: "delete_source", sourceId: "s1" }],
       ["publish_assistant", { action: "unpublish", assistantId: "a1" }],
       ["manage_improvements", { action: "update", id: "i1", patch: {} }],
+      ["manage_entities", { action: "delete", id: "e1" }],
+      ["manage_entities", { action: "import_records", entityId: "e1", csvText: "id\n1\n" }],
+      ["manage_memories", { action: "wipe", subjectId: "s1" }],
+      ["manage_memories", { action: "disable" }],
+      ["manage_assistants", { action: "set_entities", id: "a1", entityIds: [] }],
+      ["manage_sso", { action: "set_identity", identityClaim: "email" }],
+      ["manage_sso", { action: "validate" }],
+      ["read_inbox", { action: "delete", conversationId: "c1" }],
+      ["manage_help_desks", { action: "delete", id: "h1" }],
+      ["manage_configuration", { action: "alert_resolve", id: "a1" }],
+      ["manage_organization", { action: "api_key_revoke", id: "k1" }],
+      ["manage_integrations", { action: "provider_delete", id: "p1" }],
     ];
     for (const [name, args] of mutating) {
       const result = await callTool(tool(name), args, true);
@@ -145,9 +221,18 @@ describe("ciele MCP tools", () => {
     expect(status.isError).toBeUndefined();
     expect(calls.length).toBe(2);
 
-    // Every tool declares read-only-safe reads: identity and inbox never mutate.
+    // Every tool declares read-only-safe reads.
     expect(tools.get("ciele_identity")!.mutates({})).toBe(false);
     expect(tools.get("read_inbox")!.mutates({ action: "export" })).toBe(false);
+    expect(tools.get("read_inbox")!.mutates({ action: "pin" })).toBe(true);
+    expect(tools.get("manage_entities")!.mutates({ action: "query_records" })).toBe(false);
+    expect(tools.get("manage_memories")!.mutates({ action: "list" })).toBe(false);
+    expect(tools.get("manage_assistants")!.mutates({ action: "get_entities" })).toBe(false);
+    expect(tools.get("manage_sso")!.mutates({ action: "status" })).toBe(false);
+    expect(tools.get("manage_help_desks")!.mutates({ action: "list" })).toBe(false);
+    expect(tools.get("manage_configuration")!.mutates({ action: "goal_list" })).toBe(false);
+    expect(tools.get("manage_organization")!.mutates({ action: "member_list" })).toBe(false);
+    expect(tools.get("manage_integrations")!.mutates({ action: "provider_list" })).toBe(false);
   });
 
   it("missing per-action fields and API errors become error results, not throws", async () => {

@@ -913,6 +913,8 @@ export interface Db {
     }>
   ): Promise<number>;
   listMemories(subject: MemorySubjectRef): Promise<Memory[]>;
+  getMemory(id: string): Promise<Memory | null>;
+  /** Subjects holding memories in the organization, newest activity first. */
   listMemorySubjects(organizationId: string): Promise<MemorySubjectSummary[]>;
   deleteMemory(id: string): Promise<void>;
   deleteSubjectMemories(subject: MemorySubjectRef): Promise<void>;

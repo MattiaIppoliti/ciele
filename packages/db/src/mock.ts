@@ -4372,6 +4372,10 @@ export const mockDb: Db = {
     getStore().memories.delete(id);
   },
 
+  async getMemory(id) {
+    return getStore().memories.get(id) ?? null;
+  },
+
   // --- Synced Record ingestion (#670) ------------------------------------
 
   async getEntitySyncConfig(entityId) {

@@ -9,9 +9,27 @@ auto-hébergées.
 
 ## Prérequis
 
-- Utilisez Node.js 22.6 ou une version ultérieure lorsque vous exécutez la CLI à
-  partir de ce dépôt.
+- Utilisez Node.js 22.6 ou une version ultérieure.
 - Créez une [clé API d'organisation](/developers/api-keys).
+
+## Installation
+
+Compilez et installez le paquet autonome à partir d'une extraction du dépôt :
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+Le tarball inclut ses dépendances d'exécution. La commande installed n'a plus
+besoin du dépôt.
+
+Une fois `@ciele/cli` publié sur npm, `npm install --global @ciele/cli` installe
+le même artefact.
+
+Les contributeurs peuvent également exécuter `node packages/cli/bin/ciele.mjs`
+sans l'installer.
 
 ## Se connecter
 
@@ -28,6 +46,7 @@ Pour une installation auto-hébergée, ajoutez son origine publique :
 ciele login \
   --key "$CIELE_API_KEY" \
   --base-url "https://ciele.example.edu"
+ciele doctor
 ```
 
 La commande `login` valide la clé avant d'écrire `~/.ciele/config.json`. Sur les
@@ -44,7 +63,7 @@ enregistrée. L'origine hébergée est la valeur par défaut finale.
 
 ## Utiliser la sortie d'automatisation
 
-Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
+Ajoutez `--json` à une commande pour obtenir une sortie lisible par machine.
 
 | Code de sortie | Signification |
 | --- | --- |
@@ -53,20 +72,49 @@ Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
 | `2` | L'entrée de la commande n'est pas valide. |
 | `3` | L'authentification a échoué. |
 
-## Commandes courantes
+`ciele doctor` vérifie la découverte de l'API, la compatibilité de l'API, la
+clé, son rôle et son organisation.
+
+## Commandes Assistant et Knowledge
 
 ```bash
 ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf
 ciele sources get <source-id>
 ciele publish status <assistant-id>
+```
+
+## Commandes Opérations et Organisation
+
+```bash
 ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
 ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
 ```
 
 Les commandes qui suppriment des données nécessitent `--yes`. Le flux de
 comportement par défaut ne peut pas être supprimé.
+
+Exécutez `ciele help` pour chaque groupe de commandes et chaque option acceptée.
+Ajoutez `--file` lorsqu'une commande accepte une entrée JSON complète ou un
+correctif.
 
 ## Exemple de vérification CI
 

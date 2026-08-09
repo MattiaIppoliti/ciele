@@ -195,7 +195,7 @@ export function describeDbContract(
         }
 
         // Anything outside the allow-lists throws — new routes must extend them.
-        expect(() => pinned.listApiKeys(ctx.organizationId)).toThrowError(
+        expect(() => pinned.createOrganization("outside pinned scope")).toThrowError(
           OrgPinnedDbError
         );
       });
@@ -236,6 +236,49 @@ export function describeDbContract(
 
         // The mutation the guard blocked really did not run.
         expect((await db.getFlow(flow.id))?.enabled).toBe(false);
+      });
+
+      it("org-pins Entity Records and Memory erasure for API-key callers (#663–#667)", async () => {
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        const entity = await pinned.table("entities").insert({
+          organizationId: ctx.foreignOrganizationId,
+          name: "Pinned records",
+          attributes: [{ key: "id", label: "ID", type: "text" }],
+          keyAttribute: "id",
+          scope: "shared",
+        });
+        expect(entity.organizationId).toBe(ctx.organizationId);
+        await pinned.upsertEntityRecords(entity.id, [
+          { key: "one", values: { id: "one" } },
+        ]);
+        expect(await pinned.countEntityRecords(entity.id)).toBe(1);
+        expect(await foreignPinned.table("entities").get(entity.id)).toBeNull();
+        await expect(foreignPinned.listEntityRecords(entity.id)).rejects.toThrowError(
+          OrgPinnedDbError
+        );
+
+        await pinned.setMemoryEnabled(ctx.foreignOrganizationId, true);
+        expect(await pinned.getMemoryEnabled(ctx.foreignOrganizationId)).toBe(true);
+        await db.upsertMemories(
+          { organizationId: ctx.organizationId, subjectId: "subject-pinned" },
+          [{ text: "Prefers concise answers", embedding: null }]
+        );
+        const [memory] = await pinned.listMemories({
+          organizationId: ctx.foreignOrganizationId,
+          subjectId: "subject-pinned",
+        });
+        await expect(foreignPinned.deleteMemory(memory.id)).rejects.toThrowError(
+          OrgPinnedDbError
+        );
+        await pinned.deleteMemory(memory.id);
+        expect(
+          await db.listMemories({
+            organizationId: ctx.organizationId,
+            subjectId: "subject-pinned",
+          })
+        ).toEqual([]);
+        await pinned.setMemoryEnabled(ctx.organizationId, false);
       });
     });
 
@@ -1361,6 +1404,8 @@ export function describeDbContract(
         expect(withProvenance?.conversationId).toBe(conversation.id);
         expect(withProvenance?.subjectId).toBe(subjectId);
         expect(withProvenance?.createdAt).toBeTruthy();
+        expect((await db.getMemory(listed[0].id))?.id).toBe(listed[0].id);
+        expect(await db.getMemory(`missing-${shortId()}`)).toBeNull();
       });
 
       it("caps memories per subject by dropping the oldest", async () => {

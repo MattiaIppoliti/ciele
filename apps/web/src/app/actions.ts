@@ -2,19 +2,16 @@
 
 import type {
   AnswerVerdict,
-  AnthropicWifFederatedConfig,
   ApiEndpointSpec,
   ApiIntegrationAuthType,
   Assistant,
   AssistantPatch,
-  AzureOpenAiFederatedConfig,
   Conversation,
   FlowActionSettings,
   FlowInput,
   FlowPatch,
   GoalExpectations,
   GoalStatus,
-  GoogleVertexFederatedConfig,
   Improvement,
   ImprovementAssociation,
   Memory,
@@ -22,7 +19,6 @@ import type {
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
-  OpenAiCompatibleConfig,
   OrganizationPatch,
   ProfilePatch,
   Provider,
@@ -43,17 +39,13 @@ import type {
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import {
-  apiKeySecretHint,
-  generateApiKeySecret,
-  hashApiKeySecret,
   okfActor,
-  openSecret,
   sealSecret,
   thrownMessage,
 } from "@agent-hub/core";
 import { isSupabaseConfigured, raiseImprovement, type Db } from "@agent-hub/db";
 
-import { SSO_GATE_COOKIE, getSsoProvider, isGateValidForOrg } from "@/lib/sso";
+import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
 import {
   listEscalationDesks,
   type EscalationHelpDesk,
@@ -70,11 +62,9 @@ import {
   feedbackScore,
   forwardGraphFeedback,
   finalizeWebsiteCrawl,
-  InvalidProviderKeyError,
   testApiRequest,
   testOpenAiCompatibleConnection,
   updateWebsiteSourceConfiguration,
-  validateProviderApiKey,
   type ApiRequestTestResult,
   type OpenAiCompatibleTestResult,
 } from "@agent-hub/agent";
@@ -82,7 +72,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth";
-import { type MemberContext, requireMember, requireSession } from "@/lib/authz";
+import { requireMember, requireSession } from "@/lib/authz";
 import { orgMutation } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
@@ -90,32 +80,75 @@ import {
   createAssistantOp,
   createFaqOp,
   createFlowOp,
+  createEntityOp,
+  createHelpDeskOp,
+  createSupportChannelOp,
+  connectServiceNowOp,
+  createSkillOp,
+  createAssistantGoalOp,
   deleteAssistantOp,
   deleteFlowOp,
+  deleteEntityOp,
+  deleteHelpDeskOp,
+  deleteSupportChannelOp,
+  deleteSkillOp,
+  deleteAssistantGoalOp,
+  deleteMemoryOp,
   deleteSourceOp,
   duplicateAssistantOp,
   importFaqsOp,
+  importEntityRecordsOp,
+  listEntityRecordsOp,
+  listSubjectMemoriesOp,
   publishAssistantOp,
   recrawlSourceOp,
   reorderFlowsOp,
+  reorderSupportChannelsOp,
   republishOp,
   unpublishAssistantOp,
   updateAssistantOp,
+  updateEntityOp,
+  updateHelpDeskOp,
+  updateSupportChannelOp,
+  updateSkillOp,
+  updateAssistantGoalOp,
   updateFlowOp,
   updateImprovementOp,
+  setMemorySettingsOp,
+  wipeSubjectMemoriesOp,
+  disconnectTicketingIntegrationOp,
+  setAssistantSkillsOp,
+  resolveAlertOp,
+  createInviteOp,
+  createOrgApiKeyOp,
+  removeMemberOp,
+  revokeInviteOp,
+  revokeOrgApiKeyOp,
+  updateMemberRoleOp,
+  updateOrganizationOp,
+  leaveOrganizationOp,
+  createFederatedProviderConnectionOp,
+  createOpenAiCompatibleConnectionOp,
+  createProviderApiKeyOp,
+  deleteApiIntegrationOp,
+  deleteProviderConnectionOp,
+  disconnectSsoConnectionOp,
+  getApiIntegrationOp,
+  setApiIntegrationOp,
+  setEmbeddingConnectionOp,
+  setSsoConnectionOp,
+  deleteConversationOp,
+  sendConversationFeedbackOp,
+  setConversationPinnedOp,
+  setMessageFeedbackOp,
+  validateSsoIdentityOp,
 } from "@ciele/ops";
 import { persistFaqConcept } from "@/lib/op-ports";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
-import { parseEntityCsv } from "@/lib/entity-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
-import {
-  canAssignApiKeyRole,
-  canChangeRoles,
-  canManageMembers,
-  canViewReasoning,
-} from "@/lib/rbac";
+import { canViewReasoning } from "@/lib/rbac";
 import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
 import {
   INBOX_EXPORT_MAX_CONVERSATIONS,
@@ -177,13 +210,7 @@ export async function switchOrganizationAction(organizationId: string) {
 
 /** Org branding: name + circular logo. Admin+ (same gate as Members). */
 export async function updateOrganizationAction(patch: OrganizationPatch) {
-  const { db, session } = await requireMember("manageMembers");
-  const organization = await db.updateOrganization(
-    session.organization.id,
-    patch,
-  );
-  revalidatePath("/", "layout");
-  return organization;
+  return runOperation(updateOrganizationOp, patch);
 }
 
 export async function uploadOrganizationLogoAction(
@@ -260,10 +287,7 @@ export async function updateCompostOptOutAction(
  * deliberate act that enables the capability for every assistant.
  */
 export async function updateMemoryEnabledAction(enabled: boolean): Promise<void> {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
-    ({ db, session }) => db.setMemoryEnabled(session.organization.id, enabled)
-  );
+  await runOperation(setMemorySettingsOp, { enabled });
 }
 
 /**
@@ -273,11 +297,7 @@ export async function updateMemoryEnabledAction(enabled: boolean): Promise<void>
 export async function listSubjectMemoriesAction(
   subjectId: string
 ): Promise<Memory[]> {
-  const { db, session } = await requireMember("member");
-  return db.listMemories({
-    organizationId: session.organization.id,
-    subjectId,
-  });
+  return runOperation(listSubjectMemoriesOp, { subjectId });
 }
 
 /**
@@ -285,22 +305,10 @@ export async function listSubjectMemoriesAction(
  * the caller's Organization — a forged id from another org deletes nothing.
  */
 export async function deleteSubjectMemoryAction(
-  subjectId: string,
+  _subjectId: string,
   memoryId: string
 ): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "aiSettings" }] },
-    async ({ db, session }) => {
-      const memories = await db.listMemories({
-        organizationId: session.organization.id,
-        subjectId,
-      });
-      if (!memories.some((m) => m.id === memoryId)) {
-        throw new Error("Memory not found");
-      }
-      await db.deleteMemory(memoryId);
-    }
-  );
+  await runOperation(deleteMemoryOp, { id: memoryId });
 }
 
 /**
@@ -327,14 +335,7 @@ export async function updateDataAssistantEntitiesAction(
 
 /** Erasure, whole subject (#666): complete and immediate — GDPR requests. */
 export async function wipeSubjectMemoriesAction(subjectId: string): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "aiSettings" }] },
-    ({ db, session }) =>
-      db.deleteSubjectMemories({
-        organizationId: session.organization.id,
-        subjectId,
-      })
-  );
+  await runOperation(wipeSubjectMemoriesOp, { subjectId });
 }
 
 /**
@@ -345,11 +346,7 @@ export async function wipeSubjectMemoriesAction(subjectId: string): Promise<void
 export async function updateEmbeddingConnectionAction(
   connectionId: string | null,
 ): Promise<void> {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
-    ({ db, session }) =>
-      db.setEmbeddingConnectionId(session.organization.id, connectionId),
-  );
+  await runOperation(setEmbeddingConnectionOp, { connectionId });
 }
 
 /** Owner opt-in for Member-owned, Preview-only local AI subscriptions. */
@@ -381,56 +378,25 @@ export async function joinDemoOrgAction() {
  * The same asymmetry is enforced by RLS (20260728120000) — this check is the
  * one that produces a readable error instead of a silent no-op update.
  */
-async function assertMayManageMemberTier(
-  ctx: MemberContext,
-  userId: string,
-  targetRole?: Role,
-) {
-  const { db, session } = ctx;
-  if (canChangeRoles(session.role)) return;
-  if (targetRole === "owner")
-    throw new Error("Only owners can grant ownership");
-  const members = await db.listMembers(session.organization.id);
-  const target = members.find((m) => m.userId === userId);
-  if (target?.role === "owner")
-    throw new Error("Only owners can change an owner");
-}
-
 export async function updateMemberRoleAction(userId: string, role: Role) {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "members" }] },
-    async (ctx) => {
-      await assertMayManageMemberTier(ctx, userId, role);
-      await ctx.db.updateMemberRole(ctx.session.organization.id, userId, role);
-    },
-  );
+  await runOperation(updateMemberRoleOp, { userId, role });
 }
 
 export async function removeMemberAction(userId: string) {
-  // Admins remove anyone below the owner tier; any Member may remove
-  // themselves (leave org).
-  const ctx = await requireMember();
-  const { db, session } = ctx;
-  if (userId !== session.userId) {
-    if (!canManageMembers(session.role)) throw new Error("Not allowed");
-    await assertMayManageMemberTier(ctx, userId);
+  const { session } = await requireMember();
+  if (userId === session.userId) {
+    await runOperation(leaveOrganizationOp, {});
+  } else {
+    await runOperation(removeMemberOp, { userId });
   }
-  await db.removeMember(session.organization.id, userId);
-  revalidatePath("/settings/members");
 }
 
 export async function createInviteAction(role: Role, email?: string) {
-  return orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "members" }] },
-    ({ db, session }) => db.createInvite(session.organization.id, role, email),
-  );
+  return runOperation(createInviteOp, { role, email });
 }
 
 export async function revokeInviteAction(inviteId: string) {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "members" }] },
-    ({ db }) => db.revokeInvite(inviteId),
-  );
+  await runOperation(revokeInviteOp, { id: inviteId });
 }
 
 // --- Organization API keys (#618) --------------------------------------------
@@ -442,30 +408,14 @@ export async function revokeInviteAction(inviteId: string) {
  * human who minted it and can never out-rank them.
  */
 export async function createApiKeyAction(name: string, role: Role) {
-  return orgMutation(
-    { capability: "manageApiKeys", entities: [{ kind: "apiKeys" }] },
-    async ({ db, session }) => {
-      if (!canAssignApiKeyRole(session.role, role)) {
-        throw new Error("A key's role cannot exceed your own");
-      }
-      const secret = generateApiKeySecret();
-      const apiKey = await db.createApiKey(session.organization.id, {
-        name: name.trim() || "Untitled key",
-        role,
-        secretHash: hashApiKeySecret(secret),
-        secretHint: apiKeySecretHint(secret),
-        createdBy: session.userId,
-      });
-      return { apiKey, secret };
-    },
-  );
+  return runOperation(createOrgApiKeyOp, {
+    name: name.trim() || "Untitled key",
+    role,
+  });
 }
 
 export async function revokeApiKeyAction(keyId: string) {
-  await orgMutation(
-    { capability: "manageApiKeys", entities: [{ kind: "apiKeys" }] },
-    ({ db }) => db.revokeApiKey(keyId),
-  );
+  await runOperation(revokeOrgApiKeyOp, { id: keyId });
 }
 
 // --- Profile ----------------------------------------------------------------
@@ -664,10 +614,7 @@ export async function createHelpDeskAction(input: {
   name: string;
   description?: string;
 }) {
-  return orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDeskList" }] },
-    ({ db, session }) => db.createHelpDesk(session.organization.id, input),
-  );
+  return runOperation(createHelpDeskOp, input);
 }
 
 export async function updateHelpDeskAction(
@@ -678,30 +625,18 @@ export async function updateHelpDeskAction(
     autoGenerateImprovements?: boolean;
   },
 ) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "helpDeskList" }, { kind: "helpDesk", id }],
-    },
-    ({ db }) => db.updateHelpDesk(id, patch),
-  );
+  await runOperation(updateHelpDeskOp, { id, patch });
 }
 
 export async function deleteHelpDeskAction(id: string) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDeskList" }] },
-    ({ db }) => db.deleteHelpDesk(id),
-  );
+  await runOperation(deleteHelpDeskOp, { id });
 }
 
 export async function createSupportChannelAction(
   helpDeskId: string,
   input: SupportChannelInput,
 ) {
-  return orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.createSupportChannel(helpDeskId, input),
-  );
+  return runOperation(createSupportChannelOp, { helpDeskId, input });
 }
 
 export async function updateSupportChannelAction(
@@ -709,30 +644,21 @@ export async function updateSupportChannelAction(
   channelId: string,
   patch: SupportChannelPatch,
 ) {
-  return orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.updateSupportChannel(channelId, patch),
-  );
+  return runOperation(updateSupportChannelOp, { helpDeskId, channelId, patch });
 }
 
 export async function deleteSupportChannelAction(
   helpDeskId: string,
   channelId: string,
 ) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.deleteSupportChannel(channelId),
-  );
+  await runOperation(deleteSupportChannelOp, { helpDeskId, channelId });
 }
 
 export async function reorderSupportChannelsAction(
   helpDeskId: string,
   orderedIds: string[],
 ) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.reorderSupportChannels(helpDeskId, orderedIds),
-  );
+  await runOperation(reorderSupportChannelsOp, { helpDeskId, orderedIds });
 }
 
 export async function connectServiceNowIntegrationAction(
@@ -746,28 +672,11 @@ export async function connectServiceNowIntegrationAction(
     password: string;
   },
 ) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) =>
-      db.setTicketingIntegration(helpDeskId, {
-        platform: "servicenow",
-        name: input.name.trim(),
-        config: {
-          baseUrl: input.baseUrl.trim(),
-          clientId: input.clientId.trim(),
-          clientSecret: sealSecret(input.clientSecret),
-          username: input.username.trim(),
-          password: sealSecret(input.password),
-        },
-      }),
-  );
+  await runOperation(connectServiceNowOp, { helpDeskId, ...input });
 }
 
 export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "helpDesk", id: helpDeskId }] },
-    ({ db }) => db.clearTicketingIntegration(helpDeskId),
-  );
+  await runOperation(disconnectTicketingIntegrationOp, { helpDeskId });
 }
 
 // --- Widget SSO connection (org-level; Authentication section) --------------
@@ -776,9 +685,6 @@ export async function disconnectTicketingIntegrationAction(helpDeskId: string) {
 // admin-tier capability (matches provider connections + the sso_connections RLS
 // rank). The `assistantId` only steers revalidation to the editor page the
 // admin is on. The require-sign-in toggle is a per-assistant edit.
-
-/** Claim names are plain JWT claim identifiers — nothing exotic (#662). */
-const IDENTITY_CLAIM_PATTERN = /^[a-zA-Z0-9_.:-]{1,64}$/;
 
 export async function setSsoConnectionAction(
   assistantId: string,
@@ -791,91 +697,39 @@ export async function setSsoConnectionAction(
     identityClaim?: string;
   }
 ): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "assistant", id: assistantId }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      if (input.provider !== "entra") {
-        return { error: "This provider isn't available yet." };
-      }
-      const clientId = input.clientId.trim();
-      const tenantId = input.tenantId.trim();
-      const clientSecret = input.clientSecret.trim();
-      if (!clientId || !tenantId || !clientSecret) {
-        return {
-          error: "Client ID, Tenant ID and Client secret are all required.",
-        };
-      }
-      const identityClaim = input.identityClaim?.trim();
-      if (identityClaim && !IDENTITY_CLAIM_PATTERN.test(identityClaim)) {
-        return { error: "That identity claim name isn't valid." };
-      }
-      await db.setSsoConnection(session.organization.id, {
-        provider: input.provider,
-        config: {
-          clientId,
-          tenantId,
-          ...(identityClaim ? { identityClaim } : {}),
-        },
-        encryptedSecret: sealSecret(clientSecret),
-      });
-      return {};
-    },
-  );
+  void assistantId;
+  try {
+    await runOperation(setSsoConnectionOp, input);
+    return {};
+  } catch (error) {
+    return { error: thrownMessage(error, "Could not save the SSO connection") };
+  }
 }
 
 export async function validateSsoConnectionAction(
   assistantId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "assistant", id: assistantId }],
-    },
-    async ({ db, session }) => {
-      const connection = await db.getSsoConnection(session.organization.id);
-      if (!connection)
-        return { ok: false, error: "No connection to validate." };
-      const provider = getSsoProvider(connection.provider);
-      if (!provider?.validate) {
-        return { ok: false, error: "This provider can't be validated." };
-      }
-      const result = await provider.validate({
-        config: connection.config,
-        clientSecret: connection.encryptedSecret
-          ? openSecret(connection.encryptedSecret)
-          : null,
-      });
-      await db.setSsoConnectionValidation(
-        session.organization.id,
-        result.ok ? "valid" : "invalid",
-      );
-      return result.ok ? { ok: true } : { ok: false, error: result.error };
-    },
-  );
+  void assistantId;
+  try {
+    return await runOperation(validateSsoIdentityOp, {});
+  } catch (error) {
+    return { ok: false, error: thrownMessage(error, "Could not validate SSO") };
+  }
 }
 
 export async function disconnectSsoConnectionAction(assistantId: string) {
-  await orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "assistant", id: assistantId }],
-    },
-    ({ db, session }) => db.clearSsoConnection(session.organization.id),
-  );
+  void assistantId;
+  await runOperation(disconnectSsoConnectionOp, {});
 }
 
 export async function setAssistantRequireSignInAction(
   assistantId: string,
   requireSignIn: boolean,
 ) {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "assistant", id: assistantId }] },
-    ({ db }) => db.updateAssistant(assistantId, { requireSignIn }),
-  );
+  await runOperation(updateAssistantOp, {
+    id: assistantId,
+    patch: { requireSignIn },
+  });
 }
 
 /**
@@ -935,29 +789,7 @@ export async function createSkillAction(
   input: SkillInput,
   attachToAssistantId?: string,
 ): Promise<Skill> {
-  return orgMutation(
-    {
-      capability: "edit",
-      entities: attachToAssistantId
-        ? [{ kind: "assistantEditor", assistantId: attachToAssistantId }]
-        : [],
-    },
-    async ({ db, session }) => {
-      const skill = await db.createSkill(session.organization.id, {
-        name: input.name.trim(),
-        description: input.description?.trim(),
-        prompt: input.prompt,
-      });
-      if (attachToAssistantId) {
-        const attached = await db.listAssistantSkills(attachToAssistantId);
-        await db.setAssistantSkills(attachToAssistantId, [
-          ...attached.map((s) => s.id),
-          skill.id,
-        ]);
-      }
-      return skill;
-    },
-  );
+  return runOperation(createSkillOp, { ...input, attachToAssistantId });
 }
 
 export async function updateSkillAction(
@@ -965,23 +797,11 @@ export async function updateSkillAction(
   skillId: string,
   patch: SkillPatch,
 ) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.updateSkill(skillId, patch),
-  );
+  await runOperation(updateSkillOp, { id: skillId, patch });
 }
 
 export async function deleteSkillAction(assistantId: string, skillId: string) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.deleteSkill(skillId),
-  );
+  await runOperation(deleteSkillOp, { id: skillId });
 }
 
 /** Replaces which org Skills this assistant runs with (ordered). */
@@ -989,13 +809,7 @@ export async function setAssistantSkillsAction(
   assistantId: string,
   skillIds: string[],
 ) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.setAssistantSkills(assistantId, skillIds),
-  );
+  await runOperation(setAssistantSkillsOp, { assistantId, skillIds });
 }
 
 // --- API catalogue integration (spec #559) ---------------------------------
@@ -1019,18 +833,7 @@ export interface ApiIntegrationView {
 export async function getApiIntegrationAction(
   assistantId: string,
 ): Promise<ApiIntegrationView | null> {
-  const { db } = await requireMember();
-  const integration = await db.getApiIntegration(assistantId);
-  if (!integration) return null;
-  return {
-    name: integration.name,
-    baseUrl: integration.baseUrl,
-    authType: integration.authType,
-    authHeaderName: integration.authHeaderName,
-    authUsername: integration.authUsername,
-    hasCredential: integration.encryptedCredential !== null,
-    endpoints: integration.endpoints,
-  };
+  return runOperation(getApiIntegrationOp, { assistantId });
 }
 
 /**
@@ -1051,60 +854,16 @@ export async function setApiIntegrationAction(
     endpoints: ApiEndpointSpec[];
   },
 ): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-      revalidateIf: (result) => !result.error,
-    },
-    async ({ db, session }) => {
-      // An https base URL is the boundary every catalogued path resolves inside,
-      // so it is validated before anything is stored rather than at query time.
-      let base: URL;
-      try {
-        base = new URL(input.baseUrl.trim());
-      } catch {
-        return {
-          error: "Enter a valid base URL, e.g. https://api.example.com",
-        };
-      }
-      if (base.protocol !== "https:") {
-        return { error: "The base URL must use https." };
-      }
-      const endpoints = input.endpoints.filter((e) => e.path.trim());
-      if (endpoints.length === 0) {
-        return { error: "Describe at least one endpoint." };
-      }
-      await db.setApiIntegration({
-        assistantId,
-        organizationId: session.organization.id,
-        name: input.name.trim() || base.hostname,
-        baseUrl: base.toString().replace(/\/$/, ""),
-        authType: input.authType,
-        authHeaderName: input.authHeaderName?.trim() ?? "",
-        authUsername: input.authUsername?.trim() ?? "",
-        ...(input.credential === undefined
-          ? {}
-          : {
-              encryptedCredential: input.credential
-                ? sealSecret(input.credential)
-                : null,
-            }),
-        endpoints,
-      });
-      return {};
-    },
-  );
+  try {
+    await runOperation(setApiIntegrationOp, { assistantId, input });
+    return {};
+  } catch (error) {
+    return { error: thrownMessage(error, "Could not save the API integration") };
+  }
 }
 
 export async function deleteApiIntegrationAction(assistantId: string) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.deleteApiIntegration(assistantId),
-  );
+  await runOperation(deleteApiIntegrationOp, { assistantId });
 }
 
 // --- Publish (snapshot semantics, CONTEXT.md: Publication) ------------------------------
@@ -1134,13 +893,6 @@ export async function republishAction(
 
 // --- Provider connections ------------------------------------------------------------
 
-/** Non-secret suffix shown in the UI so keys can be told apart. */
-function keyHintOf(secret: string): string {
-  return secret.length >= 4 ? `…${secret.slice(-4)}` : "";
-}
-
-const KNOWN_PROVIDERS: Provider[] = ["anthropic", "openai", "google"];
-
 /**
  * BYOK: seals and stores an org API key (admins). Returns an error message
  * instead of throwing for expected failures, so the client can toast it.
@@ -1150,37 +902,12 @@ export async function createProviderConnectionAction(
   apiKey: string,
   displayName?: string,
 ): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "aiSettings" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      // `provider` crosses a server-action boundary — validate before it ever
-      // reaches the key probe or a DB write, rather than trusting the type.
-      if (!KNOWN_PROVIDERS.includes(provider))
-        return { error: "Unknown provider" };
-      const trimmed = apiKey.trim();
-      if (!trimmed) return { error: "API key is required" };
-      try {
-        await validateProviderApiKey(provider, trimmed);
-      } catch (error) {
-        if (error instanceof InvalidProviderKeyError)
-          return { error: error.message };
-        throw error;
-      }
-      await db.createProviderConnection(session.organization.id, {
-        type: "api_key",
-        provider,
-        displayName: displayName?.trim() ?? "",
-        encryptedKey: sealSecret(trimmed),
-        keyHint: keyHintOf(trimmed),
-        createdBy: session.userId,
-      });
-      return {};
-    },
-  );
+  const result = await runOperation(createProviderApiKeyOp, {
+    provider: provider as "anthropic" | "openai" | "google",
+    apiKey,
+    displayName,
+  });
+  return result.error ? { error: result.error } : {};
 }
 
 /** Legacy compatibility path: hosted subscription connections are retired. */
@@ -1205,43 +932,11 @@ export async function createGoogleVertexFederatedConnectionAction(input: {
   workloadIdentityAudience: string;
   serviceAccountEmail?: string;
 }): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "aiSettings" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      const projectId = input.projectId.trim();
-      const location = input.location.trim();
-      const workloadIdentityAudience = input.workloadIdentityAudience.trim();
-      const serviceAccountEmail = input.serviceAccountEmail?.trim() ?? "";
-      if (!projectId) return { error: "Google Cloud project ID is required" };
-      if (!location) return { error: "Vertex location is required" };
-      if (!workloadIdentityAudience) {
-        return { error: "Workload Identity Federation audience is required" };
-      }
-      const config: GoogleVertexFederatedConfig = {
-        kind: "google_vertex",
-        projectId,
-        location,
-        workloadIdentityAudience,
-        ...(serviceAccountEmail ? { serviceAccountEmail } : {}),
-      };
-      await db.createProviderConnection(session.organization.id, {
-        type: "federated",
-        provider: "google",
-        displayName:
-          input.displayName?.trim() ||
-          `Google Vertex (${projectId}/${location})`,
-        encryptedKey: null,
-        keyHint: "",
-        createdBy: session.userId,
-        config,
-      });
-      return {};
-    },
-  );
+  await runOperation(createFederatedProviderConnectionOp, {
+    kind: "google_vertex",
+    ...input,
+  });
+  return {};
 }
 
 export async function createAnthropicWifFederatedConnectionAction(input: {
@@ -1250,37 +945,11 @@ export async function createAnthropicWifFederatedConnectionAction(input: {
   organizationId?: string;
   workspaceId?: string;
 }): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "aiSettings" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      const workloadIdentityAudience = input.workloadIdentityAudience.trim();
-      const organizationId = input.organizationId?.trim() ?? "";
-      const workspaceId = input.workspaceId?.trim() ?? "";
-      if (!workloadIdentityAudience) {
-        return { error: "Workload Identity Federation audience is required" };
-      }
-      const config: AnthropicWifFederatedConfig = {
-        kind: "anthropic_wif",
-        workloadIdentityAudience,
-        ...(organizationId ? { organizationId } : {}),
-        ...(workspaceId ? { workspaceId } : {}),
-      };
-      await db.createProviderConnection(session.organization.id, {
-        type: "federated",
-        provider: "anthropic",
-        displayName: input.displayName?.trim() || "Anthropic WIF",
-        encryptedKey: null,
-        keyHint: "",
-        createdBy: session.userId,
-        config,
-      });
-      return {};
-    },
-  );
+  await runOperation(createFederatedProviderConnectionOp, {
+    kind: "anthropic_wif",
+    ...input,
+  });
+  return {};
 }
 
 export async function createAzureOpenAiFederatedConnectionAction(input: {
@@ -1291,42 +960,11 @@ export async function createAzureOpenAiFederatedConnectionAction(input: {
   clientId?: string;
   audience?: string;
 }): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "aiSettings" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      const tenantId = input.tenantId.trim();
-      const endpoint = input.endpoint.trim();
-      const deployment = input.deployment.trim();
-      const clientId = input.clientId?.trim() ?? "";
-      const audience = input.audience?.trim() ?? "";
-      if (!tenantId) return { error: "Azure tenant ID is required" };
-      if (!endpoint) return { error: "Azure OpenAI endpoint is required" };
-      if (!deployment) return { error: "Azure OpenAI deployment is required" };
-      const config: AzureOpenAiFederatedConfig = {
-        kind: "azure_openai",
-        tenantId,
-        endpoint,
-        deployment,
-        ...(clientId ? { clientId } : {}),
-        ...(audience ? { audience } : {}),
-      };
-      await db.createProviderConnection(session.organization.id, {
-        type: "federated",
-        provider: "azure_openai",
-        displayName:
-          input.displayName?.trim() || `Azure OpenAI (${deployment})`,
-        encryptedKey: null,
-        keyHint: "",
-        createdBy: session.userId,
-        config,
-      });
-      return {};
-    },
-  );
+  await runOperation(createFederatedProviderConnectionOp, {
+    kind: "azure_openai",
+    ...input,
+  });
+  return {};
 }
 
 /**
@@ -1344,53 +982,8 @@ export async function createOpenAiCompatibleConnectionAction(input: {
   embeddingModel?: string;
   embeddingDims?: number;
 }): Promise<{ error?: string }> {
-  return orgMutation(
-    {
-      capability: "manageMembers",
-      entities: [{ kind: "aiSettings" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      const baseUrl = input.baseUrl.trim();
-      const chatModel = input.chatModel.trim();
-      const embeddingModel = input.embeddingModel?.trim() ?? "";
-      const apiKey = input.apiKey?.trim() ?? "";
-      const embeddingDims = input.embeddingDims;
-      let parsedUrl: URL;
-      try {
-        parsedUrl = new URL(baseUrl);
-      } catch {
-        return { error: "Base URL must be a valid http(s) URL" };
-      }
-      if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
-        return { error: "Base URL must be a valid http(s) URL" };
-      }
-      if (!chatModel) return { error: "Chat model is required" };
-      if (
-        embeddingDims !== undefined &&
-        (!Number.isInteger(embeddingDims) || embeddingDims <= 0)
-      ) {
-        return { error: "Embedding dimensions must be a positive integer" };
-      }
-      const config: OpenAiCompatibleConfig = {
-        kind: "openai_compatible",
-        baseUrl,
-        chatModel,
-        ...(embeddingModel ? { embeddingModel } : {}),
-        ...(embeddingDims !== undefined ? { embeddingDims } : {}),
-      };
-      await db.createProviderConnection(session.organization.id, {
-        type: "api_key",
-        provider: "openai_compatible",
-        displayName: input.displayName?.trim() || "OpenAI-compatible",
-        encryptedKey: apiKey ? sealSecret(apiKey) : null,
-        keyHint: apiKey ? keyHintOf(apiKey) : "",
-        createdBy: session.userId,
-        config,
-      });
-      return {};
-    },
-  );
+  const result = await runOperation(createOpenAiCompatibleConnectionOp, input);
+  return result.error ? { error: result.error } : {};
 }
 
 /**
@@ -1414,19 +1007,7 @@ export async function testOpenAiCompatibleConnectionAction(input: {
 }
 
 export async function deleteProviderConnectionAction(id: string) {
-  await orgMutation(
-    { capability: "manageMembers", entities: [{ kind: "aiSettings" }] },
-    async ({ db, session }) => {
-      // Resolve within the caller's org so a foreign id can't be deleted, and
-      // keep all org-owned Provider Connections admin-managed.
-      const connections = await db.listProviderConnections(
-        session.organization.id,
-      );
-      const connection = connections.find((c) => c.id === id);
-      if (!connection) throw new Error("Connection not found");
-      await db.deleteProviderConnection(id);
-    },
-  );
+  await runOperation(deleteProviderConnectionOp, { id });
 }
 
 // --- Knowledge (OKF collections) --------------------------------------------------------
@@ -2055,37 +1636,28 @@ export async function exportInboxConversationsAction(
 }
 
 export async function deleteConversationAction(conversationId: string) {
-  const { db } = await requireMember();
-  await db.deleteConversation(conversationId);
+  await runOperation(deleteConversationOp, { id: conversationId });
 }
 
 export async function setConversationPinnedAction(
   conversationId: string,
   pinned: boolean,
 ) {
-  const { db } = await requireMember();
-  await db.setConversationPinned(conversationId, pinned);
+  await runOperation(setConversationPinnedOp, { id: conversationId, pinned });
 }
 
 export async function sendConversationFeedbackAction(
   conversationId: string,
   text: string,
 ) {
-  const { db } = await requireMember();
-  const trimmed = text.trim();
-  if (!trimmed) throw new Error("Empty feedback");
-  await db.updateConversationMetadata(conversationId, {
-    feedbackText: trimmed.slice(0, 2000),
-    feedbackAt: new Date().toISOString(),
-  });
+  await runOperation(sendConversationFeedbackOp, { id: conversationId, text });
 }
 
 export async function setMessageFeedbackAction(
   messageId: string,
   feedback: -1 | 0 | 1,
 ) {
-  const { db } = await requireMember();
-  await db.setMessageFeedback(messageId, feedback);
+  await runOperation(setMessageFeedbackOp, { messageId, feedback });
 }
 
 // --- Improvements -----------------------------------------------------------
@@ -2327,36 +1899,11 @@ export async function deleteImprovementAction(id: string): Promise<void> {
 
 // --- Standing goals ------------------------------------------------------------
 
-function sanitizeExpectations(input: GoalExpectations): GoalExpectations {
-  const expectations: GoalExpectations = {};
-  if (input.mustCiteSources) expectations.mustCiteSources = true;
-  const url = input.expectedSourceUrl?.trim();
-  if (url) expectations.expectedSourceUrl = url;
-  const fragments = (input.mustContain ?? [])
-    .map((f) => f.trim())
-    .filter(Boolean);
-  if (fragments.length > 0) expectations.mustContain = fragments;
-  return expectations;
-}
-
 export async function createGoalAction(
   assistantId: string,
   input: { question: string; expectations: GoalExpectations },
 ): Promise<void> {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => {
-      const question = input.question.trim();
-      if (!question) throw new Error("The goal question is required.");
-      return db.createAssistantGoal(assistantId, {
-        question,
-        expectations: sanitizeExpectations(input.expectations),
-      });
-    },
-  );
+  await runOperation(createAssistantGoalOp, { assistantId, ...input });
 }
 
 export async function updateGoalAction(
@@ -2368,43 +1915,21 @@ export async function updateGoalAction(
     status?: GoalStatus;
   },
 ): Promise<void> {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) =>
-      db.updateAssistantGoal(goalId, {
-        question: patch.question?.trim() || undefined,
-        expectations: patch.expectations
-          ? sanitizeExpectations(patch.expectations)
-          : undefined,
-        status: patch.status,
-      }),
-  );
+  await runOperation(updateAssistantGoalOp, { assistantId, goalId, patch });
 }
 
 export async function deleteGoalAction(
   assistantId: string,
   goalId: string,
 ): Promise<void> {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.deleteAssistantGoal(goalId),
-  );
+  await runOperation(deleteAssistantGoalOp, { assistantId, goalId });
 }
 
 // --- Alerts ------------------------------------------------------------------
 
 /** "I have resolved this": marks the alert resolved by the current member. */
 export async function resolveAlertAction(alertId: string): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "alerts" }] },
-    ({ db, session }) => db.resolveAlert(alertId, session.userId),
-  );
+  await runOperation(resolveAlertOp, { id: alertId });
 }
 
 // --- Entities + Records (org structured data, #663) ---------------------------
@@ -2429,76 +1954,22 @@ async function requireOrgEntity(
 export async function createEntityAction(
   input: EntityInput
 ): Promise<{ entity?: Entity; error?: string }> {
-  return orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "dataEntities" }],
-      revalidateIf: (r: { error?: string }) => !r.error,
-    },
-    async ({ db, session }) => {
-      const name = input.name.trim();
-      const attributes = input.attributes
-        .map((a) => ({
-          key: a.key.trim(),
-          label: a.label.trim() || a.key.trim(),
-          type: a.type,
-        }))
-        .filter((a) => a.key !== "");
-      if (!name) return { error: "Give the entity a name." };
-      if (attributes.length === 0) {
-        return { error: "Define at least one attribute." };
-      }
-      if (new Set(attributes.map((a) => a.key.toLowerCase())).size !== attributes.length) {
-        return { error: "Attribute keys must be unique." };
-      }
-      if (!attributes.some((a) => a.key === input.keyAttribute)) {
-        return { error: "Pick one of the attributes as the key." };
-      }
-      if (
-        input.scope === "user" &&
-        !attributes.some((a) => a.key === input.identityAttribute)
-      ) {
-        return { error: "User-scoped entities need an identity attribute." };
-      }
-      const entity = await db.table("entities").insert({
-        organizationId: session.organization.id,
-        name,
-        description: input.description?.trim(),
-        attributes,
-        keyAttribute: input.keyAttribute,
-        scope: input.scope,
-        identityAttribute:
-          input.scope === "user" ? input.identityAttribute : null,
-      });
-      return { entity };
-    }
-  );
+  try {
+    return { entity: await runOperation(createEntityOp, input) };
+  } catch (error) {
+    return { error: thrownMessage(error, "Could not create the Entity") };
+  }
 }
 
 export async function updateEntityAction(
   entityId: string,
   patch: { name?: string; description?: string }
 ): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "dataEntities" }] },
-    async ({ db, session }) => {
-      await requireOrgEntity(db, session.organization.id, entityId);
-      await db.table("entities").update(entityId, {
-        name: patch.name?.trim() || undefined,
-        description: patch.description?.trim(),
-      });
-    }
-  );
+  await runOperation(updateEntityOp, { id: entityId, patch });
 }
 
 export async function deleteEntityAction(entityId: string): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "dataEntities" }] },
-    async ({ db, session }) => {
-      await requireOrgEntity(db, session.organization.id, entityId);
-      await db.table("entities").delete(entityId);
-    }
-  );
+  await runOperation(deleteEntityOp, { id: entityId });
 }
 
 export interface EntityImportReport {
@@ -2516,22 +1987,7 @@ export async function importEntityRecordsAction(
   entityId: string,
   csvText: string
 ): Promise<EntityImportReport> {
-  return orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "dataEntities" }],
-      revalidateIf: (r: EntityImportReport) => r.upserted > 0,
-    },
-    async ({ db, session }) => {
-      const entity = await requireOrgEntity(db, session.organization.id, entityId);
-      const parsed = parseEntityCsv(csvText, entity);
-      if (parsed.rows.length === 0) {
-        return { upserted: 0, rejected: parsed.rejected };
-      }
-      const upserted = await db.upsertEntityRecords(entityId, parsed.rows);
-      return { upserted, rejected: parsed.rejected };
-    }
-  );
+  return runOperation(importEntityRecordsOp, { entityId, csv: csvText });
 }
 
 /** Records browser read (paged) — any member of the Entity's org. */
@@ -2664,11 +2120,10 @@ export async function listEntityRecordsAction(
   entityId: string,
   opts?: { limit?: number; offset?: number }
 ): Promise<{ records: EntityRecord[]; total: number }> {
-  const { db, session } = await requireMember("member");
-  await requireOrgEntity(db, session.organization.id, entityId);
-  const [records, total] = await Promise.all([
-    db.listEntityRecords(entityId, opts),
-    db.countEntityRecords(entityId),
-  ]);
-  return { records, total };
+  const result = await runOperation(listEntityRecordsOp, {
+    entityId,
+    limit: opts?.limit,
+    offset: opts?.offset,
+  });
+  return { records: result.data, total: result.total };
 }

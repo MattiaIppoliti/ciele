@@ -5,6 +5,8 @@ import type {
   Improvement,
   ImprovementPatch,
   Role,
+  SsoConnection,
+  Provider,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { ZodType } from "zod";
@@ -50,6 +52,15 @@ export interface OperationContext {
 export interface OperationPorts {
   /** Read the org's Entities when freezing a Publication snapshot. */
   listPublicationEntities?(organizationId: string): Promise<Entity[]>;
+  /** Probe a BYOK provider credential before it is persisted. */
+  validateProviderApiKey?(
+    provider: Exclude<Provider, "openai_compatible">,
+    apiKey: string
+  ): Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Validate a stored SSO connection without exposing its sealed secret. */
+  validateSsoConnection?(
+    connection: SsoConnection
+  ): Promise<{ ok: true } | { ok: false; error: string }>;
   /** Reclaim a deleted Collection's derived graph dataset (ADR-0017). */
   purgeCollectionGraph?(collectionId: string): Promise<void>;
   /** Retire one deleted Concept's graph document (ADR-0017). */

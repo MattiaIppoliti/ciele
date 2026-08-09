@@ -24,8 +24,8 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 Lo stack richiede Postgres, JSON Web Token, ruolo di servizio, crittografia
 dell'applicazione e segreti cron. Lascia che li generi lo script di bootstrap.
 
-Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` in modo
-indipendente. Insieme formano un'unica configurazione di firma.
+Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` separatamente.
+Insieme formano un'unica configurazione di firma.
 
 ## Account ed e-mail
 

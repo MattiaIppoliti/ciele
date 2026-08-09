@@ -189,4 +189,40 @@ describe("ciele CLI", () => {
     expect(calls).toHaveLength(0);
     expect(out[0]).toContain("Usage: ciele");
   });
+
+  it("doctor verifies the deployment contract and authenticated identity", async () => {
+    const { deps, calls, out } = harness(({ url }) =>
+      url.endsWith("/meta")
+        ? {
+            json: {
+              api: "ciele",
+              apiVersion: 1,
+              serverVersion: "0.40.0",
+              domains: ["assistants", "entities", "memories", "sso"],
+            },
+          }
+        : { json: WHOAMI }
+    , {
+      env: {
+        CIELE_API_KEY: "ciele_sk_x",
+        CIELE_BASE_URL: "http://127.0.0.1:3000",
+      },
+    });
+
+    expect(await runCli(["doctor", "--json"], deps)).toBe(EXIT.ok);
+    expect(calls.map((call) => new URL(call.url).pathname)).toEqual([
+      "/api/v1/meta",
+      "/api/v1/whoami",
+    ]);
+    expect(JSON.parse(out[0])).toEqual({
+      ok: true,
+      baseUrl: "http://127.0.0.1:3000",
+      apiVersion: 1,
+      serverVersion: "0.40.0",
+      domains: ["assistants", "entities", "memories", "sso"],
+      organizationId: "org-1",
+      role: "editor",
+      keyId: "k-1",
+    });
+  });
 });
