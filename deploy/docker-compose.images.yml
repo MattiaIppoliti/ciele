@@ -1,0 +1,35 @@
+# Image mode: run the three locally-built services from published images
+# instead of building them from source (#686).
+#
+# This file is an *overlay*, never used on its own. Turn it on from `.env`:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
+#   CIELE_IMAGE_TAG=v0.4.0
+#
+# and `docker compose up -d` pulls `app`, `migrate` and `cron` at that tag
+# rather than building them — no source checkout beyond this directory, and
+# minutes instead of an afternoon. Leave COMPOSE_FILE unset and nothing here
+# is read: the stack builds from source exactly as it always has.
+#
+# Everything else — profiles, the migrate-before-app ordering, the database
+# layer, ports, volumes — comes from docker-compose.yml unchanged. The three
+# services below are the only ones this repo builds; the rest were already
+# published images.
+#
+# Ciele Desktop uses this mode and pins CIELE_IMAGE_TAG to its own version, so
+# updating the app is what rolls the local stack forward.
+
+services:
+  migrate:
+    image: ${CIELE_IMAGE_REGISTRY:-ghcr.io/mattiaippoliti/ciele}/migrate:${CIELE_IMAGE_TAG:?set CIELE_IMAGE_TAG to the release you want, e.g. v0.4.0}
+    # `missing` (the default) would silently build from source when the pull
+    # fails, turning a typo'd tag into an unexplained multi-minute build.
+    pull_policy: always
+
+  app:
+    image: ${CIELE_IMAGE_REGISTRY:-ghcr.io/mattiaippoliti/ciele}/app:${CIELE_IMAGE_TAG:?set CIELE_IMAGE_TAG to the release you want, e.g. v0.4.0}
+    pull_policy: always
+
+  cron:
+    image: ${CIELE_IMAGE_REGISTRY:-ghcr.io/mattiaippoliti/ciele}/cron:${CIELE_IMAGE_TAG:?set CIELE_IMAGE_TAG to the release you want, e.g. v0.4.0}
+    pull_policy: always

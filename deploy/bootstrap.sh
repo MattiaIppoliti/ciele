@@ -4,6 +4,8 @@
 #   ./deploy/bootstrap.sh              first run: generate, start, migrate
 #   ./deploy/bootstrap.sh --seed       …and load the sanitized demo content
 #   ./deploy/bootstrap.sh --env-only   just write deploy/.env, start nothing
+#   ./deploy/bootstrap.sh --images vX.Y.Z
+#                                      run published images, no source build
 #
 # Generates every secret the stack needs (Postgres password, JWT secret and
 # the two API keys signed with it, the encryption key, the cron secret),
@@ -20,19 +22,30 @@ cd "$(cd "$(dirname "$0")" && pwd)"
 ENV_FILE=".env"
 SEED=0
 ENV_ONLY=0
-for arg in "$@"; do
-  case "$arg" in
+IMAGE_TAG=""
+while [ $# -gt 0 ]; do
+  case "$1" in
     --seed) SEED=1 ;;
     --env-only) ENV_ONLY=1 ;;
+    --images)
+      shift
+      IMAGE_TAG="${1:-}"
+      [ -n "$IMAGE_TAG" ] || {
+        echo "--images needs a release tag, e.g. --images v0.4.0" >&2
+        exit 2
+      }
+      ;;
+    --images=*) IMAGE_TAG="${1#--images=}" ;;
     -h | --help)
-      sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
-      echo "Unknown option: $arg (try --help)" >&2
+      echo "Unknown option: $1 (try --help)" >&2
       exit 2
       ;;
   esac
+  shift
 done
 
 need() {
@@ -78,6 +91,24 @@ mint_key() {
   printf '%s.%s.%s' "$header" "$payload" "$signature"
 }
 
+# Fill in one empty `KEY=` line. Secrets here are hex or base64, alphabets
+# that exclude `|`, so it is a safe sed delimiter; nothing is ever echoed.
+# The temp file keeps this portable across GNU and BSD sed.
+set_var() {
+  local key="$1" value="$2"
+  sed "s|^${key}=$|${key}=${value}|" "$ENV_FILE" >"$ENV_FILE.tmp"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
+# Same, but overwrites whatever the line already holds. Only used for the
+# image-mode switch, which is a choice the caller is re-making — never for a
+# secret, where silently replacing one would orphan the data it protects.
+replace_var() {
+  local key="$1" value="$2"
+  sed "s|^${key}=.*$|${key}=${value}|" "$ENV_FILE" >"$ENV_FILE.tmp"
+  mv "$ENV_FILE.tmp" "$ENV_FILE"
+}
+
 if [ -f "$ENV_FILE" ]; then
   echo "Keeping the existing $PWD/$ENV_FILE (delete it to regenerate secrets)."
 else
@@ -92,14 +123,6 @@ else
   # Start from the documented template so every option stays visible and
   # commented, then fill in what we generated.
   cp .env.example "$ENV_FILE"
-  # Fill in one empty `KEY=` line. Secrets here are hex or base64, alphabets
-  # that exclude `|`, so it is a safe sed delimiter; nothing is ever echoed.
-  # The temp file keeps this portable across GNU and BSD sed.
-  set_var() {
-    local key="$1" value="$2"
-    sed "s|^${key}=$|${key}=${value}|" "$ENV_FILE" >"$ENV_FILE.tmp"
-    mv "$ENV_FILE.tmp" "$ENV_FILE"
-  }
   set_var POSTGRES_PASSWORD "$postgres_password"
   set_var JWT_SECRET "$jwt_secret"
   set_var ANON_KEY "$anon_key"
@@ -110,8 +133,41 @@ else
   echo "Wrote $(grep -c '^[A-Z]' "$ENV_FILE") settings; six secrets generated."
 fi
 
+# --- image mode --------------------------------------------------------------
+#
+# Written into .env rather than passed on the command line, so a later bare
+# `docker compose up -d` in this directory keeps running images too — compose
+# reads COMPOSE_FILE from .env itself.
+if [ -n "$IMAGE_TAG" ]; then
+  replace_var COMPOSE_FILE "docker-compose.yml:docker-compose.images.yml"
+  replace_var CIELE_IMAGE_TAG "$IMAGE_TAG"
+  echo "Image mode: app, migrate and cron will be pulled at $IMAGE_TAG (no source build)."
+fi
+
+# The overlay is on when .env says so, whether this run set it or a previous
+# one did. Every compose invocation below has to agree with that, and the
+# explicit `-f` flags would otherwise override what .env asked for.
+compose_files() {
+  local configured
+  configured=$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)
+  configured="${configured:-docker-compose.yml}"
+  local IFS=':'
+  for file in $configured; do
+    printf ' -f %s' "$file"
+  done
+}
+
+# A source build is what `--build` forces; in image mode it would rebuild the
+# very thing the pinned tag exists to avoid.
+build_flag() {
+  case "$(compose_files)" in
+    *docker-compose.images.yml*) printf '' ;;
+    *) printf -- '--build' ;;
+  esac
+}
+
 if [ "$ENV_ONLY" = "1" ]; then
-  echo "Done (--env-only). Start the stack with: docker compose -f deploy/docker-compose.yml up -d"
+  echo "Done (--env-only). Start the stack with: docker compose$(compose_files) up -d"
   exit 0
 fi
 
@@ -123,8 +179,13 @@ if [ "$SEED" = "1" ]; then
   echo "The sanitized demo seed will be loaded after migrations."
 fi
 
-echo "Building and starting the stack (first run pulls images and builds the app — several minutes)…"
-compose --env-file "$ENV_FILE" -f docker-compose.yml up -d --build
+if [ -z "$(build_flag)" ]; then
+  echo "Pulling published images and starting the stack…"
+else
+  echo "Building and starting the stack (first run pulls images and builds the app — several minutes)…"
+fi
+# shellcheck disable=SC2046,SC2086 # both helpers emit deliberate argument lists
+compose --env-file "$ENV_FILE" $(compose_files) up -d $(build_flag)
 
 app_port=$(grep -E '^APP_PORT=' "$ENV_FILE" | cut -d= -f2)
 app_port="${app_port:-3000}"

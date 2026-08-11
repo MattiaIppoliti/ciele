@@ -3,6 +3,12 @@ title: Installation
 description: Start the current single-host Docker Compose deployment.
 ---
 
+<Callout title="No terminal? Use the desktop app">
+[Ciele Desktop](/self-hosting/desktop) performs every step on this page for
+you — including generating the secrets and starting the stack — and needs only
+Docker Desktop. This page is the server path.
+</Callout>
+
 ## Requirements
 
 - Install Git.
@@ -23,6 +29,38 @@ The script generates required secrets in `deploy/.env`. It then builds and start
 Open [http://localhost:3000](http://localhost:3000) after the services become healthy. The first account becomes the Organization owner.
 
 Use `./deploy/bootstrap.sh --seed` to add sanitized demonstration content.
+
+## Run published images instead of building
+
+Building `app`, `migrate` and `cron` from the checkout takes considerable time
+and requires the full repository. Every release also publishes those three as
+container images:
+
+```bash
+./deploy/bootstrap.sh --images v0.4.0
+```
+
+The command writes two settings into `deploy/.env` and pulls instead of
+building:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
+CIELE_IMAGE_TAG=v0.4.0
+```
+
+Because both live in `deploy/.env`, a later `docker compose up -d` in that
+directory stays in image mode. Clear both settings to return to building from
+source. Set `CIELE_IMAGE_REGISTRY` to use a mirror or your own rebuild.
+
+Profiles, service ordering and the database layer are identical in both modes.
+Only the origin of those three services changes.
+
+<Callout title="Recreate the container after changing the public URL">
+The published application image resolves `SUPABASE_PUBLIC_URL` once, when the
+container starts, because Next.js inlines that class of value at build time.
+Run `docker compose up -d` to recreate the container after you change it; a
+restart alone keeps the previous value.
+</Callout>
 
 ## Default profiles
 

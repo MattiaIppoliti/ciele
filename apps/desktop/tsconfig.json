@@ -1,0 +1,5 @@
+{
+  "//": "Two real configs (node and web) because the processes have different globals: main/preload get node + electron, the renderer gets the DOM. `pnpm typecheck` runs both; this root file exists so an editor opening any file finds one.",
+  "files": [],
+  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.web.json" }]
+}

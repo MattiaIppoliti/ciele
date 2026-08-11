@@ -1,0 +1,48 @@
+# Packaging for the unsigned macOS beta (#690).
+#
+# Signing, notarization, Windows and Linux are all deliberately out of scope
+# for the beta — an unsigned app also cannot auto-update, which is why the app
+# checks for a newer release and links the download instead.
+#
+# Because electron-vite bundles main, preload and renderer, `out/` is the whole
+# application: there is no node_modules to copy in.
+
+appId: app.ciele.desktop
+productName: Ciele
+copyright: Ciele
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+
+# The compose definition and env template travel with the app and are versioned
+# with it, so the local stack a given build sets up is the one that build was
+# tested against. Read-only at runtime; everything generated goes to the
+# per-user data directory instead.
+extraResources:
+  - from: ../../deploy
+    to: deploy
+    filter:
+      - "**/*"
+      # The env template is a dotfile and the wizard cannot generate a config
+      # without it, so it is named rather than left to the glob.
+      - ".env.example"
+      - "!.env"
+      - "!README.md"
+      - "!compose.test.mjs"
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: zip
+      arch: [arm64, x64]
+  # Nothing to sign with, and asking would fail the build on a fork.
+  identity: null
+  notarize: false
+
+# Unsigned builds cannot be auto-updated, so no update feed is published.
+publish: null

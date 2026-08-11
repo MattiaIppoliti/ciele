@@ -32,6 +32,44 @@ assistants) so you can see a populated product before adding your own.
 Realtime, Edge Functions, Analytics and Kong are not started — Ciele does not
 use them.
 
+## Prebuilt images instead of a source build
+
+The command above builds `app`, `migrate` and `cron` from the checkout — an
+afternoon on a laptop, and it needs the whole repo. Every release also
+publishes those three as images, so you can skip the build entirely:
+
+```sh
+./deploy/bootstrap.sh --images v0.4.0
+```
+
+That writes two lines into `deploy/.env` and pulls instead of building:
+
+```sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
+CIELE_IMAGE_TAG=v0.4.0
+```
+
+Because they live in `.env`, a later bare `docker compose up -d` in this
+directory stays in image mode. To go back to building from source, clear both
+lines. Available tags are the release tags of this repository; set
+`CIELE_IMAGE_REGISTRY` to run a mirror or your own rebuild.
+
+Everything else is identical: same profiles, same migrate-before-app ordering,
+same database layer. Only the origin of those three services changes.
+
+> **Why the published app image is configurable at all.** Next.js inlines
+> `NEXT_PUBLIC_*` at build time, and one of those values is the Supabase anon
+> key — a JWT signed with *your* install's secret, which no published image can
+> know. So the image is built with placeholders and rewrites them from its
+> environment on start (`apps/web/docker-entrypoint.sh`). Changing
+> `SUPABASE_PUBLIC_URL` afterwards therefore needs the container recreated
+> (`docker compose up -d`), not just restarted.
+
+Ciele Desktop uses this mode: it pins the tag to its own version, so updating
+the app is what rolls your local stack forward. If you want the guided,
+no-terminal path, use the desktop app instead of this directory — see
+<https://docs.ciele.app/self-hosting/desktop>.
+
 ## Choosing your AI models
 
 Ciele talks to any server speaking the OpenAI chat/embeddings API, so a fully
@@ -81,11 +119,20 @@ for the two of them.
 **TLS is your responsibility.** This stack listens on plain HTTP and expects a
 reverse proxy (Caddy, nginx, Traefik) in front of it terminating TLS. When you
 add one, set `PUBLIC_URL` and `SUPABASE_PUBLIC_URL` in `deploy/.env` to the
-public HTTPS origins and rebuild the app image — the browser bundle inlines
-`SUPABASE_PUBLIC_URL` at build time:
+public HTTPS origins.
+
+In **source-build mode** that value is baked in, so the app image has to be
+rebuilt:
 
 ```sh
 docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+In **image mode** it is applied when the container starts, so recreating is
+enough — but a restart is not:
+
+```sh
+docker compose up -d app
 ```
 
 Only two ports are published by default: the app (3000) and the Supabase
@@ -100,6 +147,9 @@ docker compose -f deploy/docker-compose.yml logs -f app
 # upgrade: pull the new code, rebuild, migrate (the migrate service reruns
 # automatically and applies only what is pending)
 git pull && docker compose -f deploy/docker-compose.yml up -d --build
+
+# upgrade in image mode: bump CIELE_IMAGE_TAG in deploy/.env, then
+docker compose up -d
 
 # back up the database
 docker compose -f deploy/docker-compose.yml exec -T postgres \
@@ -169,3 +219,13 @@ variables and flip it to `false` when you want real confirmation.
 **The app can't reach Ollama on the host** — inside Docker, `localhost` is the
 container. Use `http://host.docker.internal:11434/v1` (Docker Desktop) or the
 host's LAN IP (Linux).
+
+**In image mode, compose says `CIELE_IMAGE_TAG` is required** — the overlay is
+in `COMPOSE_FILE` but no tag is pinned. Set `CIELE_IMAGE_TAG` to a release tag,
+or clear `COMPOSE_FILE` to go back to building from source. The variable
+refuses to default on purpose: an unpinned stack that silently followed
+`latest` would change under you.
+
+**In image mode, every request fails after changing `SUPABASE_PUBLIC_URL`** —
+the published app image resolves that value once, at container start. Recreate
+the container with `docker compose up -d` rather than restarting it.

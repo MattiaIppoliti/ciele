@@ -18,6 +18,16 @@ git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
+In image mode, change `CIELE_IMAGE_TAG` in `deploy/.env` to the new release and
+apply it instead:
+
+```bash
+docker compose up -d
+```
+
+On [Ciele Desktop](/self-hosting/desktop), updating the application performs
+this step: each build pins the images matching its own version.
+
 The `migrate` service applies only pending migrations. Inspect its result before you accept the application as healthy.
 
 ```bash

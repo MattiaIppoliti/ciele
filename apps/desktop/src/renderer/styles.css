@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/*
+ * The desktop app owns a small component set of its own rather than importing
+ * the web app's: that one is coupled to the Next app it lives in, and the
+ * native surface here is a handful of screens. What it must NOT own is a
+ * different look — a user goes from these screens straight into the product,
+ * in the same window. So every value below is the web app's own dark-theme
+ * token, copied from apps/web/src/app/globals.css.
+ *
+ * The palette is greyscale on purpose, product-wide: the only hue anywhere is
+ * `destructive`, which is why an error reads as one.
+ */
+@theme {
+  --color-canvas: #121212; /* --background */
+  --color-surface: #191919; /* --card */
+  --color-surface-raised: #202020;
+  --color-line: oklch(1 0 0 / 10%); /* --border */
+  --color-ink: oklch(0.985 0 0); /* --foreground */
+  --color-ink-muted: oklch(0.708 0 0); /* --muted-foreground */
+  --color-accent: oklch(0.922 0 0); /* --primary */
+  --color-accent-ink: oklch(0.205 0 0); /* --primary-foreground */
+  --color-danger: oklch(0.704 0.191 22.216); /* --destructive */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The window uses `hiddenInset` traffic lights, so the top strip is a drag
+   handle. Anything interactive inside it has to opt back out. */
+.drag-region {
+  -webkit-app-region: drag;
+}
+.drag-region button,
+.drag-region a,
+.drag-region input {
+  -webkit-app-region: no-drag;
+}

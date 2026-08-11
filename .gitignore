@@ -36,3 +36,5 @@ graphify-out/
 # visual-plan local bridge token files (never commit)
 plans/**/.plan-url
 
+test-results/
+playwright-report/

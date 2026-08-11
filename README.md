@@ -38,6 +38,12 @@ That generates every secret, starts the database, applies the migrations, and
 boots the app. Open <http://localhost:3000> and sign up — the first account owns
 its organization. Add `--seed` to start from populated demo content.
 
+Prefer not to build from source? `./deploy/bootstrap.sh --images vX.Y.Z` pulls
+the published images for a release instead. Prefer not to open a terminal at
+all? **[Ciele Desktop](https://docs.ciele.app/self-hosting/desktop)** (macOS
+beta) does every step above from a guided wizard — Docker Desktop is the only
+thing you install yourself.
+
 It talks to no Ciele service, and it does not have to talk to an AI vendor
 either: point it at any server speaking the OpenAI chat and embeddings API — a
 model runner on the same host will do — and the whole product runs offline.

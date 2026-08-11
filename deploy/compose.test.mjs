@@ -28,6 +28,7 @@ function check(label, fn) {
 }
 
 const compose = read("docker-compose.yml");
+const imagesOverlay = read("docker-compose.images.yml");
 const envExample = read(".env.example");
 const crontab = read("cron/crontab");
 const vercel = JSON.parse(read("../apps/web/vercel.json"));
@@ -172,6 +173,128 @@ check("the image's deps stage copies every workspace manifest the app needs", ()
       `apps/web/Dockerfile must COPY ${dir}/package.json — apps/web depends on it, so pnpm needs its manifest to link it`
     );
   }
+});
+
+// --- image mode (#686) ------------------------------------------------------
+//
+// The overlay is the whole switch: adding it to COMPOSE_FILE runs published
+// images, leaving it out builds from source. What must hold is that the
+// default is untouched and that the overlay changes nothing but the source of
+// those three services.
+
+/** The services the repo builds — the only ones image mode can replace. */
+const BUILT_SERVICES = ["migrate", "app", "cron"];
+
+check("the default is still a source build — the overlay is opt-in", () => {
+  for (const service of BUILT_SERVICES) {
+    assert.match(
+      compose,
+      new RegExp(`^ {2}${service}:$[\\s\\S]*?^ {4}build:$`, "m"),
+      `${service} must still declare build: in the base file, or leaving the overlay out stops working`
+    );
+  }
+  // An `image:` in the base file would make the switch ambiguous: compose
+  // would pull rather than build with no overlay in play.
+  const baseServiceSection = (name) =>
+    new RegExp(`^ {2}${name}:$([\\s\\S]*?)(?=^ {2}[a-z]|^[a-z])`, "m").exec(compose)[1];
+  for (const service of BUILT_SERVICES) {
+    assert.doesNotMatch(
+      baseServiceSection(service),
+      /^ {4}image:/m,
+      `${service} must not name an image in the base file — that is the overlay's job`
+    );
+  }
+});
+
+check("image mode pins every built service to the release tag", () => {
+  const overlayServices = Object.keys(serviceProfiles(imagesOverlay));
+  assert.deepEqual(
+    overlayServices.sort(),
+    [...BUILT_SERVICES].sort(),
+    "the overlay must cover exactly the services the repo builds — no more (it would shadow a published image), no fewer (that one would still build from source)"
+  );
+  for (const service of BUILT_SERVICES) {
+    assert.match(
+      imagesOverlay,
+      new RegExp(`^ {2}${service}:$[\\s\\S]*?/${service}:\\$\\{CIELE_IMAGE_TAG:\\?`, "m"),
+      `${service} must resolve to <registry>/${service}:\${CIELE_IMAGE_TAG:?…} — the :? form refuses to start on an unset tag rather than pulling :latest`
+    );
+  }
+});
+
+check("image mode refuses to fall back to a silent source build", () => {
+  // Compose's default pull policy builds when the pull fails, so a typo'd tag
+  // would surface as an unexplained multi-minute build instead of an error.
+  const pulls = [...imagesOverlay.matchAll(/^ {4}pull_policy: always$/gm)];
+  assert.equal(
+    pulls.length,
+    BUILT_SERVICES.length,
+    "every service in the overlay needs pull_policy: always"
+  );
+});
+
+check("the overlay changes nothing but where those services come from", () => {
+  // Ports, profiles, depends_on and environment all stay in the base file:
+  // the migrate-before-app ordering and the profile wiring must be identical
+  // in both modes, and duplicating them here is how they would drift.
+  for (const key of ["profiles", "ports", "depends_on", "environment", "volumes"]) {
+    assert.doesNotMatch(
+      imagesOverlay,
+      new RegExp(`^ {4}${key}:`, "m"),
+      `the overlay sets ${key}: — that belongs in the base file, where both modes read it`
+    );
+  }
+});
+
+check(".env.example documents the switch, and leaves it off", () => {
+  assert.match(envExample, /^COMPOSE_FILE=$/m, "COMPOSE_FILE must ship empty — image mode is opt-in");
+  assert.match(envExample, /^CIELE_IMAGE_TAG=$/m);
+  assert.match(
+    envExample,
+    /docker-compose\.yml:docker-compose\.images\.yml/,
+    ".env.example must show the exact COMPOSE_FILE value that turns image mode on"
+  );
+});
+
+check("bootstrap --images turns the overlay on and stops forcing a build", () => {
+  const bootstrap = read("bootstrap.sh");
+  assert.match(
+    bootstrap,
+    /replace_var COMPOSE_FILE "docker-compose\.yml:docker-compose\.images\.yml"/,
+    "--images must write COMPOSE_FILE so a later bare `docker compose up` stays in image mode"
+  );
+  assert.match(bootstrap, /replace_var CIELE_IMAGE_TAG/);
+  // `up --build` rebuilds from source even with an image pinned, which would
+  // defeat the entire mode.
+  assert.doesNotMatch(
+    bootstrap,
+    /up -d --build/,
+    "bootstrap must decide --build from the mode, not hardcode it"
+  );
+});
+
+check("the published app image is built with the sentinels its entrypoint rewrites", () => {
+  // NEXT_PUBLIC_* is inlined at build time — measured: ~114 chunks under
+  // .next/server, none under .next/static. A published image therefore cannot
+  // carry a real anon key (it is a JWT signed with each install's own secret),
+  // so it carries a sentinel and rewrites it at container start. The two
+  // sides are separate files; if they drift, the image serves an unresolvable
+  // `.invalid` host and every request fails with no clue why.
+  const entrypoint = read("../apps/web/docker-entrypoint.sh");
+  const publish = read("../.github/workflows/docker-publish.yml");
+  const sentinels = [...entrypoint.matchAll(/^SENTINEL_[A-Z_]+="([^"]+)"$/gm)].map((m) => m[1]);
+  assert.equal(sentinels.length, 2, "the entrypoint must declare exactly the two sentinels");
+  for (const sentinel of sentinels) {
+    assert.ok(
+      publish.includes(sentinel),
+      `the publish workflow must build with ${sentinel}; the entrypoint rewrites it and nothing else`
+    );
+  }
+  assert.match(
+    read("../apps/web/Dockerfile"),
+    /ENTRYPOINT \["\/usr\/local\/bin\/docker-entrypoint\.sh"\]/,
+    "the image must run the substitution entrypoint before the server"
+  );
 });
 
 check("the app waits for migrations to finish before serving", () => {

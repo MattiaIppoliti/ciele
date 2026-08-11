@@ -50,6 +50,11 @@ COPY apps/web ./apps/web
 # self-host has to bake in its own Supabase origin and anon key (#440). Left
 # empty the image still builds and runs — the app falls back to its in-memory
 # demo store, which is what the CI smoke test exercises.
+#
+# A *published* image cannot bake in either value: the anon key is a JWT signed
+# with each install's own JWT_SECRET. It is built with the two sentinels from
+# apps/web/docker-entrypoint.sh instead, which rewrites them at container start
+# (#686).
 ARG NEXT_PUBLIC_SUPABASE_URL=""
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=""
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
@@ -66,6 +71,13 @@ RUN addgroup --system nodejs && adduser --system --ingroup nodejs nextjs
 COPY --from=build --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=build --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=build --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+# Runtime substitution for the two build-time-inlined NEXT_PUBLIC_* values, so
+# one published image serves any self-host origin (#686). A no-op for an image
+# built without the sentinels — i.e. for every source build. The bundle it
+# rewrites is owned by nextjs, so this needs no root.
+COPY --chown=nextjs:nodejs apps/web/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 USER nextjs
 EXPOSE 3000
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "apps/web/server.js"]
