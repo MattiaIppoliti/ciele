@@ -193,9 +193,12 @@ export function DataAssistantClient({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-8 py-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-6 sm:px-8 sm:py-8">
+        {/* The button never shrinks, so on a phone the title and its blurb are
+            what give — stack them instead of squeezing the heading into a
+            one-word column. */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
               <Database className="size-7" /> Data Assistant
             </h1>
@@ -209,6 +212,7 @@ export function DataAssistantClient({
             <Button
               variant="outline"
               size="sm"
+              className="w-fit shrink-0"
               onClick={() => setSettingsOpen((v) => !v)}
             >
               <Settings2 className="mr-1 size-4" />
