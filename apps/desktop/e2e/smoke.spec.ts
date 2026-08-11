@@ -10,22 +10,6 @@
 import { expect, test, type ElectronApplication } from "@playwright/test";
 import { launchApp } from "./launch";
 
-/**
- * Every window's address, as the main process sees it — a page that failed to
- * load reports none of its own, and in a fake-ports run nothing is serving
- * localhost. Polled while windows are being replaced, so a call that lands
- * mid-swap answers "nothing yet" rather than failing the test.
- */
-async function productWindowUrls(app: ElectronApplication): Promise<string[]> {
-  try {
-    return await app.evaluate(({ BrowserWindow }) =>
-      BrowserWindow.getAllWindows().map((window) => window.webContents.getURL()),
-    );
-  } catch {
-    return [];
-  }
-}
-
 test("opens on the welcome screen with both paths", async () => {
   const { app } = await launchApp();
   const window = await app.firstWindow();
@@ -90,6 +74,54 @@ async function windowShowing(app: ElectronApplication, testId: string) {
     )
     .toBe(true);
   return found!;
+}
+
+/** The address local mode pins, and the one the wizard's stack would serve. */
+const LOCAL_ORIGIN = "http://localhost:3000";
+
+/**
+ * Evidence that the app pointed a product window at `origin` — by whichever of
+ * the two outcomes actually happened.
+ *
+ * Whether that origin is served decides which evidence exists, and this must
+ * not care. On CI nothing listens on 3000: the load fails in milliseconds and
+ * the app falls back to its own screen naming the address. On a machine with
+ * the web app already running, it loads and the window simply stays.
+ *
+ * Asserting only the loaded window is a race against that fallback — it
+ * destroys the window a couple of hundred milliseconds in, while `expect.poll`
+ * has already backed off to one-second intervals, so the check lands either
+ * side of it. Asserting only the fallback breaks for a contributor with
+ * `pnpm dev` up. Accepting either is deterministic in both.
+ */
+async function productOpenedAt(app: ElectronApplication, origin: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        // The settled outcome: it failed, and the app said so.
+        for (const candidate of app.windows()) {
+          try {
+            const shown = candidate.getByTestId("unreachable-url");
+            if (await shown.isVisible()) {
+              if ((await shown.textContent())?.includes(origin)) return true;
+            }
+          } catch {
+            // Destroyed mid-swap; the next poll sees its replacement.
+          }
+        }
+        // The other outcome: it loaded, and is still sitting there.
+        try {
+          const urls = await app.evaluate(({ BrowserWindow }) =>
+            BrowserWindow.getAllWindows().map((window) => window.webContents.getURL()),
+          );
+          return urls.some((url) => url.startsWith(origin));
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30_000 },
+    )
+    .toBe(true);
 }
 
 test("sign-in follows the configured address, and says so when it does not load", async () => {
@@ -216,20 +248,44 @@ test("you can go back through the wizard, and reopen a choice you already made",
   await app.close();
 });
 
-test("an unstamped build says which release to point at, rather than failing at the pull", async () => {
-  // Every build except a release one is unstamped, so this is what a
-  // contributor running from source meets. The alternative is a registry error
-  // against a tag that was never published, which reads as "Ciele is broken".
+test("a build pins the release it came from, and says so when it has none", async () => {
+  // No CIELE_IMAGE_TAG, so the tag can only come from the build's own version
+  // — which is the whole of what this asserts.
   const { app } = await launchApp({ imageTag: null });
   const window = await app.firstWindow();
 
+  // Which half applies is decided by whatever packaged this binary, so it is
+  // asked rather than assumed. Every build except a release one is unstamped
+  // and has no images to point at; the release workflow stamps a real version,
+  // and that build pins it.
+  //
+  // Assuming the unstamped half is what broke the release run: it packages the
+  // one build that IS stamped, so the guard the test waited on could never
+  // fire, and it failed on a 30s timeout inside the release. Mirrors
+  // `releaseVersion(isPackaged, reported)` — unpackaged is a dev build by
+  // definition, whatever Electron reports for itself.
+  const stamped = await app.evaluate(
+    ({ app }) => app.isPackaged && app.getVersion() !== "0.0.0-dev",
+  );
+
   await window.getByRole("button", { name: "Set up locally" }).click();
 
-  await expect(window.getByTestId("wizard-title")).toHaveText("Download Ciele", {
-    timeout: 60_000,
-  });
-  const step = window.getByTestId("wizard-step").last();
-  await expect(step.getByTestId("step-message")).toContainText("CIELE_IMAGE_TAG");
+  if (stamped) {
+    // It knows its own tag, so the pull is not where it stops: the chain runs
+    // to the first optional step like any other run.
+    await expect(window.getByTestId("wizard-title")).toHaveText("Demo content", {
+      timeout: 60_000,
+    });
+  } else {
+    // What a contributor running from source meets. The alternative is a
+    // registry error against a tag that was never published, which reads as
+    // "Ciele is broken".
+    await expect(window.getByTestId("wizard-title")).toHaveText("Download Ciele", {
+      timeout: 60_000,
+    });
+    const step = window.getByTestId("wizard-step").last();
+    await expect(step.getByTestId("step-message")).toContainText("CIELE_IMAGE_TAG");
+  }
 
   await app.close();
 });
@@ -275,17 +331,15 @@ test("finishing setup opens the product window and later launches skip the wizar
   await expect(window.getByTestId("open-ciele")).toBeVisible();
 
   await window.getByTestId("open-ciele").click();
-  // The product window loads the local origin. Nothing is serving it in a
-  // fake-ports run, so the assertion is the address the window was pointed at
-  // — read from the main process, since a page that failed to load has none.
-  await expect.poll(() => productWindowUrls(app)).toContain("http://localhost:3000/");
+
+  await productOpenedAt(app, LOCAL_ORIGIN);
 
   await app.close();
 
-  // First-run cost is paid once: same settings directory, no wizard.
+  // First-run cost is paid once: same settings directory, no wizard. Landing on
+  // the local origin at all is the proof — the wizard points at no address, so
+  // it could not have produced either outcome.
   const relaunched = await launchApp({ userDataDir });
-  await expect
-    .poll(() => productWindowUrls(relaunched.app))
-    .toContain("http://localhost:3000/");
+  await productOpenedAt(relaunched.app, LOCAL_ORIGIN);
   await relaunched.app.close();
 });

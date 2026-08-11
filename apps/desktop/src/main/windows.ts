@@ -164,7 +164,19 @@ export function showProduct(
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
-    titleBarStyle: "hiddenInset",
+    // A real title bar, unlike the native screens.
+    //
+    // `hiddenInset` draws the page under the traffic lights and leaves it to
+    // the page to keep its top-left corner clear. Our own screens do that —
+    // `TitleBar` reserves the strip and right-aligns into it. The product is a
+    // page this app did not write and must not have to know it is being
+    // hosted: its top bar puts the navigation toggle at the far left (a 36px
+    // control from x=16), which lands exactly under the buttons (x≈14–66).
+    // The result is three OS dots sitting on top of a control you cannot
+    // click.
+    //
+    // So the OS gets its own strip here and the page keeps all of its own.
+    titleBarStyle: "default",
     backgroundColor: "#ffffff",
     webPreferences: {
       // No preload, on purpose: nothing this app can do is reachable from a
