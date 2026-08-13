@@ -172,4 +172,34 @@ describe("entityToolSpecs", () => {
     expect(output.count).toBe(0);
     expect(output.note).toContain("No matching records");
   });
+
+  it("cites the Entity when a query returned Records, stably per Entity", async () => {
+    const fetch = vi.fn().mockResolvedValue([record({ sku: "A-1" })]);
+    const cited: unknown[] = [];
+    const specs = entityToolSpecs(makeEntity(), fetch, null, {
+      cite: (source) => cited.push(source),
+    });
+    await specs[0].execute({ sku: "A-1" }, {} as never);
+    await specs[1].execute({ query: "A-1" }, {} as never);
+    // Two answered queries, one stable citation id — dedupSources collapses
+    // them into a single chip.
+    expect(cited).toHaveLength(2);
+    expect(cited[0]).toMatchObject({
+      conceptId: "entity:en-1",
+      conceptTitle: "Products",
+      sourceName: "Products",
+      resourceUrl: null,
+    });
+    expect(cited[1]).toMatchObject({ conceptId: "entity:en-1" });
+  });
+
+  it("does not cite an Entity for an empty result", async () => {
+    const fetch = vi.fn().mockResolvedValue([]);
+    const cited: unknown[] = [];
+    const specs = entityToolSpecs(makeEntity(), fetch, null, {
+      cite: (source) => cited.push(source),
+    });
+    await specs[0].execute({ sku: "missing" }, {} as never);
+    expect(cited).toHaveLength(0);
+  });
 });

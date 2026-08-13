@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Concept, KnowledgeSearchResult } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import { hydrateGraphProvenance, withGraphEngine } from "./graph-search";
+import {
+  hydrateGraphProvenance,
+  INTERACTIVE_GRAPH_SEARCH_TIMEOUT_MS,
+  withGraphEngine,
+} from "./graph-search";
 import * as graphWorker from "./graph-worker";
 import type { KnowledgeSearcher } from "./types";
 
@@ -107,8 +111,6 @@ describe("withGraphEngine", () => {
   function searcher(over: Partial<Parameters<typeof withGraphEngine>[0]> = {}) {
     return withGraphEngine({
       db: fakeDb(),
-      organizationId: "org1",
-      assistantId: "a1",
       collectionId: "col1",
       conversationId: "conv1",
       useGraph: true,
@@ -129,6 +131,7 @@ describe("withGraphEngine", () => {
     expect(searchGraph).toHaveBeenCalledWith("col1", "how do I reset?", {
       mode: "chunks",
       sessionId: "conv1",
+      timeoutMs: INTERACTIVE_GRAPH_SEARCH_TIMEOUT_MS,
     });
     expect(onTrace).toHaveBeenCalledWith("qa-9");
     expect(results[0].conceptId).toBe("c1");
@@ -151,53 +154,25 @@ describe("withGraphEngine", () => {
     expect(onTrace).not.toHaveBeenCalled();
   });
 
-  it("meters reported LLM usage into the ledger, even when falling back to vector", async () => {
-    // Tokens were spent on the worker regardless of whether the graph result
-    // ends up serving the answer — empty provenance still meters.
-    searchGraph.mockResolvedValue({
-      answer: "",
-      qaId: null,
-      provenance: [],
-      usage: { inputTokens: 7500, outputTokens: 150, llmCalls: 3, modelId: "gemini/gemini-2.0-flash", provider: "gemini" },
-    });
-    const db = fakeDb();
-    const results = await withGraphEngine({
-      db,
-      organizationId: "org1",
-      assistantId: "a1",
-      collectionId: "col1",
-      conversationId: "conv1",
-      useGraph: true,
-      vector,
-    })("q");
-    expect(results).toEqual([vectorResult]);
-    expect(db.recordAiUsage).toHaveBeenCalledWith([
-      {
-        organizationId: "org1",
-        assistantId: "a1",
-        conversationId: "conv1",
-        stage: "graph_search",
-        provider: "google",
-        modelId: "gemini/gemini-2.0-flash",
-        credentialKind: "platform",
-        inputTokens: 7500,
-        outputTokens: 150,
-      },
-    ]);
-  });
-
-  it("does not write the ledger when the worker reports no usage", async () => {
+  it("requests chunks mode with the interactive timeout, and never meters", async () => {
+    // The only mode this path requests makes zero worker LLM calls, so there
+    // is deliberately no graph_search meter here (re-enabling graph_completion
+    // on the turn path must reintroduce one), and the interactive timeout caps
+    // how long a turn can wait before the vector fallback.
     searchGraph.mockResolvedValue({ answer: "", qaId: null, provenance: [], usage: null });
     const db = fakeDb();
     await withGraphEngine({
       db,
-      organizationId: "org1",
-      assistantId: "a1",
       collectionId: "col1",
       conversationId: "conv1",
       useGraph: true,
       vector,
     })("q");
+    expect(searchGraph).toHaveBeenCalledWith("col1", "q", {
+      mode: "chunks",
+      sessionId: "conv1",
+      timeoutMs: INTERACTIVE_GRAPH_SEARCH_TIMEOUT_MS,
+    });
     expect(db.recordAiUsage).not.toHaveBeenCalled();
   });
 

@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  hybridRetrieve,
+  lexicalTokens,
+  LEXICAL_SIMILARITY,
+} from "./hybrid-search";
 import type {
   Alert,
   AlertStatus,
@@ -2421,17 +2426,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async searchChunks(assistantId, collectionId, query) {
       const limit = query.limit ?? 6;
-      let rows: Array<{ concept_id: string; content: string; similarity: number }> = [];
+      type ChunkRow = { concept_id: string; content: string; similarity: number };
 
       // Lexical search: also the safety net for vector search, since chunks
       // ingested while no embedding key was configured have NULL embeddings
       // and are invisible to match_chunks.
-      const lexicalSearch = async (): Promise<typeof rows> => {
-        const tokens = query.text
-          .toLowerCase()
-          .split(/[^\p{L}\p{N}]+/u)
-          .filter((t) => t.length > 2)
-          .slice(0, 5);
+      const lexicalSearch = async (): Promise<ChunkRow[]> => {
+        const tokens = lexicalTokens(query.text, 5);
         if (tokens.length === 0) return [];
         let builder = client
           .from("concept_chunks")
@@ -2444,35 +2445,30 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         const { data, error } = await builder;
         if (error) throw error;
         return (data as Array<{ concept_id: string; content: string }>).map(
-          (r) => ({ concept_id: r.concept_id, content: r.content, similarity: 0.5 })
+          (r) => ({
+            concept_id: r.concept_id,
+            content: r.content,
+            similarity: LEXICAL_SIMILARITY,
+          })
         );
       };
 
-      if (query.embedding) {
-        const { data, error } = await client.rpc("match_chunks", {
-          p_assistant_id: assistantId,
-          p_collection_id: collectionId,
-          p_query_embedding: query.embedding,
-          p_match_count: limit,
-        });
-        if (error) throw error;
-        rows = data as typeof rows;
-        if (rows.length < limit) {
-          // Top up with lexical matches so NULL-embedding chunks (ingested
-          // while no embedding key was configured, or during a provider
-          // outage) are never masked by a partial vector result.
-          const seen = new Set(rows.map((r) => `${r.concept_id}\n${r.content}`));
-          for (const row of await lexicalSearch()) {
-            if (rows.length >= limit) break;
-            const key = `${row.concept_id}\n${row.content}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            rows.push(row);
-          }
-        }
-      } else {
-        rows = await lexicalSearch();
-      }
+      const rows = await hybridRetrieve<ChunkRow>({
+        embedding: query.embedding,
+        limit,
+        vector: async () => {
+          const { data, error } = await client.rpc("match_chunks", {
+            p_assistant_id: assistantId,
+            p_collection_id: collectionId,
+            p_query_embedding: query.embedding,
+            p_match_count: limit,
+          });
+          if (error) throw error;
+          return data as ChunkRow[];
+        },
+        lexical: lexicalSearch,
+        keyOf: (r) => `${r.concept_id}\n${r.content}`,
+      });
 
       if (rows.length === 0) return [];
 
@@ -4652,17 +4648,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async searchMemories({ organizationId, subjectId }, query) {
       const limit = query.limit ?? 5;
-      let rows: Array<{ id: string; text: string; similarity: number }> = [];
+      type MemoryRow = { id: string; text: string; similarity: number };
 
       // Lexical search: also the safety net for vector search, since memories
       // written while no embedding key was configured have NULL embeddings
       // and are invisible to match_memories.
-      const lexicalSearch = async (): Promise<typeof rows> => {
-        const tokens = query.text
-          .toLowerCase()
-          .split(/[^\p{L}\p{N}]+/u)
-          .filter((t) => t.length > 2)
-          .slice(0, 5);
+      const lexicalSearch = async (): Promise<MemoryRow[]> => {
+        const tokens = lexicalTokens(query.text, 5);
         if (tokens.length === 0) return [];
         const { data, error } = await client
           .from("memories")
@@ -4675,32 +4667,26 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         return (data as Array<{ id: string; text: string }>).map((r) => ({
           id: r.id,
           text: r.text,
-          similarity: 0.5,
+          similarity: LEXICAL_SIMILARITY,
         }));
       };
 
-      if (query.embedding) {
-        const { data, error } = await client.rpc("match_memories", {
-          p_organization_id: organizationId,
-          p_subject_id: subjectId,
-          p_query_embedding: query.embedding,
-          p_match_count: limit,
-        });
-        if (error) throw error;
-        rows = data as typeof rows;
-        if (rows.length < limit) {
-          const seen = new Set(rows.map((r) => r.id));
-          for (const row of await lexicalSearch()) {
-            if (rows.length >= limit) break;
-            if (seen.has(row.id)) continue;
-            seen.add(row.id);
-            rows.push(row);
-          }
-        }
-      } else {
-        rows = await lexicalSearch();
-      }
-      return rows;
+      return hybridRetrieve<MemoryRow>({
+        embedding: query.embedding,
+        limit,
+        vector: async () => {
+          const { data, error } = await client.rpc("match_memories", {
+            p_organization_id: organizationId,
+            p_subject_id: subjectId,
+            p_query_embedding: query.embedding,
+            p_match_count: limit,
+          });
+          if (error) throw error;
+          return data as MemoryRow[];
+        },
+        lexical: lexicalSearch,
+        keyOf: (r) => r.id,
+      });
     },
 
     // --- Generic table access (ADR-0016) --------------------------------

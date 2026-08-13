@@ -82,7 +82,10 @@ export async function POST(
   // The verified identity claim rides the conversation's session context so
   // the Inbox (and template variables) can show who was signed in. Verified
   // server-side from the sealed gate — never a client-supplied value.
-  const metadata = sessionMetadata(request.headers);
+  // Computed ONCE, with the embed-reported page URL: a second header-only
+  // sessionMetadata spread on top used to clobber the pageUrl-derived
+  // launchUrl with the header fallback, breaking URL Flow Conditions.
+  const metadata = sessionMetadata(request.headers, body.pageUrl ?? undefined);
   if (subject.gate?.claim) {
     metadata.ssoClaimName = subject.gate.claim.name;
     metadata.ssoClaimValue = subject.gate.claim.value;
@@ -108,10 +111,7 @@ export async function POST(
     collectionId: body.collectionId,
     message,
     faqQuestion: body.faq === true,
-    metadata: {
-      ...sessionMetadata(request.headers, body.pageUrl ?? undefined),
-      ...metadata,
-    },
+    metadata,
     signal: request.signal,
   });
 

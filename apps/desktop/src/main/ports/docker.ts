@@ -17,23 +17,47 @@ import { homedir } from "node:os";
 import type { CommandResult, DockerPort } from "../../setup/ports";
 
 /**
- * Where `docker` lives, most likely first.
+ * Where `docker` lives, most likely first. PATH wins — a developer's or a
+ * deliberate install's choice beats our guesses — then the places Docker
+ * Desktop and the common package managers actually put it.
  *
- * Docker Desktop symlinks into /usr/local/bin and also keeps a copy inside the
- * app bundle; Homebrew on Apple silicon uses /opt/homebrew; recent Docker
- * Desktop versions default to a per-user ~/.docker/bin.
+ * macOS: Docker Desktop symlinks into /usr/local/bin and also keeps a copy
+ * inside the app bundle; Homebrew on Apple silicon uses /opt/homebrew; recent
+ * Docker Desktop versions default to a per-user ~/.docker/bin.
+ *
+ * Windows: the machine-wide install keeps the CLI under Program Files, the
+ * per-user installer under LocalAppData\Programs. Paths are built with the
+ * platform's own separators, so the Windows list is testable from any host.
  */
-export function candidatePaths(env: NodeJS.ProcessEnv = process.env): string[] {
+export function candidatePaths(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: string = process.platform,
+): string[] {
+  if (platform === "win32") {
+    const win = path.win32;
+    const fromPath = (env.PATH ?? "")
+      .split(";")
+      .filter(Boolean)
+      .map((dir) => win.join(dir, "docker.exe"));
+    const programFiles = env.ProgramFiles ?? "C:\\Program Files";
+    const machineWide = win.join(programFiles, "Docker", "Docker", "resources", "bin", "docker.exe");
+    const perUser = env.LOCALAPPDATA
+      ? [win.join(env.LOCALAPPDATA, "Programs", "Docker", "Docker", "resources", "bin", "docker.exe")]
+      : [];
+    return [...fromPath, machineWide, ...perUser];
+  }
+
+  const posix = path.posix;
   const home = env.HOME ?? homedir();
   const fromPath = (env.PATH ?? "")
-    .split(path.delimiter)
+    .split(":")
     .filter(Boolean)
-    .map((dir) => path.join(dir, "docker"));
+    .map((dir) => posix.join(dir, "docker"));
   return [
     ...fromPath,
     "/usr/local/bin/docker",
     "/opt/homebrew/bin/docker",
-    path.join(home, ".docker/bin/docker"),
+    posix.join(home, ".docker/bin/docker"),
     "/Applications/Docker.app/Contents/Resources/bin/docker",
     "/usr/bin/docker",
   ];

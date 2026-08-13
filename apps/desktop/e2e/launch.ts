@@ -19,6 +19,16 @@ export function packagedBinary(): string | null {
   const explicit = process.env.CIELE_DESKTOP_APP;
   if (explicit) return existsSync(explicit) ? explicit : null;
 
+  if (process.platform === "win32") {
+    // The NSIS installer cannot be driven headlessly; the unpacked build it
+    // was made from is the same bundle, so that is what the smoke exercises.
+    const dir = path.join(ROOT, "dist", "win-unpacked");
+    if (!existsSync(dir)) return null;
+    const exe = readdirSync(dir).find((entry) => entry.endsWith(".exe"));
+    const binary = exe ? path.join(dir, exe) : null;
+    return binary && existsSync(binary) ? binary : null;
+  }
+
   const distMac = path.join(ROOT, "dist", "mac-arm64");
   const fallback = path.join(ROOT, "dist", "mac");
   const dir = existsSync(distMac) ? distMac : existsSync(fallback) ? fallback : null;

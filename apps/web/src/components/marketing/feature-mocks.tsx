@@ -1,23 +1,33 @@
+"use client";
+
+import { useState } from "react";
 import {
   Bell,
   BookText,
   Check,
+  ChevronDown,
   CircleAlert,
+  CloudUpload,
   Code2,
-  FileText,
   Globe,
   Lock,
-  MessageSquare,
+  Pencil,
   Plus,
+  RefreshCw,
+  Search,
   Sparkles,
   SquareArrowOutUpRight,
+  Trash2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /* Mocks of the assistant-editor sections the dashboard mock does not draw
    (it sends every SETUP section to the same "choose an assistant" picker).
-   These are pictures, not products: no state, no links, nothing clickable —
+   These are pictures, not products: no data, no links, no real actions —
    the same components and tokens as the real screens, so what a visitor sees
-   here is what they get inside the app. */
+   here is what they get inside the app. The Knowledge mock is the one
+   exception to "nothing clickable": its tabs switch between the three source
+   views, because switching views is the screen's whole idea. */
 
 function PaneHeader({ title, action }: { title: string; action?: string }) {
   return (
@@ -54,31 +64,198 @@ function Pill({ tone = "muted", children }: { tone?: "muted" | "ok" | "warn"; ch
   );
 }
 
-const SOURCES = [
-  { icon: Globe, name: "acme.edu/admissions", meta: "Website · 412 pages", state: "Indexed", tone: "ok" as const },
-  { icon: Globe, name: "help.acme.edu", meta: "Website · 96 pages", state: "Re-crawling", tone: "warn" as const },
-  { icon: FileText, name: "Fee schedule 2026.pdf", meta: "File · 274 KB", state: "Indexed", tone: "ok" as const },
-  { icon: MessageSquare, name: "Enrolment FAQs", meta: "38 question and answer pairs", state: "Indexed", tone: "ok" as const },
+const KNOWLEDGE_TABS = [
+  { id: "websites", label: "Websites" },
+  { id: "documents", label: "Documents" },
+  { id: "faqs", label: "FAQs" },
+] as const;
+
+type KnowledgeTab = (typeof KNOWLEDGE_TABS)[number]["id"];
+
+const WEBSITES = [
+  { name: "acme.com", url: "https://acme.com", pages: "412 pages", cadence: "Weekly", state: "Ready", tone: "ok" as const },
+  { name: "help.acme.com", url: "https://help.acme.com", pages: "96 pages", cadence: "Weekly", state: "Re-crawling", tone: "warn" as const },
 ];
 
-export function KnowledgeMock() {
+const FAQS = [
+  { question: "What is Acme?", answer: "Acme is a software company building tools for support teams." },
+  { question: "How do I reset my password?", answer: "Use the “Forgot password” link on the sign-in page." },
+];
+
+function MockSearch({ placeholder }: { placeholder: string }) {
   return (
-    <div className="flex h-full flex-col gap-4 p-6">
-      <PaneHeader title="Knowledge" action="Add source" />
-      <div className="flex flex-col gap-2">
-        {SOURCES.map(({ icon: Icon, name, meta, state, tone }) => (
-          <Row key={name}>
-            <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg border">
-              <Icon className="text-muted-foreground size-4" />
+    <div className="text-muted-foreground bg-card flex h-8 items-center gap-2 rounded-lg border px-3 text-xs">
+      <Search className="size-3.5 shrink-0" />
+      {placeholder}
+    </div>
+  );
+}
+
+function RowActions() {
+  return (
+    <span className="text-muted-foreground flex shrink-0 items-center gap-2.5">
+      <RefreshCw className="size-3.5" />
+      <Pencil className="size-3.5" />
+      <Trash2 className="size-3.5" />
+    </span>
+  );
+}
+
+function KnowledgeWebsites() {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            Websites <Pill>{WEBSITES.length}</Pill>
+          </span>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            Sites the assistant crawls, indexes and answers from.
+          </p>
+        </div>
+        <span className="bg-primary text-primary-foreground flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium">
+          <Plus className="size-3.5" /> Add
+        </span>
+      </div>
+      <MockSearch placeholder="Search websites" />
+      <div className="bg-card overflow-hidden rounded-xl border">
+        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-3.5 py-2 text-[11px] font-semibold">
+          <span>Name</span>
+          <span>Status</span>
+          <span>Content</span>
+          <span>Re-crawl</span>
+          <span className="w-14" />
+        </div>
+        {WEBSITES.map((site) => (
+          <div
+            key={site.name}
+            className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-t px-3.5 py-2.5 text-sm"
+          >
+            <span className="min-w-0">
+              <span className="flex items-center gap-2 font-medium">
+                <Globe className="text-muted-foreground size-4 shrink-0" />
+                <span className="truncate">{site.name}</span>
+              </span>
+              <span className="text-muted-foreground ml-6 block truncate text-xs">{site.url}</span>
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{name}</span>
-              <span className="text-muted-foreground block truncate text-xs">{meta}</span>
+            <Pill tone={site.tone}>{site.state}</Pill>
+            <span className="text-muted-foreground text-xs">{site.pages}</span>
+            <span className="text-muted-foreground flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+              {site.cadence} <ChevronDown className="size-3" />
             </span>
-            <Pill tone={tone}>{state}</Pill>
-          </Row>
+            <RowActions />
+          </div>
         ))}
       </div>
+    </>
+  );
+}
+
+function KnowledgeDocuments() {
+  return (
+    <>
+      <p className="text-muted-foreground text-xs">
+        Upload files to add to your assistant&apos;s knowledge base. The
+        assistant will use these to answer questions.
+      </p>
+      <MockSearch placeholder="Search documents" />
+      <div className="border-border flex flex-col items-center gap-2 rounded-xl border border-dashed px-6 py-8 text-center">
+        <span className="bg-muted flex size-10 items-center justify-center rounded-full border">
+          <CloudUpload className="text-muted-foreground size-4" />
+        </span>
+        <span className="text-sm font-medium">Drop files here or browse</span>
+        <span className="text-muted-foreground text-xs">
+          PDF, Word (.docx), Markdown, text · up to 25 MB
+        </span>
+        <span className="bg-card mt-1 rounded-lg border px-3.5 py-1.5 text-xs font-medium">
+          Browse
+        </span>
+      </div>
+    </>
+  );
+}
+
+function KnowledgeFaqs() {
+  return (
+    <>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="flex items-center gap-2 text-sm font-semibold">
+            Questions and Answers <Pill>{FAQS.length}</Pill>
+          </span>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs">
+            Add sets of questions and answers to fine tune AI responses.
+          </p>
+        </div>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="bg-card rounded-lg border px-3 py-1.5 text-xs font-medium">Export</span>
+          <span className="bg-primary text-primary-foreground flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium">
+            <Plus className="size-3.5" /> New FAQ <ChevronDown className="size-3.5" />
+          </span>
+        </span>
+      </div>
+      <MockSearch placeholder="Search FAQs" />
+      <div className="bg-card overflow-hidden rounded-xl border">
+        <div className="bg-muted/50 text-muted-foreground grid grid-cols-[1fr_1.2fr_auto_auto] items-center gap-4 px-3.5 py-2 text-[11px] font-semibold">
+          <span>Question</span>
+          <span>Answer</span>
+          <span>Status</span>
+          <span className="w-8" />
+        </div>
+        {FAQS.map((faq) => (
+          <div
+            key={faq.question}
+            className="grid grid-cols-[1fr_1.2fr_auto_auto] items-center gap-4 border-t px-3.5 py-2.5 text-sm"
+          >
+            <span className="truncate font-medium">{faq.question}</span>
+            <span className="text-muted-foreground truncate text-xs">{faq.answer}</span>
+            <Pill tone="ok">Ready</Pill>
+            <span className="text-muted-foreground flex shrink-0 items-center gap-2.5">
+              <Pencil className="size-3.5" />
+              <Trash2 className="size-3.5" />
+            </span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+export function KnowledgeMock() {
+  const [tab, setTab] = useState<KnowledgeTab>("websites");
+
+  return (
+    <div className="flex h-full flex-col gap-4 p-6">
+      <div>
+        <h3 className="text-sm font-semibold">Knowledge</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          The sources this assistant answers from — websites, documents and
+          FAQs, indexed for retrieval.
+        </p>
+      </div>
+
+      <div className="bg-muted/60 inline-flex w-fit rounded-xl border p-1">
+        {KNOWLEDGE_TABS.map((entry) => (
+          <button
+            key={entry.id}
+            type="button"
+            onClick={() => setTab(entry.id)}
+            className={cn(
+              "rounded-lg px-3.5 py-1 text-xs font-medium transition-colors",
+              tab === entry.id
+                ? "text-primary bg-primary/10 shadow-xs dark:bg-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {entry.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "websites" && <KnowledgeWebsites />}
+      {tab === "documents" && <KnowledgeDocuments />}
+      {tab === "faqs" && <KnowledgeFaqs />}
+
       <div className="text-muted-foreground border-border mt-auto flex items-center gap-2 rounded-xl border border-dashed px-3.5 py-3 text-xs">
         <BookText className="size-4" />
         Answers cite the source they came from.

@@ -13,6 +13,7 @@ const CONFIG: SetupConfig = {
   appUrl: "http://localhost:3000",
   supabaseUrl: "http://localhost:8000",
   dockerDownloadUrl: "https://example.invalid/docker",
+  composePathSeparator: ":",
 };
 
 function harness(options: FakePortOptions = {}) {
@@ -90,6 +91,23 @@ describe("the happy path", () => {
 
     expect(env.CIELE_IMAGE_TAG).toBe("v1.2.3");
     expect(env.COMPOSE_FILE).toBe("docker-compose.yml:docker-compose.images.yml");
+  });
+
+  it("joins COMPOSE_FILE with the platform's separator, not a hardcoded colon", async () => {
+    // Compose splits COMPOSE_FILE on `;` on Windows — a colon there would glue
+    // both filenames into one that does not exist. The engine stays platform
+    // blind: the separator arrives through the config, like everything else.
+    const ports = fakePorts({ files: { "/deploy/.env.example": ENV_TEMPLATE } });
+    const engine = createSetupEngine({
+      steps: SETUP_STEPS,
+      ports,
+      config: { ...CONFIG, composePathSeparator: ";" },
+    });
+
+    await engine.run();
+    const env = parseEnvFile(ports.files.get("/data/.env")!);
+
+    expect(env.COMPOSE_FILE).toBe("docker-compose.yml;docker-compose.images.yml");
   });
 
   it("runs every compose command against the bundled definition and generated env", async () => {

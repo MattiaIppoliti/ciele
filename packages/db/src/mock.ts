@@ -1,4 +1,5 @@
 import { entityRecordValuesEqual } from "./entity-records";
+import { lexicalScore, lexicalTokens } from "./hybrid-search";
 import type {
   AiUsageInput,
   Alert,
@@ -2781,17 +2782,15 @@ export const mockDb: Db = {
 
   async searchChunks(assistantId, collectionId, query) {
     const store = getStore();
-    const tokens = query.text
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((t) => t.length > 2);
+    // Lexical scoring only (the demo store has no vectors) — the shared
+    // token-overlap score from hybrid-search.ts.
+    const tokens = lexicalTokens(query.text);
     const results: KnowledgeSearchResult[] = [];
     for (const chunk of store.chunks.values()) {
       if (chunk.assistantId !== assistantId) continue;
       if (collectionId && chunk.collectionId !== collectionId) continue;
-      const haystack = chunk.content.toLowerCase();
-      const hits = tokens.filter((t) => haystack.includes(t)).length;
-      if (hits === 0) continue;
+      const similarity = lexicalScore(chunk.content, tokens);
+      if (similarity === 0) continue;
       const concept = store.concepts.get(chunk.conceptId);
       // Excluded concepts never surface in retrieval (mirrors match_chunks'
       // SQL filter), even if their chunks were retained.
@@ -2809,7 +2808,7 @@ export const mockDb: Db = {
         sourceName: source?.name ?? null,
         resourceUrl: concept?.frontmatter.resource ?? null,
         content: chunk.content,
-        similarity: hits / Math.max(tokens.length, 1),
+        similarity,
       });
     }
     return results
@@ -4523,23 +4522,19 @@ export const mockDb: Db = {
   },
 
   async searchMemories({ organizationId, subjectId }, query) {
-    // Lexical scoring only (the demo store has no vectors) — token overlap,
-    // mirroring the mock searchChunks.
-    const tokens = query.text
-      .toLowerCase()
-      .split(/[^\p{L}\p{N}]+/u)
-      .filter((t) => t.length > 2);
+    // Lexical scoring only (the demo store has no vectors) — the shared
+    // token-overlap score from hybrid-search.ts.
+    const tokens = lexicalTokens(query.text);
     const results: MemorySearchResult[] = [];
     for (const memory of getStore().memories.values()) {
       if (memory.organizationId !== organizationId) continue;
       if (memory.subjectId !== subjectId) continue;
-      const haystack = memory.text.toLowerCase();
-      const hits = tokens.filter((t) => haystack.includes(t)).length;
-      if (hits === 0) continue;
+      const similarity = lexicalScore(memory.text, tokens);
+      if (similarity === 0) continue;
       results.push({
         id: memory.id,
         text: memory.text,
-        similarity: hits / Math.max(tokens.length, 1),
+        similarity,
       });
     }
     return results

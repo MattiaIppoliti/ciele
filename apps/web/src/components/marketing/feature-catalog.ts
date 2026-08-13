@@ -10,7 +10,9 @@ export type FeatureShot =
   /** One of the five panes the home-page dashboard mock already renders. */
   | { kind: "pane"; view: GlobalView }
   /** A mock of an assistant-editor section, drawn in feature-mocks.tsx. */
-  | { kind: "mock"; mock: "knowledge" | "flows" | "publishing" | "authentication" | "alerts" };
+  | { kind: "mock"; mock: "knowledge" | "flows" | "publishing" | "authentication" | "alerts" }
+  /** The editor's live Preview playing a scripted conversation on loop. */
+  | { kind: "preview" };
 
 export interface FeatureEntry {
   slug: string;
@@ -38,7 +40,7 @@ export const FEATURES: FeatureEntry[] = [
     headline: "Every assistant in one dashboard",
     standfirst:
       "Create an assistant, give it a name and a job, and edit it beside a live preview of the widget your visitors will see.",
-    shot: { kind: "pane", view: "Assistants" },
+    shot: { kind: "preview" },
     meta: "Create, edit and duplicate the assistants your organization runs, each with its own knowledge, flows and channels.",
     points: [
       {

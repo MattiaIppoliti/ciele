@@ -91,4 +91,10 @@ export interface SetupConfig {
   supabaseUrl: string;
   /** Download page for the one prerequisite the app cannot install itself. */
   dockerDownloadUrl: string;
+  /**
+   * What separates entries in the COMPOSE_FILE list this platform's Compose
+   * expects — `;` on Windows (a colon is a drive letter there), `:` elsewhere.
+   * Injected so the engine never asks what platform it is on.
+   */
+  composePathSeparator: string;
 }

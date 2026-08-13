@@ -214,20 +214,37 @@ async function recordEmbedUsage(
   ]);
 }
 
+/**
+ * A single-text embedder bound to one set of connections and one usage
+ * attribution. Resolving the model — credential decrypt, provider client
+ * construction — happens once, lazily, and is then reused for every call,
+ * so a turn that embeds N search queries pays the resolution once instead
+ * of N times. `embedText` below is the one-shot convenience over it.
+ */
+export function createEmbedder(
+  connections: ProviderConnection[],
+  attribution: EmbeddingUsageContext | null
+): (text: string) => Promise<number[] | null> {
+  let resolved: ResolvedEmbeddingModel | null | undefined;
+  return async (text) => {
+    if (resolved === undefined) resolved = getEmbeddingModel(connections);
+    if (!resolved) return null;
+    try {
+      const result = await embed({ model: resolved.model, value: text });
+      await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
+      return padEmbedding(result.embedding);
+    } catch {
+      return null;
+    }
+  };
+}
+
 export async function embedText(
   text: string,
   connections: ProviderConnection[],
   attribution: EmbeddingUsageContext | null
 ): Promise<number[] | null> {
-  const resolved = getEmbeddingModel(connections);
-  if (!resolved) return null;
-  try {
-    const result = await embed({ model: resolved.model, value: text });
-    await recordEmbedUsage(resolved, result.usage?.tokens, attribution);
-    return padEmbedding(result.embedding);
-  } catch {
-    return null;
-  }
+  return createEmbedder(connections, attribution)(text);
 }
 
 /**

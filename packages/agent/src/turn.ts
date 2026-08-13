@@ -24,7 +24,7 @@ import { contactLabel } from "./actions";
 import { meterUsage } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
-import { withGraphEngine } from "./graph-search";
+import { buildKnowledgeSearcher } from "./retrieval";
 import {
   runAssistantChat,
   runProactiveFlows,
@@ -243,25 +243,29 @@ async function checkOrgBudget(
     if (budget?.dailyTokenLimit == null && budget?.dailyEuroLimit == null) {
       return { overBudget: false, enforcement: "notify" };
     }
+    // The two ledger reads are independent — one round trip of wall-clock,
+    // not two, on the pre-token path.
+    const [usedTokens, usedEur] = await Promise.all([
+      budget.dailyTokenLimit != null
+        ? db.getOrgTokensUsedToday(organizationId)
+        : Promise.resolve(0),
+      budget.dailyEuroLimit != null
+        ? db.getOrgCostUsedToday(organizationId)
+        : Promise.resolve(0),
+    ]);
     const reasons: string[] = [];
     let overBudget = false;
-    if (budget.dailyTokenLimit != null) {
-      const usedTokens = await db.getOrgTokensUsedToday(organizationId);
-      if (usedTokens >= budget.dailyTokenLimit) {
-        overBudget = true;
-        reasons.push(
-          `${usedTokens.toLocaleString("en-US")} of ${budget.dailyTokenLimit.toLocaleString("en-US")} tokens`
-        );
-      }
+    if (budget.dailyTokenLimit != null && usedTokens >= budget.dailyTokenLimit) {
+      overBudget = true;
+      reasons.push(
+        `${usedTokens.toLocaleString("en-US")} of ${budget.dailyTokenLimit.toLocaleString("en-US")} tokens`
+      );
     }
-    if (budget.dailyEuroLimit != null) {
-      const usedEur = await db.getOrgCostUsedToday(organizationId);
-      if (usedEur >= budget.dailyEuroLimit) {
-        overBudget = true;
-        reasons.push(
-          `€${usedEur.toFixed(2)} of €${budget.dailyEuroLimit.toFixed(2)}`
-        );
-      }
+    if (budget.dailyEuroLimit != null && usedEur >= budget.dailyEuroLimit) {
+      overBudget = true;
+      reasons.push(
+        `€${usedEur.toFixed(2)} of €${budget.dailyEuroLimit.toFixed(2)}`
+      );
     }
     const key = alertKeys.budget(organizationId);
     await signalHealth(
@@ -500,6 +504,7 @@ async function streamProactiveTurn(
           await applyEffects(result.effects, {
             db,
             organizationId: input.organizationId,
+            conversationId,
             messageId: saved.id,
           });
         }
@@ -559,54 +564,86 @@ export async function streamConversationTurn(
   const surface =
     input.keyResolution?.surface === "preview" ? "preview" : "widget";
 
-  // Budget bookkeeping happens up front. Notify mode only raises/resolves the
-  // Alert; block mode answers with a fixed unavailable reply below (the
-  // exchange still persists — a Visitor is never silently dropped).
-  const budget = await checkOrgBudget(db, input.organizationId);
-
-  // Plan-cap gate (#442): the enterprise metering capability decides at turn
-  // start whether platform-funded traffic may still run this month. The OSS
-  // default allows everything, and BYOK turns are never blocked (a customer's
-  // own keys are their own cost). Fails open like the budget check —
-  // enforcement problems must never take the assistant down.
-  let usageGate: UsageOutcome = { outcome: "allow" };
   const connectionKind = turnConnectionKind(
     assistant,
     input.connections,
     input.keyResolution
   );
-  if (connectionKind) {
-    try {
-      usageGate = await getEnterpriseCapabilities().metering.checkUsage({
-        organizationId: input.organizationId,
-        connectionKind,
-        // A conversation turn spends the AI allowance; indexing and crawling
-        // have their own meters and their own gates (#510).
-        resource: "ai",
-      });
-    } catch (error) {
-      console.error("[runtime] usage check failed (failing open):", error);
-    }
-  }
+  // Long-term memory applies only to SSO-signed subjects (#664); derived up
+  // front so the toggle read can join the parallel gate wave below.
+  const memorySubjectId =
+    subjectType === "sso" && input.verifiedIdentity
+      ? input.verifiedIdentity.subjectId
+      : null;
 
-  // Organization activation (#444). Unlike the usage cap this is not about
-  // how much has been spent but about whether this organization may run at
-  // all: on the managed platform a fresh signup waits for activation. It
-  // applies to BYOK traffic too — a pending organization is not yet a
-  // customer, so there is no bring-your-own-key bypass. Self-hosted
-  // deployments never see it: the OSS default is unconditionally active.
-  let activation: ActivationState = { state: "active" };
-  try {
-    activation = await getEnterpriseCapabilities().activation.getActivation(
-      input.organizationId
-    );
-  } catch (error) {
-    console.error("[runtime] activation check failed (failing open):", error);
-  }
+  // The pre-stream gates and static config reads have no data dependencies on
+  // each other, so they run as ONE parallel wave — every await removed here is
+  // wall-clock the Visitor spends staring at a closed stream. Each member
+  // keeps its own fail-open semantics:
+  //
+  // - Budget (notify mode only raises/resolves the Alert; block mode answers
+  //   with a fixed unavailable reply below — the exchange still persists, a
+  //   Visitor is never silently dropped).
+  // - Plan-cap gate (#442): whether platform-funded traffic may still run this
+  //   month. OSS default allows everything; BYOK turns are never blocked.
+  // - Organization activation (#444): whether this org may run at all — applies
+  //   to BYOK too (a pending organization is not yet a customer). Self-hosted
+  //   deployments never see it.
+  // - The API catalogue integration (spec #559): the toolset has to know
+  //   whether an integration exists before the model runs; a read failure
+  //   leaves the catalogue tools unregistered rather than failing the turn.
+  // - The org memory toggle (#664), read only for SSO subjects; fails open to
+  //   "off" — memory problems must never take the assistant down.
+  const [
+    budget,
+    usageGate,
+    activation,
+    loadedConversation,
+    apiIntegration,
+    platformPrompt,
+    memoryEnabled,
+  ] = await Promise.all([
+    checkOrgBudget(db, input.organizationId),
+    (async (): Promise<UsageOutcome> => {
+      if (!connectionKind) return { outcome: "allow" };
+      try {
+        return await getEnterpriseCapabilities().metering.checkUsage({
+          organizationId: input.organizationId,
+          connectionKind,
+          // A conversation turn spends the AI allowance; indexing and crawling
+          // have their own meters and their own gates (#510).
+          resource: "ai",
+        });
+      } catch (error) {
+        console.error("[runtime] usage check failed (failing open):", error);
+        return { outcome: "allow" };
+      }
+    })(),
+    (async (): Promise<ActivationState> => {
+      try {
+        return await getEnterpriseCapabilities().activation.getActivation(
+          input.organizationId
+        );
+      } catch (error) {
+        console.error(
+          "[runtime] activation check failed (failing open):",
+          error
+        );
+        return { state: "active" };
+      }
+    })(),
+    input.conversationId
+      ? db.getConversation(input.conversationId)
+      : Promise.resolve(null),
+    db.getApiIntegration(assistant.id).catch(() => null),
+    // The immutable platform (Ciele) prompt layer — same for every org.
+    getRuntimeHost().getPlatformSystemPrompt(),
+    memorySubjectId
+      ? db.getMemoryEnabled(input.organizationId).catch(() => false)
+      : Promise.resolve(false),
+  ]);
 
-  let conversation = input.conversationId
-    ? await db.getConversation(input.conversationId)
-    : null;
+  let conversation = loadedConversation;
   if (
     conversation &&
     (conversation.subjectType !== subjectType ||
@@ -627,36 +664,18 @@ export async function streamConversationTurn(
   }
 
   const collectionId = input.collectionId ?? conversation.collectionId ?? null;
-  const vectorSearch: KnowledgeSearcher = async (query, options) => {
-    // Agentic Search scope-tier widen (#155): an "assistant" pass drops the
-    // anchored Collection filter (null = assistant-wide); "collection"/default
-    // keeps it. searchChunks already treats a null collection as assistant-wide.
-    const scoped = options?.scope === "assistant" ? null : collectionId;
-    const embedding = await embedText(query, input.connections, {
-      db,
-      organizationId: input.organizationId,
-      assistantId: assistant.id,
-      conversationId,
-    });
-    return db.searchChunks(assistant.id, scoped, {
-      embedding,
-      text: query,
-      limit: 6,
-    });
-  };
-  // Knowledge Engine (ADR-0017): Graph is primary; the graph searcher retrieves
-  // from the derived Knowledge Graph and hydrates provenance to Concept→Source,
-  // falling back to vector on any error / assistant-wide widen / missing worker.
-  // The graph QA id for this turn is captured for the feedback substrate (#389).
+  // The one retrieval port: embedding + vector + the Knowledge Engine choice
+  // (ADR-0017 — Graph primary, vector same-call fallback) live behind
+  // buildKnowledgeSearcher, the same factory every other retrieval caller
+  // uses. The graph QA id for this turn is captured for the feedback
+  // substrate (#389).
   let graphQaId: string | null = null;
-  const searchKnowledge: KnowledgeSearcher = withGraphEngine({
+  const searchKnowledge: KnowledgeSearcher = buildKnowledgeSearcher({
     db,
-    organizationId: input.organizationId,
-    assistantId: assistant.id,
+    connections: input.connections,
+    assistant,
     collectionId,
     conversationId: conversation.id,
-    useGraph: (assistant.knowledgeEngine ?? "graph") === "graph",
-    vector: vectorSearch,
     onTrace: (qaId) => {
       graphQaId = qaId;
     },
@@ -667,16 +686,8 @@ export async function streamConversationTurn(
     RECENT_HISTORY_LIMIT
   );
 
-  // Long-term memory (#664): applies only to SSO-signed subjects whose org
-  // enabled the capability (off by default). The toggle read fails open to
-  // "off" — memory problems must never take the assistant down.
-  const memorySubjectId =
-    subjectType === "sso" && input.verifiedIdentity
-      ? input.verifiedIdentity.subjectId
-      : null;
-  const memoryEnabled = memorySubjectId
-    ? await db.getMemoryEnabled(input.organizationId).catch(() => false)
-    : false;
+  // Long-term memory (#664): the org toggle was read in the gate wave above;
+  // the searcher exists only for enabled SSO subjects.
   let searchMemories: MemorySearcher | undefined;
   let longTermMemory: string[] | undefined;
   if (memoryEnabled && memorySubjectId) {
@@ -696,17 +707,6 @@ export async function streamConversationTurn(
         limit: MEMORY_RECALL_LIMIT,
       });
     };
-    // Recall on the conversation's first turn: the top-k memories relevant
-    // to the opening message become the "Long-term memory" prompt block;
-    // later turns rely on the searchMemories tool instead.
-    if (stored.length === 0) {
-      try {
-        const recalled = await searchMemories(message);
-        if (recalled.length > 0) longTermMemory = recalled.map((r) => r.text);
-      } catch (error) {
-        console.error("[runtime] long-term memory recall failed:", error);
-      }
-    }
   }
   /**
    * The windowed knowledge reader (spec #559): a search returns the matching
@@ -744,12 +744,6 @@ export async function streamConversationTurn(
   };
   const readKnowledgeDocument = documentReaderFor(assistant.id);
 
-  // The API catalogue integration (spec #559). One read per turn, in parallel
-  // with the history load: the toolset has to know whether an integration exists
-  // before the model runs. A read failure leaves the catalogue tools
-  // unregistered rather than failing a turn that can still answer from
-  // knowledge.
-  const apiIntegration = await db.getApiIntegration(assistant.id).catch(() => null);
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
   const session = createTurnSession(conversation.id, conversation.sessionState);
@@ -784,14 +778,26 @@ export async function streamConversationTurn(
       m.content.some((p) => (p as { type?: string }).type === "clarify")
   );
 
-  await db.appendMessage({
-    conversationId: conversation.id,
-    role: "user",
-    content: [{ type: "text", text: message }],
-  });
-
-  // The immutable platform (Ciele) prompt layer — same for every org.
-  const platformPrompt = await getRuntimeHost().getPlatformSystemPrompt();
+  // The user-message persist and the first-turn memory recall (the top-k
+  // memories relevant to the opening message become the "Long-term memory"
+  // prompt block; later turns rely on the searchMemories tool) are
+  // independent — one wave, not two awaits.
+  await Promise.all([
+    db.appendMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: [{ type: "text", text: message }],
+    }),
+    (async () => {
+      if (!searchMemories || stored.length !== 0) return;
+      try {
+        const recalled = await searchMemories(message);
+        if (recalled.length > 0) longTermMemory = recalled.map((r) => r.text);
+      } catch (error) {
+        console.error("[runtime] long-term memory recall failed:", error);
+      }
+    })(),
+  ]);
 
   const conversationId = conversation.id;
   const encoder = new TextEncoder();
@@ -858,8 +864,13 @@ export async function streamConversationTurn(
           // proactive Notification, a pre-engine gate) — see trace.ts.
           trace: prepareTraceForStorage(trace),
         });
-        await turn.afterPersist?.(saved.id);
+        // `done` goes out the moment the reply is durable: the client's
+        // Thinking panel settles on the persisted message id, and the tail
+        // bookkeeping below (usage ledger, session write-back, effects,
+        // telemetry) finishes while the stream drains rather than making the
+        // Visitor watch a spinner over an already-rendered answer.
         emit({ type: "done", conversationId, messageId: saved.id });
+        await turn.afterPersist?.(saved.id);
         await recordRuntimeEvent(db, {
           organizationId: input.organizationId,
           assistantId: assistant.id,
@@ -1056,19 +1067,16 @@ export async function streamConversationTurn(
                 createdAt: publication.createdAt,
                 updatedAt: publication.createdAt,
               };
-              const targetSearch: KnowledgeSearcher = async (query) => {
-                const embedding = await embedText(query, input.connections, {
-                  db,
-                  organizationId: input.organizationId,
-                  assistantId: target.id,
-                  conversationId,
-                });
-                return db.searchChunks(target.id, null, {
-                  embedding,
-                  text: query,
-                  limit: 6,
-                });
-              };
+              // Same factory as the live turn, so the continuation honors the
+              // TARGET assistant's Knowledge Engine choice instead of silently
+              // running a vector-only path production never uses elsewhere.
+              const targetSearch: KnowledgeSearcher = buildKnowledgeSearcher({
+                db,
+                connections: input.connections,
+                assistant: target,
+                collectionId: null,
+                conversationId,
+              });
               const continuation = await runAssistantChat({
                 assistant: target,
                 platformPrompt,
@@ -1164,6 +1172,7 @@ export async function streamConversationTurn(
               await applyEffects(result.effects, {
                 db,
                 organizationId: input.organizationId,
+                conversationId,
                 messageId,
               });
             }

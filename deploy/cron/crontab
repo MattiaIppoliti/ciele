@@ -8,5 +8,6 @@
 30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-traces
 0 3 * * *   /usr/local/bin/run-job.sh /api/cron/finalize-crawls
 0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
+30 4 * * *  /usr/local/bin/run-job.sh /api/cron/learn-graph
 0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
 0 6 * * *   /usr/local/bin/run-job.sh /api/cron/sweep-recrawls

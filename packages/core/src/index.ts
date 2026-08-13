@@ -25,6 +25,10 @@
 
 // The domain vocabulary — every noun in CONTEXT.md, as a type.
 export * from "./types";
+// The billing / plan / usage-cap vocabulary (pure types + the one shared
+// warn threshold). The runtime's enterprise registry re-exports these; new
+// code should import them from here.
+export * from "./billing";
 export { coerceEntityValue } from "./entity-values";
 
 // Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the

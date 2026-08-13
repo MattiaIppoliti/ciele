@@ -14,11 +14,11 @@ import { FAKE_ENV_TEMPLATE } from "../setup/testing/env-template";
 import { broadcast } from "./broadcast";
 import { createRealPorts } from "./ports";
 import { LOCAL_BASE_URL } from "../shared/state";
+import { composePathSeparator, dockerDownloadUrl } from "../shared/platform";
 import { imageTagFor, releaseVersion } from "../shared/release";
 import { SETUP_CHANNELS } from "../shared/setup-ipc";
 import type { SetupConfig, SetupPorts } from "../setup/ports";
 
-const DOCKER_DOWNLOAD_URL = "https://www.docker.com/products/docker-desktop/";
 const LOCAL_SUPABASE_URL = "http://localhost:8000";
 
 export interface SetupHost {
@@ -60,7 +60,8 @@ export function setupConfig(): SetupConfig {
     imageTag: imageTagFor(appVersion(), process.env),
     appUrl: LOCAL_BASE_URL,
     supabaseUrl: LOCAL_SUPABASE_URL,
-    dockerDownloadUrl: DOCKER_DOWNLOAD_URL,
+    dockerDownloadUrl: dockerDownloadUrl(process.platform),
+    composePathSeparator: composePathSeparator(process.platform),
   };
 }
 

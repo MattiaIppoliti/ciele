@@ -346,16 +346,18 @@ export async function runAgenticSearch(
   // the moment of writing, not in the gather prompt where it would compete with
   // tool selection for the whole loop.
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
-  const memory = [...longTermMemory, ...session.memory()];
 
   // The live signals retrieval may use, stated for the model rather than
-  // resolved for it: the anchored Knowledge Collection and the session memory.
-  // Deictic follow-ups ("what about the second one?") are the model's job now —
-  // it has the history, and its own reasoning resolves them (#558).
+  // resolved for it: the anchored Knowledge Collection. Deictic follow-ups
+  // ("what about the second one?") are the model's job now — it has the
+  // history, and its own reasoning resolves them (#558). Remembered facts are
+  // NOT part of the frame: the system prompt's two memory blocks (session /
+  // long-term, below) are their single owner — rendering them here too used to
+  // put every fact in the gather prompt twice and erase the session-vs-durable
+  // distinction the two blocks exist to preserve.
   const frame = buildContextFrame({
     collectionId,
     history,
-    memory,
   });
   const retrievalContext = describeContextFrame(frame);
 

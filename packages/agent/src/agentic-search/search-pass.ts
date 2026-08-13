@@ -10,12 +10,9 @@ import type { KnowledgeSearcher, RuntimeEvent, SearchScope } from "../types";
  * the LLM loop stays the generative core (runtime invariant: generation lives
  * inside `search_knowledge`).
  *
- * Slice 1 (#153) — the multi-pass backbone:
- *  1. a per-turn search-iteration budget (`MAX_SEARCH_PASSES`), counting
- *     `searchKnowledge` calls specifically — not all agent steps;
- *  2. a coverage gate (`scoreCoverage`) evaluated after each pass, plus the
- *     caveated best-effort answer used when the loop ends without a grounded
- *     answer — never a bare "no sources found" empty bubble.
+ * Slice 1 (#153) — the multi-pass backbone: a per-turn search-iteration
+ * budget (`MAX_SEARCH_PASSES`), counting `searchKnowledge` calls
+ * specifically — not all agent steps.
  *
  * Slice 3 (#155) — reformulation over the current flat retrieval:
  *  3. a pure reformulation policy (`nextReformulation` + `rephraseQuery`) that,
@@ -54,83 +51,10 @@ export function searchBudgetExhausted(
   return passes.length >= budget;
 }
 
-/**
- * The coverage verdict for a single search pass's retrieval.
- * - `sufficient`   — enough strong hits to ground an answer.
- * - `insufficient` — some real hits but thin; a further pass may help.
- * - `empty-conflicting` — nothing usable: no results, or only weak noise.
- *   (True contradiction detection is out of scope for v1; empty and
- *   conflicting share a bucket because both mean "can't answer confidently".)
- */
-export type CoverageVerdict = "sufficient" | "insufficient" | "empty-conflicting";
-
-/** Tunable thresholds for {@link scoreCoverage}, over cosine similarities in [0,1]. */
-export interface CoverageThresholds {
-  /** Similarity at/above which a single result counts as a strong hit. */
-  strongSimilarity: number;
-  /** Minimum count of strong hits required to call a pass `sufficient`. */
-  minStrongResults: number;
-  /**
-   * Best-result similarity floor: a pass whose best hit is below this is
-   * treated as noise (`empty-conflicting`) even though rows came back.
-   */
-  relevanceFloor: number;
-  /**
-   * Graph-engine only: how many results a pass needs before it counts as
-   * `sufficient`. The graph reports no relevance score (see
-   * {@link KnowledgeSearchResult.engine}), so count is the only signal there
-   * is — this separates sparse from plentiful, which is strictly weaker than
-   * separating weak from strong, and is deliberately set so that a thin graph
-   * result still yields to a widened vector pass.
-   */
-  graphMinResults: number;
-}
-
-/** Tuned against the cosine similarities `match_chunks` returns (see 0005_knowledge.sql). */
-export const DEFAULT_COVERAGE_THRESHOLDS: CoverageThresholds = {
-  strongSimilarity: 0.7,
-  minStrongResults: 1,
-  relevanceFloor: 0.4,
-  graphMinResults: 3,
-};
-
-/**
- * Classifies a single pass's retrieval. Pure and deterministic — the coverage
- * gate the search loop consults.
- *
- * Two rules, because the two engines report different things. Vector results
- * carry a real cosine similarity and are judged on it. Graph results carry a
- * rank *placeholder* whose first entry is always exactly `1` — comparing that
- * against `strongSimilarity` scored every non-empty graph result `sufficient`,
- * which silently disabled reformulation and widening for assistants on the
- * default engine. Graph passes are therefore judged on count alone.
- *
- * A mixed list is judged as graph: the placeholder scores would dominate a
- * `Math.max`, so the weaker interpretation is the honest one.
- */
-export function scoreCoverage(
-  results: readonly Pick<KnowledgeSearchResult, "similarity" | "engine">[],
-  thresholds: CoverageThresholds = DEFAULT_COVERAGE_THRESHOLDS
-): CoverageVerdict {
-  if (results.length === 0) return "empty-conflicting";
-  if (results.some((r) => r.engine === "graph")) {
-    return results.length >= thresholds.graphMinResults
-      ? "sufficient"
-      : "insufficient";
-  }
-  const best = Math.max(...results.map((r) => r.similarity));
-  if (best < thresholds.relevanceFloor) return "empty-conflicting";
-  const strong = results.filter(
-    (r) => r.similarity >= thresholds.strongSimilarity
-  ).length;
-  return strong >= thresholds.minStrongResults ? "sufficient" : "insufficient";
-}
-
 /** One recorded `searchKnowledge` pass — the loop's iteration log for the gate. */
 export interface SearchPass {
   query: string;
   results: KnowledgeSearchResult[];
-  verdict: CoverageVerdict;
   /**
    * The scope tier this pass targeted (Agentic Search #155). Absent is read as
    * `collection` (the anchored default): the reformulation policy uses it to
@@ -141,10 +65,12 @@ export interface SearchPass {
 
 // The deterministic reformulation policy (`nextReformulation`, `rephraseQuery`,
 // the Collection → assistant-wide scope ladder) and the `bestEffortCaveat` used
-// to live here. They are gone (#558): the model reformulates by batching queries
+// to live here; they are gone (#558): the model reformulates by batching queries
 // within an iteration budget it is told about, and it declares its own dead ends
-// through the terminal tool. What is left is the ledger, the budget gate, the
-// coverage verdict recorded per pass for the transcript, and the primitive.
+// through the terminal tool. The coverage gate (`scoreCoverage` + its verdict
+// recorded per pass) followed them out — its consumers were the same removed
+// policies, so it had been written into the ledger and read by nothing. What
+// is left is the ledger, the budget gate, and the primitive.
 
 // ── The search-pass primitive (#204) ─────────────────────────────────────────
 
@@ -258,7 +184,7 @@ export async function runSearchPass(
     results = [];
     swallowed = true;
   }
-  ctx.passes.push({ query, scope, results, verdict: scoreCoverage(results) });
+  ctx.passes.push({ query, scope, results });
   ctx.usedSources.push(...results);
   end(
     !swallowed,

@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ChevronsUpDown, Search } from "lucide-react";
 import { PreviewPane } from "@/components/home/preview-panes";
 import { GLOBAL_NAV, SETUP_SECTIONS } from "@/components/shell/nav";
@@ -15,8 +16,20 @@ import {
 
 /* The screenshot on a feature page: the admin shell drawn in real DOM rather
    than captured as an image, so it stays crisp, follows the visitor's theme,
-   and cannot drift out of date the way a PNG does. Static by design — the
-   home page owns the interactive version of this mock. */
+   and cannot drift out of date the way a PNG does. Mostly static by design —
+   the home page owns the fully interactive version of this mock; only the
+   Knowledge mock's view tabs respond to clicks. */
+
+/* The one animated shot: the widget preview playing its scripted turn. Split
+   into its own chunk — it pulls the real chat components (Thinking panel,
+   markdown, shiki) that the rest of the marketing bundle never needs. */
+const AssistantPreviewDemo = dynamic(
+  () =>
+    import("./assistant-preview-demo").then(
+      (module) => module.AssistantPreviewDemo
+    ),
+  { ssr: false, loading: () => <div className="bg-muted/40 h-full" /> }
+);
 
 const MOCKS = {
   knowledge: KnowledgeMock,
@@ -53,13 +66,19 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
   // section this feature lives in.
   const activeGlobal = shot.kind === "pane" ? shot.view : null;
   const activeSetup =
-    shot.kind === "mock"
-      ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null }[
-          shot.mock
-        ]
-      : null;
+    shot.kind === "preview"
+      ? "preview"
+      : shot.kind === "mock"
+        ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null }[
+            shot.mock
+          ]
+        : null;
 
   const Mock = shot.kind === "mock" ? MOCKS[shot.mock] : null;
+
+  // The animated preview keeps more of itself: its lower third is where the
+  // answer streams, so the dissolve starts later than on the static shots.
+  const maskStop = shot.kind === "preview" ? "80%" : "62%";
 
   return (
     <div
@@ -69,8 +88,8 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
          ending on a border. The mask takes the border and shadow with it,
          which is the whole point — any hard edge would read as the bottom. */
       style={{
-        maskImage: "linear-gradient(to bottom, black 62%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, black 62%, transparent 100%)",
+        maskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
+        WebkitMaskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
       }}
       className="bg-background text-foreground flex h-[420px] overflow-hidden rounded-2xl border sm:h-[520px]"
     >
@@ -125,7 +144,13 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
           <span className="font-medium">{label}</span>
         </header>
         <div className="min-h-0 flex-1 overflow-hidden">
-          {Mock ? <Mock /> : <PreviewPane view={{ kind: "global", label: activeGlobal! }} />}
+          {shot.kind === "preview" ? (
+            <AssistantPreviewDemo />
+          ) : Mock ? (
+            <Mock />
+          ) : (
+            <PreviewPane view={{ kind: "global", label: activeGlobal! }} />
+          )}
         </div>
       </div>
     </div>

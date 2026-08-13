@@ -68,12 +68,11 @@ export type {
 } from "./scheduled";
 
 // Graph-sync ledger — keeps each Collection's derived Knowledge Graph in step
-// with its OKF Concepts (ADR-0017). Inert without a graph worker.
-export {
-  backfillCollectionToGraph,
-  enqueueGraphSyncJob,
-  runDueGraphSyncJobs,
-} from "./jobs";
+// with its OKF Concepts (ADR-0017). Inert without a graph worker. The per-kind
+// cron DRAINS (runDue*Jobs, enqueueDueEntitySyncs) are deliberately not here:
+// only `scheduled.ts` composes them, and `finalizeDueCrawls` is the public
+// entrypoint that runs them all.
+export { backfillCollectionToGraph, enqueueGraphSyncJob } from "./jobs";
 
 // Graph learning loop — feedback on graph-served answers re-weights retrieval
 // (ADR-0017). Inert without a graph worker; fail-soft with auto-resolving Alerts.
@@ -81,19 +80,13 @@ export { feedbackScore, forwardGraphFeedback, runGraphLearning } from "./graph-f
 
 // Suggested Fix — drafts a reviewable knowledge proposal for a flagged answer
 // (ADR-0017). Best-effort; a drafting failure leaves a "no proposal" state.
-export { enqueueDraftProposalJob, runDueProposalJobs } from "./jobs";
-export { draftImprovementProposal } from "./improvement-proposal";
+// The drafter itself (draftImprovementProposal) is an internal the job
+// handler runs; callers enqueue.
+export { enqueueDraftProposalJob } from "./jobs";
 
-// Long-term memory promotion (#664) — the cron backstop draining
-// `promote_memories` jobs enqueued when SSO conversations go quiet.
-export { runDueMemoryPromotionJobs } from "./jobs";
-// Synced Record ingestion (#670): enqueue ("sync now" + the cron sweep's
-// due-scan) and the cron drain for the sync_entity_records job kind.
-export {
-  enqueueDueEntitySyncs,
-  enqueueEntitySyncJob,
-  runDueEntitySyncJobs,
-} from "./jobs";
+// Synced Record ingestion (#670): "sync now" enqueue for the
+// sync_entity_records job kind (the due-scan + drain ride finalizeDueCrawls).
+export { enqueueEntitySyncJob } from "./jobs";
 
 // Which crawler providers the current environment can run — drives the admin
 // Website Source crawler picker (e.g. Crawl4AI is only offered when its worker
@@ -101,21 +94,12 @@ export {
 export { websiteCrawlerCapabilities } from "./website-crawlers";
 export type { WebsiteCrawlerCapabilities } from "./website-crawlers";
 
-// Standing goals — the scheduled re-verification loop (golden questions run
-// headlessly against the latest Publication; failures raise Alerts).
-export { runDueGoalEvals } from "./goal-runner";
-
-// Independent answer verifier — fresh-context grading of recent generative
-// answers against their cited Concepts (nothing grades its own homework).
-export { runDueAnswerVerifications } from "./verifier";
-
-// Flow trust ledger — nightly rolling-pass-rate materialization into earned
-// tiers (auto/queue/watch); demotions raise auto-resolving Alerts.
-export { runTrustMaterialization } from "./trust";
-
-// Compost loop — weekly exhaust digested into at most 3 proposed
-// Improvements per assistant (human signature = the kanban; never auto-applies).
-export { runCompostPass } from "./compost";
+// The nightly agentic-ops drain — standing goals, the independent answer
+// verifier, trust materialization and the compost loop, in that order (the
+// sequencing IS the policy: tonight's verdicts feed tonight's tiers). ONE
+// export for the cron route; the four loops it composes are internals.
+export { runDueAgenticOps } from "./scheduled";
+export type { AgenticOpsReport } from "./scheduled";
 
 // Provider/model resolution (which LLMs an org can actually run on) and
 // pre-flight validation of a provider API key.

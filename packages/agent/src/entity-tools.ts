@@ -4,6 +4,7 @@ import type {
   EntityRecord,
   EntityRecordQuery,
   EntitySnapshot,
+  KnowledgeSearchResult,
 } from "@agent-hub/core";
 import type { RuntimeToolSpec } from "./tools";
 import type { EntityRecordsFetcher } from "./types";
@@ -60,6 +61,28 @@ function describeEntity(entity: EntitySnapshot): string {
   return entity.description.trim() || entity.name;
 }
 
+/**
+ * The citation an answered Entity query contributes (same pattern as the API
+ * catalogue's `apiSource`, #559): namespaced so it can never collide with a
+ * real Concept id, and stable per Entity so ten queries of one Entity cite
+ * once (`dedupSources`). No URL — the chip names the data, it does not hand a
+ * Visitor an internal surface to click. A Record-grounded answer without this
+ * showed no Sources at all, which read as ungrounded.
+ */
+export function entityCitation(entity: EntitySnapshot): KnowledgeSearchResult {
+  return {
+    conceptId: `entity:${entity.id}`,
+    conceptTitle: entity.name,
+    conceptPath: "",
+    collectionId: "",
+    collectionName: "Records",
+    sourceName: entity.name,
+    resourceUrl: null,
+    content: "",
+    similarity: 1,
+  };
+}
+
 /** Projects matched Records to the model-facing shape (values only). */
 function project(records: EntityRecord[]) {
   return {
@@ -98,6 +121,12 @@ export function entityToolSpecs(
      * assistant's member turns set this; Widget turns never do.
      */
     crossRecord?: boolean;
+    /**
+     * Receives the {@link entityCitation} whenever a query returned Records —
+     * the turn wires this to its `usedSources` collector so Record-grounded
+     * answers carry a Sources chip like knowledge- and API-grounded ones.
+     */
+    cite?: (source: KnowledgeSearchResult) => void;
   }
 ): RuntimeToolSpec[] {
   const fragment = entityToolNameFragment(entity.name);
@@ -142,7 +171,9 @@ export function entityToolSpecs(
         }
         // Identity binding last: it wins over anything the model supplied.
         if (bound) filters[bound.attribute] = bound.value;
-        return project(await fetch(entity.id, { filters, limit: RESULT_LIMIT }));
+        const records = await fetch(entity.id, { filters, limit: RESULT_LIMIT });
+        if (records.length > 0) options?.cite?.(entityCitation(entity));
+        return project(records);
       },
     },
   ];
@@ -160,13 +191,13 @@ export function entityToolSpecs(
         return typeof o?.count === "number" ? `${o.count} records` : undefined;
       },
       async execute(input) {
-        return project(
-          await fetch(entity.id, {
-            search: String(input.query ?? ""),
-            ...(bound ? { filters: { [bound.attribute]: bound.value } } : {}),
-            limit: RESULT_LIMIT,
-          })
-        );
+        const records = await fetch(entity.id, {
+          search: String(input.query ?? ""),
+          ...(bound ? { filters: { [bound.attribute]: bound.value } } : {}),
+          limit: RESULT_LIMIT,
+        });
+        if (records.length > 0) options?.cite?.(entityCitation(entity));
+        return project(records);
       },
     });
   }

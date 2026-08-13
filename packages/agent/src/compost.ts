@@ -2,7 +2,10 @@ import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Db } from "@agent-hub/db";
-import { raiseImprovement } from "@agent-hub/db";
+import {
+  findOpenImprovementForConversation,
+  raiseImprovement,
+} from "@agent-hub/db";
 import type {
   AiCredentialKind,
   CompostDigest,
@@ -247,24 +250,21 @@ async function landProposal(
     Boolean
   );
   for (const conversationId of conversations) {
-    const links = await db.listConversationImprovementLinks(conversationId);
-    for (const link of links) {
-      const improvement = await db.getImprovement(link.improvementId);
-      if (
-        improvement &&
-        improvement.status !== "done" &&
-        improvement.status !== "archived"
-      ) {
-        // Any open item sharing the evidence counts — including ones the
-        // verifier created — so known problems gain occurrences, not clones.
-        // Same problem already proposed and still open: append the new
-        // evidence instead of cloning the proposal.
-        for (const e of evidence.slice(0, 5)) {
-          if (e.conversationId === conversationId) continue;
-          await db.linkImprovementMessage(improvement.id, e.messageId).catch(() => {});
-        }
-        return 0;
+    // The shared dedup walk (packages/db improvements.ts): any open item
+    // sharing the evidence counts — including ones the verifier created — so
+    // known problems gain occurrences, not clones. Same problem already
+    // proposed and still open: append the new evidence instead of cloning
+    // the proposal.
+    const improvement = await findOpenImprovementForConversation(
+      db,
+      conversationId
+    );
+    if (improvement) {
+      for (const e of evidence.slice(0, 5)) {
+        if (e.conversationId === conversationId) continue;
+        await db.linkImprovementMessage(improvement.id, e.messageId).catch(() => {});
       }
+      return 0;
     }
   }
 

@@ -95,8 +95,11 @@ export const secretsStep: SetupStep = {
       APP_ENCRYPTION_KEY: secrets.appEncryptionKey,
       CRON_SECRET: secrets.cronSecret,
       // Image mode, pinned to this build. Upgrading the app is what rolls the
-      // local stack forward.
-      COMPOSE_FILE: "docker-compose.yml:docker-compose.images.yml",
+      // local stack forward. Joined with the platform's separator: Compose
+      // splits this on `;` on Windows, `:` elsewhere.
+      COMPOSE_FILE: ["docker-compose.yml", "docker-compose.images.yml"].join(
+        config.composePathSeparator,
+      ),
       CIELE_IMAGE_TAG: config.imageTag ?? "",
       PUBLIC_URL: config.appUrl,
       SUPABASE_PUBLIC_URL: config.supabaseUrl,

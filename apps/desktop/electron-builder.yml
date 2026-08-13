@@ -1,8 +1,8 @@
-# Packaging for the unsigned macOS beta (#690).
+# Packaging for the unsigned beta — macOS (#690) and Windows (#703).
 #
-# Signing, notarization, Windows and Linux are all deliberately out of scope
-# for the beta — an unsigned app also cannot auto-update, which is why the app
-# checks for a newer release and links the download instead.
+# Signing, notarization and Linux are deliberately out of scope for the beta —
+# an unsigned app also cannot auto-update, which is why the app checks for a
+# newer release and links the download instead.
 #
 # Because electron-vite bundles main, preload and renderer, `out/` is the whole
 # application: there is no node_modules to copy in.
@@ -43,6 +43,15 @@ mac:
   # Nothing to sign with, and asking would fail the build on a fork.
   identity: null
   notarize: false
+
+# Unsigned NSIS installer — the familiar Setup.exe with a Start-menu entry and
+# an uninstaller. SmartScreen will warn on it; the way past the warning ships
+# in the release notes, exactly as the Gatekeeper instructions do for macOS.
+# arm64 is deferred with the rest of the post-beta polish.
+win:
+  target:
+    - target: nsis
+      arch: [x64]
 
 # Unsigned builds cannot be auto-updated, so no update feed is published.
 publish: null

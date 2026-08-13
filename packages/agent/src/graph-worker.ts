@@ -36,7 +36,6 @@ const DATASET_PREFIX = "ciele_col_";
  * the worker does the heavy lifting, we just wait for its ack. */
 const SEARCH_TIMEOUT_MS = 60_000;
 const WRITE_TIMEOUT_MS = 120_000;
-const HEALTH_TIMEOUT_MS = 10_000;
 
 export function isGraphWorkerConfigured(): boolean {
   return Boolean(process.env.GRAPH_WORKER_BASE_URL && process.env.GRAPH_WORKER_API_TOKEN);
@@ -289,7 +288,13 @@ export function mapGraphProvenance(raw: RawProvenance[] | null | undefined): Gra
 export async function searchGraph(
   collectionId: string,
   query: string,
-  options: { mode?: GraphSearchMode; sessionId?: string; topK?: number } = {}
+  options: {
+    mode?: GraphSearchMode;
+    sessionId?: string;
+    topK?: number;
+    /** Override for interactive callers; defaults to the worker search budget. */
+    timeoutMs?: number;
+  } = {}
 ): Promise<GraphSearchResult> {
   const dataset = datasetForCollection(collectionId);
   const body = await workerRequest<GraphSearchBody>(
@@ -301,7 +306,7 @@ export async function searchGraph(
       session_id: options.sessionId ?? null,
       top_k: options.topK ?? 6,
     },
-    SEARCH_TIMEOUT_MS
+    options.timeoutMs ?? SEARCH_TIMEOUT_MS
   );
   return {
     answer: (body.answer ?? "").trim(),
@@ -376,20 +381,7 @@ export async function improveDataset(
   };
 }
 
-/**
- * Liveness check against the worker's public `/health` (no token). Returns true
- * only on a 200. Used by the Alerts producer and availability gating; never
- * throws — a down worker is a boolean, not an exception.
- */
-export async function getGraphWorkerHealth(): Promise<boolean> {
-  const baseUrl = process.env.GRAPH_WORKER_BASE_URL;
-  if (!baseUrl) return false;
-  try {
-    const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/health`, {
-      signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
+// A `getGraphWorkerHealth` liveness probe used to live here, its docstring
+// promising an Alerts producer that was never wired. The graph Alert is raised
+// reactively from feedback/learning failures (graph-feedback.ts); a proactive
+// probe returns with whichever producer actually polls the worker's /health.

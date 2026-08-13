@@ -29,17 +29,13 @@ export type {
   FlowStyleContext,
 } from "./run";
 
-// The search-pass ledger, budget, coverage, and the primitive.
+// The search-pass ledger, budget, and the primitive.
 export {
-  DEFAULT_COVERAGE_THRESHOLDS,
   MAX_SEARCH_PASSES,
   runSearchPass,
-  scoreCoverage,
   searchBudgetExhausted,
 } from "./search-pass";
 export type {
-  CoverageThresholds,
-  CoverageVerdict,
   SearchPass,
   SearchPassOutcome,
   SearchPassRuntime,
@@ -54,7 +50,6 @@ export {
   createTerminalState,
   readyToAnswerTool,
   resolveTerminalStatus,
-  writeTimeInstructions,
 } from "./ready-to-answer";
 export type {
   TerminalState,
@@ -67,7 +62,6 @@ export type {
 export {
   MAX_AGENT_ITERATIONS,
   createLoopBudget,
-  iterationNote,
   withBudgetNote,
 } from "./loop-budget";
 export type { LoopBudget } from "./loop-budget";

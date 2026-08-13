@@ -4,7 +4,7 @@ import { messageText } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { embedTexts } from "./embeddings";
 import { getClassifierModel } from "./models";
-import { createTurnSession } from "./session";
+import { createTurnSession, MEMORY_FACT_MAX } from "./session";
 import { meterUsage, usageTotals } from "./usage";
 
 /**
@@ -36,7 +36,6 @@ export const MEMORY_QUIET_MS = 15 * 60_000;
 /** Transcript tail the extraction reads (most recent messages). */
 const EXTRACT_TAIL_LIMIT = 30;
 const MAX_FACTS_PER_EXTRACTION = 5;
-const MEMORY_FACT_MAX = 500;
 
 // No .max() on the array: an over-eager model must degrade to the best few
 // (sliced below), never to a validation error → nothing promoted.

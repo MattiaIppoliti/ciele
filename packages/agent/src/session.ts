@@ -8,14 +8,19 @@
  * into a TurnSession before running the engine, tools mutate it through
  * `remember`, and turn.ts writes it back after the assistant message is
  * persisted — only when something actually changed (`dirty`), so read-only
- * turns cost no extra write. A generic key/value bag is deliberately NOT part
- * of the interface: it had no callers, and the seam only widens again when a
- * second tool needs cross-turn state beyond memory.
+ * turns cost no extra write. The generic `get`/`set` pair exists for runtime
+ * state that rides the same bag without being memory: the proactive
+ * delivery-rule patches and the graph QA map (turn.ts) both use it.
  */
 
 const MEMORY_KEY = "memory";
 const MEMORY_CAP = 20;
-const MEMORY_FACT_MAX = 500;
+/**
+ * One cap for a remembered fact, session AND long-term: the promotion job
+ * (memories.ts) copies session facts into the durable store, so two different
+ * caps would truncate on promotion.
+ */
+export const MEMORY_FACT_MAX = 500;
 
 export interface TurnSession {
   conversationId: string;

@@ -12,13 +12,14 @@ import type { HistoryMessage } from "../types";
  * chain of thought resolving exactly these references ("the user has now
  * specified 'final exam' as the quiz") without any of the machinery. What is
  * left here is the part the model genuinely cannot know: which Knowledge
- * Collection this conversation is anchored to, and what earlier turns asked us
- * to remember.
+ * Collection this conversation is anchored to. (Remembered facts used to ride
+ * the frame too — that rendered every fact into the gather prompt twice,
+ * since the system prompt's session/long-term memory blocks are their owner.)
  */
 
 /**
  * The live context available to a turn's retrieval, per the #53 audit. Only
- * these three signals actually reach `search_knowledge` today; role / URL / SSO
+ * these signals actually reach `search_knowledge` today; role / URL / SSO
  * are inert and intentionally excluded.
  */
 export interface ContextFrame {
@@ -26,20 +27,16 @@ export interface ContextFrame {
   collectionId: string | null;
   /** Recent transcript of THIS conversation (already capped upstream). */
   history: readonly HistoryMessage[];
-  /** Facts the `remember` tool saved earlier in this conversation. */
-  memory: readonly string[];
 }
 
-/** Assembles the {@link ContextFrame} from the three live signals. */
+/** Assembles the {@link ContextFrame} from the live signals. */
 export function buildContextFrame(input: {
   collectionId?: string | null;
   history?: readonly HistoryMessage[];
-  memory?: readonly string[];
 }): ContextFrame {
   return {
     collectionId: input.collectionId ?? null,
     history: input.history ?? [],
-    memory: (input.memory ?? []).filter((m) => m.trim()),
   };
 }
 
@@ -58,11 +55,6 @@ export function describeContextFrame(frame: ContextFrame): string | undefined {
   if (frame.collectionId) {
     lines.push(
       "Every knowledge search this turn is scoped to the Knowledge Collection this conversation is anchored to. If something is missing, it may exist elsewhere in the organization's knowledge — say that it is not in this collection rather than that it does not exist."
-    );
-  }
-  if (frame.memory.length > 0) {
-    lines.push(
-      `Remembered about this visitor: ${frame.memory.map((m) => `“${m}”`).join(", ")}.`
     );
   }
   if (lines.length === 0) return undefined;

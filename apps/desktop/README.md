@@ -18,12 +18,20 @@ pnpm --filter @ciele/desktop test               # vitest — the engine and the 
 pnpm --filter @ciele/desktop typecheck          # both tsconfigs
 pnpm --filter @ciele/desktop lint
 pnpm --filter @ciele/desktop package:mac        # unsigned .app + .zip into dist/
+pnpm --filter @ciele/desktop package:win        # unsigned NSIS Setup.exe into dist/ (Windows host)
 pnpm --filter @ciele/desktop test:e2e           # Playwright, against a built or packaged app
 ```
 
 Electron 43 dropped its `postinstall` in favour of an `install-electron` bin, so
 the runtime binary is fetched explicitly rather than on every install in the
 monorepo — most work here never needs it, and it is ~100 MB.
+
+Developing on Windows needs nothing beyond the repo's usual Node 22 + pnpm —
+every command above works there, `package:win` produces the unsigned NSIS
+installer plus the `dist/win-unpacked/` build the smoke drives, and testing the
+wizard against a real stack needs Docker Desktop for Windows (WSL2 or Hyper-V
+backend, either works). Run the commands from a shell with bash semantics (Git
+Bash or WSL) or plain PowerShell — none of them depend on a Unix shell.
 
 Run the whole flow without Docker with `--fake-ports`:
 
@@ -100,6 +108,9 @@ Docker volumes and outlives both.
 
 ## Beta constraints
 
-Unsigned, macOS only, no auto-update — macOS will not auto-update an unsigned
-app, so `publish: null` and the app shows a notice linking the download instead.
-Signing, notarization, Windows and Linux are post-beta.
+Unsigned, macOS and Windows, no auto-update — an unsigned app cannot
+auto-update, so `publish: null` and the app shows a notice linking the download
+instead. First-open instructions ship in the release notes: Gatekeeper's
+right-click-to-open on macOS, SmartScreen's "More info → Run anyway" on
+Windows. Signing, notarization and Linux are post-beta; Windows is x64 only
+for now.

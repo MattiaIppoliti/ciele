@@ -16,11 +16,15 @@ import type { SourceStatus } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
+import { runCompostPass } from "./compost";
+import { runDueGoalEvals } from "./goal-runner";
 import {
   CRAWL_FINALIZE_LEASE_MS,
   finalizeWebsiteCrawl,
   restartWebsiteCrawl,
 } from "./ingest";
+import { runTrustMaterialization } from "./trust";
+import { runDueAnswerVerifications } from "./verifier";
 import {
   enqueueDueEntitySyncs,
   type RunDueJobsResult,
@@ -207,6 +211,46 @@ export async function finalizeDueCrawls(
     entitySyncs: { ...entitySyncs, enqueued: syncsEnqueued.enqueued },
     crawls: { swept: pending.length, settled, results },
   };
+}
+
+/**
+ * Bounded goal evals per tick: they cost tokens; leftovers stay due and are
+ * picked up by the next tick.
+ */
+export const GOAL_EVAL_BATCH_SIZE = 10;
+
+export interface AgenticOpsReport {
+  goals: Awaited<ReturnType<typeof runDueGoalEvals>>;
+  verification: Awaited<ReturnType<typeof runDueAnswerVerifications>>;
+  trust: Awaited<ReturnType<typeof runTrustMaterialization>>;
+  compost: Awaited<ReturnType<typeof runCompostPass>>;
+}
+
+/**
+ * The nightly agentic-ops tick: standing goals, the answer verifier, trust
+ * materialization, compost — in that order, and the ORDER is the policy:
+ * trust materializes after verification so tonight's verdicts feed tonight's
+ * tiers, and compost runs last over everything the night produced (internally
+ * weekly-gated per assistant). This sequencing and the batch size used to
+ * live in the `verify-goals` cron route — exactly what this module exists to
+ * keep out of Next handlers; the route is an auth-and-serialize adapter over
+ * this one drain.
+ */
+export async function runDueAgenticOps(
+  deps: ScheduledDeps,
+  options: { goalLimit?: number } = {}
+): Promise<AgenticOpsReport> {
+  const { db } = deps;
+  const goals = await runDueGoalEvals(
+    { db },
+    { limit: options.goalLimit ?? GOAL_EVAL_BATCH_SIZE }
+  );
+  // The verifier rides the same daily tick (deployment-plan cron limit); its
+  // per-message unique verdict makes overlapping ticks harmless.
+  const verification = await runDueAnswerVerifications({ db });
+  const trust = await runTrustMaterialization({ db });
+  const compost = await runCompostPass({ db });
+  return { goals, verification, trust, compost };
 }
 
 /** One organization's outcome in a trace-retention tick (#573). */

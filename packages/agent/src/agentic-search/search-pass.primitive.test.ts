@@ -12,7 +12,7 @@ import type { RuntimeEvent } from "../types";
  * The search-pass primitive — the ONE writer of the per-turn search-pass
  * ledger (#204). Both the deterministic seed loop and the model's
  * searchKnowledge tool delegate here, so the lifecycle (tool-start/tool-end
- * pairing, coverage verdict, ledger append with scope, Sources collection,
+ * pairing, ledger append with scope, Sources collection,
  * budget refusal) is asserted once, for both callers.
  */
 
@@ -57,13 +57,12 @@ describe("runSearchPass — the one ledger writer", () => {
     const outcome = await runSearchPass("tuition fees", "collection", ctx);
 
     expect(outcome).toEqual({ kind: "searched", results: [hit] });
-    // Ledger: one record carrying query, scope, results, and a verdict.
+    // Ledger: one record carrying query, scope and results.
     expect(ctx.passes).toHaveLength(1);
     expect(ctx.passes[0]).toMatchObject({
       query: "tuition fees",
       scope: "collection",
       results: [hit],
-      verdict: "sufficient",
     });
     // Sources collected for the reply's Sources part.
     expect(ctx.usedSources).toEqual([hit]);
@@ -109,13 +108,13 @@ describe("runSearchPass — the one ledger writer", () => {
     expect((events[1] as ToolEnd).callId).toBe("model-call-7");
   });
 
-  it("an empty pass is recorded (verdict empty-conflicting) and ends ok — not a tool error", async () => {
+  it("an empty pass is recorded and ends ok — not a tool error", async () => {
     const { ctx, events } = makeRuntime(async () => []);
     const outcome = await runSearchPass("nothing here", "collection", ctx);
     expect(outcome).toEqual({ kind: "searched", results: [] });
     expect(ctx.passes[0]).toMatchObject({
       query: "nothing here",
-      verdict: "empty-conflicting",
+      results: [],
     });
     expect(ctx.usedSources).toEqual([]);
     expect(events[1]).toMatchObject({
@@ -172,7 +171,6 @@ describe("runSearchPass — the one ledger writer", () => {
       query: "fees",
       scope: "collection",
       results: [],
-      verdict: "empty-conflicting",
     });
     // Visitors never see searcher internals — the generic no-results summary.
     expect(events[1]).toMatchObject({
@@ -202,14 +200,14 @@ describe("runSearchPass — the one ledger writer", () => {
 
 describe("searchBudgetExhausted — the one budget gate", () => {
   it("is spent exactly at the budget", () => {
-    const pass = { query: "q", results: [], verdict: "empty-conflicting" as const };
+    const pass = { query: "q", results: [] };
     expect(searchBudgetExhausted([], 2)).toBe(false);
     expect(searchBudgetExhausted([pass], 2)).toBe(false);
     expect(searchBudgetExhausted([pass, pass], 2)).toBe(true);
   });
 
   it("defaults to MAX_SEARCH_PASSES", () => {
-    const pass = { query: "q", results: [], verdict: "empty-conflicting" as const };
+    const pass = { query: "q", results: [] };
     expect(searchBudgetExhausted(Array(MAX_SEARCH_PASSES - 1).fill(pass))).toBe(false);
     expect(searchBudgetExhausted(Array(MAX_SEARCH_PASSES).fill(pass))).toBe(true);
   });

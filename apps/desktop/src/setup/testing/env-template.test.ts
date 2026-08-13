@@ -28,6 +28,7 @@ const CONFIG: SetupConfig = {
   appUrl: "http://localhost:3000",
   supabaseUrl: "http://localhost:8000",
   dockerDownloadUrl: "https://example.invalid/docker",
+  composePathSeparator: ":",
 };
 
 describe("the fake env template", () => {

@@ -35,7 +35,12 @@ export type {
 
 // Raising an Improvement is one policy over the seam, so it lives with the
 // seam rather than in the domain package: it takes a `Db`.
-export { IMPROVEMENT_TITLE_MAX, raiseImprovement } from "./improvements";
+export {
+  IMPROVEMENT_TITLE_MAX,
+  findOpenImprovementForConversation,
+  raiseImprovement,
+  raiseOrAttachImprovement,
+} from "./improvements";
 
 // The demo org the in-memory adapter seeds.
 export { DEMO_MEMBER, DEMO_ORG } from "./mock";

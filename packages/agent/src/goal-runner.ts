@@ -1,7 +1,7 @@
 import type { AssistantGoal } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { runAssistantChat } from "./engine";
-import { embedText } from "./embeddings";
+import { buildKnowledgeSearcher } from "./retrieval";
 import { createTurnSession } from "./session";
 import { gradeGoalReply, type GoalVerdict } from "./goals";
 import { alertKeys, signalHealth } from "./health";
@@ -70,18 +70,16 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
   const connections = await db.listProviderConnections(
     assistant.organizationId
   );
-  const searchKnowledge = async (query: string) => {
-    const embedding = await embedText(query, connections, {
-      db,
-      organizationId: assistant.organizationId,
-      assistantId: assistant.id,
-    });
-    return db.searchChunks(assistant.id, null, {
-      embedding,
-      text: query,
-      limit: 6,
-    });
-  };
+  // The same retrieval port a widget Visitor gets — goals verify the
+  // production path, Knowledge Engine choice included, not a bespoke
+  // vector-only copy. No Conversation row exists for synthetic traffic.
+  const searchKnowledge = buildKnowledgeSearcher({
+    db,
+    connections,
+    assistant,
+    collectionId: null,
+    conversationId: null,
+  });
   const platformPrompt = await getRuntimeHost().getPlatformSystemPrompt();
 
   const result = await runAssistantChat({

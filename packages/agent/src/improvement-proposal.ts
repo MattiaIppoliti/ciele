@@ -21,8 +21,7 @@ import type { ImprovementProposalSource } from "@agent-hub/core";
 import { messageText } from "@agent-hub/core";
 
 import type { Db } from "@agent-hub/db";
-import { embedText } from "./embeddings";
-import { withGraphEngine } from "./graph-search";
+import { buildKnowledgeSearcher } from "./retrieval";
 import { getClassifierModel } from "./models";
 import type { KnowledgeSearcher } from "./types";
 import { meterUsage } from "./usage";
@@ -94,24 +93,12 @@ async function gatherContext(
 
   const connections = await db.listProviderConnections(assistant.organizationId);
   const collectionId = conversation.collectionId;
-  const vector: KnowledgeSearcher = async (query, options) => {
-    const scoped = options?.scope === "assistant" ? null : collectionId;
-    const embedding = await embedText(query, connections, {
-      db,
-      organizationId: assistant.organizationId,
-      assistantId: assistant.id,
-      conversationId: conversation.id,
-    });
-    return db.searchChunks(assistant.id, scoped, { embedding, text: query, limit: 6 });
-  };
-  const searcher = withGraphEngine({
+  const searcher = buildKnowledgeSearcher({
     db,
-    organizationId: assistant.organizationId,
-    assistantId: assistant.id,
+    connections,
+    assistant,
     collectionId,
     conversationId: conversation.id,
-    useGraph: (assistant.knowledgeEngine ?? "graph") === "graph",
-    vector,
   });
 
   return {

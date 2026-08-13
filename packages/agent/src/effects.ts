@@ -1,4 +1,4 @@
-import { raiseImprovement, type Db } from "@agent-hub/db";
+import { raiseOrAttachImprovement, type Db } from "@agent-hub/db";
 import type { ActionEffect } from "./types";
 import { sendEmail } from "./email";
 
@@ -11,15 +11,25 @@ import { sendEmail } from "./email";
  */
 export async function applyEffects(
   effects: ActionEffect[],
-  ctx: { db: Db; organizationId: string; messageId: string | null }
+  ctx: {
+    db: Db;
+    organizationId: string;
+    conversationId: string;
+    messageId: string | null;
+  }
 ): Promise<void> {
   for (const effect of effects) {
     try {
       switch (effect.kind) {
         case "create_improvement": {
-          await raiseImprovement(ctx.db, ctx.organizationId, {
+          // The shared dedup walk: an open Improvement already linked to this
+          // Conversation gains an occurrence — a Flow firing on every turn of
+          // one conversation must not clone an item the verifier (or a prior
+          // turn) already opened.
+          await raiseOrAttachImprovement(ctx.db, ctx.organizationId, {
             title: effect.title,
             messageId: ctx.messageId,
+            conversationId: ctx.conversationId,
           });
           break;
         }

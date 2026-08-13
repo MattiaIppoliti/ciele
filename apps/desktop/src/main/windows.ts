@@ -87,7 +87,11 @@ export function showNative(route: string): BrowserWindow {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     show: false,
-    titleBarStyle: "hiddenInset",
+    // `hiddenInset` is a macOS style: the traffic lights float over the page
+    // and the renderer's drag strip stands in for the title bar. On Windows it
+    // would strip the frame — minimize/close included — so the native screens
+    // keep the standard frame there.
+    ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const } : {}),
     backgroundColor: "#0b0b0c",
     webPreferences: {
       preload: path.join(__dirname, "../preload/index.js"),

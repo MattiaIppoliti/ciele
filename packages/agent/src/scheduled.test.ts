@@ -5,6 +5,10 @@ import type { Db } from "@agent-hub/db";
 const mocks = vi.hoisted(() => ({
   restartWebsiteCrawl: vi.fn(),
   finalizeWebsiteCrawl: vi.fn(),
+  runDueGoalEvals: vi.fn(),
+  runDueAnswerVerifications: vi.fn(),
+  runTrustMaterialization: vi.fn(),
+  runCompostPass: vi.fn(),
 }));
 
 vi.mock("./ingest", async (importOriginal) => {
@@ -15,11 +19,29 @@ vi.mock("./ingest", async (importOriginal) => {
     finalizeWebsiteCrawl: mocks.finalizeWebsiteCrawl,
   };
 });
+vi.mock("./goal-runner", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./goal-runner")>()),
+  runDueGoalEvals: mocks.runDueGoalEvals,
+}));
+vi.mock("./verifier", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./verifier")>()),
+  runDueAnswerVerifications: mocks.runDueAnswerVerifications,
+}));
+vi.mock("./trust", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./trust")>()),
+  runTrustMaterialization: mocks.runTrustMaterialization,
+}));
+vi.mock("./compost", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./compost")>()),
+  runCompostPass: mocks.runCompostPass,
+}));
 
 import {
   CRAWL_FINALIZE_BATCH_SIZE,
+  GOAL_EVAL_BATCH_SIZE,
   RECRAWL_SWEEP_BATCH_SIZE,
   finalizeDueCrawls,
+  runDueAgenticOps,
   sweepDueRecrawls,
   sweepExpiredTraces,
 } from "./scheduled";
@@ -314,5 +336,61 @@ describe("sweepExpiredTraces", () => {
     const report = await sweepExpiredTraces({ db });
     expect(clearExpiredTraces).not.toHaveBeenCalled();
     expect(report.traces).toEqual({ organizations: 0, cleared: 0, results: [] });
+  });
+});
+
+describe("runDueAgenticOps", () => {
+  beforeEach(() => {
+    const order: string[] = [];
+    mocks.runDueGoalEvals.mockImplementation(async () => {
+      order.push("goals");
+      return { processed: 2, failed: 1 };
+    });
+    mocks.runDueAnswerVerifications.mockImplementation(async () => {
+      order.push("verification");
+      return { graded: 3 };
+    });
+    mocks.runTrustMaterialization.mockImplementation(async () => {
+      order.push("trust");
+      return { materialized: 1 };
+    });
+    mocks.runCompostPass.mockImplementation(async () => {
+      order.push("compost");
+      return { proposals: 0 };
+    });
+    (mocks as unknown as { order: string[] }).order = order;
+  });
+
+  it("runs goals → verification → trust → compost, in that order", async () => {
+    const db = stubDb({});
+    const report = await runDueAgenticOps({ db });
+    // Trust materializes AFTER verification (tonight's verdicts feed tonight's
+    // tiers) and compost digests last — the sequencing is the drain's policy.
+    expect((mocks as unknown as { order: string[] }).order).toEqual([
+      "goals",
+      "verification",
+      "trust",
+      "compost",
+    ]);
+    expect(report).toEqual({
+      goals: { processed: 2, failed: 1 },
+      verification: { graded: 3 },
+      trust: { materialized: 1 },
+      compost: { proposals: 0 },
+    });
+  });
+
+  it("bounds the goal batch by default and honors an override", async () => {
+    const db = stubDb({});
+    await runDueAgenticOps({ db });
+    expect(mocks.runDueGoalEvals).toHaveBeenCalledWith(
+      { db },
+      { limit: GOAL_EVAL_BATCH_SIZE }
+    );
+    await runDueAgenticOps({ db }, { goalLimit: 3 });
+    expect(mocks.runDueGoalEvals).toHaveBeenLastCalledWith(
+      { db },
+      { limit: 3 }
+    );
   });
 });

@@ -415,8 +415,8 @@ const searchKnowledgeHandler: ActionHandler = async ({
         toolSubject,
         readKnowledgeDocument,
         apiIntegration,
-        // One response store per turn, created here because the toolset is
-        // rebuilt per model call and a handle must survive across calls.
+        // One response store per turn: a windowed-read handle must survive
+        // across the turn's model calls (the toolset itself is built once).
         apiResponses,
         usedSources,
         searchPasses,

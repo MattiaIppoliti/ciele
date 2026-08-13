@@ -45,10 +45,8 @@ describe("runtime public interface", () => {
       "alertKeys",
       "backfillCollectionToGraph",
       "beginWebsiteCrawl",
-      "draftImprovementProposal",
       "embedConcept",
       "enqueueDraftProposalJob",
-      "enqueueDueEntitySyncs",
       "enqueueEntitySyncJob",
       "enqueueGraphSyncJob",
       "enqueueIngestJob",
@@ -67,16 +65,15 @@ describe("runtime public interface", () => {
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
       "restartWebsiteCrawl",
-      "runCompostPass",
-      "runDueAnswerVerifications",
-      "runDueEntitySyncJobs",
-      "runDueGoalEvals",
-      "runDueGraphSyncJobs",
+      // The nightly agentic-ops drain — one export for the verify-goals cron
+      // route; the four loops it sequences (goals, verifier, trust, compost)
+      // are internals of scheduled.ts, not surface.
+      "runDueAgenticOps",
+      // The one per-kind drain still public: apps/web's reingest test drives
+      // it directly. Its siblings (graph-sync / proposals / memories /
+      // entity-sync) are composed only by finalizeDueCrawls and stay internal.
       "runDueIngestJobs",
-      "runDueMemoryPromotionJobs",
-      "runDueProposalJobs",
       "runGraphLearning",
-      "runTrustMaterialization",
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",

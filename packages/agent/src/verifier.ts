@@ -2,7 +2,7 @@ import { generateObject } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Db } from "@agent-hub/db";
-import { raiseImprovement } from "@agent-hub/db";
+import { raiseOrAttachImprovement } from "@agent-hub/db";
 import type { AiCredentialKind, Provider, VerifiableAnswer } from "@agent-hub/core";
 
 import type { ChatReplyPart } from "./types";
@@ -225,29 +225,15 @@ async function flagFailure(
   candidate: VerifiableAnswer,
   reason: string
 ): Promise<void> {
-  try {
-    const links = await db.listConversationImprovementLinks(
-      candidate.conversationId
-    );
-    const seen = new Set<string>();
-    for (const link of links) {
-      if (seen.has(link.improvementId)) continue;
-      seen.add(link.improvementId);
-      const improvement = await db.getImprovement(link.improvementId);
-      if (
-        improvement &&
-        improvement.status !== "done" &&
-        improvement.status !== "archived"
-      ) {
-        await db.linkImprovementMessage(improvement.id, candidate.messageId);
-        return;
-      }
-    }
-    await raiseImprovement(db, candidate.organizationId, {
+  await raiseOrAttachImprovement(
+    db,
+    candidate.organizationId,
+    {
       title: `Verification failed: ${candidate.question ?? reason}`,
       messageId: candidate.messageId,
-    });
-  } catch (error) {
-    console.error("[verifier] improvement flag failed:", error);
-  }
+      conversationId: candidate.conversationId,
+    },
+    // Never let a tracker write fail the verification itself.
+    { swallowErrors: true }
+  );
 }

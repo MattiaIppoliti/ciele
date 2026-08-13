@@ -11,6 +11,7 @@ const CONFIG: SetupConfig = {
   appUrl: "http://localhost:3000",
   supabaseUrl: "http://localhost:8000",
   dockerDownloadUrl: "https://example.invalid/docker",
+  composePathSeparator: ":",
 };
 
 /** A step whose execute and verify are whatever the test needs them to be. */

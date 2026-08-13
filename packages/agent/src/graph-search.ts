@@ -22,12 +22,10 @@ import type { KnowledgeSearchResult } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import {
   type GraphProvenance,
-  graphUsageProvider,
   isGraphWorkerConfigured,
   searchGraph,
 } from "./graph-worker";
 import type { KnowledgeSearcher } from "./types";
-import { meterUsage } from "./usage";
 
 /**
  * Hydrates graph provenance entries into full `KnowledgeSearchResult`s using
@@ -41,24 +39,46 @@ export async function hydrateGraphProvenance(
   db: Db,
   provenance: GraphProvenance[]
 ): Promise<KnowledgeSearchResult[]> {
+  // Dedupe by conceptId up front, preserving graph order.
   const seen = new Set<string>();
-  // Memoize collection lookups: a search's results usually share one Collection,
-  // so this avoids re-fetching the same one per result.
-  const collectionCache = new Map<string, Awaited<ReturnType<Db["getCollection"]>>>();
-  const getCollection = async (id: string) => {
-    if (!collectionCache.has(id)) collectionCache.set(id, await db.getCollection(id));
-    return collectionCache.get(id) ?? null;
-  };
-  const results: KnowledgeSearchResult[] = [];
-  for (const entry of provenance) {
-    if (!entry.conceptId || seen.has(entry.conceptId)) continue;
+  const entries = provenance.filter((entry) => {
+    if (!entry.conceptId || seen.has(entry.conceptId)) return false;
     seen.add(entry.conceptId);
-    const concept = await db.getConcept(entry.conceptId);
-    if (!concept) continue;
-    const [collection, source] = await Promise.all([
-      getCollection(concept.collectionId),
-      concept.sourceId ? db.getSource(concept.sourceId) : Promise.resolve(null),
-    ]);
+    return true;
+  });
+  if (entries.length === 0) return [];
+
+  // Hydration runs on the interactive turn path, so it fans out in two waves
+  // (concepts, then collections+sources — the latter memoized, results usually
+  // share one Collection) instead of the serial per-entry loop this replaced,
+  // which cost ~2 round trips per result.
+  const concepts = await Promise.all(
+    entries.map((entry) => db.getConcept(entry.conceptId as string))
+  );
+  const collectionCache = new Map<string, ReturnType<Db["getCollection"]>>();
+  const getCollection = (id: string) => {
+    let pending = collectionCache.get(id);
+    if (!pending) {
+      pending = db.getCollection(id);
+      collectionCache.set(id, pending);
+    }
+    return pending;
+  };
+  const hydrated = await Promise.all(
+    concepts.map(async (concept, i) => {
+      if (!concept) return null;
+      const [collection, source] = await Promise.all([
+        getCollection(concept.collectionId),
+        concept.sourceId ? db.getSource(concept.sourceId) : Promise.resolve(null),
+      ]);
+      return { concept, collection, source, excerpt: entries[i].excerpt };
+    })
+  );
+
+  const results: KnowledgeSearchResult[] = [];
+  for (const row of hydrated) {
+    if (!row) continue; // The graph lags a delete — drop vanished Concepts.
+    const { concept, collection, source, excerpt } = row;
     results.push({
       conceptId: concept.id,
       conceptTitle: concept.frontmatter.title ?? concept.path,
@@ -67,7 +87,7 @@ export async function hydrateGraphProvenance(
       collectionName: collection?.name ?? "",
       sourceName: source?.name ?? null,
       resourceUrl: concept.frontmatter.resource ?? null,
-      content: entry.excerpt,
+      content: excerpt,
       // Rank-descending in (0,1] (first entry = 1); keeps graph order for any
       // downstream score-aware consumer without inventing a real relevance score.
       // `engine` is what stops that placeholder being read as one: the coverage
@@ -81,21 +101,34 @@ export async function hydrateGraphProvenance(
 }
 
 /**
+ * How long an interactive turn waits for the graph before falling back to
+ * vector. The worker's `chunks`-mode search is a local vector lookup on its
+ * side — when it has not answered in this window, waiting longer only delays
+ * the same fallback the error path already takes. Deliberately far below the
+ * worker client's 60s default, which sizing suits the off-path jobs.
+ */
+export const INTERACTIVE_GRAPH_SEARCH_TIMEOUT_MS = 10_000;
+
+/**
  * Wraps a vector `KnowledgeSearcher` with the graph engine. When `useGraph` is
  * true and the search is scoped to a concrete collection, it retrieves from the
  * graph and hydrates provenance to citations; on any error, or for an
  * assistant-wide widen, it delegates to `vector`. `onTrace` receives the graph
- * QA id for a successful graph search (feedback substrate). Any LLM usage the
- * worker reports for the search (e.g. session-guidance extraction) is metered
- * into the ai_usage ledger under `graph_search`, attributed to the
- * org/assistant/conversation.
+ * QA id for a successful graph search (feedback substrate).
+ *
+ * No usage metering here: the only mode this path requests is `chunks`, which
+ * makes zero worker LLM calls — enabling `graph_completion` on the turn path
+ * must reintroduce a `graph_search`-stage meter alongside it.
  */
 export function withGraphEngine(opts: {
   db: Db;
-  organizationId: string;
-  assistantId: string;
   collectionId: string | null;
-  conversationId: string;
+  /**
+   * Conversation for usage attribution and the graph session (Retrieval
+   * Trace). Null for synthetic traffic with no Conversation row — the graph
+   * still answers, it just records no per-conversation trace.
+   */
+  conversationId: string | null;
   useGraph: boolean;
   vector: KnowledgeSearcher;
   onTrace?: (qaId: string) => void;
@@ -109,27 +142,9 @@ export function withGraphEngine(opts: {
       try {
         const result = await searchGraph(scoped, query, {
           mode: "chunks",
-          sessionId: opts.conversationId,
+          sessionId: opts.conversationId ?? undefined,
+          timeoutMs: INTERACTIVE_GRAPH_SEARCH_TIMEOUT_MS,
         });
-        // Meter before any fallback decision — the worker's LLM calls were
-        // spent whether or not the graph result ends up serving the answer.
-        if (result.usage) {
-          await meterUsage(opts.db, [
-            {
-              organizationId: opts.organizationId,
-              assistantId: opts.assistantId,
-              conversationId: opts.conversationId,
-              stage: "graph_search",
-              provider: graphUsageProvider(result.usage),
-              modelId: result.usage.modelId,
-              // The worker answers on its own env-configured LLM key — the
-              // deployment operator's credential, i.e. the funded bucket.
-              credentialKind: "platform",
-              inputTokens: result.usage.inputTokens,
-              outputTokens: result.usage.outputTokens,
-            },
-          ]);
-        }
         const hydrated = await hydrateGraphProvenance(opts.db, result.provenance);
         // An empty graph (e.g. a collection not yet ingested) should not starve
         // the answer — fall back to vector when the graph yields nothing.

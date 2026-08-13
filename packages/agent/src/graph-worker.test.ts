@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   datasetForCollection,
-  getGraphWorkerHealth,
   graphUsageProvider,
   improveDataset,
   ingestConcepts,
@@ -355,17 +354,4 @@ describe("graph-worker HTTP calls", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("getGraphWorkerHealth returns true only on a 200 and swallows errors", async () => {
-    fetchMock.mockResolvedValue(jsonResponse({ status: "ok" }));
-    expect(await getGraphWorkerHealth()).toBe(true);
-
-    fetchMock.mockResolvedValue(jsonResponse("down", false, 503));
-    expect(await getGraphWorkerHealth()).toBe(false);
-
-    fetchMock.mockRejectedValue(new Error("connection refused"));
-    expect(await getGraphWorkerHealth()).toBe(false);
-    // Health probe never sends a token.
-    const healthInit = fetchMock.mock.calls.at(-1)?.[1];
-    expect(healthInit?.headers?.Authorization).toBeUndefined();
-  });
 });

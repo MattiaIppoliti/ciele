@@ -93,6 +93,15 @@ export interface ToolRuntimeContext {
   /** Max `searchKnowledge` calls this turn (defaults to MAX_SEARCH_PASSES). */
   searchBudget?: number;
   /**
+   * Passes claimed by in-flight batches but not yet on the ledger. The AI SDK
+   * executes a step's tool calls concurrently, so two simultaneous batches
+   * would otherwise read the same ledger length and jointly overshoot the
+   * budget; this synchronous claim (single-threaded JS: incremented before any
+   * await) is what makes the ceiling hold across them. Lazily initialized by
+   * the search tool — absent means no batch is in flight.
+   */
+  pendingSearchPasses?: { count: number };
+  /**
    * The agent loop's iteration budget (#558). Every tool result carries its
    * escalating note, so the model plans against the limit instead of being cut
    * off by it. Absent in the deterministic no-model path and in pure tests.
@@ -316,14 +325,37 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       const found: KnowledgeSearchResult[] = [];
       let exhausted = false;
       let failure: string | null = null;
-      for (const query of queries) {
-        const outcome = await runSearchPass(query, "collection", runtime, {
-          onError: "report",
-          emitLifecycle: false,
-        });
+      // The batch fans out concurrently — the tool description promises the
+      // queries "run together", and each is an independent embed + retrieve
+      // round trip, so running them in series just stacked their latency.
+      // The remaining budget is claimed synchronously up front (ledger length
+      // + in-flight claims), so neither this batch nor a concurrent sibling
+      // tool call can push the turn past the per-turn ceiling.
+      const pending = (ctx.pendingSearchPasses ??= { count: 0 });
+      const remaining = Math.max(
+        0,
+        budget - ctx.searchPasses.length - pending.count
+      );
+      const toRun = queries.slice(0, remaining);
+      if (toRun.length < queries.length) exhausted = true;
+      pending.count += toRun.length;
+      let outcomes: Awaited<ReturnType<typeof runSearchPass>>[];
+      try {
+        outcomes = await Promise.all(
+          toRun.map((query) =>
+            runSearchPass(query, "collection", runtime, {
+              onError: "report",
+              emitLifecycle: false,
+            })
+          )
+        );
+      } finally {
+        pending.count -= toRun.length;
+      }
+      for (const outcome of outcomes) {
         if (outcome.kind === "budget-exhausted") {
           exhausted = true;
-          break;
+          continue;
         }
         // A throwing searcher reads to the model like any broken tool — but one
         // failed query in a batch must not discard the ones that worked.
@@ -595,17 +627,24 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   }
   if (ctx.queryEntityRecords) {
     const subject = ctx.toolSubject;
+    // Record-grounded answers cite like knowledge- and API-grounded ones: an
+    // answered Entity query lands its stable citation in the collector.
+    const cite = (source: KnowledgeSearchResult) => ctx.usedSources.push(source);
     for (const entity of ctx.entities ?? []) {
       const specs: RuntimeToolSpec[] =
         entity.scope === "shared"
-          ? entityToolSpecs(entity, ctx.queryEntityRecords)
+          ? entityToolSpecs(entity, ctx.queryEntityRecords, null, { cite })
           : subject?.type === "sso" && subject.claimValue
-            ? entityToolSpecs(entity, ctx.queryEntityRecords, {
-                value: subject.claimValue,
-              })
+            ? entityToolSpecs(
+                entity,
+                ctx.queryEntityRecords,
+                { value: subject.claimValue },
+                { cite }
+              )
             : subject?.type === "member"
               ? entityToolSpecs(entity, ctx.queryEntityRecords, null, {
                   crossRecord: true,
+                  cite,
                 })
               : [];
       for (const spec of specs) {
