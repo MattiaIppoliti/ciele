@@ -17,6 +17,7 @@ import { ProgressLine } from "@/components/chat/progress-line";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { useShouldAnimate } from "@/components/home/use-in-viewport";
+import { cn } from "@/lib/utils";
 
 /* The live-preview shot on /features/assistants, played rather than framed:
    one scripted conversation through the real widget components — quick
@@ -222,7 +223,7 @@ const DWELL_MS = 4000;
 
 const noop = () => {};
 
-export function AssistantPreviewDemo() {
+export function AssistantPreviewDemo({ className }: { className?: string }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const active = useShouldAnimate(frameRef);
 
@@ -279,7 +280,10 @@ export function AssistantPreviewDemo() {
       aria-hidden
       // React 19 boolean `inert`: nothing inside is focusable or clickable.
       inert
-      className="bg-muted/40 flex h-full justify-center px-4 pt-4 sm:px-10 sm:pt-6"
+      className={cn(
+        "bg-muted/40 flex h-full justify-center px-4 pt-4 sm:px-10 sm:pt-6",
+        className
+      )}
     >
       <div className="bg-background flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border shadow-xl shadow-black/10 dark:shadow-black/40">
         <ChatHeader

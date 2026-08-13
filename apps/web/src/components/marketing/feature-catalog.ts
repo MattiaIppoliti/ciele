@@ -28,8 +28,9 @@ export interface FeatureEntry {
   points: { title: string; body: string }[];
   /** Page <title>/description. */
   meta: string;
-  /** An optional second act: another claim over another picture. */
-  coda?: { eyebrow: string; headline: string; body: string; mock: "kanban" };
+  /** An optional second act: another claim over another picture — a static
+   *  mock, or the widget preview playing its scripted conversation on loop. */
+  coda?: { eyebrow: string; headline: string; body: string; mock: "kanban" | "preview" };
 }
 
 export const FEATURES: FeatureEntry[] = [
@@ -56,6 +57,12 @@ export const FEATURES: FeatureEntry[] = [
         body: "An answering style guide, a disclaimer and starter buttons shape how the assistant opens a conversation and how it phrases what it knows.",
       },
     ],
+    coda: {
+      eyebrow: "The live preview",
+      headline: "Watch it answer while you edit",
+      body: "The editor's preview runs the whole turn in front of you: the flow it matched, the sources it read, the API it queried and the answer it streamed, before any visitor sees it.",
+      mock: "preview",
+    },
   },
   {
     slug: "knowledge",

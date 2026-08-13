@@ -7,6 +7,7 @@ import { FeaturePoints } from "@/components/marketing/feature-points";
 import { FeatureWindow } from "@/components/marketing/feature-window";
 import { KanbanMock } from "@/components/marketing/feature-mocks";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
+import { PreviewCoda } from "@/components/marketing/preview-coda";
 
 /* A feature page is one claim, one picture of the screen that backs it, and
    three supporting points — in that order, so a visitor can stop reading as
@@ -56,7 +57,7 @@ export function FeatureContent({ feature }: { feature: FeatureEntry }) {
               </p>
             </div>
             <div className="mt-12">
-              <KanbanMock />
+              {feature.coda.mock === "preview" ? <PreviewCoda /> : <KanbanMock />}
             </div>
           </section>
         )}
