@@ -17,6 +17,7 @@ const COLUMNS: Array<{
     links: [
       { name: "Features", href: "#features" },
       { name: "Pricing", href: "/pricing" },
+      { name: "Download", href: "/download" },
       { name: "Request a demo", href: "/contact/sales" },
       { name: "Sign in", href: "/login" },
     ],

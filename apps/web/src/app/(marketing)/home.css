@@ -794,7 +794,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
    home-header.tsx); this file is unlayered, so this rule wins over it. */
 @media (min-width: 1024px) {
   [data-signed-in] nav[data-scrolled]:not([data-state="active"]) > div {
-    max-width: 43rem;
+    max-width: 49.5rem;
   }
 }
 

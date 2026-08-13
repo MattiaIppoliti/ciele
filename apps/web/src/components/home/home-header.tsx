@@ -314,11 +314,11 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
             // row can get — logo + the three nav items (two of them dropdown
             // triggers, so they carry a chevron) + the CTA cluster. Too narrow
             // and the row squeezes or wraps instead of gliding — the four nav
-            // items alone measure ~580px at rest.
+            // items alone measure ~680px at rest.
             // The signed-out width is the wider one; home.css trims it for a
             // signed-in caller, since that is now a CSS fact, not a React one.
             scrolled &&
-              "bg-background/50 border-border backdrop-blur-lg max-w-[49rem] lg:px-6"
+              "bg-background/50 border-border backdrop-blur-lg max-w-[55.5rem] lg:px-6"
           )}
         >
           <div

@@ -122,8 +122,9 @@ export const menuItems: MenuItem[] = [
       {
         badge: "Self-host",
         title: "Run it yourself",
-        href: `${DOCS}/self-hosting`,
-        external: true,
+        /* Our own download page, not the docs: the site sells it, the docs
+           explain it. The page links onward to the full guide itself. */
+        href: "/download",
         visual: "folder",
       },
     ],
@@ -142,6 +143,9 @@ export const menuItems: MenuItem[] = [
       ],
     ],
   },
+  /* A plain link, deliberately last: the one item that hands you the product
+     rather than a pitch about it. */
+  { name: "Download", href: "/download" },
 ];
 
 /* The Docs panel's right half: one tile per top-level docs area, in the order

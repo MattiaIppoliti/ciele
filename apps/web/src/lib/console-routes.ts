@@ -30,6 +30,7 @@ export const CONSOLE_PATH_PREFIXES = [
  * is, so a new marketing section cannot land behind the login wall.
  */
 export const MARKETING_PATH_PREFIXES = [
+  "/download",
   "/enterprise",
   "/features",
   // The landing page lives in the group too, so the shell it shares with the
