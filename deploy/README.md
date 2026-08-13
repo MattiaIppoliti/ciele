@@ -5,6 +5,18 @@ product — admin console, widget runtime, database, background jobs — with no
 account anywhere and no license fee.
 
 ```sh
+curl -fsSL https://ciele.app/install.sh | sh
+```
+
+That installer checks the prerequisites, fetches the source into `./ciele` and
+runs the script below; `| sh -s -- --seed` forwards flags to it, and `CIELE_DIR`
+/ `CIELE_REF` choose the directory and the release tag. It is generated from
+`apps/web/src/lib/self-host-install.ts`, whose test pins it to this script — so
+a flag renamed here fails the build rather than someone's install.
+
+By hand, which is all it does:
+
+```sh
 git clone <this repo> && cd ciele
 ./deploy/bootstrap.sh          # generates every secret, starts the stack
 ```

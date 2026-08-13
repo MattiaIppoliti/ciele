@@ -1,0 +1,185 @@
+import { normalizeSafeOrigin } from "./safe-origin";
+
+/**
+ * The one-command self-host installer: the script served at `/install.sh` and
+ * the line the download page tells you to paste.
+ *
+ * This exists because `deploy/bootstrap.sh` cannot be piped from curl — it
+ * `cd`s to its own directory and reads `.env.example` and `docker-compose.yml`
+ * from beside itself, so it needs the checkout to already be on disk. This
+ * script is the missing half: detect the platform, prove the prerequisites,
+ * fetch the source, then hand off. It deliberately does no configuration of
+ * its own — every secret and every compose decision stays in `bootstrap.sh`,
+ * which remains the single source of truth for what a stack is.
+ *
+ * The facts it borrows from `bootstrap.sh` — where the script lives, what
+ * interprets it, what it needs on PATH, which flags it parses — are exported
+ * as constants below and pinned to the real file by `self-host-install.test.ts`.
+ * That test is the reason this can be trusted: rename a flag or move the
+ * script and the build fails here rather than in someone's terminal.
+ */
+
+/** Where the installer is served. A route segment, so it is `/install.sh`. */
+export const INSTALL_SCRIPT_PATH = "/install.sh";
+
+/** The handoff target, relative to the root of a checkout. */
+export const BOOTSTRAP_RELATIVE_PATH = "deploy/bootstrap.sh";
+
+/**
+ * `bootstrap.sh` is a bash script, and the installer runs it by explicit
+ * interpreter rather than by execute bit — a release tarball is not guaranteed
+ * to preserve the mode, and `sh bootstrap.sh` would run its bash-isms under
+ * the wrong shell.
+ */
+export const BOOTSTRAP_INTERPRETER = "bash";
+
+/**
+ * What must be on PATH before the handoff is worth attempting: bash to run
+ * `bootstrap.sh`, openssl because it generates every secret, docker because it
+ * is the stack. Checked up front so a missing dependency is one clear line
+ * instead of a failure five minutes into a build.
+ */
+export const BOOTSTRAP_REQUIRED_COMMANDS = ["bash", "openssl", "docker"] as const;
+
+/**
+ * The flags the installer forwards, and therefore advertises. `bootstrap.sh`
+ * accepts more than the download page shows; these are the ones documented as
+ * reachable through the pipe (`| sh -s -- --seed`).
+ */
+export const BOOTSTRAP_FORWARDED_FLAGS = ["--seed", "--env-only", "--images"] as const;
+
+/** Default checkout directory, relative to wherever the command was run. */
+export const DEFAULT_CHECKOUT_DIR = "ciele";
+
+/**
+ * The open-source repository the installer clones and the download page links
+ * to. Overridable so a fork installs itself rather than us; resolved here so
+ * the page's clone line and the served script can never name different repos.
+ */
+export function resolveSourceUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com/MattiaIppoliti/ciele"
+  );
+}
+
+/**
+ * A repository URL is about to be interpolated into a double-quoted shell
+ * string, so "parses as a URL" is not enough — `$`, a backtick or a quote
+ * would escape the literal. https and an unreserved-character path only.
+ */
+export function normalizeSourceUrl(rawSourceUrl: string): string {
+  const url = new URL(rawSourceUrl);
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("Unsupported Ciele source URL.");
+  }
+  const normalized = `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
+  if (!/^https:\/\/[A-Za-z0-9.-]+(?::\d+)?(?:\/[A-Za-z0-9._~-]+)*$/.test(normalized)) {
+    throw new Error("Unsupported Ciele source URL.");
+  }
+  return normalized;
+}
+
+/**
+ * The single line a visitor copies. Kept next to the script it fetches so the
+ * path can never drift between the page and the route.
+ */
+export function selfHostInstallCommand(rawOrigin: string): string {
+  return `curl -fsSL ${normalizeSafeOrigin(rawOrigin)}${INSTALL_SCRIPT_PATH} | sh`;
+}
+
+/**
+ * The script served at `/install.sh`.
+ *
+ * POSIX sh, because it is piped to `sh`. Nothing here reads stdin — stdin *is*
+ * the script when curl-piped, so a prompt would either consume the rest of the
+ * script or hang; every choice is an environment variable or a forwarded flag
+ * instead. Nothing here deletes anything either: an unexpected directory is a
+ * refusal, never a cleanup.
+ */
+export function buildSelfHostInstallScript(rawSourceUrl: string): string {
+  const repo = normalizeSourceUrl(rawSourceUrl);
+  const required = BOOTSTRAP_REQUIRED_COMMANDS.join(" ");
+
+  return `#!/bin/sh
+# Install a self-hosted Ciele.
+#
+#   curl -fsSL <origin>${INSTALL_SCRIPT_PATH} | sh
+#   curl -fsSL <origin>${INSTALL_SCRIPT_PATH} | sh -s -- --seed
+#
+# Fetches the source, then hands off to ${BOOTSTRAP_RELATIVE_PATH}, which
+# generates every secret and starts the stack. Arguments after \`-s --\` are
+# forwarded to it (${BOOTSTRAP_FORWARDED_FLAGS.join(", ")}).
+#
+# Environment:
+#   CIELE_DIR   where to put the checkout (default: ./${DEFAULT_CHECKOUT_DIR})
+#   CIELE_REF   a release tag to install instead of the default branch
+#
+# Generated by apps/web/src/lib/self-host-install.ts — do not edit by hand.
+set -eu
+
+REPO="${repo}"
+DIR="\${CIELE_DIR:-${DEFAULT_CHECKOUT_DIR}}"
+REF="\${CIELE_REF:-}"
+
+say() { printf '%s\\n' "$*"; }
+die() { printf 'Error: %s\\n' "$*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+case "$(uname -s 2>/dev/null || echo unknown)" in
+  Darwin | Linux) ;;
+  MINGW* | MSYS* | CYGWIN*)
+    die "Windows shells cannot run this installer. Use Ciele Desktop, or run it inside WSL2."
+    ;;
+  *) die "Unsupported operating system — self-hosting is supported on macOS and Linux." ;;
+esac
+
+for cmd in ${required}; do
+  have "$cmd" || die "'$cmd' is required but not installed."
+done
+
+# Compose ships as a docker plugin or as a standalone binary; bootstrap.sh
+# accepts either, so accept either here too rather than rejecting a working
+# machine.
+if ! docker compose version >/dev/null 2>&1 && ! have docker-compose; then
+  die "Docker Compose is required (install Docker Desktop or the compose plugin)."
+fi
+
+if [ -e "$DIR" ]; then
+  # Re-running bootstrap.sh over an existing checkout is safe by design — it
+  # never overwrites an existing deploy/.env — so a Ciele checkout is a resume,
+  # and anything else is left strictly alone.
+  [ -f "$DIR/${BOOTSTRAP_RELATIVE_PATH}" ] ||
+    die "'$DIR' already exists and is not a Ciele checkout. Move it, or set CIELE_DIR to another path."
+  say "Reusing the existing checkout in $DIR."
+else
+  say "Fetching Ciele into $DIR…"
+  if have git; then
+    if [ -n "$REF" ]; then
+      git clone --depth 1 --branch "$REF" "$REPO.git" "$DIR"
+    else
+      git clone --depth 1 "$REPO.git" "$DIR"
+    fi
+  elif have curl && have tar; then
+    # No git: a release tarball carries the same tree. --strip-components drops
+    # the archive's own top-level directory, whose name embeds the ref.
+    if [ -n "$REF" ]; then
+      archive="$REPO/archive/refs/tags/$REF.tar.gz"
+    else
+      archive="$REPO/archive/refs/heads/main.tar.gz"
+    fi
+    mkdir -p "$DIR"
+    curl -fsSL "$archive" | tar -xz -C "$DIR" --strip-components=1
+  else
+    die "Fetching the source needs either 'git', or 'curl' and 'tar'."
+  fi
+fi
+
+cd "$DIR"
+[ -f "${BOOTSTRAP_RELATIVE_PATH}" ] || die "This checkout has no ${BOOTSTRAP_RELATIVE_PATH}."
+
+say ""
+say "Handing off to ${BOOTSTRAP_RELATIVE_PATH} — it generates every secret and starts the stack."
+say ""
+exec ${BOOTSTRAP_INTERPRETER} ./${BOOTSTRAP_RELATIVE_PATH} "$@"
+`;
+}

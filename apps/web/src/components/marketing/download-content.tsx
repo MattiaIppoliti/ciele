@@ -8,31 +8,58 @@ import {
 } from "lucide-react";
 import { Badge, Button, cn } from "@agent-hub/ui";
 import { CtaSection } from "@/components/marketing/cta-section";
+import { InstallCommand } from "@/components/marketing/install-command";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
 import { CodeBlock } from "@/components/ui/code-block";
+import {
+  INSTALL_SCRIPT_PATH,
+  resolveSourceUrl,
+  selfHostInstallCommand,
+} from "@/lib/self-host-install";
 import { CTA_CLASS } from "./plan-cards";
 
 /**
  * The public download page: every way to get Ciele running on your own
  * machine, self-service, without leaving the site.
  *
- * A server component throughout — like the pricing page, all of this is static
- * content, and the only motion (the card reveal and spotlight) lives inside
- * the `SpotlightCard` island.
+ * A server component, with two client islands: the card reveal/spotlight
+ * (`SpotlightCard`) and the hero's copy button (`InstallCommand`). All of the
+ * content itself is static.
  *
  * The commands mirror `deploy/README.md` and
  * `apps/docs/content/docs/self-hosting/*`; if those change, change this too —
- * a download page that hands out a broken bootstrap is worse than no page.
+ * a download page that hands out a broken bootstrap is worse than no page. The
+ * hero one-liner is the exception that cannot drift: it is built by the same
+ * module that serves the script (`lib/self-host-install.ts`), which is pinned
+ * to `deploy/bootstrap.sh` by its own test.
  */
 
 /**
  * The open-source repository — where the desktop build is released, what the
  * quick start clones, and where "View the source" points. Overridable so a
- * fork points at itself rather than at us (same constant as the pricing page).
+ * fork points at itself rather than at us; resolved through the installer's
+ * helper so the clone line below and the served script name the same repo.
  */
-const SOURCE_URL =
-  process.env.NEXT_PUBLIC_SOURCE_URL || "https://github.com/MattiaIppoliti/ciele";
+const SOURCE_URL = resolveSourceUrl();
+
+/**
+ * Where this deployment serves `/install.sh` from. Read from the app's own
+ * origin rather than hardcoded, so a fork (or a preview deployment) hands out
+ * a command that actually resolves; the default is the public site.
+ *
+ * A build with a nonsense origin should show no command at all rather than an
+ * unusable one — the helper throws, and the hero drops the pill.
+ */
+function installCommand(): string | null {
+  try {
+    return selfHostInstallCommand(
+      process.env.NEXT_PUBLIC_APP_URL || "https://ciele.app"
+    );
+  } catch {
+    return null;
+  }
+}
 
 /** The macOS beta `.zip` is attached to every release of the public repo. */
 const RELEASES_URL = `${SOURCE_URL}/releases/latest`;
@@ -153,6 +180,8 @@ const STACK = [
 ];
 
 export function DownloadContent() {
+  const command = installCommand();
+
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
@@ -171,6 +200,34 @@ export function DownloadContent() {
             your own machine or servers. Open source, no account anywhere, no
             license fee.
           </p>
+
+          {/* One command, above the fold. It fetches the source and hands off
+              to the same bootstrap script the quick start below runs, so this
+              is a shortcut through that section rather than a second path. */}
+          {command && (
+            <div className="mx-auto mt-8 max-w-xl">
+              <InstallCommand command={command} />
+              <p className="text-muted-foreground mt-3 text-sm">
+                macOS and Linux, with Docker.{" "}
+                <a
+                  href={`#${SELF_HOST_ANCHOR}`}
+                  className="text-foreground underline underline-offset-4 hover:no-underline"
+                >
+                  What it does
+                </a>
+                , or{" "}
+                {/* Piping a script to a shell deserves the offer to read it
+                    first, and the route serves it as plain text. */}
+                <a
+                  href={INSTALL_SCRIPT_PATH}
+                  className="text-foreground underline underline-offset-4 hover:no-underline"
+                >
+                  read the script
+                </a>{" "}
+                before you run it.
+              </p>
+            </div>
+          )}
         </MarketingHero>
 
         {/* The three ways in, easiest first. */}
@@ -228,7 +285,8 @@ export function DownloadContent() {
             <p className="text-muted-foreground mt-4 text-base leading-relaxed">
               One bootstrap script and no form to fill in. It generates every
               secret, starts everything, and the first account you create owns
-              its organization.
+              its organization. The command at the top of this page runs exactly
+              these steps for you; here they are to run by hand.
             </p>
           </div>
 

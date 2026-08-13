@@ -34,6 +34,9 @@ const PUBLIC_PATHS = [
   /^\/api\/local-connector\/runtime$/,
   // Secret-free install script for the one-command terminal connect flow.
   /^\/api\/local-connector\/install\/(?:sh|ps1)$/,
+  // The self-host installer the download page hands out (curl | sh). Public by
+  // definition — it names the open-source repo and generates nothing here.
+  /^\/install\.sh$/,
 ];
 
 export async function middleware(request: NextRequest) {

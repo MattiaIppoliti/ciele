@@ -111,7 +111,46 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
       aria-hidden
       className="text-muted-foreground/40 group-hover/card:text-muted-foreground/70 mt-3 block h-20 overflow-hidden duration-300"
     >
-      {visual === "flows" ? (
+      {visual === "stack" ? (
+        <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
+          {/* Three isometric slabs — the stack you run yourself. Same line
+              weights and muted fills as the flows/insights artwork; the deck
+              pulls apart on the card's hover, so the "self-host" tile answers
+              the folder that opens on the Docs one. */}
+          {[26, 42, 58].map((cy, index) => (
+            <g
+              key={cy}
+              // Outer slabs lift and drop, the middle one holds the line.
+              className={cn(
+                "duration-500 ease-out",
+                index === 0 && "group-hover/card:-translate-y-[5px]",
+                index === 2 && "group-hover/card:translate-y-[5px]"
+              )}
+              style={{ transitionDelay: `${index * 40}ms` }}
+            >
+              {/* Top face. */}
+              <path
+                d={`M80 ${cy - 18}L118 ${cy}L80 ${cy + 18}L42 ${cy}Z`}
+                strokeWidth="1"
+                className="fill-muted/70"
+              />
+              {/* The two visible sides, a touch darker so the slab has body. */}
+              <path
+                d={`M42 ${cy}L80 ${cy + 18}L80 ${cy + 24}L42 ${cy + 6}Z`}
+                strokeWidth="1"
+                className="fill-muted"
+              />
+              <path
+                d={`M118 ${cy}L80 ${cy + 18}L80 ${cy + 24}L118 ${cy + 6}Z`}
+                strokeWidth="1"
+                className="fill-muted"
+              />
+              {/* Front-face status light. */}
+              <circle cx="92" cy={cy + 17} r="1.6" strokeWidth="1" className="opacity-70" />
+            </g>
+          ))}
+        </svg>
+      ) : visual === "flows" ? (
         <svg viewBox="0 0 200 92" className="size-full" fill="none" stroke="currentColor">
           {/* Two triggers on the left fanning into the flows they match —
               the router, drawn as what it does. */}
@@ -320,16 +359,18 @@ export function PanelContent({
           ))}
         </ul>
       ))}
-      {item.areaGrid && (
-        <motion.div className="shrink-0 self-center" {...row(cursor++)}>
-          <DocsAreaGrid onNavigate={onNavigate} />
-        </motion.div>
-      )}
+      {/* Cards first, then the docs tiles: on the Docs panel the promo card is
+          the "Getting started" folder and the tiles sit to its right. */}
       {item.cards?.map((card) => (
         <motion.div key={card.title} className="shrink-0" {...row(cursor++)}>
           <DropdownCard card={card} onNavigate={onNavigate} />
         </motion.div>
       ))}
+      {item.areaGrid && (
+        <motion.div className="shrink-0 self-center" {...row(cursor++)}>
+          <DocsAreaGrid onNavigate={onNavigate} />
+        </motion.div>
+      )}
     </div>
   );
 }

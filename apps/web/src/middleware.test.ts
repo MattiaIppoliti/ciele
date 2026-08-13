@@ -75,6 +75,17 @@ describe("middleware local connector relay", () => {
     }
   });
 
+  it("serves the self-host installer without a browser session", async () => {
+    // `curl | sh` carries no cookies: behind the auth gate this would pipe a
+    // login redirect into the visitor's shell.
+    const response = await middleware(
+      new NextRequest("https://ciele.example.com/install.sh", { method: "GET" })
+    );
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("location")).toBeNull();
+  });
+
   it("lets an anonymous visitor reach the widget SSO routes (not the admin login)", async () => {
     for (const path of [
       "/api/sso/entra/start?assistantId=a1",

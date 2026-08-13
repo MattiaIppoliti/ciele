@@ -34,7 +34,7 @@ export type PanelCard = {
   title: string;
   href: string;
   external?: boolean;
-  visual: "list" | "grid" | "waves" | "lock" | "folder" | "flows";
+  visual: "list" | "grid" | "waves" | "lock" | "folder" | "flows" | "stack";
 };
 export type MenuItem = MenuLink & {
   /* Present = the item is a dropdown trigger, not a link of its own. `href`
@@ -125,7 +125,10 @@ export const menuItems: MenuItem[] = [
         /* Our own download page, not the docs: the site sells it, the docs
            explain it. The page links onward to the full guide itself. */
         href: "/download",
-        visual: "folder",
+        /* The stack you run on your own machine, in the same isometric line
+           style as the Flows and Insights artwork. The folder that used to be
+           here now opens on Docs → Getting started. */
+        visual: "stack",
       },
     ],
   },
@@ -142,10 +145,18 @@ export const menuItems: MenuItem[] = [
         doc("Self-hosting", "/self-hosting"),
       ],
     ],
+    /* Getting started gets the folder — the manual opening itself — in its own
+       slot between the link column and the area tiles. */
+    cards: [
+      {
+        badge: "Start here",
+        title: "Getting started",
+        href: `${DOCS}/getting-started`,
+        external: true,
+        visual: "folder",
+      },
+    ],
   },
-  /* A plain link, deliberately last: the one item that hands you the product
-     rather than a pitch about it. */
-  { name: "Download", href: "/download" },
 ];
 
 /* The Docs panel's right half: one tile per top-level docs area, in the order

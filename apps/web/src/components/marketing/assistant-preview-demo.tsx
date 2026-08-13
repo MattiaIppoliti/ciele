@@ -221,6 +221,12 @@ const FINAL_STEPS: TurnStep[] = (() => {
 /** Loop pacing: how long the finished answer holds before replaying. */
 const DWELL_MS = 4000;
 
+/* One dial over the whole script's tempo. The delays above are written as the
+   turn's *shape* — which beat is longer than which — and this stretches them:
+   played at their raw speed the assistant reasoned and answered faster than a
+   reader can follow the panel, so the thinking never registered. */
+const PACE = 1.5;
+
 const noop = () => {};
 
 export function AssistantPreviewDemo({ className }: { className?: string }) {
@@ -260,7 +266,7 @@ export function AssistantPreviewDemo({ className }: { className?: string }) {
       setStreaming,
       setAnswered,
     })) {
-      at += delay;
+      at += delay * PACE;
       timers.push(window.setTimeout(apply, at));
     }
     // The loop: hold the finished answer, then replay from the top.

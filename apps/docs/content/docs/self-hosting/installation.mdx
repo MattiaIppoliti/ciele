@@ -16,7 +16,28 @@ Docker Desktop. This page is the server path.
 - Reserve sufficient disk space for images, Postgres, and uploaded files.
 - Reserve more memory when you enable the optional workers.
 
+## One command
+
+The installer performs every step in the next section: it verifies the
+prerequisites, fetches the source into `./ciele`, and runs `bootstrap.sh`.
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh
+```
+
+Pass bootstrap flags through the pipe with `-s --`, and set `CIELE_DIR` to
+choose the checkout directory or `CIELE_REF` to install a release tag:
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
+```
+
+The installer never deletes anything: if the target directory exists and is not
+a Ciele checkout, it stops and tells you.
+
 ## Bootstrap the stack
+
+To perform the same steps by hand:
 
 ```bash
 git clone https://github.com/MattiaIppoliti/ciele.git
