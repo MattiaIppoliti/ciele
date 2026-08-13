@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { CieleClient } from "@ciele/client";
 import { callTool } from "./server.ts";
 import { buildTools, type CieleTool } from "./tools.ts";
@@ -259,5 +260,40 @@ describe("ciele MCP tools", () => {
     const result = await callTool(tool("manage_assistants"), { action: "list" }, false);
     expect(result.content[0].type).toBe("text");
     expect(JSON.parse(result.content[0].text)).toEqual({ data: [{ id: "a1" }] });
+  });
+
+  /**
+   * 2026-07-28 asks servers to return tools in a deterministic order so
+   * clients can cache and LLM prompt caches hit (#701). `buildTools` returns
+   * an array literal, which already satisfies it — this locks that in, because
+   * the obvious future refactor (build from a map/registry) would silently
+   * break it.
+   */
+  it("returns tools in a deterministic order", () => {
+    const names = () =>
+      buildTools(
+        new CieleClient({ apiKey: "ciele_sk_test", baseUrl: "http://self.host" })
+      ).map((tool) => tool.name);
+
+    expect(names()).toEqual(names());
+    expect(names()[0]).toBe("ciele_identity");
+  });
+
+  /**
+   * SEP-2106 loosened `inputSchema` to any JSON Schema 2020-12. Every tool
+   * declares a raw Zod shape that `server.ts` wraps in `z.object`, so what
+   * reaches the wire must be an object schema — a tool whose schema is not an
+   * object would be rejected by a strict client.
+   */
+  it("every tool declares an object-shaped input schema", () => {
+    const { tools } = harness();
+    for (const tool of tools.values()) {
+      const jsonSchema = z.toJSONSchema(z.object(tool.schema));
+      expect(jsonSchema.type, `${tool.name} input schema`).toBe("object");
+      if (tool.name !== "ciele_identity") {
+        // Every domain tool discriminates on `action`.
+        expect(Object.keys(jsonSchema.properties ?? {})).toContain("action");
+      }
+    }
   });
 });

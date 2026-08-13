@@ -1,4 +1,5 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
+import { z } from "zod";
 import { CieleApiError, CieleClient } from "@ciele/client";
 import { ToolInputError, buildTools, type CieleTool } from "./tools.ts";
 
@@ -44,8 +45,26 @@ export async function callTool(
   }
 }
 
+/**
+ * 2026-07-28 requires `ttlMs`/`cacheScope` on cacheable results and the SDK's
+ * conservative default is `ttlMs: 0` — uncacheable. Our tool set is fixed at
+ * build time: it cannot change for a running process, only across an upgrade.
+ * An hour lets clients cache the list (and their prompt caches hit) while
+ * still picking up a deployment within the hour; connected clients get
+ * `listChanged` regardless.
+ *
+ * `private` deliberately, not `public`: the list is org-independent today, but
+ * scoping it to the requesting client is what keeps that from becoming a leak
+ * if tool availability ever narrows by Role — and a client caches it either
+ * way, so `public` would only buy shared-intermediary caching we don't need.
+ */
+const CACHE_HINT = { ttlMs: 60 * 60 * 1000, cacheScope: "private" } as const;
+
 export function createCieleMcpServer(options: ServerOptions): McpServer {
-  const server = new McpServer({ name: "ciele", version: "0.1.0" });
+  const server = new McpServer(
+    { name: "ciele", version: "0.1.0" },
+    { cacheHints: { "tools/list": CACHE_HINT, "server/discover": CACHE_HINT } }
+  );
   for (const tool of buildTools(options.client)) {
     server.registerTool(
       tool.name,
@@ -53,7 +72,9 @@ export function createCieleMcpServer(options: ServerOptions): McpServer {
         description: options.readOnly
           ? `${tool.description} (READ-ONLY mode: mutating actions are refused.)`
           : tool.description,
-        inputSchema: tool.schema,
+        // Tools declare raw shapes; v2 wants a Standard Schema object, so the
+        // one wiring site wraps instead of all 14 definitions changing.
+        inputSchema: z.object(tool.schema),
       },
       (args: Record<string, unknown>) => callTool(tool, args ?? {}, options.readOnly)
     );

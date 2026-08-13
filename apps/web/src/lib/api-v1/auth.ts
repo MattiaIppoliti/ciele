@@ -52,24 +52,26 @@ const unauthorized = () =>
   apiError(401, "unauthorized", "Provide a valid API key as a Bearer token");
 
 /**
- * Resolves `Authorization: Bearer ciele_sk_…` to an ApiKeyContext, or the
- * 401 Response to return as-is. Missing header, wrong scheme, unknown secret
- * and revoked key are deliberately the same 401 — the response never says
- * which part failed. Stamps `lastUsedAt` best-effort on success.
+ * The one definition of what an `Authorization: Bearer ciele_sk_…` header
+ * looks like. Callers that need the raw secret rather than a resolved context
+ * — the MCP endpoint forwards it to the tools — share it from here so a header
+ * this rejects can never be one a caller accepts.
  */
+export function bearerApiKeySecret(header: string | null): string | undefined {
+  const [scheme, secret, ...rest] = (header ?? "").split(" ");
+  const wellFormed =
+    scheme?.toLowerCase() === "bearer" &&
+    !!secret &&
+    rest.length === 0 &&
+    secret.startsWith(API_KEY_PREFIX);
+  return wellFormed ? secret : undefined;
+}
+
 export async function resolveApiKeyContext(
   request: Request
 ): Promise<ApiKeyContext | Response> {
-  const header = request.headers.get("authorization") ?? "";
-  const [scheme, secret, ...rest] = header.split(" ");
-  if (
-    scheme?.toLowerCase() !== "bearer" ||
-    !secret ||
-    rest.length > 0 ||
-    !secret.startsWith(API_KEY_PREFIX)
-  ) {
-    return unauthorized();
-  }
+  const secret = bearerApiKeySecret(request.headers.get("authorization"));
+  if (!secret) return unauthorized();
 
   const db = getApiV1Db();
   const key = await db.getApiKeyByHash(hashApiKeySecret(secret));

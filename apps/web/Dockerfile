@@ -35,12 +35,13 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 # the closure from the manifests and fails if one is missing from this list.
 COPY apps/web/package.json apps/web/
 COPY packages/agent/package.json packages/agent/
+COPY packages/charts/package.json packages/charts/
+COPY packages/client/package.json packages/client/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
+COPY packages/mcp/package.json packages/mcp/
 COPY packages/ops/package.json packages/ops/
 COPY packages/ui/package.json packages/ui/
-COPY packages/charts/package.json packages/charts/
-COPY packages/ops/package.json packages/ops/
 RUN pnpm install --frozen-lockfile --filter @agent-hub/web...
 
 FROM deps AS build

@@ -11,18 +11,20 @@
     "ciele-mcp": "./bin/ciele-mcp.mjs"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
   },
   "engines": {
     "node": ">=22.6"
   },
   "dependencies": {
     "@ciele/client": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/server": "^2.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
+    "@modelcontextprotocol/client": "^2.0.0",
     "@types/node": "^20.19.43",
     "eslint": "^9.39.4",
     "typescript": "^5",

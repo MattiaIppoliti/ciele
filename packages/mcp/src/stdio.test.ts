@@ -1,58 +1,90 @@
-import { createServer } from "node:http";
+import { createServer, type Server } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { describe, expect, it } from "vitest";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+import { Client } from "@modelcontextprotocol/client";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-describe("ciele MCP stdio process", () => {
-  it("initializes, lists every tool, and calls the local Ciele API", async () => {
-    const requests: string[] = [];
-    const api = createServer((request, response) => {
-      requests.push(request.url ?? "");
-      response.setHeader("content-type", "application/json");
-      if (request.headers.authorization !== "Bearer ciele_sk_stdio_test") {
-        response.statusCode = 401;
-        response.end(JSON.stringify({ error: { code: "unauthorized", message: "Bad key" } }));
-      } else if (request.url === "/api/v1/meta") {
-        response.end(JSON.stringify({
-          api: "ciele",
-          apiVersion: 1,
-          serverVersion: "stdio-test",
-          domains: ["assistants", "providers"],
-        }));
-      } else if (request.url === "/api/v1/whoami") {
-        response.end(JSON.stringify({
-          organizationId: "org-stdio",
-          role: "viewer",
-          keyId: "key-stdio",
-        }));
-      } else {
-        response.statusCode = 404;
-        response.end(JSON.stringify({ error: { code: "not_found", message: "Not found" } }));
-      }
-    });
-    await new Promise<void>((resolve) => api.listen(0, "127.0.0.1", resolve));
+/**
+ * The stdio process end to end (#629, #700). `serveStdio` decides the era from
+ * the opening exchange, so these tests are the only place the wire era is
+ * actually observable — a unit test of `createCieleMcpServer` cannot see it.
+ */
 
-    const address = api.address();
-    if (!address || typeof address === "string") throw new Error("No API test port");
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [join(packageRoot, "bin/ciele-mcp.mjs")],
-      cwd: packageRoot,
-      env: {
-        CIELE_API_KEY: "ciele_sk_stdio_test",
-        CIELE_BASE_URL: `http://127.0.0.1:${address.port}`,
-        CIELE_MCP_READ_ONLY: "1",
-      },
-      stderr: "pipe",
+/** A stand-in Ciele API: enough of /api/v1 for `ciele_identity`. */
+function startApi(): Promise<{ server: Server; baseUrl: string; requests: string[] }> {
+  const requests: string[] = [];
+  const server = createServer((request, response) => {
+    requests.push(request.url ?? "");
+    response.setHeader("content-type", "application/json");
+    if (request.headers.authorization !== "Bearer ciele_sk_stdio_test") {
+      response.statusCode = 401;
+      response.end(JSON.stringify({ error: { code: "unauthorized", message: "Bad key" } }));
+    } else if (request.url === "/api/v1/meta") {
+      response.end(JSON.stringify({
+        api: "ciele",
+        apiVersion: 1,
+        serverVersion: "stdio-test",
+        domains: ["assistants", "providers"],
+      }));
+    } else if (request.url === "/api/v1/whoami") {
+      response.end(JSON.stringify({
+        organizationId: "org-stdio",
+        role: "viewer",
+        keyId: "key-stdio",
+      }));
+    } else {
+      response.statusCode = 404;
+      response.end(JSON.stringify({ error: { code: "not_found", message: "Not found" } }));
+    }
+  });
+  return new Promise((resolve) => {
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (!address || typeof address === "string") throw new Error("No API test port");
+      resolve({ server, baseUrl: `http://127.0.0.1:${address.port}`, requests });
     });
+  });
+}
+
+function spawnServer(baseUrl: string, env: Record<string, string> = {}) {
+  return new StdioClientTransport({
+    command: process.execPath,
+    args: [join(packageRoot, "bin/ciele-mcp.mjs")],
+    cwd: packageRoot,
+    env: {
+      CIELE_API_KEY: "ciele_sk_stdio_test",
+      CIELE_BASE_URL: baseUrl,
+      CIELE_MCP_READ_ONLY: "1",
+      ...env,
+    },
+    stderr: "pipe",
+  });
+}
+
+describe("ciele MCP stdio process", () => {
+  let api: Awaited<ReturnType<typeof startApi>>;
+
+  beforeEach(async () => {
+    api = await startApi();
+  });
+
+  afterEach(async () => {
+    await new Promise<void>((resolve, reject) =>
+      api.server.close((error) => (error ? reject(error) : resolve()))
+    );
+  });
+
+  it("serves a 2025-era client, lists every tool, and calls the local Ciele API", async () => {
     const client = new Client({ name: "ciele-stdio-test", version: "1.0.0" });
 
     try {
-      await client.connect(transport);
+      await client.connect(spawnServer(api.baseUrl));
+      // No `versionNegotiation` — the v2 client's default is the legacy
+      // handshake, which `serveStdio` still serves.
+      expect(client.getProtocolEra()).toBe("legacy");
       expect(client.getServerVersion()).toMatchObject({ name: "ciele" });
 
       const listed = await client.listTools();
@@ -65,19 +97,59 @@ describe("ciele MCP stdio process", () => {
       const content = (result as {
         content: Array<{ type: string; text?: string }>;
       }).content;
-      const text = content.find(
-        (item) => item.type === "text"
-      )?.text;
+      const text = content.find((item) => item.type === "text")?.text;
       expect(JSON.parse(text ?? "null")).toMatchObject({
         meta: { serverVersion: "stdio-test" },
         whoami: { organizationId: "org-stdio", role: "viewer" },
       });
-      expect(requests.sort()).toEqual(["/api/v1/meta", "/api/v1/whoami"]);
+      expect(api.requests.sort()).toEqual(["/api/v1/meta", "/api/v1/whoami"]);
     } finally {
       await client.close();
-      await new Promise<void>((resolve, reject) =>
-        api.close((error) => (error ? reject(error) : resolve()))
-      );
     }
-  }, 15_000);
+  }, 20_000);
+
+  it("negotiates the 2026-07-28 era and serves the same tools", async () => {
+    const client = new Client(
+      { name: "ciele-stdio-test", version: "1.0.0" },
+      { versionNegotiation: { mode: "auto" } }
+    );
+
+    try {
+      await client.connect(spawnServer(api.baseUrl));
+      expect(client.getProtocolEra()).toBe("modern");
+      expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
+
+      const listed = await client.listTools();
+      expect(listed.tools).toHaveLength(14);
+
+      const result = await client.callTool({ name: "ciele_identity", arguments: {} });
+      expect(result.isError).not.toBe(true);
+    } finally {
+      await client.close();
+    }
+  }, 20_000);
+
+  it("refuses a 2025-era client when CIELE_MCP_MODERN_ONLY is set", async () => {
+    const client = new Client({ name: "ciele-stdio-test", version: "1.0.0" });
+
+    await expect(
+      client.connect(spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" }))
+    ).rejects.toThrow();
+    await client.close();
+  }, 20_000);
+
+  it("still serves a modern client when CIELE_MCP_MODERN_ONLY is set", async () => {
+    const client = new Client(
+      { name: "ciele-stdio-test", version: "1.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } }
+    );
+
+    try {
+      await client.connect(spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" }));
+      expect(client.getProtocolEra()).toBe("modern");
+      expect((await client.listTools()).tools).toHaveLength(14);
+    } finally {
+      await client.close();
+    }
+  }, 20_000);
 });

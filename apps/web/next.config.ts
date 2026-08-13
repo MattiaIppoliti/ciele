@@ -24,6 +24,7 @@ const nextConfig: NextConfig = {
     "@agent-hub/core",
     "@agent-hub/db",
     "@agent-hub/ui",
+    "@ciele/mcp",
   ],
   images: {
     // AVIF first, WebP second (Next's default is WebP alone). The marketing
