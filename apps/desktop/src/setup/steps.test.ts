@@ -135,6 +135,13 @@ describe("the Docker prerequisite", () => {
       label: "Get Docker Desktop",
       url: CONFIG.dockerDownloadUrl,
     });
+    // The walkthrough is for someone who has never installed developer
+    // tooling: it starts from the button in this window and ends on the
+    // button that re-checks.
+    const guide = snapshot.steps[0]!.guide;
+    expect(guide.length).toBeGreaterThanOrEqual(3);
+    expect(guide[0]).toContain("Get Docker Desktop");
+    expect(guide.at(-1)).toContain("Try again");
   });
 
   it("says start it — a different problem — when it is installed but stopped", async () => {
@@ -144,6 +151,10 @@ describe("the Docker prerequisite", () => {
 
     expect(snapshot.steps[0]!.error).toMatch(/not running/);
     expect(snapshot.steps[0]!.help).toBeNull();
+    // A different journey than "install it": no download, just open and wait.
+    const guide = snapshot.steps[0]!.guide;
+    expect(guide[0]).toContain("Open Docker Desktop");
+    expect(guide.at(-1)).toContain("Try again");
   });
 
   it("nothing runs against Docker until that check passes", async () => {

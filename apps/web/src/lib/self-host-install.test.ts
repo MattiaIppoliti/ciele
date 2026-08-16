@@ -9,6 +9,8 @@ import {
   BOOTSTRAP_RELATIVE_PATH,
   BOOTSTRAP_REQUIRED_COMMANDS,
   DEFAULT_CHECKOUT_DIR,
+  DESKTOP_APP_BUNDLE,
+  DESKTOP_MAC_ASSET_SUFFIX,
   INSTALL_SCRIPT_PATH,
   buildSelfHostInstallScript,
   normalizeSourceUrl,
@@ -88,6 +90,23 @@ describe("buildSelfHostInstallScript", () => {
     expect(script).toContain(`\${CIELE_DIR:-${DEFAULT_CHECKOUT_DIR}}`);
   });
 
+  it("hands a Docker-less Mac to Ciele Desktop instead of an error", () => {
+    // The refusal survives for Linux…
+    expect(script).toContain(`"'docker' is required but not installed."`);
+    // …but Darwin opens an installed app, or fetches the arch-matched zip
+    // from the latest release and opens that.
+    expect(script).toContain(`[ "$OS" = "Darwin" ] ||`);
+    expect(script).toContain(`/Applications/${DESKTOP_APP_BUNDLE}`);
+    expect(script).toContain(`$HOME/Applications/${DESKTOP_APP_BUNDLE}`);
+    expect(script).toContain("/releases/latest");
+    expect(script).toContain(DESKTOP_MAC_ASSET_SUFFIX);
+    expect(script).toContain('case "$(uname -m)" in');
+    expect(script).toContain("ditto -x -k");
+    // The API URL is built from the pinned repo, so a fork off GitHub gets
+    // the plain refusal rather than a download from our releases.
+    expect(script).toContain("https://github.com/*) ;;");
+  });
+
   it("hands off to bootstrap.sh by interpreter, forwarding its arguments", () => {
     expect(script).toContain(
       `exec ${BOOTSTRAP_INTERPRETER} ./${BOOTSTRAP_RELATIVE_PATH} "$@"`
@@ -151,5 +170,31 @@ describe("the bootstrap.sh contract", () => {
         new RegExp(`^\\s*(?:--\\w[\\w-]*\\s*\\|\\s*)*\\${flag}(?:=\\*)?\\s*\\)`, "m")
       );
     }
+  });
+});
+
+/**
+ * The contract with Ciele Desktop's packaging. The Docker-less-Mac handoff
+ * hardcodes the app bundle name and relies on the mac release artifact being
+ * a zip named `…-mac.zip` (electron-builder's mac zip naming); pin both to
+ * `apps/desktop/electron-builder.yml` so a rename fails here, not on a
+ * stranger's Mac.
+ */
+describe("the Ciele Desktop packaging contract", () => {
+  const builderConfig = readFileSync(
+    join(REPO_ROOT, "apps/desktop/electron-builder.yml"),
+    "utf8"
+  );
+
+  it("still packages the bundle the installer opens", () => {
+    const productName = builderConfig.match(/^productName:\s*(\S+)\s*$/m)?.[1];
+    expect(`${productName}.app`).toBe(DESKTOP_APP_BUNDLE);
+  });
+
+  it("still ships macOS as a zip, which is what the installer unpacks", () => {
+    // The mac target list is what makes the release assets end in
+    // `-mac.zip`; DESKTOP_MAC_ASSET_SUFFIX encodes that default naming.
+    expect(builderConfig).toMatch(/^mac:\n(?:.*\n)*?\s+- target: zip$/m);
+    expect(DESKTOP_MAC_ASSET_SUFFIX).toBe("-mac.zip");
   });
 });

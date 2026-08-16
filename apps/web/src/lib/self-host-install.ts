@@ -48,6 +48,23 @@ export const BOOTSTRAP_REQUIRED_COMMANDS = ["bash", "openssl", "docker"] as cons
  */
 export const BOOTSTRAP_FORWARDED_FLAGS = ["--seed", "--env-only", "--images"] as const;
 
+/**
+ * The macOS app bundle Ciele Desktop packages as — electron-builder's
+ * `productName` plus `.app`. A Mac without Docker is handed to this app
+ * instead of an error: its guided setup links Docker Desktop, re-checks in
+ * place, and stands up the same compose stack `bootstrap.sh` would. Pinned to
+ * `apps/desktop/electron-builder.yml` by `self-host-install.test.ts`.
+ */
+export const DESKTOP_APP_BUNDLE = "Ciele.app";
+
+/**
+ * What every macOS Desktop release asset ends with (electron-builder's mac
+ * `zip` target naming: `Ciele-<version>-mac.zip`, arm64 builds with an
+ * `-arm64` in between). The installer picks the right one from the latest
+ * GitHub release by this suffix plus the machine's architecture.
+ */
+export const DESKTOP_MAC_ASSET_SUFFIX = "-mac.zip";
+
 /** Default checkout directory, relative to wherever the command was run. */
 export const DEFAULT_CHECKOUT_DIR = "ciele";
 
@@ -98,7 +115,9 @@ export function selfHostInstallCommand(rawOrigin: string): string {
  */
 export function buildSelfHostInstallScript(rawSourceUrl: string): string {
   const repo = normalizeSourceUrl(rawSourceUrl);
-  const required = BOOTSTRAP_REQUIRED_COMMANDS.join(" ");
+  // Docker gets its own platform-aware check below; everything else is a
+  // plain "on PATH or refuse".
+  const preflight = BOOTSTRAP_REQUIRED_COMMANDS.filter((c) => c !== "docker").join(" ");
 
   return `#!/bin/sh
 # Install a self-hosted Ciele.
@@ -109,6 +128,10 @@ export function buildSelfHostInstallScript(rawSourceUrl: string): string {
 # Fetches the source, then hands off to ${BOOTSTRAP_RELATIVE_PATH}, which
 # generates every secret and starts the stack. Arguments after \`-s --\` are
 # forwarded to it (${BOOTSTRAP_FORWARDED_FLAGS.join(", ")}).
+#
+# A Mac without Docker is not an error: the script fetches Ciele Desktop
+# (or opens it if already installed) and the app guides the rest — Docker
+# install included.
 #
 # Environment:
 #   CIELE_DIR   where to put the checkout (default: ./${DEFAULT_CHECKOUT_DIR})
@@ -125,7 +148,8 @@ say() { printf '%s\\n' "$*"; }
 die() { printf 'Error: %s\\n' "$*" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
-case "$(uname -s 2>/dev/null || echo unknown)" in
+OS="$(uname -s 2>/dev/null || echo unknown)"
+case "$OS" in
   Darwin | Linux) ;;
   MINGW* | MSYS* | CYGWIN*)
     die "Windows shells cannot run this installer. Use Ciele Desktop, or run it inside WSL2."
@@ -133,9 +157,60 @@ case "$(uname -s 2>/dev/null || echo unknown)" in
   *) die "Unsupported operating system — self-hosting is supported on macOS and Linux." ;;
 esac
 
-for cmd in ${required}; do
+for cmd in ${preflight}; do
   have "$cmd" || die "'$cmd' is required but not installed."
 done
+
+# Docker is the stack itself, so on Linux its absence is a refusal. A Mac
+# gets handed to Ciele Desktop instead: the app's guided setup links Docker
+# Desktop, re-checks in place, and stands up the same compose stack
+# bootstrap.sh would — no terminal needed from there on.
+if ! have docker; then
+  [ "$OS" = "Darwin" ] ||
+    die "'docker' is required but not installed."
+
+  say "Docker is not installed. Handing you to Ciele Desktop instead — the"
+  say "app walks you through installing Docker and sets up the stack itself."
+
+  for app in "/Applications/${DESKTOP_APP_BUNDLE}" "$HOME/Applications/${DESKTOP_APP_BUNDLE}"; do
+    if [ -d "$app" ]; then
+      say "Ciele Desktop is already installed — opening it."
+      open "$app" 2>/dev/null || say "Open $app from Finder to continue."
+      exit 0
+    fi
+  done
+
+  # The download needs the GitHub releases API; a fork hosted elsewhere gets
+  # the plain refusal with both ways forward spelled out.
+  case "$REPO" in
+    https://github.com/*) ;;
+    *) die "'docker' is required but not installed. Install Docker Desktop and re-run, or set up without a terminal using Ciele Desktop: $REPO/releases" ;;
+  esac
+
+  assets="$(curl -fsSL "https://api.github.com/repos/\${REPO#https://github.com/}/releases/latest" |
+    grep -o '"browser_download_url": *"[^"]*${DESKTOP_MAC_ASSET_SUFFIX}"' | cut -d'"' -f4 || true)"
+  case "$(uname -m)" in
+    arm64) app_zip="$(printf '%s\n' "$assets" | grep arm64 | head -n 1 || true)" ;;
+    *) app_zip="$(printf '%s\n' "$assets" | grep -v arm64 | head -n 1 || true)" ;;
+  esac
+  [ -n "$app_zip" ] ||
+    die "No Ciele Desktop download found. Install Docker Desktop and re-run, or get the app from $REPO/releases/latest"
+
+  say "Downloading $app_zip…"
+  tmp="$(mktemp -d)"
+  curl -fSL --progress-bar "$app_zip" -o "$tmp/${DESKTOP_APP_BUNDLE}.zip"
+  mkdir -p "$HOME/Applications"
+  # ditto is macOS's own unarchiver; it keeps the .app bundle intact.
+  ditto -x -k "$tmp/${DESKTOP_APP_BUNDLE}.zip" "$HOME/Applications"
+
+  say ""
+  say "Ciele Desktop is in $HOME/Applications — opening it now. It takes over"
+  say "from here: install Docker when it asks, and it starts the stack itself."
+  say "If macOS blocks the first open, right-click ${DESKTOP_APP_BUNDLE} and choose Open."
+  open "$HOME/Applications/${DESKTOP_APP_BUNDLE}" 2>/dev/null ||
+    say "Open it from Finder to continue."
+  exit 0
+fi
 
 # Compose ships as a docker plugin or as a standalone binary; bootstrap.sh
 # accepts either, so accept either here too rather than rejecting a working

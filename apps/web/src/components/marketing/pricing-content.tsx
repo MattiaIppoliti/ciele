@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowDown, Check, Minus } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Minus } from "lucide-react";
 import React from "react";
 import {
   Badge,
@@ -11,8 +11,6 @@ import {
   CardTitle,
   cn,
 } from "@agent-hub/ui";
-import type { PlanCatalog } from "@agent-hub/agent";
-import { planViewsBySlug, type PlanTierView } from "@/lib/plan-pricing";
 import {
   BouncyAccordion,
   type BouncyAccordionItem,
@@ -20,45 +18,36 @@ import {
 import { GridBeam } from "@/components/motion/grid-beam";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { CodeBlock } from "@/components/ui/code-block";
-import { CTA_CLASS, PlanTilt, TIERS, type Tier } from "./plan-cards";
-import { PlanPicker } from "./plan-picker";
+import { CTA_CLASS, ENTERPRISE, PlanTilt } from "./plan-cards";
 
 /**
  * The public pricing page.
  *
- * A server component, deliberately: all of it — the hero, the metering note,
- * the free edition's card, the comparison matrix, the install section and the
- * FAQ — is static content over server-supplied data, and none of it needs to be
- * shipped to the browser as JavaScript to be hydrated.
+ * Entirely a server component: Ciele is offered exactly two ways — run the
+ * open-source core yourself for free, or have us run it for you on Enterprise
+ * terms — and neither offering carries a published price, a checkout button or
+ * a usage picker. With nothing interactive left, every section here — the hero,
+ * the two cards, the comparison grid, the install section and the FAQ — is
+ * static copy, and none of it needs to be shipped to the browser as JavaScript
+ * to be hydrated.
  *
- * The one genuinely interactive piece is the answers picker and the plan cards
- * whose highlight follows it, which live in the `PlanPicker` island. Two static
- * regions sit inside that island's layout, so they are passed to it as already-
- * rendered slots rather than being pulled across the boundary with it.
- *
- * The tier ladder and the shared card chrome live in `./plan-cards`, which both
- * sides read.
+ * The Enterprise copy and the shared card chrome live in `./plan-cards`.
  */
 
-const [GO, BUSINESS, ENTERPRISE] = TIERS;
-
 /**
- * The fourth card, and deliberately not a `Tier`: nothing about it moves with
- * the catalog (it is not a purchasable tier), it has no monthly price and no
- * included allowance, and its CTA leads to the install section further down this
- * page rather than to checkout or to sales.
+ * The free offering, and deliberately not a purchasable tier: it has no price
+ * and no included allowance, and its CTA leads to the install section further
+ * down this page rather than to sales.
  *
  * Its feature lines are the open-source core as documented in
  * `apps/docs/content/docs/self-hosting/open-core-boundary.mdx` — the whole
  * product minus what the mirror gate strips (billing, plan metering, the staff
  * console, managed SSO onboarding, and anything with a service commitment).
  *
- * Ticks and burdens are two fields on purpose, for the reason the comparison
- * matrix keeps bare checks off this column: a tick reads as "included", and the
- * free column collecting as many of them as the plans above it argues against
- * every plan on the page. So the ticks stop at the capabilities, and stay fewer
- * than Go's; what the self-hoster takes on renders below them as a burden, not
- * as a benefit.
+ * Ticks and burdens are two fields on purpose: a tick reads as "included", and
+ * the free column collecting as many of them as the offering beside it argues
+ * against that offering. So the ticks stop at the capabilities, and what the
+ * self-hoster takes on renders below them as a burden, not as a benefit.
  */
 const SELF_HOSTED = {
   name: "Self-hosted",
@@ -82,12 +71,7 @@ const SELF_HOSTED = {
 /** `true` renders a check, `false` a dash, a string renders verbatim. */
 type ComparisonCell = boolean | string;
 
-const COMPARISON_COLUMNS = [
-  SELF_HOSTED.name,
-  GO.name,
-  BUSINESS.name,
-  ENTERPRISE.name,
-] as const;
+const COMPARISON_COLUMNS = [SELF_HOSTED.name, ENTERPRISE.name] as const;
 
 /**
  * Feature matrix, in the column order above. The self-hosted column is the
@@ -100,95 +84,51 @@ const COMPARISON_COLUMNS = [
  * Its cells therefore say what the self-hoster PROVIDES, never a bare check.
  * A tick reads as "included", and on this column the same capability is work
  * the reader takes on — a matrix where the free column collects more ticks than
- * the plans above it is not generous, it is wrong, and it argues against every
- * plan on the page.
- *
- * The two priced rows are a function of the catalog for the same reason the
- * cards are: there is one ladder, and it is not stated here.
+ * the offering beside it is not generous, it is wrong, and it argues against
+ * that offering.
  */
-function comparisonRows(
-  views: Map<string, PlanTierView>
-): Array<{ label: string; cells: ComparisonCell[] }> {
-  const price = (tier: Tier) => {
-    const view = views.get(tier.slug);
-    if (!view) return "Let’s talk";
-    return view.pricePrefix
-      ? `${view.pricePrefix} ${view.priceLabel}`
-      : view.priceLabel;
-  };
-  // The answer volume, the one line a reader compares tier to tier. The crawl
-  // and indexing volumes are on the cards; repeating all three here would make
-  // the row three lines tall in a column an eighth of the page wide.
-  const answers = (tier: Tier) => views.get(tier.slug)?.volumes[0] ?? "Sized with you";
-
-  return [
-    {
-      label: "Monthly price",
-      cells: ["Free", price(GO), price(BUSINESS), price(ENTERPRISE)],
-    },
-    {
-      label: "Included AI usage",
-      cells: [
-        "Your own bill",
-        answers(GO),
-        answers(BUSINESS),
-        answers(ENTERPRISE),
-      ],
-    },
-    {
-      label: "Model credentials included",
-      cells: [false, true, true, true],
-    },
-    {
-      label: "Hosting, updates and backups",
-      cells: ["You run it", "Managed", "Managed", "Managed"],
-    },
-    {
-      label: "Plan allowance, usage gauges and caps",
-      cells: [false, true, true, true],
-    },
-    { label: "Unlimited assistants and flows", cells: [true, true, true, true] },
-    { label: "Website, file and FAQ knowledge", cells: [true, true, true, true] },
-    { label: "Grounded answers with citations", cells: [true, true, true, true] },
-    {
-      label: "Inbox, insights and improvements",
-      cells: [true, true, true, true],
-    },
-    { label: "Help desks and escalation", cells: [true, true, true, true] },
-    {
-      label: "Bring your own model keys",
-      cells: ["Required", false, true, true],
-    },
-    {
-      label: "Crawl JavaScript-heavy and gated sites",
-      cells: ["You host the crawler", false, true, true],
-    },
-    {
-      label: "Ticketing integrations",
-      cells: ["You configure it", false, true, true],
-    },
-    {
-      label: "Keyless federated model access",
-      cells: ["Your own cloud setup", false, false, true],
-    },
-    {
-      label: "Managed SSO onboarding",
-      cells: [false, false, true, true],
-    },
-    {
-      label: "DPA, SCCs and security review",
-      cells: [false, false, false, true],
-    },
-    {
-      label: "Support",
-      cells: ["Community", "Email", "Priority", "Named contact"],
-    },
-    {
-      label: "Uptime and response commitment",
-      cells: [false, false, false, true],
-    },
-  ];
-}
+const COMPARISON_ROWS: Array<{ label: string; cells: ComparisonCell[] }> = [
+  { label: "Monthly price", cells: ["Free", "Sized with you"] },
+  { label: "Licence and terms", cells: ["AGPL-3.0", "Commercial agreement"] },
+  {
+    label: "Hosting, updates and backups",
+    cells: ["You run it", "Managed"],
+  },
+  {
+    label: "Included AI usage",
+    cells: ["Your own bill", "A monthly allowance, sized with you"],
+  },
+  { label: "Model credentials included", cells: [false, true] },
+  { label: "Unlimited assistants and flows", cells: [true, true] },
+  { label: "Website, file and FAQ knowledge", cells: [true, true] },
+  { label: "Grounded answers with citations", cells: [true, true] },
+  { label: "Inbox, insights and improvements", cells: [true, true] },
+  { label: "Help desks and escalation", cells: [true, true] },
+  {
+    label: "Bring your own model keys",
+    cells: ["Required", "Optional"],
+  },
+  {
+    label: "Keyless federated model access",
+    cells: ["Your own cloud setup", true],
+  },
+  {
+    label: "Crawl JavaScript-heavy and gated sites",
+    cells: ["You host the crawler", true],
+  },
+  {
+    label: "Ticketing integrations",
+    cells: ["You configure it", true],
+  },
+  {
+    label: "Usage caps and budget controls",
+    cells: [false, true],
+  },
+  { label: "Managed SSO onboarding", cells: [false, true] },
+  { label: "DPA, SCCs and security review", cells: [false, true] },
+  { label: "Support", cells: ["Community", "Named contact"] },
+  { label: "Uptime and response commitment", cells: [false, true] },
+];
 
 /**
  * The open-source repository — where "View the source" goes and what the quick
@@ -269,44 +209,9 @@ const INSTALL_REQUIREMENTS = [
 ];
 
 /**
- * What a plan meters, stated above the cards — the picker's sibling inside the
- * same box, and the reason that box's static half never crosses into the island.
- */
-function MeteringNote({ catalog }: { catalog: PlanCatalog | null }) {
-  const basis = catalog?.answerBasis ?? null;
-  return (
-    <>
-      <p className="text-foreground text-base font-semibold">
-        What a plan pays for
-      </p>
-      <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-        Members are unlimited on every plan, and visitors chatting with a
-        published widget are never counted. What a plan meters is the AI work the
-        platform funds on your behalf: answering questions, crawling your sites
-        and indexing your documents. Each plan below states that allowance as the
-        volumes it covers, and your Usage page shows exactly where you are
-        against it.
-      </p>
-      {basis ? (
-        <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-          Answer volumes are quoted on{" "}
-          <span className="text-foreground font-medium">
-            {basis.quotedModel}
-          </span>
-          , the lightest model on the platform. Which model your assistants run
-          is your choice and it moves this a lot: on {basis.frontierModel}, the
-          usual step up when you want a stronger answer, one answer costs
-          roughly {basis.frontierFactor}× more, so the same allowance covers
-          proportionally fewer.
-        </p>
-      ) : null}
-    </>
-  );
-}
-
-/**
- * The free edition's card. Static — nothing on it moves with the picker — so it
- * is rendered here and handed to the island as the first cell of its grid.
+ * The free edition's card. The two cards share their vertical rhythm — the
+ * same tagline floor and price row — so their feature lists start at the same
+ * height and read as a comparison.
  */
 function SelfHostedCard() {
   return (
@@ -319,34 +224,22 @@ function SelfHostedCard() {
             </CardTitle>
             <Badge variant="outline">Open source</Badge>
           </div>
-          {/* Two-line floor on the tagline and a fixed height on the
-              allowance box below: the four cards then reach their feature
-              list at the same y, which is what makes the lists
-              comparable. See the same two classes on the tier cards. */}
+          {/* Two-line floor on the tagline: the two cards then reach their
+              price row at the same y, which is what makes them comparable.
+              See the same class on the Enterprise card. */}
           <p className="text-muted-foreground mt-1 min-h-17 text-sm leading-relaxed">
             {SELF_HOSTED.tagline}
           </p>
-          {/* No catalog lookup here: the open-source edition is not a
-              purchasable tier, so its price is the licence, not data. */}
+          {/* No price data anywhere on this page: this edition's price is the
+              licence, and the other offering's price is a conversation. */}
           <div className="mt-6 flex items-baseline gap-1.5">
             <span className="text-foreground text-4xl font-semibold">Free</span>
             <span className="text-muted-foreground text-sm">/ forever</span>
           </div>
-          {/* Two-line floor, as on the tier cards: their note wraps and
-              this one does not, and a 16px offset would carry down into
-              every row below it. */}
           <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
-            AGPL-3.0 — no plan, no allowance
+            AGPL-3.0 — no plan, no allowance. The AI work is billed to your own
+            provider account, or runs on a model server you host.
           </p>
-          <div className="border-border/60 mt-4 min-h-38 rounded-lg border border-dashed px-3 py-2.5">
-            <p className="text-foreground text-xs font-semibold">
-              Included each month:
-            </p>
-            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
-              Nothing — the AI work is billed to your own provider account, or
-              runs on a model server you host.
-            </p>
-          </div>
         </CardHeader>
 
         <CardContent className="mt-6 flex-1">
@@ -368,9 +261,9 @@ function SelfHostedCard() {
             ))}
           </ul>
           {/* Same list shape, deliberately not the same marker: a dash
-              where the tiers carry a tick, so the two lines read as the
-              cost of running it yourself rather than as four extra
-              features the paid plans lack. */}
+              where the features carry a tick, so the two lines read as the
+              cost of running it yourself rather than as extra features the
+              managed offering lacks. */}
           <p className="text-foreground mt-5 text-xs font-semibold">
             {SELF_HOSTED.burdensLabel}
           </p>
@@ -408,52 +301,100 @@ function SelfHostedCard() {
   );
 }
 
-export function PricingContent({
-  billingEnabled,
-  catalog,
-}: {
-  /**
-   * Whether this deployment can actually take a card (Stripe configured, and
-   * the enterprise checkout route present). The open-source mirror ships
-   * neither, so its buttons must lead to sales instead of a 404.
-   */
-  billingEnabled: boolean;
-  /**
-   * The purchasable ladder — prices and allowance-derived volumes — or null on a
-   * deployment that sells nothing.
-   */
-  catalog: PlanCatalog | null;
-}) {
-  /** The catalog's tiers, keyed by slug so the matrix can find its numbers. */
-  const rows = comparisonRows(planViewsBySlug(catalog?.tiers ?? null));
+/**
+ * The managed offering's card. Sales-led, always: its price line is the
+ * conversation, and its CTA goes to sales rather than to a checkout that
+ * cannot size a rollout.
+ */
+function EnterpriseCard() {
+  return (
+    <PlanTilt>
+      <Card className="bg-card/60 h-full gap-0 backdrop-blur-sm [--card-spacing:--spacing(6)]">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-foreground text-lg font-semibold">
+              {ENTERPRISE.name}
+            </CardTitle>
+            <Badge variant="outline">Managed</Badge>
+          </div>
+          <p className="text-muted-foreground mt-1 min-h-17 text-sm leading-relaxed">
+            {ENTERPRISE.tagline}
+          </p>
+          <div className="mt-6 flex items-baseline gap-1.5">
+            <span className="text-foreground text-4xl font-semibold">
+              Let&rsquo;s talk
+            </span>
+          </div>
+          <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
+            Priced to your rollout, once we have sized it with you. Unlimited
+            members, and a monthly AI allowance written into the agreement.
+          </p>
+        </CardHeader>
 
+        <CardContent className="mt-6 flex-1">
+          <p className="text-foreground text-xs font-semibold">
+            {ENTERPRISE.featuresLabel}
+          </p>
+          <ul className="mt-3 space-y-2.5">
+            {ENTERPRISE.features.map((feature) => (
+              <li key={feature} className="flex gap-2.5 text-sm">
+                <Check
+                  aria-hidden="true"
+                  className="text-primary mt-0.5 size-4 shrink-0"
+                  strokeWidth={2.25}
+                />
+                <span className="text-muted-foreground leading-relaxed">
+                  {feature}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+
+        <CardFooter className="mt-6">
+          <Button
+            className={cn("h-9 w-full", CTA_CLASS)}
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/contact/sales" />}
+          >
+            <span>{ENTERPRISE.salesCta}</span>
+            <ArrowRight aria-hidden="true" className="size-4" />
+          </Button>
+        </CardFooter>
+      </Card>
+    </PlanTilt>
+  );
+}
+
+export function PricingContent() {
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
         {/* Hero */}
-        <MarketingHero eyebrow="Pricing" title="Pricing that scales with your usage">
+        <MarketingHero eyebrow="Pricing" title="Two ways to run Ciele">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Every plan includes the whole product, assistants, knowledge, flows,
-            inbox and insights, for as many members as you like. What changes is
-            how much AI work the plan funds each month, and how deeply Ciele
-            plugs into your existing systems.
+            Both include the whole product — assistants, knowledge, flows, inbox
+            and insights, for as many members as you like. Run the open-source
+            core yourself for free, or let us run it for you on Enterprise
+            terms, sized to your rollout in a conversation with sales.
           </p>
         </MarketingHero>
 
-        <PlanPicker
-          billingEnabled={billingEnabled}
-          catalog={catalog}
-          meteringNote={<MeteringNote catalog={catalog} />}
-          selfHostedCard={<SelfHostedCard />}
-        />
+        {/* The two offerings. A two-card grid, centred and narrower than the
+            page: at full width two cards read as a broken four-card row. */}
+        <div className="mx-auto mt-12 grid max-w-4xl gap-5 sm:grid-cols-2">
+          <SelfHostedCard />
+          <EnterpriseCard />
+        </div>
 
-        {/* Notes — centred under the card row rather than hugging the left
-            edge, which read as a stray column against the grid. */}
+        {/* Centred under the card row rather than hugging the left edge,
+            which read as a stray column against the grid. */}
         <div className="mx-auto mt-12 max-w-3xl text-center">
           <p className="text-sm leading-relaxed">
             <span className="text-muted-foreground">
-              Need more than the top plan funds, a multi-campus rollout, or
-              procurement requirements?{" "}
+              A multi-campus rollout, procurement requirements, or education and
+              non-profit rates?{" "}
             </span>
             <Link
               href="/contact/sales"
@@ -471,7 +412,7 @@ export function PricingContent({
         {/* Comparison matrix */}
         <div className="mt-20">
           <h2 className="text-foreground text-center text-2xl font-semibold tracking-tight">
-            Compare every plan
+            Compare the two editions
           </h2>
           <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed">
             Ciele is open source under the AGPL, so running it yourself is
@@ -479,20 +420,21 @@ export function PricingContent({
             account, and you keep the whole product.
           </p>
 
-          {/* Five columns will not fit a phone; scroll the grid inside its own
-              container rather than letting the page scroll sideways. */}
+          {/* Three columns still will not fit a small phone; scroll the grid
+              inside its own container rather than letting the page scroll
+              sideways. */}
           <div className="mt-8 overflow-x-auto">
             <GridBeam
-              className="border-border/70 min-w-[820px] overflow-hidden rounded-2xl border"
+              className="border-border/70 mx-auto min-w-[560px] max-w-4xl overflow-hidden rounded-2xl border"
               cols={COMPARISON_COLUMNS.length + 1}
-              columnsTemplate="minmax(0, 1.7fr) repeat(4, minmax(0, 1fr))"
-              rows={rows.length + 1}
+              columnsTemplate="minmax(0, 1.4fr) repeat(2, minmax(0, 1fr))"
+              rows={COMPARISON_ROWS.length + 1}
             >
-              {/* Header row: an empty corner cell, then the plan names. */}
+              {/* Header row: an empty corner cell, then the two editions. */}
               <div className="px-4 py-3.5" />
-              {/* The whole header row stays grey: the plan names label the
-                  columns, and picking one out in full contrast read as the
-                  recommended-plan highlight repeating itself. */}
+              {/* The whole header row stays grey: the names label the columns,
+                  and picking one out in full contrast would read as a
+                  recommendation this page deliberately does not make. */}
               {COMPARISON_COLUMNS.map((column) => (
                 <div
                   key={column}
@@ -502,7 +444,7 @@ export function PricingContent({
                 </div>
               ))}
 
-              {rows.map((row) => (
+              {COMPARISON_ROWS.map((row) => (
                 <React.Fragment key={row.label}>
                   <div className="text-foreground px-4 py-3.5 text-sm leading-snug">
                     {row.label}
@@ -601,9 +543,9 @@ export function PricingContent({
                 </Button>
               </div>
               <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
-                AGPL-3.0. Hosting, upgrades, backups, plan billing and support
-                are the managed edition&rsquo;s job, everything else is in the
-                repository.
+                AGPL-3.0. Hosting, upgrades, backups, usage controls and support
+                are the Enterprise edition&rsquo;s job, everything else is in
+                the repository.
               </p>
             </div>
           </div>
@@ -635,46 +577,40 @@ export function PricingContent({
 
 const FAQ_ITEMS: BouncyAccordionItem[] = [
   {
+    id: "difference",
+    title: "What is the difference between self-hosted and Enterprise?",
+    description:
+      "The product is the same — self-hosting gives you the whole open-source core under the AGPL. What Enterprise adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, usage caps and budget controls, managed SSO onboarding, contractual commitments and support. Self-hosted, all of that is your side of the line.",
+  },
+  {
+    id: "enterprise-price",
+    title: "How is Enterprise priced?",
+    description:
+      "In a conversation, not on a card. Tell us the size of your rollout — how many people it serves, what it needs to plug into, and roughly how much answering you expect — and we quote a monthly price with the AI allowance written into the agreement. Members are unlimited whatever the size.",
+  },
+  {
     id: "allowance",
-    title: "What does the included allowance actually cover?",
+    title: "What does an Enterprise allowance cover?",
     description:
-      "The AI work the platform funds for you: answering questions, crawling your sites and indexing your documents. Each plan states that as volumes, answers, pages, documents, and all three draw on the same monthly allowance, so a month spent indexing a large site leaves less for answering, and the other way round. Your Usage page shows the split as it happens.",
-  },
-  {
-    id: "why-not-tokens",
-    title: "Why volumes instead of tokens?",
-    description:
-      "Because tokens are our unit, not yours. A plan's allowance is denominated in cost, which we then restate as the volumes that cost funds, so the plan means the same thing whichever model your assistants run. A frontier model spends the allowance faster and covers proportionally fewer answers; it never quietly costs you more than the plan.",
-  },
-  {
-    id: "run-out",
-    title: "What happens if we use up the allowance?",
-    description:
-      "Assistants keep working while you are inside it, and the console warns you as you approach the cap. Each allowance is also capped per week, so a busy few days cannot spend the month. On Business and Enterprise you can connect your own provider keys or a federated cloud account, in which case that model usage is billed to you directly and is never counted against a plan.",
+      "The AI work the platform funds for you: answering questions, crawling your sites and indexing your documents. All three draw on the same monthly allowance, sized with you and stated in the agreement, and your Usage page shows exactly where you are against it. Work on your own model keys is never counted against it.",
   },
   {
     id: "visitors",
     title: "Do members or chat visitors cost extra?",
     description:
-      "Neither. Members with console access are unlimited on every plan, and students, staff and website visitors chatting with a published widget are never counted or charged. Plans meter the AI work, not the people.",
+      "Neither, in either edition. Members with console access are unlimited, and people chatting with a published widget are never counted or charged. Enterprise meters the AI work, not the people — and self-hosted meters nothing at all.",
   },
   {
     id: "byok",
     title: "Can we bring our own models?",
     description:
-      "Yes, from Business up. Connect your own Anthropic, OpenAI or Google key, or any OpenAI-compatible endpoint including a self-hosted one. Enterprise adds keyless federated access, Google Vertex, Anthropic workload identity or Azure OpenAI, so no long-lived key is ever stored with us.",
+      "Yes, in both editions. Self-hosted runs entirely on your own keys — any supported provider, or an OpenAI-compatible endpoint including a local one. Enterprise includes an allowance on our accounts and lets you connect your own keys on top, or use keyless federated access — Google Vertex, Anthropic workload identity or Azure OpenAI — so no long-lived key is ever stored with us.",
   },
   {
-    id: "switch",
-    title: "Can we switch plans later?",
+    id: "migrate",
+    title: "Can we start self-hosted and move to Enterprise later?",
     description:
-      "Yes. Plans change from the console and take effect on the next billing period; your assistants, knowledge and history carry over untouched.",
-  },
-  {
-    id: "self-hosted",
-    title: "What is the difference between self-hosted and a paid plan?",
-    description:
-      "The product is the same, self-hosting gives you the whole open-source core under the AGPL. What a paid plan adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, plan billing and usage controls, and support. Self-hosted, all of that is your side of the line.",
+      "Yes, in both directions. It is one codebase and one schema, so your assistants, knowledge and history move with the database. Plenty of teams evaluate self-hosted and switch to Enterprise when the rollout gets serious — and the AGPL means you can always take it back in-house.",
   },
   {
     id: "education",

@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Loader2,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -88,14 +89,19 @@ function StepBody({
         </div>
       ) : null}
 
-      {step.help ? (
-        <Button
-          variant="secondary"
-          className="self-start"
-          onClick={() => void bridge().openExternal(step.help!.url)}
-        >
-          {step.help.label}
-        </Button>
+      {/* The walkthrough for this exact failure: numbered, plain language,
+          nothing the user cannot see on their own screen. */}
+      {step.guide.length > 0 ? (
+        <ol className="flex flex-col gap-2" data-testid="step-guide">
+          {step.guide.map((instruction, index) => (
+            <li key={instruction} className="flex items-start gap-3 text-sm text-ink-muted">
+              <span className="flex size-5 shrink-0 items-center justify-center rounded-full border border-line font-mono text-[11px] leading-none text-ink">
+                {index + 1}
+              </span>
+              {instruction}
+            </li>
+          ))}
+        </ol>
       ) : null}
 
       {step.fields.length > 0 && step.status !== "done" ? (
@@ -192,6 +198,20 @@ export function WizardScreen(): ReactNode {
                 <ChevronLeft className="size-4" />
                 Back
               </Button>
+              {/* The one thing this failure asks the user to go and do, in
+                  the footer rather than in the body: the body scrolls out of
+                  a short window, and the remedy must never be the part that
+                  is off screen. */}
+              {step.help ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void bridge().openExternal(step.help!.url)}
+                  data-testid="step-help"
+                >
+                  <ExternalLink className="size-4" />
+                  {step.help.label}
+                </Button>
+              ) : null}
               {isLive && step.optional && !snapshot.running && !snapshot.complete ? (
                 <Button variant="ghost" onClick={() => void act(() => setupBridge().skip())}>
                   Skip

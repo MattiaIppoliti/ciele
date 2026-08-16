@@ -1,15 +1,17 @@
 import type { PlanCatalogEntry } from "@agent-hub/agent";
 
 /**
- * How a plan catalog reads on the public pricing page and on Billing (#511).
+ * How a plan catalog reads on Billing (#511).
  *
  * Pure, and on the open-source side of the boundary: the catalog itself is an
  * enterprise concern (prices and allowances live in `src/ee/billing`), but the
- * *copy* that presents it is the product's, and this is the layer both surfaces
- * share so a price can never read one way to a prospect and another way to a
- * customer. A deployment with nothing to sell passes `null` and every function
- * here returns empty — which is how the open-source pricing page renders with no
- * enterprise code present.
+ * *copy* that presents it is the product's, and this is the layer every
+ * console surface shares so a price can never read two ways. The public
+ * pricing page no longer reads the catalog at all — it publishes exactly two
+ * offerings, self-hosted and Enterprise, neither with a price — so the
+ * consumers left are the in-console ones: Billing and the pending-activation
+ * banner. A deployment with nothing to sell passes `null` and every function
+ * here returns empty.
  *
  * The volume strings are formatted, never computed: the numbers arrive already
  * derived from the same allowance constants the caps enforce.
@@ -17,8 +19,6 @@ import type { PlanCatalogEntry } from "@agent-hub/agent";
 
 /** The audience each tier is for, keyed by the tier's own slug. */
 const AUDIENCE: Record<string, string> = {
-  go: "One team getting its first assistants in front of people.",
-  business: "Several teams running assistants for different audiences.",
   enterprise: "Organization-wide rollouts with procurement and security review.",
 };
 
@@ -91,70 +91,6 @@ export function planTierViews(
       cta: entry.checkout ? "checkout" : "contact",
       priceEur: entry.priceEur,
     }));
-}
-
-/**
- * The same views, keyed by slug — what a surface rendering one card per tier
- * needs so each card can find its own numbers. Both halves of the pricing page
- * read the ladder this way, so the keying lives here rather than being rebuilt
- * either side of the server/client seam.
- */
-export function planViewsBySlug(
-  catalog: readonly PlanCatalogEntry[] | null
-): Map<string, PlanTierView> {
-  return new Map(planTierViews(catalog).map((view) => [view.slug, view]));
-}
-
-/**
- * The dearest published answer allowance — the top of the pricing page's answers
- * picker, and the last point where recommending a published plan is honest.
- *
- * Null rather than a number when there is nothing published, so the caller
- * chooses its own range instead of being handed a 0 or an `-Infinity` from an
- * empty `Math.max`.
- */
-export function maxPublishedAnswers(
-  catalog: readonly PlanCatalogEntry[] | null
-): number | null {
-  if (!catalog || catalog.length === 0) return null;
-  return Math.max(...catalog.map((entry) => entry.volumes.answers));
-}
-
-/**
- * The cheapest published tier whose monthly allowance funds `answersWanted`, or
- * null when the estimate is past the top of the ladder.
- *
- * This is the rule behind the pricing page's picker. It recommends by ANSWERS
- * because that is what a plan meters — members are unlimited — and the answer
- * count is the one volume a prospect can estimate about themselves.
- *
- * It walks the catalog by price, so the recommendation moves with the allowances
- * rather than with a tier order written down somewhere: a ladder whose
- * allowances and prices disagree with the order it was enumerated in still
- * recommends the cheapest plan that actually covers the reader.
- *
- * Above the dearest published volume the answer is deliberately null. The honest
- * response there is a conversation, not the top card.
- *
- * `recommendableSlugs` is required rather than optional because the caller is
- * the only one who knows which tiers it can actually point at. A catalog may
- * carry a tier the surface does not render — a slug added on the enterprise
- * side, or a retired one — and recommending that would highlight nothing while
- * telling the reader their estimate is off the ladder, with a plan that covers
- * them sitting right there.
- */
-export function recommendedTierSlug(
-  catalog: readonly PlanCatalogEntry[] | null,
-  answersWanted: number,
-  recommendableSlugs: readonly string[]
-): string | null {
-  if (!catalog) return null;
-  return (
-    [...catalog]
-      .filter((entry) => recommendableSlugs.includes(entry.slug))
-      .sort((a, b) => a.priceEur - b.priceEur)
-      .find((entry) => entry.volumes.answers >= answersWanted)?.slug ?? null
-  );
 }
 
 /**

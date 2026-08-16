@@ -48,6 +48,16 @@ export const dockerStep: SetupStep = {
         ok: false,
         detail: "Docker Desktop is not installed. Install it, then check again.",
         help: { label: "Get Docker Desktop", url: config.dockerDownloadUrl },
+        // Written for someone who has never installed developer tooling:
+        // every step is something they can see on their screen, and the last
+        // one names the exact button to press in this window.
+        guide: [
+          "Click “Get Docker Desktop” at the bottom of this window. Docker's official page opens in your browser, with the download button and its own install guide.",
+          "Download Docker Desktop and install it like any other app, following the steps on that page.",
+          "Open Docker Desktop once it is installed, and accept its terms. It is free for personal use, and no account is needed — you can skip any sign-in it offers.",
+          "Wait until its window says Docker Desktop is running. The first start can take a minute.",
+          "Come back here and press “Try again”.",
+        ],
       };
     }
     if (!(await ports.docker.isRunning())) {
@@ -56,6 +66,11 @@ export const dockerStep: SetupStep = {
       return {
         ok: false,
         detail: "Docker Desktop is installed but not running. Start it, then check again.",
+        guide: [
+          "Open Docker Desktop — it is already installed on this computer.",
+          "Wait until its window says Docker Desktop is running. Starting can take a minute.",
+          "Come back here and press “Try again”.",
+        ],
       };
     }
     return { ok: true, detail: "Docker Desktop is running." };

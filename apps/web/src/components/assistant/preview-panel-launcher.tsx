@@ -40,7 +40,7 @@ export function PreviewPanelLauncher({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [viaDrag, setViaDrag] = useState(false);
-  // The "Preview Chatbot" section *is* the preview; docking a second copy of
+  // The "Preview" section *is* the preview; docking a second copy of
   // it alongside would show the same chat twice, with two separate
   // conversations.
   const onPreviewRoute = pathname.endsWith("/preview");

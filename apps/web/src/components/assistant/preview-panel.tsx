@@ -284,7 +284,7 @@ export function PreviewPanel({
   /**
    * `"docked"` is the resizable right-hand column of the assistant editor — a
    * pointer surface, hidden below `md`. `"page"` is the same preview filling a
-   * route of its own (the "Preview Chatbot" SETUP section), which is how the
+   * route of its own (the "Preview" SETUP section), which is how the
    * preview is reachable at all on a phone or a portrait tablet: it drops the
    * width, the drag handle and the collapse control, since a page has no
    * neighbour to take room from.

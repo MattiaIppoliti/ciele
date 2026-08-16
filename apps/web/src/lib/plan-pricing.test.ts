@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlanCatalogEntry } from "@agent-hub/agent";
 import {
   currentPlanEntry,
-  maxPublishedAnswers,
   planTierViews,
-  recommendedTierSlug,
   selfServeTiers,
   upgradeOptions,
 } from "@/lib/plan-pricing";
@@ -169,82 +167,5 @@ describe("currentPlanEntry", () => {
     expect(currentPlanEntry("legacy", CATALOG)).toBeNull();
     expect(currentPlanEntry(null, CATALOG)).toBeNull();
     expect(currentPlanEntry("go", null)).toBeNull();
-  });
-});
-
-/**
- * The pricing page's answers picker, whose whole job is these two numbers. Kept
- * here rather than in the component so the rule the page recommends by is
- * testable at all — the page itself is a `.tsx` this suite cannot reach.
- *
- * Answers deliberately differ per tier and the ladder is deliberately out of
- * price order: the recommendation is a question about allowances, and the tier
- * order must not be taken on trust from however the catalog was enumerated.
- */
-const LADDER: PlanCatalogEntry[] = [
-  entry("enterprise", 999, {
-    salesLed: true,
-    checkout: false,
-    volumes: { answers: 100_000, pages: 200, documents: 300 },
-  }),
-  entry("go", 49, { volumes: { answers: 5_000, pages: 200, documents: 300 } }),
-  entry("business", 199, {
-    volumes: { answers: 25_000, pages: 200, documents: 300 },
-  }),
-];
-
-/** The slugs the pricing page has a card for. */
-const CARDS = ["go", "business", "enterprise"] as const;
-
-describe("recommendedTierSlug", () => {
-  it("recommends the cheapest tier whose allowance funds the estimate", () => {
-    expect(recommendedTierSlug(LADDER, 1_000, CARDS)).toBe("go");
-    expect(recommendedTierSlug(LADDER, 5_000, CARDS)).toBe("go");
-    expect(recommendedTierSlug(LADDER, 5_001, CARDS)).toBe("business");
-    expect(recommendedTierSlug(LADDER, 25_000, CARDS)).toBe("business");
-    expect(recommendedTierSlug(LADDER, 90_000, CARDS)).toBe("enterprise");
-  });
-
-  it("recommends nothing above the dearest published allowance", () => {
-    // Past the top of the ladder the honest answer is a conversation, not the
-    // dearest card — so there is nothing for the page to highlight.
-    expect(recommendedTierSlug(LADDER, 100_001, CARDS)).toBeNull();
-  });
-
-  it("walks the ladder by price, not by the order the catalog arrived in", () => {
-    // LADDER lists Enterprise first. A tier order taken on trust recommends it
-    // for a 1,000-answer pilot.
-    expect(recommendedTierSlug(LADDER, 1_000, CARDS)).not.toBe("enterprise");
-  });
-
-  it("skips a tier the caller has no card for, and keeps walking", () => {
-    // A catalog can carry a tier this page does not render — a slug added on
-    // the enterprise side, or a retired one. Recommending it would ring no card
-    // at all and tell the reader their estimate is off the ladder when a plan
-    // covering it is sitting right there.
-    const withStranger = [
-      ...LADDER,
-      entry("startup", 99, {
-        volumes: { answers: 10_000, pages: 200, documents: 300 },
-      }),
-    ];
-    expect(recommendedTierSlug(withStranger, 6_000, CARDS)).toBe("business");
-  });
-
-  it("recommends nothing when there is no ladder to recommend from", () => {
-    expect(recommendedTierSlug(null, 1_000, CARDS)).toBeNull();
-    expect(recommendedTierSlug([], 1_000, CARDS)).toBeNull();
-    expect(recommendedTierSlug(LADDER, 1_000, [])).toBeNull();
-  });
-});
-
-describe("maxPublishedAnswers", () => {
-  it("is the dearest published allowance — the top of the picker's range", () => {
-    expect(maxPublishedAnswers(LADDER)).toBe(100_000);
-  });
-
-  it("has no ceiling to offer with no catalog, so the caller picks one", () => {
-    expect(maxPublishedAnswers(null)).toBeNull();
-    expect(maxPublishedAnswers([])).toBeNull();
   });
 });

@@ -101,6 +101,15 @@ describe("verify gates the next step", () => {
 
     expect(snapshot.steps[0]!.help).toEqual(help);
   });
+
+  it("carries a verify's guide through, so a failure explains how to fix itself", async () => {
+    const guide = ["Install it.", "Start it.", "Press Try again."];
+    const engine = engineWith([step("a", { verifyResult: { ok: false, detail: "no", guide } })]);
+
+    const snapshot = await engine.run();
+
+    expect(snapshot.steps[0]!.guide).toEqual(guide);
+  });
 });
 
 describe("failure and retry", () => {

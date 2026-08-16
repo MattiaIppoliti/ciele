@@ -23,6 +23,7 @@ interface StepState {
   error: string | null;
   detail: string | null;
   help: { label: string; url: string } | null;
+  guide: string[];
   logs: string[];
   input: Record<string, string>;
   /**
@@ -79,6 +80,7 @@ export function createSetupEngine({
       error: null,
       detail: null,
       help: null,
+      guide: [],
       logs: [],
       input: {},
       accepted: false,
@@ -115,6 +117,7 @@ export function createSetupEngine({
       error: state.error,
       detail: state.detail,
       help: state.help,
+      guide: [...state.guide],
       logs: [...state.logs],
     };
   }
@@ -145,6 +148,7 @@ export function createSetupEngine({
     state.error = null;
     state.detail = null;
     state.help = null;
+    state.guide = [];
     state.logs = [];
     emit();
 
@@ -180,6 +184,7 @@ export function createSetupEngine({
 
     state.detail = result.detail ?? null;
     state.help = result.help ?? null;
+    state.guide = result.guide ?? [];
     if (!result.ok) {
       state.status = "failed";
       // A verify that fails without saying why is a dead end for the user, so

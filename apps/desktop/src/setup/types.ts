@@ -20,6 +20,13 @@ export interface VerifyResult {
   detail?: string;
   /** Something the user can go and do about it, when there is one. */
   help?: { label: string; url: string };
+  /**
+   * How to fix it, one plain-language instruction per entry, rendered as a
+   * numbered list. For someone who has never installed developer tooling this
+   * is the difference between a wall and a path — each failure mode can carry
+   * its own walkthrough ("install it" and "start it" are different journeys).
+   */
+  guide?: string[];
 }
 
 /**
@@ -71,6 +78,8 @@ export interface StepView {
   error: string | null;
   help: { label: string; url: string } | null;
   detail: string | null;
+  /** Numbered walkthrough for the current failure, empty when there is none. */
+  guide: string[];
   logs: string[];
 }
 

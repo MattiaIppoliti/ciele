@@ -80,7 +80,7 @@ export const SETUP_SECTIONS: SetupSection[] = [
   // chrome hidden below `md`, so this route is the only way to reach the live
   // preview on a phone or a portrait tablet.
   {
-    label: "Preview Chatbot",
+    label: "Preview",
     slug: "preview",
     icon: MessageCircle,
     enabled: true,

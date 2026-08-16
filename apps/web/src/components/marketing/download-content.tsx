@@ -208,7 +208,8 @@ export function DownloadContent() {
             <div className="mx-auto mt-8 max-w-xl">
               <InstallCommand command={command} />
               <p className="text-muted-foreground mt-3 text-sm">
-                macOS and Linux, with Docker.{" "}
+                macOS and Linux, with Docker — a Mac without it gets Ciele
+                Desktop, which guides the install.{" "}
                 <a
                   href={`#${SELF_HOST_ANCHOR}`}
                   className="text-foreground underline underline-offset-4 hover:no-underline"

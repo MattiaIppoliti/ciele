@@ -64,7 +64,7 @@ export interface PreviewSetupSection {
 }
 
 export const PREVIEW_SETUP_SECTIONS: PreviewSetupSection[] = [
-  { label: "Preview Chatbot", slug: "preview", icon: MessageCircle },
+  { label: "Preview", slug: "preview", icon: MessageCircle },
   { label: "General", slug: "general", icon: SlidersHorizontal },
   { label: "Knowledge", slug: "knowledge", icon: BookText },
   { label: "Flows", slug: "flows", icon: Workflow },
