@@ -229,7 +229,13 @@ const PACE = 1.5;
 
 const noop = () => {};
 
-export function AssistantPreviewDemo({ className }: { className?: string }) {
+export function AssistantPreviewDemo({
+  className,
+  cardClassName,
+}: {
+  className?: string;
+  cardClassName?: string;
+}) {
   const frameRef = useRef<HTMLDivElement>(null);
   const active = useShouldAnimate(frameRef);
 
@@ -291,7 +297,12 @@ export function AssistantPreviewDemo({ className }: { className?: string }) {
         className
       )}
     >
-      <div className="bg-background flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border shadow-xl shadow-black/10 dark:shadow-black/40">
+      <div
+        className={cn(
+          "bg-background flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border shadow-xl shadow-black/10 dark:shadow-black/40",
+          cardClassName
+        )}
+      >
         <ChatHeader
           nickname="Acme Assistant"
           historyOpen={false}

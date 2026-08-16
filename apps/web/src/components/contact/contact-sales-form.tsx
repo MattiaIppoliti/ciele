@@ -6,7 +6,7 @@ import { Button, Input, Label } from "@agent-hub/ui";
 import {
   submitSalesEnquiryAction,
   type ContactSalesResult,
-} from "@/app/contact/sales/actions";
+} from "@/app/(marketing)/contact/sales/actions";
 import {
   SALES_COMPANY_SIZES,
   SALES_COUNTRIES,

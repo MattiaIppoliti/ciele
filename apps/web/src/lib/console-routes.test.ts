@@ -87,6 +87,9 @@ describe("marketing routes", () => {
       "/security",
       "/security/gdpr",
       "/policies/privacy",
+      // Public because the group is: signed-out buyers are exactly who reaches
+      // it, and middleware no longer carries a /contact rule of its own.
+      "/contact/sales",
       // The landing page is in the group as well, so the whole public site
       // shares one layout.
       "/home",

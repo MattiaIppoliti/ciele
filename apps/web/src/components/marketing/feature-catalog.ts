@@ -41,7 +41,7 @@ export const FEATURES: FeatureEntry[] = [
     headline: "Every assistant in one dashboard",
     standfirst:
       "Create an assistant, give it a name and a job, and edit it beside a live preview of the widget your visitors will see.",
-    shot: { kind: "preview" },
+    shot: { kind: "pane", view: "Assistants" },
     meta: "Create, edit and duplicate the assistants your organization runs, each with its own knowledge, flows and channels.",
     points: [
       {
@@ -207,6 +207,12 @@ export const FEATURES: FeatureEntry[] = [
         body: "Lanes, priorities, tags, assignees and occurrence counts, so the answer ten people hit gets fixed before the one that happened once.",
       },
     ],
+    coda: {
+      eyebrow: "On the card",
+      headline: "Every item keeps its context",
+      body: "Status, priority and owner sit on the card, and the answer that raised it travels with it — from flagged to done without losing the conversation behind it.",
+      mock: "kanban",
+    },
   },
   {
     slug: "insights",

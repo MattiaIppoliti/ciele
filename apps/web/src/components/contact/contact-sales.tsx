@@ -1,13 +1,14 @@
 import { Clock, PhoneCall } from "lucide-react";
-import { AuthGrid } from "@/components/auth/auth-grid";
 import { GhostMark } from "@/components/auth/ghost-mark";
-import { MarketingScene } from "@/components/home/marketing-scene";
 import { Link } from "@/components/ui/link";
 import { ContactSalesForm } from "@/components/contact/contact-sales-form";
 
 /**
- * The contact-sales page: a framed two-column card on the auth pages' dark
- * animated grid, rather than the marketing shell.
+ * The contact-sales page content: the framed two-column card, rendered inside
+ * the shared marketing shell (header, sky, footer come from the (marketing)
+ * layout) so the page is part of the site rather than a standalone screen.
+ * The card itself keeps its dark look regardless of the visitor's theme — the
+ * `dark` class scopes the token flip to the module.
  *
  * A server component. All of it — the frame, the grid bands, the pitch column
  * and the two claims along the bottom — is static copy, so the only thing that
@@ -34,11 +35,8 @@ function GridStrip() {
 
 export function ContactSales() {
   return (
-    <MarketingScene className="dark text-foreground bg-[#080808]">
-      {/* The animated grid belongs to the page surround only. The framed
-          contact form remains quiet, with its square bands limited to top and bottom. */}
-      <AuthGrid tone="dark" />
-      <div className="relative z-10 mx-auto max-w-[66.125rem] px-4 py-8 md:py-12">
+    <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
+      <div className="dark text-foreground relative z-10 mx-auto w-full max-w-[66.125rem]">
         <div className="border-border border bg-[#080808]">
           <GridStrip />
 
@@ -107,6 +105,6 @@ export function ContactSales() {
           <GridStrip />
         </div>
       </div>
-    </MarketingScene>
+    </main>
   );
 }

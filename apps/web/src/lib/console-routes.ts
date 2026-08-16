@@ -30,6 +30,9 @@ export const CONSOLE_PATH_PREFIXES = [
  * is, so a new marketing section cannot land behind the login wall.
  */
 export const MARKETING_PATH_PREFIXES = [
+  // Only /contact/sales exists under it, and it joined the group so it wears
+  // the same navbar, sky and footer as the rest of the public site.
+  "/contact",
   "/download",
   "/enterprise",
   "/features",

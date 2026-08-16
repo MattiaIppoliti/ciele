@@ -19,7 +19,7 @@ const PUBLIC_PATHS = [
   // (see app/signup/page.tsx). Public so signed-out visitors reach the redirect.
   /^\/signup/,
   /^\/join\//,
-  /^\/contact\//,
+  // (/contact is public through the `(marketing)` group — see the note above.)
   /^\/widget/,
   /^\/api\/widget/,
   // Widget SSO: anonymous visitors hit these to sign in with the org's IdP,

@@ -18,7 +18,7 @@ const AssistantPreviewDemo = dynamic(
 export function PreviewCoda() {
   return (
     <div
-      className="mx-auto h-[560px] w-full max-w-md overflow-hidden"
+      className="mx-auto h-[640px] w-full overflow-hidden"
       /* Same dissolve as the feature window above: the widget is a view onto
          a conversation that keeps going, so it fades out instead of ending
          on its own border. */
@@ -27,7 +27,10 @@ export function PreviewCoda() {
         WebkitMaskImage: "linear-gradient(to bottom, black 78%, transparent 100%)",
       }}
     >
-      <AssistantPreviewDemo className="bg-transparent px-0 pt-0 sm:px-0 sm:pt-0" />
+      <AssistantPreviewDemo
+        className="bg-transparent px-0 pt-0 sm:px-0 sm:pt-0"
+        cardClassName="max-w-none"
+      />
     </div>
   );
 }

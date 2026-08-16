@@ -365,6 +365,36 @@ function InboxPane() {
 
 function ImprovementsPane() {
   const compact = useContext(CompactContext);
+  // The one live behaviour in this pane: the cards drag between lanes, the
+  // way they do on the real Improvements board. Local state only — a page
+  // reload puts every card back where the fixture data has it.
+  const [columns, setColumns] = useState(() =>
+    IMPROVEMENT_COLUMNS.map((column) => ({
+      label: column.label,
+      items: [...column.items],
+    })),
+  );
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropLane, setDropLane] = useState<string | null>(null);
+
+  const moveTo = (label: string, title: string) => {
+    setColumns((current) => {
+      const item = current
+        .flatMap((column) => column.items)
+        .find((candidate) => candidate.title === title);
+      if (!item) return current;
+      const from = current.find((column) => column.items.includes(item));
+      if (from?.label === label) return current;
+      return current.map((column) => ({
+        ...column,
+        items:
+          column.label === label
+            ? [...column.items, item]
+            : column.items.filter((candidate) => candidate !== item),
+      }));
+    });
+  };
+
   return (
     <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
       <div
@@ -373,36 +403,75 @@ function ImprovementsPane() {
           compact ? "grid-cols-1 gap-3" : "grid-cols-3",
         )}
       >
-        {(compact ? IMPROVEMENT_COLUMNS.slice(0, 2) : IMPROVEMENT_COLUMNS).map(
-          (column) => (
-            <div key={column.label} className="bg-muted/40 rounded-xl border p-3">
-              <div className="flex items-center gap-2 px-1 pb-3">
-                <span className="text-sm font-semibold">{column.label}</span>
-                <span className="bg-muted text-muted-foreground rounded-full px-2 py-px text-xs">
-                  {column.items.length}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {column.items.map((item) => (
-                  <div
-                    key={item.title}
-                    className="bg-card hover:border-ring/40 rounded-lg border p-3 shadow-xs transition-colors"
-                  >
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-[10px]">
-                        {item.assistant}
-                      </span>
-                      <span className="text-muted-foreground ml-auto text-xs">
-                        {item.date}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {(compact ? columns.slice(0, 2) : columns).map((column) => (
+          <div
+            key={column.label}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDropLane(column.label);
+            }}
+            onDragLeave={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node))
+                return;
+              setDropLane((lane) => (lane === column.label ? null : lane));
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              moveTo(column.label, event.dataTransfer.getData("text/plain"));
+              setDragging(null);
+              setDropLane(null);
+            }}
+            className={cn(
+              "bg-muted/40 rounded-xl border p-3 transition-colors",
+              dropLane === column.label && dragging && "border-ring/60 bg-muted/70",
+            )}
+          >
+            <div className="flex items-center gap-2 px-1 pb-3">
+              <span className="text-sm font-semibold">{column.label}</span>
+              <span className="bg-muted text-muted-foreground rounded-full px-2 py-px text-xs">
+                {column.items.length}
+              </span>
             </div>
-          ),
-        )}
+            <div className="space-y-2">
+              {column.items.map((item) => (
+                <div
+                  key={item.title}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    // Firefox needs data set for the drag to start at all.
+                    event.dataTransfer.setData("text/plain", item.title);
+                    setDragging(item.title);
+                  }}
+                  onDragEnd={() => {
+                    setDragging(null);
+                    setDropLane(null);
+                  }}
+                  className={cn(
+                    "bg-card hover:border-ring/40 cursor-grab rounded-lg border p-3 shadow-xs transition-colors active:cursor-grabbing",
+                    dragging === item.title && "opacity-40",
+                  )}
+                >
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="bg-muted text-muted-foreground rounded-full border px-2 py-px text-[10px]">
+                      {item.assistant}
+                    </span>
+                    <span className="text-muted-foreground ml-auto text-xs">
+                      {item.date}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {column.items.length === 0 && (
+                <div className="text-muted-foreground rounded-lg border border-dashed p-3 text-center text-xs">
+                  Drop an improvement here.
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

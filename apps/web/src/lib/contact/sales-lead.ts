@@ -5,7 +5,7 @@ import type { EmailMessage } from "@agent-hub/agent";
  * the email that carries it.
  *
  * The destination for a submission is **an email to the sales alias**, not a
- * database row (see `app/contact/sales/actions.ts` for why). That makes this
+ * database row (see `app/(marketing)/contact/sales/actions.ts` for why). That makes this
  * module the whole domain: a pure record → validated lead → `EmailMessage`
  * pipeline with no I/O, which is also why it is testable as plain TS while the
  * form itself is a `.tsx` the vitest include never picks up.
