@@ -32,7 +32,12 @@ async function requireAssistant(
   return assistant;
 }
 
-/** collectionId → Collection whose Assistant is the caller's, or not_found. */
+/**
+ * collectionId → Collection the caller may touch, or not_found. Two ownership
+ * shapes (PRD #726): org-owned Collections (e.g. the per-org "Knowledge
+ * Library", `assistantId === ""`) check the org stamp directly; legacy
+ * assistant-owned ones check through the owning Assistant.
+ */
 async function requireCollection(
   ctx: OperationContext,
   collectionId: string,
@@ -43,8 +48,33 @@ async function requireCollection(
   if (assistantId && collection.assistantId !== assistantId) {
     throw new OperationError("not_found", "Collection not found");
   }
-  await requireAssistant(ctx, collection.assistantId);
+  if (collection.assistantId) {
+    await requireAssistant(ctx, collection.assistantId);
+  } else if (collection.organizationId !== ctx.organizationId) {
+    throw new OperationError("not_found", "Collection not found");
+  }
   return collection;
+}
+
+/**
+ * Resolves the assistant that stamps ingestion for a Source in this
+ * Collection: the legacy owner, or (org-owned Collections) the first of the
+ * explicitly linked Assistants — which the input must then provide.
+ */
+async function requireIngestAssistant(
+  ctx: OperationContext,
+  collection: KnowledgeCollection,
+  assistantIds: string[] | undefined
+): Promise<string> {
+  for (const id of assistantIds ?? []) await requireAssistant(ctx, id);
+  const effective = collection.assistantId || assistantIds?.[0];
+  if (!effective) {
+    throw new OperationError(
+      "invalid_input",
+      "Pick at least one assistant to link this knowledge to"
+    );
+  }
+  return effective;
 }
 
 async function requireSource(
@@ -106,15 +136,27 @@ export const addSourceOp = defineOperation({
     rawText: z.string().min(1),
     sourceUrl: z.string().url().max(2000).optional(),
     originalObjectPath: z.string().max(1000).optional(),
+    /**
+     * Hub add flows (PRD #726): the full linked-assistant set for the new
+     * Source, replacing the owner auto-link. Required (≥1) when the
+     * Collection is org-owned.
+     */
+    assistantIds: z.array(z.string().min(1)).max(50).optional(),
   }),
   entities: (_input, result: { source: Source; assistantId: string }) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
+    { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
     const collection = await requireCollection(
       ctx,
       input.collectionId,
       input.assistantId
+    );
+    const ingestAssistantId = await requireIngestAssistant(
+      ctx,
+      collection,
+      input.assistantIds
     );
     const source = await ctx.db.createSource({
       collectionId: input.collectionId,
@@ -123,13 +165,108 @@ export const addSourceOp = defineOperation({
       originalObjectPath: input.originalObjectPath ?? null,
       ...(input.sourceUrl ? { config: { url: input.sourceUrl } } : {}),
     });
+    if (input.assistantIds) {
+      await ctx.db.setSourceAssistantLinks(source.id, [
+        ...new Set(input.assistantIds),
+      ]);
+    }
     await ctx.ports?.enqueueIngest?.({
-      assistantId: collection.assistantId,
+      assistantId: ingestAssistantId,
       collectionId: input.collectionId,
       sourceId: source.id,
       rawText: input.rawText,
     });
-    return { source, assistantId: collection.assistantId };
+    return { source, assistantId: ingestAssistantId };
+  },
+});
+
+/** One hub-table page of the Organization's knowledge items (PRD #726). */
+export const listOrgKnowledgeSourcesOp = defineOperation({
+  name: "knowledge.org.list",
+  capability: "member",
+  input: z.object({
+    kinds: z
+      .array(z.enum(["website", "url", "file", "text", "faq"]))
+      .min(1)
+      .max(5),
+    status: z.enum(["processing", "ready", "error"]).optional(),
+    assistantId: z.string().optional(),
+    query: z.string().max(200).optional(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(1).max(100).optional(),
+  }),
+  entities: () => [],
+  run: (ctx, input) => ctx.db.listOrgKnowledgeSources(ctx.organizationId, input),
+});
+
+/** Every FAQ with its full answer — the org-wide CSV export (PRD #726). */
+export const listOrgFaqsOp = defineOperation({
+  name: "knowledge.org.faqs.list",
+  capability: "member",
+  input: z.object({}),
+  entities: () => [],
+  run: (ctx) => ctx.db.listOrgFaqs(ctx.organizationId),
+});
+
+/**
+ * Replaces a Source's full linked-assistant set ("Manage linked assistants",
+ * PRD #726). Links kept across the call preserve their Direct access flag.
+ * Takes effect immediately in retrieval — knowledge is live, not snapshotted.
+ */
+export const setSourceLinksOp = defineOperation({
+  name: "knowledge.sources.links.set",
+  capability: "edit",
+  input: z.object({
+    sourceId: z.string().min(1),
+    assistantIds: z.array(z.string().min(1)).max(50),
+  }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input) => {
+    await requireSource(ctx, input.sourceId);
+    for (const id of input.assistantIds) await requireAssistant(ctx, id);
+    await ctx.db.setSourceAssistantLinks(input.sourceId, [
+      ...new Set(input.assistantIds),
+    ]);
+    return ctx.db.listSourceAssistantLinks(input.sourceId);
+  },
+});
+
+/**
+ * Flips Direct access on one (assistant, source) link (PRD #726): whether
+ * chat users of that assistant may open the cited file itself. File Sources
+ * with a retained original only — the flag can never silently expose
+ * anything else.
+ */
+export const setDirectAccessOp = defineOperation({
+  name: "knowledge.sources.direct_access.set",
+  capability: "edit",
+  input: z.object({
+    sourceId: z.string().min(1),
+    assistantId: z.string().min(1),
+    directAccess: z.boolean(),
+  }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input) => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    if (source.kind !== "file") {
+      throw new OperationError(
+        "invalid_input",
+        "Direct access applies to file Sources only"
+      );
+    }
+    if (!source.originalObjectPath) {
+      throw new OperationError(
+        "invalid_input",
+        "This file has no stored original to hand out"
+      );
+    }
+    await requireAssistant(ctx, input.assistantId);
+    await ctx.db.setSourceDirectAccess(
+      input.sourceId,
+      input.assistantId,
+      input.directAccess
+    );
+    return ctx.db.listSourceAssistantLinks(input.sourceId);
   },
 });
 
@@ -138,7 +275,10 @@ export const deleteSourceOp = defineOperation({
   capability: "edit",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantId: string }) => [
-    { kind: "assistantEditor" as const, assistantId: result.assistantId },
+    ...(result.assistantId
+      ? [{ kind: "assistantEditor" as const, assistantId: result.assistantId }]
+      : []),
+    { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, { id }) => {
     const { source, collection } = await requireSource(ctx, id);
@@ -164,15 +304,23 @@ export const createFaqOp = defineOperation({
     collectionId: z.string().min(1),
     question: z.string().min(1).max(1000),
     answer: z.string().min(1).max(20000),
+    /** Hub create (PRD #726): the linked-assistant set for the new FAQ. */
+    assistantIds: z.array(z.string().min(1)).max(50).optional(),
   }),
   entities: (_input, result: { concept: Concept; assistantId: string }) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
+    { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
     const collection = await requireCollection(
       ctx,
       input.collectionId,
       input.assistantId
+    );
+    const ingestAssistantId = await requireIngestAssistant(
+      ctx,
+      collection,
+      input.assistantIds
     );
     if (!ctx.ports?.persistFaq) {
       throw new OperationError(
@@ -181,7 +329,7 @@ export const createFaqOp = defineOperation({
       );
     }
     const concept = await ctx.ports.persistFaq({
-      assistantId: collection.assistantId,
+      assistantId: ingestAssistantId,
       collectionId: input.collectionId,
       question: input.question,
       answer: input.answer,
@@ -193,7 +341,12 @@ export const createFaqOp = defineOperation({
         },
       },
     });
-    return { concept, assistantId: collection.assistantId };
+    if (input.assistantIds && concept.sourceId) {
+      await ctx.db.setSourceAssistantLinks(concept.sourceId, [
+        ...new Set(input.assistantIds),
+      ]);
+    }
+    return { concept, assistantId: ingestAssistantId };
   },
 });
 
@@ -214,15 +367,23 @@ export const importFaqsOp = defineOperation({
         })
       )
       .max(2000),
+    /** Hub import (PRD #726): the linked-assistant set for every new FAQ. */
+    assistantIds: z.array(z.string().min(1)).max(50).optional(),
   }),
   entities: (_input, result: { imported: number; assistantId: string }) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
+    { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
     const collection = await requireCollection(
       ctx,
       input.collectionId,
       input.assistantId
+    );
+    const ingestAssistantId = await requireIngestAssistant(
+      ctx,
+      collection,
+      input.assistantIds
     );
     if (!ctx.ports?.persistFaq) {
       throw new OperationError(
@@ -233,8 +394,8 @@ export const importFaqsOp = defineOperation({
     const at = new Date().toISOString();
     let imported = 0;
     for (const [index, row] of input.rows.entries()) {
-      await ctx.ports.persistFaq({
-        assistantId: collection.assistantId,
+      const concept = await ctx.ports.persistFaq({
+        assistantId: ingestAssistantId,
         collectionId: input.collectionId,
         question: row.question,
         answer: row.answer,
@@ -257,9 +418,66 @@ export const importFaqsOp = defineOperation({
             : {}),
         },
       });
+      if (input.assistantIds && concept.sourceId) {
+        await ctx.db.setSourceAssistantLinks(concept.sourceId, [
+          ...new Set(input.assistantIds),
+        ]);
+      }
       imported += 1;
     }
-    return { imported, assistantId: collection.assistantId };
+    return { imported, assistantId: ingestAssistantId };
+  },
+});
+
+/**
+ * Org-level FAQ create (PRD #726): lands in the per-org Knowledge Library and
+ * links the chosen Assistants. Thin wrapper over createFaqOp so the guard and
+ * persist path stay single-sourced.
+ */
+export const createOrgFaqOp = defineOperation({
+  name: "knowledge.org.faqs.create",
+  capability: "edit",
+  input: z.object({
+    question: z.string().min(1).max(1000),
+    answer: z.string().min(1).max(20000),
+    assistantIds: z.array(z.string().min(1)).min(1).max(50),
+  }),
+  entities: (_input, result: { concept: Concept; assistantId: string }) =>
+    createFaqOp.entities(
+      { collectionId: "", question: "", answer: "" },
+      result
+    ),
+  run: async (ctx, input) => {
+    const library = await ctx.db.getOrCreateOrgLibraryCollection(
+      ctx.organizationId
+    );
+    return createFaqOp.run(ctx, { collectionId: library.id, ...input });
+  },
+});
+
+/** Org-level bulk FAQ import (PRD #726) — the Library + explicit links. */
+export const importOrgFaqsOp = defineOperation({
+  name: "knowledge.org.faqs.import",
+  capability: "edit",
+  input: z.object({
+    fileName: z.string().max(300).optional(),
+    rows: z
+      .array(
+        z.object({
+          question: z.string().min(1).max(1000),
+          answer: z.string().min(1).max(20000),
+        })
+      )
+      .max(2000),
+    assistantIds: z.array(z.string().min(1)).min(1).max(50),
+  }),
+  entities: (_input, result: { imported: number; assistantId: string }) =>
+    importFaqsOp.entities({ collectionId: "", rows: [] }, result),
+  run: async (ctx, input) => {
+    const library = await ctx.db.getOrCreateOrgLibraryCollection(
+      ctx.organizationId
+    );
+    return importFaqsOp.run(ctx, { collectionId: library.id, ...input });
   },
 });
 
@@ -268,7 +486,10 @@ export const recrawlSourceOp = defineOperation({
   capability: "edit",
   input: z.object({ id: z.string().min(1) }),
   entities: (_input, result: { assistantId: string }) => [
-    { kind: "assistantEditor" as const, assistantId: result.assistantId },
+    ...(result.assistantId
+      ? [{ kind: "assistantEditor" as const, assistantId: result.assistantId }]
+      : []),
+    { kind: "knowledgeHub" as const },
     { kind: "alerts" as const },
   ],
   run: async (ctx, { id }) => {

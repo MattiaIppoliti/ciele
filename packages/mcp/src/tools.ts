@@ -45,8 +45,10 @@ const READ_ACTIONS = new Set([
   "status",
   "list_collections",
   "list_sources",
+  "list_org_sources",
   "get_source",
   "export",
+  "export_faqs",
   "query_records",
   "list_records",
   "subjects",
@@ -167,19 +169,25 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_knowledge",
       description:
-        "The Assistant's knowledge base: list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources (text, url, or a file passed as base64), delete a source, re-crawl a website source, add one FAQ, or bulk-import FAQs from CSV text (columns: question,answer).",
+        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources (text, url, or a file passed as base64), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level with links), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs).",
       schema: {
         action: z.enum([
           "list_collections",
           "list_sources",
+          "list_org_sources",
           "get_source",
           "add_text",
           "add_url",
           "add_file",
+          "set_links",
+          "set_direct_access",
           "delete_source",
           "recrawl",
           "add_faq",
+          "add_org_faq",
           "import_faqs",
+          "import_org_faqs",
+          "export_faqs",
         ]),
         assistantId: z.string().optional().describe("Required for list_collections"),
         collectionId: z.string().optional().describe("Required for list_sources/add_*/import_faqs"),
@@ -190,7 +198,15 @@ export function buildTools(client: CieleClient): CieleTool[] {
         fileBase64: z.string().optional().describe("File bytes, base64 (add_file)"),
         question: z.string().optional(),
         answer: z.string().optional(),
-        csvText: z.string().optional().describe("CSV content (import_faqs)"),
+        csvText: z.string().optional().describe("CSV content (import_faqs/import_org_faqs)"),
+        assistantIds: z
+          .array(z.string())
+          .optional()
+          .describe("Linked assistants (set_links/add_org_faq/import_org_faqs)"),
+        directAccess: z.boolean().optional().describe("set_direct_access"),
+        kinds: z.array(z.string()).optional().describe("Kind filter (list_org_sources)"),
+        status: z.string().optional().describe("Status filter (list_org_sources)"),
+        q: z.string().optional().describe("Name search (list_org_sources)"),
       },
       mutates: byAction,
       run: async (args) => {
@@ -233,6 +249,37 @@ export function buildTools(client: CieleClient): CieleTool[] {
               need(args, "collectionId"),
               new File([need(args, "csvText")], "faqs.csv", { type: "text/csv" })
             );
+          case "list_org_sources":
+            return client.knowledge.orgSources({
+              kinds: args.kinds as string[] | undefined,
+              status: args.status as string | undefined,
+              assistantId: args.assistantId as string | undefined,
+              q: args.q as string | undefined,
+            });
+          case "set_links":
+            return client.knowledge.setSourceLinks(
+              need(args, "sourceId"),
+              (args.assistantIds as string[] | undefined) ?? []
+            );
+          case "set_direct_access":
+            return client.knowledge.setDirectAccess(
+              need(args, "sourceId"),
+              need(args, "assistantId"),
+              args.directAccess === true
+            );
+          case "add_org_faq":
+            return client.knowledge.addOrgFaq({
+              question: need(args, "question"),
+              answer: need(args, "answer"),
+              assistantIds: (args.assistantIds as string[] | undefined) ?? [],
+            });
+          case "import_org_faqs":
+            return client.knowledge.importOrgFaqs(
+              new File([need(args, "csvText")], "faqs.csv", { type: "text/csv" }),
+              (args.assistantIds as string[] | undefined) ?? []
+            );
+          case "export_faqs":
+            return { csv: await client.knowledge.exportOrgFaqs() };
           default:
             throw new ToolInputError(`Unknown action "${args.action}"`);
         }

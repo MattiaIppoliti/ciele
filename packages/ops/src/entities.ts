@@ -38,4 +38,6 @@ export type MutatedEntity =
   /** The org Entities + Records data page (#663). */
   | { kind: "dataEntities" }
   /** The org-staff data assistant page (#668). */
-  | { kind: "dataAssistant" };
+  | { kind: "dataAssistant" }
+  /** The org-level Knowledge hub (PRD #726). */
+  | { kind: "knowledgeHub" };

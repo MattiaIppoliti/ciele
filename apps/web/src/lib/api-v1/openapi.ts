@@ -4,6 +4,7 @@ import {
   assistantPatchSchema,
   createAssistantOp,
   createFaqOp,
+  createOrgFaqOp,
   flowInputSchema,
   flowPatchSchema,
   improvementPatchSchema,
@@ -60,6 +61,12 @@ const reorderBody = z.object({ orderedIds: z.array(z.string()) });
 const republishBody = z.object({ publicationId: z.string() });
 const exportBody = z.object({ conversationIds: z.array(z.string()) });
 const faqBody = createFaqOp.input;
+const orgFaqBody = createOrgFaqOp.input;
+const linksBody = z.object({ assistantIds: z.array(z.string().min(1)).max(50) });
+const directAccessBody = z.object({
+  assistantId: z.string().min(1),
+  directAccess: z.boolean(),
+});
 const sourceBody = z.union([
   z.object({
     kind: z.literal("text"),
@@ -123,6 +130,14 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
   { method: "get", path: "/sources/{id}", summary: "One Source — poll status until it settles" },
   { method: "delete", path: "/sources/{id}", summary: "Delete a Source (Concepts cascade)" },
   { method: "post", path: "/sources/{id}/recrawl", summary: "Restart a website Source's crawl" },
+
+  // Knowledge hub (PRD #726) — org-level knowledge across all assistants
+  { method: "get", path: "/knowledge/sources", summary: "Org-wide knowledge items (?kinds=&status=&assistantId=&q=&page=&pageSize=)" },
+  { method: "put", path: "/sources/{id}/links", summary: "Replace a Source's linked-assistant set", body: linksBody },
+  { method: "put", path: "/sources/{id}/direct-access", summary: "Flip Direct access for one assistant on a file Source", body: directAccessBody },
+  { method: "post", path: "/knowledge/faqs", summary: "Add one org-level FAQ (Knowledge Library)", body: orgFaqBody, idempotent: true },
+  { method: "post", path: "/knowledge/faqs/import", summary: "Org-level bulk FAQ import (CSV)", multipart: ["file"] },
+  { method: "get", path: "/knowledge/faqs/export", summary: "Org-wide FAQ CSV export" },
 
   // Publish (#623)
   { method: "get", path: "/assistants/{id}/publish", summary: "Publication status" },

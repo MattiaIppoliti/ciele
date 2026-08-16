@@ -132,6 +132,13 @@ export type ChatReplyPart =
         sourceName: string | null;
         /** Original page/document URL — the chip links out when present. */
         url?: string | null;
+        /** The citation's Source id, when it has one (PRD #726). */
+        sourceId?: string | null;
+        /**
+         * Direct access (PRD #726): the answering assistant may hand the
+         * visitor the original file — the widget renders an open affordance.
+         */
+        directAccess?: boolean;
       }>;
     };
 

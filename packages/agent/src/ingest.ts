@@ -460,11 +460,18 @@ export async function embedConcept(options: {
       `[ingest] embedding allowance spent for organization ${assistant?.organizationId} — content stored for lexical search only`
     );
   }
+  // Chunks carry their Concept's Source so retrieval can scope them by the
+  // assistant↔source link table (PRD #726); source-less Concepts stay
+  // legacy-scoped by assistantId.
+  const concept = await options.db
+    .getConcept(options.conceptId)
+    .catch(() => null);
   await options.db.saveChunks(
     chunks.map((content, i) => ({
       conceptId: options.conceptId,
       collectionId: options.collectionId,
       assistantId: options.assistantId,
+      sourceId: concept?.sourceId ?? null,
       content: `${options.title}\n\n${content}`,
       embedding: embeddings[i],
     }))

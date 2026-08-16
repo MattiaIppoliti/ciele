@@ -209,6 +209,16 @@ interface MockStore {
   collections: Map<string, KnowledgeCollection>;
   sources: Map<string, Source>;
   concepts: Map<string, Concept>;
+  /** `${assistantId}:${sourceId}` → assistant↔source link (PRD #726). */
+  assistantSources: Map<
+    string,
+    {
+      assistantId: string;
+      sourceId: string;
+      directAccess: boolean;
+      createdAt: string;
+    }
+  >;
   chunks: Map<
     string,
     {
@@ -216,6 +226,8 @@ interface MockStore {
       conceptId: string;
       collectionId: string;
       assistantId: string;
+      /** Null = legacy chunk, scoped by assistantId (PRD #726). */
+      sourceId?: string | null;
       content: string;
       /** Kept only so the re-embed backfill can see missing embeddings. */
       embedding: number[] | null;
@@ -461,6 +473,7 @@ function emptyStore(): MockStore {
     crawlFinalizeAttemptedAt: new Map(),
     collections: new Map(),
     sources: new Map(),
+    assistantSources: new Map(),
     concepts: new Map(),
     chunks: new Map(),
     publications: new Map(),
@@ -573,6 +586,7 @@ function seedKnowledgeDemo(store: MockStore) {
   const collection: KnowledgeCollection = {
     id: "col-alex-general",
     assistantId,
+    organizationId: store.assistants.get(assistantId)?.organizationId ?? "",
     name: "General knowledge",
     description: "Default collection for this assistant",
     createdAt: at,
@@ -1222,6 +1236,8 @@ function seedInboxDemo(store: MockStore) {
   store.collections.set("col-onboarding", {
     id: "col-onboarding",
     assistantId: "Vrp47KxooVPk",
+    organizationId:
+      store.assistants.get("Vrp47KxooVPk")?.organizationId ?? "",
     name: "Customer onboarding",
     description: "",
     createdAt: at1(0, 0),
@@ -1911,6 +1927,9 @@ export const mockDb: Db = {
     for (const [key, a] of store.assistantAccess) {
       if (a.assistantId === id) store.assistantAccess.delete(key);
     }
+    for (const [key, link] of store.assistantSources) {
+      if (link.assistantId === id) store.assistantSources.delete(key);
+    }
   },
 
   // --- Assistant access overrides (PRD #296) -----------------------------
@@ -2306,15 +2325,34 @@ export const mockDb: Db = {
     return getStore().collections.get(id) ?? null;
   },
 
+  async getOrCreateOrgLibraryCollection(organizationId) {
+    const store = getStore();
+    const id = `org-library-${organizationId}`;
+    const existing = store.collections.get(id);
+    if (existing) return existing;
+    const collection: KnowledgeCollection = {
+      id,
+      assistantId: "",
+      organizationId,
+      name: "Knowledge Library",
+      description: "Organization-wide knowledge added from the Knowledge hub",
+      createdAt: new Date().toISOString(),
+    };
+    store.collections.set(id, collection);
+    return collection;
+  },
+
   async createCollection(assistantId, input) {
+    const store = getStore();
     const collection: KnowledgeCollection = {
       id: shortId(),
       assistantId,
+      organizationId: store.assistants.get(assistantId)?.organizationId ?? "",
       name: input.name,
       description: input.description ?? "",
       createdAt: new Date().toISOString(),
     };
-    getStore().collections.set(collection.id, collection);
+    store.collections.set(collection.id, collection);
     return collection;
   },
 
@@ -2322,7 +2360,11 @@ export const mockDb: Db = {
     const store = getStore();
     store.collections.delete(id);
     for (const [sid, s] of store.sources)
-      if (s.collectionId === id) store.sources.delete(sid);
+      if (s.collectionId === id) {
+        store.sources.delete(sid);
+        for (const [key, link] of store.assistantSources)
+          if (link.sourceId === sid) store.assistantSources.delete(key);
+      }
     for (const [cid, c] of store.concepts)
       if (c.collectionId === id) store.concepts.delete(cid);
     for (const [kid, k] of store.chunks)
@@ -2336,6 +2378,7 @@ export const mockDb: Db = {
   },
 
   async createSource(input) {
+    const store = getStore();
     const now = new Date().toISOString();
     const source: Source = {
       id: shortId(),
@@ -2351,7 +2394,20 @@ export const mockDb: Db = {
       createdAt: now,
       updatedAt: now,
     };
-    getStore().sources.set(source.id, source);
+    store.sources.set(source.id, source);
+    // Auto-link to the collection's legacy owning assistant (PRD #726).
+    const ownerAssistantId = store.collections.get(input.collectionId)
+      ?.assistantId;
+    if (ownerAssistantId) {
+      const key = `${ownerAssistantId}:${source.id}`;
+      if (!store.assistantSources.has(key))
+        store.assistantSources.set(key, {
+          assistantId: ownerAssistantId,
+          sourceId: source.id,
+          directAccess: false,
+          createdAt: now,
+        });
+    }
     return source;
   },
 
@@ -2656,6 +2712,8 @@ export const mockDb: Db = {
     store.sources.delete(id);
     store.crawlFinalizeClaims.delete(id);
     store.crawlFinalizeAttemptedAt.delete(id);
+    for (const [key, link] of store.assistantSources)
+      if (link.sourceId === id) store.assistantSources.delete(key);
     for (const [jobId, job] of store.backgroundJobs)
       if (job.sourceId === id) store.backgroundJobs.delete(jobId);
     for (const [cid, c] of store.concepts)
@@ -2774,6 +2832,7 @@ export const mockDb: Db = {
         conceptId: chunk.conceptId,
         collectionId: chunk.collectionId,
         assistantId: chunk.assistantId,
+        sourceId: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding ?? null,
       });
@@ -2787,7 +2846,13 @@ export const mockDb: Db = {
     const tokens = lexicalTokens(query.text);
     const results: KnowledgeSearchResult[] = [];
     for (const chunk of store.chunks.values()) {
-      if (chunk.assistantId !== assistantId) continue;
+      // A chunk that knows its Source answers for exactly the linked
+      // Assistants; a legacy chunk falls back to the denormalized
+      // assistantId (mirrors match_chunks_linked, PRD #726).
+      const reachable = chunk.sourceId
+        ? store.assistantSources.has(`${assistantId}:${chunk.sourceId}`)
+        : chunk.assistantId === assistantId;
+      if (!reachable) continue;
       if (collectionId && chunk.collectionId !== collectionId) continue;
       const similarity = lexicalScore(chunk.content, tokens);
       if (similarity === 0) continue;
@@ -2799,6 +2864,9 @@ export const mockDb: Db = {
       const source = concept?.sourceId
         ? store.sources.get(concept.sourceId)
         : undefined;
+      const link = source
+        ? store.assistantSources.get(`${assistantId}:${source.id}`)
+        : undefined;
       results.push({
         conceptId: chunk.conceptId,
         conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
@@ -2806,6 +2874,11 @@ export const mockDb: Db = {
         collectionId: chunk.collectionId,
         collectionName: collection?.name ?? "",
         sourceName: source?.name ?? null,
+        sourceId: source?.id ?? null,
+        directAccess:
+          source?.kind === "file" &&
+          source.originalObjectPath !== null &&
+          link?.directAccess === true,
         resourceUrl: concept?.frontmatter.resource ?? null,
         content: chunk.content,
         similarity,
@@ -3292,6 +3365,144 @@ export const mockDb: Db = {
             title: improvement.title,
           },
         ];
+      });
+  },
+
+  // --- Org-level knowledge hub (PRD #726) ---------------------------------
+
+  async listOrgKnowledgeSources(organizationId, filter) {
+    const store = getStore();
+    const query = (filter.query ?? "").trim().toLowerCase();
+    const matches = [...store.sources.values()].filter((source) => {
+      if (!filter.kinds.includes(source.kind)) return false;
+      const collection = store.collections.get(source.collectionId);
+      if (!collection) return false;
+      // Legacy collections predate the org stamp — fall back to the owning
+      // assistant's org until the backfill migration fills them.
+      const orgId =
+        collection.organizationId ||
+        (store.assistants.get(collection.assistantId)?.organizationId ?? "");
+      if (orgId !== organizationId) return false;
+      if (filter.status && source.status !== filter.status) return false;
+      if (query && !source.name.toLowerCase().includes(query)) return false;
+      if (
+        filter.assistantId &&
+        !store.assistantSources.has(`${filter.assistantId}:${source.id}`)
+      )
+        return false;
+      return true;
+    });
+    matches.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+    const statusCounts = { processing: 0, ready: 0, error: 0 };
+    for (const source of matches) statusCounts[source.status] += 1;
+
+    const pageSize = filter.pageSize ?? 25;
+    const page = filter.page ?? 1;
+    const slice = matches.slice((page - 1) * pageSize, page * pageSize);
+
+    const items = slice.map((source) => {
+      let conceptCount = 0;
+      let answerPreview = "";
+      for (const concept of store.concepts.values()) {
+        if (concept.sourceId !== source.id) continue;
+        conceptCount += 1;
+        if (source.kind === "faq" && !answerPreview)
+          answerPreview = concept.body.slice(0, 200);
+      }
+      const linkedAssistants = [...store.assistantSources.values()]
+        .filter((link) => link.sourceId === source.id)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+        .map((link) => ({
+          assistantId: link.assistantId,
+          assistantName: store.assistants.get(link.assistantId)?.title ?? "",
+          directAccess: link.directAccess,
+        }));
+      return {
+        id: source.id,
+        collectionId: source.collectionId,
+        name: source.name,
+        kind: source.kind,
+        status: source.status,
+        error: source.error,
+        config: source.config,
+        lastCrawledAt: source.lastCrawledAt,
+        originalObjectPath: source.originalObjectPath,
+        createdAt: source.createdAt,
+        updatedAt: source.updatedAt,
+        conceptCount,
+        answerPreview,
+        linkedAssistants,
+      };
+    });
+
+    return { items, total: matches.length, statusCounts };
+  },
+
+  async listOrgFaqs(organizationId) {
+    const store = getStore();
+    const page = await mockDb.listOrgKnowledgeSources(organizationId, {
+      kinds: ["faq"],
+      pageSize: Number.MAX_SAFE_INTEGER,
+    });
+    return page.items.map((item) => {
+      let answer = "";
+      for (const concept of store.concepts.values()) {
+        if (concept.sourceId === item.id) {
+          answer = concept.body;
+          break;
+        }
+      }
+      return { sourceId: item.id, question: item.name, answer };
+    });
+  },
+
+  async listConceptsBySource(sourceId, limit) {
+    return [...getStore().concepts.values()]
+      .filter((c) => c.sourceId === sourceId)
+      .sort((a, b) => (a.path < b.path ? -1 : 1))
+      .slice(0, limit ?? 500);
+  },
+
+  async listSourceAssistantLinks(sourceId) {
+    const store = getStore();
+    return [...store.assistantSources.values()]
+      .filter((link) => link.sourceId === sourceId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((link) => ({
+        assistantId: link.assistantId,
+        assistantName: store.assistants.get(link.assistantId)?.title ?? "",
+        directAccess: link.directAccess,
+      }));
+  },
+
+  async setSourceAssistantLinks(sourceId, assistantIds) {
+    const store = getStore();
+    const wanted = new Set(assistantIds);
+    for (const [key, link] of store.assistantSources) {
+      if (link.sourceId === sourceId && !wanted.has(link.assistantId))
+        store.assistantSources.delete(key);
+    }
+    const now = new Date().toISOString();
+    for (const assistantId of wanted) {
+      const key = `${assistantId}:${sourceId}`;
+      if (store.assistantSources.has(key)) continue; // keeps direct_access
+      store.assistantSources.set(key, {
+        assistantId,
+        sourceId,
+        directAccess: false,
+        createdAt: now,
+      });
+    }
+  },
+
+  async setSourceDirectAccess(sourceId, assistantId, directAccess) {
+    const store = getStore();
+    const link = store.assistantSources.get(`${assistantId}:${sourceId}`);
+    if (link)
+      store.assistantSources.set(`${assistantId}:${sourceId}`, {
+        ...link,
+        directAccess,
       });
   },
 

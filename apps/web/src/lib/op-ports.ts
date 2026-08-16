@@ -147,11 +147,19 @@ export async function persistFaqConcept(args: {
       .replace(/^-+|-+$/g, "")
       .slice(0, 60) || "faq") + (args.pathSuffix ?? "");
   const connections = await args.db.listProviderConnections(args.organizationId);
-  return persistConcept({
+  // Every FAQ is a first-class `faq` Source (PRD #726): the question is the
+  // Source name, the answer stays on the Concept — which is what gives FAQs
+  // linked-assistant chips, status, and timestamps on the Knowledge hub.
+  const source = await args.db.createSource({
+    collectionId: args.collectionId,
+    name: question.slice(0, 500),
+    kind: "faq",
+  });
+  const concept = await persistConcept({
     db: args.db,
     assistantId: args.assistantId,
     collectionId: args.collectionId,
-    sourceId: null,
+    sourceId: source.id,
     path: `faq/${slug}.md`,
     frontmatter: {
       type: "FAQ",
@@ -162,4 +170,6 @@ export async function persistFaqConcept(args: {
     body: args.answer,
     connections,
   });
+  await args.db.updateSource(source.id, { status: "ready" });
+  return concept;
 }

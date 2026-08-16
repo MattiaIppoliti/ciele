@@ -5,7 +5,6 @@ import {
   ChartLine,
   CircleHelp,
   Compass,
-  Database,
   FlaskConical,
   LayoutGrid,
   Lock,
@@ -51,7 +50,7 @@ export const PREVIEW_GLOBAL_NAV: PreviewNavItem[] = [
   { label: "Inbox", icon: Archive },
   { label: "Improvements", icon: FlaskConical },
   { label: "Insights", icon: ChartLine },
-  { label: "Data Assistant", icon: Database },
+  { label: "Knowledge", icon: BookText },
   { label: "Alerts", icon: Bell, bottom: true },
   { label: "Settings", icon: Settings, bottom: true },
 ];

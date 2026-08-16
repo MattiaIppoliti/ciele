@@ -94,6 +94,7 @@ describe("buildPublicationConfig", () => {
       {
         id: "col-1",
         assistantId: "as-1",
+        organizationId: "org-1",
         name: "MARKETING (A)",
         description: "long description that must not be snapshotted",
         createdAt: "2026-01-01T00:00:00Z",

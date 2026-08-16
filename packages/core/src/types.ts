@@ -1234,13 +1234,29 @@ export interface Publication {
 
 export interface KnowledgeCollection {
   id: string;
+  /**
+   * Legacy owning Assistant; "" for org-owned Collections that have none
+   * (e.g. the per-org "Knowledge Library"). Retired by the contract step of
+   * PRD #726.
+   */
   assistantId: string;
+  /**
+   * Owning Organization (PRD #726). Stamped on every new Collection; legacy
+   * rows carry "" until the knowledge backfill migration fills them, after
+   * which it is never empty.
+   */
+  organizationId: string;
   name: string;
   description: string;
   createdAt: string;
 }
 
-export type SourceKind = "file" | "url" | "text" | "website";
+/**
+ * "faq" (PRD #726): a curated Q&A as a first-class Source — the question is
+ * the Source name, the answer stays on its Concept (frontmatter.type = "FAQ"),
+ * so FAQ lookup and the widget quick-reply resolve exactly as before.
+ */
+export type SourceKind = "file" | "url" | "text" | "website" | "faq";
 export type SourceStatus = "processing" | "ready" | "error";
 export type BackgroundJobKind =
   | "ingest_source"
@@ -1345,6 +1361,72 @@ export interface Source {
   updatedAt: string;
 }
 
+// --- Org-level knowledge hub (PRD #726) -------------------------------------
+
+/** One Assistant a Source is linked to, with its per-assistant Direct access. */
+export interface AssistantSourceLink {
+  assistantId: string;
+  /** The Assistant's title, for the hub's "Linked assistants" chips. */
+  assistantName: string;
+  /** May chat users open the cited file itself (files only; default off). */
+  directAccess: boolean;
+}
+
+/** One row of the hub's Websites / Files / FAQs tables. */
+export interface OrgKnowledgeSourceListItem {
+  id: string;
+  collectionId: string;
+  name: string;
+  kind: SourceKind;
+  status: SourceStatus;
+  error: string;
+  config: WebsiteSourceConfig;
+  lastCrawledAt: string | null;
+  originalObjectPath: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** Indexed Concepts under this Source — the "N Pages" column. */
+  conceptCount: number;
+  /** FAQ answer excerpt (kind "faq" only; "" otherwise). */
+  answerPreview: string;
+  linkedAssistants: AssistantSourceLink[];
+}
+
+/** Hub table filters; kinds picks the tab (websites/files/faqs buckets). */
+export interface OrgKnowledgeSourceFilter {
+  kinds: SourceKind[];
+  /** Narrow to one ingest status; "" means all. */
+  status?: SourceStatus | "";
+  /** Only Sources linked to this Assistant; "" means all. */
+  assistantId?: string;
+  /** Case-insensitive match on the Source name; "" means all. */
+  query?: string;
+  /** 1-based page. */
+  page?: number;
+  pageSize?: number;
+}
+
+/** Ingest-status tallies across every row matching the filter (not the page). */
+export interface OrgKnowledgeStatusCounts {
+  processing: number;
+  ready: number;
+  error: number;
+}
+
+export interface OrgKnowledgeSourcePage {
+  items: OrgKnowledgeSourceListItem[];
+  /** Total rows matching the filter, across all pages. */
+  total: number;
+  statusCounts: OrgKnowledgeStatusCounts;
+}
+
+/** One FAQ with its full answer — the hub's org-wide CSV export. */
+export interface OrgFaqEntry {
+  sourceId: string;
+  question: string;
+  answer: string;
+}
+
 export interface BackgroundJob {
   id: string;
   kind: BackgroundJobKind;
@@ -1418,6 +1500,14 @@ export interface KnowledgeSearchResult {
   collectionId: string;
   collectionName: string;
   sourceName: string | null;
+  /** The concept's Source id, when it has one (PRD #726). */
+  sourceId?: string | null;
+  /**
+   * Whether the QUERYING assistant may hand the visitor the original file:
+   * its link row has Direct access on, the Source is a file, and the original
+   * is retained. Computed per search; false/absent otherwise.
+   */
+  directAccess?: boolean;
   /** The concept's original page/document URL (OKF `resource`), when known. */
   resourceUrl: string | null;
   content: string;

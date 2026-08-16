@@ -102,6 +102,8 @@ import {
   listSubjectMemoriesOp,
   publishAssistantOp,
   recrawlSourceOp,
+  setDirectAccessOp,
+  setSourceLinksOp,
   reorderFlowsOp,
   reorderSupportChannelsOp,
   republishOp,
@@ -144,7 +146,7 @@ import {
   validateSsoIdentityOp,
 } from "@ciele/ops";
 import { persistFaqConcept } from "@/lib/op-ports";
-import { FAQ_CSV_MAX_BYTES, parseFaqCsv } from "@/lib/faq-csv";
+import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
@@ -162,6 +164,7 @@ import {
   isSupabaseServiceConfigured,
 } from "@/lib/supabase/service";
 import {
+  KNOWLEDGE_ORIGINALS_BUCKET,
   downloadKnowledgeOriginal,
   uploadKnowledgeOriginal,
   uploadPublicImageAsset,
@@ -1405,6 +1408,290 @@ export async function setPageRecrawlScheduleAction(
 // FAQs mode: each FAQ is an OKF concept of type "FAQ". The persist helper
 // moved to lib/op-ports.ts (#622) so both surfaces share it as a port.
 
+// --- Org-level knowledge hub (PRD #726) --------------------------------------
+
+/**
+ * Guard for hub reads: the Source must belong to the caller's Organization —
+ * via the collection's org stamp, or the legacy owning assistant's org for
+ * rows the backfill hasn't reached. RLS enforces this again underneath; the
+ * guard keeps the mock db honest and the error uniform.
+ */
+async function requireOrgSource(
+  db: Db,
+  organizationId: string,
+  sourceId: string
+) {
+  const source = await db.getSource(sourceId);
+  const collection = source ? await db.getCollection(source.collectionId) : null;
+  let orgId = collection?.organizationId ?? "";
+  if (!orgId && collection?.assistantId) {
+    orgId =
+      (await db.getAssistant(collection.assistantId))?.organizationId ?? "";
+  }
+  if (!source || orgId !== organizationId) throw new Error("Source not found");
+  return source;
+}
+
+/** The "View knowledge source" pages list (bounded server-side). */
+export async function listSourceConceptsAction(sourceId: string): Promise<{
+  items: Array<{
+    id: string;
+    title: string;
+    path: string;
+    resourceUrl: string | null;
+  }>;
+}> {
+  const { db, organizationId } = await requireMember();
+  await requireOrgSource(db, organizationId, sourceId);
+  const concepts = await db.listConceptsBySource(sourceId);
+  return {
+    items: concepts
+      .filter((c) => !c.excluded)
+      .map((c) => ({
+        id: c.id,
+        title: c.frontmatter.title ?? c.path,
+        path: c.path,
+        resourceUrl: c.frontmatter.resource ?? null,
+      })),
+  };
+}
+
+/**
+ * Admin-side download of a file Source's retained original: a short-lived
+ * signed URL against the private originals bucket (distinct from the
+ * visitor-facing Direct access flow). Null when no original was retained or
+ * the demo store has no object storage.
+ */
+export async function downloadKnowledgeOriginalAction(
+  sourceId: string
+): Promise<{ url: string | null }> {
+  const { db, organizationId } = await requireMember();
+  const source = await requireOrgSource(db, organizationId, sourceId);
+  if (!source.originalObjectPath || !isSupabaseConfigured())
+    return { url: null };
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.storage
+    .from(KNOWLEDGE_ORIGINALS_BUCKET)
+    .createSignedUrl(source.originalObjectPath, 600);
+  if (error) return { url: null };
+  return { url: data?.signedUrl ?? null };
+}
+
+/** Replaces a Source's full linked-assistant set ("Manage linked assistants"). */
+export async function setSourceLinksAction(
+  sourceId: string,
+  assistantIds: string[],
+) {
+  await runOperation(setSourceLinksOp, { sourceId, assistantIds });
+}
+
+/** Flips Direct access for one assistant on a file Source. */
+export async function setSourceDirectAccessAction(
+  sourceId: string,
+  assistantId: string,
+  directAccess: boolean,
+) {
+  await runOperation(setDirectAccessOp, { sourceId, assistantId, directAccess });
+}
+
+/** Hub delete: removes the item for every linked Assistant at once. */
+export async function deleteOrgSourceAction(sourceId: string) {
+  await runOperation(deleteSourceOp, { id: sourceId });
+}
+
+/** Hub single-Q&A create: lands in the org Knowledge Library, linked as chosen. */
+export async function createOrgFaqAction(
+  question: string,
+  answer: string,
+  assistantIds: string[],
+) {
+  const { db, organizationId } = await requireMember("edit");
+  const library = await db.getOrCreateOrgLibraryCollection(organizationId);
+  await runOperation(createFaqOp, {
+    collectionId: library.id,
+    question,
+    answer,
+    assistantIds,
+  });
+}
+
+/** Hub CSV import — same contract as the per-assistant one, org-wide. */
+export async function importOrgFaqsAction(formData: FormData): Promise<{
+  imported: number;
+  skipped: string[];
+}> {
+  const file = formData.get("file") as File | null;
+  const assistantIds = JSON.parse(
+    (formData.get("assistantIds") as string | null) ?? "[]",
+  ) as string[];
+  if (!file) return { imported: 0, skipped: ["No file provided"] };
+  if (file.size > FAQ_CSV_MAX_BYTES)
+    return { imported: 0, skipped: ["File exceeds the 10MB limit"] };
+  const { rows, skipped } = parseFaqCsv(await file.text());
+  if (rows.length === 0) return { imported: 0, skipped };
+  const { db, organizationId } = await requireMember("edit");
+  const library = await db.getOrCreateOrgLibraryCollection(organizationId);
+  const result = await runOperation(importFaqsOp, {
+    collectionId: library.id,
+    fileName: file.name,
+    rows,
+    assistantIds,
+  });
+  return { imported: result.imported, skipped };
+}
+
+/** One FAQ with its full answer — the hub's edit dialog. */
+export async function getOrgFaqAction(
+  sourceId: string,
+): Promise<{ question: string; answer: string }> {
+  const { db, organizationId } = await requireMember();
+  const source = await requireOrgSource(db, organizationId, sourceId);
+  const [concept] = await db.listConceptsBySource(sourceId, 1);
+  return { question: source.name, answer: concept?.body ?? "" };
+}
+
+/** Hub FAQ edit, keyed by the FAQ's Source (question = Source name). */
+export async function updateOrgFaqAction(
+  sourceId: string,
+  question: string,
+  answer: string,
+) {
+  const { db, organizationId, session } = await requireMember("edit");
+  const source = await requireOrgSource(db, organizationId, sourceId);
+  if (source.kind !== "faq") throw new Error("Not a FAQ");
+  const [existing] = await db.listConceptsBySource(sourceId, 1);
+  if (!existing) throw new Error("FAQ content missing");
+  const trimmed = question.trim();
+  const concept = await db.updateConcept(existing.id, {
+    frontmatter: {
+      ...existing.frontmatter,
+      type: "FAQ",
+      title: trimmed,
+      description: answer.slice(0, 140),
+      generated: {
+        by: okfActor.human(session.userId),
+        at: new Date().toISOString(),
+      },
+    },
+    body: answer,
+  });
+  await db.updateSource(sourceId, { name: trimmed.slice(0, 500) });
+  await db.deleteChunksByConcept(concept.id);
+  // Chunks are stamped with a linked Assistant; an unlinked FAQ is
+  // unreachable in retrieval anyway, so skipping the re-embed loses nothing.
+  const links = await db.listSourceAssistantLinks(sourceId);
+  if (links[0]) {
+    const connections = await db.listProviderConnections(organizationId);
+    await embedConcept({
+      db,
+      assistantId: links[0].assistantId,
+      collectionId: concept.collectionId,
+      conceptId: concept.id,
+      title: trimmed,
+      body: answer,
+      connections,
+    });
+  }
+  revalidatePath("/knowledge/faqs");
+}
+
+/**
+ * Hub website add. Crawler finalization derives its assistant stamp from the
+ * owning Collection, so hub websites land in the FIRST linked assistant's
+ * collection rather than the org library — retrieval reach for the rest
+ * comes from the link table either way.
+ */
+export async function addOrgWebsiteSourceAction(
+  input: WebsiteFormInput,
+  assistantIds: string[],
+) {
+  const unique = [...new Set(assistantIds)];
+  if (unique.length === 0) throw new Error("Pick at least one assistant");
+  await orgMutation(
+    {
+      capability: "edit",
+      entities: [
+        { kind: "knowledgeHub" },
+        { kind: "alerts" },
+        { kind: "assistantEditor", assistantId: unique[0] },
+      ],
+    },
+    async ({ db }) => {
+      const collections = await db.listCollections(unique[0]);
+      const collectionId =
+        collections[0]?.id ??
+        (
+          await db.createCollection(unique[0], {
+            name: "General knowledge",
+            description: "Default collection for this assistant",
+          })
+        ).id;
+      const source = await db.createSource({
+        collectionId,
+        name: input.name.trim() || input.url,
+        kind: "website",
+        config: toWebsiteConfig(input),
+      });
+      await db.setSourceAssistantLinks(source.id, unique);
+      await beginWebsiteCrawl({ db, sourceId: source.id });
+    },
+  );
+}
+
+/** Hub file upload: extraction at the surface, ingest via addSourceOp. */
+export async function uploadOrgFileSourceAction(
+  formData: FormData,
+): Promise<{ error: string } | void> {
+  const file = formData.get("file") as File | null;
+  const assistantIds = JSON.parse(
+    (formData.get("assistantIds") as string | null) ?? "[]",
+  ) as string[];
+  if (!file) return { error: "No file" };
+  const validation = validateKnowledgeFile({
+    name: file.name,
+    size: file.size,
+  });
+  if (!validation.ok) return { error: validation.error };
+  try {
+    const { db, organizationId, session } = await requireMember("edit");
+    const library = await db.getOrCreateOrgLibraryCollection(organizationId);
+    const extracted = await extractSourceText({
+      kind: "file",
+      name: file.name,
+      bytes: await file.arrayBuffer(),
+    });
+    let originalObjectPath: string | undefined;
+    if (isSupabaseConfigured() && isSupabaseServiceConfigured()) {
+      const stored = await uploadKnowledgeOriginal(
+        createSupabaseServiceClient(),
+        { organizationId: session.organization.id, file },
+      );
+      originalObjectPath = stored.path;
+    }
+    await runOperation(addSourceOp, {
+      collectionId: library.id,
+      name: extracted.name,
+      kind: "file",
+      rawText: extracted.text,
+      originalObjectPath,
+      assistantIds,
+    });
+  } catch (error) {
+    return { error: thrownMessage(error, "Upload failed") };
+  }
+}
+
+/** Org-wide FAQ CSV export — same two-column shape as the per-assistant one. */
+export async function exportOrgFaqsAction(): Promise<{ csv: string }> {
+  const { db, organizationId } = await requireMember();
+  const entries = await db.listOrgFaqs(organizationId);
+  return {
+    csv: serializeFaqCsv(
+      entries.map((e) => ({ question: e.question, answer: e.answer }))
+    ),
+  };
+}
+
 export async function createFaqAction(
   assistantId: string,
   collectionId: string,
@@ -1477,6 +1764,16 @@ export async function updateFaqAction(
     },
     body: answer,
   });
+  // The FAQ's Source carries the question as its name (PRD #726) — keep it
+  // in step so the hub's FAQs tab shows the edited question.
+  if (existing?.sourceId) {
+    const faqSource = await db.getSource(existing.sourceId);
+    if (faqSource?.kind === "faq") {
+      await db.updateSource(faqSource.id, {
+        name: question.trim().slice(0, 500),
+      });
+    }
+  }
   await db.deleteChunksByConcept(conceptId);
   await embedConcept({
     db,
@@ -1488,6 +1785,7 @@ export async function updateFaqAction(
     connections,
   });
   revalidatePath(`/assistants/${assistantId}`);
+  revalidatePath("/knowledge/faqs");
 }
 
 /**
@@ -1531,6 +1829,20 @@ export async function deleteConceptAction(
   assistantId: string,
   conceptId: string,
 ) {
+  // A FAQ Concept owns a `faq` Source (PRD #726): deleting the FAQ retires
+  // the whole Source so no orphaned hub row survives (cascade + graph
+  // retirement live in deleteSourceOp).
+  {
+    const { db } = await requireMember("edit");
+    const concept = await db.getConcept(conceptId);
+    if (concept?.sourceId) {
+      const source = await db.getSource(concept.sourceId);
+      if (source?.kind === "faq") {
+        await runOperation(deleteSourceOp, { id: source.id });
+        return;
+      }
+    }
+  }
   await orgMutation(
     {
       capability: "edit",

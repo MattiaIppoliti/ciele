@@ -29,12 +29,24 @@ An Organization-scoped credential (`ciele_sk_…`) for programmatic access (CLI,
 _Avoid_: token (ambiguous with invite tokens and LLM tokens), PAT
 
 **Knowledge Collection**:
-A named group of knowledge inside one Assistant (e.g. "MARKETING (A) 2024/2025"), anchorable in chat as context and represented as an OKF bundle.
+A named group of knowledge, anchorable in chat as context and represented as an OKF bundle. Owned by the Organization (PRD #726); each org has a default "Knowledge Library" Collection that hub-created items land in. Legacy Collections still carry the assistant that created them until the contract migration retires the column.
 _Avoid_: course (education-specific label), folder, dataset
 
 **Source**:
-An original artifact uploaded into a Knowledge Collection (file or URL) from which Concepts are derived; cited in chat replies.
+An original artifact (file, URL, crawled website, pasted text, or FAQ) from which Concepts are derived; cited in chat replies. Every knowledge item on the hub is a Source — a FAQ's question is its Source name, the answer stays on its Concept.
 _Avoid_: document (ambiguous), attachment
+
+**Knowledge Hub**:
+The org-level Knowledge page (`/knowledge`): every Source across all Assistants in per-kind tabs (Websites / Files / FAQs), with linked-assistant chips, filters, add flows, and Direct access management.
+_Avoid_: knowledge bank (reference-platform phrasing), library (that names the default Collection)
+
+**Assistant Knowledge Link**:
+The M:N row tying one Assistant to one Source — what makes the Source answer for that Assistant. Replacing the set takes effect immediately in retrieval (knowledge is live, never snapshotted into Publications). Carries the per-assistant Direct access flag.
+_Avoid_: share, subscription
+
+**Direct Access**:
+Per-(assistant, file) flag, default off: on, chat users can open the cited file's original from the AI chat via a short-lived signed URL; off, the file is still cited inline but the link stays hidden.
+_Avoid_: public file, download toggle
 
 **Concept**:
 One OKF v0.2 markdown document (YAML frontmatter + body) inside a Knowledge Collection — the unit the agent reads, links and cites. Its frontmatter carries provenance and trust: `generated` (who wrote it), `verified` (who confirmed it), `sources` (what it derives from).

@@ -217,6 +217,26 @@ export class CieleClient {
     return (await response.json()) as T;
   }
 
+  /** Like `request`, for endpoints that answer raw text (e.g. CSV exports). */
+  private async requestText(path: string): Promise<string> {
+    const url = new URL(`${this.baseUrl}/api/v1${path}`);
+    const response = await this.fetchImpl(url.toString(), {
+      method: "GET",
+      headers: { authorization: `Bearer ${this.apiKey}` },
+    });
+    if (!response.ok) {
+      const envelope = (await response
+        .json()
+        .catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+      throw new CieleApiError(
+        response.status,
+        envelope?.error?.code ?? "unknown",
+        envelope?.error?.message ?? `HTTP ${response.status}`
+      );
+    }
+    return response.text();
+  }
+
   /**
    * Walks a paginated listing to exhaustion — `for await` over every item.
    */
@@ -334,6 +354,103 @@ export class CieleClient {
         form,
       });
     },
+
+    // --- Org-level knowledge hub (PRD #726) --------------------------------
+    /** Org-wide knowledge items (the hub's table). */
+    orgSources: (
+      params: {
+        kinds?: string[];
+        status?: string;
+        assistantId?: string;
+        q?: string;
+        page?: number;
+        pageSize?: number;
+      } = {}
+    ): Promise<{
+      items: Array<{
+        id: string;
+        collectionId: string;
+        name: string;
+        kind: string;
+        status: string;
+        conceptCount: number;
+        answerPreview: string;
+        linkedAssistants: Array<{
+          assistantId: string;
+          assistantName: string;
+          directAccess: boolean;
+        }>;
+        lastCrawledAt: string | null;
+        createdAt: string;
+        updatedAt: string;
+      }>;
+      total: number;
+      statusCounts: { processing: number; ready: number; error: number };
+    }> => {
+      const search = new URLSearchParams();
+      if (params.kinds?.length) search.set("kinds", params.kinds.join(","));
+      if (params.status) search.set("status", params.status);
+      if (params.assistantId) search.set("assistantId", params.assistantId);
+      if (params.q) search.set("q", params.q);
+      if (params.page) search.set("page", String(params.page));
+      if (params.pageSize) search.set("pageSize", String(params.pageSize));
+      const qs = search.toString();
+      return this.request("GET", `/knowledge/sources${qs ? `?${qs}` : ""}`);
+    },
+    /** Replace a Source's linked-assistant set. */
+    setSourceLinks: (
+      sourceId: string,
+      assistantIds: string[]
+    ): Promise<{
+      links: Array<{
+        assistantId: string;
+        assistantName: string;
+        directAccess: boolean;
+      }>;
+    }> =>
+      this.request("PUT", `/sources/${sourceId}/links`, {
+        body: { assistantIds },
+      }),
+    /** Flip Direct access for one assistant on a file Source. */
+    setDirectAccess: (
+      sourceId: string,
+      assistantId: string,
+      directAccess: boolean
+    ): Promise<{
+      links: Array<{
+        assistantId: string;
+        assistantName: string;
+        directAccess: boolean;
+      }>;
+    }> =>
+      this.request("PUT", `/sources/${sourceId}/direct-access`, {
+        body: { assistantId, directAccess },
+      }),
+    /** Org-level FAQ create (Knowledge Library + explicit links). */
+    addOrgFaq: (input: {
+      question: string;
+      answer: string;
+      assistantIds: string[];
+    }): Promise<{
+      id: string;
+      sourceId: string | null;
+      question: string;
+      answer: string;
+      path: string;
+    }> => this.request("POST", "/knowledge/faqs", { body: input }),
+    /** Org-level bulk FAQ import. */
+    importOrgFaqs: (
+      csv: File,
+      assistantIds: string[]
+    ): Promise<{ imported: number; skipped: string[] }> => {
+      const form = new FormData();
+      form.set("file", csv);
+      form.set("assistantIds", JSON.stringify(assistantIds));
+      return this.request("POST", "/knowledge/faqs/import", { form });
+    },
+    /** Org-wide FAQ CSV export (raw CSV text). */
+    exportOrgFaqs: (): Promise<string> =>
+      this.requestText("/knowledge/faqs/export"),
   };
 
   readonly publish = {

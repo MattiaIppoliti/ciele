@@ -1860,7 +1860,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
       return (data as Array<Record<string, string>>).map((r) => ({
         id: r.id,
-        assistantId: r.assistant_id,
+        assistantId: r.assistant_id ?? "",
+        organizationId: r.organization_id ?? "",
         name: r.name,
         description: r.description,
         createdAt: r.created_at,
@@ -1877,19 +1878,72 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (!data) return null;
       return {
         id: data.id,
-        assistantId: data.assistant_id,
+        assistantId: data.assistant_id ?? "",
+        organizationId: data.organization_id ?? "",
         name: data.name,
         description: data.description,
         createdAt: data.created_at,
       };
     },
 
+    async getOrCreateOrgLibraryCollection(organizationId) {
+      const id = `org-library-${organizationId}`;
+      const map = (row: Record<string, unknown>): KnowledgeCollection => ({
+        id: row.id as string,
+        assistantId: (row.assistant_id as string | null) ?? "",
+        organizationId: (row.organization_id as string | null) ?? "",
+        name: row.name as string,
+        description: row.description as string,
+        createdAt: row.created_at as string,
+      });
+      const { data: existing, error: readError } = await client
+        .from("knowledge_collections")
+        .select("*")
+        .eq("id", id)
+        .maybeSingle();
+      if (readError) throw readError;
+      if (existing) return map(existing as Record<string, unknown>);
+      const { data, error } = await client
+        .from("knowledge_collections")
+        .insert({
+          id,
+          assistant_id: null,
+          organization_id: organizationId,
+          name: "Knowledge Library",
+          description:
+            "Organization-wide knowledge added from the Knowledge hub",
+        })
+        .select()
+        .single();
+      if (error) {
+        // Lost a create race: the deterministic id means the winner's row is
+        // the one we wanted anyway.
+        const { data: again, error: retryError } = await client
+          .from("knowledge_collections")
+          .select("*")
+          .eq("id", id)
+          .maybeSingle();
+        if (retryError || !again) throw error;
+        return map(again as Record<string, unknown>);
+      }
+      return map(data as Record<string, unknown>);
+    },
+
     async createCollection(assistantId, input) {
+      // Stamp the owning Organization (PRD #726): new Collections are
+      // org-owned from day one; the backfill migration covers history.
+      const { data: assistant, error: assistantError } = await client
+        .from("assistants")
+        .select("organization_id")
+        .eq("id", assistantId)
+        .single();
+      if (assistantError) throw assistantError;
       const { data, error } = await client
         .from("knowledge_collections")
         .insert({
           id: shortId(),
           assistant_id: assistantId,
+          organization_id: assistant.organization_id,
           name: input.name,
           description: input.description ?? "",
         })
@@ -1898,7 +1952,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
       return {
         id: data.id,
-        assistantId: data.assistant_id,
+        assistantId: data.assistant_id ?? "",
+        organizationId: data.organization_id ?? "",
         name: data.name,
         description: data.description,
         createdAt: data.created_at,
@@ -1938,7 +1993,27 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select()
         .single();
       if (error) throw error;
-      return toSource(data as Record<string, unknown>);
+      const source = toSource(data as Record<string, unknown>);
+      // Auto-link to the collection's legacy owning assistant (PRD #726) so
+      // assistant-editor add flows keep answering with link-scoped retrieval.
+      const { data: collection, error: collectionError } = await client
+        .from("knowledge_collections")
+        .select("assistant_id")
+        .eq("id", input.collectionId)
+        .maybeSingle();
+      if (collectionError) throw collectionError;
+      if (collection?.assistant_id) {
+        // Plain insert: the Source was created in this call, so the pair
+        // cannot exist yet.
+        const { error: linkError } = await client
+          .from("assistant_sources")
+          .insert({
+            assistant_id: collection.assistant_id,
+            source_id: source.id,
+          });
+        if (linkError) throw linkError;
+      }
+      return source;
     },
 
     async updateSource(id, patch) {
@@ -2417,6 +2492,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         concept_id: chunk.conceptId,
         collection_id: chunk.collectionId,
         assistant_id: chunk.assistantId,
+        source_id: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding,
       }));
@@ -2430,34 +2506,66 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
       // Lexical search: also the safety net for vector search, since chunks
       // ingested while no embedding key was configured have NULL embeddings
-      // and are invisible to match_chunks.
+      // and are invisible to match_chunks_linked. Two reach paths (PRD #726):
+      // legacy chunks (source_id null) scope by assistant_id; source-aware
+      // chunks scope by the assistant↔source link table.
       const lexicalSearch = async (): Promise<ChunkRow[]> => {
         const tokens = lexicalTokens(query.text, 5);
         if (tokens.length === 0) return [];
-        let builder = client
-          .from("concept_chunks")
-          .select("concept_id, content, concepts!inner(excluded)")
-          .eq("assistant_id", assistantId)
-          .eq("concepts.excluded", false)
-          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-          .limit(limit);
-        if (collectionId) builder = builder.eq("collection_id", collectionId);
-        const { data, error } = await builder;
-        if (error) throw error;
-        return (data as Array<{ concept_id: string; content: string }>).map(
-          (r) => ({
+        const tokenClause = tokens.map((t) => `content.ilike.%${t}%`).join(",");
+        const baseQuery = () => {
+          let builder = client
+            .from("concept_chunks")
+            .select("concept_id, content, concepts!inner(excluded)")
+            .eq("concepts.excluded", false)
+            .or(tokenClause)
+            .limit(limit);
+          if (collectionId) builder = builder.eq("collection_id", collectionId);
+          return builder;
+        };
+        const toChunkRows = (data: unknown): ChunkRow[] =>
+          (data as Array<{ concept_id: string; content: string }>).map((r) => ({
             concept_id: r.concept_id,
             content: r.content,
             similarity: LEXICAL_SIMILARITY,
-          })
-        );
+          }));
+
+        const { data: linkRows, error: linkError } = await client
+          .from("assistant_sources")
+          .select("source_id")
+          .eq("assistant_id", assistantId);
+        if (linkError) throw linkError;
+        const linkedSourceIds = (
+          linkRows as Array<{ source_id: string }>
+        ).map((r) => r.source_id);
+
+        const legacyQuery = baseQuery()
+          .is("source_id", null)
+          .eq("assistant_id", assistantId);
+        const [legacyRes, linkedRes] = await Promise.all([
+          legacyQuery,
+          linkedSourceIds.length > 0
+            ? baseQuery().in("source_id", linkedSourceIds)
+            : Promise.resolve({ data: [], error: null }),
+        ]);
+        if (legacyRes.error) throw legacyRes.error;
+        if (linkedRes.error) throw linkedRes.error;
+        const legacy = toChunkRows(legacyRes.data);
+        const linked = toChunkRows(linkedRes.data);
+        const seen = new Set<string>();
+        return [...legacy, ...linked].filter((r) => {
+          const key = `${r.concept_id}\n${r.content}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       };
 
       const rows = await hybridRetrieve<ChunkRow>({
         embedding: query.embedding,
         limit,
         vector: async () => {
-          const { data, error } = await client.rpc("match_chunks", {
+          const { data, error } = await client.rpc("match_chunks_linked", {
             p_assistant_id: assistantId,
             p_collection_id: collectionId,
             p_query_embedding: query.embedding,
@@ -2476,7 +2584,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const { data: conceptRows, error: conceptError } = await client
         .from("concepts")
         .select(
-          "id, path, frontmatter, collection_id, source_id, knowledge_collections (name), sources (name)"
+          "id, path, frontmatter, collection_id, source_id, knowledge_collections (name), sources (id, name, kind, original_object_path)"
         )
         .in("id", conceptIds);
       if (conceptError) throw conceptError;
@@ -2485,13 +2593,43 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         (conceptRows as Array<Record<string, unknown>>).map((c) => [c.id, c])
       );
 
+      // Direct access is per (assistant, source) link (PRD #726): one read for
+      // the querying assistant's flags across the hit sources.
+      const hitSourceIds = [
+        ...new Set(
+          (conceptRows as Array<{ source_id: string | null }>)
+            .map((c) => c.source_id)
+            .filter((id): id is string => id !== null)
+        ),
+      ];
+      const directBySource = new Map<string, boolean>();
+      if (hitSourceIds.length > 0) {
+        const { data: linkRows, error: linkErr } = await client
+          .from("assistant_sources")
+          .select("source_id, direct_access")
+          .eq("assistant_id", assistantId)
+          .in("source_id", hitSourceIds);
+        if (linkErr) throw linkErr;
+        for (const link of linkRows as Array<{
+          source_id: string;
+          direct_access: boolean;
+        }>) {
+          directBySource.set(link.source_id, link.direct_access);
+        }
+      }
+
       return rows.map((row): KnowledgeSearchResult => {
         const concept = conceptById.get(row.concept_id) as
           | Record<string, unknown>
           | undefined;
         const frontmatter = (concept?.frontmatter ?? {}) as ConceptFrontmatter;
         const collection = concept?.knowledge_collections as { name?: string } | null;
-        const source = concept?.sources as { name?: string } | null;
+        const source = concept?.sources as {
+          id?: string;
+          name?: string;
+          kind?: string;
+          original_object_path?: string | null;
+        } | null;
         return {
           conceptId: row.concept_id,
           conceptTitle: frontmatter.title ?? (concept?.path as string) ?? "Concept",
@@ -2499,6 +2637,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           collectionId: (concept?.collection_id as string) ?? "",
           collectionName: collection?.name ?? "",
           sourceName: source?.name ?? null,
+          sourceId: source?.id ?? null,
+          directAccess:
+            source?.kind === "file" &&
+            (source?.original_object_path ?? null) !== null &&
+            directBySource.get(source?.id ?? "") === true,
           resourceUrl: frontmatter.resource ?? null,
           content: row.content,
           similarity: row.similarity,
@@ -3173,6 +3316,267 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           title: r.improvements.title,
         })
       );
+    },
+
+    // --- Org-level knowledge hub (PRD #726) -------------------------------
+
+    async listOrgKnowledgeSources(organizationId, filter) {
+      // Two reads cover the expand window: Collections already stamped with
+      // the org id, plus legacy Collections reached through the owning
+      // assistant. Fine-filtering and paging happen adapter-side — hub tables
+      // are org-sized (dozens to hundreds of Sources), and this keeps the
+      // query shapes inside what the PostgREST test shim implements.
+      const { data: orgAssistants, error: orgAssistantsError } = await client
+        .from("assistants")
+        .select("id")
+        .eq("organization_id", organizationId);
+      if (orgAssistantsError) throw orgAssistantsError;
+      const orgAssistantIds = (
+        orgAssistants as Array<{ id: string }>
+      ).map((r) => r.id);
+
+      const [stampedRes, legacyRes] = await Promise.all([
+        client
+          .from("sources")
+          .select("*, knowledge_collections!inner(organization_id)")
+          .in("kind", filter.kinds)
+          .eq("knowledge_collections.organization_id", organizationId),
+        orgAssistantIds.length > 0
+          ? client
+              .from("sources")
+              .select(
+                "*, knowledge_collections!inner(organization_id, assistant_id)"
+              )
+              .in("kind", filter.kinds)
+              .is("knowledge_collections.organization_id", null)
+              .in("knowledge_collections.assistant_id", orgAssistantIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (stampedRes.error) throw stampedRes.error;
+      if (legacyRes.error) throw legacyRes.error;
+      const byId = new Map<string, Source>();
+      for (const row of [
+        ...(stampedRes.data as Array<Record<string, unknown>>),
+        ...(legacyRes.data as Array<Record<string, unknown>>),
+      ]) {
+        const source = toSource(row);
+        byId.set(source.id, source);
+      }
+
+      let matches = [...byId.values()];
+      if (filter.status)
+        matches = matches.filter((s) => s.status === filter.status);
+      const query = (filter.query ?? "").trim().toLowerCase();
+      if (query)
+        matches = matches.filter((s) => s.name.toLowerCase().includes(query));
+      if (filter.assistantId) {
+        const { data: linkRows, error: linkError } = await client
+          .from("assistant_sources")
+          .select("source_id")
+          .eq("assistant_id", filter.assistantId);
+        if (linkError) throw linkError;
+        const linkedIds = new Set(
+          (linkRows as Array<{ source_id: string }>).map((r) => r.source_id)
+        );
+        matches = matches.filter((s) => linkedIds.has(s.id));
+      }
+      matches.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
+      const statusCounts = { processing: 0, ready: 0, error: 0 };
+      for (const source of matches) statusCounts[source.status] += 1;
+
+      const total = matches.length;
+      const pageSize = filter.pageSize ?? 25;
+      const page = filter.page ?? 1;
+      const slice = matches.slice((page - 1) * pageSize, page * pageSize);
+      if (slice.length === 0) return { items: [], total, statusCounts };
+      const pageIds = slice.map((s) => s.id);
+
+      type LinkRow = {
+        assistant_id: string;
+        source_id: string;
+        direct_access: boolean;
+        created_at: string;
+        assistants: { title: string } | null;
+      };
+      const faqIds = slice
+        .filter((s) => s.kind === "faq")
+        .map((s) => s.id);
+      const [linksRes, answersRes, counts] = await Promise.all([
+        client
+          .from("assistant_sources")
+          .select(
+            "assistant_id, source_id, direct_access, created_at, assistants!inner(title)"
+          )
+          .in("source_id", pageIds),
+        faqIds.length > 0
+          ? client
+              .from("concepts")
+              .select("source_id, body")
+              .in("source_id", faqIds)
+          : Promise.resolve({ data: [], error: null }),
+        Promise.all(
+          pageIds.map(async (id) => {
+            const { count, error } = await client
+              .from("concepts")
+              .select("id", { count: "exact", head: true })
+              .eq("source_id", id);
+            if (error) throw error;
+            return [id, count ?? 0] as const;
+          })
+        ),
+      ]);
+      if (linksRes.error) throw linksRes.error;
+      if (answersRes.error) throw answersRes.error;
+
+      const linksBySource = new Map<string, LinkRow[]>();
+      for (const row of linksRes.data as unknown as LinkRow[]) {
+        const list = linksBySource.get(row.source_id) ?? [];
+        list.push(row);
+        linksBySource.set(row.source_id, list);
+      }
+      const answerBySource = new Map<string, string>();
+      for (const row of answersRes.data as Array<{
+        source_id: string;
+        body: string;
+      }>) {
+        if (!answerBySource.has(row.source_id))
+          answerBySource.set(row.source_id, row.body.slice(0, 200));
+      }
+      const countBySource = new Map(counts);
+
+      const items = slice.map((source) => ({
+        id: source.id,
+        collectionId: source.collectionId,
+        name: source.name,
+        kind: source.kind,
+        status: source.status,
+        error: source.error,
+        config: source.config,
+        lastCrawledAt: source.lastCrawledAt,
+        originalObjectPath: source.originalObjectPath,
+        createdAt: source.createdAt,
+        updatedAt: source.updatedAt,
+        conceptCount: countBySource.get(source.id) ?? 0,
+        answerPreview: answerBySource.get(source.id) ?? "",
+        linkedAssistants: (linksBySource.get(source.id) ?? [])
+          .sort((a, b) => a.created_at.localeCompare(b.created_at))
+          .map((row) => ({
+            assistantId: row.assistant_id,
+            assistantName: row.assistants?.title ?? "",
+            directAccess: row.direct_access,
+          })),
+      }));
+
+      return { items, total, statusCounts };
+    },
+
+    async listOrgFaqs(organizationId) {
+      const page = await this.listOrgKnowledgeSources(organizationId, {
+        kinds: ["faq"],
+        pageSize: Number.MAX_SAFE_INTEGER,
+      });
+      if (page.items.length === 0) return [];
+      const { data, error } = await client
+        .from("concepts")
+        .select("source_id, body")
+        .in(
+          "source_id",
+          page.items.map((item) => item.id)
+        );
+      if (error) throw error;
+      const answerBySource = new Map<string, string>();
+      for (const row of data as Array<{ source_id: string; body: string }>) {
+        if (!answerBySource.has(row.source_id))
+          answerBySource.set(row.source_id, row.body);
+      }
+      return page.items.map((item) => ({
+        sourceId: item.id,
+        question: item.name,
+        answer: answerBySource.get(item.id) ?? "",
+      }));
+    },
+
+    async listConceptsBySource(sourceId, limit) {
+      const { data, error } = await client
+        .from("concepts")
+        .select("*")
+        .eq("source_id", sourceId)
+        .order("path", { ascending: true })
+        .limit(limit ?? 500);
+      if (error) throw error;
+      return (data as Array<Record<string, unknown>>).map((r) => ({
+        id: r.id as string,
+        collectionId: r.collection_id as string,
+        sourceId: r.source_id as string | null,
+        path: r.path as string,
+        frontmatter: r.frontmatter as ConceptFrontmatter,
+        body: r.body as string,
+        excluded: (r.excluded as boolean) ?? false,
+        recrawlSchedule: (r.recrawl_schedule as RecrawlSchedule | null) ?? null,
+        createdAt: r.created_at as string,
+      }));
+    },
+
+    async listSourceAssistantLinks(sourceId) {
+      const { data, error } = await client
+        .from("assistant_sources")
+        .select("assistant_id, direct_access, created_at, assistants!inner(title)")
+        .eq("source_id", sourceId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      type Row = {
+        assistant_id: string;
+        direct_access: boolean;
+        assistants: { title: string } | null;
+      };
+      return (data as unknown as Row[]).map((row) => ({
+        assistantId: row.assistant_id,
+        assistantName: row.assistants?.title ?? "",
+        directAccess: row.direct_access,
+      }));
+    },
+
+    async setSourceAssistantLinks(sourceId, assistantIds) {
+      const { data, error } = await client
+        .from("assistant_sources")
+        .select("assistant_id")
+        .eq("source_id", sourceId);
+      if (error) throw error;
+      const existing = new Set(
+        (data as Array<{ assistant_id: string }>).map((r) => r.assistant_id)
+      );
+      const wanted = new Set(assistantIds);
+      const toRemove = [...existing].filter((id) => !wanted.has(id));
+      const toAdd = [...wanted].filter((id) => !existing.has(id));
+      if (toRemove.length > 0) {
+        const { error: removeError } = await client
+          .from("assistant_sources")
+          .delete()
+          .eq("source_id", sourceId)
+          .in("assistant_id", toRemove);
+        if (removeError) throw removeError;
+      }
+      if (toAdd.length > 0) {
+        const { error: addError } = await client
+          .from("assistant_sources")
+          .insert(
+            toAdd.map((assistantId) => ({
+              assistant_id: assistantId,
+              source_id: sourceId,
+            }))
+          );
+        if (addError) throw addError;
+      }
+    },
+
+    async setSourceDirectAccess(sourceId, assistantId, directAccess) {
+      const { error } = await client
+        .from("assistant_sources")
+        .update({ direct_access: directAccess })
+        .eq("source_id", sourceId)
+        .eq("assistant_id", assistantId);
+      if (error) throw error;
     },
 
     async listWebsiteSources(organizationId) {

@@ -4,7 +4,6 @@ import {
   BookText,
   ChartLine,
   CircleHelp,
-  Database,
   Compass,
   FlaskConical,
   LayoutGrid,
@@ -52,7 +51,9 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   { label: "Inbox", icon: Archive, href: "/inbox" },
   { label: "Improvements", icon: FlaskConical, href: "/improvements" },
   { label: "Insights", icon: ChartLine, href: "/insights" },
-  { label: "Data Assistant", icon: Database, href: "/data-assistant" },
+  // Knowledge hub (PRD #726) — took Data Assistant's slot; that page stays
+  // reachable by URL (retirement is a separate decision).
+  { label: "Knowledge", icon: BookText, href: "/knowledge" },
   { label: "Alerts", icon: Bell, href: "/alerts", bottom: true },
   {
     label: "Settings",

@@ -146,14 +146,24 @@ function IframeReplyPart({
 type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
 
 /** Conceptâ†’Source citations, shaped for the beui citation components. */
-function toCitationItems(sources: SourcesPart["sources"]): CitationItem[] {
+function toCitationItems(
+  sources: SourcesPart["sources"],
+  assistantId?: string
+): CitationItem[] {
   return sources.map((source, index) => ({
     id: source.conceptId ?? `source-${index}`,
     title: source.conceptTitle,
     domain: source.sourceName
       ? `${source.collectionName} Â· ${source.sourceName}`
       : source.collectionName,
-    url: source.url ?? undefined,
+    // Direct access (PRD #726): a cited file the assistant may hand over
+    // links to the publication-gated download endpoint. Every other citation
+    // renders exactly as before.
+    url:
+      source.url ??
+      (assistantId && source.directAccess && source.sourceId
+        ? `/api/widget/${assistantId}/sources/${source.sourceId}/download`
+        : undefined),
   }));
 }
 
@@ -168,6 +178,7 @@ function BotMessageView({
   active,
   hideEscalation,
   brandColor,
+  assistantId,
   onSend,
   onOpenSupport,
   onVote,
@@ -176,6 +187,7 @@ function BotMessageView({
   active: boolean;
   hideEscalation: boolean;
   brandColor: string;
+  assistantId: string;
   onSend: (text: string, options?: { faq?: boolean }) => void;
   onOpenSupport: (helpDeskId?: string) => void;
   onVote: (value: -1 | 1) => void;
@@ -186,7 +198,8 @@ function BotMessageView({
     -1
   );
   const citationItems = toCitationItems(
-    parts.flatMap((part) => (part.type === "sources" ? part.sources : []))
+    parts.flatMap((part) => (part.type === "sources" ? part.sources : [])),
+    assistantId
   );
   const feedback =
     msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
@@ -291,7 +304,7 @@ function BotMessageView({
             return (
               <Citations
                 key={j}
-                citations={toCitationItems(part.sources)}
+                citations={toCitationItems(part.sources, assistantId)}
                 className="max-w-[90%]"
               />
             );
@@ -1066,6 +1079,7 @@ export function WidgetChat({
               active={pending && i === messages.length - 1}
               hideEscalation={hideEscalation}
               brandColor={brandColor}
+              assistantId={assistantId}
               onSend={send}
               onOpenSupport={openSupport}
               onVote={(value) => vote(msg, value)}

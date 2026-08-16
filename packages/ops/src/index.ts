@@ -48,9 +48,15 @@ export {
   deleteSourceOp,
   getSourceOp,
   importFaqsOp,
+  createOrgFaqOp,
+  importOrgFaqsOp,
   listCollectionsOp,
+  listOrgFaqsOp,
+  listOrgKnowledgeSourcesOp,
   listSourcesOp,
   recrawlSourceOp,
+  setDirectAccessOp,
+  setSourceLinksOp,
 } from "./knowledge";
 
 // Publish domain (#623) — immutable Publication snapshots.

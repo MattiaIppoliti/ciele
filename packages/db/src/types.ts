@@ -83,9 +83,13 @@ import type {
   MemorySearchResult,
   MemorySubjectRef,
   MemorySubjectSummary,
+  AssistantSourceLink,
   OrgApiKey,
   OrgApiKeyInput,
   OrgBudget,
+  OrgFaqEntry,
+  OrgKnowledgeSourceFilter,
+  OrgKnowledgeSourcePage,
   OrgWebsiteSource,
   Organization,
   OrganizationPatch,
@@ -318,6 +322,14 @@ export interface Db {
 
   // Knowledge (OKF collections)
   listCollections(assistantId: string): Promise<KnowledgeCollection[]>;
+  /**
+   * The per-org "Knowledge Library" default collection hub-created items land
+   * in (PRD #726) — deterministic per organization, created on first use (the
+   * backfill migration seeds it for orgs that existed then).
+   */
+  getOrCreateOrgLibraryCollection(
+    organizationId: string
+  ): Promise<KnowledgeCollection>;
   getCollection(id: string): Promise<KnowledgeCollection | null>;
   createCollection(
     assistantId: string,
@@ -325,6 +337,13 @@ export interface Db {
   ): Promise<KnowledgeCollection>;
   deleteCollection(id: string): Promise<void>;
   listSources(collectionId: string): Promise<Source[]>;
+  /**
+   * When the Collection has a legacy owning assistant, the new Source is
+   * auto-linked to it (direct access off), so assistant-editor add flows keep
+   * answering without an explicit linking step (PRD #726). Org-owned
+   * Collections ("" assistant) create the Source unlinked — the hub's add
+   * flows set links explicitly.
+   */
   createSource(input: {
     collectionId: string;
     name: string;
@@ -484,6 +503,12 @@ export interface Db {
       conceptId: string;
       collectionId: string;
       assistantId: string;
+      /**
+       * The chunk's Source (PRD #726). When set, retrieval scopes the chunk by
+       * the assistant↔source link table; null means legacy scoping by
+       * assistantId (pre-backfill chunks).
+       */
+      sourceId?: string | null;
       content: string;
       embedding: number[] | null;
     }>
@@ -493,6 +518,42 @@ export interface Db {
     collectionId: string | null,
     query: { embedding: number[] | null; text: string; limit?: number }
   ): Promise<KnowledgeSearchResult[]>;
+
+  // --- Org-level knowledge hub (PRD #726) -----------------------------------
+  /**
+   * One hub-table page of the Organization's Sources: per-kind tabs via
+   * `filter.kinds`, plus search / status / linked-assistant filters and
+   * 1-based pagination. Rows carry linked-assistant chips, Concept counts,
+   * and (for FAQ Sources) an answer excerpt.
+   */
+  listOrgKnowledgeSources(
+    organizationId: string,
+    filter: OrgKnowledgeSourceFilter
+  ): Promise<OrgKnowledgeSourcePage>;
+  /** The Assistants a Source is linked to (with per-assistant Direct access). */
+  listSourceAssistantLinks(sourceId: string): Promise<AssistantSourceLink[]>;
+  /**
+   * Replaces the Source's full linked-assistant set. Links kept across the
+   * call preserve their Direct access flag; new links start with it off.
+   */
+  setSourceAssistantLinks(
+    sourceId: string,
+    assistantIds: string[]
+  ): Promise<void>;
+  /** Flips Direct access on one existing (assistant, source) link. */
+  setSourceDirectAccess(
+    sourceId: string,
+    assistantId: string,
+    directAccess: boolean
+  ): Promise<void>;
+  /** Every FAQ with its full answer, newest first — the org-wide CSV export. */
+  listOrgFaqs(organizationId: string): Promise<OrgFaqEntry[]>;
+  /**
+   * A Source's Concepts, path-ordered — the hub's "View knowledge source"
+   * pages list. Bounded (default 500) so one 10k-page site can't flood the
+   * modal payload.
+   */
+  listConceptsBySource(sourceId: string, limit?: number): Promise<Concept[]>;
 
   // Publications
   createPublication(

@@ -18,6 +18,15 @@ const SOURCE_COLUMNS = [
   { key: "createdAt", header: "Created" },
 ];
 
+const ORG_SOURCE_COLUMNS = [
+  { key: "id", header: "Id" },
+  { key: "name", header: "Name" },
+  { key: "kind", header: "Kind" },
+  { key: "status", header: "Status" },
+  { key: "conceptCount", header: "Pages" },
+  { key: "createdAt", header: "Created" },
+];
+
 const COLLECTION_COLUMNS = [
   { key: "id", header: "Id" },
   { key: "name", header: "Name" },
@@ -112,10 +121,58 @@ export async function sources(
       });
       return EXIT.ok;
     }
+    case "list-org": {
+      const kinds = str(flags.kinds);
+      const { items, total } = await client.knowledge.orgSources({
+        kinds: kinds ? kinds.split(",") : undefined,
+        status: str(flags.status),
+        assistantId: str(flags.assistant),
+        q: str(flags.q),
+        page: flags.page ? Number(flags.page) : undefined,
+        pageSize: flags.pageSize ? Number(flags.pageSize) : undefined,
+      });
+      emit(table(items, ORG_SOURCE_COLUMNS), { items, total });
+      return EXIT.ok;
+    }
+    case "link": {
+      const assistants = str(flags.assistants);
+      if (!rest[0] || assistants === undefined) {
+        return usage(
+          deps,
+          "sources link <id> --assistants <a,b,…>   (empty list unlinks all)"
+        );
+      }
+      const { links } = await client.knowledge.setSourceLinks(
+        rest[0],
+        assistants ? assistants.split(",") : []
+      );
+      emit(
+        `Linked to ${links.length} assistant${links.length === 1 ? "" : "s"}`,
+        { links }
+      );
+      return EXIT.ok;
+    }
+    case "direct-access": {
+      const assistant = str(flags.assistant);
+      const state = rest[1];
+      if (!rest[0] || !assistant || (state !== "on" && state !== "off")) {
+        return usage(
+          deps,
+          "sources direct-access <id> <on|off> --assistant <assistantId>"
+        );
+      }
+      const { links } = await client.knowledge.setDirectAccess(
+        rest[0],
+        assistant,
+        state === "on"
+      );
+      emit(`Direct access ${state} for ${assistant}`, { links });
+      return EXIT.ok;
+    }
     default:
       return usage(
         deps,
-        "sources <list|get|add-text|add-url|add-file|delete|recrawl>"
+        "sources <list|list-org|get|add-text|add-url|add-file|link|direct-access|delete|recrawl>"
       );
   }
 }
@@ -150,7 +207,48 @@ export async function faqs(
       emit(`Imported ${result.imported} FAQs${skipped}`, result);
       return EXIT.ok;
     }
+    case "add-org": {
+      const question = str(flags.question);
+      const answer = str(flags.answer);
+      const assistants = str(flags.assistants);
+      if (!question || !answer || !assistants) {
+        return usage(
+          deps,
+          "faqs add-org --question <q> --answer <a> --assistants <a,b,…>"
+        );
+      }
+      const faq = await client.knowledge.addOrgFaq({
+        question,
+        answer,
+        assistantIds: assistants.split(","),
+      });
+      emit(`Created FAQ ${faq.id} ("${faq.question}")`, faq);
+      return EXIT.ok;
+    }
+    case "import-org": {
+      const file = str(flags.file);
+      const assistants = str(flags.assistants);
+      if (!file || !assistants) {
+        return usage(
+          deps,
+          "faqs import-org --file <faqs.csv> --assistants <a,b,…>"
+        );
+      }
+      const result = await client.knowledge.importOrgFaqs(
+        localFile(file, "text/csv"),
+        assistants.split(",")
+      );
+      const skipped =
+        result.skipped.length > 0 ? `, skipped: ${result.skipped.join("; ")}` : "";
+      emit(`Imported ${result.imported} FAQs${skipped}`, result);
+      return EXIT.ok;
+    }
+    case "export": {
+      const csv = await client.knowledge.exportOrgFaqs();
+      emit(csv, { csv });
+      return EXIT.ok;
+    }
     default:
-      return usage(deps, "faqs <add|import>");
+      return usage(deps, "faqs <add|add-org|import|import-org|export>");
   }
 }

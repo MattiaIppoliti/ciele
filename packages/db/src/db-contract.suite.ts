@@ -2110,6 +2110,346 @@ export function describeDbContract(
       });
     });
 
+    describe("org-level knowledge hub (PRD #726)", () => {
+      /** Org-owned fixture: assistant + collection + one source of a kind. */
+      const newKnowledgeFixture = async (
+        kind: "website" | "file" | "faq",
+        name: string
+      ) => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: `${name} Collection`,
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name,
+          kind,
+          config: kind === "website" ? { url: "https://hub.example" } : {},
+        });
+        return { assistant, collection, source };
+      };
+
+      it("gets-or-creates the per-org Knowledge Library exactly once", async () => {
+        const first = await db.getOrCreateOrgLibraryCollection(
+          ctx.organizationId
+        );
+        expect(first.organizationId).toBe(ctx.organizationId);
+        expect(first.assistantId).toBe("");
+        expect(first.name).toBe("Knowledge Library");
+        const second = await db.getOrCreateOrgLibraryCollection(
+          ctx.organizationId
+        );
+        expect(second.id).toBe(first.id);
+      });
+
+      it("stamps the Organization onto new Collections", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Org Stamp Collection",
+        });
+        expect(collection.organizationId).toBe(ctx.organizationId);
+        expect((await db.getCollection(collection.id))?.organizationId).toBe(
+          ctx.organizationId
+        );
+      });
+
+      it("lists per-kind tabs with search, status filter, and pagination", async () => {
+        const site = await newKnowledgeFixture("website", "Hub Site Alpha");
+        const file = await newKnowledgeFixture("file", "Hub File Beta");
+        await db.updateSource(file.source.id, { status: "ready" });
+
+        const websites = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["website", "url"],
+          query: "hub site",
+        });
+        expect(websites.items.map((i) => i.id)).toContain(site.source.id);
+        expect(websites.items.map((i) => i.id)).not.toContain(file.source.id);
+
+        const readyFiles = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          { kinds: ["file", "text"], status: "ready", query: "hub file" }
+        );
+        expect(readyFiles.items.map((i) => i.id)).toEqual([file.source.id]);
+        // Status tallies cover every matching row (the tab health dot).
+        expect(readyFiles.statusCounts).toEqual({
+          processing: 0,
+          ready: 1,
+          error: 0,
+        });
+        const processingFiles = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          { kinds: ["file", "text"], status: "processing", query: "hub file" }
+        );
+        expect(processingFiles.items).toEqual([]);
+
+        const pageOne = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["website", "url", "file", "text", "faq"],
+          query: "hub",
+          page: 1,
+          pageSize: 1,
+        });
+        expect(pageOne.items).toHaveLength(1);
+        expect(pageOne.total).toBeGreaterThanOrEqual(2);
+      });
+
+      it("filters by linked assistant and counts Concepts", async () => {
+        const { assistant, collection, source } = await newKnowledgeFixture(
+          "website",
+          "Hub Linked Site"
+        );
+        const other = await newAssistant();
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "hub/page.md",
+          frontmatter: { type: "Web Page", title: "Page" },
+          body: "content",
+        });
+
+        const linked = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["website", "url"],
+          assistantId: assistant.id,
+          query: "hub linked site",
+        });
+        expect(linked.items.map((i) => i.id)).toEqual([source.id]);
+        expect(linked.items[0].conceptCount).toBe(1);
+        expect(linked.items[0].linkedAssistants.map((l) => l.assistantId)).toEqual(
+          [assistant.id]
+        );
+        expect(linked.items[0].linkedAssistants[0].assistantName).toBe(
+          assistant.title
+        );
+
+        const unlinked = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["website", "url"],
+          assistantId: other.id,
+          query: "hub linked site",
+        });
+        expect(unlinked.items).toEqual([]);
+      });
+
+      it("never surfaces another organization's rows", async () => {
+        await newKnowledgeFixture("website", "Hub Tenancy Site");
+        const foreign = await db.listOrgKnowledgeSources(
+          ctx.foreignOrganizationId,
+          { kinds: ["website", "url", "file", "text", "faq"] }
+        );
+        expect(
+          foreign.items.filter((i) => i.name === "Hub Tenancy Site")
+        ).toEqual([]);
+      });
+
+      it("auto-links a new Source to its collection's owning assistant", async () => {
+        const { assistant, source } = await newKnowledgeFixture(
+          "website",
+          "Hub Autolink Site"
+        );
+        const links = await db.listSourceAssistantLinks(source.id);
+        expect(links.map((l) => l.assistantId)).toEqual([assistant.id]);
+        expect(links[0].directAccess).toBe(false);
+      });
+
+      it("replaces the linked-assistant set, preserving Direct access on kept links", async () => {
+        const { assistant, source } = await newKnowledgeFixture(
+          "file",
+          "Hub Direct File"
+        );
+        const second = await newAssistant();
+        await db.setSourceAssistantLinks(source.id, [assistant.id, second.id]);
+
+        let links = await db.listSourceAssistantLinks(source.id);
+        expect(links.map((l) => l.assistantId).sort()).toEqual(
+          [assistant.id, second.id].sort()
+        );
+        // Direct access defaults off on every new link.
+        expect(links.every((l) => l.directAccess === false)).toBe(true);
+
+        await db.setSourceDirectAccess(source.id, assistant.id, true);
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        links = await db.listSourceAssistantLinks(source.id);
+        expect(links).toHaveLength(1);
+        // The kept link survived the replace with its flag intact.
+        expect(links[0].assistantId).toBe(assistant.id);
+        expect(links[0].directAccess).toBe(true);
+
+        // Re-adding a dropped link starts it clean again.
+        await db.setSourceAssistantLinks(source.id, [assistant.id, second.id]);
+        links = await db.listSourceAssistantLinks(source.id);
+        expect(
+          links.find((l) => l.assistantId === second.id)?.directAccess
+        ).toBe(false);
+      });
+
+      it("answers for every linked assistant and stops on unlink", async () => {
+        const { assistant, collection, source } = await newKnowledgeFixture(
+          "file",
+          "Hub Shared File"
+        );
+        const second = await newAssistant();
+        const concept = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "hub/shared.md",
+          frontmatter: { type: "Note", title: "Shared" },
+          body: "zebra migration corridors",
+        });
+        await db.saveChunks([
+          {
+            conceptId: concept.id,
+            collectionId: collection.id,
+            assistantId: assistant.id,
+            sourceId: source.id,
+            content: "zebra migration corridors cross the plain",
+            embedding: null,
+          },
+        ]);
+        await db.setSourceAssistantLinks(source.id, [assistant.id, second.id]);
+
+        const query = { embedding: null, text: "zebra corridors" };
+        const forOwner = await db.searchChunks(assistant.id, null, query);
+        expect(forOwner.map((r) => r.conceptId)).toContain(concept.id);
+        const forSecond = await db.searchChunks(second.id, null, query);
+        expect(forSecond.map((r) => r.conceptId)).toContain(concept.id);
+
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        const afterUnlink = await db.searchChunks(second.id, null, query);
+        expect(afterUnlink.map((r) => r.conceptId)).not.toContain(concept.id);
+      });
+
+      it("keeps legacy chunks (no sourceId) answering for their assistant", async () => {
+        const { assistant, collection, source } = await newKnowledgeFixture(
+          "file",
+          "Hub Legacy File"
+        );
+        const concept = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "hub/legacy.md",
+          frontmatter: { type: "Note", title: "Legacy" },
+          body: "quokka habitat notes",
+        });
+        await db.saveChunks([
+          {
+            conceptId: concept.id,
+            collectionId: collection.id,
+            assistantId: assistant.id,
+            content: "quokka habitat notes for rangers",
+            embedding: null,
+          },
+        ]);
+        // The chunk itself is source-less (the pre-backfill world), so it is
+        // reachable through the legacy assistant_id path regardless of links.
+        const results = await db.searchChunks(assistant.id, null, {
+          embedding: null,
+          text: "quokka habitat",
+        });
+        expect(results.map((r) => r.conceptId)).toContain(concept.id);
+      });
+
+      it("marks search results direct-access only for flagged file links", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Hub Access Collection",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Hub Access File",
+          kind: "file",
+          originalObjectPath: "org/x/access.pdf",
+        });
+        const concept = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "files/access.md",
+          frontmatter: { type: "Document", title: "Access" },
+          body: "wombat burrow depths",
+        });
+        await db.saveChunks([
+          {
+            conceptId: concept.id,
+            collectionId: collection.id,
+            assistantId: assistant.id,
+            sourceId: source.id,
+            content: "wombat burrow depths measured",
+            embedding: null,
+          },
+        ]);
+
+        const query = { embedding: null, text: "wombat burrow" };
+        const before = await db.searchChunks(assistant.id, null, query);
+        const hitBefore = before.find((r) => r.conceptId === concept.id);
+        expect(hitBefore?.sourceId).toBe(source.id);
+        expect(hitBefore?.directAccess).toBe(false);
+
+        await db.setSourceDirectAccess(source.id, assistant.id, true);
+        const after = await db.searchChunks(assistant.id, null, query);
+        const hitAfter = after.find((r) => r.conceptId === concept.id);
+        expect(hitAfter?.directAccess).toBe(true);
+      });
+
+      it("round-trips the faq kind: Source + Concept, findFaqConcept unchanged", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Hub FAQ Collection",
+        });
+        const question = "How do I reset my hub password?";
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: question,
+          kind: "faq",
+        });
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "faq/reset-password.md",
+          frontmatter: { type: "FAQ", title: question },
+          body: "Use the reset link on the sign-in page.",
+        });
+
+        const found = await db.findFaqConcept(assistant.id, question);
+        expect(found?.concept.frontmatter.title).toBe(question);
+        expect(found?.collectionName).toBe("Hub FAQ Collection");
+
+        const faqs = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["faq"],
+          query: "hub password",
+        });
+        expect(faqs.items.map((i) => i.id)).toEqual([source.id]);
+        expect(faqs.items[0].answerPreview).toContain("reset link");
+
+        // The org-wide export sees the FULL answer, not the table preview.
+        const entries = await db.listOrgFaqs(ctx.organizationId);
+        const entry = entries.find((e) => e.sourceId === source.id);
+        expect(entry?.question).toBe(question);
+        expect(entry?.answer).toBe("Use the reset link on the sign-in page.");
+      });
+
+      it("lists a Source's Concepts path-ordered and bounded", async () => {
+        const { collection, source } = await newKnowledgeFixture(
+          "website",
+          "Hub Pages Site"
+        );
+        for (const path of ["web/b.md", "web/a.md", "web/c.md"]) {
+          await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path,
+            frontmatter: { type: "Web Page", title: path },
+            body: "content",
+          });
+        }
+        const all = await db.listConceptsBySource(source.id);
+        expect(all.map((c) => c.path)).toEqual([
+          "web/a.md",
+          "web/b.md",
+          "web/c.md",
+        ]);
+        const bounded = await db.listConceptsBySource(source.id, 2);
+        expect(bounded.map((c) => c.path)).toEqual(["web/a.md", "web/b.md"]);
+      });
+    });
+
     describe("knowledge search (lexical fallback)", () => {
       it("ranks by term hits, scopes by assistant + collection, respects limit", async () => {
         const assistant = await newAssistant();

@@ -77,6 +77,13 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
       return [{ path: "/settings/data" }];
     case "dataAssistant":
       return [{ path: "/data-assistant" }];
+    case "knowledgeHub":
+      // The tab segments render the tables; the layout route carries nothing.
+      return [
+        { path: "/knowledge/websites" },
+        { path: "/knowledge/files" },
+        { path: "/knowledge/faqs" },
+      ];
   }
 }
 

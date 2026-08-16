@@ -221,6 +221,8 @@ export function dedupSources(used: KnowledgeSearchResult[]): ChatReplyPart | nul
       collectionName: s.collectionName,
       sourceName: s.sourceName,
       url: s.resourceUrl ?? null,
+      sourceId: s.sourceId ?? null,
+      directAccess: s.directAccess === true,
     }));
   return { type: "sources", action: "search_knowledge", sources };
 }

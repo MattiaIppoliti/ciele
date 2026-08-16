@@ -18,6 +18,7 @@ export const CONSOLE_PATH_PREFIXES = [
   "/improvements",
   "/inbox",
   "/insights",
+  "/knowledge",
   "/settings",
   "/setup",
 ] as const;
