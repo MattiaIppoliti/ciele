@@ -42,8 +42,8 @@ const SECTIONS: LegalSection[] = [
           ],
           [
             "Resend",
-            "Transactional email, invitations, notifications, escalation email, sales enquiries from our contact form",
-            "Recipient address and message content",
+            "Transactional email (invitations, notifications, escalation email, sales enquiries) and the newsletter list, which holds the addresses that confirmed a double opt-in",
+            "Recipient address and message content; newsletter subscriber addresses and their subscription state",
             "EU / US (SCCs)",
           ],
         ],

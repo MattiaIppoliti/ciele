@@ -15,8 +15,9 @@ import { SpotlightCard } from "@/components/marketing/spotlight-card";
 import { CodeBlock } from "@/components/ui/code-block";
 import {
   INSTALL_SCRIPT_PATH,
+  resolveDesktopPackageUrl,
+  resolveSelfHostInstallCommand,
   resolveSourceUrl,
-  selfHostInstallCommand,
 } from "@/lib/self-host-install";
 import { CTA_CLASS } from "./plan-cards";
 
@@ -45,25 +46,11 @@ import { CTA_CLASS } from "./plan-cards";
 const SOURCE_URL = resolveSourceUrl();
 
 /**
- * Where this deployment serves `/install.sh` from. Read from the app's own
- * origin rather than hardcoded, so a fork (or a preview deployment) hands out
- * a command that actually resolves; the default is the public site.
- *
- * A build with a nonsense origin should show no command at all rather than an
- * unusable one, the helper throws, and the hero drops the pill.
+ * The macOS beta `.zip` is attached to every release of the public repo. Same
+ * helper the home page's Download Ciele Desktop button uses, so the two cannot
+ * point at different packages.
  */
-function installCommand(): string | null {
-  try {
-    return selfHostInstallCommand(
-      process.env.NEXT_PUBLIC_APP_URL || "https://ciele.app"
-    );
-  } catch {
-    return null;
-  }
-}
-
-/** The macOS beta `.zip` is attached to every release of the public repo. */
-const RELEASES_URL = `${SOURCE_URL}/releases/latest`;
+const RELEASES_URL = resolveDesktopPackageUrl();
 
 const SELF_HOST_ANCHOR = "self-host";
 
@@ -181,7 +168,9 @@ const STACK = [
 ];
 
 export function DownloadContent() {
-  const command = installCommand();
+  // Built from the app's own origin by the module that serves the script, so
+  // this line and the one in the home hero can never disagree.
+  const command = resolveSelfHostInstallCommand();
 
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">

@@ -82,3 +82,36 @@ describe("sendEmail", () => {
     });
   });
 });
+
+describe("the optional HTML part", () => {
+  beforeEach(() => {
+    vi.stubEnv("RESEND_API_KEY", "re_test_key");
+    vi.stubEnv("EMAIL_FROM", "Ciele <no-reply@ciele.app>");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("sends html alongside text when a caller supplies it", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendEmail({ ...MESSAGE, html: "<p>It drops every few minutes.</p>" });
+
+    const payload = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
+    expect(payload.text).toBe(MESSAGE.body);
+    expect(payload.html).toBe("<p>It drops every few minutes.</p>");
+  });
+
+  it("omits the key entirely for the text-only messages, rather than sending an empty part", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("{}", { status: 200 }));
+
+    await sendEmail(MESSAGE);
+
+    expect(JSON.parse(String(fetchSpy.mock.calls[0][1]?.body))).not.toHaveProperty("html");
+  });
+});

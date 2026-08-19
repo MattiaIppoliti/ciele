@@ -105,6 +105,36 @@ export function selfHostInstallCommand(rawOrigin: string): string {
 }
 
 /**
+ * The line this deployment can actually hand out, or `null` when it cannot
+ * build one. The origin comes from the app's own configuration rather than a
+ * literal, so a fork or a preview deployment copies a command that resolves;
+ * a build with a nonsense origin shows no command at all rather than one that
+ * 404s in someone's terminal.
+ *
+ * Shared by the home hero and the download page, which must never disagree
+ * about the command they hand out.
+ */
+export function resolveSelfHostInstallCommand(): string | null {
+  try {
+    return selfHostInstallCommand(
+      process.env.NEXT_PUBLIC_APP_URL || "https://ciele.app"
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Where the packaged Ciele Desktop build is published: the latest release of
+ * the source repository, with the macOS `.zip` attached (the asset the
+ * installer script picks by `DESKTOP_MAC_ASSET_SUFFIX`). Resolved through the
+ * same repo helper as the clone line, so a fork hands out its own package.
+ */
+export function resolveDesktopPackageUrl(): string {
+  return `${resolveSourceUrl()}/releases/latest`;
+}
+
+/**
  * The script served at `/install.sh`.
  *
  * POSIX sh, because it is piped to `sh`. Nothing here reads stdin, stdin *is*

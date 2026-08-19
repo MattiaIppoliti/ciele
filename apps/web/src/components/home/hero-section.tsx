@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { type CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@agent-hub/ui";
 import { HeroGhost } from "@/components/home/hero-ghost";
 import { HomeAppPreview } from "@/components/home/app-preview";
+import { InstallCommand } from "@/components/marketing/install-command";
 import { DownloadCta } from "@/components/home/download-cta";
 import { FeaturesGrid } from "@/components/home/features-grid";
 import { MobileAppPreview } from "@/components/home/mobile-app-preview";
@@ -16,9 +16,12 @@ import {
 } from "@/components/home/sky";
 import { SkySceneTransition } from "@/components/home/sky-transition";
 import { ChromaticTextReveal } from "@/components/motion/text-animation";
+import { resolveSelfHostInstallCommand } from "@/lib/self-host-install";
 import { cn } from "@/lib/utils";
 
 export function HeroSection() {
+  const installCommand = resolveSelfHostInstallCommand();
+
   return (
     <section id="overview" className="relative isolate overflow-hidden scroll-mt-24">
       {/* Day sky / dusk / starry night backdrops, all mounted so a theme
@@ -75,8 +78,13 @@ export function HeroSection() {
             </span>
           </Link>
 
+          {/* Same type treatment as the page's closing line in `CtaSection`:
+              semibold, tight tracking, and the fade painted into the type
+              itself, so the fold and the sign-off read as one voice. The
+              rotating word paints its own chromatic gradient and the mascot is
+              an SVG with literal fills, so neither inherits the transparency. */}
           <h1
-            className="home-reveal-hero mx-auto mt-8 max-w-4xl text-balance text-5xl max-md:font-semibold md:max-w-5xl md:text-pretty md:text-6xl xl:max-w-6xl xl:text-7xl"
+            className="home-reveal-hero from-foreground to-foreground/25 mx-auto mt-8 max-w-4xl bg-gradient-to-b bg-clip-text text-5xl font-semibold tracking-tight text-balance text-transparent md:max-w-5xl md:text-pretty md:text-6xl xl:max-w-6xl xl:text-7xl"
             style={{ "--reveal-delay": "0.05s" } as CSSProperties}
           >
             Your organization&apos;s{" "}
@@ -97,6 +105,12 @@ export function HeroSection() {
                   the ghost sits immediately before it. */}
               <ChromaticTextReveal
                 words={["clouds", "sky", "ciele", "cielo"]}
+                // The h1 paints a top-to-bottom fade over the whole block, and
+                // this word paints its own gradient, so it cannot inherit that
+                // fade. Left at full --foreground it settled two tones darker
+                // than the "above the" beside it. This is what the h1's fade
+                // works out to on the last line, so the row lands as one color.
+                foregroundColor="color-mix(in oklab, var(--foreground) 45%, transparent)"
                 delay={0.05}
                 duration={1.1}
                 pauseDuration={1.6}
@@ -115,35 +129,32 @@ export function HeroSection() {
             knowledge.
           </p>
 
-          <div className="mt-12 flex flex-col items-center justify-center gap-2 md:flex-row">
+          {/* The fold's only call to action: the self-host one-liner, copyable
+              on the spot. Same command the download page hands out, built by
+              the module that serves the script, so the two can never drift
+              apart. A build that cannot prove its own origin drops the row
+              instead of showing a command that would 404. */}
+          {installCommand && (
             <div
-              className="home-reveal-hero bg-foreground/10 rounded-[calc(var(--radius-xl)+0.125rem)] border p-0.5"
+              className="home-reveal-hero mx-auto mt-12 max-w-xl"
               style={{ "--reveal-delay": "0.32s" } as CSSProperties}
             >
-              <Button
-                size="lg"
-                className="rounded-xl px-5 text-base"
-                nativeButton={false}
-                render={<Link href="/contact/sales" />}
-              >
-                <span className="text-nowrap">Request a demo</span>
-              </Button>
+              <InstallCommand command={installCommand} />
+              {/* Same grey voice as the subtitle above: a bare command tells a
+                  visitor nothing, and this one is worth explaining because it
+                  is the whole product, not a client library. */}
+              <p className="text-muted-foreground mt-4 text-balance text-[15px]">
+                Downloads and runs the whole stack on your own machine:
+                console, widget, database, background jobs.{" "}
+                <Link
+                  href="/download"
+                  className="text-foreground underline underline-offset-4 hover:no-underline"
+                >
+                  Run it yourself
+                </Link>
+              </p>
             </div>
-            <div
-              className="home-reveal-hero"
-              style={{ "--reveal-delay": "0.42s" } as CSSProperties}
-            >
-              <Button
-                size="lg"
-                variant="ghost"
-                className="rounded-xl px-5 text-base"
-                nativeButton={false}
-                render={<Link href="/login" />}
-              >
-                <span className="text-nowrap">Sign in</span>
-              </Button>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -228,7 +239,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="home-below-fold bg-background scroll-mt-24 py-24"
+      className="home-below-fold bg-background scroll-mt-24 pb-10 pt-24"
     >
       <div className="mx-auto max-w-5xl px-6">
         {/* Download CTA sitting between the hero mock and the heading: a pill

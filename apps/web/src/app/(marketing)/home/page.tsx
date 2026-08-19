@@ -20,10 +20,16 @@ export default function HomePage() {
         {/* The same sign-off every marketing page ends on, so the home page
             hands over to the footer the way /features/* and /pricing do
             instead of stopping on the last feature card. bg-background keeps
-            it on the white band the features sit on, above the footer sky. */}
+            it on the white band the features sit on, above the footer sky.
+
+            mt-12 overrides the callout's own mt-24: here it follows a card
+            grid, not body copy, and the two default margins stacked into a
+            dead band. On lg its inner card keeps the headroom the mascot
+            hanging above it needs. */}
         <section className="home-below-fold bg-background">
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 lg:px-12">
             <CloudCallout
+              className="mt-12"
               expression="neutral"
               eyebrow="Meet your teammate"
               title="Happy to help, around the clock"
@@ -35,7 +41,7 @@ export default function HomePage() {
             lead="Built on your knowledge."
             trail="Answering today."
             primary={{ label: "Request a demo", href: "/contact/sales" }}
-            secondary={{ label: "See pricing", href: "/pricing" }}
+            secondary={{ label: "Log in", href: "/login" }}
           />
         </section>
       </main>

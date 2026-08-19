@@ -2,12 +2,29 @@ import Link from "next/link";
 import { GhostMark } from "@/components/auth/ghost-mark";
 import { CookiePreferencesButton } from "@/components/cookie-consent/cookie-preferences-button";
 import { FooterClock, FooterNewsletter } from "@/components/home/footer-widgets";
+import { DOCS } from "@/components/home/nav-menu";
 import {
   FallingStars,
   FlyingBirds,
   StarField,
 } from "@/components/home/sky";
+import { FEATURES } from "@/components/marketing/feature-catalog";
 
+/**
+ * The four groups, in the header's own vocabulary (Product · Enterprise ·
+ * Resources · Legal) so a visitor who used the nav finds the same shelves down
+ * here. `DOCS` and `FEATURES` come from the modules the nav reads, not from
+ * literals, so a renamed docs host or a reordered catalogue cannot leave the
+ * footer pointing somewhere else.
+ *
+ * What changed and why: "Features" was `#features`, an anchor that scrolled on
+ * the home page and did nothing on the eleven other pages this footer renders
+ * on, so it now points at the first catalogue page the way the nav does.
+ * "Company" held two links, one of them Home, which the brand mark above
+ * already is. Legal ran seven rows deep, twice the height of its neighbours. Account actions ("Sign in") and "Request a demo" left too: every
+ * page ends on a CTA section that offers both, and the demo page is reachable
+ * here as "Talk to sales", the label the nav uses.
+ */
 const COLUMNS: Array<{
   title: string;
   links: Array<{ name: string; href: string; external?: boolean }>;
@@ -15,30 +32,39 @@ const COLUMNS: Array<{
   {
     title: "Product",
     links: [
-      { name: "Features", href: "#features" },
+      { name: "Features", href: `/features/${FEATURES[0].slug}` },
       { name: "Pricing", href: "/pricing" },
       { name: "Download", href: "/download" },
-      { name: "Request a demo", href: "/contact/sales" },
-      { name: "Sign in", href: "/login" },
+      { name: "Log in", href: "/login" },
     ],
   },
   {
-    title: "Company",
+    title: "Enterprise",
     links: [
-      { name: "Docs", href: "https://docs.ciele.app", external: true },
-      { name: "Home", href: "/home" },
+      { name: "Governance", href: "/enterprise" },
+      { name: "Security", href: "/security" },
+      { name: "Talk to sales", href: "/contact/sales" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { name: "Docs", href: DOCS, external: true },
+      { name: "Getting started", href: `${DOCS}/getting-started`, external: true },
+      { name: "Self-hosting", href: `${DOCS}/self-hosting`, external: true },
     ],
   },
   {
     title: "Legal",
+    /* Three documents plus the consent re-opener, the ones a visitor comes
+       looking for by name. DPA, Subprocessors and GDPR left: /security links
+       to all three (and to the disclosure policy), and it is one row up in the
+       Enterprise column, so the footer keeps the door without listing the
+       whole filing cabinet. */
     links: [
-      { name: "Security", href: "/security" },
-      { name: "GDPR", href: "/security/gdpr" },
-      { name: "DPA", href: "/policies/dpa" },
-      { name: "Subprocessors", href: "/policies/subprocessors" },
       { name: "Privacy Policy", href: "/policies/privacy" },
-      { name: "Cookie Notice", href: "/policies/cookies" },
       { name: "Terms of Service", href: "/policies/terms-of-service" },
+      { name: "Cookie Notice", href: "/policies/cookies" },
     ],
   },
 ];
@@ -95,7 +121,7 @@ export function HomeFooter() {
               </span>
             </Link>
 
-            <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-3 lg:gap-x-16">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-4 lg:gap-x-12">
               {COLUMNS.map((column) => (
                 <div key={column.title}>
                   <h3 className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">

@@ -78,5 +78,10 @@ describe("installed ciele CLI", () => {
         server.close((error) => (error ? reject(error) : resolve()))
       );
     }
-  }, 30_000);
+  // Budget, not a latency assertion. This test runs a real `pnpm pack` and a
+  // real `npm install` into a temp prefix, so its wall time is whatever the
+  // machine and the npm cache give it. Thirty seconds passed on a warm laptop
+  // and timed out at eighty on a cold checkout, which is exactly the state a
+  // release gate or a fresh CI runner starts from.
+  }, 300_000);
 });

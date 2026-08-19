@@ -15,7 +15,18 @@ export interface EmailMessage {
   /** One address, or several comma-separated. */
   to: string;
   subject: string;
+  /**
+   * The plain-text part, and the only required one. Every message keeps it
+   * even when `html` is set: it is the copy a text-only client renders, and a
+   * message with no text part scores worse with spam filters than one with.
+   */
   body: string;
+  /**
+   * Optional HTML part. Set it for the messages a human reads on the public
+   * site (the newsletter confirmation); operational mail to a help desk stays
+   * text, where the content is the payload and markup only gets in the way.
+   */
+  html?: string;
   replyTo?: string;
 }
 
@@ -58,6 +69,7 @@ export async function sendEmail(message: EmailMessage): Promise<EmailDelivery> {
         to,
         subject: message.subject,
         text: message.body,
+        ...(message.html ? { html: message.html } : {}),
         ...(message.replyTo ? { reply_to: message.replyTo } : {}),
       }),
     });

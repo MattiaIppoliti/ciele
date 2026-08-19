@@ -40,6 +40,9 @@ export const MARKETING_PATH_PREFIXES = [
   // The landing page lives in the group too, so the shell it shares with the
   // rest of the public site can sit in one layout.
   "/home",
+  // The newsletter double opt-in confirm page. Reached from an inbox by a
+  // visitor who has no account, so it has to stay outside the auth gate.
+  "/newsletter",
   "/policies",
   "/pricing",
   "/security",

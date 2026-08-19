@@ -5,7 +5,7 @@
 // difference between a user fixing their address and a user filing a bug.
 
 import { describe, expect, it } from "vitest";
-import { httpFailureReason, loadFailureReason, partitionForMode } from "./windows";
+import { httpFailureReason, loadFailureReason, partitionForMode } from "./failure-reasons";
 
 describe("loadFailureReason", () => {
   it("tells a typo apart from a server that is down", () => {
