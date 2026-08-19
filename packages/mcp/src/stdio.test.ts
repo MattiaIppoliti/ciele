@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { Client } from "@modelcontextprotocol/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -11,7 +11,40 @@ const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
  * The stdio process end to end (#629, #700). `serveStdio` decides the era from
  * the opening exchange, so these tests are the only place the wire era is
  * actually observable — a unit test of `createCieleMcpServer` cannot see it.
+ *
+ * Each case spawns the real ciele-mcp child process, so the wall clock is
+ * dominated by process-spawn time, which balloons when turbo runs the web and
+ * agent suites concurrently on the same machine. The test timeout is a safety
+ * net, not a latency assertion — keep it well above the contended worst case
+ * (same rationale as apps/web's local-connector-runtime tests). The connect
+ * deadline below stays under it so a genuinely hung spawn fails with a
+ * descriptive error instead of a bare vitest timeout.
  */
+vi.setConfig({ testTimeout: 90_000 });
+
+const CONNECT_DEADLINE_MS = 60_000;
+
+async function connectWithDeadline(client: Client, transport: StdioClientTransport) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      client.connect(transport),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `ciele-mcp stdio process did not complete the opening exchange within ${CONNECT_DEADLINE_MS}ms — the spawn or handshake is hung, not slow`
+              )
+            ),
+          CONNECT_DEADLINE_MS
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** A stand-in Ciele API: enough of /api/v1 for `ciele_identity`. */
 function startApi(): Promise<{ server: Server; baseUrl: string; requests: string[] }> {
@@ -81,7 +114,7 @@ describe("ciele MCP stdio process", () => {
     const client = new Client({ name: "ciele-stdio-test", version: "1.0.0" });
 
     try {
-      await client.connect(spawnServer(api.baseUrl));
+      await connectWithDeadline(client, spawnServer(api.baseUrl));
       // No `versionNegotiation` — the v2 client's default is the legacy
       // handshake, which `serveStdio` still serves.
       expect(client.getProtocolEra()).toBe("legacy");
@@ -106,7 +139,7 @@ describe("ciele MCP stdio process", () => {
     } finally {
       await client.close();
     }
-  }, 20_000);
+  });
 
   it("negotiates the 2026-07-28 era and serves the same tools", async () => {
     const client = new Client(
@@ -115,7 +148,7 @@ describe("ciele MCP stdio process", () => {
     );
 
     try {
-      await client.connect(spawnServer(api.baseUrl));
+      await connectWithDeadline(client, spawnServer(api.baseUrl));
       expect(client.getProtocolEra()).toBe("modern");
       expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
 
@@ -127,7 +160,7 @@ describe("ciele MCP stdio process", () => {
     } finally {
       await client.close();
     }
-  }, 20_000);
+  });
 
   it("refuses a 2025-era client when CIELE_MCP_MODERN_ONLY is set", async () => {
     const client = new Client({ name: "ciele-stdio-test", version: "1.0.0" });
@@ -136,7 +169,7 @@ describe("ciele MCP stdio process", () => {
       client.connect(spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" }))
     ).rejects.toThrow();
     await client.close();
-  }, 20_000);
+  });
 
   it("still serves a modern client when CIELE_MCP_MODERN_ONLY is set", async () => {
     const client = new Client(
@@ -145,11 +178,14 @@ describe("ciele MCP stdio process", () => {
     );
 
     try {
-      await client.connect(spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" }));
+      await connectWithDeadline(
+        client,
+        spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" })
+      );
       expect(client.getProtocolEra()).toBe("modern");
       expect((await client.listTools()).tools).toHaveLength(14);
     } finally {
       await client.close();
     }
-  }, 20_000);
+  });
 });
