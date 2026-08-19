@@ -9,6 +9,8 @@ import { FeaturesGrid } from "@/components/home/features-grid";
 import { MobileAppPreview } from "@/components/home/mobile-app-preview";
 import { PreviewStage } from "@/components/home/preview-stage";
 import { HeroClouds } from "@/components/home/hero-clouds";
+import { InstallCommand } from "@/components/marketing/install-command";
+import { selfHostInstallCommand } from "@/lib/self-host-install";
 import {
   FallingStars,
   FlyingBirds,
@@ -18,7 +20,25 @@ import { SkySceneTransition } from "@/components/home/sky-transition";
 import { ChromaticTextReveal } from "@/components/motion/text-animation";
 import { cn } from "@/lib/utils";
 
+/**
+ * The self-host one-liner shown under the hero CTAs. Same helper as the
+ * download page: built from this deployment's own origin so a fork or preview
+ * hands out a command that resolves, and dropped entirely (null) rather than
+ * shown broken when the origin is unusable.
+ */
+function installCommand(): string | null {
+  try {
+    return selfHostInstallCommand(
+      process.env.NEXT_PUBLIC_APP_URL || "https://ciele.app"
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function HeroSection() {
+  const command = installCommand();
+
   return (
     <section id="overview" className="relative isolate overflow-hidden scroll-mt-24">
       {/* Day sky / dusk / starry night backdrops, all mounted so a theme
@@ -144,6 +164,20 @@ export function HeroSection() {
               </Button>
             </div>
           </div>
+
+          {/* The open-source path, right under the hosted CTAs: the same
+              copyable one-liner the download page leads with. */}
+          {command && (
+            <div
+              className="home-reveal-hero mx-auto mt-6 flex w-full max-w-md flex-col items-center gap-2"
+              style={{ "--reveal-delay": "0.52s" } as CSSProperties}
+            >
+              <InstallCommand command={command} className="w-full" />
+              <p className="text-muted-foreground text-sm">
+                Download the open-source, self-hosted version
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
