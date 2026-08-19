@@ -5,8 +5,8 @@ import { DEMO_ORG, getMockDb } from "./index";
 /**
  * The in-memory Db adapter agrees with the oracle.
  *
- * The oracle itself — `computeInsightsOverview` and the pure KPI functions it
- * composes — is tested in `@agent-hub/core` (`insights.test.ts`). This file
+ * The oracle itself: `computeInsightsOverview` and the pure KPI functions it
+ * composes, is tested in `@agent-hub/core` (`insights.test.ts`). This file
  * asserts only what an adapter can get wrong: that `Db.getInsightsOverview`
  * returns what the oracle computes over the same rows, and that it returns a
  * bounded payload rather than leaking raw conversation/message objects. The SQL
@@ -44,7 +44,7 @@ describe("Db.getInsightsOverview (mock adapter)", () => {
     expect(overview).toEqual(expected);
   });
 
-  it("returns a bounded payload — metrics and series, never raw rows", async () => {
+  it("returns a bounded payload, metrics and series, never raw rows", async () => {
     const overview = await db.getInsightsOverview(DEMO_ORG.id, filter);
     expect(Object.keys(overview).sort()).toEqual([
       "assistantBreakdown",

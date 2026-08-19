@@ -2,7 +2,7 @@
 --
 -- 0003 reserved every role update for owners ("owner updates roles"). The
 -- Members table lets Admins and Owners edit roles, so the policy widens to
--- rank 3 — but an Admin must not be able to grant themselves ownership or
+-- rank 3, but an Admin must not be able to grant themselves ownership or
 -- demote an Owner. For an UPDATE policy `using` sees the row as it is and
 -- `with check` the row as it will be, so naming `role <> 'owner'` in both
 -- fences an Admin off the owner tier from either direction.

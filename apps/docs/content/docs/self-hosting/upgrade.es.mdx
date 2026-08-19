@@ -7,7 +7,7 @@ description: Aplica una nueva versión del repositorio y sus migraciones pendien
 
 1. Lee los cambios de la versión.
 2. Registra la confirmación o etiqueta actual.
-3. Haz una copia de seguridad de la base de datos y de los archivos subidos.
+3. Realiza una copia de seguridad de la base de datos y de los archivos subidos.
 4. Prueba el proceso de restauración.
 5. Programa una ventana de servicio aceptable.
 
@@ -18,8 +18,19 @@ git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
-El servicio `migrate` solo aplica las migraciones pendientes. Inspecciona el
-resultado antes de aceptar la aplicación como correcta.
+En el modo de imagen, cambia `CIELE_IMAGE_TAG` en `deploy/.env` a la nueva
+versión y aplícala en su lugar:
+
+```bash
+docker compose up -d
+```
+
+En [Ciele Desktop](/self-hosting/desktop), al actualizar la aplicación se
+realiza este paso: cada compilación fija las imágenes que coinciden con su
+propia versión.
+
+El servicio `migrate` solo aplica las migraciones pendientes. Revisa el
+resultado antes de aceptar que la aplicación está en buen estado.
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps
@@ -29,7 +40,7 @@ docker compose -f deploy/docker-compose.yml logs app
 
 ## Verifica el resultado
 
-1. Inicia sesión en la consola de administración.
+1. Inicia sesión en la consola de administrador.
 2. Abre un Asistente.
 3. Vista previa de prueba.
 4. Abre un widget publicado.

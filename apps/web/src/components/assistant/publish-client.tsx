@@ -78,7 +78,7 @@ export function PublishClient({
   const [isPending, startTransition] = useTransition();
 
   // Read the browser origin after hydration (SSR renders the placeholder) via
-  // useSyncExternalStore — avoids both a hydration mismatch and setState-in-effect.
+  // useSyncExternalStore, avoids both a hydration mismatch and setState-in-effect.
   const origin = useSyncExternalStore(
     NOOP_SUBSCRIBE,
     () => window.location.origin,
@@ -150,7 +150,7 @@ export function PublishClient({
         </div>
       </Card>
 
-      {/* Publish — live state is the one thing on this page worth reading from
+      {/* Publish, live state is the one thing on this page worth reading from
           across the room, so a published assistant tints its own card: an
           emerald edge plus a wash that fades out towards the buttons, leaving
           them on the plain card surface. Unpublished keeps the neutral card,
@@ -160,7 +160,7 @@ export function PublishClient({
         className={cn(
           "gap-0 p-4",
           // `Card` draws its outline as a ring, not a border, so the emerald
-          // edge has to override `ring-foreground/10` — a `border-*` class only
+          // edge has to override `ring-foreground/10`, a `border-*` class only
           // colours a border that is zero pixels wide.
           latest &&
             "ring-emerald-500/40 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent dark:from-emerald-500/15 dark:via-emerald-500/[0.06]",

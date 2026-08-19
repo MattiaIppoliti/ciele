@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { improvementAssignedEmail, improvementClosedEmail } from "./notify";
 
 /**
- * Improvement notification templates — pure builders that produce the shared
+ * Improvement notification templates: pure builders that produce the shared
  * EmailMessage the one transport (sendEmail) delivers.
  */
 

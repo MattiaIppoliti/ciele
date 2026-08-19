@@ -69,7 +69,7 @@ export function SwipeButton({
   }, [isValidated, validationDuration]);
 
   // Handlers need the live measurement; render needs the same number for `aria-valuenow`
-  // and may not read refs — so every measurement also lands in state. Measuring per
+  // and may not read refs, so every measurement also lands in state. Measuring per
   // interaction (rather than trusting one mount-time observation) keeps this correct when
   // the host remounts or resizes the control, e.g. a modal animating open around it.
   const [trackMax, setTrackMax] = useState(0);

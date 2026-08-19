@@ -21,7 +21,7 @@ import { ChatHeader } from "@/components/chat/chat-header";
 
 /**
  * Dev-only visual showcase (#beui restyle): one scripted, hypothetical
- * conversation that walks through every chat component in sequence —
+ * conversation that walks through every chat component in sequence,
  * quick replies, the brand user bubble, the Thinking panel (notice row,
  * streamed thought, Todo List plan, ToolResult with the shiki terminal,
  * the readyToAnswer feather), Simplified-thinking progress lines, streamed
@@ -106,7 +106,7 @@ const HISTORY: SidebarResource[] = [
 const THOUGHT_TEXT =
   "The visitor asks about tuition fees for the MSc in Management. I should read the fees pack, cross-check the student-records API, then answer with citations.";
 
-/** The scripted step sequence — (delayMs, apply) pairs run in order. */
+/** The scripted step sequence, (delayMs, apply) pairs run in order. */
 function buildScript(api: {
   setSteps: (update: (steps: TurnStep[]) => TurnStep[]) => void;
   setPhase: (phase: TurnPhase) => void;

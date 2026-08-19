@@ -16,7 +16,7 @@ import type { Flow } from "./types";
 
 /**
  * The deterministic keyword router (ADR-0003): the offline/no-model
- * classifier fallback. Tested through its public interface — matchFlow picks
+ * classifier fallback. Tested through its public interface, matchFlow picks
  * the Flow; rendering the matched Flow's actions is the LLM runtime's job.
  */
 
@@ -56,7 +56,7 @@ describe("matchFlow", () => {
   describe("Basic Interaction is NOT this router's job (#566)", () => {
     // Courtesy routing belongs to `basicInteractionFlow`, consulted above the
     // chat-model branch so both engines share one decision. This router keeps no
-    // courtesy vocabulary of its own — a second, additive copy mis-fired.
+    // courtesy vocabulary of its own, a second, additive copy mis-fired.
     const basic = () =>
       makeFlow({
         name: "Basic Interaction",
@@ -313,7 +313,7 @@ describe("matchFlow", () => {
 
 /**
  * Proactive triggers (#541): the mirror of matchFlow. A fired client event picks
- * its flows by trigger — no classification, no first-match-wins, because these
+ * its flows by trigger, no classification, no first-match-wins, because these
  * are announcements rather than answers.
  */
 describe("proactiveFlowCandidates", () => {
@@ -372,7 +372,7 @@ describe("proactiveFlowCandidates", () => {
     expect(proactiveFlowCandidates([generative], "chat_open")).toEqual([]);
   });
 
-  it("returns nothing for the message trigger — that is matchFlow's job", () => {
+  it("returns nothing for the message trigger; that is matchFlow's job", () => {
     expect(proactiveFlowCandidates([notify()], "message")).toEqual([]);
   });
 });

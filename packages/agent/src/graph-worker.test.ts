@@ -17,7 +17,7 @@ import {
 /**
  * The graph-worker adapter's rules exercised off the network: configured-gating,
  * secret redaction, dataset-per-collection naming, and each HTTP call against
- * fake fetch responses — asserting the Bearer auth, the request envelope, that
+ * fake fetch responses, asserting the Bearer auth, the request envelope, that
  * the token never lands in the body, provenance mapping, and error redaction.
  * No test depends on a live worker.
  */

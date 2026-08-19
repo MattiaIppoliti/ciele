@@ -4,7 +4,7 @@
 --
 -- Member lists join profiles in one query (PostgREST embeds need a direct
 -- FK). profiles was created (0003) precisely as "a profile mirror of
--- auth.users so member lists can show emails under RLS" — this makes that
+-- auth.users so member lists can show emails under RLS"; this makes that
 -- relationship explicit.
 --
 -- Backfill first: the handle_new_user trigger (0003) has created a profile

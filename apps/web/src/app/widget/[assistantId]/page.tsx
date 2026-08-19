@@ -3,13 +3,13 @@ import { WidgetChat } from "@/components/widget/widget-chat";
 import { getLatestPublicationCached } from "@/lib/widget-db";
 
 /**
- * Static per Publication: the page uses no dynamic APIs — the Publication
+ * Static per Publication: the page uses no dynamic APIs, the Publication
  * arrives through the tagged cache (busted by Publish) and the ?c= Context
- * Hint is read client-side in WidgetChat — so the rendered shell is cached
+ * Hint is read client-side in WidgetChat, so the rendered shell is cached
  * and re-served until the next Publish instead of rendering per request.
  */
 // Prerender nothing at build; render each assistant's shell on first visit
-// and cache it (NextFaster's long-tail pattern — 1M pages, zero build cost).
+// and cache it (NextFaster's long-tail pattern, 1M pages, zero build cost).
 export function generateStaticParams(): Array<{ assistantId: string }> {
   return [];
 }

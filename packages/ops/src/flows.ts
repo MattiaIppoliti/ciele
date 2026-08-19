@@ -18,7 +18,7 @@ import { OperationError, defineOperation } from "./operation";
 /**
  * The Flows domain (#621). Same shape as assistants.ts: scalars validated,
  * structured router config (trigger settings, conditions, action settings)
- * shape-trusted via z.custom — the Flow Builder authors it, and the
+ * shape-trusted via z.custom, the Flow Builder authors it, and the
  * trigger/action pairing rule below is the invariant that must hold no
  * matter which surface stored the flow.
  */
@@ -132,7 +132,7 @@ export const updateFlowOp = defineOperation({
   ],
   run: async (ctx, { id, patch }) => {
     const stored = await requireFlow(ctx, id);
-    // A patch may move the trigger, the actions, or only one of the two —
+    // A patch may move the trigger, the actions, or only one of the two,
     // the rule applies to the pair that will be stored.
     if (patch.trigger !== undefined || patch.actions !== undefined) {
       assertTriggerActions(

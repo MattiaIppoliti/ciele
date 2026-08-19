@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 /**
  * The widget Memory folder (#666): what the assistant remembers about the
  * SSO-signed end-user, with per-memory delete. The subject comes exclusively
- * from the sealed gate cookie — anonymous visitors (and gates minted for
+ * from the sealed gate cookie, anonymous visitors (and gates minted for
  * other Organizations) see a 404, as does everyone while the org toggle is
  * off. A user can only ever read or delete their own memories.
  */

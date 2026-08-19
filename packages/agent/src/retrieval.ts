@@ -1,8 +1,8 @@
 /**
  * The ONE way a `KnowledgeSearcher` is built (#c2 of the 2026-08 architecture
  * review). Before this factory existed, the `embedText → db.searchChunks`
- * closure was hand-written at four call sites — the live turn, the handover
- * continuation, the standing-goal evals and the Suggested Fix job — and two of
+ * closure was hand-written at four call sites, the live turn, the handover
+ * continuation, the standing-goal evals and the Suggested Fix job, and two of
  * the copies silently bypassed the Knowledge Engine choice (`withGraphEngine`),
  * so the loop meant to catch retrieval regressions exercised a retrieval path
  * production never used.
@@ -14,7 +14,7 @@
  *  - one lazily-resolved embedding client per searcher (credential decrypt and
  *    provider construction happen once per turn, not once per query),
  *  - the Knowledge Engine choice (ADR-0017): Graph is primary, vector is the
- *    same-call fallback — applied for EVERY caller, so synthetic traffic tests
+ *    same-call fallback, applied for EVERY caller, so synthetic traffic tests
  *    the path a widget Visitor actually gets.
  *
  * Internal module: the barrels do not export it. Callers outside the runtime
@@ -27,7 +27,7 @@ import { createEmbedder } from "./embeddings";
 import { withGraphEngine } from "./graph-search";
 import type { KnowledgeSearcher } from "./types";
 
-/** How many chunks one search pass returns — the one top-k for knowledge. */
+/** How many chunks one search pass returns, the one top-k for knowledge. */
 export const KNOWLEDGE_SEARCH_LIMIT = 6;
 
 export function buildKnowledgeSearcher(opts: {
@@ -39,7 +39,7 @@ export function buildKnowledgeSearcher(opts: {
   collectionId: string | null;
   /**
    * Conversation for usage attribution and the graph Retrieval Trace. Null for
-   * synthetic traffic (goal evals) that has no Conversation row — usage is
+   * synthetic traffic (goal evals) that has no Conversation row, usage is
    * still metered, just without a conversation id.
    */
   conversationId: string | null;
@@ -64,6 +64,7 @@ export function buildKnowledgeSearcher(opts: {
   };
   return withGraphEngine({
     db,
+    assistantId: assistant.id,
     collectionId,
     conversationId,
     useGraph: (assistant.knowledgeEngine ?? "graph") === "graph",

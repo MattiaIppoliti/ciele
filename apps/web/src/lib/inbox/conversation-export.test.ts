@@ -10,7 +10,7 @@ import {
 /**
  * The reference-parity Inbox export (#561). The contract under test is
  * literal: 29 named fields in the reference's own spelling, empty strings for
- * anything absent, and `Messages[]` items carrying exactly five fields — because
+ * anything absent, and `Messages[]` items carrying exactly five fields, because
  * a parser written against a reference export file has to read ours unchanged.
  */
 
@@ -274,7 +274,7 @@ describe("conversationExportRows", () => {
     expect(row.Messages[0].Content).toBe(
       "Enrolment closes Friday\nSubmit your form before 17:00."
     );
-    // A verbatim Notification did no agentic work, so there are no steps — only
+    // A verbatim Notification did no agentic work, so there are no steps, only
     // the workflow brackets around it.
     expect(row.Messages[0].AgenticTrace).toBe(
       "[Workflow started: Enrolment nudge] [Workflow completed: Enrolment nudge]"

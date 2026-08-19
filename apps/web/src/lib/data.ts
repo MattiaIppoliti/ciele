@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from "./supabase/server";
  *
  * Memoized with React cache(): layout, page and server actions in the same
  * request share one client instead of each constructing their own. Never
- * persisted across requests — the client is bound to the caller's cookies.
+ * persisted across requests, the client is bound to the caller's cookies.
  */
 export const getDb = cache(async (): Promise<Db> => {
   if (!isSupabaseConfigured()) return getMockDb();

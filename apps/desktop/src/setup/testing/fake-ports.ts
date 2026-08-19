@@ -81,7 +81,7 @@ export function fakePorts(options: FakePortOptions = {}): FakePorts {
         if (joined.includes("LOAD_DEMO_SEED=1")) seeded = true;
 
         // `ps --quiet` is the one subcommand whose *output* is read rather
-        // than its exit code — it lists container ids, and nothing when there
+        // than its exit code, it lists container ids, and nothing when there
         // are none. A fake that echoed a banner here would make "stopped"
         // unreachable.
         if (args.includes("ps") && args.includes("--quiet")) {

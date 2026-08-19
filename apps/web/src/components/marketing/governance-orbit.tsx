@@ -2,7 +2,7 @@ import { Building2, Shield, Users, UserRound, Bot, ScrollText } from "lucide-rea
 
 /* Orbit diagram: the Organization at the centre, everything governance touches
    placed on rings around it. Positions are hand-placed percentages rather than
-   computed — the labels have different widths, and an even angular spread
+   computed, the labels have different widths, and an even angular spread
    leaves them colliding at the top and bottom of the circle. */
 const NODES = [
   { label: "Member", icon: UserRound, top: "28%", left: "22%" },
@@ -35,7 +35,7 @@ export function GovernanceOrbit() {
   return (
     <div className="border-border bg-background/40 relative h-72 w-full overflow-hidden rounded-2xl border sm:h-80">
       {/* Rings. Drawn in an SVG that overflows the frame so only the arcs
-          crossing it are visible — the same "slice of a much bigger system"
+          crossing it are visible, the same "slice of a much bigger system"
           read as the reference. */}
       <svg
         aria-hidden

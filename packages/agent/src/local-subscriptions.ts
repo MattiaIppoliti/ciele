@@ -82,11 +82,11 @@ const processState =
  * second opt-in step. What still bounds them is unchanged and enforced at every
  * call site: a non-production build, a loopback host, a signed-in Member, and an
  * Organization that enabled personal subscriptions. They work with either data
- * layer — the in-memory demo db or a locally-run Supabase-backed instance with
+ * layer, the in-memory demo db or a locally-run Supabase-backed instance with
  * real Organization members.
  *
  * `ENABLE_LOCAL_SUBSCRIPTION_TEST=0` (or `false` / `off`) opts a local instance
- * back out — the escape hatch for reproducing hosted behaviour, where a machine
+ * back out, the escape hatch for reproducing hosted behaviour, where a machine
  * CLI identity must never answer.
  */
 export function isLocalSubscriptionDirectEnabled(): boolean {
@@ -202,7 +202,7 @@ export function executableVariants(
 export function npmShimEntrypoint(
   shimPath: string,
   // Shims only exist on Windows, so the entrypoint is judged by Windows rules
-  // (presence, no exec bit) even when the caller runs elsewhere — otherwise the
+  // (presence, no exec bit) even when the caller runs elsewhere, otherwise the
   // same fixture resolves on a developer's Windows box and not in Linux CI.
   platform: NodeJS.Platform = process.platform
 ): string | null {

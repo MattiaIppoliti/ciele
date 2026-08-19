@@ -13,7 +13,7 @@ import { escalateConversation, type EscalationRequest } from "./escalation";
 /**
  * The Escalation transaction tested through its public operation with the
  * in-memory Db and a captured fake transport (prior art: the Conversation
- * Turn suite) — no HTTP involved.
+ * Turn suite), no HTTP involved.
  */
 
 const db = getMockDb();

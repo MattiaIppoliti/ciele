@@ -7,7 +7,7 @@ import tseslint from "typescript-eslint";
  *
  * The three apps keep their own configs: they need `eslint-config-next`, and
  * each carries app-specific rules (ADR-0004's per-app posture). This one covers
- * the shared code, which had no lint at all — `turbo run lint` silently skipped
+ * the shared code, which had no lint at all, `turbo run lint` silently skipped
  * every package because none declared a `lint` script.
  *
  * Deliberately close to the recommended sets. The point is to have coverage on

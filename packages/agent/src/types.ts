@@ -22,12 +22,12 @@ import type { TemplateContext } from "./template";
  * One renderable piece of a bot reply, tagged with the action that produced
  * it. The runtime's client-facing output contract (spec #194): it flows
  * through the RuntimeEvent `part` event and is what Widget, Preview, and
- * Inbox render. Owned here — the data package's engine is routing-only.
+ * Inbox render. Owned here: the data package's engine is routing-only.
  */
 export type ChatReplyPart =
   /**
    * `fallback` = error/limit copy; `refusal` = the model declined on safety
-   * grounds (persisted, queryable marker — never a knowledge gap).
+   * grounds (persisted, queryable marker, never a knowledge gap).
    */
   | { type: "text"; action: FlowAction | "fallback" | "refusal"; text: string }
   | {
@@ -88,7 +88,7 @@ export type ChatReplyPart =
     }
   /**
    * A proactive nudge from a Flow whose trigger was a client event rather than a
-   * Visitor message (#541). Verbatim, like `custom_message` — the runtime never
+   * Visitor message (#541). Verbatim, like `custom_message`, the runtime never
    * rewrites it, and producing one costs no model call.
    */
   | {
@@ -125,18 +125,18 @@ export type ChatReplyPart =
       type: "sources";
       action: "search_knowledge";
       sources: Array<{
-        /** Concept behind the citation — lets the verifier re-fetch content. */
+        /** Concept behind the citation, lets the verifier re-fetch content. */
         conceptId?: string;
         conceptTitle: string;
         collectionName: string;
         sourceName: string | null;
-        /** Original page/document URL — the chip links out when present. */
+        /** Original page/document URL, the chip links out when present. */
         url?: string | null;
         /** The citation's Source id, when it has one (PRD #726). */
         sourceId?: string | null;
         /**
          * Direct access (PRD #726): the answering assistant may hand the
-         * visitor the original file — the widget renders an open affordance.
+         * visitor the original file, the widget renders an open affordance.
          */
         directAccess?: boolean;
       }>;
@@ -144,8 +144,8 @@ export type ChatReplyPart =
 
 /**
  * Which knowledge-scope tier a search pass targets (Agentic Search #155).
- * - `collection` (default) — the anchored Knowledge Collection only.
- * - `assistant`  — assistant-wide knowledge; drops the collection filter.
+ * - `collection` (default): the anchored Knowledge Collection only.
+ * - `assistant`: assistant-wide knowledge; drops the collection filter.
  * When no Collection is anchored the two tiers coincide.
  */
 export type SearchScope = "collection" | "assistant";
@@ -201,7 +201,7 @@ export type RuntimeEvent =
   /**
    * Tool-invocation lifecycle start. `callId` pairs it with its `tool-end`;
    * `input` is the model-supplied arguments, already safe to show (query
-   * strings, URLs — never secrets, which live server-side only).
+   * strings, URLs, never secrets, which live server-side only).
    */
   | {
       type: "tool-start";
@@ -235,7 +235,7 @@ export type RuntimeEvent =
       /**
        * Structured outcome for tools whose result reads as labelled rows rather
        * than a one-line summary (an API call's endpoint/method/status/response).
-       * Must already be safe to show — the runtime caps and redacts it on write.
+       * Must already be safe to show: the runtime caps and redacts it on write.
        */
       result?: Record<string, unknown>;
       durationMs: number;
@@ -244,13 +244,13 @@ export type RuntimeEvent =
    * A live slice of the reasoning the model is writing right now (#584). The
    * fold accumulates deltas into a `running` thought step so the Thinking
    * panel streams the reasoning as it is generated, the way the answer text
-   * streams — the terminal `thought` event then finalizes that step.
+   * streams, the terminal `thought` event then finalizes that step.
    */
   | { type: "thought-delta"; delta: string }
   /**
    * Model reasoning that preceded a tool call, whole and authoritative. It
    * finalizes the running thought step its deltas built (or appends one when
-   * none streamed — stored traces and older streams carry only this event) —
+   * none streamed, stored traces and older streams carry only this event),
    * this is what turns "text… then a search" into a visible thought.
    */
   | { type: "thought"; text: string }
@@ -263,7 +263,7 @@ export type RuntimeEvent =
 
 /**
  * Who a turn verifiably speaks for (#667/#668/#669, ADR-0020): resolved
- * server-side from the session or the sealed SSO gate cookie — never from
+ * server-side from the session or the sealed SSO gate cookie, never from
  * request bodies or model output. The tool-registration policy reads it to
  * decide which Entity/custom-tool variants exist in the turn.
  */
@@ -289,7 +289,7 @@ export interface HistoryMessage {
   text: string;
   /**
    * Set when this turn put a question to the Visitor but its text cannot show
-   * it — a clarification is persisted as a `clarify` part with no text part, so
+   * it, a clarification is persisted as a `clarify` part with no text part, so
    * it flattens to "". Read by the courtesy detector, which must not treat the
    * Visitor's `ok` answer as small talk (#566). The model prompts ignore it.
    */
@@ -298,7 +298,7 @@ export interface HistoryMessage {
 
 /**
  * A side effect a Flow Action *requests*, applied by the caller AFTER the
- * assistant turn is persisted — so it can link to the saved message id and
+ * assistant turn is persisted, so it can link to the saved message id and
  * only fire on a committed turn. Handlers stay pure: they describe the effect,
  * they never perform it. See docs/ARCHITECTURE.md §5.1.
  */
@@ -316,7 +316,7 @@ export type ActionEffect =
 export interface ActionContext {
   assistant: Assistant;
   /**
-   * The immutable platform (Ciele) system-prompt layer — always composed
+   * The immutable platform (Ciele) system-prompt layer, always composed
    * ABOVE the assistant's own answeringStyle (see lib/platform.ts).
    */
   platformPrompt: string;
@@ -339,7 +339,7 @@ export interface ActionContext {
   chatModel: LanguageModel | null;
   /**
    * The cheap/fast classifier-tier model (see CLASSIFIER_MODEL in models.ts),
-   * for light generation where latency dominates quality — follow-up chips
+   * for light generation where latency dominates quality, follow-up chips
    * render after the answer is already on screen, so every millisecond here is
    * pure perceived lag. Null or absent falls back to `chatModel`.
    */
@@ -374,7 +374,7 @@ export interface ActionContext {
   longTermMemory?: string[];
   /**
    * Mid-conversation long-term memory recall for the `searchMemories` tool
-   * (#664). Present only under the same gate as `longTermMemory` — its
+   * (#664). Present only under the same gate as `longTermMemory`, its
    * presence is what registers the tool.
    */
   searchMemories?: MemorySearcher;
@@ -388,12 +388,12 @@ export interface ActionContext {
   queryEntityRecords?: EntityRecordsFetcher;
   /**
    * Who the turn verifiably speaks for (#667/#668): the registration
-   * policy — not the model — reads this to decide which tool variants
+   * policy, not the model, reads this to decide which tool variants
    * exist in the turn (ADR-0020).
    */
   toolSubject?: ToolSubject;
   /**
-   * Reply parts already produced earlier in this same turn — the same array
+   * Reply parts already produced earlier in this same turn, the same array
    * the engine accumulates into, so a later action can ground itself in what
    * an earlier one produced (e.g. follow_up_questions reading the answer
    * search_knowledge just gave).
@@ -404,7 +404,7 @@ export interface ActionContext {
   /**
    * Reports one model call's token totals for the AI usage ledger. Pre-bound
    * by the engine with the turn's resolved provider/model and the `generate`
-   * stage — handlers only pass numbers. Optional so pure handlers and tests
+   * stage, handlers only pass numbers. Optional so pure handlers and tests
    * that never touch the model don't need it.
    */
   recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void;
@@ -440,7 +440,7 @@ export interface ActionResult {
   parts: ChatReplyPart[];
   effects?: ActionEffect[];
   halt?: boolean;
-  /** Handover target Assistant id — the turn continues there (one hop). */
+  /** Handover target Assistant id, the turn continues there (one hop). */
   handoverTo?: string;
   /**
    * Template variables this action contributes to the turn's context for
@@ -451,7 +451,7 @@ export interface ActionResult {
   templatePatch?: Record<string, string>;
 }
 
-/** The Flow Action handler interface — one Adapter per action (see actions.ts). */
+/** The Flow Action handler interface, one Adapter per action (see actions.ts). */
 export type ActionHandler = (ctx: ActionContext) => Promise<ActionResult>;
 
 /**
@@ -479,7 +479,7 @@ export interface RunResult {
   /**
    * Set when a handover action ran with a target: the Conversation Turn
    * continues this same message inside the target Assistant's Publication
-   * (one hop only — the continuation's own handovers are ignored).
+   * (one hop only, the continuation's own handovers are ignored).
    */
   handoverTo?: string | null;
 }

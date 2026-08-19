@@ -12,7 +12,7 @@ import {
 import { OperationError, type OperationContext } from "./operation";
 
 /**
- * Operations tested over the in-memory Db — external behavior only: what an
+ * Operations tested over the in-memory Db, external behavior only: what an
  * operation returns and what a subsequent read observes. Capability
  * enforcement is the calling surface's job; here we pin the declarations.
  */
@@ -115,7 +115,7 @@ describe("assistants operations", () => {
     expect(await db.listCollections(copy.id)).toHaveLength(0);
   });
 
-  it("delete purges each collection's graph dataset through the port", async () => {
+  it("delete leaves org-owned knowledge and its graph datasets intact (PRD #726)", async () => {
     const purged: string[] = [];
     const withPort = ctx({
       ports: { purgeCollectionGraph: async (id) => void purged.push(id) },
@@ -124,7 +124,16 @@ describe("assistants operations", () => {
     const collection = await getMockDb().createCollection(assistant.id, {
       name: "notes",
     });
+    const source = await getMockDb().createSource({
+      collectionId: collection.id,
+      name: "shared note",
+      kind: "text",
+    });
+    await getMockDb().setSourceAssistantLinks(source.id, [assistant.id]);
     await deleteAssistantOp.run(withPort, { id: assistant.id });
-    expect(purged).toEqual([collection.id]);
+    // Knowledge is org-owned: only the links die with the assistant.
+    expect(purged).toEqual([]);
+    expect(await getMockDb().getCollection(collection.id)).not.toBeNull();
+    expect(await getMockDb().listSourceAssistantLinks(source.id)).toEqual([]);
   });
 });

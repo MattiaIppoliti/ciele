@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 
 /**
  * Public widget chat. Always serves the latest Publication (snapshot
- * semantics) — admin edits are invisible here until the next Publish.
+ * semantics), admin edits are invisible here until the next Publish.
  * The turn itself (conversation, persistence, engine, effects, stream)
  * lives in the Conversation Turn module.
  */
@@ -28,7 +28,7 @@ export async function POST(
   // Who is speaking (#662): a valid SSO gate replaces the client-generated
   // visitor id with the verified subject; anonymous traffic is unchanged.
   // Resolved from cookies only, so the gate check runs before the body is
-  // even parsed — an enforced assistant 401s whatever the payload looks like.
+  // even parsed, an enforced assistant 401s whatever the payload looks like.
   const gated = widgetSubject(request, config.assistant.organizationId, "");
 
   // The authoritative gate: an enforced assistant answers nothing until the
@@ -81,7 +81,7 @@ export async function POST(
 
   // The verified identity claim rides the conversation's session context so
   // the Inbox (and template variables) can show who was signed in. Verified
-  // server-side from the sealed gate — never a client-supplied value.
+  // server-side from the sealed gate, never a client-supplied value.
   // Computed ONCE, with the embed-reported page URL: a second header-only
   // sessionMetadata spread on top used to clobber the pageUrl-derived
   // launchUrl with the header fallback, breaking URL Flow Conditions.

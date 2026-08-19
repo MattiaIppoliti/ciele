@@ -16,7 +16,7 @@ import { chatVisibleSteps, liveOrbState, liveTraceLabel } from "./stored-trace";
 /**
  * The agentic status panel both chat UIs (Widget + admin Preview) render above
  * a reply: a live label with a spinner while the agent works, a stacked-icon
- * pill showing the distinct step/tool kinds seen so far (tool-icons.tsx — never
+ * pill showing the distinct step/tool kinds seen so far (tool-icons.tsx, never
  * one icon reused for everything) plus a search-count badge (×N once the agent
  * has searched more than once), and a collapsible ThinkingTimeline of
  * the reasoning/tool steps. When the answer lands it collapses to
@@ -24,8 +24,8 @@ import { chatVisibleSteps, liveOrbState, liveTraceLabel } from "./stored-trace";
  *
  * The live label used to come from a nine-state phase table ("Deciding what to
  * do…", "Cross-checking…"), which was a stand-in for knowing what the agent was
- * actually doing. It now reads the newest step instead (#560) — the tool it just
- * reached for, the routing decision it just made — which is strictly more
+ * actually doing. It now reads the newest step instead (#560), the tool it just
+ * reached for, the routing decision it just made, which is strictly more
  * specific, and falls back to "Thinking…" only before the first step arrives.
  */
 
@@ -66,7 +66,7 @@ export function ThinkingPanel({
    * clock to report (see `stored-trace.ts`).
    */
   summaryLabel?: string;
-  /** Footer caveat — withheld reasoning, or a trace clipped on write. */
+  /** Footer caveat, withheld reasoning, or a trace clipped on write. */
   note?: string;
 }) {
   const steps = chatVisibleSteps(rawSteps);
@@ -90,7 +90,7 @@ export function ThinkingPanel({
   }, [finished, thoughtMs, steps.length]);
 
   // Follow the streaming reasoning (#584): the body is height-capped, so while
-  // the turn is live it tails its own bottom the way a terminal does —
+  // the turn is live it tails its own bottom the way a terminal does,
   // otherwise the newest words stream out of view exactly when they matter.
   useEffect(() => {
     if (!finished && bodyRef.current) {
@@ -178,7 +178,7 @@ export function ThinkingPanel({
         )}
       </button>
       {/* Hidden, not unmounted, when collapsed: the timeline rows keep their
-          state across expand/collapse — a ToolResult stays open where the
+          state across expand/collapse, a ToolResult stays open where the
           reader left it, and each ThoughtRow's per-segment clock survives the
           auto-collapse that lands with the answer. */}
       <div

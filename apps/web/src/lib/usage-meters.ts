@@ -12,7 +12,7 @@ import {
  * Everything here is a pure function of (snapshot, now): the app's vitest only
  * collects `.test.ts`, so logic that lives in the page component cannot be
  * tested at all. The thresholds come from the shared `USAGE_WARN_FRACTION`, so a
- * ring turns amber at exactly the point the enterprise ladder raises its Alert —
+ * ring turns amber at exactly the point the enterprise ladder raises its Alert,
  * an admin who got the email and then opens this page sees the same story.
  */
 
@@ -43,7 +43,7 @@ export interface MeterCardView {
   title: string;
   description: string;
   rings: MeterRingView[];
-  /** The worst tone across the card's windows — what the card colours by. */
+  /** The worst tone across the card's windows, what the card colours by. */
   tone: MeterTone;
   /** The percentage of the tightest window, shown inside the gauge. */
   leadPercent: string;
@@ -65,7 +65,7 @@ export interface UsageLimitsView {
   /** The plan as one number: this period's credits across all three meters. */
   total: MeterTotalView;
   /**
-   * Every meter is uncapped — a staff exemption, or billing data too stale to
+   * Every meter is uncapped: a staff exemption, or billing data too stale to
    * enforce against. Zeroed rings under "each meter is capped" copy would be a
    * lie, so the page says so in words instead.
    */
@@ -103,7 +103,7 @@ const formatNumber = (value: number): string =>
   Math.round(value).toLocaleString("en-US");
 
 /**
- * How full a meter is. A zero cap is full by construction — the same rule the
+ * How full a meter is. A zero cap is full by construction, the same rule the
  * enforcement ladder uses, so the page and the gate agree about a cap that has
  * been set to nothing.
  */
@@ -148,7 +148,7 @@ const percentLabel = (fraction: number): string =>
 /**
  * When a window reopens, as both a distance and an instant: the distance is what
  * an admin reads, the instant is what they can plan around. UTC because every
- * window in the product is measured in UTC — a local time here would be a
+ * window in the product is measured in UTC, a local time here would be a
  * different number from the one in the Alert.
  */
 export function resetLabel(to: string, now: string): string {
@@ -165,7 +165,7 @@ export function resetLabel(to: string, now: string): string {
   // countdown would read as a bug rather than as "any moment now".
   if (ms <= 0) return "Resets now";
   // Floor, not round: a countdown must never overstate the wait. Four and a
-  // half days is "in 4 days" — saying 5 would send an admin away for longer
+  // half days is "in 4 days", saying 5 would send an admin away for longer
   // than the window actually needs.
   const plural = (n: number, unit: string) =>
     `Resets in ${n} ${unit}${n === 1 ? "" : "s"} · ${stamp} UTC`;
@@ -212,7 +212,7 @@ export function usageLimitsView(
     };
   });
 
-  // The plan as one number is the PERIOD's credits — mixing the weekly ceilings
+  // The plan as one number is the PERIOD's credits, mixing the weekly ceilings
   // in would count the same work twice. Only CAPPED resources go in: adding an
   // uncapped resource's usage to a denominator it is not part of would overstate
   // the percentage, sometimes wildly.
@@ -255,13 +255,13 @@ export interface MeterGlanceRow {
 }
 
 /**
- * The plan's meters at a glance (#511) — what Billing shows so an admin can see
+ * The plan's meters at a glance (#511): what Billing shows so an admin can see
  * whether the plan still fits before deciding to move up, without leaving for
  * the Usage page.
  *
  * A projection of `usageLimitsView`, not a second computation: same thresholds,
  * same tightest-window rule, same numbers. A resource with no recorded window is
- * dropped rather than drawn as an empty ring — Billing is a summary, and a row
+ * dropped rather than drawn as an empty ring; Billing is a summary, and a row
  * that says nothing costs a reader more than its absence.
  */
 export function planGlanceRows(view: UsageLimitsView): MeterGlanceRow[] {
@@ -287,7 +287,7 @@ export function planGlanceRows(view: UsageLimitsView): MeterGlanceRow[] {
 
 /**
  * The admin-set daily budget, in the same shape as a plan meter so the page can
- * draw it with the same gauge. Null when no budget is configured — every limit
+ * draw it with the same gauge. Null when no budget is configured, every limit
  * that can pause an assistant belongs in one block, but an absent one is not a
  * limit.
  */

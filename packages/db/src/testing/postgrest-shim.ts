@@ -15,7 +15,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * introspection; auth.getUser). Anything else throws loudly.
  *
  * NOT covered on purpose: RLS enforcement. PGlite runs as the table owner,
- * so policies do not filter rows here — the contract pins interface
+ * so policies do not filter rows here, the contract pins interface
  * semantics (defaults, patches, cascades, scoping via explicit filters),
  * not tenant isolation. RLS behavior stays a live-project concern.
  */
@@ -234,7 +234,7 @@ export class PgliteRest {
       return `$${params.length}`;
     }
     if (info.dataType === "ARRAY") {
-      // e.g. text[] — go through jsonb so the JS array survives verbatim.
+      // e.g. text[], go through jsonb so the JS array survives verbatim.
       const element = info.udtName.replace(/^_/, "");
       params.push(JSON.stringify(value));
       return `(select coalesce(array_agg(e.value #>> '{}'), '{}') from jsonb_array_elements($${params.length}::jsonb) e)::${element}[]`;
@@ -482,7 +482,7 @@ class ShimQueryBuilder implements PromiseLike<{
     for (const f of this.filters) {
       if (f.embed) {
         // Dotted filter: constrain through the FK (adapter uses these only
-        // with !inner embeds — semantically an inner-join condition).
+        // with !inner embeds, semantically an inner-join condition).
         const fk = await this.rest.foreignKey(this.table, f.embed);
         const embedCols = await this.rest.columns(f.embed);
         const [local, remote] =

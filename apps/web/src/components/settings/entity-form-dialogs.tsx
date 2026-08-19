@@ -185,8 +185,8 @@ export function CreateEntityDialog({ open, onClose }: DialogProps) {
               <Select value={scope} onValueChange={(value) => setScope((value ?? "shared") as EntityScope)}>
                 <SelectTrigger><SelectValue>{(value: EntityScope) => value === "user" ? "User-scoped" : "Shared"}</SelectValue></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="shared">Shared — anyone the assistant serves</SelectItem>
-                  <SelectItem value="user">User-scoped — rows belong to one signed-in user</SelectItem>
+                  <SelectItem value="shared">Shared, anyone the assistant serves</SelectItem>
+                  <SelectItem value="user">User-scoped, rows belong to one signed-in user</SelectItem>
                 </SelectContent>
               </Select>
             </div>

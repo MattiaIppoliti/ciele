@@ -9,7 +9,7 @@ import {
 import type { RuntimeEvent } from "../types";
 
 /**
- * The search-pass primitive — the ONE writer of the per-turn search-pass
+ * The search-pass primitive, the ONE writer of the per-turn search-pass
  * ledger (#204). Both the deterministic seed loop and the model's
  * searchKnowledge tool delegate here, so the lifecycle (tool-start/tool-end
  * pairing, ledger append with scope, Sources collection,
@@ -49,7 +49,7 @@ function makeRuntime(
 type ToolStart = Extract<RuntimeEvent, { type: "tool-start" }>;
 type ToolEnd = Extract<RuntimeEvent, { type: "tool-end" }>;
 
-describe("runSearchPass — the one ledger writer", () => {
+describe("runSearchPass, the one ledger writer", () => {
   it("emits a paired tool-start/tool-end lifecycle and records the pass with its scope", async () => {
     const hit = makeResult();
     const { ctx, events } = makeRuntime(async () => [hit]);
@@ -108,7 +108,7 @@ describe("runSearchPass — the one ledger writer", () => {
     expect((events[1] as ToolEnd).callId).toBe("model-call-7");
   });
 
-  it("an empty pass is recorded and ends ok — not a tool error", async () => {
+  it("an empty pass is recorded and ends ok, not a tool error", async () => {
     const { ctx, events } = makeRuntime(async () => []);
     const outcome = await runSearchPass("nothing here", "collection", ctx);
     expect(outcome).toEqual({ kind: "searched", results: [] });
@@ -172,7 +172,7 @@ describe("runSearchPass — the one ledger writer", () => {
       scope: "collection",
       results: [],
     });
-    // Visitors never see searcher internals — the generic no-results summary.
+    // Visitors never see searcher internals, the generic no-results summary.
     expect(events[1]).toMatchObject({
       type: "tool-end",
       ok: false,
@@ -198,7 +198,7 @@ describe("runSearchPass — the one ledger writer", () => {
   });
 });
 
-describe("searchBudgetExhausted — the one budget gate", () => {
+describe("searchBudgetExhausted, the one budget gate", () => {
   it("is spent exactly at the budget", () => {
     const pass = { query: "q", results: [] };
     expect(searchBudgetExhausted([], 2)).toBe(false);

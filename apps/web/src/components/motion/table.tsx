@@ -4,7 +4,7 @@
 // Ported down to the read-only surface this app needs: columns, sorting,
 // loading skeletons and an empty state. Upstream's row virtualization
 // (@tanstack/react-virtual), column resize/reorder, editable cells, row
-// selection and the row handle menu are left out — no caller wants them and
+// selection and the row handle menu are left out, no caller wants them and
 // each pulls a dependency or a hook file. The prop names that survive keep
 // upstream's spelling so re-adding a feature is an additive change.
 
@@ -23,7 +23,7 @@ export interface SortState {
 export interface TableColumn<T> {
   key: string;
   header: ReactNode;
-  /** Read the raw value — used for sorting and as the default cell body. */
+  /** Read the raw value, used for sorting and as the default cell body. */
   accessor?: (row: T) => string | number | null | undefined;
   /** Render the cell. Falls back to `accessor`. */
   cell?: (row: T) => ReactNode;
@@ -31,7 +31,7 @@ export interface TableColumn<T> {
   align?: "left" | "center" | "right";
   /** Any CSS width ("30%", "12rem"); omit to share the leftover space. */
   width?: string;
-  /** Hidden below `sm` — lets a wide table degrade instead of scrolling. */
+  /** Hidden below `sm`, lets a wide table degrade instead of scrolling. */
   hideBelowSm?: boolean;
 }
 

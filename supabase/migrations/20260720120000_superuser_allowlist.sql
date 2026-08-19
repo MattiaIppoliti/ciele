@@ -2,7 +2,7 @@
 -- previously auto-enrolled a hardcoded personal email as a platform superuser
 -- (cross-org RLS bypass, 0034/0036). That literal is gone: enrollment now
 -- reads private.platform_superuser_emails, a deployment-configured table that
--- is EMPTY BY DEFAULT — a fresh deployment grants zero platform superusers
+-- is EMPTY BY DEFAULT, a fresh deployment grants zero platform superusers
 -- until an operator explicitly inserts a row (service role / SQL console).
 --
 -- Already-enrolled accounts in private.platform_superusers are untouched:

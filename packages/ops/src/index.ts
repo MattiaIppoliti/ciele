@@ -1,5 +1,5 @@
 /**
- * `@ciele/ops` — the operations layer (#620): every admin operation as
+ * `@ciele/ops`, the operations layer (#620): every admin operation as
  * (context, validated input) → result, declaring its capability and the
  * entities it mutates. The web app's server actions and the /api/v1 routes
  * both execute these; neither surface re-implements behavior.
@@ -18,7 +18,7 @@ export {
   type OperationContext,
 } from "./operation";
 
-// Assistants domain (#620) — the extraction pattern later domains follow.
+// Assistants domain (#620): the extraction pattern later domains follow.
 export {
   assistantPatchSchema,
   createAssistantOp,
@@ -29,7 +29,7 @@ export {
   updateAssistantOp,
 } from "./assistants";
 
-// Flows domain (#621) — the authoritative router, invariants included.
+// Flows domain (#621): the authoritative router, invariants included.
 export {
   createFlowOp,
   deleteFlowOp,
@@ -41,16 +41,20 @@ export {
   updateFlowOp,
 } from "./flows";
 
-// Knowledge domain (#622) — sources, FAQs, re-crawl; pipeline via ports.
+// Knowledge domain (#622): sources, FAQs, re-crawl; pipeline via ports.
 export {
   addSourceOp,
   createFaqOp,
   deleteSourceOp,
+  unlinkSourceOp,
   getSourceOp,
   importFaqsOp,
   createOrgFaqOp,
+  getOrgFaqOp,
   importOrgFaqsOp,
   listCollectionsOp,
+  listSourceConceptsOp,
+  updateOrgFaqOp,
   listOrgFaqsOp,
   listOrgKnowledgeSourcesOp,
   listSourcesOp,
@@ -59,7 +63,7 @@ export {
   setSourceLinksOp,
 } from "./knowledge";
 
-// Publish domain (#623) — immutable Publication snapshots.
+// Publish domain (#623): immutable Publication snapshots.
 export {
   publicationStatusOp,
   publishAssistantOp,
@@ -67,7 +71,7 @@ export {
   unpublishAssistantOp,
 } from "./publish";
 
-// Inbox domain (#624) — read-only conversation review.
+// Inbox domain (#624): read-only conversation review.
 export {
   deleteConversationOp,
   getConversationOp,
@@ -78,7 +82,7 @@ export {
   setMessageFeedbackOp,
 } from "./inbox";
 
-// Improvements domain (#625) — list / detail / update.
+// Improvements domain (#625): list / detail / update.
 export {
   getImprovementOp,
   improvementPatchSchema,

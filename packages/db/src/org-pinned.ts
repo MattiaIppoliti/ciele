@@ -1,5 +1,4 @@
 import type { Db } from "./types";
-import type { DbTableAccessor } from "./table-access";
 
 /**
  * The org-pinning wrapper for API-key requests (#619, grown per-domain from
@@ -7,8 +6,8 @@ import type { DbTableAccessor } from "./table-access";
  *
  * A key-authenticated request has no Supabase session, so it runs on a
  * service-role client and RLS cannot be the tenancy boundary the way it is
- * for signed-in Members. This wrapper takes RLS's place, and it — not the
- * call sites — owns the scoping:
+ * for signed-in Members. This wrapper takes RLS's place, and it, not the
+ * call sites, owns the scoping:
  *
  * - **Fail-closed**: only methods explicitly listed here are callable;
  *   everything else throws `OrgPinnedDbError`. A new /api/v1 route earns its
@@ -21,7 +20,7 @@ import type { DbTableAccessor } from "./table-access";
  *   mutate another tenant's rows by forwarding unvalidated input.
  */
 
-/** Methods whose first parameter is an organizationId — pinned on call. */
+/** Methods whose first parameter is an organizationId, pinned on call. */
 const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listAssistants",
   "createAssistant",
@@ -35,8 +34,6 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "setSsoConnectionValidation",
   "listHelpDesks",
   "createHelpDesk",
-  "listSkills",
-  "createSkill",
   "listAlerts",
   "listMembers",
   "updateMemberRole",
@@ -46,6 +43,8 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "updateOrganization",
   "listApiKeys",
   "createApiKey",
+  "listOrgKnowledgeSources",
+  "getOrCreateOrgLibraryCollection",
   "clearSsoConnection",
   "listProviderConnections",
   "createProviderConnection",
@@ -54,7 +53,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
 ]);
 
 /**
- * Methods whose first parameter is an assistantId — guarded by resolving the
+ * Methods whose first parameter is an assistantId, guarded by resolving the
  * Assistant and checking its Organization before delegating.
  */
 const ASSISTANT_SCOPED_METHODS = new Set<keyof Db>([
@@ -80,13 +79,13 @@ const ASSISTANT_ID_METHODS = new Set<keyof Db>([
 ]);
 
 /**
- * Methods whose first parameter is a flowId — guarded by resolving
+ * Methods whose first parameter is a flowId, guarded by resolving
  * flow → assistant → organization.
  */
 const FLOW_SCOPED_METHODS = new Set<keyof Db>(["updateFlow", "deleteFlow"]);
 
 /**
- * Methods whose first parameter is a collectionId — guarded by resolving
+ * Methods whose first parameter is a collectionId, guarded by resolving
  * collection → assistant → organization (#622).
  */
 const COLLECTION_SCOPED_METHODS = new Set<keyof Db>([
@@ -94,11 +93,20 @@ const COLLECTION_SCOPED_METHODS = new Set<keyof Db>([
   "listConcepts",
 ]);
 
-/** Source-id-addressed mutations, guarded source → collection → org (#622). */
-const SOURCE_ID_METHODS = new Set<keyof Db>(["deleteSource"]);
+/**
+ * Source-id-addressed methods, guarded source → collection → org (#622).
+ * The link mutations (#726) validate their assistant ids in the ops layer
+ * (requireLinkTargets), so the guard here only needs the source's tenancy.
+ */
+const SOURCE_ID_METHODS = new Set<keyof Db>([
+  "deleteSource",
+  "listSourceAssistantLinks",
+  "setSourceAssistantLinks",
+  "setSourceDirectAccess",
+]);
 
 /**
- * Methods whose first parameter is a conversationId — guarded by resolving
+ * Methods whose first parameter is a conversationId, guarded by resolving
  * conversation → assistant → organization (#624).
  */
 const CONVERSATION_SCOPED_METHODS = new Set<keyof Db>([
@@ -111,7 +119,7 @@ const CONVERSATION_SCOPED_METHODS = new Set<keyof Db>([
 const MESSAGE_SCOPED_METHODS = new Set<keyof Db>(["setMessageFeedback"]);
 
 /**
- * Methods whose first parameter is an improvementId — Improvements carry
+ * Methods whose first parameter is an improvementId, Improvements carry
  * their organizationId directly, so the guard is one resolve (#625).
  */
 const IMPROVEMENT_SCOPED_METHODS = new Set<keyof Db>([
@@ -142,7 +150,57 @@ const SUPPORT_CHANNEL_SCOPED_METHODS = new Set<keyof Db>([
   "deleteSupportChannel",
 ]);
 
-const SKILL_SCOPED_METHODS = new Set<keyof Db>(["updateSkill", "deleteSkill"]);
+const SKILL_SCOPED_METHODS = new Set<keyof Db>(["deleteSkill"]);
+
+/**
+ * Tables exposed through the generic accessor over the API-key surface.
+ * Every pinned table's rows carry an `organizationId` stamp, which is what
+ * the pinning below relies on. A new table earns its exposure by joining this
+ * set in the same PR as the route that needs it (fail-closed like the method
+ * lists above).
+ */
+const PINNED_TABLES = new Set(["entities", "skills"] as const);
+type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
+
+/**
+ * The org-pinning rules for one generic table accessor: lists are filtered
+ * and inserts stamped with the pinned Organization; id-addressed reads
+ * resolve foreign rows to null; id-addressed writes refuse them (`cross_org`).
+ */
+function pinTableAccessor<
+  T extends {
+    list(filter?: object, options?: object): Promise<Array<{ organizationId?: string }>>;
+    get(id: string): Promise<{ organizationId?: string } | null>;
+    insert(values: object): Promise<unknown>;
+    update(id: string, patch: never): Promise<unknown>;
+    delete(id: string): Promise<void>;
+  },
+>(name: string, table: T, organizationId: string): T {
+  const assertOwned = async (operation: string, id: string) => {
+    const row = await table.get(id);
+    if (!row || row.organizationId !== organizationId) {
+      throw new OrgPinnedDbError(operation, "cross_org");
+    }
+  };
+  return {
+    ...table,
+    list: (filter: object = {}, options?: object) =>
+      table.list({ ...filter, organizationId }, options),
+    get: async (id: string) => {
+      const row = await table.get(id);
+      return row?.organizationId === organizationId ? row : null;
+    },
+    insert: (values: object) => table.insert({ ...values, organizationId }),
+    update: async (id: string, patch: never) => {
+      await assertOwned(`table(${name}).update`, id);
+      return table.update(id, patch);
+    },
+    delete: async (id: string) => {
+      await assertOwned(`table(${name}).delete`, id);
+      await table.delete(id);
+    },
+  } as T;
+}
 
 const GOAL_SCOPED_METHODS = new Set<keyof Db>([
   "updateAssistantGoal",
@@ -177,14 +235,18 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
     }
   }
 
-  async function assistantIdOfCollection(
+  /**
+   * Collection ownership (PRD #726 contract): Collections are org-owned, so
+   * the `organization_id` stamp is the whole check.
+   */
+  async function assertCollectionOwned(
     method: string,
     collectionId: unknown
-  ): Promise<string> {
+  ): Promise<void> {
     const collection = await inner.getCollection(String(collectionId));
-    if (!collection) throw new OrgPinnedDbError(method, "cross_org");
-    await assertAssistantOwned(method, collection.assistantId);
-    return collection.assistantId;
+    if (!collection || collection.organizationId !== organizationId) {
+      throw new OrgPinnedDbError(method, "cross_org");
+    }
   }
 
   return new Proxy(inner, {
@@ -201,34 +263,14 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
 
       if (method === "table") {
         return (name: unknown) => {
-          if (name !== "entities") {
+          if (!PINNED_TABLES.has(name as PinnedTableName)) {
             throw new OrgPinnedDbError(`table(${String(name)})`, "not_exposed");
           }
-          const table = inner.table("entities");
-          const assertOwned = async (operation: string, id: string) => {
-            const entity = await table.get(id);
-            if (!entity || entity.organizationId !== organizationId) {
-              throw new OrgPinnedDbError(operation, "cross_org");
-            }
-          };
-          const pinned: DbTableAccessor<"entities"> = {
-            list: (filter = {}, options) =>
-              table.list({ ...filter, organizationId }, options),
-            get: async (id) => {
-              const entity = await table.get(id);
-              return entity?.organizationId === organizationId ? entity : null;
-            },
-            insert: (values) => table.insert({ ...values, organizationId }),
-            update: async (id, patch) => {
-              await assertOwned("table(entities).update", id);
-              return table.update(id, patch);
-            },
-            delete: async (id) => {
-              await assertOwned("table(entities).delete", id);
-              await table.delete(id);
-            },
-          };
-          return pinned;
+          return pinTableAccessor(
+            String(name),
+            inner.table(name as PinnedTableName),
+            organizationId
+          );
         };
       }
 
@@ -301,7 +343,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
       }
 
       if (method === "getAssistant") {
-        // Post-check read: a foreign row reads as absent, not as an error —
+        // Post-check read: a foreign row reads as absent, not as an error,
         // the API surface must not disclose that the id exists elsewhere.
         return async (...args: unknown[]) => {
           const assistant = await inner.getAssistant(String(args[0]));
@@ -367,10 +409,10 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
 
       if (SKILL_SCOPED_METHODS.has(method)) {
         return async (...args: unknown[]) => {
-          const owned = (await inner.listSkills(organizationId)).some(
-            (skill) => skill.id === String(args[0])
-          );
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
+          const skill = await inner.table("skills").get(String(args[0]));
+          if (!skill || skill.organizationId !== organizationId) {
+            throw new OrgPinnedDbError(String(prop), "cross_org");
+          }
           return call(...args);
         };
       }
@@ -446,8 +488,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         return async (...args: unknown[]) => {
           const collection = await inner.getCollection(String(args[0]));
           if (!collection) return null;
-          const assistant = await inner.getAssistant(collection.assistantId);
-          return assistant && assistant.organizationId === organizationId
+          return collection.organizationId === organizationId
             ? collection
             : null;
         };
@@ -455,7 +496,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
 
       if (COLLECTION_SCOPED_METHODS.has(method)) {
         return async (...args: unknown[]) => {
-          await assistantIdOfCollection(String(prop), args[0]);
+          await assertCollectionOwned(String(prop), args[0]);
           return call(...args);
         };
       }
@@ -465,7 +506,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
           const source = await inner.getSource(String(args[0]));
           if (!source) return null;
           try {
-            await assistantIdOfCollection(String(prop), source.collectionId);
+            await assertCollectionOwned(String(prop), source.collectionId);
           } catch {
             return null;
           }
@@ -476,7 +517,38 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
       if (method === "createSource") {
         return async (...args: unknown[]) => {
           const input = args[0] as { collectionId?: unknown };
-          await assistantIdOfCollection(String(prop), input?.collectionId);
+          await assertCollectionOwned(String(prop), input?.collectionId);
+          return call(...args);
+        };
+      }
+
+      // Link mutations address a Source AND name Assistants: both sides are
+      // resolved before the call, so an API key can never link an Organization's
+      // Source to somebody else's Assistant (PRD #726).
+      if (
+        method === "setSourceAssistantLinks" ||
+        method === "setSourceDirectAccess"
+      ) {
+        return async (...args: unknown[]) => {
+          const source = await inner.getSource(String(args[0]));
+          if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
+          await assertCollectionOwned(String(prop), source.collectionId);
+          const assistantIds =
+            method === "setSourceAssistantLinks"
+              ? (args[1] as string[])
+              : [String(args[1])];
+          for (const assistantId of assistantIds) {
+            await assertAssistantOwned(String(prop), assistantId);
+          }
+          return call(...args);
+        };
+      }
+
+      if (method === "listSourceAssistantLinks") {
+        return async (...args: unknown[]) => {
+          const source = await inner.getSource(String(args[0]));
+          if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
+          await assertCollectionOwned(String(prop), source.collectionId);
           return call(...args);
         };
       }
@@ -485,7 +557,7 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         return async (...args: unknown[]) => {
           const source = await inner.getSource(String(args[0]));
           if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assistantIdOfCollection(String(prop), source.collectionId);
+          await assertCollectionOwned(String(prop), source.collectionId);
           return call(...args);
         };
       }

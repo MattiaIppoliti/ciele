@@ -208,7 +208,7 @@ describe("middleware local connector relay", () => {
     it("writes nothing when the hint already agrees, so the response stays cacheable", async () => {
       // A Set-Cookie header stops a CDN caching an otherwise-static page, which
       // would undo the prerendering the hint exists to enable. In the steady
-      // state — nearly every request — there must be no cookie write at all.
+      // state, nearly every request; there must be no cookie write at all.
       const signedOut = await middleware(
         new NextRequest("https://ciele.example.com/home")
       );

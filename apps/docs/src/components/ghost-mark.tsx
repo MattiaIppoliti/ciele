@@ -1,7 +1,7 @@
 /**
  * Ciele ghost brand mark. Copied from the platform app
  * (apps/web/src/components/auth/ghost-mark.tsx) so the docs app stays
- * self-contained — the two apps do not share a component package.
+ * self-contained, the two apps do not share a component package.
  */
 export function GhostMark({
   className,

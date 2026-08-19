@@ -44,7 +44,7 @@ function configFor(slices: UsageSlice[]): ChartConfig {
   );
 }
 
-/** Credits as the rings label them — one decimal below 100, none above. */
+/** Credits as the rings label them, one decimal below 100, none above. */
 function formatCredits(credits: number): string {
   if (credits === 0) return "0";
   if (credits < 0.1) return "<0.1";

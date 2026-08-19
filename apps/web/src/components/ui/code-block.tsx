@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 /**
- * A copyable code surface, optionally split across tabs — the mono treatment of
+ * A copyable code surface, optionally split across tabs, the mono treatment of
  * cult-ui's CodeBlock (cult-ui.com/docs/components/code-block), and the same
  * public shape: pass either `code` + `language`, or a `tabs` array.
  *
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
  * behind a bot checkpoint that answers 429 to both fetch and the shadcn CLI, so
  * the source could not be installed. Two deliberate differences from upstream:
  * the tab strip is the repo's Base UI `Tabs` rather than a bespoke one, and the
- * code is rendered as plain text — there is no syntax highlighter in this
+ * code is rendered as plain text; there is no syntax highlighter in this
  * workspace, and pulling one in for a handful of shell lines would cost far
  * more than it shows. `language` therefore labels the block (and lands in
  * `data-language`) instead of colouring it.
@@ -99,7 +99,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
         <div className={bar}>
           {/* Scrolls rather than wraps: a wrapped tab strip changes the height
               of the header between tabs and makes the block jump. `overflow-y`
-              has to be pinned as well — CSS promotes the other axis to `auto`
+              has to be pinned as well, CSS promotes the other axis to `auto`
               on its own, which puts a stray vertical scrollbar in a 28px-tall
               strip. */}
           <TabsList
@@ -123,7 +123,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
         </div>
         {/* Only the active panel is mounted. Base UI keeps the outgoing one in
             the tree while it plays its exit state, and with no exit transition
-            defined here that state never resolves — both panels end up stacked
+            defined here that state never resolves, both panels end up stacked
             and visible. Keying the single panel by label makes the swap a
             React unmount instead. */}
         <TabsContent key={active.label} value={active.label}>

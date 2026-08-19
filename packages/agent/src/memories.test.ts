@@ -92,7 +92,7 @@ async function seedConversation(options: {
   await db.appendMessage({
     conversationId: conversation.id,
     role: "assistant",
-    content: [{ type: "text", text: "Noted — Berlin office it is." }],
+    content: [{ type: "text", text: "Noted, Berlin office it is." }],
   });
   const job = await db.createBackgroundJob({
     kind: "promote_memories",

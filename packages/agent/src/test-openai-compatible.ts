@@ -4,12 +4,12 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 /**
  * "Test connection" for an OpenAI-compatible endpoint (#436): one-token chat
  * call, plus one embedding call when an embedding model is configured. Never
- * throws — the admin form renders each leg's outcome; a chat-only endpoint is
+ * throws, the admin form renders each leg's outcome; a chat-only endpoint is
  * a valid configuration (knowledge search degrades to lexical).
  */
 export interface OpenAiCompatibleTestInput {
   baseUrl: string;
-  /** Optional — many local/self-hosted servers ignore authentication. */
+  /** Optional, many local/self-hosted servers ignore authentication. */
   apiKey?: string | null;
   chatModel: string;
   embeddingModel?: string | null;

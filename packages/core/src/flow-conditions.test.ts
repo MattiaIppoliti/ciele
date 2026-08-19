@@ -9,7 +9,7 @@ import {
 import type { Flow, FlowCondition } from "./types";
 
 /**
- * Objective Flow Conditions (spec #550). Pure throughout — the clock and the
+ * Objective Flow Conditions (spec #550). Pure throughout, the clock and the
  * page URL are parameters, so no test needs fake timers or a browser.
  */
 
@@ -70,7 +70,7 @@ describe("isObjectiveFlowCondition", () => {
   });
 });
 
-describe("evaluateFlowCondition — URL", () => {
+describe("evaluateFlowCondition, URL", () => {
   const page = "https://site.com/courses?term=autumn";
 
   it("matches on the entire URL including the query string", () => {
@@ -142,7 +142,7 @@ describe("evaluateFlowCondition — URL", () => {
   });
 });
 
-describe("evaluateFlowCondition — Schedule", () => {
+describe("evaluateFlowCondition, Schedule", () => {
   // 09:00–18:00 Europe/Rome on 1 August 2026 (CEST, UTC+2).
   const summer = schedule({ startAt: "2026-08-01T09:00", endAt: "2026-08-01T18:00" });
 

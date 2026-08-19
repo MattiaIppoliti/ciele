@@ -3,7 +3,7 @@
 --
 -- Three changes, one purpose. (1) usage_daily gains the resolved provider and
 -- model in its key: credits are estimated COST (packages/db/src/pricing.ts), and
--- cost cannot be recovered from a model-blind aggregate — the same token count
+-- cost cannot be recovered from a model-blind aggregate, the same token count
 -- is worth 35x more on a frontier model than on the platform default. (2) It
 -- gains a 'crawl' kind and a `units` column, so crawled pages are metered
 -- alongside model calls instead of being invisible; the crawl finalizer already
@@ -15,7 +15,7 @@
 -- run from a Stripe billing anchor, which can fall at any time of day. Reading a
 -- day-grained rollup for such a window would silently over- or under-count the
 -- partial days at each end, so the function takes whole closed days from the
--- rollup and the partial head/tail live from the raw sources — the same
+-- rollup and the partial head/tail live from the raw sources, the same
 -- disjoint-ranges construction org_usage_daily already uses for "today", just
 -- generalized to both ends.
 
@@ -42,7 +42,7 @@ alter table public.usage_daily
 comment on column public.usage_daily.provider is
   'The provider that actually ran: an LLM provider for chat/embedding rows, the resolved crawler for crawl rows. Part of the key because credits are priced per provider/model.';
 comment on column public.usage_daily.units is
-  'Non-token metered units — crawled pages on a crawl row, zero elsewhere.';
+  'Non-token metered units, crawled pages on a crawl row, zero elsewhere.';
 
 -- --------------------------------------------------------------------------
 -- 2. The rollup, over both sources
@@ -229,7 +229,7 @@ as $$
       -- First instant of the first UTC day wholly inside the window. Every
       -- truncation here is explicitly UTC: `date_trunc('day', <timestamptz>)`
       -- would truncate in the session TimeZone, shifting this boundary by the
-      -- zone's offset while usage_daily.day stays a UTC date — and a shifted
+      -- zone's offset while usage_daily.day stays a UTC date, and a shifted
       -- boundary makes the rollup and live ranges overlap, double-counting the
       -- hours between the two frames.
       case
@@ -306,7 +306,7 @@ comment on function public.org_usage_meters(uuid, timestamptz, timestamptz) is
 -- usage_daily is a derived aggregate and nothing prunes the raw sources, so the
 -- honest way to give existing rows the new key is to recompute them. Leaving
 -- them with an empty provider would have priced every historical row at the
--- unknown-model fallback rate — visibly wrong credits for up to 30 days.
+-- unknown-model fallback rate, visibly wrong credits for up to 30 days.
 delete from public.usage_daily;
 
 -- Recompute every day from the raw sources by calling the rollup itself, rather

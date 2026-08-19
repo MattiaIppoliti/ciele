@@ -1,7 +1,7 @@
 // The first screen: the two ways to use Ciele, side by side.
 //
 // Both are offered equally on purpose. A prospective user should see that
-// running it locally is a real option, not a footnote — and an admin with a
+// running it locally is a real option, not a footnote, and an admin with a
 // subscription should not have to hunt for sign-in.
 
 import { Building2, HardDrive, Settings2 } from "lucide-react";
@@ -73,7 +73,7 @@ export function WelcomeScreen({ state }: { state: AppState }): ReactNode {
           <Path
             icon={<HardDrive className="size-5" />}
             title="Use locally (self-host)"
-            blurb="Set up a complete Ciele on this machine — database, jobs and all. Guided, with no terminal; Docker Desktop is the one thing you install yourself."
+            blurb="Set up a complete Ciele on this machine, database, jobs and all. Guided, with no terminal; Docker Desktop is the one thing you install yourself."
             action="Set up locally"
             onClick={() => void bridge().chooseMode("local")}
             footnote="Your data stays on this machine and survives app updates."

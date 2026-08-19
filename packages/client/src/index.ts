@@ -36,12 +36,15 @@ import type {
 } from "@agent-hub/core";
 
 /**
- * `@ciele/client` — the typed /api/v1 client the CLI (#627) and the MCP
+ * `@ciele/client`: the typed /api/v1 client the CLI (#627) and the MCP
  * server (#629) share. Mirrors the endpoint registry in the web app's
- * `api-v1/openapi.ts` method-for-method; the drift test there keeps the
- * registry honest against the routes, and this package mirrors the registry.
+ * `api-v1/openapi.ts` method-for-method. Two tests keep the triangle closed:
+ * `openapi.test.ts` pins registry ↔ route files, and
+ * `client-conformance.test.ts` pins registry ↔ this client (every method's
+ * (verb, path) must resolve to exactly one registry entry, and every
+ * registered endpoint must be reachable through some method here).
  *
- * Works identically against the SaaS and a self-hosted deployment — the
+ * Works identically against the SaaS and a self-hosted deployment, the
  * base URL is just a constructor option / CIELE_BASE_URL.
  */
 
@@ -155,7 +158,7 @@ export type ProviderConnectionView = Omit<ProviderConnection, "encryptedKey"> & 
   hasCredential: boolean;
 };
 
-/** `GET /whoami` — the key's own identity (#627). */
+/** `GET /whoami`, the key's own identity (#627). */
 export interface ApiWhoami {
   organizationId: string;
   role: "owner" | "admin" | "editor" | "viewer";
@@ -238,7 +241,7 @@ export class CieleClient {
   }
 
   /**
-   * Walks a paginated listing to exhaustion — `for await` over every item.
+   * Walks a paginated listing to exhaustion, `for await` over every item.
    */
   private async *paginate<T>(
     path: string,
@@ -254,12 +257,12 @@ export class CieleClient {
     } while (cursor);
   }
 
-  /** `GET /meta` — what this deployment speaks. Useful before anything else. */
+  /** `GET /meta`, what this deployment speaks. Useful before anything else. */
   meta(): Promise<ApiMeta> {
     return this.request("GET", "/meta");
   }
 
-  /** `GET /whoami` — the Organization and Role this key acts with. */
+  /** `GET /whoami`, the Organization and Role this key acts with. */
   whoami(): Promise<ApiWhoami> {
     return this.request("GET", "/whoami");
   }

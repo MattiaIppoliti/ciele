@@ -315,7 +315,7 @@ export function NotificationStack({
 
   return (
     // The stack itself is one big button, so the dismiss control has to be a
-    // sibling — a button inside a button is invalid markup.
+    // sibling, a button inside a button is invalid markup.
     <motion.div
       ref={rootRef}
       // Swipe right to dismiss, like a phone notification. Leftward travel is

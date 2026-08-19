@@ -30,7 +30,7 @@ apps/web/public/connectors/*.exe
 # so an un-ignored scratch directory would ship in a release.
 graphify-out/
 # Derived local state of the /visualize-repo bridge (carries a timestamp, so it
-# churns). The visual docs themselves — plan.mdx — are committed.
+# churns). The visual docs themselves, plan.mdx, are committed.
 .agent-native/**/.plan-state.json
 
 # visual-plan local bridge token files (never commit)

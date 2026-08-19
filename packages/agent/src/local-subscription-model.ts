@@ -172,7 +172,7 @@ function parseCodexResult(result: LocalCommandResult): LocalCliResult {
  * are strict: EVERY object node must set `additionalProperties: false` and
  * list all of its properties in `required`. The tool-response envelope embeds
  * each Ciele tool's raw `inputSchema` (from the AI SDK), which sets neither, so
- * Codex rejects the whole schema with `invalid_json_schema` (400) — the
+ * Codex rejects the whole schema with `invalid_json_schema` (400), the
  * `search_knowledge` turn then fails while a bare classification schema, which
  * is already strict, succeeds. Recursively harden any schema before handing it
  * to Codex. Idempotent, so an already-strict schema passes through unchanged.
@@ -302,7 +302,7 @@ const readinessProbes = new Map<LocalSubscriptionProvider, ReadinessProbe>();
 
 /**
  * A ready CLI stays ready for a while; a refusal must not stick, because the
- * usual cause is a sign-in the Member is about to complete in their terminal —
+ * usual cause is a sign-in the Member is about to complete in their terminal,
  * re-probing soon is how `codex login` / `claude auth login` takes effect
  * without restarting the dev server.
  */

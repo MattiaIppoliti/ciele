@@ -13,7 +13,7 @@ import { queryApiEndpoint, resolveIntegrationUrl } from "./api-integration";
  * Egress containment for the API catalogue integration (spec #559). The
  * property under test is an ordering one: **a path the catalogue does not
  * describe never reaches the network at all**, so every refusal below must show
- * `egressFetch` was not called — not merely that the result was an error.
+ * `egressFetch` was not called, not merely that the result was an error.
  */
 
 const egressFetchMock = vi.mocked(egressFetch);
@@ -64,7 +64,7 @@ function ok(text: string, status = 200) {
   };
 }
 
-describe("queryApiEndpoint — nothing undescribed reaches the network", () => {
+describe("queryApiEndpoint, nothing undescribed reaches the network", () => {
   beforeEach(() => {
     egressFetchMock.mockReset();
     egressFetchMock.mockResolvedValue(ok("{}") as never);

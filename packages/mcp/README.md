@@ -1,6 +1,6 @@
 # @ciele/mcp
 
-The ciele MCP server — let an AI agent (Claude, or any MCP client) operate
+The ciele MCP server: let an AI agent (Claude, or any MCP client) operate
 your Organization over `/api/v1`, on the SaaS or a self-hosted deployment.
 
 Fourteen coarse tools, grouped by domain, each with an `action` discriminator:
@@ -27,18 +27,18 @@ cannot do in the app, it cannot do here (403 surfaces as a tool error).
 
 ## Configuration
 
-Environment only — same variables as the CLI:
+Environment only: same variables as the CLI:
 
-- `CIELE_API_KEY` (required) — mint one in **Settings → API Keys**
-- `CIELE_BASE_URL` (optional) — your self-hosted origin; defaults to the SaaS
-- `CIELE_MCP_READ_ONLY=1` (optional) — the agent may explore but every
+- `CIELE_API_KEY` (required): mint one in **Settings → API Keys**
+- `CIELE_BASE_URL` (optional): your self-hosted origin; defaults to the SaaS
+- `CIELE_MCP_READ_ONLY=1` (optional): the agent may explore but every
   mutating action is refused before any request leaves
-- `CIELE_MCP_MODERN_ONLY=1` (optional) — refuse 2025-era clients (see
+- `CIELE_MCP_MODERN_ONLY=1` (optional): refuse 2025-era clients (see
   **Protocol era** below)
 
 ## Protocol era
 
-The server speaks the `2026-07-28` revision — the stateless one: no
+The server speaks the `2026-07-28` revision, the stateless one: no
 `initialize` handshake, no session id, `server/discover` instead. It **also**
 serves the 2025-era handshake, so a client that has not moved yet keeps
 working; the era is decided per connection from the opening exchange.
@@ -93,13 +93,13 @@ claude mcp add --transport http ciele https://platform.ciele.app/api/mcp \
   --header "Authorization: Bearer ciele_sk_…"
 ```
 
-Point it at your own origin for a self-hosted deployment — the route ships
+Point it at your own origin for a self-hosted deployment, the route ships
 inside the web app, so it is there without configuration. Authentication is the
 same org API key, and the key's Role is the **only** permission boundary: mint a
 **Viewer** key to get a read-only agent remotely.
 
 > `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY` configure *this local
-> process*. Setting them on a web container does nothing at all — it is not an
+> process*. Setting them on a web container does nothing at all; it is not an
 > error, it is simply ignored, so do not rely on either to restrict the hosted
 > endpoint. Use the key's Role.
 

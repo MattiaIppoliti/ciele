@@ -19,8 +19,8 @@ export function connectorInstallationScope(
 
 /**
  * The connector's name for the shared check in `safe-origin.ts`. The rule is
- * not connector-specific — the self-host installer templates an origin into a
- * pasted shell command too — so the implementation lives there and both
+ * not connector-specific, the self-host installer templates an origin into a
+ * pasted shell command too, so the implementation lives there and both
  * generators share one hardened validator.
  */
 export const normalizeConnectorOrigin = normalizeSafeOrigin;

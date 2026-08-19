@@ -1,0 +1,238 @@
+---
+title: Ciele Desktop
+description: Téléchargez une application et connectez-vous à votre organisation ou exécutez une version complète de Ciele sur votre ordinateur.
+---
+
+Ciele Desktop est une application macOS qui s'ouvre selon votre choix.
+
+- **Sign in to your organization** : l'application ouvre la console de votre
+  organisation dans une fenêtre dédiée, avec une session qui survit aux
+  redémarrages. L'adresse est configurable, de sorte que le même chemin d'accès
+  permet également d'accéder à un Ciele auto-hébergé sur votre propre serveur.
+- **Use locally (self-host)** : une configuration guidée met en place un Ciele
+  complet sur cette machine : base de données, migrations, tâches planifiées et
+  tout le reste. Aucun terminal n'est nécessaire, et Docker Desktop est le seul
+  élément que vous installez vous-même.
+
+Les deux peuvent coexister, et vous pouvez basculer entre eux à tout moment.
+Toutes vos actions avec Ciele se déroulent dans l'interface utilisateur du
+produit que vous connaissez déjà ; l'application ajoute une fenêtre autour de
+celle-ci, et non une seconde interface.
+
+<Callout type="warn" title="Beta">
+The macOS build is unsigned, which means one extra step the first time you open
+it (below) and no automatic updates. Windows and Linux builds are not part of
+the beta.
+</Callout>
+
+## Quel chemin choisir ?
+
+| | Se connecter | Utiliser localement |
+| --- | --- | --- |
+| Vous avez un compte Ciele ou un serveur | Oui | |
+| Vous souhaitez évaluer le produit | | Oui |
+| Temps d'installation | Quelques secondes | Quelques minutes |
+| Où se trouvent les données | Sur le serveur | Sur cette machine |
+| Fournit des widgets de production | Oui | Non : les widgets locaux sont destinés aux tests |
+| Nécessite Docker Desktop | Non | Oui |
+
+Le chemin local est un véritable Ciele, et non une démo : les mêmes conteneurs,
+les mêmes migrations, les mêmes tâches planifiées que celles exécutées par le
+serveur auto-hébergé. Il n'est pas conçu pour diffuser un widget de production
+au public, qui nécessite une adresse accessible au public.
+
+## Installer
+
+1. Téléchargez le `.zip` à partir de la
+   [dernière version](https://github.com/MattiaIppoliti/ciele/releases/latest).
+2. Décompressez-le et déplacez **Ciele.app** dans votre dossier Applications.
+3. **Right-click (or Control-click) Ciele.app and choose Open**, puis **Open** à
+   nouveau dans la boîte de dialogue.
+
+Cette troisième étape est importante. La version bêta n'est pas signée ; par
+conséquent, macOS bloque le double-clic habituel jusqu'à ce que vous l'ayez
+ouverte une fois de cette manière. Vous n'avez à le faire qu'une seule fois.
+
+## Connexion à votre organisation
+
+Choisissez **Sign in** sur l'écran d'accueil. L'application charge la console de
+votre organisation et mémorise la session, de sorte que les lancements
+ultérieurs y accèdent directement.
+
+Pour diriger l'application vers un serveur auto-hébergé à la place, ouvrez
+**Settings** (l'icône de contrôle sur l'écran d'accueil, ou `⌘,`) et modifiez
+l'adresse du serveur. Tout ce qui est `http://` ou `https://` fonctionne.
+L'application conserve l'origine et supprime tout chemin d'accès que vous collez
+avec.
+
+**Sign out** efface la session stockée de l'application pour ce serveur :
+cookies, cache et tout le reste. Elle ferme plus que la fenêtre. Sur un
+ordinateur partagé, c'est ce qu'il faut faire.
+
+Si l'adresse ne se charge pas, l'application l'indique sur son propre écran.
+Elle affiche l'adresse qu'elle a essayée, ce qui a mal fonctionné et des boutons
+pour réessayer ou corriger. Vous ne tombez jamais sur une page d'erreur de
+navigateur dans une fenêtre sans barre d'adresse.
+
+## Configuration d'un Ciele local
+
+Choisissez **Use locally**. L'assistant exécute chaque étape et la vérifie avant
+de passer à la suivante. Une coche verte signifie que l'étape a fonctionné, et
+non qu'elle est terminée.
+
+### 1. Docker Desktop
+
+L'assistant vérifie que Docker Desktop est installé *et* en cours d'exécution.
+Il s'agit de problèmes différents, avec des solutions différentes, et
+l'assistant vous indique celui que vous rencontrez. S'il est manquant, le lien
+de téléchargement se trouve juste là. Installez ou lancez Docker Desktop, puis
+appuyez sur **Try again**. La vérification est réexécutée sur place.
+
+### 2. Dossier de données et secrets
+
+L'application crée un dossier pour cette installation et génère tous les mots de
+passe et toutes les clés dont la pile a besoin. Vous ne modifiez jamais un
+fichier d'environnement.
+
+Si une configuration existe déjà, l'application la conserve plutôt que d'en
+générer une nouvelle. Votre base de données est verrouillée avec les secrets
+déjà présents dans ce dossier. De nouveaux secrets vous en empêcheraient
+l'accès.
+
+### 3. Téléchargez Ciele
+
+Extrait les images de conteneur publiées pour cette version de l'application.
+C'est l'étape la plus lente lors de la première exécution. Rien n'est compilé à
+partir du code source, c'est pourquoi l'installation prend le temps d'une
+pause-café et non celui d'un après-midi.
+
+### 4. Démarrez la pile
+
+Lance la base de données, l'application et les tâches planifiées, en mode
+détaché ; elles continuent de s'exécuter après que vous avez quitté Ciele
+Desktop.
+
+### 5. Préparation de la base de données
+
+Applique le schéma et attend la réponse de Ciele. « Les conteneurs ont démarré »
+et « Ciele est en service » sont des affirmations différentes, et cette étape
+attend la seconde.
+
+### 6. Contenu de démonstration (facultatif)
+
+Charge un exemple d'organisation avec des assistants, afin que vous voyiez un
+produit prérempli avant d'ajouter quoi que ce soit de votre côté. **Skip** vous
+laisse un Ciele vide mais fonctionnel.
+
+### 7. Connectez un modèle d'IA (facultatif)
+
+Dirigez Ciele vers n'importe quel serveur compatible OpenAI ou vers un
+fournisseur hébergé. Pour [Ollama](https://ollama.com) sur cette machine,
+l'adresse est `http://host.docker.internal:11434/v1` : à l'intérieur d'un
+conteneur, `localhost` est le conteneur.
+
+Vous pouvez ignorer cette étape. Sans modèle, les assistants répondent à partir
+du moteur de mots-clés intégré et la recherche de connaissances se base sur la
+correspondance lexicale. Tout le reste fonctionne.
+
+Lorsqu'une étape échoue, le système indique ce qui a échoué et conserve ses
+journaux dans **Show details**. **Try again** reprend à partir de cette étape au
+lieu de recommencer depuis le début.
+
+Une fois la configuration terminée, **Open Ciele** charge la console locale. Le
+premier compte que vous créez est propriétaire de l'organisation. Les lancements
+ultérieurs ignorent entièrement l'assistant.
+
+## Deuxième jour
+
+**Stack status** indique si votre pile locale est opérationnelle. Vous pouvez y
+accéder depuis la dernière étape de l'assistant, depuis les Paramètres ou depuis
+le menu **Ciele**. Il démarre et arrête la pile sans Docker Desktop. « Running »
+signifie ici que Ciele a répondu, et non que des conteneurs existent.
+
+L'arrêt est réversible et n'affecte aucune donnée. Quitter l'application
+n'arrête pas la pile. Il s'exécute en mode détaché, intentionnellement.
+
+### Où se trouvent vos données
+
+| Quoi | Où | Durée de vie |
+| --- | --- | --- |
+| Assistants, conversations, connaissances | Volumes Docker (`ciele_postgres-data`) | Redémarrages et mises à jour de l'application |
+| Fichiers téléchargés | Volume Docker (`ciele_storage-data`) | Redémarrages et mises à jour de l'application |
+| Configuration générée et secrets | Le dossier de données de l'application (affiché sur l'écran de la pile) | Mises à jour de l'application |
+
+Sauvegardez la base de données de la même manière que pour tout auto-hébergement
+; voir [Base de données](/self-hosting/database). La suppression de Ciele.app ne
+supprime ni les volumes ni la pile.
+
+### Mise à jour
+
+L'application vérifie la disponibilité d'une version plus récente au lancement
+et affiche une notification masquable avec un lien de téléchargement. Il n'y a
+pas de mise à jour automatique : macOS ne mettra pas à jour automatiquement une
+application non signée.
+
+La mise à jour de l'application fait progresser votre pile locale. Chaque
+compilation fixe les images de conteneur correspondant à sa propre version, de
+sorte que la prochaine configuration ou le prochain démarrage les récupère et
+réexécute les migrations. Vos données restent là où elles sont.
+
+### Recommencer
+
+Pour réinitialiser l'installation locale, arrêtez la pile depuis l'écran d'état
+et supprimez les volumes du projet Compose avec Docker Desktop, ou depuis un
+terminal :
+
+```bash
+docker compose --project-name ciele down -v
+```
+
+Cela supprime la base de données locale et les fichiers téléchargés. La
+prochaine fois que vous choisirez **Use locally**, l'assistant se lancera depuis
+le début.
+
+## Dépannage
+
+**« Docker Desktop n'est pas installé » alors qu'il l'est.** Une application
+lancée depuis le Dock n'hérite pas du `PATH` de votre shell. Ciele recherche
+donc la CLI Docker à l'emplacement où Docker Desktop et Homebrew l'installent.
+Il ne trouvera pas un Docker que vous auriez installé ailleurs. Un lien
+symbolique vers `/usr/local/bin` résout ce problème.
+
+**The stack sits on "Starting".** Postgres est peut-être encore en cours
+d'initialisation lors de la première exécution. Patientez une minute, puis
+appuyez sur **Check again**. Si cela persiste, ouvrez les journaux depuis Docker
+Desktop. Un conteneur qui redémarre en permanence manque généralement de
+mémoire.
+
+**"Impossible de télécharger les images."** L'opération de pull n'a pas pu
+atteindre le registre. Vérifiez votre connexion ou votre proxy, puis appuyez sur
+**Try again**. Aucune tâche en aval ne s'est exécutée, il n'y a donc rien à
+annuler.
+
+**Assistants answer, but they ignore my knowledge.** Aucun modèle d'intégration
+n'est configuré ; la récupération se fait donc par correspondance de mots-clés.
+Ajoutez un modèle d'intégration dans
+[Configuration](/self-hosting/configuration).
+
+**« Ciele n'a pas chargé » lors de la connexion.** L'adresse indiquée dans les
+paramètres ne dessert pas Ciele. L'écran indique ce qui a mal fonctionné. Une
+faute de frappe génère le message « cette adresse n'existe pas ». Un serveur
+éteint renvoie le message « nothing is listening ». Une adresse qui répond sans
+être Ciele l'indique. **Change address** vous amène directement au paramètre.
+
+**macOS indique que l'application est endommagée ou ne peut pas être ouverte.**
+Il s'agit de Gatekeeper sur une application non signée. Effectuez un clic droit
+sur Ciele.app, choisissez **Open**, puis **Open** à nouveau. Un double-clic ne
+proposera pas cette option.
+
+## Ce que l'application de bureau n'est pas
+
+- Elle ne prend pas en charge les widgets de production. Les widgets locaux sont
+  destinés aux tests et à la prévisualisation. La publication pour de vrais
+  visiteurs nécessite un serveur accessible.
+- Elle n'est ni signée ni notariée, et elle ne se met pas à jour
+  automatiquement.
+- Elle exécute uniquement les profils par défaut. Les workers optionnels lourds
+  restent désactivés. Ajoutez-les depuis [Workers](/self-hosting/workers) si
+  vous en avez besoin.

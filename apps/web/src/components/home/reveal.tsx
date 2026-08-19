@@ -7,7 +7,7 @@ import { cn } from "@agent-hub/ui";
  * state via CSS (see home.css `.home-reveal`, gated on `nav[data-state=active]`).
  * `delay` staggers each item on open and resets quickly on close so it replays.
  *
- * No hooks and no listeners — the animation is entirely CSS, which is why this
+ * No hooks and no listeners: the animation is entirely CSS, which is why this
  * is a plain component rather than part of the header's client machinery.
  */
 export function Reveal({

@@ -45,7 +45,7 @@ import { finalizeDueCrawls, sweepDueRecrawls } from "./scheduled";
 /**
  * The scheduled re-crawl seam (issue #109): a due Source picked up by the sweep
  * cron must resolve + persist its provider through the *same* start operation as
- * a manual re-crawl, then finalize through the shared lifecycle — the scheduler
+ * a manual re-crawl, then finalize through the shared lifecycle, the scheduler
  * only decides *when*, never *how*. These tests drive the two real scheduled
  * drains (sweep → finalize) against the mock DB, asserting observable
  * Source/Concept outcomes for each provider rather than provider internals.
@@ -86,6 +86,8 @@ describe("scheduled re-crawl provider seam", () => {
       config,
       recrawlSchedule: "weekly",
     });
+    // The claim's routing assistantId derives from the earliest link.
+    await db.setSourceAssistantLinks(source.id, [assistant.id]);
     await db.createConcept({
       collectionId: collection.id,
       sourceId: source.id,
@@ -119,7 +121,7 @@ describe("scheduled re-crawl provider seam", () => {
     getCrawl4aiTaskMock.mockReset();
     lookupMock.mockReset();
     lookupMock.mockResolvedValue([{ address: "93.184.216.34", family: 4 }] as never);
-    // The seeded demo Website Source is due on a weekly cadence — drop it so the
+    // The seeded demo Website Source is due on a weekly cadence, drop it so the
     // sweep claims only what each test creates.
     void getMockDb().deleteSource("src-alex-website");
   });

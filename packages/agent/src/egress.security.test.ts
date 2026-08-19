@@ -174,7 +174,7 @@ describe("validateEgressTarget", () => {
     ]);
   });
 
-  it("allowLoopback admits loopback only — other private ranges stay blocked", async () => {
+  it("allowLoopback admits loopback only, other private ranges stay blocked", async () => {
     await expect(
       validateEgressTarget("http://127.0.0.1:3000/test", { allowLoopback: true })
     ).resolves.toMatchObject({ addresses: ["127.0.0.1"] });

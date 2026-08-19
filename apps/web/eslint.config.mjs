@@ -7,14 +7,14 @@ import nextTs from "eslint-config-next/typescript";
 // therefore not depend on anything under it, or the mirrored tree stops
 // compiling. The one sanctioned seam is `@/ee/register` (loaded dynamically by
 // instrumentation.ts); enterprise capabilities come back through the runtime's
-// registry, never through a direct import. Unlike the chat runtime — a package
-// whose `exports` map makes deep imports unresolvable — `src/ee` is a plain
+// registry, never through a direct import. Unlike the chat runtime, a package
+// whose `exports` map makes deep imports unresolvable, `src/ee` is a plain
 // folder behind the `@/` alias, so resolution cannot enforce this and a lint
 // rule has to.
 const enterpriseModules = {
   group: ["@/ee", "@/ee/*", "!@/ee/register"],
   message:
-    "Open-source code must not import enterprise modules (src/ee/**) — they are excluded from the public mirror. Register capabilities through '@/ee/register' and consume them via '@agent-hub/agent'.",
+    "Open-source code must not import enterprise modules (src/ee/**); they are excluded from the public mirror. Register capabilities through '@/ee/register' and consume them via '@agent-hub/agent'.",
 };
 
 const eslintConfig = defineConfig([
@@ -31,7 +31,7 @@ const eslintConfig = defineConfig([
   // The chat runtime's module boundary is no longer enforced here. It used to be
   // a `no-restricted-imports` pattern over `@/lib/runtime/*`; the runtime is now
   // the `@agent-hub/agent` package, whose `exports` map declares exactly three
-  // entry points, so a deep import into its internals does not resolve at all —
+  // entry points, so a deep import into its internals does not resolve at all,
   // in tsc or in the bundler. Resolution replaced the rule and closed a hole it
   // had: the old single-segment glob never matched `@/lib/runtime/agentic-search/*`.
   // See ADR-0018.

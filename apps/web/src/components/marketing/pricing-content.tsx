@@ -15,6 +15,7 @@ import {
   BouncyAccordion,
   type BouncyAccordionItem,
 } from "@/components/motion/bouncy-accordion";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { GridBeam } from "@/components/motion/grid-beam";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { CodeBlock } from "@/components/ui/code-block";
@@ -23,11 +24,11 @@ import { CTA_CLASS, ENTERPRISE, PlanTilt } from "./plan-cards";
 /**
  * The public pricing page.
  *
- * Entirely a server component: Ciele is offered exactly two ways — run the
+ * Entirely a server component: Ciele is offered exactly two ways, run the
  * open-source core yourself for free, or have us run it for you on Enterprise
- * terms — and neither offering carries a published price, a checkout button or
- * a usage picker. With nothing interactive left, every section here — the hero,
- * the two cards, the comparison grid, the install section and the FAQ — is
+ * terms, and neither offering carries a published price, a checkout button or
+ * a usage picker. With nothing interactive left, every section here, the hero,
+ * the two cards, the comparison grid, the install section and the FAQ, is
  * static copy, and none of it needs to be shipped to the browser as JavaScript
  * to be hydrated.
  *
@@ -40,7 +41,7 @@ import { CTA_CLASS, ENTERPRISE, PlanTilt } from "./plan-cards";
  * down this page rather than to sales.
  *
  * Its feature lines are the open-source core as documented in
- * `apps/docs/content/docs/self-hosting/open-core-boundary.mdx` — the whole
+ * `apps/docs/content/docs/self-hosting/open-core-boundary.mdx`: the whole
  * product minus what the mirror gate strips (billing, plan metering, the staff
  * console, managed SSO onboarding, and anything with a service commitment).
  *
@@ -76,14 +77,14 @@ const COMPARISON_COLUMNS = [SELF_HOSTED.name, ENTERPRISE.name] as const;
 /**
  * Feature matrix, in the column order above. The self-hosted column is the
  * AGPL mirror: it carries the whole open-source product but none of the paths
- * the mirror strips (`scripts/mirror-gate` EE_PATHS) — no billing, no plan
- * metering, no managed SSO onboarding, no staff console — and it has no
+ * the mirror strips (`scripts/mirror-gate` EE_PATHS), no billing, no plan
+ * metering, no managed SSO onboarding, no staff console, and it has no
  * platform-funded models, so its own provider keys are mandatory rather than
  * optional.
  *
  * Its cells therefore say what the self-hoster PROVIDES, never a bare check.
  * A tick reads as "included", and on this column the same capability is work
- * the reader takes on — a matrix where the free column collects more ticks than
+ * the reader takes on, a matrix where the free column collects more ticks than
  * the offering beside it is not generous, it is wrong, and it argues against
  * that offering.
  */
@@ -131,7 +132,7 @@ const COMPARISON_ROWS: Array<{ label: string; cells: ComparisonCell[] }> = [
 ];
 
 /**
- * The open-source repository — where "View the source" goes and what the quick
+ * The open-source repository, where "View the source" goes and what the quick
  * start clones. Writing it out is deliberate: an install command a reader has to
  * fill in themselves is not an install command.
  *
@@ -143,7 +144,7 @@ const SOURCE_URL =
 /**
  * Getting the open-source edition running. The commands are the ones from
  * `apps/docs/content/docs/self-hosting/installation.mdx`; if those change, they
- * change here too — a pricing page that promises a broken quick start is worse
+ * change here too, a pricing page that promises a broken quick start is worse
  * than one that promises nothing.
  */
 const INSTALL_TABS = [
@@ -209,8 +210,8 @@ const INSTALL_REQUIREMENTS = [
 ];
 
 /**
- * The free edition's card. The two cards share their vertical rhythm — the
- * same tagline floor and price row — so their feature lists start at the same
+ * The free edition's card. The two cards share their vertical rhythm, the
+ * same tagline floor and price row, so their feature lists start at the same
  * height and read as a comparison.
  */
 function SelfHostedCard() {
@@ -237,8 +238,8 @@ function SelfHostedCard() {
             <span className="text-muted-foreground text-sm">/ forever</span>
           </div>
           <p className="text-muted-foreground mt-1.5 min-h-8 text-xs">
-            AGPL-3.0 — no plan, no allowance. The AI work is billed to your own
-            provider account, or runs on a model server you host.
+            AGPL-3.0, with no plan and no allowance. The AI work goes on your
+            own provider account, or runs on a model server you host.
           </p>
         </CardHeader>
 
@@ -374,7 +375,7 @@ export function PricingContent() {
         {/* Hero */}
         <MarketingHero eyebrow="Pricing" title="Two ways to run Ciele">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Both include the whole product — assistants, knowledge, flows, inbox
+            Both include the whole product: assistants, knowledge, flows, inbox
             and insights, for as many members as you like. Run the open-source
             core yourself for free, or let us run it for you on Enterprise
             terms, sized to your rollout in a conversation with sales.
@@ -416,7 +417,7 @@ export function PricingContent() {
           </h2>
           <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-center text-sm leading-relaxed">
             Ciele is open source under the AGPL, so running it yourself is
-            always an option, you bring the infrastructure and the model
+            always an option. You bring the infrastructure and the model
             account, and you keep the whole product.
           </p>
 
@@ -481,7 +482,7 @@ export function PricingContent() {
           </div>
         </div>
 
-        {/* Self-hosted install — the destination of the Self-hosted card's CTA.
+        {/* Self-hosted install, the destination of the Self-hosted card's CTA.
             `scroll-mt` clears the fixed marketing header, which would otherwise
             sit on top of the heading after the jump. */}
         <section
@@ -551,7 +552,7 @@ export function PricingContent() {
           </div>
         </section>
 
-        {/* FAQ — the block is centred, but each row stays left-aligned: a
+        {/* FAQ, the block is centred, but each row stays left-aligned: a
             question centred against its own chevron reads as a layout bug,
             not as a choice. */}
         <div className="mx-auto mt-20 max-w-3xl">
@@ -570,6 +571,14 @@ export function PricingContent() {
             }}
           />
         </div>
+
+        <CloudCallout
+          expression="attentive"
+          eyebrow="All ears"
+          title="Listening before it quotes"
+          body="Start self-hosted for free, or talk to us about a managed rollout sized to what you actually need, either way you keep your data and your terms."
+          cta={{ label: "Talk to sales", href: "/contact/sales" }}
+        />
       </div>
     </main>
   );
@@ -580,13 +589,13 @@ const FAQ_ITEMS: BouncyAccordionItem[] = [
     id: "difference",
     title: "What is the difference between self-hosted and Enterprise?",
     description:
-      "The product is the same — self-hosting gives you the whole open-source core under the AGPL. What Enterprise adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, usage caps and budget controls, managed SSO onboarding, contractual commitments and support. Self-hosted, all of that is your side of the line.",
+      "The product is the same, self-hosting gives you the whole open-source core under the AGPL. What Enterprise adds is that we operate it: hosting, upgrades and backups, a monthly AI allowance on our provider accounts instead of yours, usage caps and budget controls, managed SSO onboarding, contractual commitments and support. Self-hosted, all of that is your side of the line.",
   },
   {
     id: "enterprise-price",
     title: "How is Enterprise priced?",
     description:
-      "In a conversation, not on a card. Tell us the size of your rollout — how many people it serves, what it needs to plug into, and roughly how much answering you expect — and we quote a monthly price with the AI allowance written into the agreement. Members are unlimited whatever the size.",
+      "In a conversation, not on a card. Tell us the size of your rollout: how many people it serves, what it needs to plug into, roughly how much answering you expect. We quote a monthly price with the AI allowance written into the agreement. Members are unlimited whatever the size.",
   },
   {
     id: "allowance",
@@ -598,24 +607,24 @@ const FAQ_ITEMS: BouncyAccordionItem[] = [
     id: "visitors",
     title: "Do members or chat visitors cost extra?",
     description:
-      "Neither, in either edition. Members with console access are unlimited, and people chatting with a published widget are never counted or charged. Enterprise meters the AI work, not the people — and self-hosted meters nothing at all.",
+      "Neither, in either edition. Members with console access are unlimited, and people chatting with a published widget are never counted or charged. Enterprise meters the AI work, not the people, and self-hosted meters nothing at all.",
   },
   {
     id: "byok",
     title: "Can we bring our own models?",
     description:
-      "Yes, in both editions. Self-hosted runs entirely on your own keys — any supported provider, or an OpenAI-compatible endpoint including a local one. Enterprise includes an allowance on our accounts and lets you connect your own keys on top, or use keyless federated access — Google Vertex, Anthropic workload identity or Azure OpenAI — so no long-lived key is ever stored with us.",
+      "Yes, in both editions. Self-hosted runs entirely on your own keys: any supported provider, or an OpenAI-compatible endpoint including a local one. Enterprise includes an allowance on our accounts and lets you connect your own keys on top, or use keyless federated access through Google Vertex, Anthropic workload identity or Azure OpenAI, so no long-lived key is ever stored with us.",
   },
   {
     id: "migrate",
     title: "Can we start self-hosted and move to Enterprise later?",
     description:
-      "Yes, in both directions. It is one codebase and one schema, so your assistants, knowledge and history move with the database. Plenty of teams evaluate self-hosted and switch to Enterprise when the rollout gets serious — and the AGPL means you can always take it back in-house.",
+      "Yes, in both directions. It is one codebase and one schema, so your assistants, knowledge and history move with the database. Plenty of teams evaluate self-hosted and switch to Enterprise when the rollout gets serious, and the AGPL means you can always take it back in-house.",
   },
   {
     id: "education",
     title: "Do you offer education or non-profit pricing?",
     description:
-      "We do. Ciele is built for institutions, and we quote academic and non-profit rollouts case by case, get in touch and we will work it out with you.",
+      "We do. We quote academic and non-profit rollouts case by case. Get in touch and we will work it out with you.",
   },
 ];

@@ -3,7 +3,7 @@ import { ChevronRight, ExternalLink } from "lucide-react";
 /**
  * The Sources citation list rendered under a grounded AI answer. RAG
  * citations always resolve to a Concept → Source (ADR-0002), never opaque
- * chunks — this component is the single place that shape is displayed, shared
+ * chunks, this component is the single place that shape is displayed, shared
  * by the widget, the admin Preview, and the Inbox transcript. Interactivity
  * and theming differ per surface, but the citation chip does not.
  *

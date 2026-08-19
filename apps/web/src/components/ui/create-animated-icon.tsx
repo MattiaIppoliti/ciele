@@ -25,9 +25,9 @@ export interface AnimatedIconProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 interface CreateOptions {
-  /** Custom "play" — defaults to `controls.start("animate")`. */
+  /** Custom "play", defaults to `controls.start("animate")`. */
   start?: (controls: AnimationControls) => void | Promise<void>;
-  /** Custom "reset" — defaults to `controls.start("normal")`. */
+  /** Custom "reset", defaults to `controls.start("normal")`. */
   stop?: (controls: AnimationControls) => void | Promise<void>;
 }
 

@@ -1,14 +1,14 @@
 /**
- * The domain vocabulary — every noun in `CONTEXT.md`, as a type.
+ * The domain vocabulary: every noun in `CONTEXT.md`, as a type.
  *
  * Pure type declarations with **no data-access concept in them**: no `Db`, no
  * Supabase, no I/O. That separation is the point of this package (ADR-0019).
  * `@agent-hub/db` declares the `Db` interface over these types and depends on
  * this package; nothing here may depend on it, or on any adapter.
  *
- * Keep the names the ones `CONTEXT.md` fixes — Organization, Assistant, Member,
+ * Keep the names the ones `CONTEXT.md` fixes, Organization, Assistant, Member,
  * Role, Knowledge Collection, Source, Concept, Publication, Widget, Visitor,
- * Conversation, Flow, Flow Action, Provider Connection — and add a term there
+ * Conversation, Flow, Flow Action, Provider Connection, and add a term there
  * before adding a type here.
  */
 
@@ -28,7 +28,7 @@ export type FlowAction =
   /**
    * The courtesy primitive (Basic Interaction, #565): one conversational reply
    * with no retrieval, no tools and no second write phase. What answers a
-   * greeting, a thanks or a farewell — a message that carries no information
+   * greeting, a thanks or a farewell, a message that carries no information
    * need, so searching the knowledge base for it can only cost latency.
    */
   | "basic_reply"
@@ -58,7 +58,7 @@ export type FlowButtonIcon =
 /**
  * The event that starts a flow. Legacy flows (no trigger stored) = "message".
  *
- * "message" drives Intent Classification; the other three are **proactive** —
+ * "message" drives Intent Classification; the other three are **proactive**,
  * fired by a client event, with no Visitor message to classify. See
  * `isProactiveTrigger` in `engine.ts`.
  */
@@ -111,7 +111,7 @@ export interface UrlCondition {
  * "Schedule" condition: a wall-clock window read in one IANA timezone.
  *
  * The bounds are local wall-clock date-times, never instants, for the same
- * reason `ChannelAvailability` stores local opening hours plus a zone — "09:00
+ * reason `ChannelAvailability` stores local opening hours plus a zone, "09:00
  * in Europe/Rome" has to stay 09:00 across a daylight-saving change.
  */
 export interface ScheduleCondition {
@@ -128,7 +128,7 @@ export interface ScheduleCondition {
 /**
  * One criterion a Flow must meet to stay a routing candidate.
  *
- * `conversation_context` is **semantic** — evaluated by the classifier (or, with
+ * `conversation_context` is **semantic**, evaluated by the classifier (or, with
  * no model, keyword-scored). `url` and `schedule` are **objective**: checkable
  * facts, gated deterministically before Intent Classification by
  * `flowConditionsAllowRouting` and never shown to the model (spec #550).
@@ -158,9 +158,9 @@ export type ApiRequestAuth =
 
 /**
  * How often a Notification may reach the same Visitor.
- * - `session` (default) — once per Conversation.
- * - `visitor` — once ever, across all of that Visitor's Conversations.
- * - `always` — every time the trigger fires.
+ * - `session` (default): once per Conversation.
+ * - `visitor`: once ever, across all of that Visitor's Conversations.
+ * - `always`: every time the trigger fires.
  */
 export type NotificationDeliveryRule = "session" | "visitor" | "always";
 
@@ -244,7 +244,7 @@ export interface FlowActionSettings {
     /**
      * How the request authenticates. Secrets live here in the flow's jsonb
      * settings (org-scoped by RLS) and are never returned to the browser once
-     * saved — the editor shows a masked placeholder and replaces on edit.
+     * saved, the editor shows a masked placeholder and replaces on edit.
      */
     auth?: ApiRequestAuth;
     /** Admin-set request headers (name/value); denylisted names rejected on save. */
@@ -278,7 +278,7 @@ export interface FlowActionSettings {
   };
   /**
    * The proactive nudge a proactively-triggered Flow delivers. Emitted
-   * **verbatim**, like `custom_message` — a Notification never passes through a
+   * **verbatim**, like `custom_message`, a Notification never passes through a
    * model.
    */
   notification?: {
@@ -287,13 +287,13 @@ export interface FlowActionSettings {
     /** Rich-text body, max 5000 chars in the UI. Required for a valid Flow. */
     content?: string;
     /**
-     * How often the same Visitor may receive it. Absent reads as `session` —
+     * How often the same Visitor may receive it. Absent reads as `session`,
      * the safe default, so an announcement cannot re-fire on every page view of
      * a long browsing session.
      */
     deliveryRule?: NotificationDeliveryRule;
     /**
-     * Whether the Visitor may answer the nudge. Absent reads as `true` — an
+     * Whether the Visitor may answer the nudge. Absent reads as `true`, an
      * existing Notification is never silently muted.
      */
     allowReplies?: boolean;
@@ -315,8 +315,8 @@ export type BuiltInToolName =
 /**
  * Per-assistant tool configuration (assistants.tools jsonb).
  *
- * Held one shape smaller than the column: `custom` — one registered HTTP tool
- * per endpoint — was superseded by {@link ApiIntegration} and removed in the
+ * Held one shape smaller than the column: `custom`, one registered HTTP tool
+ * per endpoint, was superseded by {@link ApiIntegration} and removed in the
  * contract step of spec #559. A pre-existing row may still carry the key; it is
  * read by nothing and deliberately left in place rather than migrated away,
  * because deleting a self-hoster's stored configuration is not this schema's
@@ -353,7 +353,7 @@ export interface ApiEndpointParam {
 /**
  * One endpoint of an {@link ApiIntegration}'s catalogue: what it is for, the
  * parameters it takes, and the keys a successful response carries. This
- * description is the whole contract the model discovers and reads — it is also
+ * description is the whole contract the model discovers and reads; it is also
  * the allow-list every outbound path is validated against before egress.
  */
 export interface ApiEndpointSpec {
@@ -375,8 +375,8 @@ export type ApiIntegrationAuthType = "none" | "bearer" | "api_key" | "basic";
 /**
  * The API integration registered on an Assistant (spec #559): a base URL,
  * one sealed credential, and a catalogue of described endpoints. The model
- * reaches it through three generic tools — catalogue summary, per-endpoint
- * detail, query — rather than one registered tool per endpoint.
+ * reaches it through three generic tools, catalogue summary, per-endpoint
+ * detail, query, rather than one registered tool per endpoint.
  *
  * `encryptedCredential` is sealed app-side (see `sealSecret`) and lives in its
  * own table precisely so it is never part of `AssistantTools`, and therefore
@@ -440,13 +440,13 @@ export interface SkillInput {
 }
 
 /**
- * One recorded cookie-consent decision — our own evidence that a visitor
+ * One recorded cookie-consent decision, our own evidence that a visitor
  * consented (GDPR Art. 7(1)), independent of the `cc_cookie` they hold.
  *
  * Append-only: a withdrawal is a new row with `action: "changed"`, never an
  * edit of the row that granted consent. The history is the evidence.
  *
- * Not org-scoped — anonymous visitors have no organization — and deliberately
+ * Not org-scoped, anonymous visitors have no organization, and deliberately
  * holds no IP address; `consentId` (mirrored in the visitor's cookie) is the
  * link back to the device. See migration 20260726100000_cookie_consent_records.
  */
@@ -458,7 +458,7 @@ export interface CookieConsentRecord {
   revision: number;
   acceptedCategories: string[];
   rejectedCategories: string[];
-  /** "all" | "custom" | "necessary" — the shape of the choice. */
+  /** "all" | "custom" | "necessary", the shape of the choice. */
   acceptType: string;
   /** "granted" on a first decision, "changed" on a later edit or withdrawal. */
   action: string;
@@ -466,7 +466,7 @@ export interface CookieConsentRecord {
   consentedAt: string | null;
   pageUrl: string;
   userAgent: string;
-  /** Our clock when the record was stored — the trusted timestamp. */
+  /** Our clock when the record was stored, the trusted timestamp. */
   createdAt: string;
 }
 
@@ -476,7 +476,7 @@ export type SkillPatch = Partial<Pick<Skill, "name" | "description" | "prompt">>
 export type SkillSnapshot = Pick<Skill, "id" | "name" | "description" | "prompt">;
 
 // ---------------------------------------------------------------------------
-// Entities + Records — org-level structured business data (#663).
+// Entities + Records: org-level structured business data (#663).
 
 export type EntityAttributeType = "text" | "number" | "date" | "boolean";
 
@@ -589,7 +589,7 @@ export interface MemorySubjectSummary {
 
 /**
  * Local-connector relay (personal AI subscriptions that stay on a Member's
- * Mac). Server-only tables — no RLS policies; reachable only through a
+ * Mac). Server-only tables, no RLS policies; reachable only through a
  * service-role Db. See migration 20260714001000_local_connector_relay.
  */
 
@@ -598,7 +598,7 @@ export interface LocalConnectorPairing {
   id: string;
   organizationId: string;
   userId: string;
-  /** sha256 of the signed pairing code — the plaintext never touches the DB. */
+  /** sha256 of the signed pairing code, the plaintext never touches the DB. */
   codeHash: string;
   origin: string;
   expiresAt: string;
@@ -650,12 +650,12 @@ export type Role = "owner" | "admin" | "editor" | "viewer";
 export interface Organization {
   id: string;
   name: string;
-  /** Circular logo shown in the org switcher — same treatment as an
+  /** Circular logo shown in the org switcher, same treatment as an
    * Assistant's avatarUrl (data URL, falls back to an initial letter). */
   logoUrl?: string | null;
   /**
    * How many days a message keeps its persisted Turn Trace before the cron
-   * sweep strips it (#573). Null (the default) keeps traces forever — an
+   * sweep strips it (#573). Null (the default) keeps traces forever, an
    * existing tenant's transcripts never start disappearing without an admin
    * opting in. The sweep removes only the trace payload; the message, its
    * content, feedback and timestamps stay.
@@ -668,7 +668,7 @@ export interface Member {
   userId: string;
   email: string;
   role: Role;
-  /** Profile fields, joined from `profiles` — null until the member (or the
+  /** Profile fields, joined from `profiles`, null until the member (or the
    * signup trigger) has set them. */
   username: string | null;
   firstName: string | null;
@@ -677,7 +677,7 @@ export interface Member {
   createdAt: string;
 }
 
-/** The signed-in caller's own profile — Settings > Profile. */
+/** The signed-in caller's own profile, Settings > Profile. */
 export interface Profile {
   userId: string;
   email: string;
@@ -715,7 +715,7 @@ export interface Invite {
  * (the CLI, MCP server, /api/v1) as the Organization, acting with a Role
  * capped at its creator's. Only the SHA-256 hash of the secret is stored
  * (see `api-keys.ts`); `secretHint` is the displayable first characters.
- * A revoked key keeps its row — `revokedAt` set — for audit.
+ * A revoked key keeps its row: `revokedAt` set, for audit.
  */
 export interface OrgApiKey {
   id: string;
@@ -739,10 +739,10 @@ export interface OrgApiKeyInput {
 }
 
 /**
- * A Member's per-assistant role override ("Manage access" — PRD #296).
+ * A Member's per-assistant role override ("Manage access", PRD #296).
  * No row means "System Role": the Member's org Role applies. 'denied' hides
  * the Assistant and its data from that Member entirely. Org owners and
- * platform superusers are exempt — overrides never apply to them.
+ * platform superusers are exempt, overrides never apply to them.
  */
 export type AssistantAccessRole = "denied" | "viewer" | "editor" | "admin";
 
@@ -795,7 +795,7 @@ export interface AzureOpenAiFederatedConfig {
 
 /**
  * OpenAI-compatible endpoint config (#436): any server speaking the OpenAI
- * chat/embeddings API — Ollama, vLLM, LM Studio, a gateway. Used with the
+ * chat/embeddings API, Ollama, vLLM, LM Studio, a gateway. Used with the
  * `api_key` connection type; the key itself is optional (many local servers
  * ignore it). `embeddingDims` records the model's native dimension for a
  * future re-embed migration; v1 still pads/truncates to the shared 1536.
@@ -821,7 +821,7 @@ export interface ProviderConnection {
   type: ProviderConnectionType;
   provider: ProviderConnectionProvider;
   displayName: string;
-  /** AES-256-GCM ciphertext — decrypted only inside the runtime. */
+  /** AES-256-GCM ciphertext, decrypted only inside the runtime. */
   encryptedKey: string | null;
   /** Non-secret display suffix, e.g. "…abcd". */
   keyHint: string;
@@ -841,7 +841,7 @@ export interface ProviderConnection {
 }
 
 /**
- * Widget SSO — the identity provider an organization connects so its
+ * Widget SSO: the identity provider an organization connects so its
  * assistants can require visitors to sign in before chatting. One connection
  * per organization; assistants opt in via {@link Assistant.requireSignIn}.
  * Entra ID ships first; `clerk`/`workos` are contract-ready but not built.
@@ -863,7 +863,7 @@ export type SsoValidationStatus = "unvalidated" | "valid" | "invalid";
 
 /**
  * Organization-level SSO connection. `encryptedSecret` is AES-sealed app-side
- * (see `sealSecret`) and returned only to server-side callers — NEVER to the
+ * (see `sealSecret`) and returned only to server-side callers, NEVER to the
  * browser or the widget. Use {@link SsoConnectionPublic} on any browser-facing
  * read path.
  */
@@ -881,7 +881,7 @@ export interface SsoConnection {
   updatedAt: string;
 }
 
-/** Widget/browser-safe projection — provider kind only, never config or secrets. */
+/** Widget/browser-safe projection, provider kind only, never config or secrets. */
 export interface SsoConnectionPublic {
   provider: SsoProviderKind;
 }
@@ -1157,7 +1157,7 @@ export interface Assistant {
   /**
    * The org-authored system prompt for this assistant (the reference
    * platform's "Answering style"). Layered UNDER the platform system prompt
-   * at runtime — it customizes persona/tone/format but can never override
+   * at runtime, it customizes persona/tone/format but can never override
    * platform rules.
    */
   answeringStyle: string;
@@ -1232,19 +1232,14 @@ export interface Publication {
   createdAt: string;
 }
 
+/**
+ * An org-owned grouping of Sources (PRD #726). Collections stopped belonging
+ * to an Assistant at the contract migration: "an Assistant's collections" is
+ * now derived, the Collections holding Sources linked to it.
+ */
 export interface KnowledgeCollection {
   id: string;
-  /**
-   * Legacy owning Assistant; "" for org-owned Collections that have none
-   * (e.g. the per-org "Knowledge Library"). Retired by the contract step of
-   * PRD #726.
-   */
-  assistantId: string;
-  /**
-   * Owning Organization (PRD #726). Stamped on every new Collection; legacy
-   * rows carry "" until the knowledge backfill migration fills them, after
-   * which it is never empty.
-   */
+  /** Owning Organization. Stamped at creation and backfilled for history. */
   organizationId: string;
   name: string;
   description: string;
@@ -1252,7 +1247,7 @@ export interface KnowledgeCollection {
 }
 
 /**
- * "faq" (PRD #726): a curated Q&A as a first-class Source — the question is
+ * "faq" (PRD #726): a curated Q&A as a first-class Source, the question is
  * the Source name, the answer stays on its Concept (frontmatter.type = "FAQ"),
  * so FAQ lookup and the widget quick-reply resolve exactly as before.
  */
@@ -1331,7 +1326,7 @@ export interface WebsiteSourceConfig {
   crawlEscalated?: boolean;
   /**
    * Why the last crawl attempt did not start, when it was refused rather than
-   * failed — today only a spent scraping allowance (#510). Cleared the moment a
+   * failed, today only a spent scraping allowance (#510). Cleared the moment a
    * run starts. Deliberately separate from `error`: a refusal leaves the Source
    * on its previous status, because knowledge that already works must not be
    * downgraded by a budget.
@@ -1385,7 +1380,7 @@ export interface OrgKnowledgeSourceListItem {
   originalObjectPath: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Indexed Concepts under this Source — the "N Pages" column. */
+  /** Indexed Concepts under this Source, the "N Pages" column. */
   conceptCount: number;
   /** FAQ answer excerpt (kind "faq" only; "" otherwise). */
   answerPreview: string;
@@ -1420,7 +1415,7 @@ export interface OrgKnowledgeSourcePage {
   statusCounts: OrgKnowledgeStatusCounts;
 }
 
-/** One FAQ with its full answer — the hub's org-wide CSV export. */
+/** One FAQ with its full answer, the hub's org-wide CSV export. */
 export interface OrgFaqEntry {
   sourceId: string;
   question: string;
@@ -1468,7 +1463,7 @@ export interface ExportJob {
 }
 
 /**
- * OKF v0.2 frontmatter — `type` is the only required field. The vocabulary and
+ * OKF v0.2 frontmatter: `type` is the only required field. The vocabulary and
  * its consumer derivations (trust tier, staleness, the `generated.at` →
  * legacy-`timestamp` fallback) live in `okf.ts`; re-exported here so the
  * Concept shape stays part of the one domain-type surface.
@@ -1512,7 +1507,7 @@ export interface KnowledgeSearchResult {
   resourceUrl: string | null;
   content: string;
   /**
-   * Cosine similarity in [0,1] — but ONLY when `engine` is `vector`. The graph
+   * Cosine similarity in [0,1]: but ONLY when `engine` is `vector`. The graph
    * engine has no relevance score to report, so it fills this with a
    * rank-descending placeholder purely to keep ordering stable. Anything that
    * compares this against a threshold must check `engine` first.
@@ -1552,7 +1547,7 @@ export interface ConversationMetadata {
   /**
    * The reference platform's remaining Conversation fields (#561). Each is
    * carried here because the Inbox export is a 29-field shape a parser written
-   * against the reference's own file must read unchanged — a field the producing
+   * against the reference's own file must read unchanged, a field the producing
    * feature has not shipped yet exports as an empty string, which is exactly what
    * the reference does for a tenant that does not use it.
    *
@@ -1590,7 +1585,7 @@ export interface Conversation {
   metadata: ConversationMetadata;
   /**
    * Persistent cross-turn session state (tau-style sessions): a JSON bag the
-   * runtime's tools read at the start of a turn and write back after it —
+   * runtime's tools read at the start of a turn and write back after it,
    * e.g. the `remember` tool's session memory. Never rendered directly.
    */
   sessionState: Record<string, unknown>;
@@ -1608,7 +1603,7 @@ export interface InboxConversation extends Conversation {
   /** Distinct flow names that handled assistant replies. */
   flowNames: string[];
   /**
-   * True when the Assistant spoke proactively and the Visitor never replied — a
+   * True when the Assistant spoke proactively and the Visitor never replied, a
    * nudge, not a conversation. The Inbox marks it so a queue is not padded with
    * non-conversations, and Insights leaves it out of its counts entirely (#546).
    */
@@ -1620,8 +1615,8 @@ export interface InboxConversation extends Conversation {
 /**
  * **Legacy.** Where a Thinking Step sat in the agent loop, back when the runtime
  * emitted a generic phase machine alongside the real tool lifecycle (#560). The
- * runtime no longer produces these — the tool-call rows, the reasoning thoughts
- * and the Simplified-thinking narration carry what the stages stood in for — but
+ * runtime no longer produces these, the tool-call rows, the reasoning thoughts
+ * and the Simplified-thinking narration carry what the stages stood in for, but
  * traces persisted before the collapse still hold them, so the type survives for
  * read-back and the UI keeps a stage icon for those rows.
  */
@@ -1630,7 +1625,7 @@ export type StepStage = "classify" | "generate" | "search" | "found";
 /**
  * One Thinking Step: a single row of the Thinking panel, folded from the
  * runtime's step/thought/tool-* wire events. Lives in the domain rather than
- * the runtime because it is **persisted** with the answer it explains — the
+ * the runtime because it is **persisted** with the answer it explains, the
  * Inbox reads it back to show how a reply was reached.
  *
  * Deliberately structured rather than the flat bracketed string the reference
@@ -1642,28 +1637,28 @@ export interface TurnStep {
   /** tool-* steps carry the AI-SDK toolCallId; other kinds get a local id. */
   id: string;
   /**
-   * - `tool` — one instrumented tool call, with its input, outcome and duration.
-   * - `thought` — the model's own reasoning before a tool call (Role-gated).
-   * - `notice` — a runtime diagnostic worth telling an operator about (a provider
+   * - `tool`: one instrumented tool call, with its input, outcome and duration.
+   * - `thought`: the model's own reasoning before a tool call (Role-gated).
+   * - `notice`: a runtime diagnostic worth telling an operator about (a provider
    *   fallback, an unparseable API response, the flow that matched).
-   * - `step` — **legacy**: a row from the retired phase machine (see
+   * - `step`, **legacy**: a row from the retired phase machine (see
    *   {@link StepStage}). Never produced any more; still read back.
    */
   kind: "notice" | "thought" | "tool" | "step";
   label: string;
   /** Registry tool name, for `kind: "tool"`. */
   tool?: string;
-  /** Legacy engine stage, for `kind: "step"` — picks that row's icon. */
+  /** Legacy engine stage, for `kind: "step"`, picks that row's icon. */
   stage?: StepStage;
   /** Tool calls run until their tool-end arrives; other kinds are done. */
   status: "running" | "done" | "error";
-  /** Model-supplied call arguments (already safe to show — never secrets). */
+  /** Model-supplied call arguments (already safe to show, never secrets). */
   input?: Record<string, unknown>;
   /** Outcome summary from the tool-end event ("3 concepts found"). */
   detail?: string;
   /**
    * Structured outcome, for tools whose result is worth showing as labelled rows
-   * rather than a one-line summary — an API call's endpoint, method, status and
+   * rather than a one-line summary, an API call's endpoint, method, status and
    * response body, say. `detail` stays the one-liner; this is what the transcript
    * expands into.
    *
@@ -1705,7 +1700,7 @@ export interface StoredTurnTrace {
   /**
    * Agent-loop iterations the turn spent, out of {@link iterationLimit} (#574).
    * Both absent on traces persisted before they were recorded, and on turns
-   * that ran without a budget (the deterministic no-model path) — the panel
+   * that ran without a budget (the deterministic no-model path), the panel
    * shows `iteration N/M` only when it knows both.
    */
   iteration?: number;
@@ -1718,8 +1713,8 @@ export interface StoredTurnTrace {
 }
 
 /**
- * Trace storage caps. Reasoning text is unbounded by nature — a single turn in
- * the reference export ran to 108k characters — and a Conversation holds many
+ * Trace storage caps. Reasoning text is unbounded by nature, a single turn in
+ * the reference export ran to 108k characters, and a Conversation holds many
  * turns, so the trace is clipped on write, never on read.
  */
 export const TRACE_MAX_STEPS = 60;
@@ -1734,14 +1729,14 @@ export const TRACE_MAX_INPUT_CHARS = 2_000;
  * summary and input caps: a result worth showing as labelled rows is a response
  * body, and 2k would clip every one of them into uselessness. Deliberately still
  * a cap: response bodies carry more personal data than any other field on a
- * trace — the reference platform's own API payloads contain student names and
- * quiz grades verbatim — so this is the field that makes per-Organization trace
+ * trace, the reference platform's own API payloads contain student names and
+ * quiz grades verbatim, so this is the field that makes per-Organization trace
  * retention matter rather than a nice-to-have.
  */
 export const TRACE_MAX_RESULT_CHARS = 8_000;
 
 /**
- * Longest Simplified-thinking narration line (#560) — a sentence, not a
+ * Longest Simplified-thinking narration line (#560), a sentence, not a
  * paragraph. Here rather than in the runtime because two places must agree on it:
  * the tool wrapper that clips the line, and the gather prompt that tells the model
  * the limit. A drift between those two shows up as narration the Visitor sees cut
@@ -1759,7 +1754,7 @@ export interface StoredMessage {
   flowName: string | null;
   feedback: -1 | 0 | 1;
   /**
-   * How this answer was reached — Thinking Steps captured as the turn streamed.
+   * How this answer was reached: Thinking Steps captured as the turn streamed.
    * Null for user messages, for verbatim turns that did no agentic work
    * (a `custom_message` Flow Action, a proactive Notification), and for every
    * message written before traces were persisted.
@@ -1775,7 +1770,7 @@ export interface InsightsMessage {
   feedback: -1 | 0 | 1;
   createdAt: string;
   /**
-   * True for a proactive Notification — an Assistant message nobody asked for.
+   * True for a proactive Notification: an Assistant message nobody asked for.
    * Counted separately from AI answers, and a Conversation made only of these is
    * not counted as a Conversation at all (#546).
    */
@@ -1829,7 +1824,7 @@ export interface InsightsStats {
   negative: number;
   answerRating: number;
   aiAnswers: number;
-  /** Proactive Notifications delivered — never folded into `aiAnswers` (#546). */
+  /** Proactive Notifications delivered, never folded into `aiAnswers` (#546). */
   notifications: number;
   userMessages: number;
   uniqueUsers: number;
@@ -1866,7 +1861,7 @@ export interface BreakdownChart {
   series: BreakdownSeries[];
 }
 
-/** Bounded data rendered by Insights — never raw Conversations or Messages. */
+/** Bounded data rendered by Insights, never raw Conversations or Messages. */
 export interface InsightsOverview {
   stats: InsightsStats;
   chart: InsightsChartData;
@@ -1929,9 +1924,9 @@ export interface ImprovementProposalSource {
 
 /** The drafted Suggested Fix content (one structured-output LLM call). */
 export interface ImprovementProposalPayload {
-  /** Draft FAQ question — becomes the Concept title on accept. */
+  /** Draft FAQ question, becomes the Concept title on accept. */
   draftQuestion: string;
-  /** Draft FAQ answer — becomes the Concept body on accept. */
+  /** Draft FAQ answer, becomes the Concept body on accept. */
   draftAnswer: string;
   /** Why this fix, shown to the reviewer (never persisted into the Concept). */
   rationale: string;
@@ -1939,7 +1934,7 @@ export interface ImprovementProposalPayload {
   sources: ImprovementProposalSource[];
   /** The model that drafted it (audit). */
   model: string;
-  /** Where accepting writes the FAQ Concept — the flagged answer's assistant
+  /** Where accepting writes the FAQ Concept, the flagged answer's assistant
    * and Collection (Collection null when the conversation was unanchored). */
   targetAssistantId: string;
   targetCollectionId: string | null;
@@ -1966,7 +1961,7 @@ export interface ImprovementProposal {
 
 /** A flagged answer associated with an improvement, with its conversation context. */
 export interface ImprovementAssociation {
-  /** improvement_messages row id — used to unlink. */
+  /** improvement_messages row id, used to unlink. */
   linkId: string;
   messageId: string;
   conversationId: string;
@@ -1978,7 +1973,7 @@ export interface ImprovementAssociation {
   conversation: InboxConversation;
 }
 
-/** Which improvement (if any) a message is linked to — powers the Inbox chip. */
+/** Which improvement (if any) a message is linked to, powers the Inbox chip. */
 export interface ImprovementMessageLink {
   messageId: string;
   improvementId: string;
@@ -2051,7 +2046,7 @@ export type AiUsageStage =
   | "memory_extract";
 
 /**
- * Which credential answered a metered model call — the platform env key
+ * Which credential answered a metered model call, the platform env key
  * (platform-funded), the org's own API key (BYOK), a federated cloud
  * credential, or a member's local CLI subscription (Preview only). This is
  * the signal usage enforcement uses to treat funded and customer traffic
@@ -2063,13 +2058,13 @@ export type AiCredentialKind =
   | "google_vertex_federated"
   | "local_subscription";
 
-/** Max standing goals per assistant — bounds the scheduled runner's cost. */
+/** Max standing goals per assistant, bounds the scheduled runner's cost. */
 export const ASSISTANT_GOAL_CAP = 20;
 
-/** Runs kept per goal in the ledger — enough for flakiness triage, bounded growth. */
+/** Runs kept per goal in the ledger, enough for flakiness triage, bounded growth. */
 export const GOAL_RUN_RETENTION = 50;
 
-/** Tier transitions kept per Flow in the demotion-history ledger — bounded like goal runs. */
+/** Tier transitions kept per Flow in the demotion-history ledger, bounded like goal runs. */
 export const FLOW_TRUST_EVENT_RETENTION = 200;
 
 export type GoalStatus = "active" | "quarantined";
@@ -2187,7 +2182,7 @@ export interface DueCompostAssistant {
 
 /**
  * One assistant's week of exhaust, digested for the compost pass. Every
- * input is optional by construction — absent features contribute empty
+ * input is optional by construction, absent features contribute empty
  * lists and the loop still works.
  */
 export interface CompostDigest {
@@ -2208,7 +2203,7 @@ export type BudgetEnforcement = "notify" | "block";
 
 /**
  * Per-Organization daily AI budget; null limit = unmetered. The token and
- * euro limits are independent caps — either one crossing today's usage trips
+ * euro limits are independent caps, either one crossing today's usage trips
  * `enforcement`. The euro figure is an estimate from `pricing.ts`, not a
  * billed amount.
  */
@@ -2247,8 +2242,8 @@ export type UsageKind = "chat" | "embedding" | "crawl";
  * The three kinds of work the platform pays for, and therefore the three things
  * a plan allowance is expressed in: `ai` (routing, answers, verification and
  * scheduled AI work), `embedding` (knowledge indexing and query vectors), and
- * `scraping` (pages fetched by a website crawler). Disjoint by construction —
- * every metered unit belongs to exactly one — so the three can be capped and
+ * `scraping` (pages fetched by a website crawler). Disjoint by construction,
+ * every metered unit belongs to exactly one, so the three can be capped and
  * displayed independently: a crawl budget must never stop answering.
  */
 export type UsageResource = "ai" | "embedding" | "scraping";
@@ -2261,7 +2256,7 @@ export const USAGE_RESOURCES: readonly UsageResource[] = [
 ];
 
 /**
- * The plan-facing resource a stored usage kind belongs to — the one mapping
+ * The plan-facing resource a stored usage kind belongs to, the one mapping
  * between the two vocabularies. `chat` is `ai` because routing, answering and
  * scheduled AI work are one allowance; the SQL rollup carries the same mapping.
  */
@@ -2294,15 +2289,15 @@ export interface UsageDailyRow {
   calls: number;
   inputTokens: number;
   outputTokens: number;
-  /** Metered units that are not tokens — crawled pages. Zero for model calls. */
+  /** Metered units that are not tokens, crawled pages. Zero for model calls. */
   units: number;
 }
 
 /**
  * One organization's usage over an arbitrary window, grouped finely enough to
  * price in credits: per metered resource, per funding credential, per
- * provider/model. The window need not align to UTC days — plan windows run from
- * a billing anchor — so the read takes whole closed days from the rollup and the
+ * provider/model. The window need not align to UTC days, plan windows run from
+ * a billing anchor, so the read takes whole closed days from the rollup and the
  * partial ends live from the raw sources.
  */
 export interface UsageMeterRow {

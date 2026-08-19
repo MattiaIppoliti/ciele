@@ -7,13 +7,13 @@ export const CONSENT_LOG_ENDPOINT = "/api/cookie-consent";
  * Sends one consent decision to our server-side record (GDPR Art. 7(1)).
  *
  * Fire-and-forget by design. The visitor's choice is already applied locally and
- * stored in their own cookie, so a failed report must never block them — it is
+ * stored in their own cookie, so a failed report must never block them; it is
  * our accountability record that suffers, which is why the endpoint logs its own
  * failures rather than reporting back.
  *
  * `sendBeacon` and not `fetch`: withdrawing analytics consent triggers a page
  * reload (an already-evaluated tracker script cannot be un-loaded), and an
- * in-flight `fetch` would be cancelled by that navigation — losing exactly the
+ * in-flight `fetch` would be cancelled by that navigation, losing exactly the
  * withdrawal record we are most obliged to keep. Beacons are queued by the
  * browser and survive it. `fetch` with `keepalive` is the fallback for browsers
  * without `sendBeacon`.
@@ -37,7 +37,7 @@ export function reportConsent(action: "granted" | "changed"): void {
       action === "granted"
         ? (cookie.consentTimestamp ?? null)
         : (cookie.lastConsentTimestamp ?? cookie.consentTimestamp ?? null),
-    // Origin + path only — the endpoint strips query and fragment anyway, but
+    // Origin + path only: the endpoint strips query and fragment anyway, but
     // there is no reason to put them on the wire in the first place.
     pageUrl: `${window.location.origin}${window.location.pathname}`,
   });
@@ -56,6 +56,6 @@ export function reportConsent(action: "granted" | "changed"): void {
       // Swallowed: see the fire-and-forget note above.
     });
   } catch {
-    // Ditto — a blocked beacon must not break the consent UI.
+    // Ditto: a blocked beacon must not break the consent UI.
   }
 }

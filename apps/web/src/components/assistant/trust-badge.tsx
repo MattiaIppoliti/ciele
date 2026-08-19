@@ -12,7 +12,7 @@ const TIER_STYLES: Record<FlowTrust["tier"], string> = {
 };
 
 export function TrustBadge({ trust }: { trust: FlowTrust | null }) {
-  // No materialized row yet: trust is earned, not presumed — an unmeasured
+  // No materialized row yet: trust is earned, not presumed, an unmeasured
   // flow behaves as watch (always offers escalation) until it accrues history.
   if (!trust) {
     return (

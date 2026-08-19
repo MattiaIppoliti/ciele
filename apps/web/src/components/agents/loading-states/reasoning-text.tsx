@@ -143,7 +143,7 @@ function ScramblePhrase({
   const [display, setDisplay] = useState(target);
   const mounted = useRef(false);
 
-  // Reduced motion cuts straight to the new phrase — resolved during render
+  // Reduced motion cuts straight to the new phrase, resolved during render
   // (derived-state adjustment), keeping the effect purely for the animation.
   const [prevTarget, setPrevTarget] = useState(target);
   if (target !== prevTarget) {

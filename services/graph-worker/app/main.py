@@ -1,4 +1,4 @@
-"""Ciele Graph Knowledge worker — a thin FastAPI wrapper over the cognee library.
+"""Ciele Graph Knowledge worker, a thin FastAPI wrapper over the cognee library.
 
 Exposes exactly the operations the Ciele app's adapter
 (`apps/web/src/lib/runtime/graph-worker.ts`) speaks, and nothing else:
@@ -13,20 +13,20 @@ Exposes exactly the operations the Ciele app's adapter
 
 Auth model mirrors the crawler worker: a single static operator token
 (`GRAPH_WORKER_API_TOKEN`) sent as `Authorization: Bearer <token>`. Every route
-except /health is fail-closed — the server refuses to boot without the token, so
+except /health is fail-closed, the server refuses to boot without the token, so
 it can never come up accidentally open. This service is never reached by
 browsers; only the Ciele app's server side calls it, behind private ingress.
 
 The graph is a DERIVED index over OKF Concepts (ADR-0017): each Knowledge
 Collection is one cognee dataset, and every document is tagged with its
 originating `concept::<id>` / `source::<id>` node-set entries so a search result
-maps back to a Concept -> Source citation (never an opaque chunk — the ADR-0002
+maps back to a Concept -> Source citation (never an opaque chunk, the ADR-0002
 invariant). The exact cognee calls here are the ones proven in the spike
 (`docs/research/cognee-spike.md` / `docs/research/cognee-spike/spike.py`).
 
 A load-bearing rule from the spike: a graph read outside the dataset's
 multi-tenant context silently returns an empty default graph. Every read here
-goes through `_dataset_graph()`, which opens that context first — there is no
+goes through `_dataset_graph()`, which opens that context first; there is no
 dataset-less code path.
 """
 
@@ -41,7 +41,7 @@ os.environ.setdefault("TELEMETRY_DISABLED", "1")
 os.environ.setdefault("COGNEE_SKIP_CONNECTION_TEST", "true")
 
 import cognee  # noqa: E402
-import litellm  # noqa: E402  (cognee dependency — every cognee LLM call routes through it)
+import litellm  # noqa: E402  (cognee dependency, every cognee LLM call routes through it)
 from cognee import SearchType  # noqa: E402
 from cognee.api.v1.session.session import add_feedback, get_session  # noqa: E402
 from fastapi import Depends, FastAPI, Header, HTTPException  # noqa: E402
@@ -71,7 +71,7 @@ NEUTRAL_FEEDBACK_WEIGHT = 0.5
 # Best-effort by design: litellm fires async success callbacks as a task inside
 # the calling request's context, so calls land in the right collector, but a
 # provider/path that bypasses litellm (or a callback racing the response) just
-# under-counts — it never fails a request.
+# under-counts; it never fails a request.
 
 _LLM_CALLS: contextvars.ContextVar[Optional[list[dict[str, Any]]]] = contextvars.ContextVar(
     "ciele_llm_calls", default=None
@@ -162,7 +162,7 @@ async def lifespan(_: FastAPI):
     cognee.config.data_root_directory(data_root)
     cognee.config.system_root_directory(system_root)
     # Capture the token usage of every LLM call cognee makes (see the usage
-    # accounting block above). Registered once — lifespan runs once per process.
+    # accounting block above). Registered once, lifespan runs once per process.
     litellm.callbacks.append(_UsageTracker())
     yield
 
@@ -222,7 +222,7 @@ async def _delete_concept_docs(dataset: str, concept_id: str) -> int:
     /remove and by /ingest (delete-then-add makes re-ingest a true replace
     rather than an append). Returns the number of documents removed.
 
-    Scans the dataset's Data rows (O(rows) per call — fine for incremental
+    Scans the dataset's Data rows (O(rows) per call, fine for incremental
     single-Concept edits; the bulk backfill path in the ingestion fan-out (#387)
     batches instead of calling this per document)."""
     from cognee.modules.data.methods import get_dataset_data
@@ -307,7 +307,7 @@ async def ingest(req: IngestRequest) -> dict[str, Any]:
             try:
                 await _delete_concept_docs(req.dataset, doc.concept_id)
             except HTTPException:
-                pass  # dataset not created yet — nothing to replace
+                pass  # dataset not created yet, nothing to replace
             node_set = [f"{CONCEPT_TAG}{doc.concept_id}"]
             if doc.source_id:
                 node_set.append(f"{SOURCE_TAG}{doc.source_id}")
@@ -329,7 +329,7 @@ async def remove(req: RemoveRequest) -> dict[str, Any]:
     try:
         removed = await _delete_concept_docs(req.dataset, req.concept_id)
     except HTTPException:
-        return {"removed": 0}  # dataset not found — nothing to remove
+        return {"removed": 0}  # dataset not found, nothing to remove
     return {"removed": removed}
 
 
@@ -338,11 +338,11 @@ async def purge(req: PurgeRequest) -> dict[str, Any]:
     """Drop a whole dataset (on Knowledge Collection or Assistant delete): its
     graph, its vector store, and its dataset record, in one call. Reclaims the
     disk of a collection that will never be queried again, without fanning out a
-    per-Concept remove. Best-effort — a dataset that was never created is a no-op
+    per-Concept remove. Best-effort, a dataset that was never created is a no-op
     (`purged: false`), matching /remove."""
     user, match = await _find_dataset(req.dataset)
     if match is None:
-        return {"purged": False}  # never created — nothing to reclaim
+        return {"purged": False}  # never created, nothing to reclaim
     # empty_dataset opens the dataset's own multi-tenant context and removes its
     # graph + vector data and the dataset record; it addresses cognee by UUID.
     await cognee.datasets.empty_dataset(match.id, user)
@@ -432,7 +432,7 @@ async def improve(req: ImproveRequest) -> dict[str, Any]:
     the weight pass directly; distill=true runs cognee's full improve (LLM
     distillation), which the caller gates against the org's token budget.
 
-    Distillation needs sessions to distill from — distill=true with no
+    Distillation needs sessions to distill from, distill=true with no
     session_ids has nothing to distill, so it falls through to the weight pass
     (the same elements are re-weighted; only the LLM lesson step is skipped)."""
     with _collect_llm_usage() as llm_calls:
@@ -455,7 +455,7 @@ async def improve(req: ImproveRequest) -> dict[str, Any]:
 
     # Report how many edges now carry a non-neutral feedback weight, split by
     # direction: boosted (weight above neutral) vs demoted (below). A weight of
-    # None/0 is unset, not a demotion, so it counts as neither — keeping
+    # None/0 is unset, not a demotion, so it counts as neither, keeping
     # weighted_elements identical to the pre-split total (boosted + demoted).
     _, edges = await _dataset_graph(req.dataset)
     boosted = 0

@@ -12,7 +12,7 @@ export function isConnectorInstallShell(
 /**
  * The single command a user pastes into their terminal. It fetches the
  * matching install script from this deployment and pipes it straight to the
- * shell — no file to save, no execution-policy prompt (piped input is not
+ * shell, no file to save, no execution-policy prompt (piped input is not
  * governed by PowerShell execution policy).
  */
 export function connectorInstallCommand(
@@ -29,7 +29,7 @@ export function connectorInstallCommand(
  * The script served at /api/local-connector/install/{sh,ps1}. It downloads the
  * secret-free runtime, then runs it in bootstrap mode on the fixed discovery
  * port so the browser pairing page can complete pairing. No admin rights and
- * no autostart — the connector runs for the life of the terminal window.
+ * no autostart, the connector runs for the life of the terminal window.
  */
 export function buildConnectorInstallScript(
   rawOrigin: string,

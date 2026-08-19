@@ -10,7 +10,7 @@ import { flowConditionDefect } from "@agent-hub/core";
  * offers for a given Trigger, how a new one is seeded, and what makes one
  * incomplete (spec #550).
  *
- * Plain TS beside the component on purpose — the web app's vitest only collects
+ * Plain TS beside the component on purpose, the web app's vitest only collects
  * `*.test.ts`, so builder logic worth testing lives here rather than in the
  * `.tsx`. The completeness rule is *not* re-implemented: it comes from
  * `flowConditionDefect` in the domain package, the same function the runtime
@@ -19,7 +19,7 @@ import { flowConditionDefect } from "@agent-hub/core";
  */
 
 /**
- * The condition kinds that exist. Only these — a kind the runtime cannot
+ * The condition kinds that exist. Only these, a kind the runtime cannot
  * evaluate is not offered at all, greyed or otherwise: an affordance that never
  * does anything is worse than its absence.
  */
@@ -34,7 +34,7 @@ export interface FlowConditionKindMeta {
    * message-only; the objective kinds are trigger-agnostic in themselves.
    *
    * In practice the builder offers no conditions at all for a proactive trigger
-   * (#541), so `"all"` is currently only ever consulted for `message` — it says
+   * (#541), so `"all"` is currently only ever consulted for `message`, it says
    * what the kind *can* gate on, not what the editor happens to render today.
    */
   triggers: FlowTrigger[] | "all";
@@ -52,7 +52,7 @@ export const FLOW_CONDITION_KINDS: FlowConditionKindMeta[] = [
   { kind: "schedule", label: "Schedule", triggers: ALL_TRIGGERS },
 ];
 
-/** The picker's chips for a trigger — every one of them addable. */
+/** The picker's chips for a trigger, every one of them addable. */
 export function flowConditionPicker(
   trigger: FlowTrigger | null
 ): FlowConditionKindMeta[] {
@@ -72,7 +72,7 @@ export function availableFlowConditionKinds(
 export const FLOW_URL_OPERATORS: Array<{
   value: FlowUrlOperator;
   label: string;
-  /** Shown under the field — the Matches/Contains difference is where this goes wrong. */
+  /** Shown under the field, the Matches/Contains difference is where this goes wrong. */
   hint: string;
 }> = [
   {
@@ -198,7 +198,7 @@ export function flowConditionsSavable(conditions: FlowCondition[]): boolean {
 /**
  * Save-time cleanup: trim what is free text, drop the example rows the
  * Collaborator left blank, and drop a `conversation_context` condition that
- * ended up carrying nothing. Objective conditions are kept as configured —
+ * ended up carrying nothing. Objective conditions are kept as configured,
  * the save gate has already refused the incomplete ones.
  */
 export function cleanFlowConditions(
@@ -232,7 +232,7 @@ export function cleanFlowConditions(
 
 /**
  * The flow `description` the classifier catalogs a Flow by: the semantic
- * conditions' descriptions, joined. Objective conditions contribute nothing —
+ * conditions' descriptions, joined. Objective conditions contribute nothing,
  * they are gated, not prompted.
  */
 export function flowConditionDescription(conditions: FlowCondition[]): string {

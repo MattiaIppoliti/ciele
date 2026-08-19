@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AiSettingsPage() {
   const { session, organizationId, role, db } = await requirePageMember();
-  // Provider connections are org-wide config — admins and owners only.
+  // Provider connections are org-wide config, admins and owners only.
   if (!canManageMembers(role)) redirect("/settings/profile");
 
   const connections = await db.listProviderConnections(organizationId);

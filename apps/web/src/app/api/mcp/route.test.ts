@@ -10,7 +10,7 @@ import { GET as mcpGet, POST as mcpRoute } from "./route";
 /**
  * The hosted MCP endpoint (#702) at the route seam: authentication, the two
  * protocol eras, and the tool surface. What a tool *does* once called is
- * covered exhaustively in packages/mcp — this asserts the endpoint in front
+ * covered exhaustively in packages/mcp, this asserts the endpoint in front
  * of them, not the tools behind it.
  */
 
@@ -134,7 +134,7 @@ describe("POST /api/mcp", () => {
 
   /**
    * The 2026-07-28 result-shape obligations (#701), asserted where they are
-   * actually observable — on the wire. `resultType` is SDK-supplied; the cache
+   * actually observable, on the wire. `resultType` is SDK-supplied; the cache
    * fields come from the hint `createCieleMcpServer` configures (the SDK's
    * default would be an uncacheable `ttlMs: 0`).
    */
@@ -181,7 +181,7 @@ describe("POST /api/mcp", () => {
           accept: "application/json, text/event-stream",
           "mcp-method": "tools/call",
           // SEP-2243 requires both routing headers, and the handler validates
-          // them against the body — Mcp-Name is the tool being called.
+          // them against the body, Mcp-Name is the tool being called.
           "mcp-name": "manage_assistants",
           authorization: `Bearer ${secret}`,
         },
@@ -218,7 +218,7 @@ describe("POST /api/mcp", () => {
     expect(response.status).toBe(405);
   });
 
-  it("serves a Viewer key too — read-only is the Role, not the endpoint", async () => {
+  it("serves a Viewer key too, read-only is the Role, not the endpoint", async () => {
     const secret = await mintKey("viewer");
     const response = await mcpRoute(modern(secret, "tools/list"));
 

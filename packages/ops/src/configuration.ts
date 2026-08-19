@@ -21,8 +21,10 @@ async function requireAssistant(ctx: OperationContext, id: string): Promise<Assi
 }
 
 async function requireSkill(ctx: OperationContext, id: string): Promise<Skill> {
-  const skill = (await ctx.db.listSkills(ctx.organizationId)).find((item) => item.id === id);
-  if (!skill) throw new OperationError("not_found", "Skill not found");
+  const skill = await ctx.db.table("skills").get(id);
+  if (!skill || skill.organizationId !== ctx.organizationId) {
+    throw new OperationError("not_found", "Skill not found");
+  }
   return skill;
 }
 
@@ -68,7 +70,7 @@ export const listSkillsOp = defineOperation({
   capability: "member",
   input: z.object({}),
   entities: () => [],
-  run: (ctx) => ctx.db.listSkills(ctx.organizationId),
+  run: (ctx) => ctx.db.table("skills").list({ organizationId: ctx.organizationId }),
 });
 
 export const createSkillOp = defineOperation({
@@ -81,7 +83,9 @@ export const createSkillOp = defineOperation({
       : [{ kind: "assistantList" as const }],
   run: async (ctx, { attachToAssistantId, ...input }) => {
     if (attachToAssistantId) await requireAssistant(ctx, attachToAssistantId);
-    const skill = await ctx.db.createSkill(ctx.organizationId, input);
+    const skill = await ctx.db
+      .table("skills")
+      .insert({ organizationId: ctx.organizationId, ...input });
     if (attachToAssistantId) {
       const attached = await ctx.db.listAssistantSkills(attachToAssistantId);
       await ctx.db.setAssistantSkills(attachToAssistantId, [
@@ -100,7 +104,7 @@ export const updateSkillOp = defineOperation({
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id, patch }) => {
     await requireSkill(ctx, id);
-    return ctx.db.updateSkill(id, patch);
+    return ctx.db.table("skills").update(id, patch);
   },
 });
 
@@ -142,7 +146,9 @@ export const setAssistantSkillsOp = defineOperation({
   run: async (ctx, { assistantId, skillIds }) => {
     await requireAssistant(ctx, assistantId);
     const available = new Set(
-      (await ctx.db.listSkills(ctx.organizationId)).map((skill) => skill.id)
+      (
+        await ctx.db.table("skills").list({ organizationId: ctx.organizationId })
+      ).map((skill) => skill.id)
     );
     if (skillIds.some((id) => !available.has(id))) {
       throw new OperationError("invalid_input", "Every Skill must belong to this Organization");

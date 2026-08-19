@@ -23,7 +23,7 @@ const COLLAPSED_KEY = "preview-panel-collapsed";
  * the handle mounts the panel already mid-resize.
  *
  * This is the single source of truth for whether the panel starts open on a
- * fresh mount (e.g. navigating to a different assistant) — it owns reading
+ * fresh mount (e.g. navigating to a different assistant), it owns reading
  * the user's last preference from localStorage. PreviewPanel itself must
  * never re-derive that decision after mounting: doing so previously raced
  * this component's own "open" state, silently re-collapsing the panel right

@@ -13,7 +13,7 @@ import type { ZodType } from "zod";
 import type { MutatedEntity } from "./entities";
 
 /**
- * The operations layer (#620) — the one seam both admin surfaces stand on.
+ * The operations layer (#620): the one seam both admin surfaces stand on.
  *
  * An operation is (context, validated input) → result, declaring up front
  * the capability it requires and the entities it mutates. The web app's
@@ -22,7 +22,7 @@ import type { MutatedEntity } from "./entities";
  * RLS-scoped Db vs API key + org-pinned Db) and what the declarations are
  * turned into (capability → requireMember vs 403; entities → revalidatePath).
  *
- * This package is framework-free on purpose: no next/*, no HTTP shapes —
+ * This package is framework-free on purpose: no next/*, no HTTP shapes,
  * those belong to the callers.
  */
 
@@ -31,7 +31,7 @@ export interface OperationContext {
   organizationId: string;
   /** The acting Member's user id; empty string for an API-key caller. */
   userId: string;
-  /** Already-authorized Role — capability was checked by the caller. */
+  /** Already-authorized Role, capability was checked by the caller. */
   role: Role;
   /**
    * The surface's Db: RLS-scoped (web session) or org-pinned (API key).
@@ -41,7 +41,7 @@ export interface OperationContext {
   /**
    * Host ports for side effects that need more Db surface than the pinned
    * view exposes (job enqueueing, the OKF persist pipeline, crawls). Each
-   * caller wires its own implementation over its own Db — the operation is
+   * caller wires its own implementation over its own Db, the operation is
    * the guard, the port is the effect. Absent ports no-op (or, where the
    * operation cannot succeed without one, raise a clear invalid_input) so
    * the demo/mock deployment stays correct unwired.
@@ -82,6 +82,17 @@ export interface OperationPorts {
     /** Disambiguates bundle paths in bulk imports (e.g. "-3"). */
     pathSuffix?: string;
   }): Promise<Concept>;
+  /**
+   * Re-embed one updated Concept's chunks (the operation already deleted the
+   * stale ones). Wired over the surface's Db + the org's Provider Connections.
+   */
+  reembedConcept?(args: {
+    assistantId: string;
+    collectionId: string;
+    conceptId: string;
+    title: string;
+    body: string;
+  }): Promise<void>;
   /** Restart a website Source's crawl lifecycle. */
   restartCrawl?(sourceId: string): Promise<void>;
   /** Tell the widget cache a new latest Publication exists (#623). */
@@ -106,7 +117,7 @@ export type OperationCapability =
 /**
  * A caller-attributable failure. `code` maps to an HTTP status on the API
  * surface (not_found → 404, invalid_input → 400, conflict → 409) and to a
- * thrown message on the web surface — operations throw one vocabulary, each
+ * thrown message on the web surface, operations throw one vocabulary, each
  * surface translates once.
  */
 export class OperationError extends Error {
@@ -122,7 +133,7 @@ export interface Operation<In, Out> {
   /** Stable catalogue name, e.g. "assistants.create". */
   name: string;
   capability: OperationCapability;
-  /** Parsed by the calling surface before `run` — run() may assume validity. */
+  /** Parsed by the calling surface before `run`, run() may assume validity. */
   input: ZodType<In>;
   /** What a successful run mutated; [] for reads. */
   entities(input: In, result: Out): MutatedEntity[];

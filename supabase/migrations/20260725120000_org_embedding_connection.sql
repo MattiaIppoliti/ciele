@@ -12,7 +12,7 @@
 
 -- Prerequisite: the provider check constraint never learned
 -- `openai_compatible` when that provider shipped (#436), so the connection the
--- form in Settings > AI writes is rejected by the database — and it is exactly
+-- form in Settings > AI writes is rejected by the database, and it is exactly
 -- the connection a self-hoster would pick to embed with a local model. Widen
 -- the constraint before anything can reference such a row.
 alter table public.provider_connections

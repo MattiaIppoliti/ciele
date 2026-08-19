@@ -104,7 +104,7 @@ export const FLOW_ACTION_KEYS = Object.keys(FLOW_ACTIONS) as FlowAction[];
 /**
  * Tiles offered in the builder's "Add an action" grid for a message-triggered
  * flow, in display order. A proactive trigger has its own single action (see
- * `PROACTIVE_FLOW_ACTION_PICKER`) — the pairing rule itself lives in
+ * `PROACTIVE_FLOW_ACTION_PICKER`), the pairing rule itself lives in
  * `actionAllowedForTrigger` (`@agent-hub/core`), which both the editor and the
  * runtime consult.
  *
@@ -135,7 +135,7 @@ export const PROACTIVE_FLOW_ACTION_PICKER: FlowAction[] = ["notification"];
  *
  * Its own function because the builder learned this the hard way: "Remove trigger"
  * sets the trigger to null while leaving the actions in place, so comparing
- * against the *current* trigger sees no kind change and clears nothing — the
+ * against the *current* trigger sees no kind change and clears nothing, the
  * editor then happily posts, say, `custom_message` on `chat_open`, which the
  * server action correctly refuses with a 500.
  */

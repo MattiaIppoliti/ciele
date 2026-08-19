@@ -225,8 +225,7 @@ interface MockStore {
       id: string;
       conceptId: string;
       collectionId: string;
-      assistantId: string;
-      /** Null = legacy chunk, scoped by assistantId (PRD #726). */
+      /** Retrieval scope: the assistant↔source link table alone (#733). */
       sourceId?: string | null;
       content: string;
       /** Kept only so the re-embed backfill can see missing embeddings. */
@@ -517,7 +516,7 @@ function createStore(): MockStore {
     title: "Alex",
     nickname: "AlexAI",
     description:
-      "Alex's personal assistant — answers questions about Alex Bianchi from his CV, portfolio website, and FAQs.",
+      "Alex's personal assistant, answers questions about Alex Bianchi from his CV, portfolio website, and FAQs.",
     welcomeMessage: DEFAULT_WELCOME_MESSAGE,
     suggestedQuestions: [],
     chatLauncherEnabled: true,
@@ -563,7 +562,7 @@ function seedSkillsDemo(store: MockStore) {
     name: "Friendly sign-off",
     description: "Ends every answer with a warm, on-brand closing line.",
     prompt:
-      "End every answer with a new line containing exactly: — Ask me anything else about Alex! 👋",
+      "End every answer with a new line containing exactly: Ask me anything else about Alex! 👋",
     createdAt: at,
     updatedAt: at,
   };
@@ -573,11 +572,27 @@ function seedSkillsDemo(store: MockStore) {
 
 /**
  * Seeds the "Alex" assistant's knowledge (FAQ, CV document, portfolio
- * website) directly into the store — bypassing the ingest pipeline, which
+ * website) directly into the store, bypassing the ingest pipeline, which
  * needs a running server (embeddings, crawling) this sync seed can't call.
  * Without this, every demo restart wipes the knowledge testers just added
  * through the UI, since the mock store lives only in memory.
  */
+/**
+ * The ingestion pipeline's usage-attribution assistant for a Source: its
+ * earliest link (mirrors the claim RPCs' derivation); "" when unlinked.
+ */
+function earliestLinkedAssistantId(store: MockStore, sourceId: string): string {
+  return (
+    [...store.assistantSources.values()]
+      .filter((l) => l.sourceId === sourceId)
+      .sort(
+        (a, b) =>
+          a.createdAt.localeCompare(b.createdAt) ||
+          a.assistantId.localeCompare(b.assistantId)
+      )[0]?.assistantId ?? ""
+  );
+}
+
 function seedKnowledgeDemo(store: MockStore) {
   const assistantId = "GlQMYjuZ6xcO";
   if (!store.assistants.has(assistantId)) return;
@@ -585,13 +600,22 @@ function seedKnowledgeDemo(store: MockStore) {
 
   const collection: KnowledgeCollection = {
     id: "col-alex-general",
-    assistantId,
     organizationId: store.assistants.get(assistantId)?.organizationId ?? "",
     name: "General knowledge",
     description: "Default collection for this assistant",
     createdAt: at,
   };
   store.collections.set(collection.id, collection);
+
+  /** Links a Source to the demo assistant, retrieval reach is link-only. */
+  function linkSource(sourceId: string) {
+    store.assistantSources.set(`${assistantId}:${sourceId}`, {
+      assistantId,
+      sourceId,
+      directAccess: false,
+      createdAt: at,
+    });
+  }
 
   /** Persists one Concept + its lexically-searchable chunk (mock search is lexical-only). */
   function addConcept(input: {
@@ -618,22 +642,39 @@ function seedKnowledgeDemo(store: MockStore) {
       id: chunkId,
       conceptId: concept.id,
       collectionId: collection.id,
-      assistantId,
+      sourceId: input.sourceId,
       content: `${input.frontmatter.title ?? input.path}\n\n${input.body}`,
       embedding: null,
     });
   }
 
-  // FAQ — "Chi è Alex?"
+  // FAQ, "Chi è Alex?". Post-backfill parity (#728): every FAQ owns its
+  // synthetic `faq` Source, so the demo store mirrors a migrated database.
+  const faqSource: Source = {
+    id: "faqsrc-concept-alex-faq-chi-e",
+    collectionId: collection.id,
+    name: "Chi è Alex?",
+    kind: "faq",
+    status: "ready",
+    error: "",
+    config: {},
+    recrawlSchedule: "never",
+    lastCrawledAt: null,
+    originalObjectPath: null,
+    createdAt: at,
+    updatedAt: at,
+  };
+  store.sources.set(faqSource.id, faqSource);
+  linkSource(faqSource.id);
   addConcept({
     id: "concept-alex-faq-chi-e",
-    sourceId: null,
+    sourceId: faqSource.id,
     path: "faq/chi-e-alex.md",
     frontmatter: {
       type: "FAQ",
       title: "Chi è Alex?",
       description: "Alex Bianchi è un ingegnere che lavora su progetti di intelligenza artificiale.",
-      // Hand-written then signed off — the demo's one human-reviewed concept,
+      // Hand-written then signed off, the demo's one human-reviewed concept,
       // so the Knowledge browser shows every trust tier out of the box.
       generated: { by: okfActor.human(DEMO_MEMBER.userId), at },
       verified: [{ by: okfActor.human(DEMO_MEMBER.userId), at }],
@@ -641,7 +682,7 @@ function seedKnowledgeDemo(store: MockStore) {
     body: "Alex Bianchi è un ingegnere che lavora su progetti legati all'intelligenza artificiale. Il suo ultimo lavoro riguarda piattaforme AI e assistenti digitali.",
   });
 
-  // Document — CV
+  // Document: CV
   const cvSource: Source = {
     id: "src-alex-cv",
     collectionId: collection.id,
@@ -657,19 +698,20 @@ function seedKnowledgeDemo(store: MockStore) {
     updatedAt: at,
   };
   store.sources.set(cvSource.id, cvSource);
+  linkSource(cvSource.id);
   addConcept({
     id: "concept-alex-cv",
     sourceId: cvSource.id,
     path: "documents/alex-bianchi-cv.md",
     frontmatter: {
       type: "Document",
-      title: "Alex Bianchi — CV",
+      title: "Alex Bianchi, CV",
       description: "Imported from file source \"Alex_Bianchi_CV.pdf\"",
       // Machine-drafted from the upload and never confirmed: unverified.
       generated: { by: okfActor.agent("okf-enricher", "demo"), at },
       sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
     },
-    body: "Alex Bianchi — Ingegnere.\n\nPercorso: Software Engineering e progetti di prodotto digitale.\n\nEsperienza: lavora su piattaforme legate all'intelligenza artificiale (AI), automazione e assistenti digitali.\n\nPortfolio personale: https://alexbianchi.example",
+    body: "Alex Bianchi, Ingegnere.\n\nPercorso: Software Engineering e progetti di prodotto digitale.\n\nEsperienza: lavora su piattaforme legate all'intelligenza artificiale (AI), automazione e assistenti digitali.\n\nPortfolio personale: https://alexbianchi.example",
   });
 
   // The enriched CV's verbatim companion (ADR-0002): the extracted text as-is,
@@ -680,16 +722,16 @@ function seedKnowledgeDemo(store: MockStore) {
     path: "originals/alex-bianchi-cv-pdf.md",
     frontmatter: {
       type: "Source Text",
-      title: "Alex_Bianchi_CV.pdf — full text",
+      title: "Alex_Bianchi_CV.pdf, full text",
       description:
         'Unedited text of file source "Alex_Bianchi_CV.pdf", indexed so detail the enrichment did not carry is still retrievable.',
       generated: { by: okfActor.process("okf-verbatim-index"), at },
       sources: [{ id: "alex-bianchi-cv", resource: "file source \"Alex_Bianchi_CV.pdf\"", title: cvSource.name }],
     },
-    body: "ALEX BIANCHI\nIngegnere — Software Engineering & prodotto digitale\n\nESPERIENZA\nPiattaforme di intelligenza artificiale, automazione e assistenti digitali.\nManifold Drone Synchronization — Singapore, 2019.\nArdupilot Failure — Development, 2020/2021.\n\nFORMAZIONE\nSoftware Engineering.\n\nCONTATTI\nPortfolio: https://alexbianchi.example",
+    body: "ALEX BIANCHI\nIngegnere, Software Engineering & prodotto digitale\n\nESPERIENZA\nPiattaforme di intelligenza artificiale, automazione e assistenti digitali.\nManifold Drone Synchronization, Singapore, 2019.\nArdupilot Failure, Development, 2020/2021.\n\nFORMAZIONE\nSoftware Engineering.\n\nCONTATTI\nPortfolio: https://alexbianchi.example",
   });
 
-  // Website — alexbianchi.example portfolio, seeded as if already crawled
+  // Website: alexbianchi.example portfolio, seeded as if already crawled
   const webSource: Source = {
     id: "src-alex-website",
     collectionId: collection.id,
@@ -705,41 +747,42 @@ function seedKnowledgeDemo(store: MockStore) {
     updatedAt: at,
   };
   store.sources.set(webSource.id, webSource);
+  linkSource(webSource.id);
   const projects: Array<{ slug: string; title: string; body: string }> = [
     {
       slug: "about",
-      title: "About — alexbianchi.example",
-      body: "Alex Bianchi — portfolio personale e professionale. Percorso in Software Engineering e prodotto digitale. Lavora su progetti di intelligenza artificiale.",
+      title: "About, alexbianchi.example",
+      body: "Alex Bianchi, portfolio personale e professionale. Percorso in Software Engineering e prodotto digitale. Lavora su progetti di intelligenza artificiale.",
     },
     {
       slug: "ciao",
-      title: "Ciao! — alexbianchi.example",
-      body: "Progetto \"Ciao!\" — Software Engineering, Interaction & Development, 2025.",
+      title: "Ciao! alexbianchi.example",
+      body: "Progetto \"Ciao!\", Software Engineering, Interaction & Development, 2025.",
     },
     {
       slug: "balance-trend-and-forecast",
-      title: "Balance trend and forecast — alexbianchi.example",
-      body: "Progetto \"Balance trend and forecast\" — Software Engineering, 2022.",
+      title: "Balance trend and forecast, alexbianchi.example",
+      body: "Progetto \"Balance trend and forecast\", Software Engineering, 2022.",
     },
     {
       slug: "covid-korea",
-      title: "Covid Korea — alexbianchi.example",
-      body: "Progetto \"Covid Korea\" — Data Science, 2021.",
+      title: "Covid Korea, alexbianchi.example",
+      body: "Progetto \"Covid Korea\", Data Science, 2021.",
     },
     {
       slug: "macos-resume-template",
-      title: "macOS Resume Template — alexbianchi.example",
-      body: "Progetto \"macOS Resume Template\" — Design, 2022.",
+      title: "macOS Resume Template, alexbianchi.example",
+      body: "Progetto \"macOS Resume Template\", Design, 2022.",
     },
     {
       slug: "ardupilot-failure",
-      title: "Ardupilot Failure — alexbianchi.example",
-      body: "Progetto \"Ardupilot Failure\" — Development, 2020/2021.",
+      title: "Ardupilot Failure, alexbianchi.example",
+      body: "Progetto \"Ardupilot Failure\", Development, 2020/2021.",
     },
     {
       slug: "manifold-drone-synchronization",
-      title: "Manifold Drone Synchronization — alexbianchi.example",
-      body: "Progetto \"Manifold Drone Synchronization\" — Development, Singapore, 2019.",
+      title: "Manifold Drone Synchronization, alexbianchi.example",
+      body: "Progetto \"Manifold Drone Synchronization\", Development, Singapore, 2019.",
     },
   ];
   for (const project of projects) {
@@ -764,13 +807,25 @@ function seedKnowledgeDemo(store: MockStore) {
       body: project.body,
     });
   }
+
+  // Post-contract parity: retrieval is link-based, so every demo Source
+  // carries its assistant link (direct access stays off by default).
+  for (const source of store.sources.values()) {
+    if (source.collectionId !== collection.id) continue;
+    store.assistantSources.set(`${assistantId}:${source.id}`, {
+      assistantId,
+      sourceId: source.id,
+      directAccess: false,
+      createdAt: at,
+    });
+  }
 }
 
 /**
  * Seeds a working escalation path: support channels on both the IT Support
  * desk (email + live chat, auto-generate improvements on) and the Sales
  * Support desk (email always-available + phone weekdays 10:30-19:00
- * Europe/Rome) — plus the TEST assistant's desk selection and starter
+ * Europe/Rome), plus the TEST assistant's desk selection and starter
  * quick-reply buttons, so the widget can chat and escalate out of the box.
  * `seedPublications` (called after this) captures the enriched assistant.
  */
@@ -1059,8 +1114,14 @@ function seedPublications(store: MockStore) {
     const flows = sortFlows(
       [...store.flows.values()].filter((f) => f.assistantId === assistant.id)
     );
-    const collections = [...store.collections.values()].filter(
-      (c) => c.assistantId === assistant.id
+    const linkedCollectionIds = new Set<string>();
+    for (const link of store.assistantSources.values()) {
+      if (link.assistantId !== assistant.id) continue;
+      const source = store.sources.get(link.sourceId);
+      if (source) linkedCollectionIds.add(source.collectionId);
+    }
+    const collections = [...store.collections.values()].filter((c) =>
+      linkedCollectionIds.has(c.id)
     );
     const id = shortId();
     store.publications.set(id, {
@@ -1235,7 +1296,6 @@ function seedInboxDemo(store: MockStore) {
 
   store.collections.set("col-onboarding", {
     id: "col-onboarding",
-    assistantId: "Vrp47KxooVPk",
     organizationId:
       store.assistants.get("Vrp47KxooVPk")?.organizationId ?? "",
     name: "Customer onboarding",
@@ -1463,7 +1523,7 @@ function getStore(): MockStore {
   return store;
 }
 
-/** Store binding per DbTableMap table — the mock's one-line cost of mapping
+/** Store binding per DbTableMap table, the mock's one-line cost of mapping
  * a new table onto the generic accessor (ADR-0016). */
 const MOCK_TABLE_STORES: {
   [K in DbTableName]: () => Map<string, DbTableRow<K>>;
@@ -1551,7 +1611,7 @@ interface UsageDailyAggregate extends UsageDailyRow {
 
 /**
  * Maps a raw ledger row's pipeline stage to a usage kind. Mirrors the SQL
- * rollup's `case when stage = 'embed' then 'embedding' else 'chat'` — the two
+ * rollup's `case when stage = 'embed' then 'embedding' else 'chat'`, the two
  * must stay in lockstep (migration 20260720100000_usage_recording.sql).
  */
 function usageKindOfStage(stage: AiUsageInput["stage"]): UsageDailyRow["kind"] {
@@ -1603,7 +1663,7 @@ function aggregateLedger(
  * Aggregates completed crawls into the same rollup shape: the unit is pages, the
  * provider is the crawler that ran, and the funding is always the platform's
  * (every crawler credential is the app's own). Mirrors the SQL rollup's crawl
- * branch, including ignoring failed and empty crawls — they produced no metered
+ * branch, including ignoring failed and empty crawls, they produced no metered
  * unit, and pages are what the allowance is denominated in.
  */
 function aggregateCrawls(
@@ -2316,8 +2376,17 @@ export const mockDb: Db = {
   // --- Knowledge (OKF collections) ------------------------------------------
 
   async listCollections(assistantId) {
-    return [...getStore().collections.values()]
-      .filter((c) => c.assistantId === assistantId)
+    // Derived membership (PRD #726 contract): the Collections holding
+    // Sources linked to this Assistant.
+    const store = getStore();
+    const collectionIds = new Set<string>();
+    for (const link of store.assistantSources.values()) {
+      if (link.assistantId !== assistantId) continue;
+      const source = store.sources.get(link.sourceId);
+      if (source) collectionIds.add(source.collectionId);
+    }
+    return [...store.collections.values()]
+      .filter((c) => collectionIds.has(c.id))
       .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   },
 
@@ -2332,7 +2401,6 @@ export const mockDb: Db = {
     if (existing) return existing;
     const collection: KnowledgeCollection = {
       id,
-      assistantId: "",
       organizationId,
       name: "Knowledge Library",
       description: "Organization-wide knowledge added from the Knowledge hub",
@@ -2346,7 +2414,6 @@ export const mockDb: Db = {
     const store = getStore();
     const collection: KnowledgeCollection = {
       id: shortId(),
-      assistantId,
       organizationId: store.assistants.get(assistantId)?.organizationId ?? "",
       name: input.name,
       description: input.description ?? "",
@@ -2395,19 +2462,8 @@ export const mockDb: Db = {
       updatedAt: now,
     };
     store.sources.set(source.id, source);
-    // Auto-link to the collection's legacy owning assistant (PRD #726).
-    const ownerAssistantId = store.collections.get(input.collectionId)
-      ?.assistantId;
-    if (ownerAssistantId) {
-      const key = `${ownerAssistantId}:${source.id}`;
-      if (!store.assistantSources.has(key))
-        store.assistantSources.set(key, {
-          assistantId: ownerAssistantId,
-          sourceId: source.id,
-          directAccess: false,
-          createdAt: now,
-        });
-    }
+    // No implicit link: callers (the ops layer) link Assistants explicitly,
+    // mirroring the supabase adapter (PRD #726 contract).
     return source;
   },
 
@@ -2604,7 +2660,7 @@ export const mockDb: Db = {
       rows.push({
         sourceId: source.id,
         collectionId: source.collectionId,
-        assistantId: collection.assistantId,
+        assistantId: earliestLinkedAssistantId(store, source.id),
         attemptedAt: store.crawlFinalizeAttemptedAt.get(source.id) ?? null,
         createdAt: source.createdAt,
       });
@@ -2647,7 +2703,7 @@ export const mockDb: Db = {
       rows.push({
         sourceId: source.id,
         collectionId: source.collectionId,
-        assistantId: collection.assistantId,
+        assistantId: earliestLinkedAssistantId(store, source.id),
         lastCrawledAt: source.lastCrawledAt,
         createdAt: source.createdAt,
       });
@@ -2744,16 +2800,24 @@ export const mockDb: Db = {
   },
 
   async listNullEmbeddingConceptIds(assistantId) {
+    // Post-contract (#733): the assistant's corpus is its linked Sources, so
+    // the re-embed sweep scopes the same way.
     const store = getStore();
     const ids = new Set<string>();
     for (const chunk of store.chunks.values()) {
-      if (chunk.assistantId !== assistantId) continue;
-      if (chunk.embedding === null) ids.add(chunk.conceptId);
+      if (chunk.embedding !== null) continue;
+      if (
+        chunk.sourceId &&
+        store.assistantSources.has(`${assistantId}:${chunk.sourceId}`)
+      )
+        ids.add(chunk.conceptId);
     }
     return [...ids];
   },
 
   async findFaqConcept(assistantId, question) {
+    // Post-contract reach: a FAQ answers for the Assistants its Source is
+    // linked to.
     const store = getStore();
     const normalized = question.trim().toLowerCase();
     if (!normalized) return null;
@@ -2762,8 +2826,13 @@ export const mockDb: Db = {
       if (concept.frontmatter.type !== "FAQ") continue;
       if ((concept.frontmatter.title ?? "").trim().toLowerCase() !== normalized)
         continue;
+      if (
+        !concept.sourceId ||
+        !store.assistantSources.has(`${assistantId}:${concept.sourceId}`)
+      )
+        continue;
       const collection = store.collections.get(concept.collectionId);
-      if (!collection || collection.assistantId !== assistantId) continue;
+      if (!collection) continue;
       return { concept, collectionName: collection.name };
     }
     return null;
@@ -2831,7 +2900,6 @@ export const mockDb: Db = {
         id,
         conceptId: chunk.conceptId,
         collectionId: chunk.collectionId,
-        assistantId: chunk.assistantId,
         sourceId: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding ?? null,
@@ -2841,18 +2909,18 @@ export const mockDb: Db = {
 
   async searchChunks(assistantId, collectionId, query) {
     const store = getStore();
-    // Lexical scoring only (the demo store has no vectors) — the shared
+    // Lexical scoring only (the demo store has no vectors): the shared
     // token-overlap score from hybrid-search.ts.
     const tokens = lexicalTokens(query.text);
     const results: KnowledgeSearchResult[] = [];
     for (const chunk of store.chunks.values()) {
-      // A chunk that knows its Source answers for exactly the linked
-      // Assistants; a legacy chunk falls back to the denormalized
-      // assistantId (mirrors match_chunks_linked, PRD #726).
-      const reachable = chunk.sourceId
-        ? store.assistantSources.has(`${assistantId}:${chunk.sourceId}`)
-        : chunk.assistantId === assistantId;
-      if (!reachable) continue;
+      // Post-contract (#733): the link table is the whole retrieval scope,
+      // a chunk answers for exactly the Assistants its Source is linked to.
+      if (
+        !chunk.sourceId ||
+        !store.assistantSources.has(`${assistantId}:${chunk.sourceId}`)
+      )
+        continue;
       if (collectionId && chunk.collectionId !== collectionId) continue;
       const similarity = lexicalScore(chunk.content, tokens);
       if (similarity === 0) continue;
@@ -3009,18 +3077,23 @@ export const mockDb: Db = {
   },
 
   async listActiveGraphDatasets() {
+    // Post-contract, Collections reach Assistants only through the link
+    // table: a Collection is an active graph dataset when any Assistant
+    // linked to one of its Sources runs the graph engine.
     const store = getStore();
-    const graphOrgByAssistant = new Map(
-      [...store.assistants.values()]
-        .filter((a) => (a.knowledgeEngine ?? "graph") === "graph")
-        .map((a) => [a.id, a.organizationId])
-    );
-    return [...store.collections.values()]
-      .filter((c) => graphOrgByAssistant.has(c.assistantId))
-      .map((c) => ({
-        organizationId: graphOrgByAssistant.get(c.assistantId) as string,
-        collectionId: c.id,
-      }));
+    const byCollection = new Map<string, string>();
+    for (const link of store.assistantSources.values()) {
+      const assistant = store.assistants.get(link.assistantId);
+      if (!assistant || (assistant.knowledgeEngine ?? "graph") !== "graph")
+        continue;
+      const source = store.sources.get(link.sourceId);
+      if (source)
+        byCollection.set(source.collectionId, assistant.organizationId);
+    }
+    return [...byCollection].map(([collectionId, organizationId]) => ({
+      organizationId,
+      collectionId,
+    }));
   },
 
   async setConversationPinned(id, pinned) {
@@ -3236,7 +3309,7 @@ export const mockDb: Db = {
 
   async createImprovementProposal(input) {
     const store = getStore();
-    // At most one live proposal per improvement — replace any prior draft.
+    // At most one live proposal per improvement, replace any prior draft.
     for (const [pid, proposal] of store.improvementProposals) {
       if (proposal.improvementId === input.improvementId) {
         store.improvementProposals.delete(pid);
@@ -3376,13 +3449,7 @@ export const mockDb: Db = {
     const matches = [...store.sources.values()].filter((source) => {
       if (!filter.kinds.includes(source.kind)) return false;
       const collection = store.collections.get(source.collectionId);
-      if (!collection) return false;
-      // Legacy collections predate the org stamp — fall back to the owning
-      // assistant's org until the backfill migration fills them.
-      const orgId =
-        collection.organizationId ||
-        (store.assistants.get(collection.assistantId)?.organizationId ?? "");
-      if (orgId !== organizationId) return false;
+      if (collection?.organizationId !== organizationId) return false;
       if (filter.status && source.status !== filter.status) return false;
       if (query && !source.name.toLowerCase().includes(query)) return false;
       if (
@@ -3464,6 +3531,14 @@ export const mockDb: Db = {
       .slice(0, limit ?? 500);
   },
 
+  async listAssistantSourceIds(assistantId) {
+    const store = getStore();
+    return [...store.assistantSources.values()]
+      .filter((link) => link.assistantId === assistantId)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .map((link) => link.sourceId);
+  },
+
   async listSourceAssistantLinks(sourceId) {
     const store = getStore();
     return [...store.assistantSources.values()]
@@ -3511,14 +3586,11 @@ export const mockDb: Db = {
     return [...store.sources.values()].flatMap((source) => {
       if (source.kind !== "website") return [];
       const collection = store.collections.get(source.collectionId);
-      const assistant = collection
-        ? store.assistants.get(collection.assistantId)
-        : undefined;
-      if (assistant?.organizationId !== organizationId) return [];
+      if (collection?.organizationId !== organizationId) return [];
       return [
         {
           id: source.id,
-          assistantId: assistant.id,
+          assistantId: earliestLinkedAssistantId(store, source.id),
           name: source.name,
           url: source.config.url ?? "",
         },
@@ -3669,7 +3741,7 @@ export const mockDb: Db = {
 
   async rollupUsageDaily(days = 2) {
     const store = getStore();
-    // Recompute the window from the raw ledger — same grouping as the SQL
+    // Recompute the window from the raw ledger, same grouping as the SQL
     // rollup, idempotent by construction. endDay = tomorrow includes today.
     const bounds = {
       startDay: utcDayBack(Math.max(days, 1) - 1),
@@ -3835,7 +3907,7 @@ export const mockDb: Db = {
     );
     if (existing.length >= ASSISTANT_GOAL_CAP) {
       throw new Error(
-        `This assistant already has ${ASSISTANT_GOAL_CAP} goals — remove one first.`
+        `This assistant already has ${ASSISTANT_GOAL_CAP} goals, remove one first.`
       );
     }
     const goal: AssistantGoal = {
@@ -3930,7 +4002,7 @@ export const mockDb: Db = {
         createdAt: m.createdAt,
       });
     }
-    // Priority sampling: human signals first — 👎, then escalated
+    // Priority sampling: human signals first, 👎, then escalated
     // conversations, then newest.
     const rank = (c: VerifiableAnswer): number => {
       const message = getStore().messages.get(c.messageId);
@@ -4207,7 +4279,7 @@ export const mockDb: Db = {
       }
     }
     // Demotions come from the append-only event ledger, not the nightly
-    // snapshot — so a demotion mid-window still counts even if a later
+    // snapshot, so a demotion mid-window still counts even if a later
     // materialization overwrote the snapshot back to a higher tier.
     for (const e of store.flowTrustEvents) {
       if (
@@ -4380,40 +4452,8 @@ export const mockDb: Db = {
   },
 
   // --- Skills (reusable prompt templates) -----------------------------------
-
-  async listSkills(organizationId) {
-    return [...getStore().skills.values()]
-      .filter((s) => s.organizationId === organizationId)
-      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
-  },
-
-  async createSkill(organizationId, input) {
-    const now = new Date().toISOString();
-    const skill: Skill = {
-      id: shortId(),
-      organizationId,
-      name: input.name,
-      description: input.description ?? "",
-      prompt: input.prompt,
-      createdAt: now,
-      updatedAt: now,
-    };
-    getStore().skills.set(skill.id, skill);
-    return skill;
-  },
-
-  async updateSkill(id, patch) {
-    const store = getStore();
-    const current = store.skills.get(id);
-    if (!current) throw new Error(`Skill ${id} not found`);
-    const updated: Skill = {
-      ...current,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    store.skills.set(id, updated);
-    return updated;
-  },
+  // Plain CRUD moved to `table("skills")` (ADR-0016 stage 3); the delete
+  // stays named for its assistant_skills cascade below.
 
   async deleteSkill(id) {
     const store = getStore();
@@ -4733,7 +4773,7 @@ export const mockDb: Db = {
   },
 
   async searchMemories({ organizationId, subjectId }, query) {
-    // Lexical scoring only (the demo store has no vectors) — the shared
+    // Lexical scoring only (the demo store has no vectors): the shared
     // token-overlap score from hybrid-search.ts.
     const tokens = lexicalTokens(query.text);
     const results: MemorySearchResult[] = [];

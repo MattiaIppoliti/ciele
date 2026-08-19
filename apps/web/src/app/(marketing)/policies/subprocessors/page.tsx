@@ -42,7 +42,7 @@ const SECTIONS: LegalSection[] = [
           ],
           [
             "Resend",
-            "Transactional email — invitations, notifications, escalation email, sales enquiries from our contact form",
+            "Transactional email, invitations, notifications, escalation email, sales enquiries from our contact form",
             "Recipient address and message content",
             "EU / US (SCCs)",
           ],
@@ -56,7 +56,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "A model provider receives the prompt for a turn — the visitor's question, the knowledge retrieved to answer it, and the assistant's instructions — and returns the answer. Which providers are engaged depends on the Provider Connections an organization configures: an organization that connects only one provider is only ever routed to that one, and an organization on its own keys or a federated cloud account contracts with the provider directly.",
+        text: "A model provider receives the prompt for a turn and returns the answer. The prompt carries the visitor's question, the knowledge retrieved to answer it, and the assistant's instructions. Which providers are engaged depends on the Provider Connections an organization configures: an organization that connects only one provider is only ever routed to that one, and an organization on its own keys or a federated cloud account contracts with the provider directly.",
       },
       {
         type: "table",
@@ -151,7 +151,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "When an organization connects a help desk, a ticketing system, an identity provider or an external content source, data moves between Ciele and that system on that organization's instruction. Those systems are the customer's own processors, not ours, and they are not listed above — the organization chooses them, contracts with them and can disconnect them at any time.",
+        text: "When an organization connects a help desk, a ticketing system, an identity provider or an external content source, data moves between Ciele and that system on that organization's instruction. Those systems are the customer's own processors, not ours, so they are not listed above. The organization chooses them, contracts with them and can disconnect them at any time.",
       },
     ],
   },

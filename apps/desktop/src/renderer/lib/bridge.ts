@@ -20,7 +20,7 @@ declare global {
 
 export function bridge(): Bridge {
   const found = window.ciele;
-  if (!found) throw new Error("The native bridge is missing — is this running outside Electron?");
+  if (!found) throw new Error("The native bridge is missing, is this running outside Electron?");
   return found;
 }
 
@@ -55,7 +55,7 @@ export function useRoute(): string {
   useEffect(() => {
     const onChange = () => setRoute(read());
     window.addEventListener("hashchange", onChange);
-    // The main process also moves between screens — a menu item, or choosing a
+    // The main process also moves between screens, a menu item, or choosing a
     // mode. It does so without rebuilding the window, so this is a hash change
     // rather than a reload.
     const unsubscribe = bridge().onNavigate(navigate);

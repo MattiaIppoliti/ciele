@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 /**
  * The contact form, and the only interactive part of the page: the field state,
  * the consent gate on the submit button, and the swap to the thank-you panel.
- * Everything around it — the frame, the grid bands and the pitch column — is
+ * The frame, the grid bands and the pitch column around it are all
  * static and stays on the server (see `contact-sales.tsx`).
  *
  * Submitting calls the `submitSalesEnquiryAction` Server Action, which mails the
@@ -38,7 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
  */
 
 // The option vocabulary lives in lib/contact/sales-lead.ts because the Server
-// Action validates against the same lists — a <Select> constrains a browser,
+// Action validates against the same lists, a <Select> constrains a browser,
 // never a poster.
 const COUNTRIES = SALES_COUNTRIES;
 const COMPANY_SIZES = SALES_COMPANY_SIZES;
@@ -107,11 +107,11 @@ export function ContactSalesForm() {
           shortly.
         </p>
         <Link
-          href="/login"
+          href="/home"
           className="text-primary mt-2 flex items-center gap-1 text-sm font-medium hover:underline"
         >
           <ChevronLeft className="size-4" strokeWidth={3} />
-          Back to sign in
+          Back to home
         </Link>
       </div>
     );
@@ -124,7 +124,7 @@ export function ContactSalesForm() {
           autofilled. */}
       <div aria-hidden="true" className="sr-only">
         <label htmlFor={honeypotId}>
-          Organization reference — leave this field empty
+          Organization reference: leave this field empty
         </label>
         <input
           id={honeypotId}
@@ -301,7 +301,7 @@ export function ContactSalesForm() {
             </>
           ) : (
             <>
-              We couldn&apos;t send your request — nothing has reached us. Please
+              We couldn&apos;t send your request, nothing has reached us. Please
               email{" "}
               <a
                 href="mailto:sales@ciele.app"

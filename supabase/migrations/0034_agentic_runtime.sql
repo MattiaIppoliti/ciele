@@ -4,7 +4,7 @@
 -- read/write across turns (tau-style sessions).
 
 -- Per-assistant tool config: built-in enablement overrides + custom HTTP
--- tools ({ builtIns?: {...}, custom?: CustomToolConfig[] } — see
+-- tools ({ builtIns?: {...}, custom?: CustomToolConfig[] }, see
 -- packages/db/src/types.ts AssistantTools).
 alter table public.assistants
   add column if not exists tools jsonb not null default '{}'::jsonb;

@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
  * conversations: a background job extracts them after a conversation goes
  * quiet, and the most relevant ones are recalled at the start of the user's
  * next conversation. Applies only to users signed in through the widget's
- * SSO gate — anonymous visitors are never remembered.
+ * SSO gate: anonymous visitors are never remembered.
  */
 export function MemoryCard({
   memoryEnabled,
@@ -55,7 +55,7 @@ export function MemoryCard({
         </CardTitle>
         <CardDescription>
           Let assistants remember durable facts about signed-in users across
-          conversations — stated preferences, standing instructions, stable
+          conversations, stated preferences, standing instructions, stable
           account facts. Only users signed in through the widget&apos;s SSO
           gate are remembered; anonymous visitors never are. Extraction runs
           in the background after a conversation ends and counts against the

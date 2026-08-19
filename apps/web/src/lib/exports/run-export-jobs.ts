@@ -5,7 +5,7 @@ import type { Db } from "@agent-hub/db";
 /**
  * How long a claimed export may run before another tick may reclaim it. A
  * crashed run stays `running` until its lock ages past this, then the next
- * cron tick re-leases it — the durable counterpart to the request-path
+ * cron tick re-leases it, the durable counterpart to the request-path
  * acceleration.
  */
 export const EXPORT_JOB_LEASE_MS = 5 * 60_000;

@@ -83,7 +83,7 @@ describe("summarizeUsage", () => {
       row({ credentialKind: "api_key", inputTokens: 1_000_000 }),
     ]);
     // Both cost 30 credits, but only the platform-funded half counts against a
-    // plan — a meter that led with 60 would misstate the allowance consumed.
+    // plan, a meter that led with 60 would misstate the allowance consumed.
     expect(summary.byResource.ai.credits).toBeCloseTo(60, 6);
     expect(summary.byResource.ai.platformCredits).toBeCloseTo(30, 6);
   });

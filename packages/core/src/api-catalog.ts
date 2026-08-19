@@ -6,7 +6,7 @@ import type {
 
 /**
  * The API catalogue's pure half (spec #559): what the model is told the
- * integration can do, and — the part that matters for security — whether a
+ * integration can do, and, the part that matters for security, whether a
  * path the model produced is one the catalogue actually describes.
  *
  * This lives in the domain, not the runtime, for one reason: **a path the
@@ -37,7 +37,7 @@ export interface CatalogPathMatch {
    * that appends its own cannot smuggle one past the catalogue).
    */
   path: string;
-  /** The substituted path parameters, by name — for the transcript and citation. */
+  /** The substituted path parameters, by name, for the transcript and citation. */
   pathParams: Record<string, string>;
 }
 
@@ -73,12 +73,12 @@ function splitPath(path: string): string[] {
 
 /**
  * Matches one model-supplied relative path against the catalogue. Nothing is
- * fetched here — the answer is only "which described endpoint is this, if any".
+ * fetched here, the answer is only "which described endpoint is this, if any".
  *
  * Refused, before any URL exists:
  *  - an absolute or protocol-relative path (the base URL is not the model's to
  *    choose, so anything carrying a scheme or authority is out);
- *  - `.` / `..` segments, or an encoded slash inside a substituted parameter —
+ *  - `.` / `..` segments, or an encoded slash inside a substituted parameter,
  *    both are ways to walk out of a described path;
  *  - a shape no catalogue entry describes;
  *  - a described shape requested with a different method than it declares;
@@ -172,7 +172,7 @@ export interface ApiCatalogSummary {
 }
 
 /**
- * Summarizes the whole catalogue for the discovery tool — enough for the model
+ * Summarizes the whole catalogue for the discovery tool, enough for the model
  * to decide which endpoints it needs, without the per-parameter detail that
  * would make this one tool result enormous on a 21-endpoint integration.
  */

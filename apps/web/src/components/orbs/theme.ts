@@ -1,9 +1,9 @@
-// Vendored from thinking-orbs (github.com/Jakubantalik/thinking-orbs, MIT —
+// Vendored from thinking-orbs (github.com/Jakubantalik/thinking-orbs, MIT,
 // see ./LICENSE), adapted to this repo's react-hooks rules: the original
 // resolved theme/reduced-motion with setState-in-effect subscriptions; here
 // both are `useSyncExternalStore` stores (same convention as
 // use-hover-capable.ts), reading the root element's `dark`/`light` class or
-// `data-theme` — which is where this app's theme toggles land — falling back
+// `data-theme`: which is where this app's theme toggles land, falling back
 // to `prefers-color-scheme`.
 
 import { useSyncExternalStore } from "react";
@@ -63,7 +63,7 @@ function reducedSnapshot(): boolean {
   return window.matchMedia(REDUCED_QUERY).matches;
 }
 
-/** Live `prefers-reduced-motion` — reduced users get a static frame. */
+/** Live `prefers-reduced-motion`, reduced users get a static frame. */
 export function useReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReduced, reducedSnapshot, () => false);
 }

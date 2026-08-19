@@ -3,7 +3,7 @@ import { Skeleton } from "@agent-hub/ui";
 /**
  * Streaming boundary for the admin console: the sidebar shell stays
  * interactive and this paints instantly while the destination page's data
- * loads — navigations stop blocking on the database before showing
+ * loads, navigations stop blocking on the database before showing
  * anything.
  */
 export default function AdminLoading() {

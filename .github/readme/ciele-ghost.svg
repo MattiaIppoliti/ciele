@@ -2,12 +2,12 @@
      Standalone copy of apps/docs/src/app/icon.svg: literal colors rather than
      `currentColor`, because GitHub renders a README image as an <img> and no
      page CSS reaches inside it. The white body with a grey outline reads on
-     both GitHub themes — the same way the mark renders in the product.
+     both GitHub themes, the same way the mark renders in the product.
 
      The 104 units of empty space below the drawing are load-bearing. GitHub
      strips `style`, so the only vertical control is the legacy `align` attribute,
      and `align="middle"` means "put the box's centre on the text baseline"
-     (-webkit-baseline-middle / -moz-middle-with-baseline) — not "centre it on the
+     (-webkit-baseline-middle / -moz-middle-with-baseline), not "centre it on the
      text". That leaves the mark sitting ~11.7px low beside a 2em heading. Making
      the box taller than the drawing raises the visible mark by half the padding:
      at width="44", 104 units lands the mark's optical centre within 0.1px of the

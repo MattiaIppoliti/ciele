@@ -1,6 +1,6 @@
 /* Pure model behind the marketing hero's live dashboard mock (see
-   app-preview.tsx). No React, no DOM — just the mock data, the idle
-   view-cycling reducer, and the chart math — so all of it is unit-testable
+   app-preview.tsx). No React, no DOM, just the mock data, the idle
+   view-cycling reducer, and the chart math, so all of it is unit-testable
    through the node vitest harness (preview-model.test.ts). The pane
    components (preview-panes.tsx) and the shell (app-preview.tsx) are thin
    renderers over these values. */
@@ -227,7 +227,7 @@ export const IMPROVEMENT_COLUMNS: Array<{
 ];
 
 /* ---------------------------------------------------------------- */
-/* Insights — stats, bars, line chart, donut                         */
+/* Insights, stats, bars, line chart, donut                         */
 /* ---------------------------------------------------------------- */
 
 export const STATS = [
@@ -239,7 +239,7 @@ export const STATS = [
 
 export const BARS = [42, 55, 48, 70, 64, 82, 76, 90, 71, 88, 95, 84];
 
-/* Line chart — weekly resolved vs escalated, pre-plotted into a 320×120
+/* Line chart, weekly resolved vs escalated, pre-plotted into a 320×120
    viewBox. Twelve points spanning the full width so W1 and W12 sit on the
    chart edges. Grayscale strokes via color-mix keep both themes covered. */
 export const LINE_VIEWBOX_H = 120;
@@ -274,7 +274,7 @@ export const LINE_DOTS = [
   { left: "100%", top: dotTop(78), ink: INK_SOFT },
 ];
 
-/* Donut — share of conversations per assistant; stops must sum to 100.
+/* Donut, share of conversations per assistant; stops must sum to 100.
    Grayscale ramp mixed against --background so it adapts to the theme. */
 export const donutShade = (pct: number) =>
   `color-mix(in oklab, var(--foreground) ${pct}%, var(--background))`;
@@ -290,7 +290,7 @@ export const DONUT_SEGMENTS: DonutSegment[] = [
   { label: "Acme Intranet", value: 7, color: donutShade(15) },
 ];
 
-/* Accumulate segment values into contiguous [from, to] percentage ranges —
+/* Accumulate segment values into contiguous [from, to] percentage ranges,
    the raw material for a conic-gradient. Pure so the stop math is testable. */
 export function donutStops(
   segments: DonutSegment[],

@@ -29,7 +29,7 @@ export function HeroClouds() {
     const el = ref.current;
     if (!el) return;
 
-    // The app shell pins <body>, so /home scrolls inside .home-scene —
+    // The app shell pins <body>, so /home scrolls inside .home-scene,
     // listen there (fall back to the window just in case).
     const scroller = el.closest(".home-scene");
     const scrollTop = () =>
@@ -67,18 +67,10 @@ export function HeroClouds() {
       const pointer = { x: 0, y: 0 };
       const drift = { x: 0, y: 0 };
 
-      onMouseMove = (event: MouseEvent) => {
-        const w = window.innerWidth || 1;
-        const h = window.innerHeight || 1;
-        pointer.x = (event.clientX / w - 0.5) * PARALLAX_STRENGTH * 2;
-        pointer.y = (event.clientY / h - 0.5) * PARALLAX_STRENGTH * 2;
-      };
-      window.addEventListener("mousemove", onMouseMove, { passive: true });
-
       const frame = () => {
         drift.x += (pointer.x - drift.x) * PARALLAX_EASE;
         drift.y += (pointer.y - drift.y) * PARALLAX_EASE;
-        // Left leans one way, right the opposite — like the ASCII hands.
+        // Left leans one way, right the opposite, like the ASCII hands.
         if (leftWrap) {
           leftWrap.style.setProperty("--cloud-px", `${drift.x}px`);
           leftWrap.style.setProperty("--cloud-py", `${-drift.y}px`);
@@ -87,9 +79,23 @@ export function HeroClouds() {
           rightWrap.style.setProperty("--cloud-px", `${-drift.x}px`);
           rightWrap.style.setProperty("--cloud-py", `${-drift.y}px`);
         }
-        parallaxRaf = requestAnimationFrame(frame);
+        // Stop once settled (sub-pixel from target) instead of writing CSS
+        // vars at 60fps forever, an idle pointer used to keep a permanent
+        // style-recalc loop alive. mousemove restarts the loop.
+        const settled =
+          Math.abs(pointer.x - drift.x) < 0.05 &&
+          Math.abs(pointer.y - drift.y) < 0.05;
+        parallaxRaf = settled ? 0 : requestAnimationFrame(frame);
       };
-      parallaxRaf = requestAnimationFrame(frame);
+
+      onMouseMove = (event: MouseEvent) => {
+        const w = window.innerWidth || 1;
+        const h = window.innerHeight || 1;
+        pointer.x = (event.clientX / w - 0.5) * PARALLAX_STRENGTH * 2;
+        pointer.y = (event.clientY / h - 0.5) * PARALLAX_STRENGTH * 2;
+        if (!parallaxRaf) parallaxRaf = requestAnimationFrame(frame);
+      };
+      window.addEventListener("mousemove", onMouseMove, { passive: true });
     }
 
     return () => {
@@ -112,7 +118,7 @@ export function HeroClouds() {
       >
         {/* `sizes` must track the wrapper's width above. Without it the
             browser assumes the image fills the viewport and preloads a
-            1920-wide render of something drawn 544px across — and `priority`
+            1920-wide render of something drawn 544px across, and `priority`
             means that download competes with the hero's own first paint. */}
         <Image
           src="/images/home/cloud-left.png"

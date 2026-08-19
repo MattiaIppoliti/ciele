@@ -1,12 +1,12 @@
 /**
- * Open Knowledge Format (OKF) **v0.2** — the frontmatter vocabulary a Concept
+ * Open Knowledge Format (OKF) **v0.2**, the frontmatter vocabulary a Concept
  * carries, plus the pure consumer derivations over it (ADR-0002).
  *
  * This is the one place the format lives. `types.ts` re-exports
  * {@link ConceptFrontmatter} so the domain model keeps a single Concept shape;
  * producers (ingestion, FAQ authoring, crawl) stamp the fields defined here,
  * and consumers (admin UI, runtime citations) read them only through the
- * derivations below — never by hand-rolling the `verified`-is-a-list-or-a-
+ * derivations below, never by hand-rolling the `verified`-is-a-list-or-a-
  * mapping rule or the legacy `timestamp` fallback a second time.
  *
  * Two rules from the spec drive every signature here:
@@ -22,7 +22,7 @@
  *    and we do not know who authored them, and inventing an actor would be a
  *    provenance lie. The spec blesses the read-time fallback instead.
  *
- * Unknown producer keys are preserved for free — frontmatter is stored as
+ * Unknown producer keys are preserved for free, frontmatter is stored as
  * jsonb and only ever read field-wise (§4.1 "MUST NOT reject").
  */
 
@@ -98,7 +98,7 @@ export interface ConceptFrontmatter {
   sources?: OkfSource[];
   usage_window?: OkfUsageWindow;
 
-  // Trust (§5.2) — who wrote it vs. who confirmed it, deliberately distinct.
+  // Trust (§5.2): who wrote it vs. who confirmed it, deliberately distinct.
   generated?: OkfActorStamp;
   /** One event or many; a bare mapping is a one-element list (§5.2). */
   verified?: OkfActorStamp | OkfActorStamp[];
@@ -111,7 +111,7 @@ export interface ConceptFrontmatter {
   /**
    * Attested Computation contract (§10). Modeled so a bundle authored elsewhere
    * survives a round-trip through this platform; nothing here produces or
-   * executes one — OKF fixes the interface, we do not ship a runner.
+   * executes one, OKF fixes the interface, we do not ship a runner.
    */
   runtime?: string;
   parameters?: OkfParameter[];
@@ -120,7 +120,7 @@ export interface ConceptFrontmatter {
   attester?: OkfAttester;
 
   /**
-   * @deprecated OKF v0.1 — superseded by `generated.at` (§13.1). Still present
+   * @deprecated OKF v0.1, superseded by `generated.at` (§13.1). Still present
    * on rows written before the v0.2 upgrade; read via {@link conceptGeneratedAt}.
    */
   timestamp?: string;
@@ -130,8 +130,8 @@ export interface ConceptFrontmatter {
 
 /**
  * Builds the three actor forms. Producers MUST route through this rather than
- * interpolating strings, because {@link trustTier} keys off the `human:` prefix
- * — a hand-rolled `"human " + id` silently downgrades a human review.
+ * interpolating strings, because {@link trustTier} keys off the `human:` prefix,
+ * a hand-rolled `"human " + id` silently downgrades a human review.
  */
 export const okfActor = {
   /** A person: `human:<id>`. */
@@ -142,7 +142,7 @@ export const okfActor = {
   agent: (producer: string, version: string) => `${producer}/${version}`,
 } as const;
 
-/** Whether an actor string denotes a person (§7) — the trust-tier hinge. */
+/** Whether an actor string denotes a person (§7), the trust-tier hinge. */
 export function isHumanActor(actor: string): boolean {
   return actor.startsWith("human:");
 }
@@ -167,7 +167,7 @@ export function verificationEvents(
 }
 
 /**
- * The concept's trust tier (§5.3). Advisory signal for display and ranking —
+ * The concept's trust tier (§5.3). Advisory signal for display and ranking,
  * never access control, and never a reason to drop a concept.
  */
 export function trustTier(
@@ -212,7 +212,7 @@ export function conceptStatus(
 
 /**
  * Whether the concept is past its freshness date (§5.5). An absolute date, so
- * this is a plain lexicographic `YYYY-MM-DD` comparison — no reference to when
+ * this is a plain lexicographic `YYYY-MM-DD` comparison, no reference to when
  * the concept was read. No `stale_after` ⇒ never stale.
  */
 export function isStale(

@@ -3,7 +3,7 @@ import { getMockDb, DEMO_ORG, type Db } from "@agent-hub/db";
 import { ingestSource } from "./ingest";
 
 /**
- * The ingestion-failure Alert producer — parity with the website-crawl
+ * The ingestion-failure Alert producer, parity with the website-crawl
  * producer in `finalizeWebsiteCrawl`. Runs offline (mock DB, no Provider
  * Connections): `enrich` falls back to a single naive concept and embeddings
  * fall back to lexical, so the only failure is the one we inject.

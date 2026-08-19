@@ -57,7 +57,7 @@ export function HelpDeskManage({
 
   // Local ordering, optimistically reordered by chevrons/drag, then
   // persisted; resynced whenever the server list changes underneath us
-  // ("adjusting state when a prop changes" — no effect needed for this part).
+  // ("adjusting state when a prop changes", no effect needed for this part).
   const [order, setOrder] = useState<SupportChannel[]>(channels);
   const [syncedChannels, setSyncedChannels] = useState(channels);
   if (channels !== syncedChannels) {

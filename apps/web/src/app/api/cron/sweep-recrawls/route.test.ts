@@ -15,7 +15,7 @@ import { GET } from "./route";
 
 /**
  * The route is an adapter: cron auth in, the drain's report out. What a tick
- * does lives in `@agent-hub/agent` (`sweepDueRecrawls`) and is tested there —
+ * does lives in `@agent-hub/agent` (`sweepDueRecrawls`) and is tested there,
  * batch bounding, claim semantics and per-Source error reporting in
  * `scheduled.test.ts`, the real provider lifecycle in
  * `recrawl.scheduled.test.ts`. Here we only prove the wrapper.

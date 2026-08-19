@@ -2,7 +2,7 @@ import type { Provider, ResolvedWebsiteCrawlerProvider } from "./types";
 
 /**
  * What the platform's own work costs, and the one conversion from cost into
- * **credits** — the unit plans are denominated in (#504).
+ * **credits**: the unit plans are denominated in (#504).
  *
  * Two rate tables live here, both EUR list prices and both estimates rather
  * than billed amounts: Ciele has no per-call cost feed from any provider, so
@@ -44,11 +44,11 @@ const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
     "gemini-2.5-flash-lite": { inputPerMillion: 0.1, outputPerMillion: 0.4 },
     // Vertex text embeddings (google_vertex_federated credentials).
     "text-embedding-005": { inputPerMillion: 0.023, outputPerMillion: 0 },
-    // Gemini API embeddings (plain API-key credentials) — ~6x the Vertex rate.
+    // Gemini API embeddings (plain API-key credentials): ~6x the Vertex rate.
     "gemini-embedding-001": { inputPerMillion: 0.14, outputPerMillion: 0 },
   },
   // Arbitrary self-chosen endpoints (Ollama, vLLM, gateways): no provider
-  // price list exists, and self-hosted models have no per-token bill — the
+  // price list exists, and self-hosted models have no per-token bill, the
   // euro budget projects zero for them (the token budget still applies).
   openai_compatible: {},
 };
@@ -56,7 +56,7 @@ const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
 /**
  * Used for a provider/model pair not in the table above (retired or renamed).
  * It is a mid-range *chat* rate, so it overstates an unlisted embedding model
- * by ~150x — every model `getEmbeddingModel` can resolve must have a row above,
+ * by ~150x, every model `getEmbeddingModel` can resolve must have a row above,
  * and pricing.test.ts pins them so a fallback regression fails the build.
  */
 const FALLBACK_PRICE: ModelPriceEur = { inputPerMillion: 3, outputPerMillion: 15 };
@@ -105,8 +105,8 @@ const MOST_EXPENSIVE_CRAWL_PAGE_EUR = Math.max(...Object.values(CRAWL_PAGE_EUR))
  *
  * The crawler arrives as free text (the telemetry column is unconstrained), so
  * it may be any string. The lookup is validated by the *value* rather than by
- * the key on purpose: a key test would resolve inherited members —
- * `"constructor"`, `"toString"` — and multiply pages by a function, yielding
+ * the key on purpose: a key test would resolve inherited members,
+ * `"constructor"`, `"toString"`, and multiply pages by a function, yielding
  * NaN. NaN is worse than free, because it makes every downstream `used > cap`
  * comparison false and a cap would read as never reached.
  */
@@ -119,7 +119,7 @@ export function estimateCrawlCostEur(
 }
 
 /**
- * Whether a crawler costs nothing to run — today only the in-process local one.
+ * Whether a crawler costs nothing to run, today only the in-process local one.
  * Named so callers can say what they mean: exempting a crawl from a spend cap is
  * about there being nothing to spend, not about which crawler happens to be free.
  * An unidentifiable crawler is never free (see the rate above), so this fails
@@ -137,8 +137,8 @@ export function isFreeCrawler(crawler: string | null | undefined): boolean {
 export const CREDIT_EUR = 0.01;
 
 /**
- * One group of metered platform work: either a (provider, model) token group —
- * the grain the usage rollup aggregates to — or a (crawler, pages) group from
+ * One group of metered platform work: either a (provider, model) token group,
+ * the grain the usage rollup aggregates to, or a (crawler, pages) group from
  * a completed crawl.
  */
 export type MeteredUnit =
@@ -152,7 +152,7 @@ export type MeteredUnit =
   | { kind: "crawl"; crawler: string | null | undefined; pages: number };
 
 /**
- * Credits consumed by the given metered work — the single conversion every
+ * Credits consumed by the given metered work, the single conversion every
  * consumer of this package shares (cap enforcement and the org Usage page), so
  * the two can never disagree about what something cost. The staff console
  * cannot share it: that app deliberately does not use this package (see

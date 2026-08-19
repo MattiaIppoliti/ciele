@@ -48,7 +48,7 @@ export function stem(token: string): string {
 }
 
 /**
- * EVERY word in the normalized message — stopwords and single letters included.
+ * EVERY word in the normalized message, stopwords and single letters included.
  * Use this when the absence of a word matters (the courtesy detector has to see
  * leftovers it cannot account for); use {@link tokenize} when comparing meaning.
  */

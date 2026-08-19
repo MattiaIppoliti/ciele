@@ -5,7 +5,7 @@ import { OperationError, defineOperation } from "./operation";
 
 /**
  * The Improvements domain (#625): the answer-quality kanban, readable by any
- * member-tier key and editable at `edit` — so external trackers can sync.
+ * member-tier key and editable at `edit`, so external trackers can sync.
  * Creation stays web-only for now (it fans out into graph feedback and
  * Suggested-Fix drafting); this ships list / detail / update.
  */

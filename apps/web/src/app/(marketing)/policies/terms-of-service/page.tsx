@@ -42,7 +42,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "You and your organization retain ownership of the content you connect, upload or create in Ciele, including knowledge sources, assistant configuration and conversation data. You grant Ciele the limited rights needed to host, process and display that content in order to provide the service, for example crawling the websites you add, indexing your files and generating grounded answers.",
+        text: "You and your organization retain ownership of the content you connect, upload or create in Ciele, including knowledge sources, assistant configuration and conversation data. You grant Ciele the limited rights needed to host, process and display that content to provide the service, for example crawling the websites you add, indexing your files and generating grounded answers.",
       },
       {
         type: "p",

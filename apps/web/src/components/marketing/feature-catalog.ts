@@ -2,7 +2,7 @@ import type { GlobalView } from "@/components/home/preview-model";
 
 /* One entry per feature the nav's Features group lists. Each becomes
    /features/<slug>: an eyebrow, a headline, and a picture of the surface it
-   describes — either a live pane from the marketing dashboard mock (the five
+   describes, either a live pane from the marketing dashboard mock (the five
    org-wide screens it already draws) or a purpose-built mock of the assistant
    editor section. Copy stays inside what ships today. */
 
@@ -18,7 +18,7 @@ export interface FeatureEntry {
   slug: string;
   /** Label in the nav, and the breadcrumb inside the screenshot. */
   label: string;
-  /** Small line above the headline — the job this surface does. */
+  /** Small line above the headline, the job this surface does. */
   eyebrow: string;
   headline: string;
   /** One or two sentences under the headline. Sits over the screenshot. */
@@ -28,7 +28,7 @@ export interface FeatureEntry {
   points: { title: string; body: string }[];
   /** Page <title>/description. */
   meta: string;
-  /** An optional second act: another claim over another picture — a static
+  /** An optional second act: another claim over another picture, a static
    *  mock, or the widget preview playing its scripted conversation on loop. */
   coda?: { eyebrow: string; headline: string; body: string; mock: "kanban" | "preview" };
 }
@@ -46,7 +46,7 @@ export const FEATURES: FeatureEntry[] = [
     points: [
       {
         title: "As many as you need",
-        body: "Run one assistant per audience, students, staff, applicants, each with its own knowledge, tone and escalation routes. Duplicate one to start the next.",
+        body: "Run one assistant per audience, customers, staff, new joiners, each with its own knowledge, tone and escalation routes. Duplicate one to start the next.",
       },
       {
         title: "Edited beside its preview",
@@ -104,7 +104,7 @@ export const FEATURES: FeatureEntry[] = [
       },
       {
         title: "Conditions before classification",
-        body: "URL and schedule conditions are hard gates: a flow that should only run on the admissions pages, or only during office hours, never even enters the classifier.",
+        body: "URL and schedule conditions are hard gates: a flow that should only run on the pricing pages, or only during office hours, never even enters the classifier.",
       },
       {
         title: "Actions you compose",
@@ -210,7 +210,7 @@ export const FEATURES: FeatureEntry[] = [
     coda: {
       eyebrow: "On the card",
       headline: "Every item keeps its context",
-      body: "Status, priority and owner sit on the card, and the answer that raised it travels with it — from flagged to done without losing the conversation behind it.",
+      body: "Status, priority and owner sit on the card, and the answer that raised it travels with it, from flagged to done, without losing the conversation behind it.",
       mock: "kanban",
     },
   },
@@ -260,7 +260,7 @@ export const FEATURES: FeatureEntry[] = [
       },
       {
         title: "Roles that change the answer",
-        body: "Groups and roles from your provider are conditions a flow can gate on, so staff and students do not get the same reply to the same question.",
+        body: "Groups and roles from your provider are conditions a flow can gate on, so staff and customers do not get the same reply to the same question.",
       },
       {
         title: "Fields you can address",

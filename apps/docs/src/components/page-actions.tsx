@@ -114,7 +114,7 @@ export function PageActions({
     <div className="mb-6 flex flex-row flex-wrap items-center gap-2 border-b border-fd-border pb-4">
       <button type="button" onClick={copyMarkdown} className={buttonClass}>
         <CopyFeedbackIcon copied={copied} className="size-3.5" />
-        {/* Label stays put — the icon flipping to a check is the confirmation.
+        {/* Label stays put, the icon flipping to a check is the confirmation.
             Swapping in a shorter "Copied" resized the button and shunted the
             rest of the row sideways. */}
         Copy Markdown

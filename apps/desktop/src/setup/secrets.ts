@@ -9,8 +9,8 @@
 //
 // The one rule to keep in step with bootstrap.sh: ANON_KEY and
 // SERVICE_ROLE_KEY are HS256 JWTs signed with this install's own JWT_SECRET.
-// They are not credentials looked up anywhere — they are claims this
-// deployment signs for itself — which is exactly why no published image can
+// They are not credentials looked up anywhere; they are claims this
+// deployment signs for itself, which is exactly why no published image can
 // carry them and why the app must mint them per install.
 
 import type { CryptoPort, ClockPort } from "./ports";
@@ -68,7 +68,7 @@ export function mintKey(
 
 /**
  * Fill in the env template the app ships, leaving every comment and option
- * visible — the same thing bootstrap.sh does, and for the same reason: a
+ * visible, the same thing bootstrap.sh does, and for the same reason: a
  * self-hoster who later wants to change something should find a documented
  * file, not a generated one.
  *
@@ -88,7 +88,7 @@ export function fillEnvTemplate(template: string, values: Record<string, string>
     .join("\n");
 }
 
-/** Read a rendered env file back — used to verify and to reuse an existing one. */
+/** Read a rendered env file back, used to verify and to reuse an existing one. */
 export function parseEnvFile(contents: string): Record<string, string> {
   const values: Record<string, string> = {};
   for (const line of contents.split("\n")) {

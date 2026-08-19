@@ -1,7 +1,7 @@
 # Contributing to Ciele
 
 Thanks for being here. Ciele is open source under
-[AGPL-3.0-only](LICENSE), and contributions are welcome — with one structural
+[AGPL-3.0-only](LICENSE), and contributions are welcome, with one structural
 quirk you should know about before you start.
 
 ## How this repository works
@@ -17,18 +17,18 @@ authorship, and it reaches this repository with the next release. Your commit
 keeps your name on it, and you are credited in
 [CONTRIBUTORS.md](CONTRIBUTORS.md).
 
-Nothing about the workflow below changes because of that — open a pull request
+Nothing about the workflow below changes because of that, open a pull request
 as you normally would.
 
 ## Before you write code
 
-- **Bugs and feature requests** — open an issue here. Include what you expected,
+- **Bugs and feature requests**: open an issue here. Include what you expected,
   what happened, and enough detail to reproduce it.
-- **Anything substantial** — open an issue first and let's agree on the shape
+- **Anything substantial**: open an issue first and let's agree on the shape
   before you invest in the implementation. Development happens on a private
   roadmap, so a change may already be planned, in flight, or deliberately out of
   scope; a short conversation up front saves rework.
-- **Security issues** — do not open a public issue. Report them privately
+- **Security issues**: do not open a public issue. Report them privately
   through this repository's **Security → Report a vulnerability** tab.
 
 ## Local setup
@@ -39,7 +39,7 @@ pnpm db:start   # local Supabase
 pnpm dev
 ```
 
-`pnpm typecheck`, `pnpm test`, and `pnpm lint` are what CI runs — run them
+`pnpm typecheck`, `pnpm test`, and `pnpm lint` are what CI runs, run them
 before you open a pull request. `docs/` carries the architecture guide and the
 ADRs; read the ADR covering the area you are touching, and `deploy/README.md`
 if you are working on self-hosting.
@@ -47,7 +47,7 @@ if you are working on self-hosting.
 ## Opening a pull request
 
 1. One logical change per pull request; keep unrelated cleanups separate.
-2. Write code that reads like the code around it — match the existing naming,
+2. Write code that reads like the code around it, match the existing naming,
    comment density, and structure of the files you touch.
 3. Cover behavior changes with tests, next to the code, following the local
    convention.
@@ -72,6 +72,6 @@ requires a formal corporate agreement instead, open an issue titled
 
 A maintainer reviews it here. Once it is approved and the CLA check is green,
 your patch is applied to the private repository with your authorship intact, and
-the pull request is closed with a comment naming the commit that carries it —
+the pull request is closed with a comment naming the commit that carries it,
 closed, not rejected. It ships publicly with the next release, and your name
 goes into [CONTRIBUTORS.md](CONTRIBUTORS.md).

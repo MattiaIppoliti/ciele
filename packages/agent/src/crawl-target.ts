@@ -5,7 +5,7 @@ import {
 } from "./egress";
 
 /**
- * Crawl-flavored wrapper over the shared egress guard (`egress.ts`) — the
+ * Crawl-flavored wrapper over the shared egress guard (`egress.ts`), the
  * range checkers and resolution-time validation live there now; this keeps
  * the crawler's error type stable for its callers and tests.
  */

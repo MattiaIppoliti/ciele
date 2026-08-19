@@ -28,7 +28,7 @@ export const MEMORY_RECALL_LIMIT = 5;
 /**
  * How long a conversation must stay quiet before its promotion job runs. A
  * new turn enqueues a fresh job, and an older job that finds messages newer
- * than itself defers to that fresher one — so only the conversation's last
+ * than itself defers to that fresher one, so only the conversation's last
  * turn actually extracts.
  */
 export const MEMORY_QUIET_MS = 15 * 60_000;
@@ -47,7 +47,7 @@ const EXTRACT_SYSTEM = [
   "You extract durable facts about a signed-in user from one finished support-chat conversation, so the assistant can recognize them next time.",
   "Promote ONLY what stays true beyond this conversation: explicit preferences (\"prefers email\"), standing instructions (\"always ship to the Berlin office\"), and stable facts the user stated about themselves or their account.",
   "Never promote: anything the assistant said, one-off requests, questions, guesses, sentiments, or details tied to this conversation's specific issue.",
-  `Each fact must be one short self-contained sentence in the user's own language. Return at most ${MAX_FACTS_PER_EXTRACTION} facts — an empty list is the right answer for most conversations.`,
+  `Each fact must be one short self-contained sentence in the user's own language. Return at most ${MAX_FACTS_PER_EXTRACTION} facts; an empty list is the right answer for most conversations.`,
 ].join(" ");
 
 export interface PromoteMemoriesInput {
@@ -56,7 +56,7 @@ export interface PromoteMemoriesInput {
   organizationId: string;
   /**
    * When the promotion job was enqueued. Messages newer than this mean a
-   * later turn happened (which enqueued its own job) — this run defers.
+   * later turn happened (which enqueued its own job), this run defers.
    */
   enqueuedAt?: string;
 }
@@ -75,7 +75,7 @@ export type PromoteMemoriesOutcome = {
 };
 
 /**
- * True when the org has a daily token limit and has already spent it — the
+ * True when the org has a daily token limit and has already spent it, the
  * extraction call is deliberate spend, so it skips (fail-soft, retried by a
  * later conversation's job). Read errors fail open like the chat-path check:
  * accounting problems must never wedge the memory loop.
@@ -102,7 +102,7 @@ export async function promoteConversationMemories(
 
   const conversation = await db.getConversation(conversationId);
   if (!conversation) return { promoted: 0, skipped: "not-found" };
-  // Anonymous Visitors (and Preview members) never produce Memories — the
+  // Anonymous Visitors (and Preview members) never produce Memories, the
   // capability keys strictly on the verified SSO subject (ADR-0018).
   if (conversation.subjectType !== "sso") return { promoted: 0, skipped: "not-sso" };
   if (!(await db.getMemoryEnabled(organizationId))) {
@@ -112,7 +112,7 @@ export async function promoteConversationMemories(
   const messages = await db.listRecentMessages(conversationId, EXTRACT_TAIL_LIMIT);
   if (messages.length === 0) return { promoted: 0, skipped: "nothing-durable" };
   // Quiet check: a message newer than this job means a later turn enqueued a
-  // fresher job — succeed as a no-op and let that one extract the full tail.
+  // fresher job, succeed as a no-op and let that one extract the full tail.
   if (
     input.enqueuedAt &&
     messages.some((m) => m.createdAt > input.enqueuedAt!)

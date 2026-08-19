@@ -829,7 +829,7 @@ export function ChannelPanel({
           onPointerDown={() => setResizing(true)}
           label="Resize channel panel"
         />
-        {/* Inner scroll container — overflow lives here, not on the aside
+        {/* Inner scroll container, overflow lives here, not on the aside
             itself, so the resize handle poking out at -left-1.5 isn't clipped
             (overflow-y-auto on the aside would force overflow-x to auto too). */}
         <div className="min-h-0 flex-1 overflow-y-auto">

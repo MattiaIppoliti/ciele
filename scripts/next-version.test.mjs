@@ -14,7 +14,7 @@ let passed = 0;
 function check(label, fn) {
   fn();
   passed++;
-  console.log(`  ok — ${label}`);
+  console.log(`  ok, ${label}`);
 }
 
 // --- parseVersion ---

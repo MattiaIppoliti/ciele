@@ -63,7 +63,7 @@ function quickReplyTypeLabel(type: QuickReplyType): string {
 type ToolbarCommand = { wrap: string; wrapEnd?: string } | { prefix: string };
 
 /**
- * Static toolbar spec — kept out of render so the mapped array never captures
+ * Static toolbar spec: kept out of render so the mapped array never captures
  * the textarea ref (the ref is only read inside the click handler).
  */
 const TOOLBAR_BUTTONS: Array<{
@@ -233,7 +233,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
       {/* Chat launcher */}
       <Card size="sm" className="gap-0 p-4">
         {/* The switch group never shrinks, so on a narrow screen the copy is
-            what gives — stack them instead of squeezing the paragraph into a
+            what gives, stack them instead of squeezing the paragraph into a
             one-word column. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">

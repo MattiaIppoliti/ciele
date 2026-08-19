@@ -20,7 +20,7 @@ import {
  * (`{kind:"text", name, text}` or `{kind:"url", url}`) or multipart with a
  * `file` field. Extraction and original-binary storage happen here at the
  * surface; guards + the Source row + the ingestion enqueue live in
- * `addSourceOp`. The response carries the Source's `status` — poll
+ * `addSourceOp`. The response carries the Source's `status`, poll
  * `GET /api/v1/sources/{id}` until it settles.
  */
 
@@ -46,10 +46,20 @@ export async function POST(request: Request, { params }: Params) {
     let rawText: string;
     let sourceUrl: string | undefined;
     let originalObjectPath: string | undefined;
+    // PRD #726 contract: knowledge reaches Assistants only through explicit
+    // links, so the caller names them (JSON `assistantIds`, or a JSON-encoded
+    // `assistantIds` field on multipart). The op refuses an empty set.
+    let assistantIds: string[] | undefined;
 
     try {
       if (contentType.includes("multipart/form-data")) {
         const form = await request.formData();
+        const rawIds = form.get("assistantIds");
+        if (typeof rawIds === "string" && rawIds) {
+          const parsed: unknown = JSON.parse(rawIds);
+          if (Array.isArray(parsed))
+            assistantIds = parsed.map((id) => String(id));
+        }
         const file = form.get("file");
         if (!(file instanceof File) || file.size === 0) {
           return apiError(400, "invalid_input", "Provide a non-empty 'file' field");
@@ -70,7 +80,7 @@ export async function POST(request: Request, { params }: Params) {
         rawText = extracted.text;
 
         if (isSupabaseConfigured() && isSupabaseServiceConfigured()) {
-          // Need the org for the storage prefix — resolve the key up front.
+          // Need the org for the storage prefix: resolve the key up front.
           const ctx = await resolveApiKeyContext(request);
           if (ctx instanceof Response) return ctx;
           const stored = await uploadKnowledgeOriginal(
@@ -82,6 +92,11 @@ export async function POST(request: Request, { params }: Params) {
       } else {
         const body = await request.json().catch(() => null);
         if (body === null) return apiError(400, "invalid_input", "Body must be JSON");
+        if (Array.isArray(body.assistantIds)) {
+          assistantIds = (body.assistantIds as unknown[]).map((id) =>
+            String(id)
+          );
+        }
         if (body.kind === "url" && typeof body.url === "string") {
           const extracted = await extractSourceText({ kind: "url", url: body.url });
           name = extracted.name;
@@ -122,6 +137,7 @@ export async function POST(request: Request, { params }: Params) {
       rawText,
       sourceUrl,
       originalObjectPath,
+      assistantIds,
     });
     if (outcome instanceof Response) return outcome;
     return Response.json(sourceResource(outcome.result.source), { status: 201 });

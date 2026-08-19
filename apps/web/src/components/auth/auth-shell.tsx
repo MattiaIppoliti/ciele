@@ -16,10 +16,10 @@ export function AuthShell({
     <div className="grid h-full lg:grid-cols-2">
       {/* "light" forces light-theme tokens even if <html class="dark"> is
           left over from a client-side nav out of the (dark-mode) admin
-          shell — otherwise text/border tokens resolve to dark-mode values
+          shell, otherwise text/border tokens resolve to dark-mode values
           on this always-white panel and become unreadable. */}
       <div className="light text-foreground relative flex flex-col overflow-hidden bg-white">
-        {/* Same square grid as the chatbot panel, in light-theme ink — but
+        {/* Same square grid as the chatbot panel, in light-theme ink, but
             inverted mask: faint behind the form at center, visible toward
             the panel edges. Static: nothing behind the form should move. */}
         <AuthGrid tone="light" drift={false} />
@@ -32,8 +32,8 @@ export function AuthShell({
           }}
         />
         {/* The panel clips the decoration; this layer carries the scroll and
-            the padding. Without it a short viewport — a phone in landscape, or
-            in portrait with the keyboard raised — clipped the bottom of the
+            the padding. Without it a short viewport, a phone in landscape, or
+            in portrait with the keyboard raised, clipped the bottom of the
             form against `overflow-hidden` and left no way to reach it.
             `min-h-full` + `flex-1` keeps the form optically centred when there
             is room and lets it grow past the fold when there is not, which
@@ -47,7 +47,7 @@ export function AuthShell({
               className="group flex w-fit shrink-0 items-end gap-2 font-medium"
             >
               {/* Ghost's own base bar sits above the SVG's true bottom edge
-                  (empty stroke margin below it) — nudge down so the bar lines
+                  (empty stroke margin below it), nudge down so the bar lines
                   up with the text baseline. */}
               <GhostMark
                 className="size-8 translate-y-1"

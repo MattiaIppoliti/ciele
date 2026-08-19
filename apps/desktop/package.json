@@ -3,7 +3,7 @@
   "version": "0.0.0-dev",
   "private": true,
   "license": "AGPL-3.0-only",
-  "description": "Ciele Desktop — sign in to your organization, or run Ciele locally.",
+  "description": "Ciele Desktop, sign in to your organization, or run Ciele locally.",
   "main": "./out/main/index.js",
   "scripts": {
     "build": "electron-vite build",

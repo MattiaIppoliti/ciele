@@ -2,7 +2,7 @@
 //
 // It is deliberately small and it is deliberately not attached to the product
 // window (see src/main/windows.ts): nothing here should ever be reachable from
-// a page this app did not write. Every method is a named invoke — no generic
+// a page this app did not write. Every method is a named invoke, no generic
 // `invoke(channel, ...)` escape hatch, which would make the surface unbounded.
 
 import { contextBridge, ipcRenderer } from "electron";

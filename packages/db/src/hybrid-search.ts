@@ -2,8 +2,8 @@
  * The hybrid-retrieve skeleton shared by every pgvector-backed search in this
  * package (`searchChunks`, `searchMemories`) and the lexical scoring the mock
  * implementations mirror. One algorithm, written once: before this existed the
- * same body — identical tokenizer, identical 0.5 placeholder similarity,
- * identical "vector RPC then top up from lexical via a seen set" — was pasted
+ * same body, identical tokenizer, identical 0.5 placeholder similarity,
+ * identical "vector RPC then top up from lexical via a seen set", was pasted
  * twice in `supabase.ts` and twice more in `mock.ts`.
  *
  * Internal to the package: the `Db` interface exposes the search methods, not

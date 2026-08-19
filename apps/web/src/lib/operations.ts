@@ -8,7 +8,7 @@ import { revalidateEntities } from "@/lib/org-mutation";
  * signed-in Member with the operation's declared capability, validate,
  * run against the session's RLS-scoped Db, then revalidate the declared
  * entities. Server actions delegate here; the /api/v1 twin lives in
- * `api-v1/run.ts` — same operation, different context resolution.
+ * `api-v1/run.ts`: same operation, different context resolution.
  */
 export async function runOperation<In, Out>(
   op: Operation<In, Out>,

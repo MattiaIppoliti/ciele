@@ -18,7 +18,7 @@ export function HeroGhost({ className }: { className?: string }) {
     // on the face (their centre ≈117.5 vs the body centre ≈106), so at rest
     // there is more white to their left. Rightward travel hits the near edge
     // quickly (reads strongly); leftward needs more range to read as an equal
-    // glance — hence the asymmetric horizontal maxima.
+    // glance, hence the asymmetric horizontal maxima.
     const MAX_RIGHT = 6;
     const MAX_LEFT = 15;
     const MAX_Y = 6;
@@ -26,7 +26,7 @@ export function HeroGhost({ className }: { className?: string }) {
 
     // The browser already coalesces pointermove to ~display rate, and the CSS
     // transition on the eyes smooths the steps, so we write straight to the
-    // attribute — no rAF (which pauses when the tab is backgrounded).
+    // attribute, no rAF (which pauses when the tab is backgrounded).
     const onMove = (e: PointerEvent) => {
       const svg = svgRef.current;
       const eyes = eyesRef.current;

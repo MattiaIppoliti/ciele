@@ -19,7 +19,7 @@ import {
  * The Settings modal: a tab rail on the left, the active settings route on the
  * right, over a dimmed console.
  *
- * It is a *layout*, not a client-side dialog holding panels — each tab is still
+ * It is a *layout*, not a client-side dialog holding panels, each tab is still
  * its own server route, so the data it shows is fetched and RLS-scoped on the
  * server exactly as before, and every tab stays deep-linkable. Closing pops back
  * to whatever the console was showing (or the dashboard, for someone who arrived
@@ -51,8 +51,8 @@ export function SettingsDialog({
 
   const close = useCallback(() => {
     // One back step leaves the dialog because switching tabs *replaces* the
-    // entry rather than pushing one (see `RailRow`): the whole dialog — every
-    // tab, both scopes — occupies exactly one history entry, so closing takes
+    // entry rather than pushing one (see `RailRow`): the whole dialog, every
+    // tab, both scopes, occupies exactly one history entry, so closing takes
     // one click no matter how much of it was browsed. A deep link has nothing
     // behind it in this app's history, so fall through to the dashboard.
     if (window.history.length > 1) router.back();
@@ -88,7 +88,7 @@ export function SettingsDialog({
             icons, which `(admin)/layout.tsx` switches off for pages. */}
         <AnimateIcons>
           {/* The rail is a column of tabs on a desktop and a scrollable strip
-              of them on a phone — same rows, laid out along the axis that has
+              of them on a phone, same rows, laid out along the axis that has
               room. The scope title is the dialog's heading in both. */}
           <aside className="bg-muted/40 flex shrink-0 flex-row items-center gap-2 border-b py-2 pr-14 pl-3 sm:w-56 sm:flex-col sm:items-stretch sm:gap-0 sm:border-r sm:border-b-0 sm:py-3 sm:pr-0 sm:pl-0">
             <p className="text-muted-foreground shrink-0 text-xs font-semibold tracking-wide uppercase sm:px-4 sm:pb-2">
@@ -151,7 +151,7 @@ function RailRow({
 }: {
   tab: SettingsTab;
   active: boolean;
-  /** Marks the footer row that leaves for the other scope — it carries an
+  /** Marks the footer row that leaves for the other scope, it carries an
    * outbound arrow so it does not read as one more tab. */
   crossScope?: boolean;
 }) {
@@ -172,7 +172,7 @@ function RailRow({
       <AnimatedIcon icon={tab.icon} size={16} className="shrink-0" />
       <span className="min-w-0 flex-1 truncate">
         {tab.label}
-        {/* The hint is a second line under the label — the horizontal strip
+        {/* The hint is a second line under the label, the horizontal strip
             has no vertical room for it. */}
         {tab.hint && (
           <span className="text-muted-foreground hidden truncate text-xs font-normal sm:block">

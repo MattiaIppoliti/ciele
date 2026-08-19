@@ -5,7 +5,7 @@ import { DEMO_MEMBER, DEMO_ORG, isSupabaseConfigured } from "@agent-hub/db";
 import { getDb } from "./data";
 import { createSupabaseServerClient } from "./supabase/server";
 
-/** Persists which Organization the caller is currently browsing — only
+/** Persists which Organization the caller is currently browsing, only
  * meaningful for a platform superuser or a multi-org member, since a
  * regular single-org member always resolves to their one Organization
  * regardless of this cookie. */
@@ -21,20 +21,20 @@ export interface Session {
   /** Every Organization the caller can switch into (a platform superuser
    * sees every Organization; everyone else sees just their own). */
   organizations: Organization[];
-  /** The caller's own profile (username, name, avatar) — Settings > Profile. */
+  /** The caller's own profile (username, name, avatar), Settings > Profile. */
   profile: Profile | null;
 }
 
 /**
  * Memoized with React cache(): deriving the session costs a network call
  * (auth.getUser) plus an org lookup, and layout + page + actions in one
- * request all need it. Per-request only — never cached across requests.
+ * request all need it. Per-request only, never cached across requests.
  */
 export const getSession = cache(async (): Promise<Session | null> => {
   if (!isSupabaseConfigured()) {
     const db = await getDb();
     // Org branding and profile are editable even in demo mode (the mock Db
-    // persists them in-memory for the session) — read them back through the
+    // persists them in-memory for the session), read them back through the
     // Db rather than the frozen DEMO_ORG/DEMO_MEMBER constants, or edits
     // would appear to save but never actually show up anywhere.
     const [current, organizations, profile] = await Promise.all([
@@ -68,7 +68,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
     db.getProfile(),
   ]);
   // The cookie may point at an org the caller can no longer see (e.g. a
-  // superuser grant was revoked) — fall back to their default org.
+  // superuser grant was revoked), fall back to their default org.
   const resolved = current ?? (preferredOrgId ? await db.getCurrentOrg() : null);
 
   return {
@@ -84,7 +84,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
 
 /* There was a `hasActiveSession()` here: a presence-only check for surfaces that
    needed "is anyone signed in?" without getSession's three Db reads. Its only
-   callers were the marketing pages, and they no longer ask the server at all —
+   callers were the marketing pages, and they no longer ask the server at all,
    the pages prerender and the header picks its CTA from the signed-in hint
    (lib/auth-hint.ts), so the question is answered in the browser, after the
    response. Deleted rather than left exported: it read cookies, so calling it

@@ -7,7 +7,7 @@ import { apiError } from "@/lib/api-v1/http";
 import { assistantResource } from "@/lib/api-v1/resources";
 import { runApiOperation } from "@/lib/api-v1/run";
 
-/** One Assistant (#620): read, patch, delete — same ops as the admin app. */
+/** One Assistant (#620): read, patch, delete, same ops as the admin app. */
 
 type Params = { params: Promise<{ id: string }> };
 

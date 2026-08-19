@@ -3,7 +3,7 @@
 /**
  * The bottom-right notification banner shows two kinds of thing: operational
  * **alerts** read from the server (they persist until resolved) and transient
- * **events** raised by the UI itself — "Published v3", "Upload failed". This
+ * **events** raised by the UI itself, "Published v3", "Upload failed". This
  * module holds the pure part: the shape, the ordering, and the auto-dismiss
  * policy. The React store and the banner live in
  * `components/notifications/notification-center.tsx`.
@@ -20,7 +20,7 @@ export interface AppNotification {
   description?: string;
   /** Small right-aligned label on the card (alert type, elapsed time, …). */
   tag?: string;
-  /** Epoch ms — newest sorts first. */
+  /** Epoch ms, newest sorts first. */
   createdAt: number;
   source: NotificationSource;
 }
@@ -68,7 +68,7 @@ export function alertNotification(alert: Alert): AppNotification {
 
 /**
  * The cards the banner renders: newest first, dismissed ids dropped, capped at
- * `limit`. Events outrank alerts at equal timestamps — a result the user just
+ * `limit`. Events outrank alerts at equal timestamps, a result the user just
  * caused is what they are looking for.
  */
 export function visibleNotifications(

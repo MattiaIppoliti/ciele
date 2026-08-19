@@ -14,7 +14,7 @@ const CookieConsentUi = dynamic(
 
 /**
  * Mounted once from the root layout, which is what makes coverage complete:
- * every public first-party page — marketing, policies, auth — gets the banner
+ * every public first-party page, marketing, policies, auth, gets the banner
  * without anyone having to remember to add it to a new route group.
  */
 export function CookieConsent() {
@@ -27,8 +27,8 @@ export function CookieConsent() {
      which is the correct outcome for the same reason. */
   if (pathname?.startsWith("/widget")) return null;
 
-  /* The console is the product, not the website: no banner and — because this
-     component is also what mounts the analytics scripts — no non-essential
+  /* The console is the product, not the website: no banner and, because this
+     component is also what mounts the analytics scripts, no non-essential
      cookies to consent to in the first place. Consent lives on the public site,
      which is where the trackers are; a signed-in admin should not be asked
      about cookies while working, and the preferences entry is off the account

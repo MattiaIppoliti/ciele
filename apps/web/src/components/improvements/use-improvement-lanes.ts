@@ -11,7 +11,7 @@ import { improvementKey, statusLabel } from "@/lib/improvements";
  * board owns one instance so the list and the Kanban agree on which card is
  * mid-drag and where the optimistic status sits.
  *
- * Native HTML5 drag-and-drop — a drop only rewrites `status`, since an
+ * Native HTML5 drag-and-drop, a drop only rewrites `status`, since an
  * Improvement has no stored position to reorder within a lane.
  */
 export function useImprovementLanes(

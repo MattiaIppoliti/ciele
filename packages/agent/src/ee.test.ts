@@ -10,7 +10,7 @@ import {
  * the open-source and enterprise editions diverge: OSS ships no-op defaults so
  * the mirrored tree is a complete free product; the enterprise edition
  * registers real implementations at startup. These tests pin the two
- * behaviours the whole open-core boundary rests on — defaults are inert, and a
+ * behaviours the whole open-core boundary rests on, defaults are inert, and a
  * registered override wins at the registry boundary.
  */
 
@@ -74,7 +74,7 @@ describe("enterprise capability registry", () => {
         },
       },
     });
-    // billing was not overridden — still the no-op default
+    // billing was not overridden, still the no-op default
     expect(await getEnterpriseCapabilities().billing.getSubscription("o1")).toBeNull();
   });
 

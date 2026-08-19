@@ -1,5 +1,5 @@
 -- Usage recording (#438, decision #420): the ai_usage ledger is the platform's
--- usage-event table — one row per model call (chat and embedding, both
+-- usage-event table, one row per model call (chat and embedding, both
 -- knowledge engines), written at the runtime's single metering seam. This
 -- migration completes it for metering:
 --   1. records the *connection kind* per call (platform-funded vs BYOK vs
@@ -7,7 +7,7 @@
 --      customer traffic differently;
 --   2. widens the stage vocabulary with 'enrich' (OKF enrichment during
 --      ingestion) and 'improvement_proposal' (already in the TS type but
---      missing from the check constraint — those inserts were silently
+--      missing from the check constraint, those inserts were silently
 --      rejected because the ledger write path swallows errors by design);
 --   3. adds the usage_daily rollup, maintained by the rollup-usage cron, so
 --      cap checks and dashboards read a cheap aggregate instead of scanning
@@ -47,7 +47,7 @@ create table public.usage_daily (
 alter table public.usage_daily enable row level security;
 
 -- Members read their org's rollup; there is deliberately no insert/update
--- policy — only the service-role cron writes, through rollup_usage_daily().
+-- policy, only the service-role cron writes, through rollup_usage_daily().
 create policy "members read usage daily" on public.usage_daily
   for select using (private.is_org_member(organization_id));
 

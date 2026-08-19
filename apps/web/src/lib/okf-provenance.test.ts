@@ -11,7 +11,7 @@ describe("conceptProvenanceView", () => {
     expect(view.tier).toBe("unverified");
     expect(view.trustLabel).toBe("Unverified");
     expect(view.status).toBe("stable");
-    // A stable concept says nothing about status — the default is not news.
+    // A stable concept says nothing about status, the default is not news.
     expect(view.showStatus).toBe(false);
     expect(view.stale).toBe(false);
     expect(view.generatedBy).toBeNull();

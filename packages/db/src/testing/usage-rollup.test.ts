@@ -56,7 +56,7 @@ afterAll(async () => {
   await pg?.close();
 });
 
-describe("usage_daily rollup — closed days (real SQL)", () => {
+describe("usage_daily rollup, closed days (real SQL)", () => {
   it("closes a prior day into usage_daily and serves it from the report", async () => {
     await insertUsage({
       createdAt: backdate(2),
@@ -119,7 +119,7 @@ describe("usage_daily rollup — closed days (real SQL)", () => {
     });
   });
 
-  it("recompute is idempotent — a second rollup does not double a closed day", async () => {
+  it("recompute is idempotent, a second rollup does not double a closed day", async () => {
     const day = backdate(2).slice(0, 10);
     const readClosed = async () => {
       const res = await pg.query<{ calls: number; input_tokens: number }>(
@@ -157,12 +157,12 @@ describe("usage_daily rollup — closed days (real SQL)", () => {
 
 /**
  * The window read (#506). Plan windows run from a Stripe billing anchor, so they
- * start and end at arbitrary times of day — never on a UTC midnight. Reading a
+ * start and end at arbitrary times of day, never on a UTC midnight. Reading a
  * day-grained rollup for such a window would silently count whole days that the
  * window only partly covers, which is exactly the error that makes a cap fire
  * early or late. Only real SQL with backdated rows can exercise that boundary.
  */
-describe("org_usage_meters — arbitrary windows (real SQL)", () => {
+describe("org_usage_meters, arbitrary windows (real SQL)", () => {
   let orgId: string;
 
   /** Same UTC day as `backdate`, at an explicit hour. */
@@ -223,7 +223,7 @@ describe("org_usage_meters — arbitrary windows (real SQL)", () => {
   });
 
   it("excludes a partial day before the window start, though the rollup closed it", async () => {
-    // Window opens six hours AFTER the usage — the whole day is in the rollup,
+    // Window opens six hours AFTER the usage, the whole day is in the rollup,
     // but none of it belongs to this window.
     const meters = await metersOf(backdateAt(3, 18), new Date().toISOString());
     expect(meters.get("ai")?.tokens ?? 0).toBe(0);
@@ -276,11 +276,11 @@ describe("org_usage_meters — arbitrary windows (real SQL)", () => {
  * The window read's day arithmetic must be pinned to UTC, not to whatever
  * `TimeZone` the session happens to carry. `date_trunc('day', ts)` on a
  * timestamptz truncates in the session zone, which shifts the boundary between
- * "take this from the rollup" and "read this live" by the zone's offset — and a
+ * "take this from the rollup" and "read this live" by the zone's offset, and a
  * shifted boundary means the two ranges overlap and the same usage is counted
  * twice. usage_daily.day is a UTC date, so UTC is the only correct frame.
  */
-describe("org_usage_meters — UTC pinning (real SQL)", () => {
+describe("org_usage_meters, UTC pinning (real SQL)", () => {
   let orgId: string;
 
   // Early morning UTC: inside the offset window where a session-zone truncation

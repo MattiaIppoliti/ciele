@@ -69,7 +69,7 @@ describe("start and stop", () => {
     expect(ports.composeCalls.some((call) => call.includes("up -d"))).toBe(true);
   });
 
-  it("stops rather than tears down — the user's data is not ours to remove", async () => {
+  it("stops rather than tears down, the user's data is not ours to remove", async () => {
     const { controller, ports } = controllerWith();
     await controller.start();
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * A signed-in user's circular avatar. Falls back to a generic, gender-
  * neutral silhouette (the same UserRound-in-a-muted-circle idiom already
- * used for members without a picture) rather than initials or an emoji —
+ * used for members without a picture) rather than initials or an emoji,
  * every new user starts with this until they upload a real photo.
  */
 export function UserAvatar({

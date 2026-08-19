@@ -11,7 +11,7 @@ interface PillRect {
 }
 
 /**
- * Shared state for a single "pill" that glides between the rows of a menu —
+ * Shared state for a single "pill" that glides between the rows of a menu,
  * the command palette's sliding active-row effect. The pill appears in place
  * on first `show` (no slide from where it last was), glides while moving
  * between rows, and fades out in place on `hide`.
@@ -57,7 +57,7 @@ export function useSlidingPill(pillClassName?: string) {
     setVisible(false);
   }, []);
 
-  /** Forget the pill entirely — for containers that unmount and remount
+  /** Forget the pill entirely, for containers that unmount and remount
    * (e.g. a popup), so a reopen doesn't slide from a stale position. */
   const reset = useCallback(() => {
     visibleRef.current = false;

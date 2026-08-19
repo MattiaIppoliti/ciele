@@ -9,7 +9,7 @@ description: Applica una nuova versione del repository e le relative migrazioni 
 2. Registra il commit o il tag corrente.
 3. Esegui il backup del database e dei file caricati.
 4. Testa il processo di ripristino.
-5. Pianifica una finestra di servizio accettabile.
+5. Pianifica una finestra di manutenzione accettabile.
 
 ## Applica la versione
 
@@ -18,8 +18,19 @@ git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
+In modalità immagine, cambia `CIELE_IMAGE_TAG` in `deploy/.env` con la nuova
+versione e applicala al suo posto:
+
+```bash
+docker compose up -d
+```
+
+Su [Ciele Desktop](/self-hosting/desktop), l'aggiornamento dell'applicazione
+esegue questo passaggio: ogni build fissa le immagini corrispondenti alla
+propria versione.
+
 Il servizio `migrate` applica solo le migrazioni in sospeso. Controlla il
-risultato prima di accettare l'applicazione come funzionante.
+risultato prima di accettare l'applicazione come integra.
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps

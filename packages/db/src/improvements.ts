@@ -3,7 +3,7 @@ import type { Db } from "./types";
 
 /**
  * One clamp for every raised Improvement title. The hand-built call sites
- * disagreed (80 / 100 / 120); 120 — the largest in use — wins so no site
+ * disagreed (80 / 100 / 120); 120, the largest in use, wins so no site
  * loses information it kept before.
  */
 export const IMPROVEMENT_TITLE_MAX = 120;
@@ -16,7 +16,7 @@ export const IMPROVEMENT_TITLE_MAX = 120;
  * tracker write must never break the primary operation (`swallowErrors`
  * logs and returns null instead of throwing). The conversation-scoped dedup
  * walk lives here too (`raiseOrAttachImprovement` /
- * `findOpenImprovementForConversation`) — it used to be re-implemented per
+ * `findOpenImprovementForConversation`), it used to be re-implemented per
  * caller, and the one caller that skipped it cloned items the verifier had
  * already opened.
  */
@@ -62,7 +62,7 @@ export async function raiseImprovement(
 
 /**
  * The first still-open Improvement linked to any message of this
- * Conversation, or null. "Open" means not done and not archived — a closed
+ * Conversation, or null. "Open" means not done and not archived, a closed
  * item is a solved problem, and a recurrence deserves a fresh item rather
  * than silently reopening history.
  */
@@ -90,7 +90,7 @@ export async function findOpenImprovementForConversation(
 /**
  * Attach-or-raise: the conversation-scoped dedup walk every automatic
  * producer shares. An open Improvement already linked to this Conversation
- * gains the flagged message as an occurrence (same problem, more evidence —
+ * gains the flagged message as an occurrence (same problem, more evidence,
  * never a clone); otherwise a new item is raised. A missing `messageId`
  * (nothing persisted to attach) always raises.
  */

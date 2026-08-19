@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Magnetic } from "@/components/core/magnetic";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { FEATURES, type FeatureEntry } from "@/components/marketing/feature-catalog";
 import { FeaturePoints } from "@/components/marketing/feature-points";
@@ -10,7 +11,7 @@ import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { PreviewCoda } from "@/components/marketing/preview-coda";
 
 /* A feature page is one claim, one picture of the screen that backs it, and
-   three supporting points — in that order, so a visitor can stop reading as
+   three supporting points, in that order, so a visitor can stop reading as
    soon as they have what they came for. */
 export function FeatureContent({ feature }: { feature: FeatureEntry }) {
   const others = FEATURES.filter((entry) => entry.slug !== feature.slug);
@@ -62,9 +63,18 @@ export function FeatureContent({ feature }: { feature: FeatureEntry }) {
           </section>
         )}
 
-        {/* The rest of the product, before the sign-off: a reader who is not
-            done browsing gets the other nine features first, and the call to
-            action is the last thing on the page rather than the middle. */}
+        <CloudCallout
+          expression="curious"
+          eyebrow="Always exploring"
+          title="Curious about everything you know"
+          body="Point it at your websites, documents and FAQs. It keeps digging until it can answer with a citation, and says so when it can't."
+          cta={{ label: "Try it on your knowledge", href: "/contact/sales" }}
+        />
+
+        {/* The rest of the product, then the sign-off. This sits below the
+            mascot band on purpose: the cloud closes the feature's own pitch,
+            and a reader who is still browsing gets the other nine features
+            after it, with the call to action last rather than mid-page. */}
         <nav aria-label="Other features" className="mt-24 border-t pt-10">
           <h2 className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
             Keep looking

@@ -6,7 +6,7 @@ import { connectorInstallationScope } from "@/lib/local-connector-installer";
 import { getAssistantCached } from "../get-assistant";
 
 /**
- * "Preview" — the live preview on a route of its own.
+ * "Preview", the live preview on a route of its own.
  *
  * The editor's docked preview panel is a pointer surface (drag to resize,
  * hover to reveal) and is hidden below `md`, so without this route the preview

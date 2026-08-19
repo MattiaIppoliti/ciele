@@ -26,7 +26,7 @@ import { beginWebsiteCrawl, embedConcept, restartWebsiteCrawl } from "./ingest";
 
 /**
  * The two gates that stop platform-funded ingestion work when its allowance is
- * spent (#510), and — just as important — everything they must NOT stop.
+ * spent (#510), and, just as important, everything they must NOT stop.
  *
  * Runs offline: the mock Db, no Provider Connections, and stubbed crawler
  * adapters, so nothing here depends on a network or a model.
@@ -232,7 +232,7 @@ describe("the scraping gate at crawl start", () => {
 
   it("leaves a Source the scheduled sweep already claimed claimable again", async () => {
     // The sweep's claim flips the Source to `processing` BEFORE the start op
-    // runs, so "restore what you found" would restore `processing` — and since
+    // runs, so "restore what you found" would restore `processing`, and since
     // only a `ready` Source can be claimed, the re-crawl would lose its turn
     // permanently and the row would show a crawl that does not exist.
     const db = getMockDb();
@@ -280,9 +280,17 @@ describe("the embedding gate at ingestion", () => {
   async function seedConcept(db: Db, name: string) {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: name });
     const collection = await db.createCollection(assistant.id, { name });
+    // Link-based retrieval (PRD #726/#733): the Concept answers through its
+    // Source, and the link is what makes the Source this assistant's.
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name,
+      kind: "text",
+    });
+    await db.setSourceAssistantLinks(source.id, [assistant.id]);
     const concept = await db.createConcept({
       collectionId: collection.id,
-      sourceId: null,
+      sourceId: source.id,
       path: `${name}.md`,
       frontmatter: { type: "Web Page", title: name },
       body: "Body text to index.",

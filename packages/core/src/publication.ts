@@ -10,7 +10,7 @@ import type {
 /**
  * Builds the immutable snapshot a Publish captures (see context.md:
  * Publication). This is the single place the snapshot's field selection
- * lives — which Assistant fields are frozen into the widget's served config,
+ * lives, which Assistant fields are frozen into the widget's served config,
  * plus the flows and the collection references. Keeping it here means the
  * selection stays in lockstep with PublicationConfig instead of being
  * hand-picked in the publish server action, where a newly-added Assistant
@@ -24,7 +24,7 @@ export function buildPublicationConfig(
   /**
    * The Entities the assistant selected (#665, #667). Shared-scope ones are
    * available to every turn; user-scoped ones reach the Widget only when the
-   * turn carries a verified identity claim — the runtime's registration
+   * turn carries a verified identity claim, the runtime's registration
    * policy enforces that, the snapshot just carries the schema.
    */
   entities: Entity[] = []

@@ -10,12 +10,12 @@ const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 /**
  * The stdio process end to end (#629, #700). `serveStdio` decides the era from
  * the opening exchange, so these tests are the only place the wire era is
- * actually observable — a unit test of `createCieleMcpServer` cannot see it.
+ * actually observable, a unit test of `createCieleMcpServer` cannot see it.
  *
  * Each case spawns the real ciele-mcp child process, so the wall clock is
  * dominated by process-spawn time, which balloons when turbo runs the web and
  * agent suites concurrently on the same machine. The test timeout is a safety
- * net, not a latency assertion — keep it well above the contended worst case
+ * net, not a latency assertion, keep it well above the contended worst case
  * (same rationale as apps/web's local-connector-runtime tests). The connect
  * deadline below stays under it so a genuinely hung spawn fails with a
  * descriptive error instead of a bare vitest timeout.
@@ -34,7 +34,7 @@ async function connectWithDeadline(client: Client, transport: StdioClientTranspo
           () =>
             reject(
               new Error(
-                `ciele-mcp stdio process did not complete the opening exchange within ${CONNECT_DEADLINE_MS}ms — the spawn or handshake is hung, not slow`
+                `ciele-mcp stdio process did not complete the opening exchange within ${CONNECT_DEADLINE_MS}ms, the spawn or handshake is hung, not slow`
               )
             ),
           CONNECT_DEADLINE_MS
@@ -115,7 +115,7 @@ describe("ciele MCP stdio process", () => {
 
     try {
       await connectWithDeadline(client, spawnServer(api.baseUrl));
-      // No `versionNegotiation` — the v2 client's default is the legacy
+      // No `versionNegotiation`, the v2 client's default is the legacy
       // handshake, which `serveStdio` still serves.
       expect(client.getProtocolEra()).toBe("legacy");
       expect(client.getServerVersion()).toMatchObject({ name: "ciele" });

@@ -20,7 +20,7 @@ import { SsoCallbackError, type SsoCredentials } from "./types";
  * Route orchestration for the widget SSO flow (ticket #372). Kept apart from
  * the pure adapter/session helpers because it reaches Next + the widget Db.
  * The redirect/callback paths are provider-constant (`/api/sso/{kind}/...`) so
- * one registered redirect URI per deployment serves every org — the
+ * one registered redirect URI per deployment serves every org, the
  * assistant/org is carried in the sealed transient, not the URL.
  */
 
@@ -50,7 +50,7 @@ async function loadCredentials(
 /**
  * The callback result page. In the popup flow it posts the result to the widget
  * opener and closes. In the top-level fallback (popup blocked) there is no
- * opener, so it redirects back to the same-origin widget URL — the gate cookie
+ * opener, so it redirects back to the same-origin widget URL, the gate cookie
  * is already set, so the widget loads authenticated.
  */
 function resultPage(ok: boolean, returnTo: string | null): string {
@@ -69,7 +69,7 @@ function resultPage(ok: boolean, returnTo: string | null): string {
 </script>You may close this window.</body>`;
 }
 
-/** GET /api/sso/[provider]/start?assistantId=… — 302 to the IdP. */
+/** GET /api/sso/[provider]/start?assistantId=…, 302 to the IdP. */
 export async function startSsoFlow(
   request: NextRequest,
   kind: SsoProviderKind
@@ -111,7 +111,7 @@ export async function startSsoFlow(
   return response;
 }
 
-/** GET /api/sso/[provider]/callback?code=&state= — verify, mint the gate cookie. */
+/** GET /api/sso/[provider]/callback?code=&state=, verify, mint the gate cookie. */
 export async function handleSsoCallback(
   request: NextRequest,
   kind: SsoProviderKind
@@ -180,7 +180,7 @@ export async function handleSsoCallback(
 }
 
 /**
- * POST /api/sso/[provider]/logout — clear the (org-scoped) gate cookie, so it
+ * POST /api/sso/[provider]/logout, clear the (org-scoped) gate cookie, so it
  * needs no provider. An `?returnTo=` sends the browser onward afterward.
  */
 export async function logoutSsoFlow(
@@ -197,7 +197,7 @@ export async function logoutSsoFlow(
 
 /**
  * Resolve a `returnTo` only if it stays on our origin (absolute same-origin, or
- * a relative path) — an attacker-supplied off-site URL is dropped, closing an
+ * a relative path), an attacker-supplied off-site URL is dropped, closing an
  * open-redirect. Returns the absolute URL to redirect to, or `null`.
  */
 function sameOriginReturnTo(

@@ -3,7 +3,7 @@
 -- Knowledge ownership moves from the Assistant to the Organization via an
 -- expand–contract migration (template: the API-integrations chain). This is
 -- the EXPAND half: every column is additive and nullable, nothing existing is
--- dropped or renamed, and no existing RPC changes — production behavior is
+-- dropped or renamed, and no existing RPC changes, production behavior is
 -- byte-for-byte identical until the backfill (#728) and contract (#733) land.
 
 -- Collections become org-owned. Nullable during expand: the adapter stamps it
@@ -25,7 +25,7 @@ alter table public.sources
 -- Chunks learn which Source they came from so retrieval can follow the
 -- assistant↔source link table instead of the denormalized assistant_id
 -- (which the contract step will drop). Nullable during expand: null means
--- "legacy chunk — scope by assistant_id as before".
+-- "legacy chunk, scope by assistant_id as before".
 alter table public.concept_chunks
   add column source_id text references public.sources (id) on delete cascade;
 

@@ -39,7 +39,7 @@ interface Row {
   label: string;
   color: string;
   values: number[];
-  /** Legend total + share of the whole range — omitted for the Metrics tab,
+  /** Legend total + share of the whole range, omitted for the Metrics tab,
    * where series aren't a partition of a single total. */
   total?: number;
   percent?: number;
@@ -64,7 +64,7 @@ function elapsedLabel(since: number, nowMs: number): string {
   return `Updated ${Math.floor(minutes / 60)}h ago`;
 }
 
-/** Series keys are display strings ("Answers / Conversation") — map each to a
+/** Series keys are display strings ("Answers / Conversation"), map each to a
  * CSS-variable-safe dataKey for Recharts + the chart config. */
 function slugifyKeys(rows: Row[]): Map<string, string> {
   const slugs = new Map<string, string>();
@@ -81,7 +81,7 @@ function slugifyKeys(rows: Row[]): Map<string, string> {
 /**
  * "Usage" card: a tab strip (Metrics / Assistants / Channels) switches the
  * chart between a toggleable multi-line view of the KPI series and stacked
- * bar breakdowns by assistant or channel — the latter's legend rows carry a
+ * bar breakdowns by assistant or channel, the latter's legend rows carry a
  * total + share of the range.
  */
 export function UsageCard({
@@ -250,7 +250,7 @@ export function UsageCard({
           </AreaChart>
         </ChartContainer>
 
-        {/* Legend — click to toggle a series/group; breakdown tabs show
+        {/* Legend, click to toggle a series/group; breakdown tabs show
             total + share of the range. */}
         <div className="mt-2">
           {rows.map((r) => {

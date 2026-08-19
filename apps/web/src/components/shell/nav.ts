@@ -25,9 +25,9 @@ export interface AssistantSummary {
   id: string;
   title: string;
   nickname: string;
-  /** Widget brand color — tints the assistant's avatar dot in the shell. */
+  /** Widget brand color, tints the assistant's avatar dot in the shell. */
   brandColor?: string | null;
-  /** Circular logo — takes priority over `brandColor` in the shell. */
+  /** Circular logo, takes priority over `brandColor` in the shell. */
   avatarUrl?: string | null;
 }
 
@@ -51,9 +51,10 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   { label: "Inbox", icon: Archive, href: "/inbox" },
   { label: "Improvements", icon: FlaskConical, href: "/improvements" },
   { label: "Insights", icon: ChartLine, href: "/insights" },
-  // Knowledge hub (PRD #726) — took Data Assistant's slot; that page stays
-  // reachable by URL (retirement is a separate decision).
-  { label: "Knowledge", icon: BookText, href: "/knowledge" },
+  // The org-level knowledge hub, shown as "Library" so it never reads as the
+  // per-Assistant SETUP → Knowledge section (PRD #726, took Data Assistant's
+  // slot; that page stays reachable by URL, retirement is a separate decision).
+  { label: "Library", icon: BookText, href: "/library" },
   { label: "Alerts", icon: Bell, href: "/alerts", bottom: true },
   {
     label: "Settings",

@@ -1,5 +1,5 @@
 /**
- * A domain entity an admin mutation can touch (#620 — moved here from
+ * A domain entity an admin mutation can touch (#620, moved here from
  * `apps/web` so operations can declare what they mutated without knowing
  * anything about routes). The web app owns the entity→path table that turns
  * these into `revalidatePath` calls; this package only ever *declares*.

@@ -43,7 +43,11 @@ import {
   Unlink,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import {
+  useConfirmDelete,
+  type ConfirmDeleteRequest,
+} from "@/components/ui/confirm-delete-modal";
+import { sourceRemovalChoice } from "@/lib/knowledge-hub";
 import { toast } from "@/lib/toast";
 import {
   addWebsiteSourceAction,
@@ -51,6 +55,7 @@ import {
   reembedKnowledgeAction,
   deleteConceptAction,
   deleteSourceAction,
+  unlinkSourceAction,
   importFaqsAction,
   pollWebsiteCrawlAction,
   recrawlWebsiteSourceAction,
@@ -105,13 +110,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-type Mode = "websites" | "documents" | "faqs" | "okf";
+type Mode = "websites" | "documents" | "faqs" | "concepts";
 
 const MODES: Array<{ id: Mode; label: string }> = [
   { id: "websites", label: "Websites" },
   { id: "documents", label: "Documents" },
   { id: "faqs", label: "FAQs" },
-  { id: "okf", label: "OKF" },
+  { id: "concepts", label: "Concepts" },
 ];
 
 function StatusBadge({ source }: { source: Source }) {
@@ -367,7 +372,7 @@ function WebsiteConfigFields({
         <span>
           <span className="text-primary font-semibold">Includes log-in protected content</span>
           <span className="text-muted-foreground block text-xs">
-            Noted on the source — authenticated crawling isn&apos;t supported yet.
+            Noted on the source: authenticated crawling isn&apos;t supported yet.
           </span>
         </span>
       </label>
@@ -699,11 +704,47 @@ function PageRow({
   );
 }
 
+/**
+ * Binds `sourceRemovalChoice` to the two actions: unlink for a shared Source,
+ * delete for one only this assistant answers from. The copy and the choice
+ * itself live in lib/knowledge-hub.ts, where they are unit-tested.
+ */
+function removeSourceRequest(args: {
+  assistantId: string;
+  sourceId: string;
+  name: string;
+  sharedWith: string[] | undefined;
+  deleteLabel: string;
+  deleteEffect: string;
+}): ConfirmDeleteRequest {
+  const choice = sourceRemovalChoice(args);
+  const remove = () =>
+    choice.mode === "unlink"
+      ? unlinkSourceAction(args.assistantId, args.sourceId)
+      : deleteSourceAction(args.assistantId, args.sourceId);
+  return {
+    title:
+      choice.mode === "unlink" ? (
+        <>Remove &ldquo;{choice.name}&rdquo; from this assistant?</>
+      ) : (
+        <>Delete &ldquo;{choice.name}&rdquo;?</>
+      ),
+    description: choice.description,
+    confirmLabel: choice.confirmLabel,
+    onConfirm: remove,
+    secondaryLabel: choice.secondaryLabel,
+    onSecondary: choice.secondaryLabel
+      ? () => deleteSourceAction(args.assistantId, args.sourceId)
+      : undefined,
+  };
+}
+
 function WebsitesTab({
   assistantId,
   collectionId,
   sources,
   concepts,
+  sharedWith,
   crawl4aiAvailable,
   apifyAvailable,
 }: {
@@ -711,6 +752,8 @@ function WebsitesTab({
   collectionId: string;
   sources: Source[];
   concepts: Concept[];
+  /** sourceId → the other assistants answering from it (PRD #726). */
+  sharedWith: Record<string, string[]>;
   crawl4aiAvailable: boolean;
   apifyAvailable: boolean;
 }) {
@@ -734,7 +777,7 @@ function WebsitesTab({
 
   // While any source is still crawling, poll the server until it finishes,
   // then refresh so its status/pages update. The crawl runs on the resolved
-  // provider, so this just checks + finalizes — it doesn't hold it open itself.
+  // provider, so this just checks + finalizes, it doesn't hold it open itself.
   const processingIds = sources
     .filter((s) => s.status === "processing")
     .map((s) => s.id)
@@ -750,7 +793,7 @@ function WebsitesTab({
           const status = await pollWebsiteCrawlAction(assistantId, collectionId, id);
           if (status !== "processing") settled = true;
         } catch {
-          // transient — try again next tick
+          // transient, try again next tick
         }
       }
       if (settled && !cancelled) router.refresh();
@@ -876,7 +919,7 @@ function WebsitesTab({
                         : ""}
                     </span>
                     {/* A crawl refused for budget (#510) leaves the Source on
-                        its previous status, so the reason needs saying here —
+                        its previous status, so the reason needs saying here,
                         the status badge alone would look like nothing happened. */}
                     {source.config.crawlBlockedReason ? (
                       <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
@@ -977,14 +1020,17 @@ function WebsitesTab({
                   size="icon-sm"
                   aria-label="Delete website"
                   onClick={() =>
-                    confirmDelete({
-                      title: <>Delete &ldquo;{source.name}&rdquo;?</>,
-                      description:
-                        "This permanently removes the website and every page crawled from it, and cannot be undone.",
-                      confirmLabel: "Delete website",
-                      onConfirm: () =>
-                        deleteSourceAction(assistantId, source.id),
-                    })
+                    confirmDelete(
+                      removeSourceRequest({
+                        assistantId,
+                        sourceId: source.id,
+                        name: source.name,
+                        sharedWith: sharedWith[source.id],
+                        deleteLabel: "Delete website",
+                        deleteEffect:
+                          "The website and every page crawled from it go.",
+                      })
+                    )
                   }
                 >
                   <AnimatedIcon icon={Trash2} size={14} />
@@ -1028,13 +1074,17 @@ function DocumentsTab({
   assistantId,
   collectionId,
   sources,
+  sharedWith,
 }: {
   assistantId: string;
   collectionId: string;
   sources: Source[];
+  sharedWith: Record<string, string[]>;
 }) {
   const [query, setQuery] = useState("");
   const [uploads, setUploads] = useState<FileUploadItem[]>([]);
+  // Documents used to delete on the first click, with no confirmation at all.
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const documents = sources
     .filter((s) => s.kind === "file" || s.kind === "text")
@@ -1072,7 +1122,7 @@ function DocumentsTab({
       } else {
         patchUpload(item.id, { status: "success", progress: 100 });
         toast.success(`"${file.name}" ingested`);
-        // The ingested Source now shows in the documents list below — retire
+        // The ingested Source now shows in the documents list below, retire
         // the queue row once its success state has had a beat on screen.
         setTimeout(() => {
           setUploads((prev) => prev.filter((u) => u.id !== item.id));
@@ -1157,7 +1207,21 @@ function DocumentsTab({
                     hasOriginal={Boolean(source.originalObjectPath)}
                   />
                 )}
-                <DeleteSourceButton assistantId={assistantId} sourceId={source.id} />
+                <DeleteSourceButton
+                  onClick={() =>
+                    confirmDelete(
+                      removeSourceRequest({
+                        assistantId,
+                        sourceId: source.id,
+                        name: source.name,
+                        sharedWith: sharedWith[source.id],
+                        deleteLabel: "Delete document",
+                        deleteEffect:
+                          "The document and everything indexed from it go.",
+                      })
+                    )
+                  }
+                />
               </span>
               {source.status === "error" && source.error && (
                 <p className="text-destructive col-span-3 -mt-2 text-xs">
@@ -1168,6 +1232,7 @@ function DocumentsTab({
           ))}
         </div>
       )}
+      {confirmDeleteModal}
     </div>
   );
 }
@@ -1243,19 +1308,13 @@ function ReprocessSourceButton({
   );
 }
 
-function DeleteSourceButton({ assistantId, sourceId }: { assistantId: string; sourceId: string }) {
-  const [isPending, startTransition] = useTransition();
+function DeleteSourceButton({ onClick }: { onClick: () => void }) {
   return (
     <Button
       variant="ghost"
       size="icon-sm"
       aria-label="Delete document"
-      disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          await deleteSourceAction(assistantId, sourceId);
-        })
-      }
+      onClick={onClick}
     >
       <AnimatedIcon icon={Trash2} size={14} />
     </Button>
@@ -1486,7 +1545,7 @@ function FaqDialog({
   );
 }
 
-/** The "Import FAQs" CSV modal — click-to-upload / drag-drop, two-column contract. */
+/** The "Import FAQs" CSV modal, click-to-upload / drag-drop, two-column contract. */
 function ImportFaqsDialog({
   assistantId,
   collectionId,
@@ -1637,15 +1696,18 @@ function FaqsTab({
   assistantId,
   collectionId,
   faqs,
+  sharedWith,
 }: {
   assistantId: string;
   collectionId: string;
   faqs: Concept[];
+  sharedWith: Record<string, string[]>;
 }) {
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Concept | null>(null);
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [isPending, startTransition] = useTransition();
 
   const filtered = faqs.filter(
@@ -1733,7 +1795,7 @@ function FaqsTab({
             <span className="line-clamp-2 text-sm font-medium">{faq.frontmatter.title}</span>
             <span className="text-muted-foreground line-clamp-2 text-sm">{faq.body}</span>
             <span className="flex items-center gap-1.5">
-              {/* Trust tier (OKF §5.3) — the FAQ list is where it matters most:
+              {/* Trust tier (OKF §5.3), the FAQ list is where it matters most:
                   an accepted Suggested Fix is agent-drafted but human-reviewed,
                   a hand-typed FAQ is neither. Unverified stays unlabelled, since
                   a badge on every row would carry no signal. */}
@@ -1766,11 +1828,31 @@ function FaqsTab({
                 size="icon-sm"
                 aria-label="Delete FAQ"
                 disabled={isPending}
-                onClick={() =>
+                onClick={() => {
+                  // A FAQ owns a `faq` Source (PRD #726), so a FAQ shared with
+                  // another assistant gets the same remove-or-delete choice;
+                  // an unshared one keeps the Concept-level delete, which
+                  // retires its Source anyway.
+                  const shared = faq.sourceId
+                    ? sharedWith[faq.sourceId]
+                    : undefined;
+                  if (faq.sourceId && shared && shared.length > 0) {
+                    confirmDelete(
+                      removeSourceRequest({
+                        assistantId,
+                        sourceId: faq.sourceId,
+                        name: faq.frontmatter.title ?? "this FAQ",
+                        sharedWith: shared,
+                        deleteLabel: "Delete FAQ",
+                        deleteEffect: "The question and its answer go.",
+                      })
+                    );
+                    return;
+                  }
                   startTransition(async () => {
                     await deleteConceptAction(assistantId, faq.id);
-                  })
-                }
+                  });
+                }}
               >
                 <AnimatedIcon icon={Trash2} size={14} />
               </Button>
@@ -1797,11 +1879,12 @@ function FaqsTab({
           onClose={() => setImportOpen(false)}
         />
       )}
+      {confirmDeleteModal}
     </div>
   );
 }
 
-/* ------------------------------- OKF browser ------------------------------ */
+/* ----------------------------- Concept browser ---------------------------- */
 
 function ConceptCard({ assistantId, concept }: { assistantId: string; concept: Concept }) {
   const [open, setOpen] = useState(false);
@@ -1911,6 +1994,7 @@ export function KnowledgeClient({
   selected,
   sources,
   concepts,
+  sharedWith,
   crawl4aiAvailable = false,
   apifyAvailable = false,
   nullEmbeddingCount = 0,
@@ -1919,6 +2003,11 @@ export function KnowledgeClient({
   selected: KnowledgeCollection | null;
   sources: Source[];
   concepts: Concept[];
+  /**
+   * sourceId → the *other* Assistants that answer from it. Present entries are
+   * the shared Sources, where removing here unlinks instead of deleting.
+   */
+  sharedWith: Record<string, string[]>;
   crawl4aiAvailable?: boolean;
   apifyAvailable?: boolean;
   /** Concepts whose chunks miss embeddings (lexical-only until re-embedded). */
@@ -1991,22 +2080,35 @@ export function KnowledgeClient({
               collectionId={selected.id}
               sources={sources}
               concepts={concepts}
+              sharedWith={sharedWith}
               crawl4aiAvailable={crawl4aiAvailable}
               apifyAvailable={apifyAvailable}
             />
           )}
           {mode === "documents" && (
-            <DocumentsTab assistantId={assistantId} collectionId={selected.id} sources={sources} />
+            <DocumentsTab
+              assistantId={assistantId}
+              collectionId={selected.id}
+              sources={sources}
+              sharedWith={sharedWith}
+            />
           )}
-          {mode === "faqs" && <FaqsTab assistantId={assistantId} collectionId={selected.id} faqs={faqs} />}
-          {mode === "okf" && (
+          {mode === "faqs" && (
+            <FaqsTab
+              assistantId={assistantId}
+              collectionId={selected.id}
+              faqs={faqs}
+              sharedWith={sharedWith}
+            />
+          )}
+          {mode === "concepts" && (
             <div className="space-y-2">
               {/* Reader-facing copy: no internal vocabulary, no ADR numbers. */}
               <p className="text-muted-foreground text-sm">
-                {nonFaqConcepts.length} concept document
-                {nonFaqConcepts.length === 1 ? "" : "s"}, the pieces of
-                knowledge an answer can cite, each one traceable to the source
-                it came from.
+                {nonFaqConcepts.length} concept
+                {nonFaqConcepts.length === 1 ? "" : "s"} this assistant can
+                cite, each one traceable to the source it came from and to who
+                wrote or reviewed it.
               </p>
               {nonFaqConcepts.map((concept) => (
                 <ConceptCard key={concept.id} assistantId={assistantId} concept={concept} />

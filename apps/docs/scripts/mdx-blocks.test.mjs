@@ -64,12 +64,12 @@ test('table dividers are raw, table rows are translatable', () => {
 });
 
 test('list items keep their marker and hanging indent', () => {
-  const source = ['- **Assistants** — one chat experience you shape', '  from top to bottom.'].join(
+  const source = ['- **Assistants**, one chat experience you shape', '  from top to bottom.'].join(
     '\n',
   );
   const blocks = toBlocks(source);
   assert.deepEqual(textsOf(blocks), [
-    '**Assistants** — one chat experience you shape from top to bottom.',
+    '**Assistants**, one chat experience you shape from top to bottom.',
   ]);
   const output = fromBlocks(blocks, [
     'a much longer replacement sentence that has to wrap across more than one line to prove the indent',
@@ -112,7 +112,7 @@ test('validate rejects a lost link target and a mangled fence', () => {
 test('a CRLF document parses like an LF one', () => {
   // A Windows checkout hands the parser CRLF. A carriage return left on a line
   // used to hide the frontmatter fence from `indexOf('---')`, so the whole page
-  // parsed as body and title/description were re-wrapped into a paragraph — a
+  // parsed as body and title/description were re-wrapped into a paragraph, a
   // failure Linux CI can never reproduce.
   const lf = [
     '---',

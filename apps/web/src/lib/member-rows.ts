@@ -6,7 +6,7 @@ import type { Invite, Member, Role } from "@agent-hub/core";
  * Status column is what tells them apart.
  */
 export interface MemberRow {
-  /** Stable table key — `member:<userId>` or `invite:<id>`. */
+  /** Stable table key, `member:<userId>` or `invite:<id>`. */
   id: string;
   kind: "member" | "invite";
   /** userId for a member, invite id for an invite. */

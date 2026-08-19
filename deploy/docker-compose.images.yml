@@ -7,12 +7,12 @@
 #   CIELE_IMAGE_TAG=v0.4.0
 #
 # and `docker compose up -d` pulls `app`, `migrate` and `cron` at that tag
-# rather than building them — no source checkout beyond this directory, and
+# rather than building them, no source checkout beyond this directory, and
 # minutes instead of an afternoon. Leave COMPOSE_FILE unset and nothing here
 # is read: the stack builds from source exactly as it always has.
 #
-# Everything else — profiles, the migrate-before-app ordering, the database
-# layer, ports, volumes — comes from docker-compose.yml unchanged. The three
+# Everything else: profiles, the migrate-before-app ordering, the database
+# layer, ports, volumes, comes from docker-compose.yml unchanged. The three
 # services below are the only ones this repo builds; the rest were already
 # published images.
 #

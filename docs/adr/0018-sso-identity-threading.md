@@ -9,7 +9,7 @@ verified OIDC `sub`, the chat route checked the sealed gate cookie against the a
 Organization, and then discarded the subject. Conversations were keyed to a client-generated
 `visitorId` even for signed-in users, and nothing downstream could tell who was speaking.
 
-Per-user capabilities (long-term memory, user-scoped record retrieval — spec #660) need a
+Per-user capabilities (long-term memory, user-scoped record retrieval, spec #660) need a
 verified identity at turn time. The client-supplied `visitorId` can never be that identity:
 anyone can send anyone's id in a request body.
 
@@ -29,7 +29,7 @@ anyone can send anyone's id in a request body.
    scope, verifies the claim inside the signed ID token, and the claim value rides the
    sealed gate cookie into the turn (`ConversationTurnInput.verifiedIdentity`) and the
    Conversation's session metadata. **This consciously relaxes the personalization-free
-   stance of spec #370** — but only per Organization, only by explicit admin opt-in, and
+   stance of spec #370**, but only per Organization, only by explicit admin opt-in, and
    the default remains subject-only. A configured-but-missing claim fails soft: sign-in
    succeeds, per-user features needing the claim stay off for that user.
 4. **The claim is never client- or model-supplied.** It exists only inside the
@@ -38,11 +38,11 @@ anyone can send anyone's id in a request body.
 
 ## Rejected
 
-- *Trusting an org-passed page identity (HMAC user id)* — moves the trust boundary to the
+- *Trusting an org-passed page identity (HMAC user id)*, moves the trust boundary to the
   embedding page; ruled out in the scope decision (ciele-org#655).
-- *Capturing full profiles at sign-in* — more than any current feature needs; one named
+- *Capturing full profiles at sign-in*, more than any current feature needs; one named
   claim is the smallest step past `sub`.
-- *A separate identity table* — the gate cookie already is the session store; persist
+- *A separate identity table*, the gate cookie already is the session store; persist
   identity only where it matters (the Conversation row and future per-user tables).
 
 ## Consequences

@@ -1,5 +1,5 @@
 "use client";
-// badtz-ui.com — Animated Card "Visual 3" (bar-chart reveal). Adapted: fixed
+// badtz-ui.com, Animated Card "Visual 3" (bar-chart reveal). Adapted: fixed
 // the arbitrary cubic-bezier easing classes to valid (space-free / 4-arg)
 // Tailwind forms.
 
@@ -34,7 +34,7 @@ export function Visual3({
       />
 
       {/* Fixed-size chart (356×180). `shrink-0` stops the flex parent from
-          squeezing this box below 356 on the narrow features-grid card — when
+          squeezing this box below 356 on the narrow features-grid card, when
           it shrank, the bar layer stayed pinned at 356 while the grid/gradient
           backdrop collapsed with the box, so they no longer lined up. Locked at
           356 the whole stack stays centered and aligned, matching the expanded

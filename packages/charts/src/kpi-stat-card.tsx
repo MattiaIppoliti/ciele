@@ -8,7 +8,7 @@ import type { TrendDirection } from "./types";
  * label, large tabular numeral, mini bar sparkline on the right, and an
  * optional delta footer ("+12% vs previous period").
  *
- * Server-component safe — no client hooks, sparkline is plain CSS bars.
+ * Server-component safe, no client hooks, sparkline is plain CSS bars.
  */
 export interface KpiStatCardProps {
   label: string;

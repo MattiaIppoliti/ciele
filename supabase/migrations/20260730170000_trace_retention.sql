@@ -1,4 +1,4 @@
--- Per-Organization trace retention (#573) — the policy layer #557 left open.
+-- Per-Organization trace retention (#573), the policy layer #557 left open.
 --
 -- A persisted Turn Trace is the sensitive part of a transcript: reasoning and
 -- tool results quote the Visitor's messages and retrieved knowledge verbatim
@@ -8,7 +8,7 @@
 --
 -- Null (the default) keeps traces forever: an existing tenant's transcripts
 -- must never start disappearing without an admin opting in. The sweep strips
--- ONLY the trace payload — the message, its content, feedback and timestamps
+-- ONLY the trace payload: the message, its content, feedback and timestamps
 -- stay, so the Inbox keeps the bubble and simply renders no Thinking panel.
 
 alter table public.organizations
@@ -25,7 +25,7 @@ create index if not exists messages_traced_created_idx
   where trace is not null;
 
 -- One statement per (organization, cutoff): clears expired traces and reports
--- how many rows it touched. Idempotent — a cleared trace is null and never
+-- how many rows it touched. Idempotent, a cleared trace is null and never
 -- matches again. Security invoker, like the other sweep primitives: the cron
 -- calls it on the service-role client; an RLS-scoped caller can only ever
 -- reach its own organization's messages.

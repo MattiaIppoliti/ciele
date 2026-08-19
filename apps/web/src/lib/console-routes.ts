@@ -2,7 +2,7 @@
  * Which paths belong to the signed-in console (the `(admin)` route group) as
  * opposed to the public site.
  *
- * Needed because a few root-layout concerns have to tell the two apart — the
+ * Needed because a few root-layout concerns have to tell the two apart, the
  * cookie-consent banner is one: consent is collected on the public site, where
  * the trackers live, and the console deliberately carries neither. The list is
  * pinned to the filesystem by `console-routes.test.ts`, so a new admin section
@@ -18,13 +18,13 @@ export const CONSOLE_PATH_PREFIXES = [
   "/improvements",
   "/inbox",
   "/insights",
-  "/knowledge",
+  "/library",
   "/settings",
   "/setup",
 ] as const;
 
 /**
- * Top-level segments served by the `(marketing)` group — the public site the
+ * Top-level segments served by the `(marketing)` group, the public site the
  * marketing home links to. Every one of them must stay reachable signed-out,
  * so the auth gate in `middleware.ts` treats these subtrees as public. Pinned
  * to the filesystem by `console-routes.test.ts` the same way the console list

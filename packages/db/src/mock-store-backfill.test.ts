@@ -5,7 +5,7 @@ import { mockDb } from "./mock";
  * The mock store is stashed on `globalThis` so it survives Next.js dev-server
  * HMR. That makes a warm store a *stale shape*: a field added to `MockStore`
  * after the store was created is simply absent, and the first read of it throws
- * on the dev server while the test suite — which always builds a fresh store —
+ * on the dev server while the test suite, which always builds a fresh store,
  * stays green.
  *
  * `getStore` therefore backfills missing fields from a fresh empty store shape.
@@ -58,7 +58,7 @@ describe("mock store HMR backfill", () => {
 
       expect(
         globalForMock.__agentHubMock?.[field],
-        `'${field}' was not backfilled — a dev server holding a warm store ` +
+        `'${field}' was not backfilled, a dev server holding a warm store ` +
           `from before it was added will throw on first read`
       ).toBeDefined();
     }

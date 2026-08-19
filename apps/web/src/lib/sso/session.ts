@@ -5,7 +5,7 @@ import type { SsoTransient } from "./types";
 
 /**
  * Widget SSO cookies. Both are sealed (AES-256-GCM via `sealSecret`) so their
- * contents are opaque and tamper-evident — the browser only ever holds
+ * contents are opaque and tamper-evident, the browser only ever holds
  * ciphertext.
  *
  * - `sso_txn` (transient): flow state from `initiate` → callback. Short-lived,
@@ -50,7 +50,7 @@ export interface SsoGatePayload {
 /**
  * SSO cookies are a security boundary (a forged gate cookie = a bypassed
  * gate), so they MUST be authenticated-encrypted. `sealSecret` falls back to an
- * unsigned `plain:` value when `APP_ENCRYPTION_KEY` is unset — never acceptable
+ * unsigned `plain:` value when `APP_ENCRYPTION_KEY` is unset, never acceptable
  * here. We refuse to mint a cookie without the key, and refuse to trust a
  * `plain:` value on read (fail closed).
  */
@@ -97,7 +97,7 @@ export function openGate(sealed: string | undefined): SsoGatePayload | null {
 /**
  * The gate check every widget surface shares: a visitor is authenticated for an
  * assistant when they hold a valid, unexpired gate cookie for that assistant's
- * organization (the connection — and thus the gate — is org-scoped).
+ * organization (the connection, and thus the gate, is org-scoped).
  */
 export function isGateValidForOrg(
   cookieValue: string | undefined,
@@ -109,7 +109,7 @@ export function isGateValidForOrg(
 /**
  * The identity-bearing variant of the gate check (#662): returns the full
  * verified gate payload (subject + optional identity claim) when the cookie
- * is valid, unexpired, and minted for this Organization — null otherwise.
+ * is valid, unexpired, and minted for this Organization, null otherwise.
  * Routes that thread identity into the turn use this; pure yes/no gating
  * keeps `isGateValidForOrg`.
  */

@@ -54,7 +54,7 @@ cross join (
     -- Position -1 mirrors the backfill migration's `min(position) - 1`: first in
     -- priority without renumbering the flows below it.
     ('Basic Interaction',
-     'User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer — conversational courtesy that asks no question and carries no information need',
+     'User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer, conversational courtesy that asks no question and carries no information need',
      true, true, -1, array['basic_reply'],
      '',
      false),
@@ -66,7 +66,7 @@ cross join (
     ('Human Help Needed',
      'User explicitly asks for human help, wants to contact support, escalate to a person, or otherwise reach a human',
      true, false, 1, array['search_knowledge', 'custom_message', 'suggest_help_desk'],
-     'Of course — sometimes it''s best to talk to a person. You can reach the support team through the help desk below.',
+     'Of course, sometimes it''s best to talk to a person. You can reach the support team through the help desk below.',
      false),
     ('Default behavior',
      'No other flow matches the user query',

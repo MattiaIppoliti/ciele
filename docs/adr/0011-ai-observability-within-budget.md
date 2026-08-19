@@ -88,14 +88,14 @@ alert is raised only when a provider, crawl, or system issue needs admin action.
 - Cron finalizers: sweep started/succeeded/failed, crawls inspected, crawls
   finalized, failures raised/resolved, and duration.
 - Website crawls (`kind: 'crawl'`): one event per terminal outcome from the
-  finalizer — resolved crawler provider, worker task/run correlation id
+  finalizer, resolved crawler provider, worker task/run correlation id
   (`trace_id`), wall-clock duration, usable page count, terminal status, and a
   sanitized error class (`RemoteCrawlFailure` / `EmptyCrawl` / the caught error
   class). The crawler token, `Authorization` header, and provider response
   bodies are redacted before any of this reaches a Source, an Alert, or the
   sink. Worker-side health and memory/concurrency signals (health probe,
   `/metrics`, queue depth, memory threshold) are monitored on the worker
-  itself — see `services/crawl4ai-worker/RUNBOOK.md` §5; this sink carries only
+  itself, see `services/crawl4ai-worker/RUNBOOK.md` §5; this sink carries only
   the per-crawl outcome.
 - Provider health: keep the existing Alert path, but also emit a telemetry
   event so failures can be counted historically after an alert is resolved.

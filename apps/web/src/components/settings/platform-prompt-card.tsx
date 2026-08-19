@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 /**
  * The Ciele platform system prompt editor. Rendered ONLY for the platform
- * owner (isPlatformOwner) — organizations never see this card. Every chat
+ * owner (isPlatformOwner), organizations never see this card. Every chat
  * turn on every assistant composes this prompt above the org's answering
  * style; leaving it empty falls back to the shipped default.
  */

@@ -19,12 +19,12 @@ import { API_REQUEST_MAX_BYTES, API_REQUEST_TIMEOUT_MS } from "./api-request";
  * model-supplied *relative* path into one guarded outbound request.
  *
  * The order here is the security property. The path is matched against the
- * catalogue **first** (`resolveCatalogPath`, in the domain package — no I/O), and
+ * catalogue **first** (`resolveCatalogPath`, in the domain package, no I/O), and
  * only a described path is turned into a URL at all. The base URL is then
  * prepended server-side and the result re-checked against the configured origin
  * and base path, so neither a catalogue entry nor a substituted parameter can
  * move the request off the host the admin registered. The shared egress guard
- * (`egress.ts`) applies on top, unchanged — this module adds a check, it never
+ * (`egress.ts`) applies on top, unchanged, this module adds a check, it never
  * replaces one.
  *
  * The credential is opened here and leaves only as an outbound header.
@@ -44,7 +44,7 @@ export type ApiQueryErrorCode =
 export const API_QUERY_ERROR_MESSAGES: Record<ApiQueryErrorCode, string> = {
   empty: "No path was given. Pass a relative path from the endpoint catalogue.",
   absolute:
-    "Pass a relative path only — the base URL is added for you and cannot be changed.",
+    "Pass a relative path only, the base URL is added for you and cannot be changed.",
   traversal: "That path is not allowed. Pass a path exactly as the catalogue describes it.",
   unknown_endpoint:
     "That path is not in this integration's endpoint catalogue. Call the catalogue tool to see what exists.",
@@ -53,7 +53,7 @@ export const API_QUERY_ERROR_MESSAGES: Record<ApiQueryErrorCode, string> = {
   missing_path_param:
     "The path still contains a {placeholder}. Substitute the real value before querying.",
   not_configured: "This assistant has no API integration configured.",
-  base_url: "This integration's base URL is not valid — an admin needs to fix it.",
+  base_url: "This integration's base URL is not valid, an admin needs to fix it.",
   escapes_base:
     "That path resolves outside the integration's base URL and was not sent.",
   blocked_host: "This API is not reachable from the assistant.",
@@ -129,7 +129,7 @@ export interface ApiQueryOutcome {
   ok: boolean;
   /** The matched catalogue entry; null when the path was refused. */
   endpoint: ApiEndpointSpec | null;
-  /** Path actually requested, base URL included — safe to show an operator. */
+  /** Path actually requested, base URL included, safe to show an operator. */
   requestUrl: string | null;
   status: number | null;
   bodyText: string | null;
@@ -164,7 +164,7 @@ function pinnedValue(value: string, identity?: ApiQueryIdentity): string | null 
 }
 
 /**
- * Runs one catalogued query. Never throws for a refusal or a network failure —
+ * Runs one catalogued query. Never throws for a refusal or a network failure,
  * both come back as `errorCode` with `ok: false`, so the tool layer can tell the
  * model the truth (including a real 500 or a timeout) and the transcript can
  * record the real status.
@@ -251,7 +251,7 @@ export async function queryApiEndpoint(
       allowLoopback: getRuntimeHost().allowRelaxedEgress(),
     });
     return {
-      // A 4xx/5xx is a completed request with a real status, not a refusal —
+      // A 4xx/5xx is a completed request with a real status, not a refusal,
       // the transcript card and the model both need to see it as such.
       ok: response.ok,
       endpoint: match.endpoint,

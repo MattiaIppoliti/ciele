@@ -13,7 +13,7 @@ import {
  *
  * Revalidation targets are never hand-listed at call sites. Actions declare
  * WHICH domain entity they touched and the entity→path map below derives the
- * `revalidatePath` calls (path-based per ADR-0005 — admin reads are
+ * `revalidatePath` calls (path-based per ADR-0005, admin reads are
  * force-dynamic, so the only real effect is purging the client router cache).
  * Forgetting a path stops being possible; adding a route means extending the
  * map, once.
@@ -80,9 +80,9 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
     case "knowledgeHub":
       // The tab segments render the tables; the layout route carries nothing.
       return [
-        { path: "/knowledge/websites" },
-        { path: "/knowledge/files" },
-        { path: "/knowledge/faqs" },
+        { path: "/library/websites" },
+        { path: "/library/files" },
+        { path: "/library/faqs" },
       ];
   }
 }
@@ -113,7 +113,7 @@ export interface OrgMutationOptions<T> {
    */
   entities: MutatedEntity[] | ((result: T) => MutatedEntity[]);
   /**
-   * Revalidate only when this predicate accepts the result — for mutations
+   * Revalidate only when this predicate accepts the result, for mutations
    * that sometimes change nothing (polling, validation-error returns).
    * Defaults to always revalidating.
    */
@@ -122,7 +122,7 @@ export interface OrgMutationOptions<T> {
 
 /**
  * Run `fn` as an org-scoped admin mutation. The result is returned untouched,
- * so create-then-redirect flows call `redirect()` after this resolves — by
+ * so create-then-redirect flows call `redirect()` after this resolves, by
  * then revalidation has already happened, matching the previous hand-written
  * ordering.
  */

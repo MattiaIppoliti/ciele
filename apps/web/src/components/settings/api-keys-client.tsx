@@ -169,14 +169,14 @@ export function ApiKeysClient({
         data={keys}
         columns={columns}
         getRowId={(key) => key.id}
-        emptyState="No API keys yet — you'll need one to call the API, CLI or MCP server."
+        emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
       />
 
       <div>
         <h2 className="text-lg font-semibold">Create key</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           The secret is shown once, right after creation. Store it somewhere
-          safe — it cannot be retrieved later.
+          safe, it cannot be retrieved later.
         </p>
         <form onSubmit={handleCreate} className="mt-3 flex flex-wrap gap-2">
           <Input
@@ -227,7 +227,7 @@ export function ApiKeysClient({
             <div>
               <h3 className="text-base font-semibold">Your new API key</h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                Copy it now — this is the only time it will be shown. Only a
+                Copy it now: this is the only time it will be shown. Only a
                 hash is stored on our side.
               </p>
             </div>
@@ -269,7 +269,7 @@ export function ApiKeysClient({
               </h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
                 Anything using this key stops working immediately. This cannot
-                be undone — you can always create a new key.
+                be undone; you can always create a new key.
               </p>
             </div>
           </div>

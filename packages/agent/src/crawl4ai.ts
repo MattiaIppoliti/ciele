@@ -1,6 +1,6 @@
 /**
  * Website crawling via a private Crawl4AI worker (its base URL + token come
- * from CRAWL4AI_BASE_URL / CRAWL4AI_API_TOKEN — never hardcode them). The
+ * from CRAWL4AI_BASE_URL / CRAWL4AI_API_TOKEN, never hardcode them). The
  * worker itself (a pinned, authenticated Crawl4AI container exposing only the
  * crawl/status/health endpoints) is packaged separately; this module is the
  * Ciele-side adapter that speaks its async Docker API.
@@ -13,7 +13,7 @@
  *
  * Deep crawling is breadth-first and same-origin by default (external-domain
  * traversal disabled), bounded by the product page budget. LLM extraction,
- * arbitrary hooks/JS, file downloads, and login automation stay disabled —
+ * arbitrary hooks/JS, file downloads, and login automation stay disabled,
  * Ciele owns enrichment, Concepts, chunking, and embeddings.
  *
  * The Crawl4AI Docker API has changed across releases, so the request/response
@@ -46,7 +46,7 @@ export function isCrawl4aiConfigured(): boolean {
  * Scrubs crawler credentials out of any text destined for a Source error, an
  * Alert, a client response, or telemetry. The worker token only ever travels
  * in the `Authorization` header, but a misconfigured or verbose worker could
- * echo it (or the raw header) back in an error body — so before any provider
+ * echo it (or the raw header) back in an error body, so before any provider
  * text leaves this module it is stripped of the configured token and of any
  * bearer/authorization value, however cased or quoted.
  */
@@ -127,7 +127,7 @@ export function buildCrawl4aiJob(
     cache_mode: "BYPASS",
     stream: false,
     page_timeout: (options.pageTimeoutSecs ?? DEFAULT_PAGE_TIMEOUT_MS / 1000) * 1000,
-    // Produce `fit_markdown` — the pruned main article — via a heuristic
+    // Produce `fit_markdown`, the pruned main article, via a heuristic
     // (non-LLM) content filter that drops nav/menus/boilerplate by text and
     // link density. Without this the worker only emits `raw_markdown` (full
     // chrome included), and `mapCrawl4aiPages` prefers `fit_markdown`. This is
@@ -233,7 +233,7 @@ function requireConfig(): { baseUrl: string; token: string } {
   const token = process.env.CRAWL4AI_API_TOKEN;
   if (!baseUrl || !token) {
     throw new Error(
-      "CRAWL4AI_BASE_URL and CRAWL4AI_API_TOKEN must be set — required for the Crawl4AI crawler."
+      "CRAWL4AI_BASE_URL and CRAWL4AI_API_TOKEN must be set, required for the Crawl4AI crawler."
     );
   }
   return { baseUrl: trimTrailingSlash(baseUrl), token };
@@ -246,7 +246,7 @@ export interface StartedCrawl4ai {
 }
 
 /**
- * Submits an async crawl job and returns its task id immediately. A fast POST —
+ * Submits an async crawl job and returns its task id immediately. A fast POST,
  * safe to await inside a request. The token is sent as a Bearer header and
  * never included in the request body, logs, or the returned value.
  */
@@ -317,7 +317,7 @@ export async function getCrawl4aiTask(taskId: string): Promise<Crawl4aiTaskState
   return {
     status: (body.status ?? "PROCESSING") as Crawl4aiTaskStatus,
     results: taskResults(body),
-    // A worker-reported error is provider response detail — redact before it
+    // A worker-reported error is provider response detail, redact before it
     // can reach a Source error, an Alert, or telemetry.
     error: body.error ? redactCrawl4aiSecrets(body.error) : body.error,
   };

@@ -25,7 +25,7 @@ function stubLocalDemoEnvironment() {
 }
 
 describe("isLocalSubscriptionDirectEnabled", () => {
-  it("is enabled by default on a local instance — no opt-in flag", () => {
+  it("is enabled by default on a local instance, no opt-in flag", () => {
     stubLocalDemoEnvironment();
     vi.stubEnv("ENABLE_LOCAL_SUBSCRIPTION_TEST", undefined);
     expect(isLocalSubscriptionDirectEnabled()).toBe(true);
@@ -132,7 +132,7 @@ describe("localSubscriptionInvocation", () => {
     });
   });
 
-  it("spawns a Windows executable directly — there is no /usr/bin/env", () => {
+  it("spawns a Windows executable directly; there is no /usr/bin/env", () => {
     expect(
       localSubscriptionInvocation("C:\\bin\\claude.exe", ["auth"], "win32")
     ).toEqual({ command: "C:\\bin\\claude.exe", args: ["auth"] });

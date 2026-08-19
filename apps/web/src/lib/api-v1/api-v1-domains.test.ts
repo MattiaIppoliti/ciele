@@ -180,14 +180,6 @@ describe("knowledge over /api/v1 (#622)", () => {
       name: "docs",
     });
 
-    const collectionsRes = await getCollections(
-      req(`/api/v1/assistants/${assistant.id}/collections`, editor),
-      params(assistant.id)
-    );
-    expect(
-      (await collectionsRes.json()).data.map((c: { id: string }) => c.id)
-    ).toContain(collection.id);
-
     const created = await postSource(
       new Request(`http://t.local/api/v1/collections/${collection.id}/sources`, {
         method: "POST",
@@ -199,11 +191,22 @@ describe("knowledge over /api/v1 (#622)", () => {
           kind: "text",
           name: "Handbook",
           text: "Tuition is due in October.",
+          assistantIds: [assistant.id],
         }),
       }),
       params(collection.id)
     );
     expect(created.status).toBe(201);
+
+    // Derived membership (PRD #726): the collection lists for the assistant
+    // once a Source in it is linked.
+    const collectionsRes = await getCollections(
+      req(`/api/v1/assistants/${assistant.id}/collections`, editor),
+      params(assistant.id)
+    );
+    expect(
+      (await collectionsRes.json()).data.map((c: { id: string }) => c.id)
+    ).toContain(collection.id);
     const source = await created.json();
     expect(source.status).toBeTruthy(); // pollable
 
@@ -228,6 +231,7 @@ describe("knowledge over /api/v1 (#622)", () => {
         type: "text/csv",
       })
     );
+    form.set("assistantIds", JSON.stringify([assistant.id]));
     const imported = await importFaqs(
       req(`/api/v1/collections/${collection.id}/faqs/import`, editor, {
         method: "POST",

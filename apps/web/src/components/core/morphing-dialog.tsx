@@ -1,5 +1,5 @@
 "use client";
-// motion-primitives MorphingDialog — a trigger card that morphs (shared
+// motion-primitives MorphingDialog, a trigger card that morphs (shared
 // layoutId) into a centered dialog. https://motion-primitives.com
 
 import {
@@ -221,7 +221,7 @@ export function MorphingDialogContainer({
   children,
 }: MorphingDialogContainerProps) {
   const { isOpen, uniqueId } = useMorphingDialog();
-  // SSR-safe portal gate — same pattern as motion/bottom-sheet.tsx: renders
+  // SSR-safe portal gate, same pattern as motion/bottom-sheet.tsx: renders
   // null on the server and hydrates without a setState-in-effect.
   const mounted = useSyncExternalStore(
     () => () => {},

@@ -908,8 +908,26 @@ function supabaseTable<K extends DbTableName>(
 }
 
 /**
+ * The Source ids linked to an Assistant, its retrieval corpus. Every
+ * assistant-scoped knowledge read narrows through this (#733/#741): the
+ * Collection is org-owned, so collection membership says nothing about which
+ * Assistant answers from a Source.
+ */
+async function linkedSourceIds(
+  client: SupabaseClient,
+  assistantId: string
+): Promise<string[]> {
+  const { data, error } = await client
+    .from("assistant_sources")
+    .select("source_id")
+    .eq("assistant_id", assistantId);
+  if (error) throw error;
+  return (data as Array<{ source_id: string }>).map((r) => r.source_id);
+}
+
+/**
  * Supabase-backed Db. The client must carry the caller's auth context
- * (cookie-based session in the admin app) — RLS does the tenant isolation.
+ * (cookie-based session in the admin app); RLS does the tenant isolation.
  */
 export function createSupabaseDb(client: SupabaseClient): Db {
   return {
@@ -950,7 +968,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         };
       }
 
-      // No membership row for the requested org — a platform superuser
+      // No membership row for the requested org, a platform superuser
       // browsing an org they don't belong to. RLS still governs visibility:
       // this returns nothing for anyone who isn't actually a superuser.
       let orgQuery = client
@@ -1852,15 +1870,33 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Knowledge (OKF collections) ----------------------------------------
 
     async listCollections(assistantId) {
+      // Derived membership (PRD #726 contract): the Collections holding
+      // Sources linked to this Assistant.
+      const { data: linkRows, error: linkError } = await client
+        .from("assistant_sources")
+        .select("sources!inner(collection_id)")
+        .eq("assistant_id", assistantId);
+      if (linkError) throw linkError;
+      const collectionIds = [
+        ...new Set(
+          (
+            linkRows as unknown as Array<{
+              sources: { collection_id: string } | null;
+            }>
+          )
+            .map((r) => r.sources?.collection_id)
+            .filter((id): id is string => Boolean(id))
+        ),
+      ];
+      if (collectionIds.length === 0) return [];
       const { data, error } = await client
         .from("knowledge_collections")
         .select("*")
-        .eq("assistant_id", assistantId)
+        .in("id", collectionIds)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data as Array<Record<string, string>>).map((r) => ({
         id: r.id,
-        assistantId: r.assistant_id ?? "",
         organizationId: r.organization_id ?? "",
         name: r.name,
         description: r.description,
@@ -1878,7 +1914,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (!data) return null;
       return {
         id: data.id,
-        assistantId: data.assistant_id ?? "",
         organizationId: data.organization_id ?? "",
         name: data.name,
         description: data.description,
@@ -1890,7 +1925,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const id = `org-library-${organizationId}`;
       const map = (row: Record<string, unknown>): KnowledgeCollection => ({
         id: row.id as string,
-        assistantId: (row.assistant_id as string | null) ?? "",
         organizationId: (row.organization_id as string | null) ?? "",
         name: row.name as string,
         description: row.description as string,
@@ -1907,7 +1941,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("knowledge_collections")
         .insert({
           id,
-          assistant_id: null,
           organization_id: organizationId,
           name: "Knowledge Library",
           description:
@@ -1942,7 +1975,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("knowledge_collections")
         .insert({
           id: shortId(),
-          assistant_id: assistantId,
           organization_id: assistant.organization_id,
           name: input.name,
           description: input.description ?? "",
@@ -1952,7 +1984,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
       return {
         id: data.id,
-        assistantId: data.assistant_id ?? "",
         organizationId: data.organization_id ?? "",
         name: data.name,
         description: data.description,
@@ -1993,27 +2024,9 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select()
         .single();
       if (error) throw error;
-      const source = toSource(data as Record<string, unknown>);
-      // Auto-link to the collection's legacy owning assistant (PRD #726) so
-      // assistant-editor add flows keep answering with link-scoped retrieval.
-      const { data: collection, error: collectionError } = await client
-        .from("knowledge_collections")
-        .select("assistant_id")
-        .eq("id", input.collectionId)
-        .maybeSingle();
-      if (collectionError) throw collectionError;
-      if (collection?.assistant_id) {
-        // Plain insert: the Source was created in this call, so the pair
-        // cannot exist yet.
-        const { error: linkError } = await client
-          .from("assistant_sources")
-          .insert({
-            assistant_id: collection.assistant_id,
-            source_id: source.id,
-          });
-        if (linkError) throw linkError;
-      }
-      return source;
+      // No implicit link (PRD #726 contract): Collections have no owning
+      // assistant, so callers (the ops layer) link Assistants explicitly.
+      return toSource(data as Record<string, unknown>);
     },
 
     async updateSource(id, patch) {
@@ -2353,10 +2366,13 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listNullEmbeddingConceptIds(assistantId) {
+      // Post-contract (#733): the assistant's corpus is its linked Sources.
+      const sourceIds = await linkedSourceIds(client, assistantId);
+      if (sourceIds.length === 0) return [];
       const { data, error } = await client
         .from("concept_chunks")
         .select("concept_id")
-        .eq("assistant_id", assistantId)
+        .in("source_id", sourceIds)
         .is("embedding", null);
       if (error) throw error;
       return [
@@ -2369,12 +2385,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     async findFaqConcept(assistantId, question) {
       const normalized = question.trim().toLowerCase();
       if (!normalized) return null;
-      // Exact-match filtering happens in JS to keep ilike wildcard characters
-      // in the question from widening the match.
+      // Post-contract reach: a FAQ answers for the Assistants its Source is
+      // linked to. Exact-match filtering happens in JS to keep ilike wildcard
+      // characters in the question from widening the match.
+      const sourceIds = await linkedSourceIds(client, assistantId);
+      if (sourceIds.length === 0) return null;
       const { data, error } = await client
         .from("concepts")
-        .select("*, knowledge_collections!inner(name, assistant_id)")
-        .eq("knowledge_collections.assistant_id", assistantId)
+        .select("*, knowledge_collections!inner(name)")
+        .in("source_id", sourceIds)
         .eq("excluded", false)
         .eq("frontmatter->>type", "FAQ");
       if (error) throw error;
@@ -2491,7 +2510,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         id: shortId(),
         concept_id: chunk.conceptId,
         collection_id: chunk.collectionId,
-        assistant_id: chunk.assistantId,
         source_id: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding,
@@ -2506,59 +2524,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
       // Lexical search: also the safety net for vector search, since chunks
       // ingested while no embedding key was configured have NULL embeddings
-      // and are invisible to match_chunks_linked. Two reach paths (PRD #726):
-      // legacy chunks (source_id null) scope by assistant_id; source-aware
-      // chunks scope by the assistant↔source link table.
+      // and are invisible to match_chunks_linked. Post-contract (#733) the
+      // scope is exactly the assistant's linked Sources.
       const lexicalSearch = async (): Promise<ChunkRow[]> => {
         const tokens = lexicalTokens(query.text, 5);
         if (tokens.length === 0) return [];
-        const tokenClause = tokens.map((t) => `content.ilike.%${t}%`).join(",");
-        const baseQuery = () => {
-          let builder = client
-            .from("concept_chunks")
-            .select("concept_id, content, concepts!inner(excluded)")
-            .eq("concepts.excluded", false)
-            .or(tokenClause)
-            .limit(limit);
-          if (collectionId) builder = builder.eq("collection_id", collectionId);
-          return builder;
-        };
-        const toChunkRows = (data: unknown): ChunkRow[] =>
-          (data as Array<{ concept_id: string; content: string }>).map((r) => ({
+        const linked = await linkedSourceIds(client, assistantId);
+        if (linked.length === 0) return [];
+
+        let builder = client
+          .from("concept_chunks")
+          .select("concept_id, content, concepts!inner(excluded)")
+          .eq("concepts.excluded", false)
+          .in("source_id", linked)
+          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
+          .limit(limit);
+        if (collectionId) builder = builder.eq("collection_id", collectionId);
+        const { data, error } = await builder;
+        if (error) throw error;
+        return (data as Array<{ concept_id: string; content: string }>).map(
+          (r) => ({
             concept_id: r.concept_id,
             content: r.content,
             similarity: LEXICAL_SIMILARITY,
-          }));
-
-        const { data: linkRows, error: linkError } = await client
-          .from("assistant_sources")
-          .select("source_id")
-          .eq("assistant_id", assistantId);
-        if (linkError) throw linkError;
-        const linkedSourceIds = (
-          linkRows as Array<{ source_id: string }>
-        ).map((r) => r.source_id);
-
-        const legacyQuery = baseQuery()
-          .is("source_id", null)
-          .eq("assistant_id", assistantId);
-        const [legacyRes, linkedRes] = await Promise.all([
-          legacyQuery,
-          linkedSourceIds.length > 0
-            ? baseQuery().in("source_id", linkedSourceIds)
-            : Promise.resolve({ data: [], error: null }),
-        ]);
-        if (legacyRes.error) throw legacyRes.error;
-        if (linkedRes.error) throw linkedRes.error;
-        const legacy = toChunkRows(legacyRes.data);
-        const linked = toChunkRows(linkedRes.data);
-        const seen = new Set<string>();
-        return [...legacy, ...linked].filter((r) => {
-          const key = `${r.concept_id}\n${r.content}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
+          })
+        );
       };
 
       const rows = await hybridRetrieve<ChunkRow>({
@@ -2774,7 +2764,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async listInboxConversations(organizationId) {
       // collection_id has no FK (anchoring survives collection deletion), so
-      // names can't be embedded — but they don't depend on the conversation
+      // names can't be embedded, but they don't depend on the conversation
       // rows either: fetch the org's collection names in parallel instead of
       // as a dependent second round-trip.
       const [convRes, collRes] = await Promise.all([
@@ -2864,21 +2854,31 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     async listActiveGraphDatasets() {
+      // Post-contract, Collections reach Assistants only through the link
+      // table: a Collection is an active graph dataset when any Assistant
+      // linked to one of its Sources runs the graph engine.
       const { data, error } = await client
-        .from("knowledge_collections")
-        .select("id, assistants!inner(organization_id, knowledge_engine)")
+        .from("assistant_sources")
+        .select(
+          "sources!inner(collection_id), assistants!inner(knowledge_engine, organization_id)"
+        )
         .eq("assistants.knowledge_engine", "graph");
       if (error) throw error;
-      // PostgREST types an embedded to-one relation as an array, though it
-      // returns a single object at runtime — normalize either shape.
-      const rows = data as unknown as Array<{
-        id: string;
-        assistants: { organization_id: string } | { organization_id: string }[];
-      }>;
-      return rows.map((r) => {
-        const assistant = Array.isArray(r.assistants) ? r.assistants[0] : r.assistants;
-        return { organizationId: assistant.organization_id, collectionId: r.id };
-      });
+      type Row = {
+        sources: { collection_id: string } | null;
+        assistants: { organization_id: string } | null;
+      };
+      const byCollection = new Map<string, string>();
+      for (const row of data as unknown as Row[]) {
+        const collectionId = row.sources?.collection_id;
+        const organizationId = row.assistants?.organization_id;
+        if (collectionId && organizationId)
+          byCollection.set(collectionId, organizationId);
+      }
+      return [...byCollection].map(([collectionId, organizationId]) => ({
+        organizationId,
+        collectionId,
+      }));
     },
 
     async setConversationPinned(id, pinned) {
@@ -3122,7 +3122,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async createImprovementProposal(input) {
       // Delete-then-insert (matching the mock) so a re-draft is a clean fresh
-      // proposal — never a stale dismiss_reason/accepted_concept_id or a
+      // proposal, never a stale dismiss_reason/accepted_concept_id or a
       // mutated primary key from an upsert.
       await client
         .from("improvement_proposals")
@@ -3321,49 +3321,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Org-level knowledge hub (PRD #726) -------------------------------
 
     async listOrgKnowledgeSources(organizationId, filter) {
-      // Two reads cover the expand window: Collections already stamped with
-      // the org id, plus legacy Collections reached through the owning
-      // assistant. Fine-filtering and paging happen adapter-side — hub tables
-      // are org-sized (dozens to hundreds of Sources), and this keeps the
-      // query shapes inside what the PostgREST test shim implements.
-      const { data: orgAssistants, error: orgAssistantsError } = await client
-        .from("assistants")
-        .select("id")
-        .eq("organization_id", organizationId);
-      if (orgAssistantsError) throw orgAssistantsError;
-      const orgAssistantIds = (
-        orgAssistants as Array<{ id: string }>
-      ).map((r) => r.id);
-
-      const [stampedRes, legacyRes] = await Promise.all([
-        client
-          .from("sources")
-          .select("*, knowledge_collections!inner(organization_id)")
-          .in("kind", filter.kinds)
-          .eq("knowledge_collections.organization_id", organizationId),
-        orgAssistantIds.length > 0
-          ? client
-              .from("sources")
-              .select(
-                "*, knowledge_collections!inner(organization_id, assistant_id)"
-              )
-              .in("kind", filter.kinds)
-              .is("knowledge_collections.organization_id", null)
-              .in("knowledge_collections.assistant_id", orgAssistantIds)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
+      // Fine-filtering and paging happen adapter-side, hub tables are
+      // org-sized (dozens to hundreds of Sources), and this keeps the query
+      // shapes inside what the PostgREST test shim implements. Every
+      // Collection carries its org id (stamped at creation, backfilled for
+      // history), so one read scopes the whole hub.
+      const stampedRes = await client
+        .from("sources")
+        .select("*, knowledge_collections!inner(organization_id)")
+        .in("kind", filter.kinds)
+        .eq("knowledge_collections.organization_id", organizationId);
       if (stampedRes.error) throw stampedRes.error;
-      if (legacyRes.error) throw legacyRes.error;
-      const byId = new Map<string, Source>();
-      for (const row of [
-        ...(stampedRes.data as Array<Record<string, unknown>>),
-        ...(legacyRes.data as Array<Record<string, unknown>>),
-      ]) {
-        const source = toSource(row);
-        byId.set(source.id, source);
-      }
 
-      let matches = [...byId.values()];
+      let matches = (
+        stampedRes.data as Array<Record<string, unknown>>
+      ).map(toSource);
       if (filter.status)
         matches = matches.filter((s) => s.status === filter.status);
       const query = (filter.query ?? "").trim().toLowerCase();
@@ -3518,6 +3490,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }));
     },
 
+    async listAssistantSourceIds(assistantId) {
+      return linkedSourceIds(client, assistantId);
+    },
+
     async listSourceAssistantLinks(sourceId) {
       const { data, error } = await client
         .from("assistant_sources")
@@ -3583,20 +3559,44 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const { data, error } = await client
         .from("sources")
         .select(
-          "id, name, config, knowledge_collections!inner(assistant_id, assistants!inner(organization_id))"
+          "id, name, config, knowledge_collections!inner(organization_id)"
         )
         .eq("kind", "website")
-        .eq("knowledge_collections.assistants.organization_id", organizationId);
+        .eq("knowledge_collections.organization_id", organizationId);
       if (error) throw error;
       type Row = {
         id: string;
         name: string;
         config: { url?: string } | null;
-        knowledge_collections: { assistant_id: string };
       };
-      return (data as unknown as Row[]).map((row) => ({
+      const rows = data as unknown as Row[];
+      if (rows.length === 0) return [];
+      // The reporting assistant is the Source's earliest link ("" when an
+      // admin unlinked everything).
+      const { data: linkRows, error: linkError } = await client
+        .from("assistant_sources")
+        .select("assistant_id, source_id, created_at")
+        .in(
+          "source_id",
+          rows.map((r) => r.id)
+        );
+      if (linkError) throw linkError;
+      const firstLink = new Map<string, { assistantId: string; at: string }>();
+      for (const link of linkRows as Array<{
+        assistant_id: string;
+        source_id: string;
+        created_at: string;
+      }>) {
+        const current = firstLink.get(link.source_id);
+        if (!current || link.created_at < current.at)
+          firstLink.set(link.source_id, {
+            assistantId: link.assistant_id,
+            at: link.created_at,
+          });
+      }
+      return rows.map((row) => ({
         id: row.id,
-        assistantId: row.knowledge_collections.assistant_id,
+        assistantId: firstLink.get(row.id)?.assistantId ?? "",
         name: row.name,
         url: row.config?.url ?? "",
       }));
@@ -3807,7 +3807,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }[];
       return rows.map((r) => ({
         // PostgREST serializes `date` as YYYY-MM-DD; some drivers hand back a
-        // full ISO timestamp instead — keep only the day either way.
+        // full ISO timestamp instead, keep only the day either way.
         day: String(r.day).slice(0, 10),
         kind: r.kind,
         credentialKind: r.credential_kind,
@@ -3969,7 +3969,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (countError) throw countError;
       if ((count ?? 0) >= ASSISTANT_GOAL_CAP) {
         throw new Error(
-          `This assistant already has ${ASSISTANT_GOAL_CAP} goals — remove one first.`
+          `This assistant already has ${ASSISTANT_GOAL_CAP} goals, remove one first.`
         );
       }
       const { data, error } = await client
@@ -4125,7 +4125,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         model_id: input.modelId,
       });
       if (error) {
-        // 23505 = unique violation: already verified — idempotent skip.
+        // 23505 = unique violation: already verified, idempotent skip.
         if ((error as { code?: string }).code === "23505") return false;
         throw error;
       }
@@ -4312,7 +4312,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           .eq("last_result", "fail")
           .gte("last_run_at", since),
         // Demotions come from the append-only event ledger, not the nightly
-        // snapshot — so a demotion mid-window still counts even if a later
+        // snapshot, so a demotion mid-window still counts even if a later
         // materialization overwrote the snapshot back to a higher tier.
         client
           .from("flow_trust_events")
@@ -4583,49 +4583,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     // --- Skills (reusable prompt templates) ----------------------------------
-
-    async listSkills(organizationId) {
-      const { data, error } = await client
-        .from("skills")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data as SkillRow[]).map(toSkill);
-    },
-
-    async createSkill(organizationId, input) {
-      const { data, error } = await client
-        .from("skills")
-        .insert({
-          id: shortId(),
-          organization_id: organizationId,
-          name: input.name,
-          description: input.description ?? "",
-          prompt: input.prompt,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return toSkill(data as SkillRow);
-    },
-
-    async updateSkill(id, patch) {
-      const row: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-      if (patch.name !== undefined) row.name = patch.name;
-      if (patch.description !== undefined) row.description = patch.description;
-      if (patch.prompt !== undefined) row.prompt = patch.prompt;
-      const { data, error } = await client
-        .from("skills")
-        .update(row)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return toSkill(data as SkillRow);
-    },
+    // Plain CRUD moved to `table("skills")` (ADR-0016 stage 3); the delete
+    // stays named because it carries cascade semantics (assistant_skills).
 
     async deleteSkill(id) {
       const { error } = await client.from("skills").delete().eq("id", id);

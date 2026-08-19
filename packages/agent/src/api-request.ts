@@ -90,7 +90,7 @@ function stringifyExtracted(value: unknown): string {
 
 /**
  * Builds and sends the configured request through the shared egress guard.
- * Never throws for policy/network failures — they come back as `errorCode`
+ * Never throws for policy/network failures, they come back as `errorCode`
  * with `ok:false`, so callers decide how to surface them.
  */
 export async function executeApiRequest(
@@ -103,7 +103,7 @@ export async function executeApiRequest(
   }
   const method = (settings.method || "POST").toUpperCase();
 
-  // URL: template variables may reach the path/query but never the origin —
+  // URL: template variables may reach the path/query but never the origin,
   // assert the resolved origin equals the config-time origin.
   let url: URL;
   try {
@@ -206,7 +206,7 @@ function escalationAuthHeaders(
 /**
  * Sends a widget escalation to an API-endpoint support channel (#315): the
  * configured URL/auth/headers/query with the escalation payload as the JSON
- * body, through the shared egress guard. No templating — the payload is
+ * body, through the shared egress guard. No templating, the payload is
  * visitor-provided data, never interpolated. Never throws; failures come
  * back as `errorCode` so the route can answer honestly.
  */
@@ -271,7 +271,7 @@ export interface ExtractedVariable {
 
 /**
  * Evaluates the configured JSON paths against a response body. Parse/lookup
- * failures never throw — they yield empty values flagged `missed`, so the
+ * failures never throw, they yield empty values flagged `missed`, so the
  * request's own outcome is unaffected.
  */
 export function extractApiJsonPaths(

@@ -3,7 +3,7 @@
 #
 # Next.js inlines every `NEXT_PUBLIC_*` reference at build time. Measured on
 # this app: the two Supabase values land in ~114 server chunks under
-# `.next/server` and in none of `.next/static` — the app has no browser
+# `.next/server` and in none of `.next/static`, the app has no browser
 # Supabase client, so both are read server-side only. That is still build-time
 # inlining, which means a published image built with one origin can never
 # serve another, and the runtime `environment:` entries in the compose file
@@ -16,7 +16,7 @@
 #
 # The rewrite happens once per container start, on the container's own writable
 # layer. Changing a value therefore needs the container recreated, not
-# restarted — which is what `docker compose up -d` does when env changes.
+# restarted, which is what `docker compose up -d` does when env changes.
 set -eu
 
 # Written into the bundle by `docker build --build-arg NEXT_PUBLIC_...=<sentinel>`.

@@ -19,7 +19,7 @@ export type SwipeRelease = {
 };
 
 /**
- * True when a release should dismiss the card. Only rightward swipes count —
+ * True when a release should dismiss the card. Only rightward swipes count,
  * leftward travel is elastic slack that springs back.
  */
 export function shouldDismissSwipe({ offset, velocity }: SwipeRelease): boolean {

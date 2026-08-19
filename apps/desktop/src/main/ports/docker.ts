@@ -2,7 +2,7 @@
 //
 // The trap this exists for: a macOS app launched from the Finder or the Dock
 // does NOT inherit the shell's PATH. It gets a bare `/usr/bin:/bin:/usr/sbin:
-// /sbin`, which contains no `docker` — so a naive `spawn("docker", …)` fails
+// /sbin`, which contains no `docker`, so a naive `spawn("docker", …)` fails
 // with ENOENT on a machine where Docker Desktop is installed and running and
 // the user's terminal finds it instantly. That reads as "Ciele is broken", and
 // it would be the very first thing a new user hit.
@@ -17,8 +17,8 @@ import { homedir } from "node:os";
 import type { CommandResult, DockerPort } from "../../setup/ports";
 
 /**
- * Where `docker` lives, most likely first. PATH wins — a developer's or a
- * deliberate install's choice beats our guesses — then the places Docker
+ * Where `docker` lives, most likely first. PATH wins, a developer's or a
+ * deliberate install's choice beats our guesses, then the places Docker
  * Desktop and the common package managers actually put it.
  *
  * macOS: Docker Desktop symlinks into /usr/local/bin and also keeps a copy
@@ -67,7 +67,7 @@ export function candidatePaths(
 const DEFAULT_TIMEOUT_MS = 15 * 60_000;
 
 export interface DockerPortOptions {
-  /** Directory compose runs in — the bundled deploy assets. */
+  /** Directory compose runs in, the bundled deploy assets. */
   cwd: string;
   timeoutMs?: number;
 }
@@ -92,7 +92,7 @@ export function createDockerPort(options: DockerPortOptions): DockerPort {
     return new Promise<CommandResult>((resolve) => {
       const child = spawn(binary, args, {
         cwd: options.cwd,
-        // Compose writes progress to stderr, so both streams are one log — the
+        // Compose writes progress to stderr, so both streams are one log, the
         // user reading it does not care which fd a line came from.
         stdio: ["ignore", "pipe", "pipe"],
         env: {

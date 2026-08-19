@@ -24,8 +24,8 @@ import {
 import type { InsightsFilter } from "./types";
 
 /**
- * Insights read model: the pure KPI functions — the oracle at the KPI seam
- * (CLAUDE.md §8) — and the parity between them and the assembled Overview.
+ * Insights read model: the pure KPI functions, the oracle at the KPI seam
+ * (CLAUDE.md §8), and the parity between them and the assembled Overview.
  *
  * The two *adapter* halves of the same contract are asserted where the adapters
  * live, against these fixtures: the in-memory Db in
@@ -186,7 +186,7 @@ describe("computeInsightsChart", () => {
 
 /**
  * The proactive-Notification accounting rules (#546). Each is pinned separately,
- * so changing one later is a deliberate edit rather than a drifting number — and
+ * so changing one later is a deliberate edit rather than a drifting number, and
  * `insights.parity.test.ts` holds the SQL to the same answers.
  */
 describe("proactive Notifications in the read model", () => {
@@ -206,7 +206,7 @@ describe("proactive Notifications in the read model", () => {
     expect(stats.aiAnswers).toBe(1);
     expect(stats.notifications).toBe(1);
     expect(stats.userMessages).toBe(1);
-    // One answer to one conversation — the nudge does not inflate the ratio.
+    // One answer to one conversation: the nudge does not inflate the ratio.
     expect(stats.answersPerConversation).toBe(1);
   });
 
@@ -252,7 +252,7 @@ describe("proactive Notifications in the read model", () => {
 
   it("still counts a nudge nobody replied to", () => {
     // The case the KPI exists for. Its conversation is out of the population, so
-    // counting notifications from the population's messages would report zero —
+    // counting notifications from the population's messages would report zero,
     // which is exactly what the first implementation did.
     const nudgedOnly = conv({ id: "c-nudge" });
     const engaged = conv({ id: "c-real" });

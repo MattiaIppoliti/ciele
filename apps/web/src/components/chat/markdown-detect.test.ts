@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { hasMarkdownSyntax } from "./markdown-detect";
 
 /**
- * Plain text must stay false — that is what keeps the react-markdown chunk
- * off the widget's initial load — while anything that could render richly
+ * Plain text must stay false: that is what keeps the react-markdown chunk
+ * off the widget's initial load, while anything that could render richly
  * must stay true.
  */
 

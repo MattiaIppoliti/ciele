@@ -1,7 +1,7 @@
 // Everything the three processes agree on: the app's persisted settings, the
 // state the renderer draws, and the one bridge the preload exposes.
 //
-// Deliberately free of `electron` and of node builtins — the renderer imports
+// Deliberately free of `electron` and of node builtins, the renderer imports
 // this file too, and a stray import there is a bundle error at best and a
 // leaked main-process API at worst.
 
@@ -14,7 +14,7 @@ export type Mode = "saas" | "local";
  *
  * This is the origin that actually serves the app today. The repository's
  * architecture docs name `platform.ciele.app`, and the first cut of this file
- * took them at their word — but that host is not provisioned, so Sign in
+ * took them at their word, but that host is not provisioned, so Sign in
  * landed on a registrar 404 inside a window with no address bar. A default
  * that does not resolve is worse than no default. If `platform.` is stood up
  * later, this constant is the one line that moves.
@@ -64,7 +64,7 @@ export function parseSettings(raw: unknown): Settings {
 /**
  * Accept what a person would actually type for a server address, or reject it.
  *
- * Returns the origin alone — a path, query or fragment on a base URL is a
+ * Returns the origin alone: a path, query or fragment on a base URL is a
  * mistake we would otherwise carry into every navigation. Only http and https
  * are allowed: `file:` would hand the product window the local filesystem.
  */
@@ -117,7 +117,7 @@ export interface AppState {
   update: UpdateNotice | null;
   /** Set when the product window could not load; null the rest of the time. */
   productError: ProductError | null;
-  /** True when the ports are fakes — the E2E smoke and `--fake-ports` runs. */
+  /** True when the ports are fakes, the E2E smoke and `--fake-ports` runs. */
   fakePorts: boolean;
 }
 

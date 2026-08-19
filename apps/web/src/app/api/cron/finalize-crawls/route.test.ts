@@ -15,8 +15,8 @@ import { GET } from "./route";
 
 /**
  * The route is an adapter: cron auth in, the drain's report out. What a tick
- * does — draining the job ledger, then claiming and finalizing a bounded batch
- * of in-flight crawls — lives in `@agent-hub/agent` (`finalizeDueCrawls`) and is
+ * does, draining the job ledger, then claiming and finalizing a bounded batch
+ * of in-flight crawls, lives in `@agent-hub/agent` (`finalizeDueCrawls`) and is
  * tested there. Here we only prove the wrapper.
  */
 

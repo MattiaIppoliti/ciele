@@ -1,7 +1,7 @@
 -- Query performance hardening, driven by the Supabase Performance Advisor:
 -- fix RLS policies that re-evaluate auth.uid()
 -- per row, add missing FK-covering indexes, and remove a duplicate
--- permissive SELECT policy. No behavior change — same access rules, cheaper
+-- permissive SELECT policy. No behavior change, same access rules, cheaper
 -- to evaluate as tables grow.
 
 -- 1. auth_rls_initplan: a bare `auth.uid()` in a policy is re-checked for

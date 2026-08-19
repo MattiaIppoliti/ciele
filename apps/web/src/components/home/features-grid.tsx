@@ -22,18 +22,18 @@ import {
   useShouldAnimate,
 } from "@/components/home/use-in-viewport";
 
-/** Height-matched placeholder for a not-yet-loaded card visual — keeps the
+/** Height-matched placeholder for a not-yet-loaded card visual, keeps the
  * card face stable so the swap causes no layout shift. */
 function VisualSkeleton() {
   return <div aria-hidden className="bg-card h-[180px] w-full" />;
 }
 
 /* The feature-card visuals pull in motion (via the swipe/upload captions) plus
-   the badtz-ui chart components — none of it needed until the below-fold
+   the badtz-ui chart components, none of it needed until the below-fold
    Features section is near view. Load each on first approach and render a
    same-height skeleton until then, so nothing weighs on first load and no
    idle animation runs off-screen. (next/dynamic options must be inline object
-   literals — the SWC transform reads them statically.) */
+   literals, the SWC transform reads them statically.) */
 const KnowledgeVisual = dynamic(
   () =>
     import("@/components/home/knowledge-visual").then((m) => m.KnowledgeVisual),
@@ -68,8 +68,8 @@ const FEATURES: Feature[] = [
     body: "Connect websites, help centers, files and FAQs. Assistants ground every answer in your organization's own content.",
     visual: () => <KnowledgeVisual />,
     details: [
-      "Point an assistant at your websites and knowledge bases and they are crawled and re-indexed automatically, so answers stay current without manual upkeep. Upload files or curate FAQs to fine-tune how specific questions are handled.",
-      "Every AI answer cites the sources it was grounded in, so your team can always trace a response back to the exact page or document it came from.",
+      "Point an assistant at your websites and knowledge bases. Ciele crawls them and re-indexes on a schedule, so answers stay current without manual upkeep. Upload files or curate FAQs to fine-tune how specific questions are handled.",
+      "Every AI answer cites the sources behind it, so your team can trace a response back to the exact page or document it came from.",
     ],
   },
   {
@@ -78,7 +78,7 @@ const FEATURES: Feature[] = [
     visual: () => <PublishVisual />,
     details: [
       "Edit your assistant side-by-side with a live preview of the widget, then publish the same assistant to every channel you need: a floating launcher on your website, an embedded iframe, or internal portals.",
-      "Appearance is fully yours, colors, launcher icon, position and typography, so the widget feels native wherever it lives.",
+      "You set the colors, launcher icon, position and typography, so the widget matches the page it sits on instead of announcing itself.",
     ],
   },
   {
@@ -86,8 +86,8 @@ const FEATURES: Feature[] = [
     body: "Track resolution rate, answer ratings and conversation trends, see how your assistants perform and where to improve.",
     visual: () => <InsightsVisual />,
     details: [
-      "A live dashboard surfaces the metrics that matter: AI resolution rate, thumbs-up/down ratings, escalations, unique users and CSAT, all filterable by assistant, channel and date range.",
-      "Generate AI trend reports over any window and export the underlying data, so you always know which answers to improve next.",
+      "One live dashboard shows AI resolution rate, thumbs-up/down ratings, escalations, unique users and CSAT, all filterable by assistant, channel and date range.",
+      "Generate AI trend reports over any window and export the underlying data, so you know which answers to improve next.",
     ],
   },
 ];
@@ -205,7 +205,7 @@ function FeatureCard({
             </MorphingDialogDescription>
           </div>
           {/* Screenshots have a light top bar, so a bare white X would
-              vanish — sit it on a dark translucent chip for contrast on any
+              vanish, sit it on a dark translucent chip for contrast on any
               image. */}
           <MorphingDialogClose className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900/50 text-zinc-50 backdrop-blur-sm transition-colors hover:bg-zinc-900/70">
             <XIcon size={16} />
@@ -217,7 +217,7 @@ function FeatureCard({
 }
 
 export function FeaturesGrid() {
-  // Observe the (non-transformed) grid — the cards themselves are Tilt-
+  // Observe the (non-transformed) grid, the cards themselves are Tilt-
   // transformed, where IntersectionObserver can't read their own visibility.
   // `mounted` (sticky) defers the lazy visuals until the section is near view;
   // `active` pauses the visuals' idle loops whenever the section is off screen
@@ -230,7 +230,7 @@ export function FeaturesGrid() {
     <AmbientActiveContext.Provider value={active}>
       {/* grid-cols-1 is not cosmetic: without it the single-column stack uses an
           implicit `auto` track, whose auto min sizing lets each card grow to its
-          content-based minimum — the card visuals are a fixed 356px wide, so the
+          content-based minimum, the card visuals are a fixed 356px wide, so the
           cards ran ~30px past the right edge of a phone viewport. An explicit
           minmax(0,1fr) column (what grid-cols-1 emits, same as md:grid-cols-3)
           zeroes that minimum, so the card fits and clips its visual instead. */}

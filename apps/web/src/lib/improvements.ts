@@ -82,7 +82,7 @@ export function improvementKey(seq: number): string {
 
 /**
  * Surface classes for the `IMP-n` key badge, tinted per status so the key alone
- * says where the item stands — no need to find which lane the row sits in. Only
+ * says where the item stands, no need to find which lane the row sits in. Only
  * "To do" stays neutral: it is the resting state, and tinting it would leave
  * nothing for the others to contrast against.
  */

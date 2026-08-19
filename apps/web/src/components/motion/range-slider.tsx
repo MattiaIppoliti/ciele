@@ -20,7 +20,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-// Smooth glide for the thumb/fill — critically damped, no overshoot, so the
+// Smooth glide for the thumb/fill: critically damped, no overshoot, so the
 // handle follows the pointer butterily and eases between snapped steps.
 const SPRING_GLIDE = { stiffness: 700, damping: 50, mass: 0.5 } as const;
 // Bouncy grab feedback for the thumb scale only.
@@ -77,7 +77,7 @@ export function RangeSlider({
   const pos = reduce ? target : smooth;
   const left = useMotionTemplate`${pos}%`;
   // Self-offset the thumb from 0% (flush left) to -100% (flush right) of its
-  // own width so it stays fully inside the track at both ends — no clip, no gap.
+  // own width so it stays fully inside the track at both ends, no clip, no gap.
   const thumbX = useTransform(pos, (p) => `${-p}%`);
 
   const steps = Math.floor((max - min) / step);
@@ -166,13 +166,13 @@ export function RangeSlider({
         className
       )}
     >
-      {/* fill — runs from the left edge to the thumb, consistent tone */}
+      {/* fill, runs from the left edge to the thumb, consistent tone */}
       <motion.div
         className="bg-foreground/15 absolute inset-y-0 left-0"
         style={{ width: left }}
       />
 
-      {/* ticks — slight inset so the end dots don't clip */}
+      {/* ticks, slight inset so the end dots don't clip */}
       <div className="pointer-events-none absolute inset-x-2 inset-y-0">
         {ticks.map((t) => {
           const tp = ((t - min) / (max - min)) * 100;
@@ -186,7 +186,7 @@ export function RangeSlider({
         })}
       </div>
 
-      {/* vertical bar thumb — contained at both ends via thumbX */}
+      {/* vertical bar thumb, contained at both ends via thumbX */}
       <motion.div
         role="slider"
         tabIndex={disabled ? -1 : 0}

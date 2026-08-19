@@ -112,7 +112,7 @@ export async function uploadPublicImageDataUrl(
 }
 
 /**
- * Knowledge-file originals — the uploaded binary retained so a Source can be
+ * Knowledge-file originals, the uploaded binary retained so a Source can be
  * re-ingested (extract → enrich → chunk → embed) after the pipeline improves,
  * without the admin re-uploading. Unlike public avatars this bucket is
  * private: reads go through the service role server-side, and its RLS policies

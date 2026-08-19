@@ -4,7 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * A grid whose dividers carry a slow travelling glow — the mono treatment of
+ * A grid whose dividers carry a slow travelling glow, the mono treatment of
  * cult-ui's GridBeam (cult-ui.com/docs/components/grid-beam).
  *
  * This is a local implementation, not the upstream component: its registry
@@ -40,7 +40,7 @@ export interface GridBeamProps {
  * One layer covering the container's whole explicit grid and re-exposing its
  * tracks through `subgrid`.
  *
- * Every layer — content included — has to go through this. Grid auto-placement
+ * Every layer: content included, has to go through this. Grid auto-placement
  * refuses to reuse a cell already claimed by a definitely-positioned item, so
  * an overlay spanning `1 / -1` would push auto-placed siblings into implicit
  * rows past the end of the grid. Once each layer is itself a positioned

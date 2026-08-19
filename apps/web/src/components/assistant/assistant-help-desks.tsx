@@ -63,7 +63,7 @@ export function AssistantHelpDesks({
   const [, startTransition] = useTransition();
 
   // Rapid consecutive saves (toggle + toggle + label) must not clobber each
-  // other — build every patch on the latest value, not the render closure.
+  // other, build every patch on the latest value, not the render closure.
   const latest = useRef(settings);
 
   function save(patch: Partial<HelpDeskSettings>, message?: string) {

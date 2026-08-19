@@ -1,6 +1,6 @@
 # Measuring the client bundle
 
-How to get a number before changing code for bundle reasons — and the two tools that
+How to get a number before changing code for bundle reasons, and the two tools that
 *look* like the answer here but are not.
 
 ## What does not work
@@ -21,7 +21,7 @@ Consider trying the new Turbopack analyzer via `next experimental-analyze`.
 
 Don't add it. It cost a dependency and two builds to confirm.
 
-**`experimental.optimizePackageImports: ["lucide-react"]`.** Already redundant —
+**`experimental.optimizePackageImports: ["lucide-react"]`.** Already redundant,
 `lucide-react` is in Next's built-in default list (`next/dist/server/config.js`), alongside
 `recharts`, `date-fns` and ~40 others. Adding it changes nothing. And the transform only
 drops *unused* named imports, so it does nothing for a module that genuinely references
@@ -40,7 +40,7 @@ Reads the `<script>` tags out of each prerendered page under `.next/server/app/*
 gzips the chunks they reference. That is the real first-load payload, and it is ground truth
 because it is what Next actually told the browser to fetch.
 
-Only statically prerendered routes show up — a dynamic route emits no build-time HTML. That
+Only statically prerendered routes show up, a dynamic route emits no build-time HTML. That
 still covers the whole marketing surface and several admin pages.
 
 ### Ratios: `pnpm analyze` + `pnpm attribute`
@@ -56,13 +56,13 @@ pnpm --filter @agent-hub/web attribute home   # or: security, assistants, pricin
 (lucide, motion, react, next runtime, app source, …).
 
 **Its `compressed_size` is each module gzipped in isolation, so the column does not sum to
-the transferred size** — a route's parts add to noticeably more than it actually ships. Use
+the transferred size**, a route's parts add to noticeably more than it actually ships. Use
 it to answer "which of these two is bigger", never "how many KB will I save".
 
 ### Proving a saving: A/B the build
 
-The only trustworthy way to price a specific change. Stub the thing out — keeping the public
-surface so the app still compiles — build, and diff `measure:bundle` against the baseline.
+The only trustworthy way to price a specific change. Stub the thing out, keeping the public
+surface so the app still compiles, build, and diff `measure:bundle` against the baseline.
 That is how the animated-icon barrel was priced at ~16–18 KB gzip per route: a stub of
 `animated-icon.tsx` that dropped the lookup map and its ~150 imports moved `/home` from
 323.6 KB gz to 307.8 KB gz, and nothing else.
@@ -82,7 +82,7 @@ Measured on `main` at 9f7a21df, for context on what is worth chasing:
 
 `_global-error` is close to the floor: ~183 KB gz before any of our own code. `/login` at
 195 KB is that floor plus almost nothing. So a marketing route's ~300 KB is roughly
-180 KB of framework and ~120 KB of everything we wrote and pulled in — and by
+180 KB of framework and ~120 KB of everything we wrote and pulled in, and by
 `attribute`'s ratios the largest single dependency in that second half is `motion`, not
 icons. Chase individual components only after checking they are more than a rounding error
 against that floor.

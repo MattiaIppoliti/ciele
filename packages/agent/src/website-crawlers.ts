@@ -93,13 +93,13 @@ export interface WebsiteCrawlerCapabilities {
 
 /**
  * The crawl traits the Automatic policy routes on. Every trait is derived from
- * a Website Source's own config (never invented) — see
+ * a Website Source's own config (never invented), see
  * `crawlCharacteristicsFromConfig`.
  */
 export interface WebsiteCrawlCharacteristics {
-  /** Download + parse linked files during the crawl — an Apify-only capability. */
+  /** Download + parse linked files during the crawl, an Apify-only capability. */
   fetchFiles: boolean;
-  /** Crawl behind a login flow — an Apify-only capability. */
+  /** Crawl behind a login flow, an Apify-only capability. */
   loginProtected: boolean;
   /** Extra settle time for JS-rendered pages → needs a real browser. */
   browserRendered: boolean;
@@ -125,13 +125,13 @@ export function crawlCharacteristicsFromConfig(
 }
 
 /**
- * The Automatic crawler routing policy — a pure function of (configured choice,
+ * The Automatic crawler routing policy, a pure function of (configured choice,
  * crawl characteristics, environment capabilities) so every selection branch is
  * exhaustively unit-testable off the network.
  *
  * Explicit choices are honored as-is (the resolved provider is recorded before
  * work starts): Local always runs in-process; an explicitly chosen remote
- * provider the environment can't run is *not* silently rerouted — it starts on
+ * provider the environment can't run is *not* silently rerouted, it starts on
  * that provider and the adapter surfaces the missing-credentials error, landing
  * the Source in `error`.
  *
@@ -140,8 +140,8 @@ export function crawlCharacteristicsFromConfig(
  *  - file-download or login-protected crawls are reserved for Apify;
  *  - browser-rendered or larger-than-local crawls prefer Crawl4AI, then fall
  *    back to the managed browser crawler (Apify);
- *  - everything else — a small, static, same-origin crawl within the local cap
- *    — uses the always-available in-process crawler.
+ *  - everything else, a small, static, same-origin crawl within the local cap,
+ *    uses the always-available in-process crawler.
  * Only Automatic can fail to resolve: when no configured provider can serve the
  * required capability the caller gets a clear error to surface on the Source.
  */
@@ -158,7 +158,7 @@ export function resolveWebsiteCrawlerProvider(
     return { provider: configured };
   }
 
-  // Automatic — resolve by required capability.
+  // Automatic: resolve by required capability.
   if (characteristics.fetchFiles || characteristics.loginProtected) {
     return capabilities.apifyConfigured
       ? { provider: "apify" }
@@ -188,7 +188,7 @@ export function websiteCrawlerCapabilities(): WebsiteCrawlerCapabilities {
 /**
  * Whether a finished *Local* crawl looks like it missed JavaScript-rendered
  * content and should escalate to a browser provider. Deliberately conservative:
- * true only when the in-process crawler extracted **no usable pages at all** —
+ * true only when the in-process crawler extracted **no usable pages at all**,
  * the canonical "JS SPA" signature (the server ships `<div id="root">` + scripts,
  * so cheerio finds nothing). This keeps Local the cheap default and only ever
  * triggers a browser *retry* (never data loss); a partial result (some pages

@@ -110,7 +110,7 @@ function isModelSelector(value: unknown): value is string {
 /**
  * Parses a `local:<provider>:<modelId>` selector, or returns null for anything
  * that is not one (including "automatic" and non-strings). The canonical way to
- * read a local model selector — callers must not re-implement the grammar.
+ * read a local model selector, callers must not re-implement the grammar.
  */
 export function parseLocalModelSelector(
   value: unknown

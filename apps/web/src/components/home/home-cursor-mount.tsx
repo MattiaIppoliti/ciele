@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 /* The custom home cursor pulls in motion/react, which the prior perf work
    (ea88696) deliberately kept off the initial bundle elsewhere. It matters
    only on fine-pointer (mouse) devices, and not before the pointer first
-   moves — so load it lazily, mount it after the first pointer activity, and
+   moves, so load it lazily, mount it after the first pointer activity, and
    never mount it on touch devices (which keep the native cursor). This keeps
    motion out of the home's first-load JS. */
 const HomeCursor = dynamic(

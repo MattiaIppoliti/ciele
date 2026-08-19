@@ -17,7 +17,7 @@ import { fetchPinnedPage, type PinnedFetchResponse } from "./pinned-fetch";
 export const LOCAL_CRAWL_RUN = "local";
 
 /**
- * Hard page ceiling for the in-process crawler — it runs inline in the server
+ * Hard page ceiling for the in-process crawler; it runs inline in the server
  * process (seconds, not minutes), so its budget is clamped tighter than the
  * remote providers'. The Automatic policy treats a requested budget above this
  * as a "larger" crawl that a remote provider must handle.
@@ -81,7 +81,7 @@ function urlAllowed(url: string, options: CrawlOptions): boolean {
 /** Strips hash + trailing slash so the same page isn't crawled twice. */
 function normalizeUrl(raw: string): string {
   const url = new URL(raw);
-  url.hash = ""; // query strings stay — they can be distinct pages
+  url.hash = ""; // query strings stay; they can be distinct pages
   let s = url.toString();
   if (s.endsWith("/")) s = s.slice(0, -1);
   return s;
@@ -190,7 +190,7 @@ export async function localCrawl(
       }
     } catch (error) {
       if (error instanceof UnsafeCrawlTargetError) throw error;
-      // Unreachable page — skip it; the crawl continues.
+      // Unreachable page: skip it; the crawl continues.
     }
   }
 

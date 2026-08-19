@@ -28,7 +28,7 @@ interface StepState {
   input: Record<string, string>;
   /**
    * The user has said yes to this optional step. Required steps are accepted
-   * by definition — choosing the local path is the consent for those.
+   * by definition, choosing the local path is the consent for those.
    */
   accepted: boolean;
 }
@@ -40,7 +40,7 @@ export interface SetupEngine {
   run(): Promise<SetupSnapshot>;
   /** Clear the failure and run again from the same step. */
   retry(): Promise<SetupSnapshot>;
-  /** Mark the current step skipped — optional steps only — and carry on. */
+  /** Mark the current step skipped, optional steps only, and carry on. */
   skip(): Promise<SetupSnapshot>;
   /**
    * Put an already-settled optional step back on the table, so the user can
@@ -203,7 +203,7 @@ export function createSetupEngine({
    *
    * Calling this IS the user pressing Continue, so the step we start on is
    * accepted by that act. The run then stops at the next optional step the
-   * user has not spoken about — that is the wizard's rhythm: the required
+   * user has not spoken about; that is the wizard's rhythm: the required
    * chain runs unattended, and each choice gets asked.
    */
   async function runFrom(): Promise<SetupSnapshot> {

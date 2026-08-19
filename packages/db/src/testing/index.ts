@@ -9,7 +9,7 @@
  * depend on `packages/db`" rule (stated in its own CLAUDE.md): the rule is about
  * programming against the org-scoped `Db` contract, which is false under the
  * service role. Borrowing a schema-loaded Postgres so that console's own SQL can
- * be tested against the real migrations is the opposite problem — see ADR-0020.
+ * be tested against the real migrations is the opposite problem, see ADR-0020.
  * A consumer whose schema extends the open-source chain passes its own
  * migration directories via `extraMigrationDirs`.
  */

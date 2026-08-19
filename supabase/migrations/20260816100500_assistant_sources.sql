@@ -3,7 +3,7 @@
 -- The assistant↔knowledge link: which Assistants may answer from a Source,
 -- plus the per-assistant Direct access flag (may chat users open the cited
 -- file itself). One row per (assistant, source) pair; deleting either side
--- removes the link. Embeddings stay stored once per Concept — this table is
+-- removes the link. Embeddings stay stored once per Concept, this table is
 -- what shares them across Assistants.
 
 create table public.assistant_sources (
@@ -18,7 +18,7 @@ create index assistant_sources_source_idx on public.assistant_sources (source_id
 
 alter table public.assistant_sources enable row level security;
 
--- Read is org-member, write is editor+ — scoped through the linked assistant's
+-- Read is org-member, write is editor+, scoped through the linked assistant's
 -- organization. The write check also pins the Source to the SAME organization
 -- (via its collection's org id, falling back to the legacy assistant chain
 -- while the backfill hasn't stamped collections yet), so an editor can never

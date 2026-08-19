@@ -3,7 +3,7 @@ import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
 import { str, usage, type CommandContext } from "./shared.ts";
 
-/** `ciele conversations …` (#628) — read-only, any key role. */
+/** `ciele conversations …` (#628), read-only, any key role. */
 export async function conversations(
   verb: string | undefined,
   ctx: CommandContext

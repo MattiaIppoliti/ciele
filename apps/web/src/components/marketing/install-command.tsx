@@ -4,7 +4,7 @@ import { Button, CopyFeedbackIcon, useCopyFeedback } from "@agent-hub/ui";
 import { cn } from "@/lib/utils";
 
 /**
- * A single command on one line, with a copy button — the shape a terminal
+ * A single command on one line, with a copy button, the shape a terminal
  * one-liner wants above the fold.
  *
  * Deliberately not `CodeBlock`: that component gives every snippet a header
@@ -32,7 +32,7 @@ export function InstallCommand({
         className
       )}
     >
-      {/* The prompt is decoration — it must not travel into the clipboard, and
+      {/* The prompt is decoration; it must not travel into the clipboard, and
           a screen reader announcing "dollar" before the command is noise. */}
       <span aria-hidden="true" className="text-muted-foreground/70 font-mono text-sm">
         $

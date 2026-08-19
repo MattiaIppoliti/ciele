@@ -31,7 +31,7 @@ export function FooterClock({ className }: { className?: string }) {
   );
 }
 
-/* Newsletter sign-up. No backend yet, so it confirms locally — honest about
+/* Newsletter sign-up. No backend yet, so it confirms locally, honest about
    being a demo without silently dropping the address on the floor. */
 export function FooterNewsletter() {
   const [email, setEmail] = React.useState("");

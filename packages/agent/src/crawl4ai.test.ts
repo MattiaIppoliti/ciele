@@ -11,10 +11,10 @@ import {
 } from "./crawl4ai";
 
 /**
- * The pure request translation and response mapping — the parts of the
+ * The pure request translation and response mapping, the parts of the
  * Crawl4AI integration that carry real rules (page clamp, same-origin BFS,
  * URL filters, throttle→concurrency, timeout/JS-wait mapping, disabled
- * hooks/extraction, markdown extraction) — plus the two thin async-job calls
+ * hooks/extraction, markdown extraction), plus the two thin async-job calls
  * exercised against fake fetch responses instead of a live worker.
  */
 

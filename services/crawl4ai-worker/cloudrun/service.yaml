@@ -1,6 +1,6 @@
 # Managed-container (Cloud Run) deployment of the Crawl4AI worker.
 #
-# Same image, config, auth model, and API contract as local Docker — only the
+# Same image, config, auth model, and API contract as local Docker, only the
 # platform differs. This is a TEMPLATE: replace every <PLACEHOLDER> and deploy
 # as a documented action (see RUNBOOK.md), never from application code:
 #
@@ -54,7 +54,7 @@ spec:
           env:
             - name: CRAWL4AI_HOOKS_ENABLED
               value: "false"
-            # Runtime secrets from Secret Manager — never inlined.
+            # Runtime secrets from Secret Manager: never inlined.
             - name: CRAWL4AI_API_TOKEN
               valueFrom:
                 secretKeyRef:

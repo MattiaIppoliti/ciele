@@ -2,7 +2,7 @@
 -- an answer older than last night). The flow_trust snapshot keeps only the last
 -- transition (previous_tier), overwritten on every nightly materialization. This
 -- append-only ledger records every tier transition so demotions survive, and
--- the weekly compost digest reads demotions from here — seeing every demotion in
+-- the weekly compost digest reads demotions from here, seeing every demotion in
 -- its window, not just those surviving the latest materialization.
 
 create table public.flow_trust_events (
@@ -25,7 +25,7 @@ create index flow_trust_events_org_idx
 
 alter table public.flow_trust_events enable row level security;
 
--- Written by the nightly materialization (service role only — no insert policy
+-- Written by the nightly materialization (service role only, no insert policy
 -- on purpose); members read for per-flow trust history.
 create policy "members read flow trust events" on public.flow_trust_events
   for select using (private.is_org_member(organization_id));

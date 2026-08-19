@@ -5,7 +5,7 @@
 **Build, test, and publish AI assistants that answer from your own knowledge.**
 
 Embeddable chat widgets that answer from your organization's websites, files, and
-FAQs — routed through a flow engine you control, escalated to your team when the
+FAQs: routed through a flow engine you control, escalated to your team when the
 answer isn't there, and measured in a conversation inbox, an analytics view, and
 an answer-quality tracker.
 
@@ -16,7 +16,7 @@ One command on your own machine, AGPL-3.0 &nbsp;&nbsp;·&nbsp;&nbsp; The same co
 <!-- Product screenshot. Drop console-light.png and console-dark.png into
      mirror/overlay/.github/readme/ (they ship at .github/readme/ in the
      mirror) and uncomment the block below. Capture them from a seeded demo
-     deployment — never from a real one: the previous pair leaked a personal
+     deployment, never from a real one: the previous pair leaked a personal
      assistant description into the public repo.
 
 <picture>
@@ -35,34 +35,34 @@ git clone <this repository> && cd ciele
 ```
 
 That generates every secret, starts the database, applies the migrations, and
-boots the app. Open <http://localhost:3000> and sign up — the first account owns
+boots the app. Open <http://localhost:3000> and sign up, the first account owns
 its organization. Add `--seed` to start from populated demo content.
 
 Prefer not to build from source? `./deploy/bootstrap.sh --images vX.Y.Z` pulls
 the published images for a release instead. Prefer not to open a terminal at
 all? **[Ciele Desktop](https://docs.ciele.app/self-hosting/desktop)** (macOS
-beta) does every step above from a guided wizard — Docker Desktop is the only
+beta) does every step above from a guided wizard, Docker Desktop is the only
 thing you install yourself.
 
 It talks to no Ciele service, and it does not have to talk to an AI vendor
-either: point it at any server speaking the OpenAI chat and embeddings API — a
-model runner on the same host will do — and the whole product runs offline.
+either: point it at any server speaking the OpenAI chat and embeddings API, a
+model runner on the same host will do, and the whole product runs offline.
 [Self-hosting docs →](https://docs.ciele.app/self-hosting)
 
 ## What you get
 
-- **Assistants** — a full editor with a live preview: welcome message, starter
+- **Assistants**, a full editor with a live preview: welcome message, starter
   buttons, answering style, appearance, and the embed snippets to publish it.
-- **Knowledge** — crawl websites, upload files, curate FAQ pairs. Answers cite
+- **Knowledge**: crawl websites, upload files, curate FAQ pairs. Answers cite
   the concept and the source they came from, never an opaque chunk of text.
-- **Flows** — an authoritative router. Intent classification picks the flow, then
+- **Flows**: an authoritative router. Intent classification picks the flow, then
   its actions run in order: a fixed message is verbatim, and generative behavior
   is confined to knowledge search and the default behavior.
-- **Help desks** — escalation destinations with channels, forms, availability
+- **Help desks**: escalation destinations with channels, forms, availability
   windows, and ticketing integrations.
-- **Operations** — a conversation inbox with transcripts and citations, an
+- **Operations**: a conversation inbox with transcripts and citations, an
   improvements tracker for answer quality, insights, and health alerts.
-- **Multi-tenant from the first table** — organizations, members, and roles, with
+- **Multi-tenant from the first table**: organizations, members, and roles, with
   isolation enforced in the database by row-level security.
 
 ## Two editions, one core
@@ -70,7 +70,7 @@ model runner on the same host will do — and the whole product runs offline.
 The open-source edition in this repository is the whole product your visitors and
 administrators use. **Ciele Cloud** is that same core, operated for you, with
 plans, usage limits, managed single sign-on, and support. A small set of
-managed-service features lives outside this tree — the
+managed-service features lives outside this tree, the
 [open-core boundary](https://docs.ciele.app/self-hosting/open-core-boundary) says
 exactly where the line falls.
 

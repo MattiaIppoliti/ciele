@@ -1,4 +1,4 @@
-# Ciele Graph Knowledge worker — a thin FastAPI service wrapping the cognee
+# Ciele Graph Knowledge worker: a thin FastAPI service wrapping the cognee
 # library (see app/main.py). Unlike the crawler worker (an off-the-shelf image),
 # this is our own small app, so we build it. Pin the base by digest in
 # production (see RUNBOOK.md); never rely on a floating tag.
@@ -26,7 +26,7 @@ ENV COGNEE_DATA_ROOT=/data/cognee/data \
     # Fail-closed defaults; the real values are injected at runtime.
     TELEMETRY_DISABLED=1 \
     COGNEE_SKIP_CONNECTION_TEST=true \
-    # Local ONNX embeddings — no embedding-token cost, no external embed calls.
+    # Local ONNX embeddings: no embedding-token cost, no external embed calls.
     EMBEDDING_PROVIDER=fastembed \
     EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2 \
     EMBEDDING_DIMENSIONS=384 \
@@ -40,5 +40,5 @@ EXPOSE 8000
 
 # One worker: cognee's embedded stores are process-local (like the crawler's
 # bundled Redis), so a task written on one worker is only visible there. Scaling
-# out requires external Postgres-backed stores first — a deliberate later step.
+# out requires external Postgres-backed stores first, a deliberate later step.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

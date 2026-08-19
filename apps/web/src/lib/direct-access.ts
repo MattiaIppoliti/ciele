@@ -5,7 +5,7 @@ import type { Source } from "@agent-hub/core";
  * visitor the file Source's original? Pure, so the widget route stays a thin
  * shell and every leg is unit-tested. All four legs must hold:
  * published assistant ∧ source linked to it with the flag on ∧ file kind ∧
- * retained original. Callers answer a uniform 404 on refusal — never which
+ * retained original. Callers answer a uniform 404 on refusal, never which
  * leg failed.
  */
 export function canServeOriginal(input: {

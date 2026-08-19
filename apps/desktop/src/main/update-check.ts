@@ -1,4 +1,4 @@
-// "There is a newer version" — nothing more (#690).
+// "There is a newer version", nothing more (#690).
 //
 // The beta is unsigned, and macOS will not auto-update an unsigned app, so
 // there is no updater to run. What the app can honestly do is notice that a
@@ -26,7 +26,7 @@ export async function checkForUpdate(
   fetchImpl: typeof fetch = fetch,
 ): Promise<UpdateNotice | null> {
   // A build the release workflow never stamped is older than every release by
-  // definition, so without this it shows the banner permanently — and the
+  // definition, so without this it shows the banner permanently, and the
   // download it offers is not the build the developer is running.
   if (isDevBuild(currentVersion)) return null;
 
@@ -45,8 +45,8 @@ export async function checkForUpdate(
 }
 
 /**
- * Split out from the fetch so the decision — which is the part with rules in
- * it — is testable without a network.
+ * Split out from the fetch so the decision, which is the part with rules in
+ * it, is testable without a network.
  */
 export function noticeFor(
   payload: ReleasePayload,

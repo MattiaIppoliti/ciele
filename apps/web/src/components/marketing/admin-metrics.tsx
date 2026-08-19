@@ -1,7 +1,7 @@
 /* The admin-dashboard visual: three metric traces scrolling right to left in a
    loop, with query chips pinned over them. The waveform is generated from a sum
    of sines rather than random noise, so it is identical on the server and the
-   client (no hydration mismatch) and — being periodic over the interval — its
+   client (no hydration mismatch) and, being periodic over the interval, its
    end meets its start exactly, which is what makes the loop seamless. */
 
 const WIDTH = 600;

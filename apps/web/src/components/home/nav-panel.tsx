@@ -17,28 +17,28 @@ import {
 } from "@/components/home/nav-menu";
 
 /**
- * What the marketing nav's menus look like inside — the desktop dropdown's
+ * What the marketing nav's menus look like inside, the desktop dropdown's
  * contents and the mobile menu's list.
  *
  * Separate from `home-header.tsx` because the header owns the chrome: which
  * panel is open, where it sits, and the measurement that puts it there. What
  * lives here is markup over `nav-menu`'s data plus the motion *inside* a panel
- * (the row stagger, the mobile accordion), and the two facts it cannot know —
- * close the menu once a link is taken, and which mobile group is expanded —
+ * (the row stagger, the mobile accordion), and the two facts it cannot know,
+ * close the menu once a link is taken, and which mobile group is expanded,
  * arrive as props.
  */
 
 /* Motion values of the directional-hover header the panel's movement is copied
    from: every row inside a panel enters from ITEM_X and the rows fire
-   STAGGER_STEP apart — front-to-back when the pointer moved left along the nav,
+   STAGGER_STEP apart, front-to-back when the pointer moved left along the nav,
    back-to-front when it moved right. The panel's own cross-slide (CONTENT_X)
    belongs to the header, which owns the panel. */
 const ITEM_X = 18;
 const STAGGER_STEP = 0.038;
 
 /* The docs tiles are the only animated icons the marketing header draws, and
-   importing `animated-icon` eagerly is what put its whole barrel — ~75 animated
-   variants plus the ~80 lucide glyphs its lookup map keys on — into every public
+   importing `animated-icon` eagerly is what put its whole barrel, ~75 animated
+   variants plus the ~80 lucide glyphs its lookup map keys on, into every public
    page, for 12 tiles behind a hover. Measured at ~16-18 KB gzip per route on
    /home, /pricing, /features/*, /security and /policies/*.
 
@@ -46,7 +46,7 @@ const STAGGER_STEP = 0.038;
    plain lucide glyph, fetch the animated module on the first pointer into the
    nav, then swap. The module survives DocsAreaGrid's remounts (the panel is
    keyed per dropdown, so the grid unmounts whenever another one opens) by
-   living at module scope behind a store — `useSyncExternalStore` rather than
+   living at module scope behind a store, `useSyncExternalStore` rather than
    setState in an effect, which this repo's lint rules refuse. */
 type AnimatedIconRenderer = typeof AnimatedIcon;
 
@@ -113,7 +113,7 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
     >
       {visual === "stack" ? (
         <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
-          {/* Three isometric slabs — the stack you run yourself. Same line
+          {/* Three isometric slabs, the stack you run yourself. Same line
               weights and muted fills as the flows/insights artwork; the deck
               pulls apart on the card's hover, so the "self-host" tile answers
               the folder that opens on the Docs one. */}
@@ -152,7 +152,7 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
         </svg>
       ) : visual === "flows" ? (
         <svg viewBox="0 0 200 92" className="size-full" fill="none" stroke="currentColor">
-          {/* Two triggers on the left fanning into the flows they match —
+          {/* Two triggers on the left fanning into the flows they match,
               the router, drawn as what it does. */}
           {[16, 54].map((y) => (
             <rect
@@ -198,7 +198,7 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
       ) : visual === "lock" ? (
         <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
           {/* A padlock inside the same concentric rings the Enterprise page
-              draws around the organization — governance closing in on one
+              draws around the organization, governance closing in on one
               thing. The rings widen on hover. */}
           <g className="opacity-60 duration-500 group-hover/card:opacity-100">
             {[22, 32, 42].map((r, index) => (
@@ -235,7 +235,7 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
         </svg>
       ) : (
         <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
-          {/* Concentric arcs radiating from the corner — reach/broadcast. */}
+          {/* Concentric arcs radiating from the corner, reach/broadcast. */}
           {[20, 42, 64, 86, 108].map((r) => (
             <circle key={r} cx="10" cy="78" r={r} strokeWidth="1" className="opacity-70" />
           ))}
@@ -273,7 +273,7 @@ function DocsAreaGrid({ onNavigate }: { onNavigate: () => void }) {
        five-link column beside it, so the panel reads as one block. */
     <div
       // Backstop for a pointer that reaches the grid before the nav-cluster
-      // preload has resolved (or never entered the cluster — keyboard focus
+      // preload has resolved (or never entered the cluster, keyboard focus
       // opens the panel too).
       onPointerEnter={loadAnimatedIcons}
       className="grid shrink-0 grid-cols-4 gap-1 self-center"
@@ -329,7 +329,7 @@ export function PanelContent({
   direction: number;
   onNavigate: () => void;
 }) {
-  /* One flat row index across the whole panel — the link columns first, then
+  /* One flat row index across the whole panel, the link columns first, then
      the docs grid (counted as one row) or the promo cards. */
   const columns = item.columns ?? [];
   const links = columns.reduce((sum, column) => sum + column.length, 0);
@@ -461,7 +461,7 @@ function MobileGroup({
 
 /**
  * The mobile menu's link list: the four groups only, pinned to the top of the
- * card. Tapping one springs it open (see `MobileGroup`) — listing every child
+ * card. Tapping one springs it open (see `MobileGroup`), listing every child
  * at once outgrew the card and buried the CTAs, so the list scrolls on its own
  * and stops short of them.
  *

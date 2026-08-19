@@ -1,6 +1,6 @@
 -- Organization API keys (#618): org-scoped credentials for programmatic
 -- access (the ciele CLI, MCP server and the upcoming /api/v1). Only the
--- SHA-256 hash of the secret is stored — the plaintext is shown once at
+-- SHA-256 hash of the secret is stored, the plaintext is shown once at
 -- creation and never persisted. A key carries a Role, capped app-side at its
 -- creator's, so a key can never out-rank the human who minted it. Revocation
 -- is an update (revoked_at), not a delete, so the audit row survives.
@@ -12,7 +12,7 @@ create table public.organization_api_keys (
   secret_hash text not null unique,
   -- Displayable first characters of the secret (e.g. "ciele_sk_ab12").
   secret_hint text not null,
-  -- 'owner' | 'admin' | 'editor' | 'viewer' — the Role the key acts with.
+  -- 'owner' | 'admin' | 'editor' | 'viewer', the Role the key acts with.
   role text not null default 'viewer',
   created_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),

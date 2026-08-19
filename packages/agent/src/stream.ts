@@ -5,7 +5,7 @@ import type { RuntimeEvent } from "./types";
 /**
  * The RuntimeEvent wire contract's consumer side (one JSON event per line,
  * emitted by the Conversation Turn module). Everything derived from a turn's
- * notice/thought/tool-* events is folded by {@link foldTraceEvent} — the SINGLE
+ * notice/thought/tool-* events is folded by {@link foldTraceEvent}, the SINGLE
  * folding rule, shared by all three consumers: the public Widget, the admin
  * Preview, and turn.ts itself, which folds the events it is emitting in order
  * to persist the trace. A second fold would be a second source of truth for
@@ -13,14 +13,14 @@ import type { RuntimeEvent } from "./types";
  *
  * The fold is pure and client-safe (type-only imports, no server
  * dependencies); the streaming/answer-assembly concerns that only a live client
- * has — text deltas, reply parts, error copy — stay in
+ * has, text deltas, reply parts, error copy, stay in
  * {@link consumeTurnStream} around it.
  */
 
 export type { TurnStep };
 
 /**
- * Whether the turn is still working or has reached its answer — the only phase
+ * Whether the turn is still working or has reached its answer, the only phase
  * distinction a chat UI needs, since it decides whether the Thinking panel spins
  * and stays open or collapses to its summary.
  *
@@ -103,7 +103,7 @@ function foldThought(
 /**
  * Folds one wire event into the turn's trace. Pure, total (an event it does not
  * care about returns the trace unchanged) and append-only on `steps` (except
- * the streaming thought — see {@link foldThought}), which is what makes
+ * the streaming thought, see {@link foldThought}), which is what makes
  * `steps.length` a safe id for the kinds that have no call id.
  *
  * The running/done transition lives here rather than in the clients so the panel
@@ -142,7 +142,7 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             iteration: event.iteration,
           },
         ],
-        // The ×N pill counts knowledge searches specifically — that is the
+        // The ×N pill counts knowledge searches specifically; that is the
         // number an operator reads as "how hard did this turn look".
         searchCount:
           event.tool === "searchKnowledge"
@@ -169,7 +169,7 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             : step
         ),
         // The terminal tool's structured result carries the FINAL declared
-        // status (post any re-clarify coercion) — the fold reads it here so
+        // status (post any re-clarify coercion), the fold reads it here so
         // the persisted trace and the Inbox badge agree with the write phase.
         terminal:
           event.tool === "readyToAnswer" &&
@@ -180,14 +180,14 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
     case "thought-delta":
       // Live reasoning (#584): deltas grow the newest running thought step in
       // place, so the panel streams the text exactly where the finalized step
-      // will sit — interleaved with the tool cards, not in the answer bubble.
+      // will sit, interleaved with the tool cards, not in the answer bubble.
       return foldThought(trace, "running", (prev) => (prev ?? "") + event.delta);
     case "thought":
       // Reasoning that led into a tool call, whole and authoritative: it
       // finalizes the running step its deltas built, replacing the accumulated
       // label with the trimmed text so a delta-built trace and a stored one
       // hold the identical step. Without a running step (older streams, stored
-      // traces) it appends — what was streaming as answer text moves into the
+      // traces) it appends, what was streaming as answer text moves into the
       // Thinking panel (the client resets its bubble).
       return foldThought(trace, "done", () => event.text);
     case "text-start":
@@ -244,7 +244,7 @@ export interface ConsumeTurnOptions<T extends TurnView> {
 /**
  * Consumes a turn into the TurnView: {@link foldTraceEvent} owns the Thinking
  * Steps, flow name, search count and phase; this loop adds only what a live
- * client needs on top — reply parts append, text deltas stream into
+ * client needs on top, reply parts append, text deltas stream into
  * `streamingText` and solidify into a text part on `text-end`, and `error`
  * degrades to a fallback part.
  */
@@ -254,11 +254,11 @@ export async function consumeTurnStream<T extends TurnView>(
 ): Promise<void> {
   const { update, onStart, onDone } = options;
   const errorText =
-    options.errorText ?? (() => "Something went wrong — please try again.");
+    options.errorText ?? (() => "Something went wrong, please try again.");
   let streamAction = "search_knowledge";
 
   for await (const event of decodeRuntimeEvents(body)) {
-    // The shared fold first, for every event — then the streaming-only extras.
+    // The shared fold first, for every event, then the streaming-only extras.
     update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
     switch (event.type) {
       case "turn":

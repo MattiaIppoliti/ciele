@@ -13,8 +13,8 @@ import {
  * shows "Open app" to a signed-in visitor and "Log in / Get a demo" to everyone
  * else. That used to be a server-side branch on a resolved Session, which a test
  * could reach by calling a function. It is now a three-part contract with no
- * single function in it — middleware writes a cookie, an inline script copies it
- * onto <html>, and CSS reveals one of two CTA sets keyed on that attribute — and
+ * single function in it, middleware writes a cookie, an inline script copies it
+ * onto <html>, and CSS reveals one of two CTA sets keyed on that attribute, and
  * two of those three parts are a `.tsx` component and a stylesheet, neither of
  * which this suite collects (`apps/web/CLAUDE.md`: vitest takes `.test.ts` only).
  *
@@ -22,8 +22,8 @@ import {
  * are pinned against their source with the exported constants. That means
  * renaming the attribute or a class in TypeScript, or deleting a rule from the
  * stylesheet, fails here rather than silently showing every visitor the wrong
- * button. The middleware side of the contract — when the cookie is written,
- * cleared, and deliberately not rewritten — is covered in `middleware.test.ts`.
+ * button. The middleware side of the contract, when the cookie is written,
+ * cleared, and deliberately not rewritten, is covered in `middleware.test.ts`.
  */
 
 const read = (relative: string) =>
@@ -71,7 +71,7 @@ describe("signed-in hint script", () => {
     expect(runInitScript(`theme=dark; ${AUTH_HINT_COOKIE}=1`)).toBe("");
   });
 
-  it("leaves <html> alone with no cookies at all — the signed-out default", () => {
+  it("leaves <html> alone with no cookies at all, the signed-out default", () => {
     expect(runInitScript("")).toBeNull();
     expect(runInitScript("theme=dark")).toBeNull();
   });
@@ -149,7 +149,7 @@ describe("signed-in hint / CTA contract", () => {
 
 describe("authHintIsCurrent", () => {
   /* The middleware writes the cookie only when this says the two disagree,
-     because a Set-Cookie header stops a CDN caching an otherwise-static page —
+     because a Set-Cookie header stops a CDN caching an otherwise-static page,
      the very thing the hint exists to make possible. */
   it("agrees when the cookie matches the validated claims", () => {
     expect(authHintIsCurrent("1", true)).toBe(true);

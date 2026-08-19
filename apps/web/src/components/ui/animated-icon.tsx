@@ -182,7 +182,7 @@ type AnimatedIconComponent = ComponentType<
 
 /**
  * lucide-react icon → its `@lucide-animated` counterpart. Keyed by the
- * component reference itself (not display name — lucide aliases some, e.g.
+ * component reference itself (not display name, lucide aliases some, e.g.
  * `CircleHelp` renders as `CircleQuestionMark`). Only icons with an animated
  * equivalent live here; everything else falls back to the static lucide icon.
  * Extend this as more animated icons are installed.
@@ -274,7 +274,7 @@ const HOST_SELECTOR =
 const START_DELAY_MS = 135;
 
 /**
- * Whether icons in this subtree may animate. Defaults to `true` (the shell —
+ * Whether icons in this subtree may animate. Defaults to `true` (the shell,
  * sidebar, top bar, menus). The central page content wraps itself in
  * `<StaticIcons>` so its icons render as the plain, static lucide glyphs.
  */
@@ -290,7 +290,7 @@ export function StaticIcons({ children }: { children: ReactNode }) {
 }
 
 /**
- * Re-enables animation inside a `<StaticIcons>` subtree — for chrome that
+ * Re-enables animation inside a `<StaticIcons>` subtree, for chrome that
  * happens to be *rendered* by a page rather than by the shell (the Settings
  * dialog's tab rail lives under `(admin)/settings/layout.tsx`, so it inherits
  * the page's static context even though it reads as sidebar navigation).
@@ -306,7 +306,7 @@ interface AnimatedIconProps extends HTMLAttributes<HTMLSpanElement> {
   icon: LucideIcon;
   /** Pixel size passed to both the animated and static renderers. */
   size?: number;
-  /** Classes for the icon glyph itself (color, margins) — not the wrapper. */
+  /** Classes for the icon glyph itself (color, margins), not the wrapper. */
   iconClassName?: string;
   /**
    * When to play: `"hover"` (default) drives from the nearest interactive

@@ -1,7 +1,7 @@
 # Self-hosting Ciele
 
 Everything needed to run Ciele on your own machine or server: the whole
-product — admin console, widget runtime, database, background jobs — with no
+product, admin console, widget runtime, database, background jobs, with no
 account anywhere and no license fee.
 
 ```sh
@@ -11,7 +11,7 @@ curl -fsSL https://ciele.app/install.sh | sh
 That installer checks the prerequisites, fetches the source into `./ciele` and
 runs the script below; `| sh -s -- --seed` forwards flags to it, and `CIELE_DIR`
 / `CIELE_REF` choose the directory and the release tag. It is generated from
-`apps/web/src/lib/self-host-install.ts`, whose test pins it to this script — so
+`apps/web/src/lib/self-host-install.ts`, whose test pins it to this script, so
 a flag renamed here fails the build rather than someone's install.
 
 By hand, which is all it does:
@@ -22,7 +22,7 @@ git clone <this repo> && cd ciele
 ```
 
 First run pulls images and builds the app, so give it several minutes. When it
-finishes, open <http://localhost:3000> and sign up — **the first account
+finishes, open <http://localhost:3000> and sign up, **the first account
 becomes the owner of its organization**.
 
 Add `--seed` to load sanitized demo content (an organization with example
@@ -36,17 +36,17 @@ assistants) so you can see a populated product before adding your own.
 |---|:--:|---|
 | `db` | ✅ | The Supabase OSS stack, trimmed: Postgres + pgvector, GoTrue (auth), PostgREST (data API), storage-api, and a small nginx gateway giving them one origin |
 | `migrate` | ✅ | One-shot. Applies pending migrations and provisions the three storage buckets, then the app starts |
-| `app` | ✅ | The web app — admin console and widget runtime |
+| `app` | ✅ | The web app: admin console and widget runtime |
 | `cron` | ✅ | The five scheduled jobs, on the same UTC schedules the hosted deployment uses |
 | `workers` | ⬜ | Graph retrieval + JavaScript-rendering crawler. Heavy (~8 GiB RAM) |
 | `studio` | ⬜ | Database admin UI |
 
-Realtime, Edge Functions, Analytics and Kong are not started — Ciele does not
+Realtime, Edge Functions, Analytics and Kong are not started; Ciele does not
 use them.
 
 ## Prebuilt images instead of a source build
 
-The command above builds `app`, `migrate` and `cron` from the checkout — an
+The command above builds `app`, `migrate` and `cron` from the checkout, an
 afternoon on a laptop, and it needs the whole repo. Every release also
 publishes those three as images, so you can skip the build entirely:
 
@@ -71,7 +71,7 @@ same database layer. Only the origin of those three services changes.
 
 > **Why the published app image is configurable at all.** Next.js inlines
 > `NEXT_PUBLIC_*` at build time, and one of those values is the Supabase anon
-> key — a JWT signed with *your* install's secret, which no published image can
+> key, a JWT signed with *your* install's secret, which no published image can
 > know. So the image is built with placeholders and rewrites them from its
 > environment on start (`apps/web/docker-entrypoint.sh`). Changing
 > `SUPABASE_PUBLIC_URL` afterwards therefore needs the container recreated
@@ -79,7 +79,7 @@ same database layer. Only the origin of those three services changes.
 
 Ciele Desktop uses this mode: it pins the tag to its own version, so updating
 the app is what rolls your local stack forward. If you want the guided,
-no-terminal path, use the desktop app instead of this directory — see
+no-terminal path, use the desktop app instead of this directory, see
 <https://docs.ciele.app/self-hosting/desktop>.
 
 ## Choosing your AI models
@@ -102,7 +102,7 @@ OPENAI_COMPATIBLE_EMBEDDING_DIMS=768
 ```
 
 `docker compose -f deploy/docker-compose.yml up -d app` to apply. Hosted
-providers work too — set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or
+providers work too, set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or
 `GOOGLE_GENERATIVE_AI_API_KEY` instead.
 
 **Without an embedding model, knowledge search degrades to keyword/lexical
@@ -141,7 +141,7 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 ```
 
 In **image mode** it is applied when the container starts, so recreating is
-enough — but a restart is not:
+enough, but a restart is not:
 
 ```sh
 docker compose up -d app
@@ -177,7 +177,7 @@ Uploaded files live in the `storage-data` volume and the database in
 
 ## Programmatic access: API, CLI, MCP (#630)
 
-A self-hosted deployment speaks the same `/api/v1` as the SaaS — no extra
+A self-hosted deployment speaks the same `/api/v1` as the SaaS, no extra
 services, no extra env vars: the routes ship inside the app container.
 
 1. **Mint a key** in the admin console: *Settings → API Keys* (admin+). The
@@ -189,12 +189,12 @@ services, no extra env vars: the routes ship inside the app container.
 export CIELE_API_KEY=ciele_sk_…
 export CIELE_BASE_URL=https://ciele.your-campus.example   # this host
 
-# discovery — what this deployment speaks (no auth needed)
+# discovery, what this deployment speaks (no auth needed)
 curl "$CIELE_BASE_URL/api/v1/meta"
 # the machine-readable contract
 curl "$CIELE_BASE_URL/api/v1/openapi.json"
 
-# the CLI (packages/cli — see its README for the full command tree)
+# the CLI (packages/cli, see its README for the full command tree)
 ciele login --key "$CIELE_API_KEY" --base-url "$CIELE_BASE_URL"
 ciele whoami
 ciele assistants list
@@ -209,7 +209,7 @@ ciele flows create <assistantId> --name "Fees intent"
    architecture diagrams: [`docs/api/connections.md`](../docs/api/connections.md).
 
 Version skew: a newer CLI against an older self-hosted server should call
-`GET /api/v1/meta` first — `domains` lists what this deployment actually
+`GET /api/v1/meta` first, `domains` lists what this deployment actually
 ships, and unknown routes 404 cleanly.
 
 ## Not in scope
@@ -220,24 +220,24 @@ reference for what the product needs.
 
 ## Troubleshooting
 
-**`migrate` exits with "schema 'auth' did not appear"** — GoTrue failed to
+**`migrate` exits with "schema 'auth' did not appear"**: GoTrue failed to
 start, usually a Postgres password mismatch from a half-initialised volume.
 `docker compose -f deploy/docker-compose.yml down -v` and bootstrap again.
 
-**Signup emails never arrive** — with no SMTP configured, accounts are
+**Signup emails never arrive**: with no SMTP configured, accounts are
 auto-confirmed (`MAILER_AUTOCONFIRM=true`), so just sign in. Set the `SMTP_*`
 variables and flip it to `false` when you want real confirmation.
 
-**The app can't reach Ollama on the host** — inside Docker, `localhost` is the
+**The app can't reach Ollama on the host**: inside Docker, `localhost` is the
 container. Use `http://host.docker.internal:11434/v1` (Docker Desktop) or the
 host's LAN IP (Linux).
 
-**In image mode, compose says `CIELE_IMAGE_TAG` is required** — the overlay is
+**In image mode, compose says `CIELE_IMAGE_TAG` is required**: the overlay is
 in `COMPOSE_FILE` but no tag is pinned. Set `CIELE_IMAGE_TAG` to a release tag,
 or clear `COMPOSE_FILE` to go back to building from source. The variable
 refuses to default on purpose: an unpinned stack that silently followed
 `latest` would change under you.
 
-**In image mode, every request fails after changing `SUPABASE_PUBLIC_URL`** —
+**In image mode, every request fails after changing `SUPABASE_PUBLIC_URL`**,
 the published app image resolves that value once, at container start. Recreate
 the container with `docker compose up -d` rather than restarting it.

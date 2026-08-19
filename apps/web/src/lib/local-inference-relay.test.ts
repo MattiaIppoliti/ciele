@@ -19,7 +19,7 @@ import {
 
 const db = getMockDb();
 
-/** A unique member+origin per test — the mock store is a shared singleton. */
+/** A unique member+origin per test, the mock store is a shared singleton. */
 function member() {
   return {
     organizationId: `org-${shortId()}`,
@@ -98,7 +98,7 @@ describe("local inference relay device selection", () => {
   it("matches the advertised provider in TypeScript, not with a jsonb query", async () => {
     // `providers` is jsonb. PostgREST serializes an array passed to
     // `.contains()` as the Postgres-array literal `{openai}`, then the jsonb
-    // operator rejects it with "invalid input syntax for type json" — so the
+    // operator rejects it with "invalid input syntax for type json", so the
     // provider predicate must run on the fetched fresh-device set instead.
     const m = member();
     await pairFreshDevice(m, ["anthropic"]);

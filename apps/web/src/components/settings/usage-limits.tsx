@@ -18,7 +18,7 @@ import {
 } from "@/lib/usage-meters";
 
 /**
- * "Your usage limits" — the plan's meters as rings (#509).
+ * "Your usage limits", the plan's meters as rings (#509).
  *
  * A thin renderer: every number, threshold and label comes from
  * `usage-meters.ts`, which is where the tests are. One card per metered
@@ -229,7 +229,7 @@ export function UsageLimitsBlock({
 /**
  * What a deployment with no caps sees instead of gauges. Two cases, because they
  * are different facts: no managed plan at all (self-hosted, the open-source
- * edition), or a plan whose meters are all uncapped — a staff exemption, or
+ * edition), or a plan whose meters are all uncapped, a staff exemption, or
  * billing data too stale to enforce against. Zeroed rings under "each meter is
  * capped" copy would be a lie, so this says it in words.
  */

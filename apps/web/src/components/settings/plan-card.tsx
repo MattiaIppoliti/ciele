@@ -29,7 +29,7 @@ import {
 } from "@/app/(admin)/settings/billing/actions";
 
 /**
- * The plan, its meters, and the way up — on Billing (#511).
+ * The plan, its meters, and the way up, on Billing (#511).
  *
  * Deliberately a summary rather than a second Usage page: one ring per metered
  * resource showing the window closest to its cap, computed by the same
@@ -90,7 +90,7 @@ function GlanceMeter({ row }: { row: MeterGlanceRow }) {
 
 /**
  * The plan an organization is on, with its meters at a glance. Renders only when
- * there is a catalog to price against — a self-hosted deployment has no plan and
+ * there is a catalog to price against, a self-hosted deployment has no plan and
  * sees nothing.
  */
 export function PlanSummaryCard({
@@ -184,7 +184,7 @@ export function PlanSummaryCard({
  * Where the plan can go, and how it gets there.
  *
  * The route depends on whether a Stripe subscription already exists, and that is
- * not a UI preference — hosted Checkout in subscription mode always CREATES a
+ * not a UI preference, hosted Checkout in subscription mode always CREATES a
  * subscription, so offering it to an existing subscriber would bill them twice.
  *
  *   already paying  → the Customer Portal, which is where Stripe does tier
@@ -196,7 +196,7 @@ export function PlanSummaryCard({
  *                     likely thing they want to buy.
  *
  * A sales-led tier, or any tier this deployment cannot charge for, links to the
- * conversation instead — so no button here can fail.
+ * conversation instead, so no button here can fail.
  */
 export function PlanUpgradeCard({
   plan,
@@ -211,7 +211,7 @@ export function PlanUpgradeCard({
   catalog: PlanCatalogEntry[];
   /**
    * This organization is not activated yet, so the ladder is its purchase path
-   * rather than an upgrade path — paying is exactly what activates it
+   * rather than an upgrade path, paying is exactly what activates it
    * (`ee/activation.ts`), which is what the heading and copy have to say.
    */
   pending?: boolean;
@@ -264,7 +264,7 @@ export function PlanUpgradeCard({
                 <input type="hidden" name="plan" value={tier.slug} />
                 <Button type="submit">
                   {/* A pending org has no plan to move from, and a comped one is
-                      already on the tier it is being offered — both are a first
+                      already on the tier it is being offered, both are a first
                       subscription, not a move. */}
                   {pending || tier.slug === plan
                     ? `Subscribe to ${tier.name}`
@@ -294,7 +294,7 @@ export type CheckoutOutcome = "success" | "cancelled" | "error";
 /**
  * The one line an admin needs after a round trip to Stripe. Success still hedges
  * slightly: the page reconciles the returned session itself, so the plan is
- * normally already below — but a Stripe read that fails leaves the webhook to
+ * normally already below, but a Stripe read that fails leaves the webhook to
  * apply it a moment later, and this copy has to hold in that case too.
  */
 export function CheckoutNotice({ outcome }: { outcome: CheckoutOutcome }) {

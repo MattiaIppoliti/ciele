@@ -6,7 +6,7 @@
 --   last_crawled_at + cadence against now(); this migration only stores the
 --   inputs, it does not schedule anything.
 -- last_crawled_at: set when a crawl completes successfully (finalize), NOT on
---   edit — so next-due stays accurate when an admin only renames a source.
+--   edit, so next-due stays accurate when an admin only renames a source.
 --
 -- Per-page override seam: a future page-level schedule column on `concepts`
 -- (crawled pages) will inherit this site-level schedule when left null. The

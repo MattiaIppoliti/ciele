@@ -52,7 +52,7 @@ import {
  * through apps/web's cron route handlers; they live here because the behavior
  * does, and a tick no longer needs a Request to be exercised.
  *
- * The crawl pipeline itself is faked — this is the orchestration's rules, not
+ * The crawl pipeline itself is faked: this is the orchestration's rules, not
  * the provider seam. `recrawl.scheduled.test.ts` drives the real lifecycle.
  */
 
@@ -105,7 +105,7 @@ describe("sweepDueRecrawls", () => {
 
   it("does not double-crawl when the sweep runs twice in a window", async () => {
     // The claim flips a due Source to `processing`, so the same Source is not
-    // returned again within the window — mirror that state transition here.
+    // returned again within the window, mirror that state transition here.
     const due = [dueSource(1)];
     const claimed = new Set<string>();
     const db = stubDb({
@@ -365,7 +365,7 @@ describe("runDueAgenticOps", () => {
     const db = stubDb({});
     const report = await runDueAgenticOps({ db });
     // Trust materializes AFTER verification (tonight's verdicts feed tonight's
-    // tiers) and compost digests last — the sequencing is the drain's policy.
+    // tiers) and compost digests last, the sequencing is the drain's policy.
     expect((mocks as unknown as { order: string[] }).order).toEqual([
       "goals",
       "verification",

@@ -7,8 +7,8 @@ import type { PlanCatalogEntry } from "@agent-hub/agent";
  * enterprise concern (prices and allowances live in `src/ee/billing`), but the
  * *copy* that presents it is the product's, and this is the layer every
  * console surface shares so a price can never read two ways. The public
- * pricing page no longer reads the catalog at all — it publishes exactly two
- * offerings, self-hosted and Enterprise, neither with a price — so the
+ * pricing page no longer reads the catalog at all, it publishes exactly two
+ * offerings, self-hosted and Enterprise, neither with a price, so the
  * consumers left are the in-console ones: Billing and the pending-activation
  * banner. A deployment with nothing to sell passes `null` and every function
  * here returns empty.
@@ -23,7 +23,7 @@ const AUDIENCE: Record<string, string> = {
 };
 
 export interface PlanTierView {
-  /** The tier slug — what Stripe, support and the console all call it. */
+  /** The tier slug, what Stripe, support and the console all call it. */
   slug: string;
   /** The slug, capitalized. Not a separate marketing name, deliberately. */
   name: string;
@@ -41,7 +41,7 @@ export interface PlanTierView {
    */
   salesLed: boolean;
   /**
-   * Whether checkout can be started for this tier RIGHT NOW — what an in-product
+   * Whether checkout can be started for this tier RIGHT NOW, what an in-product
    * upgrade button branches on, since a button that cannot reach Stripe is worse
    * than the conversation it replaces.
    */
@@ -52,7 +52,7 @@ export interface PlanTierView {
 const formatCount = (value: number): string => value.toLocaleString("en-US");
 
 /**
- * How a tier slug is written in a sentence. The slug itself, capitalized —
+ * How a tier slug is written in a sentence. The slug itself, capitalized,
  * never a separate marketing name, so the console, an invoice and a support
  * conversation all say the same word. Exported because a surface showing a plan
  * the catalog does not know still has to write it the same way.
@@ -82,7 +82,7 @@ export function planTierViews(
       audience: AUDIENCE[entry.slug] ?? "",
       volumes: [
         // "About", because the answer count depends on which model the
-        // assistants run — the page says so next to these lines.
+        // assistants run, the page says so next to these lines.
         `About ${formatCount(entry.volumes.answers)} assistant answers a month`,
         `${formatCount(entry.volumes.pages)} pages crawled a month`,
         `${formatCount(entry.volumes.documents)} documents indexed a month`,
@@ -94,7 +94,7 @@ export function planTierViews(
 }
 
 /**
- * The tiers a customer can buy right here, right now — self-serve and with a
+ * The tiers a customer can buy right here, right now, self-serve and with a
  * Stripe Price that checkout can actually reach.
  *
  * This is what decides whether a pending organization is offered a card field or
@@ -125,7 +125,7 @@ export function currentPlanEntry(
  *
  * `paying` is what decides whether the current tier is included. An organization
  * on a comped evaluation of Go is not paying for Go, so Go is the single most
- * likely thing it wants to buy — excluding it would hide the conversion. An
+ * likely thing it wants to buy, excluding it would hide the conversion. An
  * organization already paying for Go has nothing to gain from buying Go again.
  *
  * A plan the catalog does not recognize (a retired slug, a hand-edited row) is

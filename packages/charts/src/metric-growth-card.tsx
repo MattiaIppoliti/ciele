@@ -51,7 +51,7 @@ const TOOLTIP_ENTER_SPRING = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   Switch primitive — headless button with role="switch".
+   Switch primitive: headless button with role="switch".
 
    Visual language is iOS-ish (pill track, colored fill when active, thumb
    with matching border). Implemented as a plain button to avoid adding
@@ -272,7 +272,7 @@ function Legend({
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   MetricGrowthCard — styled composition
+   MetricGrowthCard: styled composition
    ═══════════════════════════════════════════════════════════════ */
 
 const VIEWPORT_PADDING = 12;
@@ -492,7 +492,7 @@ export function MetricGrowthCard<
     return () => obs.disconnect();
   }, []);
 
-  // Tooltip viewport flipping — decide side from the CHART container, not
+  // Tooltip viewport flipping: decide side from the CHART container, not
   // the card. The tooltip is anchored at `top: -16px` of chartRef (plus a
   // -12px hover lift), so its top edge sits 28px above chartRef.top. The
   // card has a header above the chart, so cardRect.top can be near the
@@ -565,7 +565,7 @@ export function MetricGrowthCard<
     <div
       ref={cardRef}
       className={cn(
-        // overflow-clip (not overflow-hidden) — both visually clip descendants,
+        // overflow-clip (not overflow-hidden), both visually clip descendants,
         // but clip also prevents the card from becoming a scroll container.
         // This matters because the decorative glow div extends ~80px past the
         // card's right edge; with overflow-hidden, that extra width contributes

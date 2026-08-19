@@ -22,7 +22,7 @@ import { register } from "./instrumentation";
 /**
  * `@agent-hub/agent` is framework-free and reaches Next only through the ports it
  * registers here. Its `getPlatformSystemPrompt` port falls back to the SHIPPED
- * prompt, which means a missed registration would not throw or log — the runtime
+ * prompt, which means a missed registration would not throw or log, the runtime
  * would just quietly stop honouring the platform owner's stored override. That
  * silence is why this file is tested: the registration IS the wiring.
  */
@@ -86,7 +86,7 @@ describe("instrumentation register()", () => {
     expect(mocks.after).toHaveBeenCalledWith(work);
   });
 
-  it("does nothing outside the Node runtime — the edge bundle must stay clean", async () => {
+  it("does nothing outside the Node runtime, the edge bundle must stay clean", async () => {
     process.env.NEXT_RUNTIME = "edge";
     await register();
     expect(mocks.registerRuntimeHost).not.toHaveBeenCalled();

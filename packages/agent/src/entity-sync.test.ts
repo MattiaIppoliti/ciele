@@ -8,12 +8,12 @@ import { ENTITY_SYNC_MAX_ROWS, mapSyncRows, runEntitySync } from "./entity-sync"
  * Synced Record ingestion (#670), tested through the job-registry seam with
  * the HTTP fetch faked (per the spec's testing decisions): happy path,
  * per-row rejection, prune mode, and Alert raise / auto-resolve. The mock
- * Db provides the real upsert/prune/report/alert behavior — assertions are
+ * Db provides the real upsert/prune/report/alert behavior, assertions are
  * on external state, never call order.
  */
 
 // runEntitySync takes an injected fetcher, but the job handler (registry
-// path) builds the default one — mock the egress boundary for that path.
+// path) builds the default one, mock the egress boundary for that path.
 const egress = vi.hoisted(() => ({ egressFetch: vi.fn() }));
 vi.mock("./egress", () => ({
   egressFetch: egress.egressFetch,
@@ -81,7 +81,7 @@ describe("sync_entity_records through the registry seam", () => {
     expect(run.rejected[0]).toContain("total is not a number");
     expect((await db.getEntitySyncConfig(entity.id))?.lastSyncedAt).toBeTruthy();
 
-    // Re-running the same payload upserts by key — no duplicates.
+    // Re-running the same payload upserts by key, no duplicates.
     respondWith([{ order_id: "A-1", status: "refunded", total: 10 }]);
     await enqueueEntitySyncJob(
       { entityId: entity.id, organizationId: DEMO_ORG.id, force: true },
@@ -93,7 +93,7 @@ describe("sync_entity_records through the registry seam", () => {
     expect(after[0].values.status).toBe("refunded");
   });
 
-  it("prune mode removes Records unseen in the run — only when enabled", async () => {
+  it("prune mode removes Records unseen in the run, only when enabled", async () => {
     await configure({ prune: true });
     await db.upsertEntityRecords(entity.id, [
       { key: "OLD", values: { order_id: "OLD", status: "gone", total: 0 } },

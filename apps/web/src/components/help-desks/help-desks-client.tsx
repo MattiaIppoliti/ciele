@@ -21,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 const DESCRIPTION_LIMIT = 5000;
 
-/** Presets for the create dialog — name + a ≥200-char description each. */
+/** Presets for the create dialog, name + a ≥200-char description each. */
 const TEMPLATES: Array<{ emoji: string; name: string; description: string }> = [
   {
     emoji: "🖥️",

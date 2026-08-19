@@ -11,7 +11,7 @@ import {
 
 /**
  * Scoped to the admin shell only: the published widget and auth pages must
- * stay light — the widget is visitor-facing and themed per assistant, not by
+ * stay light, the widget is visitor-facing and themed per assistant, not by
  * the admin's preference (and it shares the chat origin's localStorage).
  *
  * Replaces next-themes: its provider is a client component that renders an
@@ -66,7 +66,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const resolvedTheme: ResolvedTheme =
     theme === "system" ? (systemDark ? "dark" : "light") : theme;
 
-  // Subscribe to OS theme changes (setState only in the callback — allowed).
+  // Subscribe to OS theme changes (setState only in the callback, allowed).
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = () => setSystemDark(media.matches);
@@ -95,7 +95,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem(THEME_STORAGE_KEY, next);
     } catch {
-      // Ignore — theme still applies for the session via state.
+      // Ignore: theme still applies for the session via state.
     }
   }, []);
 

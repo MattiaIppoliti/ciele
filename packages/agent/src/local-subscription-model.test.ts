@@ -152,7 +152,7 @@ describe("createLocalSubscriptionModel", () => {
         properties: expect.objectContaining({ kind: expect.any(Object) }),
       }),
     });
-    // OpenAI structured output (Codex) rejects oneOf — the tool-call envelope
+    // OpenAI structured output (Codex) rejects oneOf, the tool-call envelope
     // must offer the tool inputs via anyOf.
     const schema = run.mock.calls[0]?.[0]?.responseSchema as {
       properties: { input: Record<string, unknown> };

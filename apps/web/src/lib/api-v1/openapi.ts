@@ -34,7 +34,7 @@ import { API_V1_DOMAINS, API_V1_VERSION } from "@/lib/api-v1/meta";
  * This is the single list three things read:
  * - `buildOpenApiDocument()` turns it into the OpenAPI 3.1 document served
  *   at `GET /api/v1/openapi.json` (request bodies rendered from the same
- *   zod schemas the operations validate with — the contract cannot say
+ *   zod schemas the operations validate with, the contract cannot say
  *   something the server doesn't enforce);
  * - the drift test (`openapi.test.ts`) diffs it against the route files on
  *   disk, so shipping a route without registering it (or vice versa) fails
@@ -127,11 +127,11 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
   { method: "post", path: "/collections/{id}/sources", summary: "Add a Source: JSON text/url, or multipart file", body: sourceBody, multipart: ["file"], idempotent: true },
   { method: "post", path: "/collections/{id}/faqs", summary: "Add one FAQ", body: faqBody, idempotent: true },
   { method: "post", path: "/collections/{id}/faqs/import", summary: "Bulk FAQ import (CSV)", multipart: ["file"] },
-  { method: "get", path: "/sources/{id}", summary: "One Source — poll status until it settles" },
+  { method: "get", path: "/sources/{id}", summary: "One Source, poll status until it settles" },
   { method: "delete", path: "/sources/{id}", summary: "Delete a Source (Concepts cascade)" },
   { method: "post", path: "/sources/{id}/recrawl", summary: "Restart a website Source's crawl" },
 
-  // Knowledge hub (PRD #726) — org-level knowledge across all assistants
+  // The Library (PRD #726): org-level knowledge across all assistants
   { method: "get", path: "/knowledge/sources", summary: "Org-wide knowledge items (?kinds=&status=&assistantId=&q=&page=&pageSize=)" },
   { method: "put", path: "/sources/{id}/links", summary: "Replace a Source's linked-assistant set", body: linksBody },
   { method: "put", path: "/sources/{id}/direct-access", summary: "Flip Direct access for one assistant on a file Source", body: directAccessBody },
@@ -278,7 +278,7 @@ export function buildOpenApiDocument() {
     if (endpoint.body) {
       content["application/json"] = {
         // Structured config fields validated with z.custom (quick replies,
-        // flow settings) have no JSON-Schema form — they render as {} (any).
+        // flow settings) have no JSON-Schema form, they render as {} (any).
         schema: z.toJSONSchema(endpoint.body, {
           io: "input",
           target: "draft-7",

@@ -6,7 +6,7 @@
 -- the same remote→local drift class.
 
 -- Per-source Sources visibility: uploaded documents can be hidden from the
--- citation list under AI answers (the knowledge is still used to answer —
+-- citation list under AI answers (the knowledge is still used to answer,
 -- only the chip is suppressed). Website sources keep the default true, so
 -- crawled pages/PDFs are always citable.
 alter table public.sources

@@ -13,7 +13,7 @@ export const config = {
    * Everything except Next's own assets and the machine-readable endpoints.
    * Those must never be locale-prefixed: `/llms.txt` and `/llms-full.txt` are
    * fetched by agents at fixed URLs, and `*.md` is rewritten to the Markdown
-   * route by next.config.mjs — a rewrite that middleware would otherwise see
+   * route by next.config.mjs, a rewrite that middleware would otherwise see
    * first and prefix.
    */
   matcher: [

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 
 /* Mocks of the assistant-editor sections the dashboard mock does not draw
    (it sends every SETUP section to the same "choose an assistant" picker).
-   These are pictures, not products: no data, no links, no real actions —
+   These are pictures, not products: no data, no links, no real actions,
    the same components and tokens as the real screens, so what a visitor sees
    here is what they get inside the app. The Knowledge mock is the one
    exception to "nothing clickable": its tabs switch between the three source
@@ -229,7 +229,7 @@ export function KnowledgeMock() {
       <div>
         <h3 className="text-sm font-semibold">Knowledge</h3>
         <p className="text-muted-foreground mt-1 text-xs">
-          The sources this assistant answers from — websites, documents and
+          The sources this assistant answers from: websites, documents and
           FAQs, indexed for retrieval.
         </p>
       </div>

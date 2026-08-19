@@ -4,7 +4,7 @@ import { Skeleton } from "@agent-hub/ui";
  * Section-level streaming boundary for Insights. Placed inside
  * insights/layout.tsx, so the sub-nav aside (Insights / Trends /
  * Feedback & grading / Exports) stays painted and only this content
- * column streams — the skeleton mirrors the real Insights page: header
+ * column streams, the skeleton mirrors the real Insights page: header
  * toolbar, date-range chip, then the 12-column metric-card grid + chart.
  *
  * Keep this in sync with insights-client.tsx: if the header controls or
@@ -30,7 +30,7 @@ export default function InsightsLoading() {
         <Skeleton className="h-8 w-72 rounded-lg" />
       </div>
 
-      {/* Metric-card grid — mirrors the col-span layout in insights-client */}
+      {/* Metric-card grid, mirrors the col-span layout in insights-client */}
       <div className="grid grid-cols-12 gap-4 border-t px-6 pt-5 pb-6">
         {/* Row 1: four quarter-width cards */}
         {Array.from({ length: 4 }).map((_, i) => (

@@ -1,6 +1,6 @@
 /**
  * The origin check shared by everything that templates a deployment address
- * into a shell script a user will paste into their terminal — the local
+ * into a shell script a user will paste into their terminal, the local
  * connector's install one-liner and the self-host installer.
  *
  * It is deliberately strict rather than merely well-formed: https everywhere

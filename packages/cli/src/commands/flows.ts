@@ -8,7 +8,7 @@ import { str, usage, type CommandContext } from "./shared.ts";
  * `ciele flows …` (#628). Scalars come as flags; the full router config
  * (trigger, conditions, actions) is richer than flags can carry, so
  * create/update also accept `--file flow.json` with a FlowInput/FlowPatch
- * body — flags win over file fields when both are given.
+ * body, flags win over file fields when both are given.
  */
 
 const FLOW_COLUMNS = [

@@ -124,7 +124,7 @@ function ImprovementCard({
  * Kanban view of the Improvements tracker: one column per lane, cards dragged
  * between lanes with the browser's native drag-and-drop (no dnd dependency).
  *
- * A drop only changes `status` — lanes keep the server's ordering, since an
+ * A drop only changes `status`, lanes keep the server's ordering, since an
  * Improvement has no stored position to reorder within a lane.
  */
 export function ImprovementsKanban({
@@ -138,11 +138,11 @@ export function ImprovementsKanban({
 }: {
   improvements: ImprovementListItem[];
   members: Array<{ userId: string; email: string }>;
-  /** Tags already in use org-wide — the context menu's togglable set. */
+  /** Tags already in use org-wide, the context menu's togglable set. */
   tagOptions: string[];
   canEdit: boolean;
   lanes: ImprovementLanes;
-  /** Plain click on a card — the board opens it in the drawer. */
+  /** Plain click on a card, the board opens it in the drawer. */
   onOpen: (improvementId: string) => void;
   onTagRemembered: (tag: string) => void;
 }) {

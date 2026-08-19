@@ -1,5 +1,5 @@
 -- Knowledge hub backfill, step 2 of 2 (PRD #726, ticket #728): data movement
--- only — no drops, and idempotent throughout (deterministic synthetic ids +
+-- only, no drops, and idempotent throughout (deterministic synthetic ids +
 -- on-conflict/no-op guards), so re-running on a partially backfilled database
 -- is safe. Retrieval behavior is unchanged by construction: every backfilled
 -- chunk's Source is linked to exactly the assistant the chunk was already
@@ -43,7 +43,7 @@ where c.source_id is null
   );
 
 -- 3. One link per existing Source, to its original assistant. Direct access
---    stays off everywhere — the migration must never silently expose a file.
+--    stays off everywhere, the migration must never silently expose a file.
 insert into public.assistant_sources (assistant_id, source_id, direct_access, created_at)
 select kc.assistant_id, s.id, false, s.created_at
 from public.sources s

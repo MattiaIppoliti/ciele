@@ -29,7 +29,7 @@ const AUTOMATIC = "automatic";
  * Which Provider Connection embeds this Organization's knowledge (#437).
  *
  * Retrieval only works when every chunk in a Knowledge Collection shares one
- * embedding model — vectors from two models are not comparable. Left on
+ * embedding model, vectors from two models are not comparable. Left on
  * Automatic, the runtime picks by its own provider order, which can change as
  * connections come and go; naming a connection pins it.
  *

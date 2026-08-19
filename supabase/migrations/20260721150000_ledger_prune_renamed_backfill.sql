@@ -7,7 +7,7 @@
 --
 -- Guarded: the ledger table exists only where scripts/apply-migrations.sh
 -- runs (live/CI). Fresh environments that replay migrations directly (the
--- PGlite test harness, local setups) have no ledger — no-op there.
+-- PGlite test harness, local setups) have no ledger, no-op there.
 do $$
 begin
   if to_regclass('private.applied_migrations') is not null then

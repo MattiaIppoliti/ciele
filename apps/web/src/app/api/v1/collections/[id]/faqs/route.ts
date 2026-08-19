@@ -18,6 +18,10 @@ export async function POST(
       collectionId: id,
       question: body.question,
       answer: body.answer,
+      // PRD #726 contract: the caller names the Assistants this FAQ links to.
+      assistantIds: Array.isArray(body.assistantIds)
+        ? (body.assistantIds as unknown[]).map((id) => String(id))
+        : undefined,
     });
     if (outcome instanceof Response) return outcome;
     const { concept } = outcome.result;

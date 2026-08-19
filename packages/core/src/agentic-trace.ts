@@ -1,15 +1,15 @@
 import type { TurnStep } from "./types";
 
 /**
- * `AgenticTrace` — the reference platform's turn trace as one flat bracketed
+ * `AgenticTrace`: the reference platform's turn trace as one flat bracketed
  * string, and the only place we produce or read it (#561).
  *
  * **This is a serialization, never a storage format.** We persist the structured
  * {@link TurnStep} list, which the Thinking panel renders directly and which
  * survives a schema change; the flat string exists so a parser written against a
  * reference export file reads ours unchanged. Everything the reference glues into
- * one blob — the flow name, the reasoning, each tool call and its result, the
- * iteration system note, the end-of-turn follow-ups — is derived here from data
+ * one blob, the flow name, the reasoning, each tool call and its result, the
+ * iteration system note, the end-of-turn follow-ups, is derived here from data
  * we already have.
  *
  * The grammar, in emission order:
@@ -20,7 +20,7 @@ import type { TurnStep } from "./types";
  * [Suggested questions: q1, q2] [Workflow completed: <flow>]
  * ```
  *
- * Segments are joined by a single space, and the payloads are free text — which
+ * Segments are joined by a single space, and the payloads are free text, which
  * is why {@link parseAgenticTrace} anchors on the marker *vocabulary* rather than
  * on the next `]`: a tool result is rendered YAML/JSON and contains brackets of
  * its own. The one thing that could still forge a boundary is a payload that
@@ -73,7 +73,7 @@ const SEGMENT_START = new RegExp(
 /**
  * Rewrites a marker sequence occurring *inside* a payload so it cannot be read
  * back as a segment boundary: `[Tool: ` becomes `(Tool: `. Only the opening
- * bracket moves — it is the one character that could forge a boundary, and the
+ * bracket moves; it is the one character that could forge a boundary, and the
  * payload's own words are never touched. A payload that merely *ends* in `]`
  * needs nothing: serialize appends its own, and the parser strips exactly one.
  */
@@ -95,7 +95,7 @@ export interface SerializeAgenticTraceInput {
   iterationLimit?: number;
   /**
    * Whether the reader may see the model's own reasoning (the Role gate from
-   * #557). False drops every `[Thinking:]` segment and keeps the tool timeline —
+   * #557). False drops every `[Thinking:]` segment and keeps the tool timeline,
    * what ran is operational detail; the chain of thought quotes the Visitor and
    * the retrieved knowledge back verbatim. Defaults to true.
    */
@@ -167,7 +167,7 @@ function resultPayload(step: TurnStep, iterationLimit?: number): string {
 }
 
 /**
- * Reads a flat `AgenticTrace` back into its segments — ours or the reference's.
+ * Reads a flat `AgenticTrace` back into its segments, ours or the reference's.
  * Boundaries come from the marker vocabulary, so a payload's own brackets stay
  * inside their segment. Text before the first marker, or a string with no markers
  * at all, yields nothing.
@@ -190,7 +190,7 @@ export function parseAgenticTrace(source: string): AgenticTraceSegment[] {
     const end = next ? next.index : source.length;
     const raw = source.slice(start.from, end);
     // Segments are `[Marker: payload]` joined by exactly one space, so strip
-    // exactly that — the separator then the closing bracket, and nothing more.
+    // exactly that, the separator then the closing bracket, and nothing more.
     // Trimming whitespace generally would corrupt a payload that legitimately
     // ends in a newline, which `resultPayload` produces whenever a tool's
     // structured result or system note lands last.

@@ -1,9 +1,9 @@
 /**
- * Source text extraction — the front half of the knowledge-ingestion
+ * Source text extraction: the front half of the knowledge-ingestion
  * pipeline: turn what the admin gave us (pasted text, a URL, an uploaded
  * file) into plain text ready for OKF enrichment (`ingest.ts`).
  *
- * One Extractor per SourceKind, dispatched through the EXTRACTORS registry —
+ * One Extractor per SourceKind, dispatched through the EXTRACTORS registry,
  * the same pattern as the Flow Action handler registry (`actions.ts`).
  * Adding an ingestable kind (LMS course content, an Applications connector,
  * EdTech guide packs) is one Extractor + one registry entry.

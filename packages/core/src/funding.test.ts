@@ -39,7 +39,7 @@ describe("fundingBucket", () => {
     expect(fundingBucket("__proto__")).toBe("unknown");
   });
 
-  it("classifies every declared AiCredentialKind — none falls through", () => {
+  it("classifies every declared AiCredentialKind, none falls through", () => {
     // The `satisfies Record<AiCredentialKind, …>` in funding.ts makes this a
     // compile-time guarantee; asserting it here is the runtime witness, and it
     // fails loudly if someone widens the union and reaches for a cast.

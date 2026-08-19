@@ -5,7 +5,7 @@ import type { Assistant } from "@agent-hub/core";
 
 /**
  * The live preview as a route of its own. Same component as the editor's
- * right-hand panel — that panel is pointer-only chrome hidden below `md`, so
+ * right-hand panel, that panel is pointer-only chrome hidden below `md`, so
  * this is the only way to reach the preview from a phone or a portrait tablet.
  *
  * Client-only for the same reason the docked panel is: it streams a turn and

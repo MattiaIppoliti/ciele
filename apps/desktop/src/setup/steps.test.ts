@@ -94,7 +94,7 @@ describe("the happy path", () => {
   });
 
   it("joins COMPOSE_FILE with the platform's separator, not a hardcoded colon", async () => {
-    // Compose splits COMPOSE_FILE on `;` on Windows — a colon there would glue
+    // Compose splits COMPOSE_FILE on `;` on Windows, a colon there would glue
     // both filenames into one that does not exist. The engine stays platform
     // blind: the separator arrives through the config, like everything else.
     const ports = fakePorts({ files: { "/deploy/.env.example": ENV_TEMPLATE } });
@@ -144,7 +144,7 @@ describe("the Docker prerequisite", () => {
     expect(guide.at(-1)).toContain("Try again");
   });
 
-  it("says start it — a different problem — when it is installed but stopped", async () => {
+  it("says start it, a different problem, when it is installed but stopped", async () => {
     const { engine } = harness({ dockerRunning: false });
 
     const snapshot = await engine.run();
@@ -187,8 +187,8 @@ describe("the Docker prerequisite", () => {
 
 describe("an unreleased build", () => {
   it("says which images it cannot find instead of failing at the registry", async () => {
-    // Only the release workflow stamps a version. Everything else — a
-    // contributor build, a CI artifact — has no published images to pin, and
+    // Only the release workflow stamps a version. Everything else, a
+    // contributor build, a CI artifact, has no published images to pin, and
     // pinning one anyway turns into an unexplained pull failure.
     const ports = fakePorts({ files: { "/deploy/.env.example": ENV_TEMPLATE } });
     const engine = createSetupEngine({

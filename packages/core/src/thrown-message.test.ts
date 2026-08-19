@@ -12,7 +12,7 @@ describe("thrownMessage", () => {
     expect(thrownMessage(new Error("boom"), "fallback")).toBe("boom");
   });
 
-  it("reads `message` off a plain object — the PostgREST shape", () => {
+  it("reads `message` off a plain object, the PostgREST shape", () => {
     expect(
       thrownMessage({ message: 'column "x" does not exist', code: "42703" }, "fallback")
     ).toBe('column "x" does not exist');

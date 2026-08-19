@@ -81,27 +81,30 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { DEFAULT_DWELL_SECONDS, isProactiveTrigger } from "@agent-hub/core";
 import {
   FLOW_ACTION_PICKER,
   FLOW_ACTIONS,
   FLOW_TRIGGER_LABELS,
   PROACTIVE_FLOW_ACTION_PICKER,
-  actionsFitTrigger,
-  partitionActionsForTrigger,
 } from "@/lib/flow-actions";
 import {
-  cleanFlowConditions,
   FLOW_CONDITION_KINDS,
   FLOW_URL_OPERATORS,
-  flowConditionDescription,
   flowConditionIssue,
   flowConditionPicker,
-  flowConditionsSavable,
   newFlowCondition,
   timezoneOptions,
   urlOperatorHint,
 } from "@/lib/flow-conditions";
+import {
+  applyTriggerChange,
+  flowDraftStatus,
+  flowSavePayload,
+  initialDwell,
+  triggerChangePlan,
+  type FlowDraft,
+  type FlowDwell,
+} from "@/lib/flow-editor";
 import { TEMPLATE_VARIABLES } from "@agent-hub/agent/client";
 import type { ApiRequestTestResult } from "@agent-hub/agent/client";
 import { cn } from "@/lib/utils";
@@ -373,7 +376,7 @@ function ExampleGroup({
         {/* Swap the glyph rather than rotate one. `rotate-90` compiles to an
             unset custom property in this build (it resolves to 0deg, as the step
             cards' own `rotate-180` chevrons do) and even an explicit inline
-            transform is overridden on these SVGs — so the arrow would never
+            transform is overridden on these SVGs, so the arrow would never
             turn. Two icons cannot silently stop working. */}
         {open ? (
           <ChevronDown className="text-muted-foreground size-4 shrink-0" />
@@ -553,7 +556,7 @@ function ConditionCard({
 /**
  * One bound of a Schedule condition: a native date input, "at", a native time
  * input, and the zone. Native inputs give the locale `dd/mm/yyyy` presentation
- * and keyboard entry for free. Both bounds write the same `timezone` field — the
+ * and keyboard entry for free. Both bounds write the same `timezone` field, the
  * select is rendered twice for reference parity, so a window can never straddle
  * two zones.
  */
@@ -1306,7 +1309,7 @@ function ApiRequestConfig({
 
 /**
  * Buttons attached to a Notification: a link out, or a first message put into the
- * chat. Help-desk and FAQ buttons are deliberately absent — they answer a question
+ * chat. Help-desk and FAQ buttons are deliberately absent, they answer a question
  * the visitor has not asked.
  */
 function NotificationButtonsConfig({
@@ -1655,12 +1658,9 @@ export function FlowBuilder({
   );
   /** A trigger change awaiting confirmation because it discards configuration. */
   const [pendingTrigger, setPendingTrigger] = useState<FlowTrigger | null>(null);
-  const [dwell, setDwell] = useState<{ minutes: number; seconds: number }>(() => {
-    const stored = flow?.triggerSettings?.timeOnPage;
-    const total =
-      (stored?.minutes ?? 0) * 60 + (stored?.seconds ?? 0) || DEFAULT_DWELL_SECONDS;
-    return { minutes: Math.floor(total / 60), seconds: total % 60 };
-  });
+  const [dwell, setDwell] = useState<FlowDwell>(() =>
+    initialDwell(flow?.triggerSettings)
+  );
   const [conditionLogic, setConditionLogic] = useState<FlowConditionLogic>(
     flow?.conditionLogic ?? "any"
   );
@@ -1684,64 +1684,29 @@ export function FlowBuilder({
     setSettings((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
   }
 
-  const dwellSeconds = dwell.minutes * 60 + dwell.seconds;
-  // A zero dwell would make "Time on page" indistinguishable from "On page load",
-  // which is a trigger the admin could have picked instead.
-  const dwellOk = trigger !== "time_on_page" || dwellSeconds > 0;
-  const triggerOk = isDefaultFlow || (trigger !== null && dwellOk);
-  // A proactive trigger changes what the rest of the builder can offer: there is
-  // no conversation to gate on and no question to answer, so conditions fall away
-  // and the Response collapses to the one proactive action (#541).
-  const proactive = trigger !== null && isProactiveTrigger(trigger);
-  const configuredActions = actions.every((action) => {
-    if (action === "notification")
-      return Boolean(settings.notification?.content?.trim());
-    if (action === "custom_message") return customMessage.trim().length > 0;
-    if (action === "show_button") {
-      const button = settings.show_button;
-      if (button?.type === "help_desk") return Boolean(button.helpDeskId);
-      if (button?.type === "send_text") return Boolean(button.text?.trim());
-      if (button?.type === "faq") return Boolean(button.faqQuestion?.trim());
-      return Boolean(button?.url?.trim());
-    }
-    if (action === "iframe") return Boolean(settings.iframe?.url?.trim());
-    if (action === "api_request")
-      return Boolean(settings.api_request?.url?.trim());
-    if (action === "send_email")
-      return Boolean(settings.send_email?.to?.trim());
-    if (action === "handover") return Boolean(settings.handover?.assistantId);
-    if (action === "follow_up_questions") {
-      const followUp = settings.follow_up_questions;
-      if (followUp?.mode !== "manual") return true;
-      return (followUp.questions ?? []).some((q) => q.trim().length > 0);
-    }
-    return true;
-  });
-  // Belt to the braces in chooseTrigger: the runtime refuses an action its trigger
-  // may not run, so the editor must never offer to save that pair — a refused save
-  // has to be a disabled button with a reason, never a 500.
-  const actionsMatchTrigger = actionsFitTrigger(actions, trigger);
-  const responseOk = actions.length > 0 && configuredActions && actionsMatchTrigger;
-  const nameOk = name.trim().length > 0;
-  // An incomplete objective condition would reach the runtime as a condition
-  // the gate has to ignore — refuse it here instead (spec #550).
-  const conditionsOk = flowConditionsSavable(conditions);
-  const canSave = triggerOk && responseOk && nameOk && conditionsOk;
+  // The draft the editing engine judges: assembled from the field states so
+  // every rule (validation, trigger partition, save payload) runs in
+  // src/lib/flow-editor.ts where plain vitest can reach it.
+  const draft: FlowDraft = {
+    name,
+    trigger,
+    dwell,
+    conditionLogic,
+    conditions,
+    actions,
+    settings,
+    customMessage,
+  };
+  const { dwellOk, triggerOk, proactive, responseOk, canSave, disabledHint } =
+    flowDraftStatus(draft, { isDefaultFlow, isEdit });
 
   /**
    * Picks a trigger, clearing configuration the new trigger cannot express.
    * Crossing the reactive/proactive line invalidates the whole Response step (and
    * any conditions), so the admin is asked first rather than losing work silently.
-   *
-   * The question is asked of the *actions*, not of the previous trigger: "Remove
-   * trigger" nulls the trigger while leaving the actions in place, so comparing
-   * trigger kinds saw no crossing and cleared nothing — the editor then offered to
-   * save `custom_message` on `chat_open`, a pair the server action refuses.
    */
   function chooseTrigger(next: FlowTrigger) {
-    const { discarded } = partitionActionsForTrigger(actions, next);
-    const losesConditions = isProactiveTrigger(next) && conditions.length > 0;
-    if (discarded.length > 0 || losesConditions) {
+    if (triggerChangePlan(draft, next).needsConfirmation) {
       setPendingTrigger(next);
       return;
     }
@@ -1750,59 +1715,18 @@ export function FlowBuilder({
 
   function applyPendingTrigger() {
     if (pendingTrigger === null) return;
-    // Keep whatever the new trigger can still run; drop only what it cannot.
-    const { kept } = partitionActionsForTrigger(actions, pendingTrigger);
-    setTrigger(pendingTrigger);
+    const applied = applyTriggerChange(draft, pendingTrigger);
+    setTrigger(applied.trigger);
     setPendingTrigger(null);
-    setActions(kept);
-    if (isProactiveTrigger(pendingTrigger)) {
-      setConditions([]);
-      setCustomMessage("");
-    }
-    if (!kept.includes("notification")) {
-      setSettings((prev) => ({ ...prev, notification: undefined }));
-    }
+    setActions(applied.actions);
+    setConditions(applied.conditions);
+    setCustomMessage(applied.customMessage);
+    setSettings(applied.settings);
   }
-
-  const disabledHint = !dwellOk
-    ? "Set how long the user must stay on the page"
-    : !triggerOk
-    ? `Set a trigger to enable ${isEdit ? "Save changes" : "Create flow"}`
-    : actions.length === 0
-      ? `Add a response action to enable ${isEdit ? "Save changes" : "Create flow"}`
-      : !actionsMatchTrigger
-        ? `Remove the actions this trigger cannot run: ${partitionActionsForTrigger(actions, trigger ?? "message")
-            .discarded.map((action) => FLOW_ACTIONS[action].label)
-            .join(", ")}`
-      : !configuredActions
-        ? "Complete the required settings for every response action"
-        : !conditionsOk
-          ? "Complete every condition you added"
-          : !nameOk
-            ? `Name the flow to enable ${isEdit ? "Save changes" : "Create flow"}`
-            : null;
 
   function save() {
     if (!canSave) return;
-    const cleanedConditions = cleanFlowConditions(conditions);
-    // The classifier catalogs flows by description — keep it in sync with the
-    // builder's semantic condition descriptions.
-    const joined = flowConditionDescription(cleanedConditions);
-    const payload = {
-      description: joined || flow?.description || "",
-      trigger: trigger ?? ("message" as FlowTrigger),
-      // Only Time-on-page has trigger-scoped settings; every other trigger
-      // stores an empty object rather than a stale dwell from a previous choice.
-      triggerSettings:
-        trigger === "time_on_page"
-          ? { timeOnPage: { minutes: dwell.minutes, seconds: dwell.seconds } }
-          : {},
-      conditionLogic,
-      conditions: cleanedConditions,
-      actions,
-      actionSettings: settings,
-      customMessage,
-    };
+    const payload = flowSavePayload(draft, flow);
     startTransition(async () => {
       if (isEdit) {
         await updateFlowAction(assistantId, flow.id, {
@@ -1890,7 +1814,7 @@ export function FlowBuilder({
       </div>
 
       <div className="mt-4 space-y-4 pb-3">
-        {/* 1 — Trigger */}
+        {/* 1, Trigger */}
         <StepCard
           icon={MousePointerClick}
           title="Trigger"
@@ -1987,7 +1911,7 @@ export function FlowBuilder({
           )}
         </StepCard>
 
-        {/* 2 — Conditions */}
+        {/* 2, Conditions */}
         <StepCard
           icon={ListFilter}
           title="Conditions"
@@ -2018,8 +1942,8 @@ export function FlowBuilder({
                       filled with `primary`.
                       The theme sets `--muted`, `--card`, `--accent` and
                       `--secondary` to the same value, so every "subtle surface"
-                      treatment — the old `secondary`-vs-`ghost` Button variants
-                      included — renders as no change at all and the choice was
+                      treatment, the old `secondary`-vs-`ghost` Button variants
+                      included, renders as no change at all and the choice was
                       invisible. `primary` is the one token that contrasts with
                       the card in both themes. */}
                   <div className="border-input flex items-center rounded-lg border p-0.5">
@@ -2090,7 +2014,7 @@ export function FlowBuilder({
           )}
         </StepCard>
 
-        {/* 3 — Response */}
+        {/* 3, Response */}
         <StepCard
           icon={MessageSquareReply}
           title="Response"
@@ -2537,20 +2461,18 @@ export function FlowBuilder({
           <p className="text-muted-foreground text-sm">
             {pendingTrigger === null
               ? null
-              : `“${TRIGGER_LABELS[pendingTrigger]}” cannot run ${partitionActionsForTrigger(
-                  actions,
-                  pendingTrigger
-                )
-                  .discarded.map((action) => FLOW_ACTIONS[action].label)
-                  .join(", ")}${
-                  isProactiveTrigger(pendingTrigger) && conditions.length > 0
-                    ? ", and a flow that starts on its own has no conditions"
-                    : ""
-                }. Changing the trigger removes ${
-                  isProactiveTrigger(pendingTrigger) && conditions.length > 0
-                    ? "them"
-                    : "those actions"
-                }; everything else is kept.`}
+              : (() => {
+                  const plan = triggerChangePlan(draft, pendingTrigger);
+                  return `“${TRIGGER_LABELS[pendingTrigger]}” cannot run ${plan.discarded
+                    .map((action) => FLOW_ACTIONS[action].label)
+                    .join(", ")}${
+                    plan.clearsConditions
+                      ? ", and a flow that starts on its own has no conditions"
+                      : ""
+                  }. Changing the trigger removes ${
+                    plan.clearsConditions ? "them" : "those actions"
+                  }; everything else is kept.`;
+                })()}
           </p>
           <div className="flex justify-end gap-2">
             <Button

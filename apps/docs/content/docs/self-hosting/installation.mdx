@@ -4,9 +4,9 @@ description: Start the current single-host Docker Compose deployment.
 ---
 
 <Callout title="No terminal? Use the desktop app">
-[Ciele Desktop](/self-hosting/desktop) performs every step on this page for
-you — including generating the secrets and starting the stack — and needs only
-Docker Desktop. This page is the server path.
+[Ciele Desktop](/self-hosting/desktop) performs every step on this page for you,
+including generating the secrets and starting the stack. It needs only Docker
+Desktop. This page is the server path.
 </Callout>
 
 ## Requirements
@@ -79,7 +79,7 @@ Only the origin of those three services changes.
 <Callout title="Recreate the container after changing the public URL">
 The published application image resolves `SUPABASE_PUBLIC_URL` once, when the
 container starts, because Next.js inlines that class of value at build time.
-Run `docker compose up -d` to recreate the container after you change it; a
+Run `docker compose up -d` to recreate the container after you change it. A
 restart alone keeps the previous value.
 </Callout>
 

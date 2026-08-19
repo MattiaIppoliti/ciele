@@ -12,7 +12,7 @@ import * as localProviders from "./local-providers";
  *
  * `@agent-hub/agent` is a deep module: its internals change freely, but its
  * three public entry points are deliberately narrow. Growing them should be a
- * reviewed decision, not an accident — if you add an export to `index.ts`,
+ * reviewed decision, not an accident, if you add an export to `index.ts`,
  * `client.ts` or `local-providers.ts`, update the expected set below on purpose.
  *
  * Note: only *value* exports (functions/consts) are observable at runtime;
@@ -29,7 +29,7 @@ describe("runtime public interface", () => {
     expect(valueKeys(server)).toEqual([
       "CRAWL_FINALIZE_BATCH_SIZE",
       "CRAWL_FINALIZE_LEASE_MS",
-      // The shipped platform prompt layer — public so the owner-only editor can
+      // The shipped platform prompt layer: public so the owner-only editor can
       // show "the default" and the host's cached reader can fall back to it.
       "DEFAULT_PLATFORM_PROMPT",
       "InvalidProviderKeyError",
@@ -38,9 +38,9 @@ describe("runtime public interface", () => {
       // The warn threshold: a deliberate widening (#509). The admin Usage
       // surface must colour a gauge amber at exactly the fraction the
       // enterprise ladder warns at, and open-source code cannot import from
-      // src/ee — so the constant is declared here and consumed by both.
+      // src/ee, so the constant is declared here and consumed by both.
       "USAGE_WARN_FRACTION",
-      // Alert sourceKey registry — a deliberate widening so EE capability
+      // Alert sourceKey registry: a deliberate widening so EE capability
       // implementations mint keys through the one namespace registry (#442).
       "alertKeys",
       "backfillCollectionToGraph",
@@ -61,11 +61,11 @@ describe("runtime public interface", () => {
       "persistConcept",
       "providerAvailability",
       "registerEnterpriseCapabilities",
-      // The host port registry — how a framework-free package gets the two
+      // The host port registry: how a framework-free package gets the two
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
       "restartWebsiteCrawl",
-      // The nightly agentic-ops drain — one export for the verify-goals cron
+      // The nightly agentic-ops drain, one export for the verify-goals cron
       // route; the four loops it sequences (goals, verifier, trust, compost)
       // are internals of scheduled.ts, not surface.
       "runDueAgenticOps",
@@ -79,10 +79,10 @@ describe("runtime public interface", () => {
       "sessionMetadata",
       "streamConversationTurn",
       "sweepDueRecrawls",
-      // The trace-retention cron drain (#573) — a deliberate widening.
+      // The trace-retention cron drain (#573), a deliberate widening.
       "sweepExpiredTraces",
       "testApiRequest",
-      // "Test connection" for OpenAI-compatible endpoints — a deliberate
+      // "Test connection" for OpenAI-compatible endpoints, a deliberate
       // widening for the connection form (#436).
       "testOpenAiCompatibleConnection",
       "updateWebsiteSourceConfiguration",
@@ -112,7 +112,7 @@ describe("runtime public interface", () => {
    * (`client.ts`: "either type-only or pure static data, so importing it from a
    * client component never drags in the AI SDK or other server-only code").
    *
-   * It is easy to break by accident and invisible when you do — a client-safe
+   * It is easy to break by accident and invisible when you do, a client-safe
    * constant re-exported through a *barrel* that happens to also export a
    * server function pulls that function's whole dependency tree into the browser
    * bundle. `MAX_AGENT_ITERATIONS` did exactly that until it was pointed at
@@ -136,7 +136,7 @@ describe("runtime public interface", () => {
       seen.add(file);
       const source = await readFile(file, "utf8");
       // `import type` / `export type` erase at runtime, so they cannot pull a
-      // bundle — everything else is a real edge.
+      // bundle, everything else is a real edge.
       const edges = [
         ...source.matchAll(/^(?:import|export)\s+(?!type\s)[^;]*?from\s+"([^"]+)"/gm),
         ...source.matchAll(/^import\s+"([^"]+)"/gm),
@@ -181,7 +181,7 @@ describe("runtime public interface", () => {
   // The runtime's reply-part contract (ChatReplyPart, flowing through the
   // client-facing RuntimeEvent `part` event) is part of the public surface.
   // Adding the Agentic Search terminal `clarify` variant (#156) is a
-  // deliberate, reviewed widening — asserted here so it can't regress silently.
+  // deliberate, reviewed widening, asserted here so it can't regress silently.
   it("carries the Agentic Search clarify reply-part variant (deliberate #156 surface change)", () => {
     const clarify: ChatReplyPart = {
       type: "clarify",
@@ -190,7 +190,7 @@ describe("runtime public interface", () => {
       found: ["Reading week schedule"],
     };
     expect(clarify).toMatchObject({ type: "clarify", action: "search_knowledge" });
-    // `found` is optional — a clarify with nothing surfaced is still valid.
+    // `found` is optional, a clarify with nothing surfaced is still valid.
     const bare: ChatReplyPart = {
       type: "clarify",
       action: "search_knowledge",

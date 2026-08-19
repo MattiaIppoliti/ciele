@@ -69,7 +69,7 @@ compose() {
 
 # --- secret generation -------------------------------------------------------
 
-# URL-safe base64 with no padding — the encoding JWTs use.
+# URL-safe base64 with no padding, the encoding JWTs use.
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
 
 # A password/secret that is safe in a connection string (no @ : / #).
@@ -101,7 +101,7 @@ set_var() {
 }
 
 # Same, but overwrites whatever the line already holds. Only used for the
-# image-mode switch, which is a choice the caller is re-making — never for a
+# image-mode switch, which is a choice the caller is re-making, never for a
 # secret, where silently replacing one would orphan the data it protects.
 replace_var() {
   local key="$1" value="$2"
@@ -136,7 +136,7 @@ fi
 # --- image mode --------------------------------------------------------------
 #
 # Written into .env rather than passed on the command line, so a later bare
-# `docker compose up -d` in this directory keeps running images too — compose
+# `docker compose up -d` in this directory keeps running images too, compose
 # reads COMPOSE_FILE from .env itself.
 if [ -n "$IMAGE_TAG" ]; then
   replace_var COMPOSE_FILE "docker-compose.yml:docker-compose.images.yml"
@@ -182,7 +182,7 @@ fi
 if [ -z "$(build_flag)" ]; then
   echo "Pulling published images and starting the stack…"
 else
-  echo "Building and starting the stack (first run pulls images and builds the app — several minutes)…"
+  echo "Building and starting the stack (first run pulls images and builds the app, several minutes)…"
 fi
 # shellcheck disable=SC2046,SC2086 # both helpers emit deliberate argument lists
 compose --env-file "$ENV_FILE" $(compose_files) up -d $(build_flag)
@@ -205,6 +205,6 @@ also own platform-wide settings.
   Stop:              docker compose -f deploy/docker-compose.yml down
   Wipe everything:   docker compose -f deploy/docker-compose.yml down -v
 
-TLS is not handled here — put your own reverse proxy in front and terminate
+TLS is not handled here: put your own reverse proxy in front and terminate
 there. See deploy/README.md for the workers profile, upgrades and backups.
 EOF

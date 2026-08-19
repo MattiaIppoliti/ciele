@@ -19,7 +19,7 @@ const PUBLIC_PATHS = [
   // (see app/signup/page.tsx). Public so signed-out visitors reach the redirect.
   /^\/signup/,
   /^\/join\//,
-  // (/contact is public through the `(marketing)` group — see the note above.)
+  // (/contact is public through the `(marketing)` group, see the note above.)
   /^\/widget/,
   /^\/api\/widget/,
   // Widget SSO: anonymous visitors hit these to sign in with the org's IdP,
@@ -35,14 +35,14 @@ const PUBLIC_PATHS = [
   // Secret-free install script for the one-command terminal connect flow.
   /^\/api\/local-connector\/install\/(?:sh|ps1)$/,
   // The self-host installer the download page hands out (curl | sh). Public by
-  // definition — it names the open-source repo and generates nothing here.
+  // definition, it names the open-source repo and generates nothing here.
   /^\/install\.sh$/,
 ];
 
 export async function middleware(request: NextRequest) {
   // Documentation is a separate app served at its own origin (apps/docs, see
-  // #410). The legacy ciele.app/docs path is not a route here — without this it
-  // hits the auth gate below and dead-ends at a 404 — so send it (and any
+  // #410). The legacy ciele.app/docs path is not a route here, without this it
+  // hits the auth gate below and dead-ends at a 404, so send it (and any
   // subpath) to the canonical docs site. Runs first: before the auth gate, and
   // in demo mode too, so a typed /docs link never 404s.
   const docsPath = request.nextUrl.pathname;
@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Demo mode: no Supabase, no auth. The mock db hands out a session, so the
-  // signed-in hint says so too — otherwise the marketing header would offer a
+  // signed-in hint says so too, otherwise the marketing header would offer a
   // sign-in that means nothing here (see lib/auth-hint.ts).
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -98,7 +98,7 @@ export async function middleware(request: NextRequest) {
   // Validate the session JWT locally (with asymmetric signing keys the JWKS
   // is fetched once and cached) instead of a network auth.getUser() round
   // trip on every request. On projects still using a legacy symmetric JWT
-  // secret, supabase-js transparently falls back to a server-side check —
+  // secret, supabase-js transparently falls back to a server-side check,
   // never less correct, only faster. Expired sessions still refresh through
   // the cookie callbacks above.
   const { data } = await supabase.auth.getClaims();
@@ -122,7 +122,7 @@ export async function middleware(request: NextRequest) {
       res.cookies.set(AUTH_HINT_COOKIE, "1", {
         path: "/",
         sameSite: "lax",
-        // Readable by the inline script by design — it carries no identity.
+        // Readable by the inline script by design, it carries no identity.
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
       });

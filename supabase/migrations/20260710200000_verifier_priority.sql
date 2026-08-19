@@ -1,6 +1,6 @@
 -- Verifier priority sampling (spec: verifier consequences): human signals
 -- first. Candidates order: answers with a thumbs-down, then answers in
--- escalated conversations, then newest — so the verifier amplifies what
+-- escalated conversations, then newest, so the verifier amplifies what
 -- humans already flagged before sampling the rest.
 
 create or replace function public.list_unverified_answers(p_limit integer)

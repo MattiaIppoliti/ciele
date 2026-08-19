@@ -6,7 +6,7 @@ import { chunkMarkdown, persistConcept } from "./ingest";
  * The ingestion write path. chunkMarkdown is the pure chunker every route
  * shares; persistConcept is the single Concept write seam (create + index).
  * With no Provider Connections, embeddings are null and retrieval falls
- * back to lexical — so these tests run offline.
+ * back to lexical, so these tests run offline.
  */
 
 describe("chunkMarkdown", () => {
@@ -41,12 +41,21 @@ describe("persistConcept", () => {
     const collection = await db.createCollection(assistant.id, {
       name: "Ingest Collection",
     });
+    // Retrieval is link-based (PRD #726/#733): a Concept answers through its
+    // Source, and `createSource` does not link; Collections are org-owned, so
+    // the link is what puts the Source in this assistant's corpus.
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name: "Enrollment policy",
+      kind: "text",
+    });
+    await db.setSourceAssistantLinks(source.id, [assistant.id]);
 
     const concept = await persistConcept({
       db,
       assistantId: assistant.id,
       collectionId: collection.id,
-      sourceId: null,
+      sourceId: source.id,
       path: "policies/enrollment.md",
       frontmatter: { type: "Policy", title: "Enrollment policy" },
       body: "Enrollment closes at the end of September.",
@@ -72,11 +81,17 @@ describe("persistConcept", () => {
     const collection = await db.createCollection(assistant.id, {
       name: "Ingest Collection 2",
     });
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name: "untitled-note.md",
+      kind: "text",
+    });
+    await db.setSourceAssistantLinks(source.id, [assistant.id]);
     await persistConcept({
       db,
       assistantId: assistant.id,
       collectionId: collection.id,
-      sourceId: null,
+      sourceId: source.id,
       path: "untitled-note.md",
       frontmatter: { type: "Note" },
       body: "Cafeteria opens at noon.",

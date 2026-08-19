@@ -1,6 +1,6 @@
 # The agentic chat runtime
 
-How this repo turns "a chat request" into an agent — the production version of
+How this repo turns "a chat request" into an agent, the production version of
 the classic *"an AI agent is just an LLM with a toolbox in a loop"* article,
 mapped onto real seams: tool registries, layered system prompts, a streaming
 thought protocol, deferred effects, and the extension points (more tools, MCP,
@@ -16,7 +16,7 @@ The toy version of a coding agent is ~200 lines:
    conversation.
 4. Loop until the model replies with plain text.
 
-That loop is real — it is exactly what runs in
+That loop is real: it is exactly what runs in
 [`packages/agent/src/actions.ts`](../packages/agent/src/actions.ts)
 (`searchKnowledgeHandler`, via the AI SDK's `streamText` + `tools` +
 `stopWhen: stepCountIs(5)`). Everything else in this document is what
@@ -38,7 +38,7 @@ classifier** (a cheap `generateObject` call in `engine.ts`) first picks the
 Flow whose trigger description matches the message; the flow's **actions**
 then run in order through the `ACTION_HANDLERS` registry. Two invariants:
 
-- `custom_message` is verbatim — the model never rewrites admin copy.
+- `custom_message` is verbatim, the model never rewrites admin copy.
 - Generation only happens inside `search_knowledge` (and the Default
   behavior, which is a flow like any other).
 
@@ -71,23 +71,23 @@ service-role client used by `lib/platform.ts` reaches it.
 
 ## 4. The tool registry, and how results become citations
 
-Tools live in a registry (`runtime/tools.ts`, ADR-0006): a tool is a spec —
-description, zod input schema, human-readable step label, `execute` — and
+Tools live in a registry (`runtime/tools.ts`, ADR-0006): a tool is a spec,
+description, zod input schema, human-readable step label, `execute`, and
 `buildToolset()` assembles the turn's ToolSet from the built-ins the
 assistant enables (`assistants.tools.builtIns`) plus, when the assistant has an
 **API integration** registered, the catalogue triad `getApiDetails` /
-`viewEndpointDetails` / `queryApi` over its described endpoints (spec #559 —
+`viewEndpointDetails` / `queryApi` over its described endpoints (spec #559,
 these replaced the per-endpoint custom HTTP tools, which no longer exist).
 Built-ins: `searchKnowledge` (always on),
 `calculator`, `remember` (session memory), `fetchUrl` (opt-in; private hosts
 blocked). Every spec is wrapped by `instrument()`, which emits the
-`tool-start`/`tool-end` lifecycle events and contains errors — a throwing
+`tool-start`/`tool-end` lifecycle events and contains errors, a throwing
 tool returns `{error}` to the model and never aborts the turn.
 
 `searchKnowledge`'s execute (a) runs the RAG search (pgvector + lexical
 fallback, `db.searchChunks`) and (b) **collects every result it returned** in
 `usedSources`. After the loop finishes, `dedupSources()` (`actions.ts`) turns
-that collection into a `sources` reply part — so citations are exactly what
+that collection into a `sources` reply part, so citations are exactly what
 the model actually saw, never post-hoc guesses, and each chip carries the
 concept's original page URL (OKF `resource`) so the widget can link out.
 
@@ -98,18 +98,18 @@ reason a citation can never point at a document the model didn't read.
 
 The toy agent's only state is the transcript. Here every conversation also
 carries a persistent **session state** bag (`conversations.session_state`,
-loaded into a `TurnSession` by `turn.ts` — see `runtime/session.ts`). Tools
+loaded into a `TurnSession` by `turn.ts`, see `runtime/session.ts`). Tools
 read and write it through `get`/`set`/`remember`; the `remember` built-in
 stores short facts ("student of Marketing (A)") that `buildSystemPrompt`
 injects as a *Session memory* layer on later turns. The state is written back
 only after the assistant message persists, and only if a tool marked it
-dirty — read-only turns cost no extra write, and a failed turn never
+dirty, read-only turns cost no extra write, and a failed turn never
 half-writes state.
 
 ## 5. The streaming thought protocol
 
 The toy agent prints tool calls to stdout. Here every turn streams **ndjson
-RuntimeEvents** (producer: `turn.ts`; consumer: `stream.ts` — the only two
+RuntimeEvents** (producer: `turn.ts`; consumer: `stream.ts`, the only two
 files that know the wire format):
 
 ```
@@ -120,8 +120,8 @@ flow | notice | tool-start | tool-end | thought | part | text-start | text-delta
 toolCallId), tool name, label, the model's input, then ok/summary/duration on
 completion. The client folds them into `TurnStep[]`
 (`kind: notice | thought | tool`, `status: running | done | error`), so both
-chat UIs show a live per-tool progress line — "Searching knowledge for
-'fees'… — Found 3 relevant concepts" — instead of an append-only string list.
+chat UIs show a live per-tool progress line, "Searching knowledge for
+'fees'…, Found 3 relevant concepts", instead of an append-only string list.
 `notice` is the runtime speaking for itself: the flow that matched, a provider
 fallback, an API response that would not parse. It replaced a nine-state phase
 machine whose labels ("Deciding what to do…") only described where the loop
@@ -132,7 +132,7 @@ The other interesting one is `thought`. Models often narrate before calling a to
 ("Cerco per te le informazioni…"). With a naive `textStream` that narration
 concatenates into the answer. The runtime instead consumes the `fullStream`:
 text deltas stream live as usual, but when a `tool-call` chunk arrives, the
-text streamed so far is reclassified with a `thought` event — the client
+text streamed so far is reclassified with a `thought` event, the client
 moves it out of the answer bubble into the **Thinking panel** and the answer
 restarts clean after the tool runs. One event type buys the whole reasoning-UI
 without a second model call.
@@ -141,7 +141,7 @@ without a second model call.
 counterpart. A `thought` is the model's private reasoning, Role-gated in the
 Inbox; with the toggle on, every tool's input schema also carries an optional
 `progress` argument the model fills with one short line *for the visitor*, in
-their language — "Sto cercando i video nella sezione Video Prova del corso…".
+their language, "Sto cercando i video nella sezione Video Prova del corso…".
 Riding the tool call costs no extra model call and makes it structurally
 impossible to narrate a phase that did not run. Each line streams as a
 `progress` reply part and is persisted with the answer, so the Inbox transcript
@@ -149,7 +149,7 @@ shows what the visitor watched happen. Off, the schema field does not exist.
 
 ## 6. Effects: act after commit
 
-Handlers never perform side effects (emails, Improvement tickets) inline —
+Handlers never perform side effects (emails, Improvement tickets) inline,
 they *describe* them (`ActionEffect`) and `turn.ts` applies them **after the
 assistant message is persisted** (`applyEffects`), so an effect can link to
 the saved message id and never fires on a turn that failed to commit. This is
@@ -161,28 +161,28 @@ The agent's exit ramp. The widget's persistent **Contact support** button and
 the `suggest_help_desk` part both open the escalation view, fed by
 `/api/widget/{id}/help-desks`: the publication's selected help desks with
 their channels, availability computed per-channel in its own timezone
-(`lib/channel-availability.ts` — pure, tested), and only widget-safe fields
+(`lib/channel-availability.ts`, pure, tested), and only widget-safe fields
 (never channel auth config). Email/phone/link channels resolve to
 `mailto:`/`tel:`/URL targets.
 
 ## 8. What MCP / plugins / CLI map onto here
 
-- **Tools** — add a spec to `runtime/tools.ts` (built-in capabilities), let
+- **Tools**: add a spec to `runtime/tools.ts` (built-in capabilities), let
   the org describe its API's endpoints in the API integration catalogue from
   Tools & Skills (no deploy), or add an Adapter in `ACTION_HANDLERS`
   (admin-wired flow capabilities).
-- **Skills** — the org-facing prompt-template surface: reusable playbooks
+- **Skills**, the org-facing prompt-template surface: reusable playbooks
   attached per assistant, layered into the system prompt, snapshotted into
   Publications.
-- **MCP** — an MCP client would slot in as a tool *provider*: at turn start,
+- **MCP**, an MCP client would slot in as a tool *provider*: at turn start,
   list the connected server's tools and spread them into the toolset
   `buildToolset` returns. The event protocol (`tool-start`/`tool-end`)
-  already covers their progress UX. Nothing else changes — that's the point
+  already covers their progress UX. Nothing else changes, that's the point
   of the registry seam.
-- **Plugins** — the Flow Builder is the plugin surface: a flow bundles
+- **Plugins**, the Flow Builder is the plugin surface: a flow bundles
   trigger + conditions + a pipeline of actions, per assistant, hot-swappable
   without deploys.
-- **CLI/headless** — `runAssistantChat()` is UI-free; any caller that can
+- **CLI/headless**: `runAssistantChat()` is UI-free; any caller that can
   provide `{assistant, flows, connections, emit}` gets the full agent
   (that's how the deterministic offline engine and tests drive it).
 

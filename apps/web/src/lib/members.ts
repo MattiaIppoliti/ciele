@@ -1,5 +1,5 @@
 /**
- * Best-effort display name from an email local part — the schema stores emails
+ * Best-effort display name from an email local part, the schema stores emails
  * but not full names. e.g. "marco.iecher@example.com" -> "Marco Iecher".
  */
 export function memberDisplayName(email: string | null | undefined): string {

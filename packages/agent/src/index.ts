@@ -1,15 +1,15 @@
 /**
- * `@agent-hub/agent` — the chat runtime as a deep module (ADR-0005).
+ * `@agent-hub/agent`: the chat runtime as a deep module (ADR-0005).
  *
  * This barrel is the package's **public server interface**. Everything else in
  * `src/` is implementation: a fresh reader (human or agent) reads this file to
  * know what the runtime does, and only opens the internals to change behavior.
- * There is no subpath export for internals, so a deep import does not resolve —
+ * There is no subpath export for internals, so a deep import does not resolve,
  * the seam is enforced by module resolution, not by a lint rule.
  *
  * Client code cannot import from here (it pulls in the AI SDK + server-only
- * deps). The client-safe surface — stream parsing and the static model catalog
- * — lives in `./client`. The local provider-CLI surface lives in
+ * deps). The client-safe surface, stream parsing and the static model catalog,
+ * lives in `./client`. The local provider-CLI surface lives in
  * `./local-providers`.
  *
  * The package is framework-free: nothing here imports `next/*`. The two facts
@@ -21,20 +21,20 @@
  * accident.
  */
 
-// Host ports — the two facts the runtime needs from the process hosting it.
+// Host ports: the two facts the runtime needs from the process hosting it.
 // Registered once at startup (apps/web does it from `instrumentation.ts`); both
 // have defaults that keep the runtime correct if nobody registers anything.
 export { registerRuntimeHost, DEFAULT_PLATFORM_PROMPT } from "./host";
 export type { RuntimeHost } from "./host";
 
-// Conversation Turn — the one entrypoint for answering a user message.
+// Conversation Turn: the one entrypoint for answering a user message.
 export { streamConversationTurn, NDJSON_HEADERS } from "./turn";
 export type { ConversationTurnInput } from "./turn";
 
 // Per-request session metadata (UA/IP/locale) for a chat request.
 export { sessionMetadata } from "./session-meta";
 
-// Knowledge ingestion — extract Source text, enqueue the ingest job, and the
+// Knowledge ingestion: extract Source text, enqueue the ingest job, and the
 // concept/embedding + website-crawl primitives the server actions drive.
 export {
   persistConcept,
@@ -48,7 +48,7 @@ export {
 export { extractSourceText } from "./extract";
 export { enqueueIngestJob, runDueIngestJobs } from "./jobs";
 
-// The scheduled drains — one call per cron tick. The batch sizes, lease window
+// The scheduled drains: one call per cron tick. The batch sizes, lease window
 // and per-Source failure reporting are policy of the runtime, so they live here
 // and the cron endpoints are auth-and-serialize adapters over these two.
 export {
@@ -67,18 +67,18 @@ export type {
   SweptTraceResult,
 } from "./scheduled";
 
-// Graph-sync ledger — keeps each Collection's derived Knowledge Graph in step
+// Graph-sync ledger, keeps each Collection's derived Knowledge Graph in step
 // with its OKF Concepts (ADR-0017). Inert without a graph worker. The per-kind
 // cron DRAINS (runDue*Jobs, enqueueDueEntitySyncs) are deliberately not here:
 // only `scheduled.ts` composes them, and `finalizeDueCrawls` is the public
 // entrypoint that runs them all.
 export { backfillCollectionToGraph, enqueueGraphSyncJob } from "./jobs";
 
-// Graph learning loop — feedback on graph-served answers re-weights retrieval
+// Graph learning loop: feedback on graph-served answers re-weights retrieval
 // (ADR-0017). Inert without a graph worker; fail-soft with auto-resolving Alerts.
 export { feedbackScore, forwardGraphFeedback, runGraphLearning } from "./graph-feedback";
 
-// Suggested Fix — drafts a reviewable knowledge proposal for a flagged answer
+// Suggested Fix: drafts a reviewable knowledge proposal for a flagged answer
 // (ADR-0017). Best-effort; a drafting failure leaves a "no proposal" state.
 // The drafter itself (draftImprovementProposal) is an internal the job
 // handler runs; callers enqueue.
@@ -88,13 +88,13 @@ export { enqueueDraftProposalJob } from "./jobs";
 // sync_entity_records job kind (the due-scan + drain ride finalizeDueCrawls).
 export { enqueueEntitySyncJob } from "./jobs";
 
-// Which crawler providers the current environment can run — drives the admin
+// Which crawler providers the current environment can run, drives the admin
 // Website Source crawler picker (e.g. Crawl4AI is only offered when its worker
 // is configured). Never carries the underlying credentials.
 export { websiteCrawlerCapabilities } from "./website-crawlers";
 export type { WebsiteCrawlerCapabilities } from "./website-crawlers";
 
-// The nightly agentic-ops drain — standing goals, the independent answer
+// The nightly agentic-ops drain, standing goals, the independent answer
 // verifier, trust materialization and the compost loop, in that order (the
 // sequencing IS the policy: tonight's verdicts feed tonight's tiers). ONE
 // export for the cron route; the four loops it composes are internals.
@@ -106,7 +106,7 @@ export type { AgenticOpsReport } from "./scheduled";
 export { providerAvailability } from "./models";
 export { validateProviderApiKey, InvalidProviderKeyError } from "./validate-key";
 // "Test connection" for an OpenAI-compatible endpoint: one-token chat call +
-// one embedding call (#436) — drives the admin connection form.
+// one embedding call (#436), drives the admin connection form.
 export { testOpenAiCompatibleConnection } from "./test-openai-compatible";
 export type {
   OpenAiCompatibleTestInput,
@@ -122,7 +122,7 @@ export { testApiRequest, sendEscalationApiRequest } from "./api-request";
 export type { ApiRequestOutcome, EscalationEndpointConfig } from "./api-request";
 export type { ApiRequestTestResult, ExtractedVariable } from "./api-request";
 
-// Enterprise capability registry — the single edition-gating seam (#435). OSS
+// Enterprise capability registry: the single edition-gating seam (#435). OSS
 // ships no-op defaults (metering allows all; billing reports no subscription);
 // the enterprise edition registers real implementations once at startup. Read
 // capabilities through here so the open-core boundary stays one reviewed seam.
@@ -131,7 +131,7 @@ export {
   getEnterpriseCapabilities,
   registerEnterpriseCapabilities,
 } from "./ee";
-// The alert sourceKey registry — exported so enterprise capability
+// The alert sourceKey registry: exported so enterprise capability
 // implementations (apps/web/src/ee) construct their Alert keys through the
 // one namespace registry instead of ad-hoc strings (#442).
 export { alertKeys } from "./health";

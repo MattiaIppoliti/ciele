@@ -20,7 +20,7 @@ import { errorMessageOf } from "./telemetry";
 import { usageTotals } from "./usage";
 
 /**
- * Flow Action handlers — one Adapter per action, dispatched by the live
+ * Flow Action handlers: one Adapter per action, dispatched by the live
  * runtime through ACTION_HANDLERS (see engine.ts). Each handler emits its own wire
  * events via `ctx.emit`, returns the reply parts (for persistence), and may
  * request deferred effects or halt the flow. This is the single home for
@@ -44,14 +44,14 @@ export const contactLabel = (assistant: Assistant): string =>
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-/** Verbatim custom message — never model-rewritten (runtime invariant). */
+/** Verbatim custom message, never model-rewritten (runtime invariant). */
 const customMessage: ActionHandler = async ({ flow, emit }) => {
   const part: ChatReplyPart = {
     type: "text",
     action: "custom_message",
     text:
       (flow.customMessage ?? "").trim() ||
-      `(This flow has no custom message yet — add one from the "${flow.name}" flow settings.)`,
+      `(This flow has no custom message yet, add one from the "${flow.name}" flow settings.)`,
   };
   emit({ type: "part", part });
   return { parts: [part] };
@@ -77,14 +77,14 @@ const GENERIC_FOLLOW_UPS = ["What else can you help me with?", "How do I get sta
 
 /**
  * How much of the answer the follow-up prompt sees. Chips need the answer's
- * topic and language, not its every detail — a bounded excerpt keeps the call
+ * topic and language, not its every detail, a bounded excerpt keeps the call
  * fast on long RAG answers without un-grounding the questions.
  */
 const FOLLOW_UP_ANSWER_EXCERPT = 2000;
 
 /**
  * Grounds follow-ups in the answer just given this turn (priorParts) instead
- * of guessing blind — a chip like "How do I get started?" after a factual RAG
+ * of guessing blind, a chip like "How do I get started?" after a factual RAG
  * answer reads as broken. Runs on the classifier-tier model: the chips appear
  * after the answer is already on screen, so this call is pure perceived
  * latency and the flagship model buys nothing here. Falls back to the generic
@@ -108,7 +108,7 @@ async function generateContextualFollowUps(
       model,
       schema: z.object({ questions: z.array(z.string()).min(2).max(3) }),
       system:
-        "Suggest short, natural follow-up questions a chat user might ask next, grounded strictly in the assistant's answer below — never invent facts beyond it. Match the answer's language. Keep each under 12 words.",
+        "Suggest short, natural follow-up questions a chat user might ask next, grounded strictly in the assistant's answer below, never invent facts beyond it. Match the answer's language. Keep each under 12 words.",
       prompt: `User asked: """${message}"""\n\nAssistant answered: """${answer.slice(0, FOLLOW_UP_ANSWER_EXCERPT)}"""`,
     });
     recordUsage?.(usageTotals(usage));
@@ -255,14 +255,14 @@ const iframe: ActionHandler = async ({ flow, emit }) => {
 };
 
 /**
- * Search knowledge — the thin Flow Action adapter over the AgenticSearch
+ * Search knowledge: the thin Flow Action adapter over the AgenticSearch
  * entrypoint (agentic-search/run.ts, #206). It resolves the flow's
  * search_knowledge settings (template-resolved answering style / search
  * guidelines), keeps the deterministic no-model lexical fallback, wires the
  * tool registry into the run, and applies flow policy to the outcome: the
  * escalate-prompt chip and the auto-Improvement effect when nothing grounded
- * the answer. The generative loop itself — query understanding, clarify,
- * seeding, the model agent loop, terminal shaping — lives in the module.
+ * the answer. The generative loop itself, query understanding, clarify,
+ * seeding, the model agent loop, terminal shaping, lives in the module.
  */
 const searchKnowledgeHandler: ActionHandler = async ({
   assistant,
@@ -460,7 +460,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   return { parts, effects };
 };
 
-/** Flags the answer for the Improvements tracker — silent (no user-visible part). */
+/** Flags the answer for the Improvements tracker, silent (no user-visible part). */
 const improvement: ActionHandler = async ({ flow, message }) => {
   const title = `Review: ${message.slice(0, 80)}`.trim() || `Review: ${flow.name}`;
   return { parts: [], effects: [{ kind: "create_improvement", title }] };
@@ -468,7 +468,7 @@ const improvement: ActionHandler = async ({ flow, message }) => {
 
 /**
  * Calls an admin-configured external endpoint through the shared egress guard
- * (SSRF hardening, DNS-rebind pinning, no redirects, timeout + size cap —
+ * (SSRF hardening, DNS-rebind pinning, no redirects, timeout + size cap,
  * egress.ts / docs/audits/api-request-egress-policy.md) and reports the outcome.
  * Method/URL/query/headers/auth/body are configurable with template variables;
  * JSON-path response values become variables for later actions this turn. The
@@ -515,10 +515,10 @@ const apiRequest: ActionHandler = async ({
     type: "text",
     action: "api_request",
     // Policy blocks, network failures and timeouts all read the same to the
-    // visitor — "blocked" must be indistinguishable from "down" (§9).
+    // visitor, "blocked" must be indistinguishable from "down" (§9).
     text: outcome.ok
       ? "Your request was submitted successfully."
-      : "Sorry — that request couldn't be completed right now.",
+      : "Sorry, that request couldn't be completed right now.",
   };
   emit({ type: "part", part });
   return { parts: [part], templatePatch };
@@ -527,7 +527,7 @@ const apiRequest: ActionHandler = async ({
 /**
  * Acknowledges the handover and halts the flow, signalling the target so the
  * Conversation Turn continues this same message inside the target Assistant's
- * Publication (one hop only — see turn.ts).
+ * Publication (one hop only, see turn.ts).
  */
 const handover: ActionHandler = async ({ flow, emit }) => {
   const targetId = flow.actionSettings?.handover?.assistantId?.trim();
@@ -559,7 +559,7 @@ const sendEmail: ActionHandler = async ({ flow, assistant, message, emit }) => {
     type: "text",
     action: "send_email",
     text: configured
-      ? "Thanks — your message has been forwarded to the team."
+      ? "Thanks, your message has been forwarded to the team."
       : "I couldn't forward your message automatically. Please use the contact options to reach the team directly.",
   };
   emit({ type: "part", part });
@@ -581,7 +581,7 @@ const sendEmail: ActionHandler = async ({ flow, assistant, message, emit }) => {
 /**
  * The proactive nudge (#541): emitted verbatim, exactly as `custom_message` is,
  * so a proactive turn makes no model call and meters no tokens. An empty
- * Notification emits nothing rather than an apology — the editor refuses to save
+ * Notification emits nothing rather than an apology, the editor refuses to save
  * one, and a Visitor must never be interrupted to be told the nudge is unwritten.
  */
 const notification: ActionHandler = async ({ flow, templateContext, emit }) => {
@@ -630,7 +630,7 @@ const notification: ActionHandler = async ({ flow, templateContext, emit }) => {
  * like the rest of the assistant.
  *
  * What is left OUT is the point. Retrieval context, Skills and session memory
- * cannot inform "hello" — including them would spend prompt tokens on every
+ * cannot inform "hello", including them would spend prompt tokens on every
  * greeting to change nothing. The one hard instruction is the honesty rule: a
  * turn with no retrieval must not assert anything about the organization,
  * because it has nothing to assert it from.
@@ -641,7 +641,7 @@ function basicReplyPrompt(
 ): string {
   const answeringStyle = resolveAnsweringStyle(assistant);
   return [
-    "# Platform instructions (immutable — highest precedence)",
+    "# Platform instructions (immutable, highest precedence)",
     platformPrompt,
     "",
     "# Assistant configuration (set by the organization)",
@@ -652,16 +652,16 @@ function basicReplyPrompt(
       : undefined,
     "",
     "# This turn",
-    "The user said something conversational — a greeting, a thanks, a goodbye, or an acknowledgement. It carries no question, so there is nothing to look up and you have no knowledge base access this turn.",
+    "The user said something conversational: a greeting, a thanks, a goodbye, or an acknowledgement. It carries no question, so there is nothing to look up and you have no knowledge base access this turn.",
     "Reply in one or two short sentences, in the user's own language. Acknowledge what they said, say briefly what you can help with, and invite their actual question.",
-    "State NO facts about the organization, its services, dates, policies or people — you have not looked anything up, so you do not know them. Do not apologise and do not explain your own machinery.",
+    "State NO facts about the organization, its services, dates, policies or people; you have not looked anything up, so you do not know them. Do not apologise and do not explain your own machinery.",
   ]
     .filter((line): line is string => typeof line === "string")
     .join("\n");
 }
 
 /**
- * Basic reply (Basic Interaction, #565) — the courtesy turn.
+ * Basic reply (Basic Interaction, #565): the courtesy turn.
  *
  * One model call, no tools, no retrieval, no second write phase, and no step or
  * thought events: an empty Thinking panel under "Hello!" reads as an assistant
@@ -672,7 +672,7 @@ function basicReplyPrompt(
  * admin's own words are never model-rewritten); no resolvable model falls back
  * to the shipped courtesy line; otherwise one streamed generation. A generation
  * that fails or comes back empty degrades to the shipped line rather than to the
- * generic "I ran into a problem" — the reply the Visitor gets must never be
+ * generic "I ran into a problem", the reply the Visitor gets must never be
  * worse than what a no-provider deployment already says.
  */
 const basicReply: ActionHandler = async ({
@@ -734,7 +734,7 @@ const basicReply: ActionHandler = async ({
     try {
       recordUsage?.(usageTotals(await reply.totalUsage));
     } catch {
-      // usage unavailable from this provider/mock — accounting must never fail a
+      // usage unavailable from this provider/mock, accounting must never fail a
       // turn that already answered
     }
   } catch (error) {
@@ -742,7 +742,7 @@ const basicReply: ActionHandler = async ({
     if (signal?.aborted) throw error;
     // Degrade rather than rethrow: the engine's error copy ("I ran into a
     // problem answering that") is a worse reply to "hello" than the line an
-    // offline deployment already gives. A provider outage is not silent — it
+    // offline deployment already gives. A provider outage is not silent, it
     // shows up in the log here and, from the turns that DO retrieve, in the
     // provider-health Alert.
     console.error("[runtime] basic_reply generation failed:", errorMessageOf(error));

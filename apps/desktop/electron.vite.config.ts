@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 
 // Defaults everywhere they fit: entries at src/main, src/preload and
 // src/renderer, output under out/. The one thing worth spelling out is that
-// nothing is externalised — every dependency is bundled, so the packaged app
+// nothing is externalised, every dependency is bundled, so the packaged app
 // ships no node_modules (see the note in package.json).
 export default defineConfig({
   main: {

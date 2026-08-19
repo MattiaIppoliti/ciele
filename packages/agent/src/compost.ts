@@ -21,7 +21,7 @@ import { meterUsage, usageTotals } from "./usage";
  * Failures become proposals, three max, human signature required: each
  * proposal lands as a tagged Improvement the admin accepts by working or
  * rejects by archiving. The loop's only writes are Improvements and its own
- * run records — nothing is ever auto-applied, by construction.
+ * run records, nothing is ever auto-applied, by construction.
  */
 
 export const COMPOST_PROPOSAL_TAG = "AI proposal";
@@ -43,7 +43,7 @@ const PROPOSALS_SCHEMA = z.object({
 const COMPOST_SYSTEM = [
   "You are a quality analyst for an AI assistant embedded on an organization's website. You receive one week of failure exhaust: answers that failed independent verification, answers visitors rated down, escalations, refusals, standing-goal violations and demoted flows.",
   "Propose AT MOST 3 concrete improvements a human admin could accept: a new FAQ (draft = the question and a grounded answer), a flow adjustment (draft = a prose description of the matcher/action change), an answering-style amendment (draft = the paragraph to add), or a new standing goal (draft = the golden question plus its checkable expectations).",
-  "Ground every proposal in the exhaust — cite what recurred. Fewer, sharper proposals beat filler; propose nothing you cannot justify from the data. Use the organization's own domain language from the excerpts.",
+  "Ground every proposal in the exhaust, cite what recurred. Fewer, sharper proposals beat filler; propose nothing you cannot justify from the data. Use the organization's own domain language from the excerpts.",
 ].join(" ");
 
 function digestIsEmpty(digest: CompostDigest): boolean {
@@ -79,7 +79,7 @@ export function renderDigest(digest: CompostDigest): string {
   if (digest.goalViolations.length > 0) {
     lines.push("Standing-goal violations:");
     for (const g of digest.goalViolations.slice(0, 5)) {
-      lines.push(`- "${g.question}" — ${g.detail}`);
+      lines.push(`- "${g.question}", ${g.detail}`);
     }
   }
   if (digest.demotedFlows.length > 0) {
@@ -197,7 +197,7 @@ async function compostOne(
         },
       ]);
     } catch (error) {
-      // Malformed or failed generation degrades to zero proposals — the run
+      // Malformed or failed generation degrades to zero proposals, the run
       // record still lands so the window doesn't re-run tomorrow.
       console.error("[compost] proposal generation failed:", error);
       proposals = [];
@@ -251,7 +251,7 @@ async function landProposal(
   );
   for (const conversationId of conversations) {
     // The shared dedup walk (packages/db improvements.ts): any open item
-    // sharing the evidence counts — including ones the verifier created — so
+    // sharing the evidence counts, including ones the verifier created, so
     // known problems gain occurrences, not clones. Same problem already
     // proposed and still open: append the new evidence instead of cloning
     // the proposal.

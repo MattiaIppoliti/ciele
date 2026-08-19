@@ -18,14 +18,14 @@ import { runEntitySync } from "./entity-sync";
 
 /**
  * The durable job ledger (ADR-0008), generic over `kind`: claim/lease,
- * backoff, retry and terminal-failure handling live HERE, once — a job type
+ * backoff, retry and terminal-failure handling live HERE, once, a job type
  * contributes only a JobHandler (perform + optional terminal-failure hook)
  * registered in JOB_HANDLERS, mirroring the ACTION_HANDLERS and
  * website-crawler registries. Adding a job kind = one handler + one
  * BackgroundJobKind member; the lifecycle is never reimplemented.
  *
  * Payloads are JSON-serializable on purpose: today's accelerator is
- * in-process (`after()` — runs once the response is sent) with cron as the
+ * in-process (`after()`, runs once the response is sent) with cron as the
  * durable backstop, and a queue-backed adapter can replace the enqueue
  * without touching handlers.
  *
@@ -69,7 +69,7 @@ export interface RunDueJobsResult {
 const RETRY_BACKOFF_MS = 60_000;
 
 // ---------------------------------------------------------------------------
-// ingest_source — runs the knowledge-ingestion pipeline (enrich → persist
+// ingest_source, runs the knowledge-ingestion pipeline (enrich → persist
 // Concepts → embed) off the request path, tracked by the Source `status`
 // lifecycle (`processing` → `ready`/`error`) the UI already renders.
 // ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ const ingestSourceHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// graph_sync_concept — projects one OKF Concept onto its Collection's derived
+// graph_sync_concept, projects one OKF Concept onto its Collection's derived
 // Knowledge Graph (ADR-0017). Inert when the graph worker is unconfigured.
 // ---------------------------------------------------------------------------
 
@@ -171,7 +171,7 @@ const graphSyncHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// draft_improvement_proposal — drafts a Suggested Fix for an Improvement
+// draft_improvement_proposal, drafts a Suggested Fix for an Improvement
 // (ADR-0017 / #390). Best-effort: drafting failure leaves a "no proposal"
 // state, so the handler never surfaces a terminal failure on the Improvement.
 // ---------------------------------------------------------------------------
@@ -199,7 +199,7 @@ const draftProposalHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// promote_memories — extracts durable per-user facts from a Conversation that
+// promote_memories, extracts durable per-user facts from a Conversation that
 // went quiet (#664). Best-effort: the handler itself resolves every gate
 // (SSO subject, org toggle, budget, superseded-by-a-later-turn) into a no-op
 // success, so only genuine model/db failures retry.
@@ -226,12 +226,12 @@ const promoteMemoriesHandler: JobHandler = {
       enqueuedAt: record.createdAt,
     });
   },
-  // No onTerminalFailure: memories are additive and re-derivable — the next
+  // No onTerminalFailure: memories are additive and re-derivable, the next
   // conversation's job extracts again; the ledger row is the signal.
 };
 
 // ---------------------------------------------------------------------------
-// sync_entity_records — one Record sync run for an Entity's REST/JSON source
+// sync_entity_records, one Record sync run for an Entity's REST/JSON source
 // (#670). The handler itself no-ops duplicate sweep enqueues (cadence check)
 // and missing configs; genuine fetch/map/db failures record a failed run,
 // raise the Alert, and rethrow so the ledger applies backoff/retry.
@@ -369,7 +369,7 @@ export async function runDueIngestJobs(
 /**
  * Durable adapter: creates the ledger row first, then asks the host to run the
  * drain after the response only as an accelerator. If the instance dies before
- * that work runs — or the host registered no scheduler at all — cron can still
+ * that work runs, or the host registered no scheduler at all, cron can still
  * claim the queued job later.
  */
 export async function enqueueIngestJob(
@@ -404,7 +404,7 @@ export async function enqueueDraftProposalJob(
   );
 }
 
-/** Drains due Suggested Fix drafting jobs — the cron backstop for the after-response accelerator. */
+/** Drains due Suggested Fix drafting jobs, the cron backstop for the after-response accelerator. */
 export async function runDueProposalJobs(
   deps: JobDeps,
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
@@ -436,7 +436,7 @@ export async function enqueueMemoryPromotionJob(
   );
 }
 
-/** Drains due memory-promotion jobs — the cron backstop for `after()`. */
+/** Drains due memory-promotion jobs, the cron backstop for `after()`. */
 export async function runDueMemoryPromotionJobs(
   deps: JobDeps,
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
@@ -465,7 +465,7 @@ export async function enqueueEntitySyncJob(
 
 /**
  * The cron sweep's enqueue source (#670): every configured sync whose
- * cadence has elapsed gets a job row. Rides the existing cron surface — no
+ * cadence has elapsed gets a job row. Rides the existing cron surface, no
  * new scheduler.
  */
 export async function enqueueDueEntitySyncs(
@@ -483,7 +483,7 @@ export async function enqueueDueEntitySyncs(
   return { enqueued: due.length };
 }
 
-/** Drains due Entity sync jobs — the cron backstop for `after()`. */
+/** Drains due Entity sync jobs, the cron backstop for `after()`. */
 export async function runDueEntitySyncJobs(
   deps: JobDeps,
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
@@ -491,7 +491,7 @@ export async function runDueEntitySyncJobs(
   return runDueJobs(deps, { ...options, kinds: [ENTITY_SYNC_KIND] });
 }
 
-/** Drains due graph-sync jobs — the cron backstop for the host after-response accelerator. */
+/** Drains due graph-sync jobs, the cron backstop for the host after-response accelerator. */
 export async function runDueGraphSyncJobs(
   deps: JobDeps,
   options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
@@ -501,7 +501,7 @@ export async function runDueGraphSyncJobs(
 
 /**
  * Backfills an existing Knowledge Collection into its graph: enqueues an ingest
- * sync for every Concept. Idempotent — re-running replaces each graph document
+ * sync for every Concept. Idempotent, re-running replaces each graph document
  * (the worker deletes-then-adds by conceptId), and excluded/deleted Concepts
  * resolve to removes in the handler. Inert (enqueues nothing) without a worker.
  */
@@ -519,7 +519,7 @@ export async function backfillCollectionToGraph(
 
 /**
  * Enqueues a graph-sync job for one Concept. **Inert when the graph worker is
- * unconfigured** — it creates no ledger row and returns, so an environment
+ * unconfigured**, it creates no ledger row and returns, so an environment
  * without a sidecar never accrues queued/failed graph jobs (an acceptance
  * criterion). Mirrors `enqueueIngestJob`: durable row first, the host after-response scheduler only as an accelerator, cron as the backstop.
  */

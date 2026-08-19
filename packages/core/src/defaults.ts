@@ -19,9 +19,9 @@ export interface DefaultFlowSpec {
 }
 
 /**
- * The name the Basic Interaction built-in Flow ships with. Nothing routes on it
- * — the Flow is identified structurally, by being built-in and carrying the
- * `basic_reply` action, so an admin may rename it freely — but the migration
+ * The name the Basic Interaction built-in Flow ships with. Nothing routes on it,
+ * the Flow is identified structurally, by being built-in and carrying the
+ * `basic_reply` action, so an admin may rename it freely, but the migration
  * that backfills the Flow and the demo seed both need the same string.
  */
 export const BASIC_INTERACTION_FLOW_NAME = "Basic Interaction";
@@ -29,7 +29,7 @@ export const BASIC_INTERACTION_FLOW_NAME = "Basic Interaction";
 /**
  * The courtesy reply used when nothing better is available: no verbatim message
  * configured *and* no chat model resolves (no Provider Connection). Deliberately
- * generic — it must be true for every assistant, since it is what an
+ * generic; it must be true for every assistant, since it is what an
  * unconfigured or offline deployment says to "hello".
  */
 export const DEFAULT_BASIC_REPLY =
@@ -42,7 +42,7 @@ export const DEFAULT_FLOWS: DefaultFlowSpec[] = [
     // and recognising it late means paying for retrieval to answer "hello".
     name: BASIC_INTERACTION_FLOW_NAME,
     description:
-      "User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer — conversational courtesy that asks no question and carries no information need",
+      "User is greeting the assistant, thanking it, saying goodbye, or acknowledging a previous answer, conversational courtesy that asks no question and carries no information need",
     builtIn: true,
     enabled: true,
     actions: ["basic_reply"],
@@ -81,7 +81,7 @@ export const DEFAULT_FLOWS: DefaultFlowSpec[] = [
 ];
 
 export const DEFAULT_WELCOME_MESSAGE =
-  "I can help you with academic information: study plans, academic deadlines, class materials. Tell me: what information would you like to know?";
+  "Hi! I can help you find information, answer questions, and point you to the right resources. What would you like to know?";
 
 export const DEFAULT_AI_DISCLAIMER =
   "AI answers are not perfect, so please double-check any critical information.";

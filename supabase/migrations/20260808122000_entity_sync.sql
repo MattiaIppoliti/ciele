@@ -1,5 +1,5 @@
 -- Synced Record ingestion (#670): per-Entity REST/JSON sync sources and
--- per-run reports. Records stay fresh without CSV re-uploads — a durable
+-- per-run reports. Records stay fresh without CSV re-uploads, a durable
 -- job fetches, maps, validates, upserts (same path as the CSV import) and
 -- optionally prunes Records unseen in the run.
 

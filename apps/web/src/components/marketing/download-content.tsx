@@ -7,6 +7,7 @@ import {
   HardDriveDownload,
 } from "lucide-react";
 import { Badge, Button, cn } from "@agent-hub/ui";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { InstallCommand } from "@/components/marketing/install-command";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
@@ -28,7 +29,7 @@ import { CTA_CLASS } from "./plan-cards";
  * content itself is static.
  *
  * The commands mirror `deploy/README.md` and
- * `apps/docs/content/docs/self-hosting/*`; if those change, change this too —
+ * `apps/docs/content/docs/self-hosting/*`; if those change, change this too,
  * a download page that hands out a broken bootstrap is worse than no page. The
  * hero one-liner is the exception that cannot drift: it is built by the same
  * module that serves the script (`lib/self-host-install.ts`), which is pinned
@@ -36,7 +37,7 @@ import { CTA_CLASS } from "./plan-cards";
  */
 
 /**
- * The open-source repository — where the desktop build is released, what the
+ * The open-source repository, where the desktop build is released, what the
  * quick start clones, and where "View the source" points. Overridable so a
  * fork points at itself rather than at us; resolved through the installer's
  * helper so the clone line below and the served script name the same repo.
@@ -49,7 +50,7 @@ const SOURCE_URL = resolveSourceUrl();
  * a command that actually resolves; the default is the public site.
  *
  * A build with a nonsense origin should show no command at all rather than an
- * unusable one — the helper throws, and the hero drops the pill.
+ * unusable one, the helper throws, and the hero drops the pill.
  */
 function installCommand(): string | null {
   try {
@@ -78,7 +79,7 @@ const CHANNELS: Array<{
     Icon: AppWindowMac,
     badge: "macOS beta",
     title: "Ciele Desktop",
-    body: "A native app with two ways in: sign in to your organization, or stand up a complete Ciele on this machine through a guided setup — no terminal, no configuration files. Docker Desktop does the heavy lifting behind the wizard.",
+    body: "A native app with two ways in: sign in to your organization, or stand up a complete Ciele on this machine through a guided setup, with no terminal and no configuration files. Docker Desktop does the heavy lifting behind the wizard.",
     cta: { label: "Download for macOS", href: RELEASES_URL, external: true },
   },
   {
@@ -90,7 +91,7 @@ const CHANNELS: Array<{
   {
     Icon: GitFork,
     title: "Straight from the source",
-    body: "The whole product is open source under AGPL-3.0. Clone the repository to read it, run it, change it or contribute back — the code you deploy is the code we publish.",
+    body: "The whole product is open source under AGPL-3.0. Clone the repository to read it, run it, change it or contribute back. The code you deploy is the code we publish.",
     cta: { label: "View on GitHub", href: SOURCE_URL, external: true },
   },
 ];
@@ -111,7 +112,7 @@ const INSTALL_TABS = [
 
 # Add --seed for sanitized demo content
 
-# Then open http://localhost:3000 — the first
+# Then open http://localhost:3000, the first
 # account becomes the owner of its organization`,
   },
   {
@@ -159,11 +160,11 @@ const REQUIREMENTS = [
   },
 ];
 
-/** What `bootstrap.sh` actually starts — the stack, named honestly. */
+/** What `bootstrap.sh` actually starts, the stack, named honestly. */
 const STACK = [
   {
     title: "Database & auth",
-    body: "Postgres with pgvector, authentication and row-level security — every read scoped to your organization, enforced in the database.",
+    body: "Postgres with pgvector, authentication and row-level security. Every read is scoped to your organization and enforced in the database.",
   },
   {
     title: "App & widget",
@@ -196,8 +197,8 @@ export function DownloadContent() {
           title="Run it yourself"
         >
           <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
-            The whole product — console, widget, database, background jobs — on
-            your own machine or servers. Open source, no account anywhere, no
+            Console, widget, database and background jobs, all on your own machine
+            or servers. Open source, no account anywhere, no
             license fee.
           </p>
 
@@ -208,7 +209,7 @@ export function DownloadContent() {
             <div className="mx-auto mt-8 max-w-xl">
               <InstallCommand command={command} />
               <p className="text-muted-foreground mt-3 text-sm">
-                macOS and Linux, with Docker — a Mac without it gets Ciele
+                macOS and Linux, with Docker. A Mac without it gets Ciele
                 Desktop, which guides the install.{" "}
                 <a
                   href={`#${SELF_HOST_ANCHOR}`}
@@ -270,7 +271,7 @@ export function DownloadContent() {
           ))}
         </section>
 
-        {/* Self-service setup — the destination of the Docker card's CTA.
+        {/* Self-service setup, the destination of the Docker card's CTA.
             `scroll-mt` clears the fixed marketing header after the jump. */}
         <section
           id={SELF_HOST_ANCHOR}
@@ -363,6 +364,13 @@ export function DownloadContent() {
             is the same product, hosted and kept current for you.
           </p>
         </section>
+
+        <CloudCallout
+          expression="excited"
+          eyebrow="Ready when you are"
+          title="Excited to meet your machine"
+          body="One download or one script and the whole product runs locally. No account, no license fee, and your data never leaves the building."
+        />
 
         <CtaSection
           lead="Your machine."

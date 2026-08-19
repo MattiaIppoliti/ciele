@@ -14,7 +14,7 @@ import type { Flow } from "./types";
  * turn is one generation.
  *
  * The asymmetry of the two failure modes decides the whole design. A **miss**
- * costs one classify call — the Flow is in the classifier's catalogue too, so
+ * costs one classify call, the Flow is in the classifier's catalogue too, so
  * the message still reaches it, just less cheaply. A **false positive** costs the
  * Visitor their answer. So every rule below fails closed, and `ciao, quando è la
  * scadenza?` is a question with a greeting stuck on the front, not a greeting.
@@ -110,7 +110,7 @@ const COURTESY_WORDS = new Set(
 
 /**
  * One earlier turn, as the detector needs to see it: who spoke and what the text
- * flattened to. Deliberately not the persisted message shape — the detector is
+ * flattened to. Deliberately not the persisted message shape, the detector is
  * pure and must stay usable from anywhere, including a test with two literals.
  */
 export interface CourtesyHistoryTurn {
@@ -119,7 +119,7 @@ export interface CourtesyHistoryTurn {
   /**
    * Set when the caller knows this turn put a question to the Visitor but the
    * text cannot show it. Needed because a clarification is persisted as a
-   * `clarify` part with no text part, so it flattens to the empty string — the
+   * `clarify` part with no text part, so it flattens to the empty string, the
    * question mark this rule would otherwise look for is nowhere in the text.
    * Absent means "read the text", which is right for every ordinary turn.
    */
@@ -148,7 +148,7 @@ function lastAssistantTurnAsked(history: CourtesyHistoryTurn[]): boolean {
  * suggest a question.
  *
  * The "at least one courtesy word" clause is load-bearing. Without it, a message
- * consisting only of stopwords — `the`, `is it` — would qualify by having nothing
+ * consisting only of stopwords, `the`, `is it`, would qualify by having nothing
  * left over, which is exactly the false-positive class this detector exists to
  * avoid.
  */
@@ -190,8 +190,8 @@ export interface CourtesyRoutingContext extends FlowRoutingContext {
  *
  * Three conditions, each of which can only ever *prevent* the shortcut:
  *
- *  1. **The Flow exists and is enabled.** Identified **structurally** — built-in,
- *     carrying the `basic_reply` action — never by name, because an admin is free
+ *  1. **The Flow exists and is enabled.** Identified **structurally**, built-in,
+ *     carrying the `basic_reply` action, never by name, because an admin is free
  *     to rename it and the runtime must not quietly stop working when they do.
  *     Disabling it is therefore the supported way to turn the fast path off.
  *  2. **The message is courtesy.** See {@link isCourtesyOnly}.
@@ -201,7 +201,7 @@ export interface CourtesyRoutingContext extends FlowRoutingContext {
  *     instead. Their configuration outranks our optimisation.
  *
  * Routing goes through `messageFlowCandidates`, so the objective Flow Conditions
- * (URL, Schedule) gate this funnel exactly as they gate the other two — one
+ * (URL, Schedule) gate this funnel exactly as they gate the other two, one
  * implementation of that rule, not three (spec #550).
  */
 export function basicInteractionFlow(

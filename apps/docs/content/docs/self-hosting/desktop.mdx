@@ -5,16 +5,16 @@ description: Download one app and either sign in to your organization or run a c
 
 Ciele Desktop is a macOS application that opens on a choice.
 
-- **Sign in to your organization** — the app opens your organization's console in
+- **Sign in to your organization**: the app opens your organization's console in
   a window of its own, with a session that survives restarts. The address is
   configurable, so the same path also reaches a self-hosted Ciele on your own
   server.
-- **Use locally (self-host)** — a guided setup stands up a complete Ciele on
+- **Use locally (self-host)**: a guided setup stands up a complete Ciele on
   this machine: database, migrations, scheduled jobs and all. It needs no
   terminal, and Docker Desktop is the only thing you install yourself.
 
 Both can coexist, and you can switch between them at any time. Everything you
-actually do with Ciele happens in the product UI you already know — the app adds
+actually do with Ciele happens in the product UI you already know, the app adds
 a window around it, not a second interface.
 
 <Callout type="warn" title="Beta">
@@ -27,11 +27,11 @@ the beta.
 
 | | Sign in | Use locally |
 | --- | --- | --- |
-| You have a Ciele account or a server | Yes | — |
-| You want to evaluate the product | — | Yes |
+| You have a Ciele account or a server | Yes | |
+| You want to evaluate the product | | Yes |
 | Setup time | Seconds | A few minutes |
 | Where data lives | On the server | On this machine |
-| Serves production widgets | Yes | No — local widgets are for testing |
+| Serves production widgets | Yes | No: local widgets are for testing |
 | Needs Docker Desktop | No | Yes |
 
 The local path is a real Ciele, not a demo: the same containers, the same
@@ -57,47 +57,47 @@ console and remembers the session, so later launches go straight there.
 
 To point the app at a self-hosted server instead, open **Settings** (the control
 icon on the welcome screen, or `⌘,`) and change the server
-address. Anything `http://` or `https://` works; the app keeps the origin and
+address. Anything `http://` or `https://` works. The app keeps the origin and
 drops any path you paste with it.
 
-**Sign out** clears the app's stored session for that server — cookies, cache
-and all — not just the window. On a shared machine, that is the thing to do.
+**Sign out** clears the app's stored session for that server: cookies, cache and
+all. It closes more than the window. On a shared machine, that is the thing to
+do.
 
-If the address does not load, the app says so on its own screen — with the
-address it tried, what went wrong, and buttons to retry or correct it — rather
-than leaving you on a browser error page in a window with no address bar.
+If the address does not load, the app says so on its own screen. It shows the
+address it tried, what went wrong, and buttons to retry or correct it. You never
+land on a browser error page in a window with no address bar.
 
 ## Setting up a local Ciele
 
-Choose **Use locally**. The wizard runs each step and verifies it before
-unlocking the next, so a green check means the step actually worked rather than
-merely finished.
+Choose **Use locally**. The wizard runs each step and verifies it before it
+opens the next one. A green check means the step worked, not that it finished.
 
 ### 1. Docker Desktop
 
-The wizard checks that Docker Desktop is installed *and* running — different
-problems with different fixes, and it says which one you have. If it is
-missing, the download link is right there; install or start it, then press
-**Try again**. The check re-runs in place.
+The wizard checks that Docker Desktop is installed *and* running. Those are
+different problems with different fixes, and it says which one you have. If it
+is missing, the download link is right there. Install or start Docker Desktop,
+then press **Try again**. The check re-runs in place.
 
 ### 2. Data folder and secrets
 
 The app creates a folder for this installation and generates every password and
 key the stack needs. You never edit an environment file.
 
-If a configuration already exists, it is kept rather than regenerated —
-regenerating would lock you out of your own database, which is signed and
-sealed with the secrets already there.
+If a configuration already exists, the app keeps it rather than generating a new
+one. Your database is sealed with the secrets already in that folder. Fresh
+secrets would lock you out of it.
 
 ### 3. Download Ciele
 
 Pulls the published container images for this version of the app. This is the
-slow step on a first run, and the reason setup is a coffee break rather than an
-afternoon: nothing is built from source.
+slow step on a first run. Nothing is built from source, which is why setup takes
+a coffee break and not an afternoon.
 
 ### 4. Start the stack
 
-Brings up the database, the app and the scheduled jobs, detached — they keep
+Brings up the database, the app and the scheduled jobs, detached, they keep
 running after you quit Ciele Desktop.
 
 ### 5. Prepare the database
@@ -115,29 +115,28 @@ Ciele.
 
 Point Ciele at any OpenAI-compatible server or a hosted provider. For
 [Ollama](https://ollama.com) on this machine, the address is
-`http://host.docker.internal:11434/v1` — inside a container, `localhost` is the
+`http://host.docker.internal:11434/v1`: inside a container, `localhost` is the
 container.
 
 Skipping is fine. Without a model, assistants answer from the built-in keyword
-engine and knowledge search falls back to lexical matching; everything else
+engine, and Knowledge search falls back to lexical matching. Everything else
 works.
 
-When a step fails it says what failed, keeps its logs behind **Show details**,
-and offers **Try again** — which resumes from that step rather than starting
-over.
+When a step fails it says what failed and keeps its logs behind **Show
+details**. **Try again** resumes from that step rather than starting over.
 
 Once setup finishes, **Open Ciele** loads the local console. The first account
 you create owns the organization. Later launches skip the wizard entirely.
 
 ## Day two
 
-**Stack status** (from the wizard's last step, from Settings, or from the
-**Ciele** menu) shows whether your local stack is up and lets you start and stop
-it without opening Docker Desktop. "Running" there means Ciele answered, not
-merely that containers exist.
+**Stack status** shows whether your local stack is up. Reach it from the
+wizard's last step, from Settings, or from the **Ciele** menu. It starts and
+stops the stack without Docker Desktop. "Running" there means Ciele answered,
+not that containers exist.
 
 Stopping is reversible and touches no data. Quitting the app does not stop the
-stack — it runs detached, on purpose.
+stack. It runs detached, on purpose.
 
 ### Where your data lives
 
@@ -147,7 +146,7 @@ stack — it runs detached, on purpose.
 | Uploaded files | Docker volume (`ciele_storage-data`) | App restarts and app updates |
 | Generated configuration and secrets | The app's data folder (shown on the stack screen) | App updates |
 
-Back up the database the same way any self-host does — see
+Back up the database the same way any self-host does, see
 [Database](/self-hosting/database). Deleting Ciele.app removes neither the
 volumes nor the stack.
 
@@ -176,17 +175,17 @@ That deletes the local database and uploaded files. The next time you choose
 ## Troubleshooting
 
 **"Docker Desktop is not installed" when it is.** An app launched from the Dock
-does not inherit your shell's `PATH`, so Ciele looks for the Docker CLI in the
-places Docker Desktop and Homebrew install it. A Docker installed somewhere
-else entirely will not be found; a symlink into `/usr/local/bin` fixes it.
+does not inherit your shell's `PATH`. Ciele therefore looks for the Docker CLI
+where Docker Desktop and Homebrew install it. It will not find a Docker you
+installed anywhere else. A symlink into `/usr/local/bin` fixes that.
 
 **The stack sits on "Starting".** Postgres may still be initialising on a first
 run. Give it a minute, then press **Check again**. If it stays there, open the
-logs from Docker Desktop — a container that keeps restarting is usually short
-of memory.
+logs from Docker Desktop. A container that keeps restarting is usually short of
+memory.
 
 **"Could not download the images."** The pull could not reach the registry.
-Check your connection or proxy and press **Try again**; nothing downstream ran,
+Check your connection or proxy and press **Try again**. Nothing downstream ran,
 so there is nothing to undo.
 
 **Assistants answer, but they ignore my knowledge.** No embedding model is
@@ -194,10 +193,10 @@ configured, so retrieval falls back to keyword matching. Add an embedding model
 in [Configuration](/self-hosting/configuration).
 
 **"Ciele did not load" when signing in.** The address in settings is not
-serving Ciele. The screen names what went wrong: a typo gives "that address
-does not exist", a server that is off gives "nothing is listening", and an
-address that answers without being Ciele says so. **Change address** takes you
-straight to the setting.
+serving Ciele. The screen names what went wrong. A typo gives "that address does
+not exist". A server that is off gives "nothing is listening". An address that
+answers without being Ciele says so. **Change address** takes you straight to
+the setting.
 
 **macOS says the app is damaged or cannot be opened.** That is Gatekeeper on an
 unsigned app. Right-click Ciele.app, choose **Open**, then **Open** again.
@@ -206,7 +205,7 @@ Double-clicking will not offer that option.
 ## What the desktop app is not
 
 - It does not serve production widgets. Local widgets are for testing and
-  preview; publishing to real visitors needs a reachable server.
+  preview. Publishing to real visitors needs a reachable server.
 - It is not signed or notarized, and it does not auto-update.
-- It runs the default profiles only. The heavy optional workers stay off; add
+- It runs the default profiles only. The heavy optional workers stay off. Add
   them from [Workers](/self-hosting/workers) if you need them.

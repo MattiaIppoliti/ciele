@@ -12,11 +12,11 @@ import type {
 
 /**
  * The deterministic keyword router (ADR-0003): the offline/no-model fallback
- * for Intent Classification. Routing only — rendering a matched Flow's
+ * for Intent Classification. Routing only, rendering a matched Flow's
  * actions is owned by the LLM runtime's action handlers (spec #194).
  *
- * The normaliser, stopword list and stemmer it compares with live in `text.ts`
- * — shared with the courtesy detector rather than duplicated (#566).
+ * The normaliser, stopword list and stemmer it compares with live in `text.ts`,
+ * shared with the courtesy detector rather than duplicated (#566).
  */
 
 /**
@@ -24,7 +24,7 @@ import type {
  *
  * Deliberately **no entry for Basic Interaction**. Courtesy is recognised by
  * `basicInteractionFlow` (basic-interaction.ts), which the runtime consults above
- * the chat-model branch — so the offline path reaches that Flow through the same
+ * the chat-model branch, so the offline path reaches that Flow through the same
  * decision the LLM path uses, and this table does not need a second, weaker copy
  * of the courtesy vocabulary. It had one briefly (#565) and the copy earned its
  * deletion twice over: keyword scoring is additive, so two courtesy words
@@ -139,7 +139,7 @@ const MATCH_THRESHOLD = 3;
  *
  * Exported for the courtesy selection rule (#566), which has to answer a
  * narrower question than `matchFlow` does: "would anything positioned ahead of
- * Basic Interaction have claimed this message?" `matchFlow` cannot answer it —
+ * Basic Interaction have claimed this message?" `matchFlow` cannot answer it,
  * it returns the Default behavior when nothing clears the threshold, so a null
  * result would be indistinguishable from a match on the default.
  */
@@ -157,7 +157,7 @@ export function flowKeywordMatches(message: string, flow: Flow): boolean {
  * not a candidate here, so neither the keyword router below nor the LLM
  * classifier in `@agent-hub/agent` ever sees it, and the two cannot drift
  * (spec #550). Omitting `context` leaves objective conditions unevaluatable,
- * which never disqualifies — an unwired caller keeps the previous behaviour.
+ * which never disqualifies, an unwired caller keeps the previous behaviour.
  */
 export function messageFlowCandidates(
   flows: Flow[],
@@ -183,7 +183,7 @@ export function isProactiveTrigger(trigger: FlowTrigger): boolean {
  * Which Flow Actions a trigger may run. A proactive Flow has no message to
  * answer, so the reactive catalog (retrieval, escalation, handover, …) cannot
  * apply; conversely a Notification is unprompted by definition and has no
- * meaning as a reply. Enforced at save time *and* at dispatch — the editor is
+ * meaning as a reply. Enforced at save time *and* at dispatch, the editor is
  * only the first of the two gates.
  */
 export function actionAllowedForTrigger(
@@ -200,7 +200,7 @@ export const DEFAULT_DWELL_SECONDS = 30;
 
 /**
  * How long a Time-on-page flow waits, in seconds. A flow with no stored dwell
- * (or a nonsensical one) reads as the shipped default rather than as zero —
+ * (or a nonsensical one) reads as the shipped default rather than as zero,
  * zero would silently turn "Time on page" into "On page load".
  */
 export function flowDwellSeconds(flow: Flow): number {
@@ -216,7 +216,7 @@ export function flowDwellSeconds(flow: Flow): number {
 /** The distinct dwell thresholds an assistant's Time-on-page flows use, ascending. */
 export function proactiveDwellSeconds(flows: Flow[]): number[] {
   const dwells = proactiveFlowCandidates(flows, "time_on_page", {
-    // Selection only — the dwell filter is what we are enumerating.
+    // Selection only: the dwell filter is what we are enumerating.
     elapsedSeconds: Number.POSITIVE_INFINITY,
   }).map(flowDwellSeconds);
   return [...new Set(dwells)].sort((a, b) => a - b);
@@ -224,7 +224,7 @@ export function proactiveDwellSeconds(flows: Flow[]): number[] {
 
 /**
  * What the fired event knows about itself: the routing facts every candidate
- * funnel evaluates (page URL, clock — spec #550), plus the dwell only a
+ * funnel evaluates (page URL, clock, spec #550), plus the dwell only a
  * Time-on-page report carries.
  */
 export interface ProactiveTriggerContext extends FlowRoutingContext {
@@ -244,7 +244,7 @@ export interface ProactiveTriggerContext extends FlowRoutingContext {
  * not answers, so "two nudges configured for chat-open" means two nudges.
  *
  * A flow whose actions don't belong to its trigger is skipped rather than
- * half-run — the same rule the editor and the save path enforce, applied again
+ * half-run, the same rule the editor and the save path enforce, applied again
  * here so stored data can never make the runtime do something the UI forbids.
  *
  * For `time_on_page` the dwell is re-checked against the reported elapsed time,
@@ -252,7 +252,7 @@ export interface ProactiveTriggerContext extends FlowRoutingContext {
  * fire early. It fails closed: no measure, no delivery.
  *
  * The objective condition gate (#550) applies here too. A proactive Flow has no
- * conditions today — the editor offers none — so this is a no-op in practice, but
+ * conditions today, the editor offers none, so this is a no-op in practice, but
  * a stored URL or Schedule condition must bind the same way on both funnels
  * rather than being silently ignored on one of them.
  */
@@ -285,7 +285,7 @@ export function proactiveFlowCandidates(
  *
  * The embed reads this from the widget config to decide which listeners to arm,
  * so an Assistant with no proactive flows costs its host page nothing: no timers,
- * no reports, no requests. It is a capability hint, never an authorization — the
+ * no reports, no requests. It is a capability hint, never an authorization, the
  * runtime re-selects the flows itself when an event is reported.
  */
 export function proactiveTriggers(flows: Flow[]): FlowTrigger[] {
@@ -343,8 +343,8 @@ export interface NotificationDeliveryContext {
  * persist when it does.
  *
  * The decision is the server's, never the client's: a reopen loop or a replayed
- * event report re-asks this question and gets the same answer. The count — not a
- * boolean — is what gets stored, so `always` still leaves a usable record.
+ * event report re-asks this question and gets the same answer. The count, not a
+ * boolean, is what gets stored, so `always` still leaves a usable record.
  */
 export function notificationDelivery(
   flow: Flow,

@@ -25,7 +25,7 @@ function LoginFormInner() {
         type="email"
         autoComplete="email"
         placeholder="my@email.com"
-        // The action reports one error for the pair — shake both fields, print
+        // The action reports one error for the pair, shake both fields, print
         // the message once, under the password.
         error={Boolean(state.error)}
         classNames={{ field: "bg-white" }}

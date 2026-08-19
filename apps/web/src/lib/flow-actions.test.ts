@@ -10,7 +10,7 @@ import {
 /**
  * The trigger↔action pairing as the *editor* sees it. The server action refuses a
  * mismatched pair (it would be a runtime the UI forbids), so any pair the builder
- * can assemble and offer to save must already be valid — a 500 is not a validation
+ * can assemble and offer to save must already be valid, a 500 is not a validation
  * message.
  */
 describe("partitionActionsForTrigger", () => {
@@ -75,7 +75,7 @@ describe("the pickers only offer actions their trigger allows", () => {
   it("keeps basic_reply out of the reactive picker but still describes it", () => {
     // It belongs to the built-in Basic Interaction flow, not to arbitrary flows:
     // "Message + Basic reply" has no coherent meaning. The metadata entry is
-    // still required — the Flows list and the builder render the chip.
+    // still required, the Flows list and the builder render the chip.
     expect(FLOW_ACTION_PICKER).not.toContain("basic_reply");
     expect(FLOW_ACTIONS.basic_reply.label).toBeTruthy();
   });

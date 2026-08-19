@@ -14,7 +14,7 @@ export interface SetupPickerAssistant {
   title: string;
   nickname: string;
   avatarUrl?: string | null;
-  /** Published (a Publication exists) — the widget is live. */
+  /** Published (a Publication exists), the widget is live. */
   active: boolean;
   updatedAt: string;
 }

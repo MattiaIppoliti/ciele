@@ -13,11 +13,11 @@
 --      Visitor message (or any other reply) makes it a real conversation again.
 --   3. Therefore it is not in the resolution-rate denominator either.
 --
--- And one addition, so the work is still visible: `notifications` — how many were
--- delivered — as a KPI and a chart series.
+-- And one addition, so the work is still visible: `notifications`, how many were
+-- delivered, as a KPI and a chart series.
 --
 -- A proactive message is identified by its persisted reply parts containing a
--- `notification` part — the same shape the runtime emits and every chat surface
+-- `notification` part, the same shape the runtime emits and every chat surface
 -- renders, so there is no second source of truth. It is derived by the database
 -- rather than written by the app for the same reason: a stored generated column
 -- cannot drift from the content it is computed from, and it keeps the Inbox list

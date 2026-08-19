@@ -1,7 +1,7 @@
 -- Deterministic transcript ordering. messages.id is a random shortId and
 -- created_at is stamped by now(), so two messages appended in the same
 -- clock tick (a user turn + the assistant reply written back-to-back) have
--- no defined order — `order by created_at` returns them in arbitrary
+-- no defined order, `order by created_at` returns them in arbitrary
 -- sequence, which can flip a question/answer pair in the transcript and in
 -- the runtime's context window. Found by the Db contract suite running the
 -- Supabase adapter over PGlite (ADR-0016 stage 2).

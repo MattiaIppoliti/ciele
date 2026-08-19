@@ -6,7 +6,7 @@ import { str, usage, type CommandContext } from "./shared.ts";
 
 /**
  * `ciele collections|sources|faqs …` (#628). File inputs (`sources add-file`,
- * `faqs import`) read a local path and stream it as multipart — the server
+ * `faqs import`) read a local path and stream it as multipart, the server
  * does extraction/parsing exactly as it does for the admin app.
  */
 
@@ -116,7 +116,7 @@ export async function sources(
     case "recrawl": {
       if (!rest[0]) return usage(deps, "sources recrawl <id>");
       await client.knowledge.recrawlSource(rest[0]);
-      emit(`Re-crawl started for ${rest[0]} — poll with: ciele sources get ${rest[0]}`, {
+      emit(`Re-crawl started for ${rest[0]}, poll with: ciele sources get ${rest[0]}`, {
         ok: true,
       });
       return EXIT.ok;

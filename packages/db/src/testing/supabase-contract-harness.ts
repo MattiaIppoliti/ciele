@@ -9,7 +9,7 @@ import type { DbContractContext } from "../db-contract.suite";
 import { createPgliteSupabaseClient } from "./postgrest-shim";
 
 /**
- * PGlite-backed context for `describeDbContract("supabase", …)` — ADR-0016
+ * PGlite-backed context for `describeDbContract("supabase", …)`, ADR-0016
  * stage 2. Boots an in-process Postgres, applies the REAL migrations, and
  * hands the REAL `createSupabaseDb` a PostgREST shim, so mock↔Supabase drift
  * is finally asserted against one spec with no Docker and no live project.
@@ -91,12 +91,19 @@ $$;
 export interface SchemaLoadedPgliteOptions {
   /**
    * Absolute paths to migration directories applied *after* the open-source
-   * chain, in the order given — the same phase ordering
+   * chain, in the order given, the same phase ordering
    * `scripts/apply-migrations.sh` uses for `ee/migrations`. A caller outside
    * the open-source tree passes its own chain here so this harness never has
    * to know that chain exists (the dependency direction stays one-way).
    */
   extraMigrationDirs?: readonly string[];
+  /**
+   * Stop the chain just before this filename (exclusive). For upgrade-path
+   * tests that seed legacy-shaped rows and then replay the remaining
+   * migrations themselves, the only way to exercise a data migration whose
+   * later contract step drops the columns the seed needs.
+   */
+  stopBefore?: string;
 }
 
 /** Boot PGlite and apply the full production schema. */
@@ -112,6 +119,7 @@ export async function createSchemaLoadedPglite(
       .sort();
     for (const file of files) {
       if (FRESH_DB_SKIP.has(file)) continue;
+      if (opts.stopBefore && file >= opts.stopBefore) continue;
       try {
         await pg.exec(readFileSync(join(dir, file), "utf8"));
       } catch (err) {

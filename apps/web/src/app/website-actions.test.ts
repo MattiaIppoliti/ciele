@@ -60,6 +60,22 @@ describe("Website Source actions", () => {
     });
   });
 
+  it("links the new Website Source to the assistant that added it", async () => {
+    const { assistant, collection } = await seed("action-add-links");
+
+    await addWebsiteSourceAction(assistant.id, collection.id, {
+      name: "Local docs",
+      url: "https://public.example/docs",
+      crawlerProvider: "local",
+    });
+
+    // Retrieval reads the link set alone (#733), and `createSource` stopped
+    // auto-linking when Collections became org-owned: without an explicit link
+    // the site would be crawled, indexed, and never retrieved.
+    const [source] = await db.listSources(collection.id);
+    expect(await db.listAssistantSourceIds(assistant.id)).toEqual([source.id]);
+  });
+
   it("updates the configured provider without replacing in-flight run identity", async () => {
     const { assistant, collection } = await seed("action-update-provider");
     const source = await db.createSource({

@@ -1,4 +1,4 @@
-# packages/ui — `@agent-hub/ui`
+# packages/ui, `@agent-hub/ui`
 
 Shared primitives (shadcn/ui style, on Base UI) used by every app in the workspace.
 
@@ -8,7 +8,7 @@ Shared primitives (shadcn/ui style, on Base UI) used by every app in the workspa
 pnpm --filter @agent-hub/ui typecheck   # tsc --noEmit
 ```
 
-No test script — this package is presentational. Behaviour worth testing belongs in the
+No test script: this package is presentational. Behaviour worth testing belongs in the
 consuming app's plain-TS module (app vitest configs only pick up `.test.ts`, not `.test.tsx`).
 
 ## Conventions
@@ -17,7 +17,7 @@ consuming app's plain-TS module (app vitest configs only pick up `.test.ts`, not
   A component that isn't in the barrel isn't usable by the apps.
 - Deep import paths must be declared in `exports` in `package.json` (currently only
   `./use-resizable-width`). Adding one without the entry breaks the consumer's build.
-- `sideEffects: false` — keep modules pure so app bundles can tree-shake.
+- `sideEffects: false`: keep modules pure so app bundles can tree-shake.
 - React is a **peer** dependency. Never add `react`/`react-dom` to `dependencies` here.
 - Styling: Tailwind v4 + `cva` variants + the local `cn()` from `src/cn.ts`.
 

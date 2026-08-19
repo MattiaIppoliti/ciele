@@ -32,19 +32,19 @@ Exchange (PKCE).
 
 ## Scegli un claim di identità
 
-L'impostazione predefinita è **Off — subject only**. Ciele quindi memorizza il
+L'impostazione predefinita è **Off, subject only**. Ciele quindi memorizza il
 soggetto OIDC opaco senza un identificatore leggibile dall'uomo.
 
 Scegli **Email address** o **Username (preferred_username claim)** quando un
 Assistente deve associare i Visitatori che hanno effettuato l'accesso ai
 [Record con ambito utente](/data/entities-and-records#protect-user-scoped-records).
 
-Ciele verifica il claim selezionato all'interno del token ID firmato. Il server
-lo porta nella Conversazione e nel turno di runtime.
+Ciele verifica l'attestazione selezionata all'interno del token ID firmato. Il
+server lo porta nella Conversazione e nel turno di runtime.
 
-Un corpo di richiesta o un input dello strumento modello non possono sostituire
-il valore verificato. Una claim configurata mancante disabilita le funzionalità
-che la richiedono per quel Visitatore.
+Un corpo di richiesta o un input dello strumento del modello non possono
+sostituire il valore verificato. Una claim configurata mancante disabilita le
+funzionalità che la richiedono per quel Visitatore.
 
 Ricollega Entra per modificare il claim. Ciele richiede gli ambiti del profilo e
 dell'e-mail quando una claim è abilitata.
@@ -58,13 +58,13 @@ memorizzati.
 ## Verifica la connessione
 
 1. Richiedi l'autenticazione su una bozza di Assistente.
-2. Apri l'Anteprima in una sessione del browser senza aver effettuato l'accesso.
+2. Apri l'anteprima in una sessione del browser senza aver effettuato l'accesso.
 3. Completa l'accesso a Microsoft.
 4. Verifica che la chat diventi disponibile.
 5. Verifica che un'altra organizzazione non possa riutilizzare il cookie gate.
 6. Avvia una conversazione e verifica che la Posta in arrivo mostri il soggetto
    che ha effettuato l'accesso.
 
-Testa un'Entità con ambito utente quando è abilitata una richiesta di identità.
-Verifica che un altro Visitatore che ha effettuato l'accesso non possa
+Testa un'Entità con ambito utente quando è abilitata un'attestazione di
+identità. Verifica che un altro Visitatore che ha effettuato l'accesso non possa
 recuperare i Record del primo Visitatore.

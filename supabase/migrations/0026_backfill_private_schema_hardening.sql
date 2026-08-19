@@ -2,13 +2,13 @@
 -- on 2026-07-05 without ever being captured as a local migration file. Added
 -- here so a fresh environment built from this repo matches production. Every
 -- migration after this one that calls is_org_member()/has_org_role() must
--- use private.*, not public.* — that's why 0029/0032 (alerts, provider
+-- use private.*, not public.*, that's why 0029/0032 (alerts, provider
 -- connection ownership) were rewritten to match.
 --
 -- Security hardening from the Supabase security checklist ("do not put
 -- security definer functions in an exposed schema"): is_org_member/
 -- has_org_role/handle_new_user were security-definer functions sitting in
--- `public`, which PostgREST exposes for RPC — anyone with the anon key could
+-- `public`, which PostgREST exposes for RPC, anyone with the anon key could
 -- call them at /rest/v1/rpc/is_org_member etc. Move the RLS-only helpers to
 -- a private, unexposed schema; PostgREST never lists `private` for RPC, so
 -- this fully removes them from the API surface with no behavior change.
@@ -31,7 +31,7 @@ alter function public.handle_new_user() set schema private;
 
 -- accept_invite/create_organization/join_demo_org/next_improvement_seq must
 -- stay in `public` (called directly via supabase.rpc(...) from the app), but
--- none of them need to be callable by unauthenticated (`anon`) requests —
+-- none of them need to be callable by unauthenticated (`anon`) requests,
 -- each already requires auth.uid() to be set except next_improvement_seq,
 -- which is only ever reached from an authenticated org member's "create
 -- improvement" flow. They each currently have an explicit grant to `anon` in

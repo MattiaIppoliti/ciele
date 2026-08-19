@@ -1,6 +1,6 @@
 -- Flow trust ledger (spec: measured trust per (Assistant, Flow)). A nightly
--- job materializes a rolling pass rate from graded signals — verifier
--- verdicts and explicit Visitor feedback (verdict wins when both exist) —
+-- job materializes a rolling pass rate from graded signals, verifier
+-- verdicts and explicit Visitor feedback (verdict wins when both exist),
 -- into earned tiers. Service-role writes; members read for Flow badges.
 
 create table public.flow_trust (

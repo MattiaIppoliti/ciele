@@ -19,7 +19,7 @@ export function visibleReplyParts(
  * Notification (#544).
  *
  * Only the last reply decides. A one-way announcement earlier in the conversation
- * must not lock a chat the Visitor has since been invited back into — and an
+ * must not lock a chat the Visitor has since been invited back into, and an
  * ordinary answer after it means the conversation is live again.
  */
 export function repliesClosed(

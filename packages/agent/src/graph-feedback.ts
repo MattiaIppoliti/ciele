@@ -9,7 +9,7 @@
  * by the vector engine have no trace and are left untouched.
  *
  * Everything here is **inert without a graph worker** and **fail-soft**: a
- * worker outage never blocks the visitor's feedback write or the escalation —
+ * worker outage never blocks the visitor's feedback write or the escalation,
  * it raises an auto-resolving Alert instead (the standard health idiom).
  */
 
@@ -46,7 +46,7 @@ const workerUnreachableAlert = {
 
 /**
  * Forwards a score for one graph-served answer. No-op when the worker is
- * unconfigured or the message was not graph-served. Never throws — a worker
+ * unconfigured or the message was not graph-served. Never throws, a worker
  * error raises an auto-resolving Alert and returns.
  */
 export async function forwardGraphFeedback(opts: {
@@ -60,7 +60,7 @@ export async function forwardGraphFeedback(opts: {
   const conversation = await opts.db
     .getConversationForMessage(opts.messageId)
     .catch((error) => {
-      // Fail-soft, but a read error is a genuine fault (not a vector answer) —
+      // Fail-soft, but a read error is a genuine fault (not a vector answer),
       // log it rather than silently treating it as "nothing to forward".
       console.error("[graph-feedback] conversation lookup failed:", error);
       return null;
@@ -110,7 +110,7 @@ export interface GraphLearningResult {
 
 /**
  * Nightly graph-learning pass: for every active graph dataset (cross-org),
- * applies feedback weights — the zero-LLM stage, always — and runs LLM
+ * applies feedback weights, the zero-LLM stage, always, and runs LLM
  * distillation only for orgs within their daily token budget. Per-org worker
  * failures raise an auto-resolving Alert and are counted, never thrown. Inert
  * without a graph worker.
@@ -143,7 +143,7 @@ export async function runGraphLearning(
         collectionId,
         { distill }
       );
-      // Distillation is an LLM pass on the worker — meter what it reported
+      // Distillation is an LLM pass on the worker, meter what it reported
       // (`graph_cognify`); the pure weight pass reports no usage.
       if (usage) await meterGraphUsage(deps.db, collectionId, usage);
       result.weightedElements += weightedElements;

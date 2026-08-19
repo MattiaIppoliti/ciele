@@ -1,15 +1,15 @@
 /**
- * Agentic Search — the module home for the `search_knowledge` retrieval turn
+ * Agentic Search: the module home for the `search_knowledge` retrieval turn
  * (spec #61; architecture spec #203). This index is the module's surface: the
  * rest of the runtime (the Flow Action registry, the tool registry) imports
  * from here and never from the files inside. File organization within the
- * module is free — reorganizing internals must not touch this surface.
+ * module is free, reorganizing internals must not touch this surface.
  *
  * What lives here:
- *  - the entrypoint ({@link runAgenticSearch}) — the whole generative
+ *  - the entrypoint ({@link runAgenticSearch}), the whole generative
  *    retrieval turn behind one call (#206);
- *  - the search-pass primitive ({@link runSearchPass}) — the ONLY writer of
- *    the per-turn search-pass ledger (#204) — with the one budget gate;
+ *  - the search-pass primitive ({@link runSearchPass}), the ONLY writer of
+ *    the per-turn search-pass ledger (#204), with the one budget gate;
  *  - the pure, model-free policies the loop consults: coverage scoring,
  *    reformulation, the best-effort caveat, query understanding over the
  *    turn's context frame, and the clarify decision.
@@ -41,7 +41,7 @@ export type {
   SearchPassRuntime,
 } from "./search-pass";
 
-// The turn's context frame — the live retrieval signals, stated for the model.
+// The turn's context frame: the live retrieval signals, stated for the model.
 export { buildContextFrame, describeContextFrame } from "./query-understanding";
 export type { ContextFrame } from "./query-understanding";
 
@@ -57,7 +57,7 @@ export type {
   WriteTimeStyle,
 } from "./ready-to-answer";
 
-// The agent loop's iteration budget — and the note that tells the model about
+// The agent loop's iteration budget: and the note that tells the model about
 // it, carried on every tool result (#558).
 export {
   MAX_AGENT_ITERATIONS,

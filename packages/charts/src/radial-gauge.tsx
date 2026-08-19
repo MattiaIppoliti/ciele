@@ -6,7 +6,7 @@ import { gaugeRingGeometry, ringDash } from "./gauge";
  * Concentric ring gauge: one ring per measured window, outermost first, with
  * free-form content in the middle.
  *
- * Hand-built SVG, no charting dependency, and server-component safe — no hooks,
+ * Hand-built SVG, no charting dependency, and server-component safe, no hooks,
  * no measurement, no animation. All the arithmetic lives in `gauge.ts`; this
  * file only turns it into elements.
  */
@@ -26,7 +26,7 @@ export interface RadialGaugeProps {
   strokeWidth?: number;
   /** Space between rings, px. */
   gap?: number;
-  /** Rendered centred inside the rings — typically the leading percentage. */
+  /** Rendered centred inside the rings, typically the leading percentage. */
   children?: ReactNode;
   className?: string;
 }

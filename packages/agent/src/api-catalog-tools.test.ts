@@ -233,7 +233,7 @@ describe("the Inbox card's quadruple", () => {
       (e) => e.type === "tool-end" && e.tool === "queryApi"
     ) as Extract<RuntimeEvent, { type: "tool-end" }>;
     expect(end.ok).toBe(true);
-    expect(end.summary).toBe("GET /tickets/8317/comments — 200");
+    expect(end.summary).toBe("GET /tickets/8317/comments, 200");
     expect(end.result).toMatchObject({
       endpoint: "Ticket comments",
       method: "GET",
@@ -251,7 +251,7 @@ describe("the Inbox card's quadruple", () => {
     const result = (await run(buildToolset(ctx), "queryApi", {
       path: "/tickets/8317/comments",
     })) as { status: number; ok: boolean; format: string; note: string };
-    // A non-JSON body is data, not an error — the model is told which it got.
+    // A non-JSON body is data, not an error, the model is told which it got.
     expect(result.status).toBe(500);
     expect(result.ok).toBe(false);
     expect(result.format).toBe("text");
@@ -294,7 +294,7 @@ describe("windowed reads of a large API response", () => {
     expect(queried.totalLength).toBe(BIG.length);
     expect(queried.handle).toBe("api_1");
     expect(queried.note).toMatch(/readApiResponse/);
-    // Too large to parse as one payload — the model is told it is a window.
+    // Too large to parse as one payload: the model is told it is a window.
     expect(queried.format).toBe("text");
 
     let from: number | null = 0;
@@ -319,7 +319,7 @@ describe("windowed reads of a large API response", () => {
     const missing = (await run(toolset, "readApiResponse", { handle: "api_9" })) as {
       error: string;
     };
-    expect(missing.error).toMatch(/query an endpoint first/);
+    expect(missing.error).toMatch(/Query an endpoint first/);
 
     egressFetchMock.mockResolvedValueOnce(response(BIG) as never);
     await run(toolset, "queryApi", { path: "/tickets/8317/comments" });

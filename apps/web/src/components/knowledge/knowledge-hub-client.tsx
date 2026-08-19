@@ -239,20 +239,21 @@ export function KnowledgeHubClient({
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold">
-            {TAB_TITLES[tab]}
-            <Badge variant="secondary">{tabSummaries[tab]?.total ?? 0}</Badge>
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
-            {TAB_INTROS[tab]}
-          </p>
-        </div>
-      </div>
+    <div className="flex h-full flex-col">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
+        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+          {TAB_TITLES[tab]}
+          <Badge variant="secondary">{tabSummaries[tab]?.total ?? 0}</Badge>
+        </h1>
+      </header>
+      <p className="text-muted-foreground max-w-3xl px-4 text-sm sm:px-6">
+        {TAB_INTROS[tab]}
+      </p>
 
-      <nav className="flex gap-1 border-b" aria-label="Knowledge tabs">
+      <nav
+        className="border-border mt-4 flex shrink-0 items-center gap-1 border-b px-4 sm:px-6"
+        aria-label="Library tabs"
+      >
         {KNOWLEDGE_TAB_SLUGS.map((slug) => {
           const summary = tabSummaries[slug];
           const health = summary ? tabHealth(summary.statusCounts) : null;
@@ -260,10 +261,10 @@ export function KnowledgeHubClient({
           return (
             <Link
               key={slug}
-              href={`/knowledge/${slug}`}
+              href={`/library/${slug}`}
               className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${
                 active
-                  ? "border-foreground font-medium"
+                  ? "border-primary text-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground border-transparent"
               }`}
             >
@@ -282,297 +283,299 @@ export function KnowledgeHubClient({
         })}
       </nav>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-72">
-          <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}...`}
-            className="pl-8"
-          />
-        </div>
-        <Select
-          value={filters.status}
-          onValueChange={(v) =>
-            apply({ status: (v ?? "") as "" | SourceStatus, page: 1 })
-          }
-        >
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">Any status</SelectItem>
-            <SelectItem value="ready">Ready</SelectItem>
-            <SelectItem value="processing">Processing</SelectItem>
-            <SelectItem value="error">Error</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={filters.assistant}
-          onValueChange={(v) => apply({ assistant: (v ?? "") as string, page: 1 })}
-        >
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Filter by assistant" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All assistants</SelectItem>
-            {assistants.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="ml-auto flex items-center gap-2">
-          {tab === "faqs" && (
-            <Button variant="outline" size="sm" onClick={exportFaqs}>
-              <Download className="mr-1.5 size-4" /> Export
-            </Button>
-          )}
-          {canEdit && tab === "faqs" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setAdding("faq-import")}
-            >
-              <Upload className="mr-1.5 size-4" /> Import
-            </Button>
-          )}
-          {canEdit && (
-            <Button
-              size="sm"
-              onClick={() =>
-                setAdding(
-                  tab === "websites" ? "website" : tab === "files" ? "file" : "faq"
-                )
-              }
-            >
-              <Plus className="mr-1.5 size-4" /> Add
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div
-        className={`overflow-x-auto rounded-lg border ${isPending ? "opacity-60" : ""}`}
-      >
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {tab === "faqs" ? (
-                <>
-                  <TableHead className="min-w-64">Question</TableHead>
-                  <TableHead className="min-w-64">Answer</TableHead>
-                </>
-              ) : (
-                <TableHead className="min-w-64">Name</TableHead>
-              )}
-              {tab === "websites" && <TableHead>Content</TableHead>}
-              <TableHead>Linked assistants</TableHead>
-              {tab === "files" && <TableHead>Direct access</TableHead>}
-              <TableHead>Created at</TableHead>
-              <TableHead>Last updated at</TableHead>
-              {tab !== "websites" && <TableHead>Status</TableHead>}
-              <TableHead className="w-24" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={8}
-                  className="text-muted-foreground h-24 text-center"
-                >
-                  Nothing here yet.
-                </TableCell>
-              </TableRow>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-72">
+            <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}...`}
+              className="pl-8"
+            />
+          </div>
+          <Select
+            value={filters.status}
+            onValueChange={(v) =>
+              apply({ status: (v ?? "") as "" | SourceStatus, page: 1 })
+            }
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Any status</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="processing">Processing</SelectItem>
+              <SelectItem value="error">Error</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.assistant}
+            onValueChange={(v) => apply({ assistant: (v ?? "") as string, page: 1 })}
+          >
+            <SelectTrigger className="w-52">
+              <SelectValue placeholder="Filter by assistant" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All assistants</SelectItem>
+              {assistants.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="ml-auto flex items-center gap-2">
+            {tab === "faqs" && (
+              <Button variant="outline" size="sm" onClick={exportFaqs}>
+                <Download className="mr-1.5 size-4" /> Export
+              </Button>
             )}
-            {items.map((item) => (
-              <TableRow key={item.id}>
+            {canEdit && tab === "faqs" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAdding("faq-import")}
+              >
+                <Upload className="mr-1.5 size-4" /> Import
+              </Button>
+            )}
+            {canEdit && (
+              <Button
+                size="sm"
+                onClick={() =>
+                  setAdding(
+                    tab === "websites" ? "website" : tab === "files" ? "file" : "faq"
+                  )
+                }
+              >
+                <Plus className="mr-1.5 size-4" /> Add
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div
+            className={`overflow-x-auto rounded-xl border ${isPending ? "opacity-60" : ""}`}
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {tab === "faqs" ? (
                   <>
-                    <TableCell className="max-w-80 align-top font-medium whitespace-normal">
-                      {item.name}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground max-w-96 align-top whitespace-normal">
-                      <span className="line-clamp-2">
-                        {item.answerPreview || "—"}
-                      </span>
-                    </TableCell>
+                    <TableHead className="min-w-64">Question</TableHead>
+                    <TableHead className="min-w-64">Answer</TableHead>
                   </>
                 ) : (
-                  <TableCell className="max-w-96">
-                    <span className="flex items-start gap-2">
-                      {item.kind === "website" ? (
-                        <Globe className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                      ) : item.kind === "url" ? (
-                        <List className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                      ) : item.kind === "faq" ? (
-                        <MessageCircleQuestion className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                      ) : (
-                        <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-                      )}
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">
-                          {item.name}
+                  <TableHead className="min-w-64">Name</TableHead>
+                )}
+                {tab === "websites" && <TableHead>Content</TableHead>}
+                <TableHead>Linked assistants</TableHead>
+                {tab === "files" && <TableHead>Direct access</TableHead>}
+                <TableHead>Created at</TableHead>
+                <TableHead>Last updated at</TableHead>
+                {tab !== "websites" && <TableHead>Status</TableHead>}
+                <TableHead className="w-24" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="text-muted-foreground h-24 text-center"
+                  >
+                    Nothing here yet.
+                  </TableCell>
+                </TableRow>
+              )}
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  {tab === "faqs" ? (
+                    <>
+                      <TableCell className="max-w-80 align-top font-medium whitespace-normal">
+                        {item.name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-96 align-top whitespace-normal">
+                        <span className="line-clamp-2">
+                          {item.answerPreview || "—"}
                         </span>
-                        {tab === "websites" && item.config.url && (
-                          <a
-                            href={item.config.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-                          >
-                            <span className="max-w-72 truncate">
-                              {item.config.url}
-                            </span>
-                            <ExternalLink className="size-3 shrink-0" />
-                          </a>
+                      </TableCell>
+                    </>
+                  ) : (
+                    <TableCell className="max-w-96">
+                      <span className="flex items-start gap-2">
+                        {item.kind === "website" ? (
+                          <Globe className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                        ) : item.kind === "url" ? (
+                          <List className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                        ) : item.kind === "faq" ? (
+                          <MessageCircleQuestion className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+                        ) : (
+                          <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                         )}
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">
+                            {item.name}
+                          </span>
+                          {tab === "websites" && item.config.url && (
+                            <a
+                              href={item.config.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                            >
+                              <span className="max-w-72 truncate">
+                                {item.config.url}
+                              </span>
+                              <ExternalLink className="size-3 shrink-0" />
+                            </a>
+                          )}
+                        </span>
                       </span>
-                    </span>
-                  </TableCell>
-                )}
-                {tab === "websites" && (
-                  <TableCell>
-                    <button
-                      type="button"
-                      onClick={() => setViewing(item)}
-                      className="text-primary font-medium hover:underline"
-                    >
-                      {item.conceptCount}{" "}
-                      {item.conceptCount === 1 ? "Page" : "Pages"}
-                    </button>
-                  </TableCell>
-                )}
-                <TableCell>
-                  <span className="flex items-center gap-1.5">
-                    <LinkedAssistantChips item={item} />
-                    {canEdit && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7"
-                        title="Manage linked assistants"
-                        onClick={() => setLinking(item)}
+                    </TableCell>
+                  )}
+                  {tab === "websites" && (
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => setViewing(item)}
+                        className="text-primary font-medium hover:underline"
                       >
-                        <Link2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </span>
-                </TableCell>
-                {tab === "files" && (
-                  <TableCell className="text-muted-foreground text-sm">
+                        {item.conceptCount}{" "}
+                        {item.conceptCount === 1 ? "Page" : "Pages"}
+                      </button>
+                    </TableCell>
+                  )}
+                  <TableCell>
                     <span className="flex items-center gap-1.5">
-                      {directAccessSummary(item.linkedAssistants)}
+                      <LinkedAssistantChips item={item} />
                       {canEdit && (
                         <Button
                           variant="ghost"
                           size="icon"
                           className="size-7"
-                          title={
-                            item.originalObjectPath
-                              ? "Manage direct access"
-                              : "No stored original — direct access unavailable"
-                          }
-                          onClick={() => setManagingAccess(item)}
+                          title="Manage linked assistants"
+                          onClick={() => setLinking(item)}
                         >
-                          <Pencil className="size-3.5" />
+                          <Link2 className="size-3.5" />
                         </Button>
                       )}
                     </span>
                   </TableCell>
-                )}
-                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                  {formatWhen(item.createdAt)}
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                  {formatWhen(item.updatedAt)}
-                </TableCell>
-                {tab !== "websites" && (
-                  <TableCell>
-                    <StatusBadge status={item.status} />
-                  </TableCell>
-                )}
-                <TableCell>
-                  <span className="flex justify-end gap-1">
-                    {tab === "files" && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={
-                          item.originalObjectPath
-                            ? "Download original"
-                            : "No stored original"
-                        }
-                        disabled={!item.originalObjectPath}
-                        onClick={() => downloadOriginal(item)}
-                      >
-                        <Download className="size-4" />
-                      </Button>
-                    )}
-                    {canEdit && (
-                      <>
-                        {tab === "faqs" && (
+                  {tab === "files" && (
+                    <TableCell className="text-muted-foreground text-sm">
+                      <span className="flex items-center gap-1.5">
+                        {directAccessSummary(item.linkedAssistants)}
+                        {canEdit && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            title="Edit FAQ"
-                            onClick={() => setEditingFaq(item)}
+                            className="size-7"
+                            title={
+                              item.originalObjectPath
+                                ? "Manage direct access"
+                                : "No stored original, direct access unavailable"
+                            }
+                            onClick={() => setManagingAccess(item)}
                           >
-                            <Pencil className="size-4" />
+                            <Pencil className="size-3.5" />
                           </Button>
                         )}
+                      </span>
+                    </TableCell>
+                  )}
+                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                    {formatWhen(item.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                    {formatWhen(item.updatedAt)}
+                  </TableCell>
+                  {tab !== "websites" && (
+                    <TableCell>
+                      <StatusBadge status={item.status} />
+                    </TableCell>
+                  )}
+                  <TableCell>
+                    <span className="flex justify-end gap-1">
+                      {tab === "files" && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Delete"
-                          onClick={() =>
-                            confirmDelete({
-                              title: `Delete “${item.name}”?`,
-                              description:
-                                "This removes it for every linked assistant at once, including its indexed content.",
-                              onConfirm: async () => {
-                                await deleteOrgSourceAction(item.id);
-                                toast.success("Deleted.");
-                                router.refresh();
-                              },
-                            })
+                          title={
+                            item.originalObjectPath
+                              ? "Download original"
+                              : "No stored original"
                           }
+                          disabled={!item.originalObjectPath}
+                          onClick={() => downloadOriginal(item)}
                         >
-                          <Trash2 className="size-4" />
+                          <Download className="size-4" />
                         </Button>
-                      </>
-                    )}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {pageCount > 1 && (
-        <div className="flex items-center justify-center gap-1">
-          {paginationRange(filters.page, pageCount).map((entry, i) =>
-            entry === "ellipsis" ? (
-              <span key={`e-${i}`} className="text-muted-foreground px-2">
-                …
-              </span>
-            ) : (
-              <Button
-                key={entry}
-                variant={entry === filters.page ? "default" : "outline"}
-                size="sm"
-                onClick={() => apply({ page: entry })}
-              >
-                {entry}
-              </Button>
-            )
-          )}
+                      )}
+                      {canEdit && (
+                        <>
+                          {tab === "faqs" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Edit FAQ"
+                              onClick={() => setEditingFaq(item)}
+                            >
+                              <Pencil className="size-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Delete"
+                            onClick={() =>
+                              confirmDelete({
+                                title: `Delete “${item.name}”?`,
+                                description:
+                                  "This removes it for every linked assistant at once, including its indexed content.",
+                                onConfirm: async () => {
+                                  await deleteOrgSourceAction(item.id);
+                                  toast.success("Deleted.");
+                                  router.refresh();
+                                },
+                              })
+                            }
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
+                        </>
+                      )}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
-      )}
+
+        {pageCount > 1 && (
+          <div className="flex items-center justify-center gap-1">
+            {paginationRange(filters.page, pageCount).map((entry, i) =>
+              entry === "ellipsis" ? (
+                <span key={`e-${i}`} className="text-muted-foreground px-2">
+                  …
+                </span>
+              ) : (
+                <Button
+                  key={entry}
+                  variant={entry === filters.page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => apply({ page: entry })}
+                >
+                  {entry}
+                </Button>
+              )
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Keyed by item so every open starts from fresh state. */}
       <ViewSourceDialog
@@ -636,7 +639,7 @@ function ViewSourceDialog({
     Array<{ id: string; title: string; path: string; resourceUrl: string | null }>
   >([]);
   // The dialog is remounted per item (keyed by the parent), so initial state
-  // is already fresh — the effect only fetches.
+  // is already fresh, the effect only fetches.
   const [loading, setLoading] = useState(item !== null);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);

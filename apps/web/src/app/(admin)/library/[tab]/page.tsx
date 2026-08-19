@@ -13,11 +13,11 @@ import {
 export const dynamic = "force-dynamic";
 
 /**
- * Org-level Knowledge hub (PRD #726): one tab per Source-kind bucket
+ * The org-level Library (PRD #726): one tab per Source-kind bucket
  * (Websites / Files / FAQs), every read org-scoped through the Db seam, all
  * filtering and pagination server-side via URL search params.
  */
-export default async function KnowledgeTabPage({
+export default async function LibraryTabPage({
   params,
   searchParams,
 }: {

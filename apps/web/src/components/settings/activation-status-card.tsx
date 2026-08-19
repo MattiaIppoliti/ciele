@@ -20,11 +20,11 @@ import type { ActivationState, SubscriptionState } from "@agent-hub/agent";
  *   paid     → the plan, and where to manage it
  *
  * The pending action is **self-serve wherever it can be**: paying is what
- * activation is derived from (`ee/activation.ts` — an `active` subscription IS an
+ * activation is derived from (`ee/activation.ts`, an `active` subscription IS an
  * active organization), so a card is the shortest path from this card to a
  * working assistant, and sales is the fallback rather than the gate. Where
- * nothing can be charged — the open-source edition, or a managed deployment with
- * no Stripe Price configured — the conversation is the only honest CTA, so the
+ * nothing can be charged, the open-source edition, or a managed deployment with
+ * no Stripe Price configured, the conversation is the only honest CTA, so the
  * caller passes `selfServe: false` and this card says so instead of offering a
  * button that lands on a contact form.
  *
@@ -145,7 +145,7 @@ export function ActivationStatusCard({
           {comped ? (
             "You are on an evaluation grant with the full managed experience and evaluation-sized limits."
           ) : (
-            // The plan is a slug, printed verbatim on purpose (#511) — but
+            // The plan is a slug, printed verbatim on purpose (#511), but
             // capitalized in a sentence, so it does not read as a typo.
             <>
               You are on the{" "}
@@ -173,7 +173,7 @@ export function ActivationStatusCard({
         <div className="flex flex-wrap items-center gap-3">
           {/* Conversion (#444): staff attach a hosted Checkout link once they
               and the customer have agreed a plan. Paying retires the comped
-              grant through the billing webhook — nothing to do here. */}
+              grant through the billing webhook, nothing to do here. */}
           {subscription.checkoutUrl && (
             <Button render={<a href={subscription.checkoutUrl} />}>
               Complete your subscription

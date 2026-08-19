@@ -4,7 +4,7 @@ import type { TurnTerminalStatus } from "@agent-hub/core";
 import type { RuntimeEvent } from "../types";
 
 /**
- * The terminal tool (#558). The model does not merely stop when it is done — it
+ * The terminal tool (#558). The model does not merely stop when it is done, it
  * DECLARES that it is done, and in what state. That declaration is what makes
  * two things possible that inference could not:
  *
@@ -26,7 +26,7 @@ export type TerminalStatus = TurnTerminalStatus;
 /** What the model declared, collected per turn. */
 export interface TerminalState {
   status: TerminalStatus | null;
-  /** Times the tool was called — more than once is a model error worth seeing. */
+  /** Times the tool was called, more than once is a model error worth seeing. */
   calls: number;
   /**
    * True when the model asked to clarify but the conversation had already
@@ -47,7 +47,7 @@ export interface WriteTimeStyle {
   /**
    * Whether an earlier turn in THIS conversation already asked a clarifying
    * question. The anti-loop guarantee: a Visitor who has already been asked to
-   * rephrase must not be asked again — that is a loop, and it reads as the
+   * rephrase must not be asked again; that is a loop, and it reads as the
    * assistant refusing to try. Derived from the persisted parts upstream.
    *
    * The model is also TOLD this in the gather prompt, so it usually never
@@ -84,12 +84,12 @@ export function writeTimeInstructions(
 /**
  * The tool itself. Its execute records the declaration and hands back the
  * write-time instructions; it performs no work, which is why it is safe to make
- * mandatory — a model can always afford to call it.
+ * mandatory, a model can always afford to call it.
  *
  * Deliberately NOT routed through the tool registry's `instrument` wrapper: it
  * spends no iteration (declaring you are done is not a step of work) and its
  * result is the write-time instruction text, which the model acts on rather
- * than reads as an outcome. It still emits the normal tool lifecycle (#574) —
+ * than reads as an outcome. It still emits the normal tool lifecycle (#574),
  * a `thought` would be hidden from Roles below the reasoning gate, and the
  * terminal declaration is operational fact every Inbox reader may see.
  */
@@ -145,7 +145,7 @@ export function readyToAnswerTool(
               : reClarifyBlocked
                 ? "Answering best-effort (already clarified once)"
                 : "Ready to answer",
-        // Structured so the fold — and the Inbox — read the FINAL status, after
+        // Structured so the fold: and the Inbox, read the FINAL status, after
         // the re-clarify coercion, not the raw declaration.
         result: { status: state.status },
         durationMs: 0,
@@ -177,7 +177,7 @@ function normalizeStatus(raw: unknown): TerminalStatus {
 }
 
 /**
- * The status the turn will write under. Normally the model's own declaration —
+ * The status the turn will write under. Normally the model's own declaration,
  * but phase 1 can end without one (the iteration budget ran out mid-gather), and
  * phase 2 must still run, because the alternative is an empty bubble.
  *

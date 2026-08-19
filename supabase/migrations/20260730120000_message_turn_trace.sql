@@ -3,7 +3,7 @@
 -- One nullable jsonb column rather than a child table: a transcript reads every
 -- message in one round-trip today, and a trace is only ever read with the
 -- message it belongs to. Null means "no agentic work" (a verbatim message, a
--- proactive Notification) or "written before traces were persisted" — the
+-- proactive Notification) or "written before traces were persisted", the
 -- transcript degrades to no panel either way.
 --
 -- The runtime caps and redacts the payload before it lands (see

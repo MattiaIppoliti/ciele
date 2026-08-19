@@ -13,7 +13,7 @@ import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { DOCS_REPO_URL } from '@/lib/repo';
 
 // Edit-on-GitHub base for doc pages, present only when this deployment declares
-// a repository — see `lib/repo.ts`. Undefined drops the "Open on GitHub" item
+// a repository, see `lib/repo.ts`. Undefined drops the "Open on GitHub" item
 // from the page-actions menu rather than linking to a guessed slug.
 const GITHUB_CONTENT_BASE = DOCS_REPO_URL
   ? `${DOCS_REPO_URL}/blob/main/apps/docs/content/docs`
@@ -29,7 +29,7 @@ export default async function Page(props: DocsPageProps) {
   if (!page) notFound();
 
   const MDX = page.data.body;
-  // The Markdown endpoints serve the English source only — they exist for agents
+  // The Markdown endpoints serve the English source only, they exist for agents
   // fetching canonical text, and a translated page is a generated artifact of
   // that source. `page.path` carries the locale suffix, so strip it.
   const englishUrl = page.url.replace(new RegExp(`^/${params.lang}(?=/|$)`), '') || '/';

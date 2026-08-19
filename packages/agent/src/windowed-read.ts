@@ -35,7 +35,7 @@ export interface ReadWindow {
  * {@link MAX_READ_WINDOW_CHARS}. Tolerates everything a model actually sends:
  * missing bounds (read from the start / to the window limit), a reversed range,
  * negatives, non-integers, and an offset past the end (which reads as an empty
- * window at the end rather than an error — there is genuinely nothing there).
+ * window at the end rather than an error; there is genuinely nothing there).
  */
 export function readWindow(
   text: string,
@@ -75,7 +75,7 @@ export function readWindowNote(window: ReadWindow, subject: string): string {
     return `Read all ${window.totalLength} characters of ${subject}.`;
   }
   if (window.nextFrom === null) {
-    return `Read characters ${window.from}-${window.to} of ${window.totalLength} — this is the end of ${subject}.`;
+    return `Read characters ${window.from}-${window.to} of ${window.totalLength}; this is the end of ${subject}.`;
   }
   return `Read characters ${window.from}-${window.to} of ${window.totalLength}. Read again from ${window.nextFrom} if you need more of ${subject}.`;
 }

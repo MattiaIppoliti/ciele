@@ -111,7 +111,7 @@ describe("channelAvailabilityNow", () => {
   });
 
   it("respects the channel's own timezone", () => {
-    // 23:00 UTC Sunday is 01:00 Monday in Rome (UTC+2 in July) — before opening.
+    // 23:00 UTC Sunday is 01:00 Monday in Rome (UTC+2 in July), before opening.
     const availability: ChannelAvailability = {
       mode: "limited",
       timezone: "Europe/Rome",

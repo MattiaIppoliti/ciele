@@ -1,7 +1,7 @@
 -- Provider connections: subscription reuse + BYOK hardening (ADR-0001).
 -- key_hint is a non-secret display suffix ("…abcd") so admins can tell keys
 -- apart without ever seeing the sealed secret. created_by (added in 0004,
--- never populated until now) records the connecting Member — subscription
+-- never populated until now) records the connecting Member, subscription
 -- connections are personal and resolve only for that Member, in Preview only.
 
 alter table public.provider_connections

@@ -15,7 +15,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@agent-hub/ui";
 
 /**
- * ExpandableScreen — a trigger element that morphs into a full-screen panel.
+ * ExpandableScreen: a trigger element that morphs into a full-screen panel.
  *
  * The trigger and the content share a `layoutId`, so Motion animates the
  * bounding box (position + size + radius) from the small trigger to the
@@ -51,7 +51,7 @@ export function ExpandableScreen({
 }: {
   children: ReactNode;
   /** Shared id used to morph the trigger into the content. Defaults to a
-   *  generated id — pass an explicit one only when it needs to be stable. */
+   *  generated id, pass an explicit one only when it needs to be stable. */
   layoutId?: string;
   /** Border radius of the collapsed trigger. */
   triggerRadius?: string;
@@ -121,7 +121,7 @@ export function ExpandableScreenContent({
   );
   const reduce = useReducedMotion();
 
-  // Portal to <body> so the panel escapes `.home-scene` — that scope hides the
+  // Portal to <body> so the panel escapes `.home-scene`, that scope hides the
   // native cursor, so an inline panel would show no cursor at all (the custom
   // home cursor sits below this overlay). SSR-safe portal gate (same pattern as
   // core/morphing-dialog.tsx): renders null on the server, hydrates without a

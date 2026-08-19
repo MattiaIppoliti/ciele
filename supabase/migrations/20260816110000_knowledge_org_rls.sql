@@ -3,7 +3,7 @@
 --
 -- Collections stop requiring an owning assistant (the per-org "Knowledge
 -- Library" default collection has none); the column itself survives until the
--- contract step (#733). The legacy assistant-routed policies stay — these
+-- contract step (#733). The legacy assistant-routed policies stay, these
 -- org-routed ones OR alongside them so org-owned rows (assistant_id null)
 -- are reachable by their organization's members. Reads are member-tier,
 -- writes editor-tier (rank 2), matching the collection policies rather than

@@ -2,7 +2,7 @@ import type { Assistant, Flow, Source } from "@agent-hub/core";
 
 /**
  * API resource projections (#620): what /api/v1 serves is a deliberate
- * subset of the row — the editable, client-safe fields. Internal wiring
+ * subset of the row, the editable, client-safe fields. Internal wiring
  * (tools config, style internals, model routing) stays out until a slice
  * decides to expose it on purpose.
  */
@@ -24,7 +24,7 @@ export function assistantResource(a: Assistant) {
   };
 }
 
-/** A Source's client-safe view — enough to poll `status` until it settles. */
+/** A Source's client-safe view, enough to poll `status` until it settles. */
 export function sourceResource(s: Source) {
   return {
     id: s.id,

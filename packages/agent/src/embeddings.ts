@@ -27,7 +27,7 @@ export function padEmbedding(vector: number[]): number[] {
  * Attribution for the AI usage ledger: every embedding call is a billable
  * model call, so callers say which org (and, when known, assistant /
  * conversation) it runs for. `null` is an explicit opt-out for contexts that
- * genuinely have no organization — not a default.
+ * genuinely have no organization, not a default.
  */
 export interface EmbeddingUsageContext {
   db: Db;
@@ -73,7 +73,7 @@ function embeddingModelForProvider(
  * The embedding model for a set of connections.
  *
  * An Organization can pick which connection embeds its knowledge (#437); when
- * it has, that choice is **authoritative** — if the chosen connection cannot
+ * it has, that choice is **authoritative**, if the chosen connection cannot
  * embed, retrieval falls back to lexical search rather than quietly embedding
  * with a different model. Mixing models inside one Knowledge Collection puts
  * chunks in incomparable vector spaces, which is the failure the picker
@@ -94,7 +94,7 @@ function getEmbeddingModel(
       : null;
     if (!resolved) {
       console.warn(
-        `[embeddings] chosen connection ${chosen.id} (${chosen.provider}) cannot embed — falling back to lexical search`
+        `[embeddings] chosen connection ${chosen.id} (${chosen.provider}) cannot embed, falling back to lexical search`
       );
     }
     return resolved;
@@ -160,7 +160,7 @@ function googleEmbedding(
 
 /**
  * OpenAI-compatible endpoint (#436): connection or OPENAI_COMPATIBLE_* env,
- * only when it declares an embedding model — a chat-only endpoint keeps the
+ * only when it declares an embedding model, a chat-only endpoint keeps the
  * lexical fallback. Last in the automatic order; an Organization that wants
  * its local model to embed picks the connection explicitly (#437).
  */
@@ -216,8 +216,8 @@ async function recordEmbedUsage(
 
 /**
  * A single-text embedder bound to one set of connections and one usage
- * attribution. Resolving the model — credential decrypt, provider client
- * construction — happens once, lazily, and is then reused for every call,
+ * attribution. Resolving the model, credential decrypt, provider client
+ * construction, happens once, lazily, and is then reused for every call,
  * so a turn that embeds N search queries pays the resolution once instead
  * of N times. `embedText` below is the one-shot convenience over it.
  */
@@ -249,8 +249,8 @@ export async function embedText(
 
 /**
  * How a batch embedding attempt ended. `no_model` is a configuration state
- * (no embedding-capable provider — lexical-only is expected); `error` is an
- * operational failure (provider call threw) that callers should surface —
+ * (no embedding-capable provider, lexical-only is expected); `error` is an
+ * operational failure (provider call threw) that callers should surface,
  * silently landing null embeddings hides knowledge from vector search (#312).
  */
 /**
@@ -281,7 +281,7 @@ export async function embedTextsWithStatus(
 
 /**
  * Which credential would answer an embedding call for these connections, in the
- * vocabulary the usage gate speaks — or null when nothing can embed. Resolving
+ * vocabulary the usage gate speaks, or null when nothing can embed. Resolving
  * the model is local work (no request), so this is cheap enough to ask before
  * deciding whether a batch is allowed to run.
  */

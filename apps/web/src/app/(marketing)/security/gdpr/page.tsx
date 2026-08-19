@@ -53,11 +53,11 @@ const SECTIONS: LegalSection[] = [
       },
       {
         type: "p",
-        text: "For account and website data — the name and email of a member, sign-in events, billing details, analytics about our own marketing site — Ciele is the controller.",
+        text: "Ciele is the controller for account and website data: the name and email of a member, sign-in events, billing details, analytics about our own marketing site.",
       },
       {
         type: "p",
-        text: "For the data flowing through your assistants — the knowledge you connect, the conversations your visitors have, any user data you import for personalization — your organization is the controller and Ciele is the processor acting on your instructions. You decide what is ingested, what is retained and for how long; we process it to deliver the service and for nothing else.",
+        text: "For the data flowing through your assistants, meaning the knowledge you connect, the conversations your visitors have and any user data you import for personalization, your organization is the controller and Ciele is the processor acting on your instructions. You decide what is ingested, what is retained and for how long; we process it to deliver the service and for nothing else.",
       },
     ],
   },
@@ -152,7 +152,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "If you are a member of a customer organization, or a visitor who chatted with one of its assistants, that organization is the controller — send the request to them, and they can act on it directly in the product. If a request reaches us first we will route it to them rather than act on their data unilaterally.",
+        text: "If you are a member of a customer organization, or a visitor who chatted with one of its assistants, that organization is the controller. Send the request to them, and they can act on it directly in the product. If a request reaches us first we will route it to them rather than act on their data unilaterally.",
       },
       {
         type: "p",
@@ -178,32 +178,32 @@ const SECTIONS: LegalSection[] = [
           <>
             <Link href="/policies/dpa" className={LINK_CLASS}>
               Data Processing Addendum
-            </Link>{" "}
-            — the processor terms, transfer mechanisms and subprocessor notice.
+            </Link>
+            . The processor terms, transfer mechanisms and subprocessor notice.
           </>,
           <>
             <Link href="/policies/subprocessors" className={LINK_CLASS}>
               Subprocessors
-            </Link>{" "}
-            — every provider that processes data on our instructions.
+            </Link>
+            . Every provider that processes data on our instructions.
           </>,
           <>
             <Link href="/policies/privacy" className={LINK_CLASS}>
               Privacy Policy
-            </Link>{" "}
-            — what we collect as a controller, and why.
+            </Link>
+            . What we collect as a controller, and why.
           </>,
           <>
             <Link href="/policies/cookies" className={LINK_CLASS}>
               Cookie Notice
-            </Link>{" "}
-            — every cookie, its purpose and its lifetime.
+            </Link>
+            . Every cookie, its purpose and its lifetime.
           </>,
           <>
             <Link href="/security" className={LINK_CLASS}>
               Security overview
-            </Link>{" "}
-            — the practices behind the measures listed above.
+            </Link>
+            . The practices behind the measures listed above.
           </>,
         ],
       },
@@ -241,7 +241,7 @@ export default function GdprPage() {
         <>
           How the General Data Protection Regulation applies to Ciele, which
           role we play for which data, and what a data protection officer needs
-          in order to sign us off. Where a certification is still in progress
+          to sign us off. Where a certification is still in progress
           this page says so rather than rounding up.
         </>
       }

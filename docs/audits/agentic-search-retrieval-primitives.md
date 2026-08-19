@@ -3,14 +3,14 @@
 Scope: verify, with file:line references, what part of the documented "Deep Search" /
 OKF-graph navigation design (`agents.md` §5, `CONTEXT.md` "Deep Search") is actually
 implemented in the runtime today, vs. documented-but-unbuilt. This is a facts-only audit
-(issue #54, under the design map #52) — no design decisions or recommendations.
+(issue #54, under the design map #52), no design decisions or recommendations.
 
 ## 1. Deep Search / OKF-graph navigation: not implemented
 
 `agents.md` §5 (lines 163–180) describes the Search-knowledge loop as:
 1. Retrieve candidate Concepts (vector + lexical fallback), optionally anchored to a
    Course/Collection via a Context Hint.
-2. **Optionally navigate the OKF graph (`index.md` → linked Concepts → Sources) — Deep
+2. **Optionally navigate the OKF graph (`index.md` → linked Concepts → Sources), Deep
    Search gives the loop more iterations/multi-hop** (knowledge-only, never the open web).
 3. Generate with native tool-use, cite Concept → Source.
 4. Emit Thinking Steps.
@@ -33,39 +33,39 @@ None of step 2 exists in code:
 - `db.searchChunks` (Supabase impl: `packages/db/src/supabase.ts:1555-1631`) runs the
   `match_chunks` RPC (lines 1584–1589) and, **only if that returns zero rows**, falls back to
   an `ilike` lexical search over `concept_chunks` (lines 1562–1581, invoked at line 1592).
-  Both paths are single-shot, single-collection, top-`k` queries — no traversal, no
+  Both paths are single-shot, single-collection, top-`k` queries, no traversal, no
   second-degree lookups.
 - `match_chunks` itself (`supabase/migrations/0005_knowledge.sql:97-119`) is a plain SQL
-  function: `order by cc.embedding <=> p_query_embedding limit p_match_count` — one cosine
+  function: `order by cc.embedding <=> p_query_embedding limit p_match_count`, one cosine
   ANN query, nothing graph-shaped. (Re-declared with a hardened `search_path` in
   `supabase/migrations/0024_backfill_fix_function_search_paths.sql`, same query body.)
 - The mock/offline engine's `searchChunks` (`packages/db/src/mock.ts:1778-1811`) is the
   demo-path equivalent: token-overlap scoring over in-memory chunks, sorted, sliced to
-  `limit` — also single-shot, no graph.
+  `limit`: also single-shot, no graph.
 - **No `index.md` handling exists anywhere.** `grep -rn "index.md"` across
   `apps/web/src` and `packages/db/src` returns zero matches. Concepts are never given an
   index/table-of-contents document, and nothing reads one.
 - **No concept-adjacency/link model exists.** `grep -rn "graph|adjacen|linkedConcept|conceptLink"`
   across the same trees returns zero matches (aside from an unrelated calendar-grid comment
   and a support-channel description string). `ConceptFrontmatter`
-  (`packages/db/src/types.ts:623-630`) has exactly five optional/required fields — `type`,
-  `title`, `description`, `resource`, `tags`, `timestamp` — no `links`/`related`/`seeAlso`
+  (`packages/db/src/types.ts:623-630`) has exactly five optional/required fields, `type`,
+  `title`, `description`, `resource`, `tags`, `timestamp`, no `links`/`related`/`seeAlso`
   field, and `Concept` (lines 633-648) carries only `path`, `frontmatter`, `body`; markdown
   links inside a Concept's `body` are literal text, never parsed or followed.
-- **No "Deep Search" toggle exists at all** — not a composer-mode flag, not an assistant
+- **No "Deep Search" toggle exists at all**: not a composer-mode flag, not an assistant
   setting, not a flow-action setting. `grep -rin "deep.search|deepSearch|composer.mode"`
   across `apps/web/src` returns zero matches. The term appears only in `agents.md` and
   `CONTEXT.md`; there is no code path, database column, or UI control it maps to.
 
 **Conclusion for Q1**: `searchKnowledge` is exactly the flat `match_chunks` cosine search +
-lexical fallback the issue hypothesized — nothing more. The OKF-graph navigation described
+lexical fallback the issue hypothesized, nothing more. The OKF-graph navigation described
 in `agents.md` §5 point 2 is 100% aspirational/documentation-only.
 
 ## 2. Iteration mechanics
 
 - The generative loop lives in `searchKnowledgeHandler`
   (`apps/web/src/lib/runtime/actions.ts:215-438`). The no-model branch (lines 230–281) does a
-  single non-agentic `searchKnowledge(message)` call and returns text — no loop at all.
+  single non-agentic `searchKnowledge(message)` call and returns text, no loop at all.
 - The model-driven branch calls `streamText` (lines 294–314) with:
   ```ts
   tools: buildToolset({ assistant, session, searchKnowledge, usedSources, emit, signal }),
@@ -82,23 +82,23 @@ in `agents.md` §5 point 2 is 100% aspirational/documentation-only.
   steps from the same 5-step budget as retrieval.
 - Realistic search count under the cap: at most **4 sequential `searchKnowledge` calls**
   followed by a final text-only step (5 steps total: search, search, search, search,
-  answer) — and only if the model makes no other tool calls that turn. In practice, fewer:
+  answer), and only if the model makes no other tool calls that turn. In practice, fewer:
   any `remember`/`calculator`/`fetchUrl` call, or a step where the model calls two tools
   that must run sequentially, eats into the same budget. Reasoning text emitted *before* a
   tool call in the same step does not cost an extra step (it is reclassified into a
   `thought` event, `actions.ts:328-333`), but a distinct model turn to decide "I need to
   search again" always does.
 - Reasoning/text produced after the step cap is hit but before any final answer text is
-  handled defensively, not structurally: `actions.ts:400-409` — "The step cap (stopWhen) can
-  cut the loop after a tool call, before any final text streamed — never leave the user with
-  an empty bubble" — falls back to a fixed "I couldn't find a reliable answer…" string. This
+  handled defensively, not structurally: `actions.ts:400-409`, "The step cap (stopWhen) can
+  cut the loop after a tool call, before any final text streamed, never leave the user with
+  an empty bubble", falls back to a fixed "I couldn't find a reliable answer…" string. This
   confirms the cap can truncate mid-loop with no guaranteed final synthesis step.
-- **Does the model reformulate on its own today?** Nothing prevents it — `searchKnowledge`
+- **Does the model reformulate on its own today?** Nothing prevents it, `searchKnowledge`
   is an ordinary tool the model can call more than once with a different `query` string
   inside the 5-step budget, and the system prompt (`buildSystemPrompt`, `actions.ts:41-82`,
   specifically line 76) only instructs: "call the searchKnowledge tool before answering
   questions that depend on organization-specific facts." There is no instruction to
-  decompose the query, evaluate what's already known, or search more than once — any
+  decompose the query, evaluate what's already known, or search more than once, any
   multi-call behavior is emergent from the base model's own tool-use judgment, not an
   engineered reformulation strategy. This matches the parent map's (#52) own verification
   baseline: "#1 iterative reasoning 🟡 emergent (no evaluate-what-I-know gate)" and "#5
@@ -106,7 +106,7 @@ in `agents.md` §5 point 2 is 100% aspirational/documentation-only.
 
 **Conclusion for Q2**: the cap is a flat, shared, whole-turn step budget (not a
 search-specific iteration counter), realistically allowing up to ~4 searches, with no
-built-in query decomposition, coverage tracking, or forced reformulation — whatever
+built-in query decomposition, coverage tracking, or forced reformulation, whatever
 multi-search behavior appears is incidental to general tool-calling, not a designed loop.
 
 ## 3. What a reformulation strategy would have to work with today
@@ -118,17 +118,17 @@ exists right now:
   has no relation field. Nothing in the ingestion pipeline
   (`apps/web/src/lib/runtime/ingest.ts`) writes cross-concept links; the LLM-drafted concept
   schema (`CONCEPT_SCHEMA`, `ingest.ts:27-45`) asks only for `path`, `type`, `title`,
-  `description`, `tags`, `body` — no `links`/`seeAlso` field is requested or stored.
+  `description`, `tags`, `body`, no `links`/`seeAlso` field is requested or stored.
 - **Collection structure**: shallow. A Concept has a `collectionId` and a `path`
   (`types.ts:633-648`), and `path` is a flat, disambiguated filename
   (`ingest.ts:399-401`: `web/${slugify(page.title)}.md`, de-duped with a numeric suffix on
-  collision) — not a directory hierarchy with semantic meaning. `listConcepts(collectionId)`
+  collision), not a directory hierarchy with semantic meaning. `listConcepts(collectionId)`
   and `getConcept(id)` (`packages/db/src/types.ts:1265-1267`) exist as generic CRUD, but a
   `grep` for their call sites shows they're used only by admin knowledge-editor pages/actions
   (`apps/web/src/app/actions.ts`, `apps/web/src/app/(admin)/assistants/[id]/page.tsx`) and a
-  verifier/tests — never by the retrieval loop.
+  verifier/tests, never by the retrieval loop.
 - **Adjacency / graph traversal primitives**: none exist at the `Db` interface level. There
-  is no `getRelatedConcepts`, `getConceptsByPath`, or `listChunksNear` method — retrieval has
+  is no `getRelatedConcepts`, `getConceptsByPath`, or `listChunksNear` method, retrieval has
   exactly one entry point, `searchChunks(assistantId, collectionId, {embedding, text, limit})`
   (`packages/db/src/types.ts:1295` for the interface; Supabase impl at
   `packages/db/src/supabase.ts:1555`; mock at `packages/db/src/mock.ts:1778`).
@@ -136,12 +136,12 @@ exists right now:
   `index.md`, no frontmatter field marks a Concept as an index/summary node, and nothing
   reads a document expecting that convention. This is purely a documentation phrase in
   `agents.md` §5 and ADR-0002 (`docs/adr/0002-knowledge-as-okf-bundles.md:5`, "its `index.md`
-  progressive-disclosure convention matches how the agent loop navigates knowledge" — an
+  progressive-disclosure convention matches how the agent loop navigates knowledge", an
   aspirational rationale, not a built behavior).
 - **What a reformulation strategy *could* reuse as-is**: the `searchKnowledge` tool already
   accepts an arbitrary free-text `query` per call (`tools.ts:166`), so a model- or
   code-driven reformulation could already issue different query strings against the same flat
-  index without any new retrieval primitive — it would just be repeated flat search, not
+  index without any new retrieval primitive; it would just be repeated flat search, not
   graph-aware multi-hop. `usedSources` collection + `dedupSources()`
   (`actions.ts:84-98`) already dedups and caps citations across multiple calls within a turn,
   so citation plumbing for a multi-search loop is in place even though the search itself
@@ -150,7 +150,7 @@ exists right now:
 **Conclusion for Q3**: a reformulating, graph-aware search would need to be built from
 scratch on: (a) a concept-link/adjacency model (none exists in frontmatter, storage, or the
 `Db` interface), (b) an `index.md`-equivalent entry-point convention (none exists), and (c) a
-retrieval primitive beyond "top-k over one flat embedding index" (none exists — one RPC,
+retrieval primitive beyond "top-k over one flat embedding index" (none exists, one RPC,
 one fallback). The only reusable pieces are the tool-calling seam itself (a tool can be
 called repeatedly with different query text) and the source-collection/dedup plumbing
 downstream of retrieval.
@@ -165,7 +165,7 @@ downstream of retrieval.
 | Agent loop with tool-calling, ≤5 total steps (shared across all tools) | **Real** | `apps/web/src/lib/runtime/actions.ts:293-314` |
 | Model-driven repeat search with different query text | **Real but emergent** (not engineered) | `apps/web/src/lib/runtime/tools.ts:162-193`; system prompt `actions.ts:76` gives no reformulation instruction |
 | Query decomposition / "evaluate what I know" gate | **Not implemented** | no code found |
-| OKF graph navigation (`index.md` → linked Concepts → Sources) | **Not implemented — documentation only** | zero matches for `index.md`/graph/adjacency in `apps/web/src`, `packages/db/src`; `agents.md:174-176`, `CONTEXT.md:55-56` |
+| OKF graph navigation (`index.md` → linked Concepts → Sources) | **Not implemented, documentation only** | zero matches for `index.md`/graph/adjacency in `apps/web/src`, `packages/db/src`; `agents.md:174-176`, `CONTEXT.md:55-56` |
 | Concept-to-concept links in frontmatter/storage | **Not implemented** | `packages/db/src/types.ts:623-630, 633-648` |
 | "Deep Search" composer-mode toggle | **Not implemented** | zero matches for `deep.search`/`composer.mode` in `apps/web/src` |
 | Forced/bounded reformulation strategy (e.g. a distinct "6-iteration" loop) | **Not implemented** | the only cap is the shared 5-step `stopWhen`, not a search-specific iteration count |

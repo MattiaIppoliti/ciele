@@ -1,4 +1,4 @@
-/** Plain column formatting — human default; `--json` bypasses this. */
+/** Plain column formatting, human default; `--json` bypasses this. */
 export function table(
   rows: ReadonlyArray<object>,
   columns: Array<{ key: string; header: string }>

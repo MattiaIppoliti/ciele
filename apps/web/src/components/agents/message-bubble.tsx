@@ -252,7 +252,7 @@ export function MessageBubbleContent({
     >;
 
     // Standard forwarded-ref merge: the child's own ref is only ever read
-    // inside the ref callback, at commit time — the rule can't see that.
+    // inside the ref callback, at commit time, the rule can't see that.
     // eslint-disable-next-line react-hooks/refs -- commit-time read of the render-prop element's ref
     return cloneElement(child, {
       ...props,

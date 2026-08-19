@@ -5,7 +5,7 @@ import { requireMember } from "@/lib/authz";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 
 /**
- * Open Stripe's Customer Portal — where an existing subscriber changes tier,
+ * Open Stripe's Customer Portal: where an existing subscriber changes tier,
  * updates a card or cancels (#511). Falls back to the conversation when there is
  * no Stripe customer to open it for, and to this page with a notice when Stripe
  * itself fails.
@@ -32,7 +32,7 @@ export async function openBillingPortalAction(): Promise<void> {
  * The whole action is a redirect: to Stripe when a session could be created, and
  * to the contact path when this deployment cannot sell that tier (open source, an
  * unconfigured Price, a sales-led tier). Never a thrown error the admin has to
- * interpret — a failed Stripe call lands back on this page with a notice, because
+ * interpret, a failed Stripe call lands back on this page with a notice, because
  * "we could not start checkout, here is a human" beats an error boundary.
  *
  * `manageMembers` is the same capability that gates the billing page itself.

@@ -51,7 +51,7 @@ import { CRAWL_FINALIZE_LEASE_MS, beginWebsiteCrawl, finalizeWebsiteCrawl, resta
  * safety) are covered by the provider-specific suites from #103–#109. This suite
  * is the capstone: it drives the three providers through the *one* public crawl
  * lifecycle and asserts the user-visible outcome for each success path, each
- * failure mode, and the concurrent-finalizer contract — the matrix-level cover
+ * failure mode, and the concurrent-finalizer contract, the matrix-level cover
  * those focused suites do not each repeat.
  */
 describe("Website crawler provider matrix", () => {
@@ -220,7 +220,7 @@ describe("Website crawler provider matrix", () => {
       expect(mid?.config.crawlEscalated).toBe(true);
       expect(mid?.config.crawlRunId).toBe("task-esc");
       expect(await db.listConcepts(collectionId)).toHaveLength(0);
-      // A retry — not a failure: no crawl Alert is raised.
+      // A retry, not a failure: no crawl Alert is raised.
       const alerts = await db.listAlerts(DEMO_ORG.id);
       expect(alerts.some((a) => a.sourceKey === `website-source:${source.id}`)).toBe(false);
 
@@ -361,7 +361,7 @@ describe("Website crawler provider matrix", () => {
       const db = getMockDb();
       const { assistantId, collectionId, source } = await beginCrawl4ai(db, "fail-malformed");
       // The real mapCrawl4aiPages runs: worker-failed and shapeless items are
-      // dropped, leaving nothing usable — treated as an error, never a success.
+      // dropped, leaving nothing usable, treated as an error, never a success.
       getCrawl4aiTaskMock.mockResolvedValue({
         status: "COMPLETED",
         results: [
@@ -455,7 +455,7 @@ describe("Website crawler provider matrix", () => {
   it("concurrent client poll and cron finalization ingest a crawl exactly once", async () => {
     // The real production race: the cron atomically claims a batch under its own
     // worker id and finalizes with that lease, while a still-open Knowledge tab
-    // polls the same Source. Only the lease holder may ingest — no duplicate
+    // polls the same Source. Only the lease holder may ingest, no duplicate
     // Concepts, no double status flip.
     const db = getMockDb();
     const { assistantId, collectionId, source } = await seed(db, "concurrent", {

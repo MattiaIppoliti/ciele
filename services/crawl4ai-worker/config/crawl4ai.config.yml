@@ -3,7 +3,7 @@
 # This file is mounted read-only at /app/config.yml and COMPLETELY replaces the
 # image default, so it is kept as a full config. It is a copy of the pinned
 # image's default (unclecode/crawl4ai:0.9.1) with only the changes noted inline
-# with "Ciele:" — everything else is upstream default and must stay complete for
+# with "Ciele:", everything else is upstream default and must stay complete for
 # the server to boot.
 #
 # The worker exposes only what the Ciele adapter (apps/web/src/lib/runtime/
@@ -19,7 +19,7 @@ app:
   version: "1.0.0"
   # Ciele: bind 0.0.0.0 so the managed container / Docker network can reach the
   # server. A non-loopback bind makes the image's startup auth guard REFUSE to
-  # start unless CRAWL4AI_API_TOKEN (or JWT) is set — which is exactly what we
+  # start unless CRAWL4AI_API_TOKEN (or JWT) is set, which is exactly what we
   # want: no token, no boot.
   host: "0.0.0.0"
   port: 11235
@@ -58,7 +58,7 @@ limits:
   wall_clock_s: 600         # Ciele: 10 min per-crawl deadline (504) so a stuck crawl cannot run forever
   queue:                    # background job queue for /crawl/job
     maxsize: 1000           # max queued jobs (503 when full)
-    workers: 2              # Ciele: low concurrency for a small pilot — bound browser fan-out
+    workers: 2              # Ciele: low concurrency for a small pilot, bound browser fan-out
     per_principal: 4        # Ciele: max concurrent jobs per caller (429 over cap)
 
 # Rate Limiting Configuration
@@ -69,7 +69,7 @@ rate_limiting:
   storage_uri: "redis://localhost:6379"  # Ciele: durable rate-limit store (the bundled Redis), per upstream production guidance
 
 # Security Configuration
-# Ciele: auth is the static operator token. jwt_enabled stays false — the Ciele
+# Ciele: auth is the static operator token. jwt_enabled stays false, the Ciele
 # adapter sends a static `Authorization: Bearer <CRAWL4AI_API_TOKEN>`, which the
 # AuthGateMiddleware constant-time-compares and grants admin scope. The token
 # itself is injected at runtime via the CRAWL4AI_API_TOKEN env var, never here.

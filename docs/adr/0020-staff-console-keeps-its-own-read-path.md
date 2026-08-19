@@ -10,7 +10,7 @@ proposal is not made a third time, and so the *real* problem it identified still
 ## Context
 
 The staff console is an enterprise-edition app, outside the open-source distribution. It reads
-through a Supabase **service-role** client, which bypasses RLS entirely — that is what lets it
+through a Supabase **service-role** client, which bypasses RLS entirely; that is what lets it
 see every organization instead of one. Its CLAUDE.md states the consequence bluntly:
 
 > `packages/db` is intentionally **not** a dependency. Do not add it. Its whole contract is
@@ -19,8 +19,8 @@ see every organization instead of one. Its CLAUDE.md states the consequence blun
 The review's observation was nonetheless real and worth acting on: **the 94-case `Db`
 contract suite covers none of the staff console's queries**, because none of them go through
 `Db`. Nothing in `platform-data.ts`, `billing-data.ts` or `session.ts` had a test at all. The
-two cross-org aggregate views those reads depend on — defined in the enterprise migration chain,
-not the open-source one — are `revoke`d from anon/authenticated, so no RLS test touches them
+two cross-org aggregate views those reads depend on, defined in the enterprise migration chain,
+not the open-source one, are `revoke`d from anon/authenticated, so no RLS test touches them
 either. A migration renaming a column in either view would produce blank fields
 on every admin page with nothing failing anywhere.
 
@@ -32,7 +32,7 @@ on every admin page with nothing failing anywhere.
    includes "every read is org-scoped and RLS enforces the boundary". Under the service role
    that is false. A reader seeing `db.listMembers(orgId)` in an admin page would reasonably
    conclude tenant isolation was protecting them. Nothing in the *type* stops
-   `createSupabaseDb(serviceClient)` — the seam's meaning is what forbids it, and meaning is
+   `createSupabaseDb(serviceClient)`: the seam's meaning is what forbids it, and meaning is
    part of an interface.
 2. **Most admin reads have no `Db` shape anyway.** `listOrgOverviews`, `getPlatformTotals` and
    `getUsageWindow` read *across all orgs in one query* through the aggregate views. `Db` has
@@ -41,7 +41,7 @@ on every admin page with nothing failing anywhere.
 
 **Instead, give the console's own SQL a test against the real schema.** `@agent-hub/db` now
 publishes its PGlite harness as a **test-only** subpath, `@agent-hub/db/testing`
-(`createSchemaLoadedPglite` — an in-process Postgres with the real migration chain applied).
+(`createSchemaLoadedPglite`, an in-process Postgres with the real migration chain applied).
 The console takes `@agent-hub/db` as a **devDependency only**, and
 `platform-data.views.test.ts` asserts that the two views expose exactly the columns the console
 maps, and that the counts they compute are right.
@@ -57,7 +57,7 @@ from a test.
 
 ## Consequences
 
-- The drift that would have shipped silently — a renamed view column — now fails in CI, on the
+- The drift that would have shipped silently, a renamed view column, now fails in CI, on the
   real migrations.
 - The console keeps one obvious property: **every query in it is visibly service-role**. There
   is no path where a reader has to know which client backs a call.

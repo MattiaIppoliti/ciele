@@ -36,7 +36,7 @@ describe("selfHostInstallCommand", () => {
     // Plaintext on a real host, and credentials that would land in history.
     expect(() => selfHostInstallCommand("http://ciele.example.com")).toThrow();
     expect(() => selfHostInstallCommand("https://u:p@ciele.example.com")).toThrow();
-    // Loopback over http is the one exception — that is a local dev server.
+    // Loopback over http is the one exception; that is a local dev server.
     expect(selfHostInstallCommand("http://localhost:3000")).toBe(
       `curl -fsSL http://localhost:3000${INSTALL_SCRIPT_PATH} | sh`
     );
@@ -144,7 +144,7 @@ describe("the bootstrap.sh contract", () => {
 
   it("still cannot be piped, which is why the installer clones first", () => {
     // If this ever stops being true, bootstrap.sh has become pipe-safe and this
-    // whole module is redundant — that is a deliberate decision, not a silent
+    // whole module is redundant; that is a deliberate decision, not a silent
     // drift, so it should break here.
     expect(bootstrap).toContain('cd "$(cd "$(dirname "$0")" && pwd)"');
     expect(bootstrap).toContain(".env.example");

@@ -5,7 +5,7 @@
 > route, the `local-connector-pkg.yml` + `local-connector-windows.yml` release
 > workflows, their build scripts, and the `CIELE_CONNECTOR_PKG_URL` /
 > `CIELE_CONNECTOR_WINDOWS_URL` config) has been removed. Members now pair the
-> Ciele Connector solely through **Authorize from Terminal** — the one-line
+> Ciele Connector solely through **Authorize from Terminal**, the one-line
 > `curl … | sh` / `irm … | iex` installer served by
 > `/api/local-connector/install/{sh,ps1}`, which downloads the same secret-free
 > runtime from `/api/local-connector/runtime`. The runtime, loopback pairing,
@@ -21,7 +21,7 @@ described below. In direct development mode, the `Connect` menu lists
 heading and opens a Ciele popup that supervises the official provider CLI login.
 
 This decision keeps subscription authentication owned by the official provider
-CLIs (Codex CLI or Claude Code), not by Ciele's Vercel AI SDK API clients — the
+CLIs (Codex CLI or Claude Code), not by Ciele's Vercel AI SDK API clients, the
 same local-process boundary other coding tools that support subscription sign-in
 use. No private OAuth endpoints are invented; the CLIs' own login flows are the
 only authentication surface.
@@ -42,10 +42,10 @@ conditions hold:
    their own sign-in to be used, and a second opt-in flag only produced silent
    "no AI provider credential" fallbacks. The variable survives as an opt-out
    for reproducing hosted behaviour locally.
-3. Ciele is opened through a loopback host — `localhost`, any `*.localhost`
+3. Ciele is opened through a loopback host, `localhost`, any `*.localhost`
    label, `127.0.0.1`, or `::1`, with or without a port. Both data layers
-   qualify — the in-memory demo db and a locally-run
-   Supabase-backed instance with real Organization members — because the API
+   qualify, the in-memory demo db and a locally-run
+   Supabase-backed instance with real Organization members, because the API
    route still requires a signed-in Member of an Organization that enabled
    personal subscriptions, and the loopback restriction keeps a machine-global
    CLI identity from crossing to remote users.
@@ -60,7 +60,7 @@ The executable paths can be overridden with `CODEX_CLI_PATH` and
 The direct path spawns the CLI without a shell on every platform. POSIX keeps
 `/usr/bin/env` as the launcher so a bare command still resolves through the
 sanitized PATH; Windows has no such launcher, so the CLI is resolved to an
-absolute runnable path first — `.exe` directly, an npm `.cmd` shim through the
+absolute runnable path first, `.exe` directly, an npm `.cmd` shim through the
 JS entrypoint it names (run under Ciele's own Node binary), and `.ps1`/`.bat`
 not at all, since executing those would require a shell and an execution-policy
 bypass. This mirrors the resolution the shipped connector already performs on
@@ -164,8 +164,8 @@ provider tokens and therefore remains visible in the connector-local totals.
 Because provider login status can be stale, Ciele runs one minimal
 default-model inference probe before advertising the local capability; a
 failing provider is excluded so another verified personal subscription can
-answer the same Preview turn. The verdict is cached asymmetrically — a ready
-provider for minutes, a refusal for seconds — so completing the terminal login
+answer the same Preview turn. The verdict is cached asymmetrically, a ready
+provider for minutes, a refusal for seconds, so completing the terminal login
 after the server started takes effect on the next turn instead of requiring a
 restart.
 

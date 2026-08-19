@@ -3,7 +3,7 @@
  *
  * `DOCS_REPO_URL` has **no baked-in default**: a repository slug belongs to
  * whoever deploys these docs, not to the code, so hardcoding one would ship a
- * specific owner's slug into every fork and into the public mirror — which the
+ * specific owner's slug into every fork and into the public mirror, which the
  * `personal-github-slug` deny token in `scripts/mirror-gate` fails the release
  * on. Set `NEXT_PUBLIC_DOCS_REPO_URL` to this deployment's repository and the
  * sidebar GitHub button plus the per-page "Edit this page" action appear; leave

@@ -1,5 +1,5 @@
 "use client";
-// motion-primitives Cursor — a custom cursor that follows the pointer with a
+// motion-primitives Cursor, a custom cursor that follows the pointer with a
 // spring. https://motion-primitives.com
 
 import {
@@ -29,7 +29,7 @@ export type CursorProps = {
   /**
    * Controlled visibility. When provided, the caller owns whether the cursor
    * shows, and the internal parent `mouseenter`/`mouseleave` toggling is
-   * bypassed — this avoids the cursor getting stuck hidden after a portaled
+   * bypassed, this avoids the cursor getting stuck hidden after a portaled
    * overlay (dialog) steals the pointer, or on first paint when the pointer is
    * already inside the parent and no `mouseenter` ever fires.
    */
@@ -86,7 +86,7 @@ export function Cursor({
 
   useEffect(() => {
     // When visibility is controlled by the caller, don't wire the parent
-    // hover listeners — the caller decides when the cursor shows.
+    // hover listeners, the caller decides when the cursor shows.
     if (!attachToParent || controlled) return;
     const parent = cursorRef.current?.parentElement;
     if (!parent) return;

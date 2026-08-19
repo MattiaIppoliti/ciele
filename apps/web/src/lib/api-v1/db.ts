@@ -6,7 +6,7 @@ let apiV1Db: Db | null = null;
 /**
  * The raw Db behind /api/v1 key authentication (#619). Key requests carry no
  * Supabase session, so this is a service-role client (same construction as
- * the widget's, see `widget-db.ts`) — which is exactly why route handlers
+ * the widget's, see `widget-db.ts`), which is exactly why route handlers
  * never touch it directly: they get the org-pinned wrapper from
  * `resolveApiKeyContext`, and only the auth seam reads this one (key lookup
  * + last-used stamp). Falls back to the in-memory demo store, so /api/v1

@@ -95,7 +95,7 @@ export function AlertsList({
           </div>
         ) : (
           // Five columns need ~800px. Below `lg` each alert becomes a stacked
-          // card instead — the column header disappears with the columns, and
+          // card instead, the column header disappears with the columns, and
           // the two timestamps carry their own labels once they no longer sit
           // under one. `lg:contents` lets the mobile grouping wrapper vanish so
           // the same cells drop straight into the grid.

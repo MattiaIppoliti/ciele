@@ -4,7 +4,7 @@ import { runDueAgenticOps } from "@agent-hub/agent";
 
 /**
  * Nightly agentic-ops tick (spec: scheduled golden-question checks feeding
- * Alerts). Auth-and-serialize only — the batch size and the
+ * Alerts). Auth-and-serialize only, the batch size and the
  * goals → verification → trust → compost sequencing are policy and live in
  * the runtime's `runDueAgenticOps` drain (packages/agent/src/scheduled.ts),
  * where they are testable without a request. Protected by CRON_SECRET like

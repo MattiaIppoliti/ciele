@@ -21,7 +21,7 @@ import {
  * What Stripe knows, on the Billing tab: when the next invoice falls due and for
  * how much, the card it will hit, and the invoices already issued.
  *
- * Every change to any of it — card, tier, cancellation — is a Customer Portal
+ * Every change to any of it: card, tier, cancellation, is a Customer Portal
  * action, so this card reads and links out rather than offering forms Stripe
  * would have to be told about twice.
  */
@@ -48,7 +48,7 @@ export function BillingAccountCard({
       <Card className="mt-4">
         <CardHeader className="flex-row items-center justify-between gap-4">
           <CardTitle>Payment method</CardTitle>
-          {/* The portal is where a card is replaced — we never see one. */}
+          {/* The portal is where a card is replaced; we never see one. */}
           <form action={openBillingPortalAction}>
             <Button type="submit" variant="outline" size="sm">
               Update in Stripe
@@ -159,5 +159,5 @@ function Field({
   );
 }
 
-/* Date, money and status formatting live in `@/lib/billing-account-view` — a
+/* Date, money and status formatting live in `@/lib/billing-account-view`, a
    plain module, so the rules a billing table is read through have tests. */

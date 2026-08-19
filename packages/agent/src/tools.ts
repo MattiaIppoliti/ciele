@@ -35,13 +35,13 @@ import {
 } from "./api-catalog-tools";
 
 /**
- * Runtime Tool Registry — the pluggable tool surface of the agent loop
+ * Runtime Tool Registry: the pluggable tool surface of the agent loop
  * (tau-style "tools"). A tool is a spec: name, description, zod input schema,
  * a human-readable step label, and an execute. `buildToolset` assembles the
  * turn's ToolSet from the built-ins (gated per assistant via
  * `assistant.tools.builtIns`), the assistant's API catalogue integration when
  * one is registered, and the windowed knowledge reader when a document reader is
- * wired — wrapping every execute with the tool-start/tool-end lifecycle events,
+ * wired, wrapping every execute with the tool-start/tool-end lifecycle events,
  * so a new tool gets structured Thinking-panel progress, and (when the
  * assistant's Simplified thinking toggle is on) a user-facing narration line,
  * for free. The one exception is `searchKnowledge`, whose lifecycle (and error
@@ -63,13 +63,13 @@ export interface ToolRuntimeContext {
   toolSubject?: ToolSubject;
   /**
    * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
-   * reader. A port rather than a `Db` handle, like `searchKnowledge` — absent
+   * reader. A port rather than a `Db` handle, like `searchKnowledge`, absent
    * leaves the reader unregistered (nothing to read from).
    */
   readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
   /**
    * The Assistant's API catalogue integration (spec #559), credential still
-   * sealed. Absent/empty leaves the three catalogue tools unregistered — an
+   * sealed. Absent/empty leaves the three catalogue tools unregistered, an
    * assistant with no integration should not be told an API exists.
    */
   apiIntegration?: ApiIntegration | null;
@@ -98,7 +98,7 @@ export interface ToolRuntimeContext {
    * would otherwise read the same ledger length and jointly overshoot the
    * budget; this synchronous claim (single-threaded JS: incremented before any
    * await) is what makes the ceiling hold across them. Lazily initialized by
-   * the search tool — absent means no batch is in flight.
+   * the search tool, absent means no batch is in flight.
    */
   pendingSearchPasses?: { count: number };
   /**
@@ -118,14 +118,14 @@ export interface ToolRuntimeContext {
   /**
    * Simplified thinking (#560). Present = the assistant's toggle is on: every
    * tool's input schema grows an optional `progress` line, and whatever the model
-   * writes there is handed here before the call runs — the runtime turns it into
+   * writes there is handed here before the call runs, the runtime turns it into
    * a streamed, persisted reply part. Absent = the toggle is off, and neither the
    * schema field nor the narration exists.
    *
    * A callback rather than a boolean because the *collector* belongs to the turn
    * (agentic-search/run.ts), which owns the reply parts; the registry only knows
    * when a phase starts. `tool` names the phase being narrated (the registry
-   * tool name), so the persisted part can say *which* phase a line belongs to —
+   * tool name), so the persisted part can say *which* phase a line belongs to,
    * export and analytics separate an API-catalogue line from a search line
    * (#576).
    */
@@ -151,7 +151,7 @@ export interface RuntimeToolSpec {
 const FETCH_TIMEOUT_MS = 10_000;
 const FETCH_MAX_CHARS = 6_000;
 const FETCH_MAX_RESPONSE_BYTES = 1024 * 1024;
-/** One message for every egress-policy block — "blocked" must be indistinguishable from "down". */
+/** One message for every egress-policy block, "blocked" must be indistinguishable from "down". */
 const EGRESS_BLOCKED_MESSAGE = "This host is not reachable from the assistant";
 
 const searchMemoriesSpec: RuntimeToolSpec = {
@@ -187,7 +187,7 @@ const PROGRESS_FIELD = z
 /**
  * Splits a tool call's arguments into the narration line and the arguments the
  * tool itself was defined with. Stripping matters: `progress` is display copy, and
- * a tool that forwards its arguments — `queryApi` puts them on the request —
+ * a tool that forwards its arguments, `queryApi` puts them on the request,
  * would otherwise send the narration to the tenant's API as a parameter.
  */
 function takeProgress(input: Record<string, unknown>): {
@@ -218,8 +218,8 @@ function htmlToText(html: string): string {
 /**
  * The searchKnowledge tool is deliberately NOT routed through `instrument`:
  * its lifecycle events, ledger record, coverage verdict and budget gate all
- * live in the shared search-pass primitive (agentic-search/, #204) — the
- * same code the deterministic seed loop runs — so seeded and model-driven
+ * live in the shared search-pass primitive (agentic-search/, #204), the
+ * same code the deterministic seed loop runs, so seeded and model-driven
  * passes cannot drift. This adapter only maps the model's input and the
  * primitive's outcome to the model-facing return shape.
  */
@@ -253,17 +253,17 @@ export function normalizeSearchQueries(input: {
 function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
   return tool({
     description:
-      "Search the assistant's knowledge base for facts relevant to the user's question. Pass several queries at once when a question has several parts — they run together and cost one iteration.",
+      "Search the assistant's knowledge base for facts relevant to the user's question. Pass several queries at once when a question has several parts; they run together and cost one iteration.",
     // Both shapes are accepted on purpose. Schema validation runs BEFORE
-    // execute, so a model that sends the single-query form — a stale cached
-    // prompt, or just a model that ignores the array — would otherwise spend a
+    // execute, so a model that sends the single-query form, a stale cached
+    // prompt, or just a model that ignores the array, would otherwise spend a
     // whole iteration on a validation error instead of a search.
     inputSchema: z.object({
       queries: z
         .union([z.string(), z.array(z.string())])
         .optional()
         .describe(
-          `What to search for — up to ${MAX_QUERIES_PER_SEARCH} distinct queries in one call`
+          `What to search for, up to ${MAX_QUERIES_PER_SEARCH} distinct queries in one call`
         ),
       query: z
         .string()
@@ -275,7 +275,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       input: { queries?: unknown; query?: unknown; progress?: unknown },
       options
     ) => {
-      // One call is one iteration however many queries it batches — that is the
+      // One call is one iteration however many queries it batches; that is the
       // whole incentive for batching.
       ctx.loop?.spend();
       const { progress } = takeProgress(input as Record<string, unknown>);
@@ -325,7 +325,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       const found: KnowledgeSearchResult[] = [];
       let exhausted = false;
       let failure: string | null = null;
-      // The batch fans out concurrently — the tool description promises the
+      // The batch fans out concurrently: the tool description promises the
       // queries "run together", and each is an independent embed + retrieve
       // round trip, so running them in series just stacked their latency.
       // The remaining budget is claimed synchronously up front (ledger length
@@ -357,7 +357,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
           exhausted = true;
           continue;
         }
-        // A throwing searcher reads to the model like any broken tool — but one
+        // A throwing searcher reads to the model like any broken tool, but one
         // failed query in a batch must not discard the ones that worked.
         if (outcome.kind === "failed") {
           failure = outcome.message;
@@ -371,14 +371,14 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
         return withBudgetNote({ error: failure }, ctx.loop);
       }
       // Per-turn search-iteration budget: once spent, refuse further searches
-      // so the model answers with what it has — never runs away with
+      // so the model answers with what it has, never runs away with
       // cost/latency.
       if (exhausted && found.length === 0) {
         end(true, "No matching knowledge found");
         return withBudgetNote(
           {
             results: [],
-            note: `Search budget reached (${budget} searches this turn). Do not search again — answer now with what you already found, and say honestly if it is not enough.`,
+            note: `Search budget reached (${budget} searches this turn). Do not search again, answer now with what you already found, and say honestly if it is not enough.`,
           },
           ctx.loop
         );
@@ -506,14 +506,14 @@ let callSeq = 0;
  * Wraps a spec into an AI-SDK tool whose execute emits the
  * tool-start/tool-end lifecycle: structured payloads (tool name, model input,
  * outcome summary, duration) instead of label-only steps. A throwing execute
- * becomes an `{ error }` result for the model plus an `ok: false` tool-end —
+ * becomes an `{ error }` result for the model plus an `ok: false` tool-end,
  * one broken tool never aborts the turn.
  *
  * A spec that wants more than a one-line summary on the transcript (the API
  * card's endpoint/method/status/response) calls `ctx.recordResult`. The recorder
  * is bound to THIS call on a cloned context, because tools genuinely run
- * concurrently — the endpoint-detail tool is described as parallel-callable, and
- * one step's parallel calls cost one iteration by design — so a shared slot
+ * concurrently, the endpoint-detail tool is described as parallel-callable, and
+ * one step's parallel calls cost one iteration by design, so a shared slot
  * would attribute one call's result to another.
  */
 function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
@@ -585,7 +585,7 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
 export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   const overrides = ctx.assistant.tools?.builtIns ?? {};
   const toolset: ToolSet = {
-    // Grounding tool — always on (not disableable, ADR-0002); wired straight
+    // Grounding tool: always on (not disableable, ADR-0002); wired straight
     // to the search-pass primitive rather than through `instrument`.
     searchKnowledge: searchKnowledgeTool(ctx),
   };
@@ -599,7 +599,7 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
     if (enabled) toolset[spec.name] = instrument(spec, ctx);
   }
   // Windowed knowledge reads: available whenever the host wired a document
-  // reader, integration or not — a long Source is a knowledge concern.
+  // reader, integration or not, a long Source is a knowledge concern.
   if (ctx.readKnowledgeDocument) {
     toolset[READ_KNOWLEDGE_SOURCE_SPEC.name] = instrument(
       READ_KNOWLEDGE_SOURCE_SPEC,
@@ -609,7 +609,7 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   // The API catalogue triad + its response reader (spec #559). Registered only
   // with a described catalogue behind them: an assistant with no integration
   // must not be told an API exists. This is the ONLY way an org reaches its own
-  // HTTP API from a turn — the per-endpoint custom tools it replaced are gone.
+  // HTTP API from a turn: the per-endpoint custom tools it replaced are gone.
   const integrationNeedsIdentity = ctx.apiIntegration?.endpoints.some((endpoint) =>
     endpoint.params?.some((param) =>
       param.value?.includes("{{identity.")
@@ -654,7 +654,7 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
       }
     }
   }
-  // The terminal tool — mandatory when a turn has a terminal declaration to
+  // The terminal tool: mandatory when a turn has a terminal declaration to
   // make. Not instrumented: declaring you are done spends no iteration, and its
   // result is the write-time instruction the model then acts on. It emits the
   // tool lifecycle itself (#574), so the declaration is visible to every Role

@@ -3,25 +3,25 @@
 --
 -- Until now the only evidence of a visitor's choice was the `cc_cookie` on the
 -- visitor's own device. That is evidence they hold and can erase, not evidence
--- we hold — so it cannot discharge our accountability obligation. This table is
+-- we hold, so it cannot discharge our accountability obligation. This table is
 -- our copy of the event: what was chosen, against which version of the
 -- declaration, and when.
 --
 -- `consent_id` is the join back to the visitor: the consent plugin writes the
 -- same random id into their cookie, so a row here and the cookie on the device
 -- corroborate each other. That id is the whole identification mechanism, which
--- is why we deliberately do NOT store an IP address — see the column notes.
+-- is why we deliberately do NOT store an IP address, see the column notes.
 --
 -- Unlike every other table in this schema, consent records are not org-scoped:
 -- they are written by anonymous visitors to our own marketing site, who have no
--- organization. So RLS here is not "members of the owning org" but "nobody" —
+-- organization. So RLS here is not "members of the owning org" but "nobody",
 -- see the policy note at the bottom.
 
 create table public.cookie_consent_records (
   id uuid primary key,
 
   -- The plugin's consent id, mirrored in the visitor's `cc_cookie`. Not a
-  -- Ciele account id and not stable across a cookie clear — by design.
+  -- Ciele account id and not stable across a cookie clear, by design.
   consent_id text not null,
 
   -- Which revision of the cookie declaration the visitor was shown. Consent to
@@ -34,7 +34,7 @@ create table public.cookie_consent_records (
   accepted_categories text[] not null default '{}',
   rejected_categories text[] not null default '{}',
 
-  -- 'all' | 'custom' | 'necessary' — the shape of the choice, which is what
+  -- 'all' | 'custom' | 'necessary', the shape of the choice, which is what
   -- shows at a glance whether rejection was as reachable as acceptance.
   accept_type text not null,
 

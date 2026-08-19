@@ -24,20 +24,20 @@ import type { RuntimeToolSpec, ToolRuntimeContext } from "./tools";
  * The shape is the point. A per-endpoint custom tool forces the whole catalogue
  * into the system prompt and gives the model no way to ask for a contract it
  * did not get; three tools over a catalogue let it discover what exists, read
- * the contracts it needs (in parallel — the description says so), substitute
+ * the contracts it needs (in parallel, the description says so), substitute
  * path parameters from the conversation, and page through a response too large
  * to read at once.
  *
  * Every one of these is a plain `RuntimeToolSpec`, so it goes through
  * `instrument()` in tools.ts for its lifecycle events, error containment and
- * budget note like any other tool — there is no bespoke event emission here.
+ * budget note like any other tool; there is no bespoke event emission here.
  * The query tool additionally records the `endpoint / method / status /
  * response` quadruple the Inbox renders as a card.
  */
 
 /** How much of a response body the query tool hands back before paging kicks in. */
 const QUERY_INLINE_CHARS = 4_000;
-/** Responses kept for windowed reads this turn — bounded, per turn, in memory. */
+/** Responses kept for windowed reads this turn, bounded, per turn, in memory. */
 const MAX_RETAINED_RESPONSES = 8;
 
 /** One stored API response, readable in windows by handle for the rest of the turn. */
@@ -59,7 +59,7 @@ export interface ApiResponseStore {
 /**
  * A fresh store for one turn. In memory on purpose: a 200k-character body is
  * read within the turn that fetched it, and persisting it would put a full API
- * response — student names and grades included — into the conversation's
+ * response, student names and grades included, into the conversation's
  * session state.
  */
 export function createApiResponseStore(): ApiResponseStore {
@@ -115,7 +115,7 @@ const getApiDetailsSpec: RuntimeToolSpec = {
     const summary = apiCatalogSummary(integration);
     return {
       ...summary,
-      note: "Call viewEndpointDetails for every endpoint you expect to need — you can request them in parallel — then queryApi with a relative path.",
+      note: "Call viewEndpointDetails for every endpoint you expect to need; you can request them in parallel, then queryApi with a relative path.",
     };
   },
 };
@@ -123,7 +123,7 @@ const getApiDetailsSpec: RuntimeToolSpec = {
 const viewEndpointDetailsSpec: RuntimeToolSpec = {
   name: "viewEndpointDetails",
   description:
-    "Read one endpoint's full contract: every parameter with its type and whether it is required, and the keys the response carries. Request the details of every endpoint you expect to need — you may call this in parallel for several of them.",
+    "Read one endpoint's full contract: every parameter with its type and whether it is required, and the keys the response carries. Request the details of every endpoint you expect to need; you may call this in parallel for several of them.",
   inputSchema: z.object({
     endpointId: z
       .string()
@@ -140,7 +140,7 @@ const viewEndpointDetailsSpec: RuntimeToolSpec = {
     if ("error" in integration) return integration;
     const wanted = String(input.endpointId ?? "").trim();
     // Models cite an endpoint by whichever handle is most salient in the
-    // catalogue they just read — its id, its path, or its name. All three
+    // catalogue they just read, its id, its path, or its name. All three
     // resolve rather than costing an iteration on a lookup failure.
     const endpoint = integration.endpoints.find(
       (e) =>
@@ -184,7 +184,7 @@ function apiSource(
 const queryApiSpec: RuntimeToolSpec = {
   name: "queryApi",
   description:
-    "Query one endpoint from the catalogue. Pass a RELATIVE path with the path parameters already substituted (e.g. /tickets/8317/comments) — the base URL is added for you. A path the catalogue does not describe is refused.",
+    "Query one endpoint from the catalogue. Pass a RELATIVE path with the path parameters already substituted (e.g. /tickets/8317/comments), the base URL is added for you. A path the catalogue does not describe is refused.",
   inputSchema: z.object({
     path: z
       .string()
@@ -212,7 +212,7 @@ const queryApiSpec: RuntimeToolSpec = {
     };
     const call = [o?.method, o?.path].filter(Boolean).join(" ");
     if (o?.status !== undefined) {
-      return [call, `${o.status}`].filter(Boolean).join(" — ");
+      return [call, `${o.status}`].filter(Boolean).join(", ");
     }
     return o?.error || call || "Done";
   },
@@ -269,15 +269,15 @@ const queryApiSpec: RuntimeToolSpec = {
       totalLength: body.length,
     });
 
-    // A queried endpoint is a citable Source — the reference platform shows a
-    // synthetic source name beside its knowledge citations — but only when the
+    // A queried endpoint is a citable Source, the reference platform shows a
+    // synthetic source name beside its knowledge citations, but only when the
     // call actually succeeded.
     if (outcome.ok) {
       const source = apiSource(integration, outcome);
       if (source) ctx.usedSources.push(source);
     }
 
-    // JSON when it parses, raw text when it does not — a non-JSON body is data,
+    // JSON when it parses, raw text when it does not, a non-JSON body is data,
     // not an error, and the model is told which it got.
     let data: unknown = window.content;
     let parsed = false;
@@ -341,7 +341,7 @@ const readApiResponseSpec: RuntimeToolSpec = {
       return {
         error: open.length
           ? `No API response “${handle}” in this turn. Open handles: ${open.join(", ")}.`
-          : `No API response “${handle}” in this turn — query an endpoint first.`,
+          : `No API response “${handle}” in this turn. Query an endpoint first.`,
       };
     }
     const window = readWindow(stored.body, input.from as number, input.to as number);

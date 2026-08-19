@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   resolveWidgetContext: vi.fn(),
 }));
 
-// Keep the real widgetSubject — the gate-to-subject resolution is exactly
+// Keep the real widgetSubject: the gate-to-subject resolution is exactly
 // what the Memory folder's access control rides on (#666).
 vi.mock("@/lib/widget-db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/widget-db")>();
@@ -106,7 +106,7 @@ describe("widget memories route (#666)", () => {
     expect(response.headers.get("access-control-allow-methods")).toContain("DELETE");
   });
 
-  it("404s anonymous visitors — no gate, no folder", async () => {
+  it("404s anonymous visitors, no gate, no folder", async () => {
     expect((await get(undefined)).status).toBe(404);
     expect(db.listMemories).not.toHaveBeenCalled();
   });

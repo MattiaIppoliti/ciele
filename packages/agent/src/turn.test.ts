@@ -8,7 +8,6 @@ import type { ChatReplyPart } from "./types";
 import {
   RECENT_HISTORY_LIMIT,
   readFlowTrustTier,
-  recordProviderHealth,
   streamConversationTurn,
   turnConnectionKind,
 } from "./turn";
@@ -101,9 +100,17 @@ describe("streamConversationTurn", () => {
     const collection = await db.createCollection(assistant.id, {
       name: "FAQ Collection",
     });
+    // A FAQ is a Source (PRD #726): the quick-reply lookup reaches it through
+    // the assistant↔source link.
+    const faqSource = await db.createSource({
+      collectionId: collection.id,
+      name: "What are the opening hours?",
+      kind: "faq",
+    });
+    await db.setSourceAssistantLinks(faqSource.id, [assistant.id]);
     await db.createConcept({
       collectionId: collection.id,
-      sourceId: null,
+      sourceId: faqSource.id,
       path: "faq/hours.md",
       frontmatter: { type: "FAQ", title: "What are the opening hours?" },
       body: "We are open 9–17, Monday to Friday.",
@@ -367,7 +374,7 @@ describe("streamConversationTurn", () => {
       signal: new AbortController().signal,
     });
     await new Response(stream).text();
-    // No model ran, so nothing was metered — and no empty-batch write happened.
+    // No model ran, so nothing was metered, and no empty-batch write happened.
     expect(recordCalls).toBe(0);
   });
 
@@ -450,7 +457,7 @@ describe("long-term memory gate (#664)", () => {
 /**
  * Basic Interaction (#565) end-to-end: courtesy is its own intent, answered
  * without retrieval. These run on the no-provider path, so they pin what the
- * turn does around the handler — the flow marker, the persisted part, and the
+ * turn does around the handler, the flow marker, the persisted part, and the
  * fact that nothing is metered or searched.
  */
 describe("streamConversationTurn (Basic Interaction)", () => {
@@ -478,7 +485,7 @@ describe("streamConversationTurn (Basic Interaction)", () => {
     const messages = await db.listMessages(done.conversationId);
     expect(messages.at(-1)?.flowName).toBe(basic!.name);
     // The deterministic short-circuit (#566) skips classification outright, so
-    // the turn emits no notices at all and stores no trace — which is what
+    // the turn emits no notices at all and stores no trace, which is what
     // leaves the widget and the Inbox with no empty Thinking panel to render.
     expect(events.some((e) => e.type === "notice")).toBe(false);
     expect(messages.at(-1)?.trace).toBeNull();
@@ -544,7 +551,7 @@ describe("streamConversationTurn (Basic Interaction)", () => {
 
 /**
  * The proactive half of the turn (#541): a client event, not a message, starts
- * it. Same module, same persistence and telemetry contract — but no user message,
+ * it. Same module, same persistence and telemetry contract, but no user message,
  * no classification, and no model, so a nudge costs nothing to deliver.
  */
 describe("streamConversationTurn (proactive triggers)", () => {
@@ -810,7 +817,7 @@ describe("streamConversationTurn (proactive triggers)", () => {
     expect(doneEvent(events).conversationId).toBeTruthy();
   });
 
-  it("meters no tokens — a verbatim notification calls no model", async () => {
+  it("meters no tokens, a verbatim notification calls no model", async () => {
     const { assistant, flows } = await proactiveFixture();
     const captured: RuntimeEventInput[] = [];
     let metered = 0;
@@ -1097,7 +1104,7 @@ describe("daily budget (notify mode)", () => {
 });
 
 describe("readFlowTrustTier (new-flow watch semantics)", () => {
-  it("maps a missing trust row to watch — trust is earned, not presumed", async () => {
+  it("maps a missing trust row to watch, trust is earned, not presumed", async () => {
     const assistant = await db.createAssistant(DEMO_ORG.id, {
       title: "No-history Fixture",
     });
@@ -1133,7 +1140,7 @@ describe("readFlowTrustTier (new-flow watch semantics)", () => {
     expect(await readFlowTrustTier(db, assistant.id, "measured")).toBe("auto");
   });
 
-  it("stays fail-open (null) on a read error — absence-of-history must not out-trust a measured flow", async () => {
+  it("stays fail-open (null) on a read error, absence-of-history must not out-trust a measured flow", async () => {
     const failing: Db = {
       ...db,
       async getFlowTrust() {
@@ -1144,62 +1151,9 @@ describe("readFlowTrustTier (new-flow watch semantics)", () => {
   });
 });
 
-describe("recordProviderHealth", () => {
-  it("raises, deduplicates, and auto-resolves federated provider alerts", async () => {
-    await recordProviderHealth({
-      db,
-      organizationId: DEMO_ORG.id,
-      assistantTitle: "Campus AI",
-      event: {
-        provider: "google",
-        credentialKind: "google_vertex_federated",
-        ok: false,
-        detail: "invalid_grant",
-      },
-    });
-    await recordProviderHealth({
-      db,
-      organizationId: DEMO_ORG.id,
-      assistantTitle: "Campus AI",
-      event: {
-        provider: "google",
-        credentialKind: "google_vertex_federated",
-        ok: false,
-        detail: "quota exceeded",
-      },
-    });
-
-    const sourceKey = "provider:google:google_vertex_federated";
-    const active = (await db.listAlerts(DEMO_ORG.id)).filter(
-      (a) => a.sourceKey === sourceKey && a.status === "active"
-    );
-    expect(active).toHaveLength(1);
-    expect(active[0]).toMatchObject({
-      type: "provider",
-      title: "Google Vertex federated auth failed",
-    });
-    expect(active[0].detail).toContain("quota exceeded");
-
-    await recordProviderHealth({
-      db,
-      organizationId: DEMO_ORG.id,
-      assistantTitle: "Campus AI",
-      event: {
-        provider: "google",
-        credentialKind: "google_vertex_federated",
-        ok: true,
-      },
-    });
-    const after = (await db.listAlerts(DEMO_ORG.id)).filter(
-      (a) => a.sourceKey === sourceKey && a.status === "active"
-    );
-    expect(after).toHaveLength(0);
-  });
-});
-
 /**
- * Ticket #328: every successful terminal path — normal completion, FAQ quick
- * reply, budget block — ends in the same finishTurn ritual, so all three must
+ * Ticket #328: every successful terminal path, normal completion, FAQ quick
+ * reply, budget block, ends in the same finishTurn ritual, so all three must
  * record the same succeeded chat_turn telemetry contract (org/assistant ids,
  * messageId, flowName, duration).
  */
@@ -1252,9 +1206,15 @@ describe("finishTurn telemetry consistency (#328)", () => {
     const collection = await db.createCollection(assistant.id, {
       name: "FAQ Collection",
     });
+    const faqSource = await db.createSource({
+      collectionId: collection.id,
+      name: "Is telemetry recorded?",
+      kind: "faq",
+    });
+    await db.setSourceAssistantLinks(faqSource.id, [assistant.id]);
     await db.createConcept({
       collectionId: collection.id,
-      sourceId: null,
+      sourceId: faqSource.id,
       path: "faq/telemetry.md",
       frontmatter: { type: "FAQ", title: "Is telemetry recorded?" },
       body: "Yes, one chat_turn per turn.",
@@ -1368,12 +1328,12 @@ describe("plan-cap gate (#442)", () => {
       text: "Included usage exhausted.",
     });
     expect(parts[1]).toMatchObject({ type: "help_desk" });
-    // The exchange persists like any turn — the visitor is never dropped.
+    // The exchange persists like any turn: the visitor is never dropped.
     const done = doneEvent(events);
     expect(done.messageId).toBeTruthy();
   });
 
-  it("a pending organization runs no turn at all — not even on its own key", async () => {
+  it("a pending organization runs no turn at all, not even on its own key", async () => {
     // Managed onboarding (#444): a fresh signup can build everything, but its
     // assistants stay silent until staff activate it. Unlike the usage cap
     // this applies to bring-your-own-key traffic too, because a pending
@@ -1416,7 +1376,7 @@ describe("plan-cap gate (#442)", () => {
     expect(metering.called).toBe(false);
   });
 
-  it("the OSS default lets every organization answer — self-hosting is never gated", async () => {
+  it("the OSS default lets every organization answer, self-hosting is never gated", async () => {
     // The whole open-core boundary rests on this: with no enterprise
     // registration, activation is unconditionally active.
     const { assistant, flows } = await fixture();
@@ -1427,12 +1387,12 @@ describe("plan-cap gate (#442)", () => {
     doneEvent(events);
   });
 
-  it("only a block interrupts the turn — the no-credential path never even asks", async () => {
+  it("only a block interrupts the turn, the no-credential path never even asks", async () => {
     const { assistant, flows } = await fixture();
     // Deliberately offline: no credentials resolve → connectionKind null →
     // checkUsage is never called, proving the deterministic path is exempt
-    // from the gate. (Warn-through-the-gate — outcome "warn" leaves the turn
-    // untouched — is covered at the unit level in ee/metering.test.ts; a
+    // from the gate. (Warn-through-the-gate, outcome "warn" leaves the turn
+    // untouched, is covered at the unit level in ee/metering.test.ts; a
     // warn turn here would need a live model call.)
     const checkUsage = { called: false };
     registerEnterpriseCapabilities({

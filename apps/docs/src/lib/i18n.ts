@@ -6,7 +6,7 @@ import { defineI18n } from 'fumadocs-core/i18n';
  * `hideLocale: 'default-locale'` keeps English on the bare paths the site has
  * always used (`/assistants`, `/self-hosting/…`) so no existing link, sitemap
  * entry, or `.md` endpoint moves; the other locales sit under a prefix
- * (`/it/assistants`). English is the source of truth — every other locale's
+ * (`/it/assistants`). English is the source of truth, every other locale's
  * pages are generated from it by `scripts/translate-docs.mjs`.
  *
  * Deliberately free of UI-string imports: the middleware imports this module and

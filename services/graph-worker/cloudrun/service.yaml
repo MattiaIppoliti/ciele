@@ -1,6 +1,6 @@
 # Managed-container (Cloud Run) deployment of the Graph Knowledge worker.
 #
-# Same image, auth model, and API contract as local Docker — only the platform
+# Same image, auth model, and API contract as local Docker, only the platform
 # differs. This is a TEMPLATE: replace every <PLACEHOLDER>, build+push the image
 # (this service is built from services/graph-worker/Dockerfile, not an
 # off-the-shelf image), and deploy as a documented action (see RUNBOOK.md),
@@ -14,7 +14,7 @@
 #
 # The derived stores are STATEFUL, so this service mounts a persistent volume
 # (a Cloud Run volume backed by a filestore/GCS mount, or the equivalent on your
-# platform). Losing the volume loses the graph — but the graph is a DERIVED
+# platform). Losing the volume loses the graph, but the graph is a DERIVED
 # index (ADR-0017): it can always be rebuilt by re-ingesting from OKF.
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -60,7 +60,7 @@ spec:
               value: "<LLM_PROVIDER>"   # e.g. gemini / openai / azure
             - name: LLM_MODEL
               value: "<LLM_MODEL>"
-            # Runtime secrets from Secret Manager — never inlined.
+            # Runtime secrets from Secret Manager: never inlined.
             - name: GRAPH_WORKER_API_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -88,7 +88,7 @@ spec:
             periodSeconds: 30
             timeoutSeconds: 5
       volumes:
-        # PERSISTENT volume for the derived stores — survives revisions and
+        # PERSISTENT volume for the derived stores, survives revisions and
         # restarts. A Cloud Run NFS/Filestore mount; provision the instance
         # (see RUNBOOK.md) and fill the <PLACEHOLDER>s. Do NOT swap this for an
         # emptyDir: the stores are stateful (an emptyDir is wiped on restart,

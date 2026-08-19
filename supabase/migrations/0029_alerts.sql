@@ -1,6 +1,6 @@
 -- Alerts: operational-health issues the system raises for admin attention
 -- (integration/crawl/provider failures). An alert persists until an admin
--- resolves it ("I have resolved this") or the underlying issue clears —
+-- resolves it ("I have resolved this") or the underlying issue clears,
 -- auto-resolve matches on source_key when the failing operation succeeds again.
 
 create table public.alerts (

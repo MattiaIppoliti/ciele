@@ -17,7 +17,7 @@ const PAIRING_TTL_MS = 5 * 60_000;
 const DEVICE_FRESH_MS = 30_000;
 // How often a claim poll is allowed to rewrite the device heartbeat. Must stay
 // well under DEVICE_FRESH_MS so a continuously polling connector never reads as
-// stale to listActiveRelayProviders — 10s leaves three ticks of margin.
+// stale to listActiveRelayProviders, 10s leaves three ticks of margin.
 const HEARTBEAT_MS = 10_000;
 const JOB_TTL_MS = 3 * 60_000;
 const POLL_MS = 350;
@@ -103,7 +103,7 @@ async function authenticatedDevice(
 
 /**
  * Whether a claim poll should rewrite the device row. An advertised-provider
- * change has to land at once — it decides which providers Preview offers — but
+ * change has to land at once, it decides which providers Preview offers, but
  * a heartbeat only has to stay inside DEVICE_FRESH_MS.
  */
 function heartbeatIsDue(
@@ -126,7 +126,7 @@ export async function claimRelayJob(input: {
   if (!device) return null;
   const db = getRelayDb();
   // The connector polls on a timer, so this is by far the app's most frequently
-  // invoked endpoint — an unconditional write here is one Postgres round trip
+  // invoked endpoint, an unconditional write here is one Postgres round trip
   // per second, per paired device, forever. Connectors before 0.3.7 still poll
   // every second, so the throttle lives here rather than only in the connector.
   if (heartbeatIsDue(device, input.providers)) {

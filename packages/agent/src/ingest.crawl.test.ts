@@ -12,7 +12,7 @@ import { getRunState, fetchCrawledPages } from "./apify";
 import { finalizeWebsiteCrawl } from "./ingest";
 
 /**
- * The async-crawl finalize state machine — the core of moving crawls off the
+ * The async-crawl finalize state machine, the core of moving crawls off the
  * request lifetime. Runs offline: the mock DB + no Provider Connections means
  * embeddings fall back to lexical, and the two Apify network calls are stubbed.
  */

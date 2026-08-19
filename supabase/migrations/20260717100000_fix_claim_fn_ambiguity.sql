@@ -5,7 +5,7 @@
 -- `select assistant_id … from due`). plpgsql's variable substitution treats
 -- those OUT parameters as variables, and with the default
 -- plpgsql.variable_conflict = error every call fails at runtime with
--- `column reference "message_id" is ambiguous` — caught by the Db contract
+-- `column reference "message_id" is ambiguous`: caught by the Db contract
 -- suite running the real functions over the real migrations in PGlite.
 -- Neither function ever reads its OUT params as variables, so
 -- `#variable_conflict use_column` (resolve unqualified names to columns) is

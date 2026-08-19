@@ -5,8 +5,8 @@ import { canEdit } from "@/lib/rbac";
 export const dynamic = "force-dynamic";
 
 /**
- * Org Data page (#663): Entities — typed schemas over structured business
- * data — and their CSV-imported Records. Every member can browse; editors and
+ * Org Data page (#663): Entities, typed schemas over structured business
+ * data, and their CSV-imported Records. Every member can browse; editors and
  * up create, import, and delete (matching the table RLS).
  */
 export default async function DataSettingsPage() {

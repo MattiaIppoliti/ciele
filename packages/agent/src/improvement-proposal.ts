@@ -1,14 +1,14 @@
 /**
  * Suggested Fix drafting (ADR-0017 / #390): when an Improvement is raised from a
- * flagged answer, draft a reviewable knowledge fix — a FAQ question/answer +
- * rationale + the Sources it drew on — with ONE structured-output LLM call over
+ * flagged answer, draft a reviewable knowledge fix, a FAQ question/answer +
+ * rationale + the Sources it drew on, with ONE structured-output LLM call over
  * (conversation excerpt + flagged answer + the Member's description + retrieved
  * knowledge context). The draft is stored for human review; nothing edits
  * knowledge until a Member accepts it.
  *
  * Context retrieval goes through the assistant's active Knowledge Engine
  * (`withGraphEngine` over the vector searcher), so graph context is used when
- * available and vector otherwise — matching how the widget answers.
+ * available and vector otherwise, matching how the widget answers.
  *
  * Best-effort: no model credential, no flagged message, or an LLM error simply
  * leaves the Improvement without a proposal (the UI shows a "no proposal"
@@ -115,7 +115,7 @@ async function gatherContext(
 }
 
 /**
- * Drafts and stores the Suggested Fix for an Improvement. Idempotent — replaces
+ * Drafts and stores the Suggested Fix for an Improvement. Idempotent, replaces
  * any prior draft. Best-effort: returns without persisting when it can't draft
  * (no model credential, no flagged answer, LLM error).
  */
@@ -138,9 +138,9 @@ export async function draftImprovementProposal(deps: {
   if (!classifier) return; // No credential → leave a "no proposal" state.
 
   // Retrieve knowledge context via the assistant's active engine.
-  const query = [ctx.question, ctx.description].filter(Boolean).join(" — ") || ctx.flaggedAnswer;
+  const query = [ctx.question, ctx.description].filter(Boolean).join(" ") || ctx.flaggedAnswer;
   const results = await ctx.searcher(query, { scope: "assistant" }).catch((error) => {
-    // Retrieval failed (graph/vector outage) — draft from the flagged answer +
+    // Retrieval failed (graph/vector outage): draft from the flagged answer +
     // note alone rather than starving the proposal, but leave a breadcrumb.
     console.error("[proposal] context retrieval failed:", error);
     return [];

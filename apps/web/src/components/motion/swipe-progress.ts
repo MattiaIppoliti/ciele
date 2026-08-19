@@ -1,7 +1,7 @@
 // Pure geometry + interaction rules behind <SwipeButton />. Lives in a .ts module so it is
-// covered by vitest (`src/**/*.test.ts` only — a .tsx test is never collected).
+// covered by vitest (`src/**/*.test.ts` only, a .tsx test is never collected).
 
-/** How close to the end counts as "at the end" — the drag never lands exactly on max. */
+/** How close to the end counts as "at the end", the drag never lands exactly on max. */
 export const SWIPE_END_TOLERANCE = 10;
 
 /** Keyboard presses needed to travel the full track (ArrowRight advances 1/N each time). */
@@ -58,7 +58,7 @@ export interface SwipeKeyResult {
 
 /**
  * Keyboard equivalent of the drag: arrows/End walk the handle along the track, and
- * Enter/Space commit **only** once it is at the end — so confirming still takes a
+ * Enter/Space commit **only** once it is at the end, so confirming still takes a
  * deliberate sequence rather than a single keypress.
  */
 export function swipeStateForKey(

@@ -55,7 +55,7 @@ export function broadcastState(): void {
  * Where to land on launch, and after any mode change.
  *
  * The rule the tickets ask for: pick a mode once, and every later launch goes
- * straight to the product — except local mode before the wizard has finished,
+ * straight to the product, except local mode before the wizard has finished,
  * which goes to the wizard. First-run cost is paid once.
  */
 function openForCurrentMode(): void {
@@ -139,7 +139,7 @@ function registerHandlers(): void {
     fakePorts: FAKE_PORTS,
     onComplete: () => {
       // Remembered so later launches skip the wizard: first-run cost is paid
-      // once. The user still has to press Open Ciele — finishing setup and
+      // once. The user still has to press Open Ciele, finishing setup and
       // being yanked into the product are different things.
       if (!settings.get().setupComplete) {
         settings.update({ setupComplete: true });
@@ -183,6 +183,6 @@ app.whenReady().then(() => {
 
 // macOS convention is to keep the app alive with no windows, but this app has
 // exactly one window and no dock-level surface behind it, so closing it means
-// "I am done" everywhere. The local stack keeps running regardless — it is
+// "I am done" everywhere. The local stack keeps running regardless; it is
 // detached Docker, not a child process.
 app.on("window-all-closed", () => app.quit());

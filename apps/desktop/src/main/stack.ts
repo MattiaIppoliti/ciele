@@ -2,7 +2,7 @@
 //
 // The stack is detached: `up -d` and nothing holds a handle to it, so quitting
 // Ciele leaves it running and the data in named volumes outlives both the app
-// and an app update. That is deliberate — a local Ciele you have put knowledge
+// and an app update. That is deliberate, a local Ciele you have put knowledge
 // into should not disappear because you closed a window.
 
 import { BrowserWindow, ipcMain } from "electron";
@@ -105,7 +105,7 @@ export function registerStackHandlers(controller: StackController): void {
 
   // Polling only matters while someone is looking, and the native window is
   // the only thing that draws this. `refresh` already pushes through the
-  // controller's onChange, so this must not push again — two identical
+  // controller's onChange, so this must not push again, two identical
   // snapshots per tick is a re-render nobody asked for.
   setInterval(() => {
     if (BrowserWindow.getAllWindows().some((window) => !window.isDestroyed())) {

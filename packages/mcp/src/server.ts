@@ -13,7 +13,7 @@ import { ToolInputError, buildTools, type CieleTool } from "./tools.ts";
 
 export interface ServerOptions {
   client: CieleClient;
-  /** CIELE_MCP_READ_ONLY=1 — an agent may explore but never write. */
+  /** CIELE_MCP_READ_ONLY=1, an agent may explore but never write. */
   readOnly: boolean;
 }
 
@@ -47,7 +47,7 @@ export async function callTool(
 
 /**
  * 2026-07-28 requires `ttlMs`/`cacheScope` on cacheable results and the SDK's
- * conservative default is `ttlMs: 0` — uncacheable. Our tool set is fixed at
+ * conservative default is `ttlMs: 0`, uncacheable. Our tool set is fixed at
  * build time: it cannot change for a running process, only across an upgrade.
  * An hour lets clients cache the list (and their prompt caches hit) while
  * still picking up a deployment within the hour; connected clients get
@@ -55,7 +55,7 @@ export async function callTool(
  *
  * `private` deliberately, not `public`: the list is org-independent today, but
  * scoping it to the requesting client is what keeps that from becoming a leak
- * if tool availability ever narrows by Role — and a client caches it either
+ * if tool availability ever narrows by Role, and a client caches it either
  * way, so `public` would only buy shared-intermediary caching we don't need.
  */
 const CACHE_HINT = { ttlMs: 60 * 60 * 1000, cacheScope: "private" } as const;

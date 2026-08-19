@@ -1,6 +1,5 @@
 import type {
   Assistant,
-  BudgetEnforcement,
   ConversationMetadata,
   ConversationSubject,
   EntitySnapshot,
@@ -21,7 +20,7 @@ import type { Db } from "@agent-hub/db";
 
 import type { ChatReplyPart, MemorySearcher } from "./types";
 import { contactLabel } from "./actions";
-import { meterUsage } from "./usage";
+import { meterUsage, summarizeTurnUsage } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
 import { buildKnowledgeSearcher } from "./retrieval";
@@ -30,7 +29,6 @@ import {
   runProactiveFlows,
   type HistoryMessage,
   type KnowledgeSearcher,
-  type ProviderHealthEvent,
   type RuntimeEvent,
 } from "./engine";
 import { applyEffects } from "./effects";
@@ -40,19 +38,20 @@ import { enqueueMemoryPromotionJob } from "./jobs";
 import { MEMORY_RECALL_LIMIT } from "./memories";
 import { EMPTY_TURN_TRACE, foldTraceEvent, type TurnTrace } from "./stream";
 import { prepareTraceForStorage } from "./trace";
-import { alertKeys, signalHealth } from "./health";
+import { recordProviderHealth } from "./health";
+import { checkOrgBudget } from "./budget-gate";
 import {
   getEnterpriseCapabilities,
   type ActivationState,
   type UsageOutcome,
 } from "./ee";
 import { resolveChatModel, type KeyResolution } from "./models";
-import type { KnowledgeDocument, UsageEvent } from "./types";
+import type { KnowledgeDocument } from "./types";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
 
 /**
- * Origin of the tenant-facing web app (apps/web) for {{conversation.link}} —
+ * Origin of the tenant-facing web app (apps/web) for {{conversation.link}},
  * the Inbox lives under its (admin) route group. Falls back to the known
  * production host when unset.
  */
@@ -65,7 +64,7 @@ function platformAppOrigin(): string {
 
 /**
  * Conversation Turn (see context.md): one user message and everything the
- * runtime does to answer it — get-or-create the Conversation, persist the
+ * runtime does to answer it, get-or-create the Conversation, persist the
  * user message, route through the flow engine, persist the assistant reply
  * with its flow markers, apply deferred effects, and stream ndjson
  * RuntimeEvents to the client.
@@ -77,13 +76,13 @@ function platformAppOrigin(): string {
 export interface ConversationTurnInput {
   /** Data access, already scoped by the caller (session db or widget db). */
   db: Db;
-  /** Config the turn runs on — a Publication snapshot or live rows. */
+  /** Config the turn runs on, a Publication snapshot or live rows. */
   assistant: Assistant;
   flows: Flow[];
-  /** Attached Skills — a Publication snapshot (widget) or live rows (preview). */
+  /** Attached Skills, a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
   /**
-   * Selected shared Entities (#665) — a Publication snapshot (widget) or
+   * Selected shared Entities (#665): a Publication snapshot (widget) or
    * live rows (preview). Each yields auto-generated retrieval tools whose
    * Record content is always read live through `db`.
    */
@@ -92,14 +91,14 @@ export interface ConversationTurnInput {
   organizationId: string;
   /**
    * Who is speaking: a Visitor (widget), a Member (preview), or an SSO-signed
-   * end-user ("sso" — the widget gate verified them, #662).
+   * end-user ("sso", the widget gate verified them, #662).
    */
   subjectType: ConversationSubject;
   subjectId: string;
   /**
    * Verified SSO identity for "sso"-subject turns (#662): threaded from the
    * sealed gate cookie, never client- or model-supplied. Downstream per-user
-   * capabilities (long-term memory, user-scoped records) key on it —
+   * capabilities (long-term memory, user-scoped records) key on it,
    * always together with the Organization, never on the subject alone.
    */
   verifiedIdentity?: {
@@ -134,11 +133,11 @@ export interface ConversationTurnInput {
    * Visitor-message turn every existing caller runs. A proactive trigger
    * (`chat_open`, and later `page_load` / `time_on_page`) selects its flows by
    * the trigger instead of Intent Classification, persists no user message, and
-   * calls no model — `message` is ignored and may be empty.
+   * calls no model, `message` is ignored and may be empty.
    */
   trigger?: FlowTrigger;
   /**
-   * What the fired event knows about itself — today the dwell the client reports
+   * What the fired event knows about itself, today the dwell the client reports
    * for `time_on_page`. Re-checked against each flow's configured threshold, so a
    * short or replayed report cannot make a nudge fire early.
    */
@@ -158,7 +157,7 @@ export const RECENT_HISTORY_LIMIT = 12;
  * earned, never presumed from absence of data: a flow with no materialized row
  * yet has earned nothing, so it reads as `watch` (its generative answers always
  * offer human escalation) until it accrues graded history. Only an infrastructure
- * read *error* stays fail-open (`null` → the engine changes nothing) — absence of
+ * read *error* stays fail-open (`null` → the engine changes nothing), absence of
  * history must never silently grant more autonomy than a measured flow would.
  */
 export function readFlowTrustTier(
@@ -173,130 +172,7 @@ export function readFlowTrustTier(
 }
 
 /**
- * Rolls a turn's per-call usage events into the single turn-level telemetry
- * record: total tokens in/out, and the provider/model that actually answered
- * (the last generative call, post cross-provider fallback). The deterministic
- * no-model path meters zero with a null provider/model.
- */
-function summarizeTurnUsage(usage: UsageEvent[]): {
-  inputTokens: number;
-  outputTokens: number;
-  provider: UsageEvent["provider"] | null;
-  modelId: string | null;
-} {
-  let inputTokens = 0;
-  let outputTokens = 0;
-  let answered: UsageEvent | null = null;
-  for (const u of usage) {
-    inputTokens += u.inputTokens;
-    outputTokens += u.outputTokens;
-    if (u.stage === "generate") answered = u;
-  }
-  const picked = answered ?? usage.at(-1) ?? null;
-  return {
-    inputTokens,
-    outputTokens,
-    provider: picked?.provider ?? null,
-    modelId: picked?.modelId ?? null,
-  };
-}
-
-export async function recordProviderHealth(input: {
-  db: Db;
-  organizationId: string;
-  assistantTitle: string;
-  event: ProviderHealthEvent;
-}): Promise<void> {
-  const key = alertKeys.provider(input.event.provider, input.event.credentialKind);
-  await signalHealth(
-    input.db,
-    input.organizationId,
-    input.event.ok
-      ? { key, healthy: true }
-      : {
-          key,
-          healthy: false,
-          alert: {
-            type: "provider",
-            title:
-              input.event.provider === "google"
-                ? "Google Vertex federated auth failed"
-                : "Federated provider auth failed",
-            detail: `${input.assistantTitle} failed to answer using ${input.event.provider} ${input.event.credentialKind}. ${input.event.detail ?? "Check the provider connection in Settings > AI."}`,
-          },
-        },
-    "provider-health"
-  );
-}
-
-/**
- * Pre-turn budget check. Over budget: raises one refresh-while-active Alert
- * per org; under budget (with a limit configured): auto-resolves it. Fails
- * open — accounting problems must never take the assistant down.
- */
-async function checkOrgBudget(
-  db: Db,
-  organizationId: string
-): Promise<{ overBudget: boolean; enforcement: BudgetEnforcement }> {
-  try {
-    const budget = await db.getOrgBudget(organizationId);
-    if (budget?.dailyTokenLimit == null && budget?.dailyEuroLimit == null) {
-      return { overBudget: false, enforcement: "notify" };
-    }
-    // The two ledger reads are independent — one round trip of wall-clock,
-    // not two, on the pre-token path.
-    const [usedTokens, usedEur] = await Promise.all([
-      budget.dailyTokenLimit != null
-        ? db.getOrgTokensUsedToday(organizationId)
-        : Promise.resolve(0),
-      budget.dailyEuroLimit != null
-        ? db.getOrgCostUsedToday(organizationId)
-        : Promise.resolve(0),
-    ]);
-    const reasons: string[] = [];
-    let overBudget = false;
-    if (budget.dailyTokenLimit != null && usedTokens >= budget.dailyTokenLimit) {
-      overBudget = true;
-      reasons.push(
-        `${usedTokens.toLocaleString("en-US")} of ${budget.dailyTokenLimit.toLocaleString("en-US")} tokens`
-      );
-    }
-    if (budget.dailyEuroLimit != null && usedEur >= budget.dailyEuroLimit) {
-      overBudget = true;
-      reasons.push(
-        `€${usedEur.toFixed(2)} of €${budget.dailyEuroLimit.toFixed(2)}`
-      );
-    }
-    const key = alertKeys.budget(organizationId);
-    await signalHealth(
-      db,
-      organizationId,
-      overBudget
-        ? {
-            key,
-            healthy: false,
-            alert: {
-              type: "system",
-              title: "Daily AI budget reached",
-              detail: `Assistants used ${reasons.join(" and ")} today (UTC).${
-                budget.enforcement === "block"
-                  ? " New AI answers are paused until the window resets."
-                  : " Answers continue normally (notify-only enforcement)."
-              }`,
-            },
-          }
-        : { key, healthy: true },
-      "budget"
-    );
-    return { overBudget, enforcement: budget.enforcement };
-  } catch (error) {
-    console.error("[runtime] budget check failed:", error);
-    return { overBudget: false, enforcement: "notify" };
-  }
-}
-
-/**
- * Which credential kind this turn's chat model would run on — the same
+ * Which credential kind this turn's chat model would run on, the same
  * resolution the engine performs, done up front so the plan-cap gate (#442)
  * knows whether the turn is platform-funded. Null means no model resolves
  * (the deterministic no-model path): nothing is funded, nothing to gate.
@@ -332,7 +208,7 @@ function silentTurn(): ReadableStream<Uint8Array> {
  * Three things make it cheaper than a message turn, and all three are load-bearing:
  * it resolves **no model** (a Notification is verbatim, so the turn is free and
  * meters nothing), it persists **no user message** (nobody spoke), and it touches
- * the database **only once it knows something will be delivered** — otherwise every
+ * the database **only once it knows something will be delivered**, otherwise every
  * page view on a site with no proactive flows would mint a Conversation.
  *
  * The spend-based gates (daily budget, plan cap) do not apply to a turn that spends
@@ -350,7 +226,7 @@ async function streamProactiveTurn(
   const candidates = proactiveFlowCandidates(input.flows, trigger, {
     // The same objective facts the message funnel gates on (spec #550): the page
     // the event was reported from, and the clock. A proactive flow has no
-    // conditions today, so this only matters if one is ever stored — better to
+    // conditions today, so this only matters if one is ever stored, better to
     // bind it than to ignore it on this funnel alone.
     url: input.metadata?.launchUrl,
     now: new Date(),
@@ -407,8 +283,8 @@ async function streamProactiveTurn(
   const deliverable: Flow[] = [];
   for (const flow of candidates) {
     // Preview is a demo surface, not a Visitor session (#545): an admin who hits
-    // Refresh expects to see the nudge again, so the delivery rule — which exists
-    // to protect a real Visitor from repetition — does not apply there.
+    // Refresh expects to see the nudge again, so the delivery rule, which exists
+    // to protect a real Visitor from repetition, does not apply there.
     if (surface === "preview") {
       deliverable.push(flow);
       continue;
@@ -475,7 +351,7 @@ async function streamProactiveTurn(
           throw new DOMException("Conversation turn aborted", "AbortError");
         }
         // A flow that produced nothing was never delivered, so its delivery must
-        // not be recorded either — the Visitor can still receive it later.
+        // not be recorded either, the Visitor can still receive it later.
         if (result.parts.length === 0) {
           controller.close();
           return;
@@ -577,23 +453,23 @@ export async function streamConversationTurn(
       : null;
 
   // The pre-stream gates and static config reads have no data dependencies on
-  // each other, so they run as ONE parallel wave — every await removed here is
+  // each other, so they run as ONE parallel wave, every await removed here is
   // wall-clock the Visitor spends staring at a closed stream. Each member
   // keeps its own fail-open semantics:
   //
   // - Budget (notify mode only raises/resolves the Alert; block mode answers
-  //   with a fixed unavailable reply below — the exchange still persists, a
+  //   with a fixed unavailable reply below, the exchange still persists, a
   //   Visitor is never silently dropped).
   // - Plan-cap gate (#442): whether platform-funded traffic may still run this
   //   month. OSS default allows everything; BYOK turns are never blocked.
-  // - Organization activation (#444): whether this org may run at all — applies
+  // - Organization activation (#444): whether this org may run at all, applies
   //   to BYOK too (a pending organization is not yet a customer). Self-hosted
   //   deployments never see it.
   // - The API catalogue integration (spec #559): the toolset has to know
   //   whether an integration exists before the model runs; a read failure
   //   leaves the catalogue tools unregistered rather than failing the turn.
   // - The org memory toggle (#664), read only for SSO subjects; fails open to
-  //   "off" — memory problems must never take the assistant down.
+  //   "off", memory problems must never take the assistant down.
   const [
     budget,
     usageGate,
@@ -636,7 +512,7 @@ export async function streamConversationTurn(
       ? db.getConversation(input.conversationId)
       : Promise.resolve(null),
     db.getApiIntegration(assistant.id).catch(() => null),
-    // The immutable platform (Ciele) prompt layer — same for every org.
+    // The immutable platform (Ciele) prompt layer, same for every org.
     getRuntimeHost().getPlatformSystemPrompt(),
     memorySubjectId
       ? db.getMemoryEnabled(input.organizationId).catch(() => false)
@@ -665,7 +541,7 @@ export async function streamConversationTurn(
 
   const collectionId = input.collectionId ?? conversation.collectionId ?? null;
   // The one retrieval port: embedding + vector + the Knowledge Engine choice
-  // (ADR-0017 — Graph primary, vector same-call fallback) live behind
+  // (ADR-0017, Graph primary, vector same-call fallback) live behind
   // buildKnowledgeSearcher, the same factory every other retrieval caller
   // uses. The graph QA id for this turn is captured for the feedback
   // substrate (#389).
@@ -715,7 +591,7 @@ export async function streamConversationTurn(
    *
    * The assistant's own Collections are the boundary. The widget's Db is
    * service-role (it bypasses RLS by design), so an id the model produced is
-   * checked against this assistant's Collections before anything is read — a
+   * checked against this assistant's Collections before anything is read, a
    * Visitor's turn must never be able to read another tenant's Concept by
    * guessing an id. The Collection list is loaded at most once, and only if the
    * model actually reads.
@@ -755,7 +631,7 @@ export async function streamConversationTurn(
     return null;
   };
   // A clarification is persisted as a `clarify` part with no text part, so
-  // `messageText` flattens it to "" — which would hand the model an empty
+  // `messageText` flattens it to "", which would hand the model an empty
   // assistant turn and hide from the courtesy detector that a question was
   // asked (#566). Recovered here rather than by widening `messageText`, whose
   // "text parts only" contract every other consumer relies on.
@@ -781,7 +657,7 @@ export async function streamConversationTurn(
   // The user-message persist and the first-turn memory recall (the top-k
   // memories relevant to the opening message become the "Long-term memory"
   // prompt block; later turns rely on the searchMemories tool) are
-  // independent — one wave, not two awaits.
+  // independent, one wave, not two awaits.
   await Promise.all([
     db.appendMessage({
       conversationId: conversation.id,
@@ -833,7 +709,7 @@ export async function streamConversationTurn(
       };
       emit({ type: "turn", conversationId });
       /**
-       * The one terminal-turn ritual — persist the assistant message, run any
+       * The one terminal-turn ritual, persist the assistant message, run any
        * post-persist bookkeeping, emit `done`, record the `chat_turn`
        * telemetry. Every successful path (budget-block, FAQ quick reply,
        * normal completion) ends here, so the persistence/telemetry contract
@@ -861,7 +737,7 @@ export async function streamConversationTurn(
           flowId: turn.flowId,
           flowName: turn.flowName,
           // Null for a turn that did no agentic work (a verbatim message, a
-          // proactive Notification, a pre-engine gate) — see trace.ts.
+          // proactive Notification, a pre-engine gate), see trace.ts.
           trace: prepareTraceForStorage(trace),
         });
         // `done` goes out the moment the reply is durable: the client's
@@ -887,7 +763,7 @@ export async function streamConversationTurn(
       /**
        * A pre-engine gate's fixed reply: skip every model call, answer with
        * neutral copy plus the escalation offer, and persist the exchange like
-       * any turn — a Visitor is never silently dropped.
+       * any turn, a Visitor is never silently dropped.
        */
       const gatedReply = async (flowName: string, text: string) => {
         emit({ type: "flow", flowId: null, flowName, isDefault: false });
@@ -911,7 +787,7 @@ export async function streamConversationTurn(
           return;
         }
         if (activation.state === "pending") {
-          // No model call, no credential handed out — the organization is not
+          // No model call, no credential handed out, the organization is not
           // active yet. Everything they configured is untouched; activating
           // them makes the same assistant answer.
           await gatedReply("Pending activation", activation.visitorMessage);
@@ -924,7 +800,7 @@ export async function streamConversationTurn(
           await gatedReply("Usage limit", usageGate.message);
           return;
         }
-        // FAQ quick reply: answer with the curated FAQ body verbatim — no
+        // FAQ quick reply: answer with the curated FAQ body verbatim, no
         // model call, cited to the Concept, persisted like any turn. An
         // unmatched (deleted/renamed) FAQ falls through to the normal flow.
         if (input.faqQuestion) {
@@ -1002,7 +878,7 @@ export async function streamConversationTurn(
             appOrigin: platformAppOrigin(),
           }),
           // Objective Flow Conditions are gated against the page the
-          // Conversation was launched from (spec #550) — captured once at
+          // Conversation was launched from (spec #550): captured once at
           // launch, so mid-conversation navigation is not re-evaluated.
           routing: {
             url: conversation.metadata.launchUrl,
@@ -1023,7 +899,7 @@ export async function streamConversationTurn(
           queryEntityRecords: (entityId, query) =>
             db.queryEntityRecords(entityId, query),
           // Entity tool policy input (#667): the verified subject type and
-          // claim decide which tool variants exist — never the model.
+          // claim decide which tool variants exist, never the model.
           toolSubject: {
             type: subjectType,
             subjectId: input.verifiedIdentity?.subjectId ?? null,
@@ -1048,7 +924,7 @@ export async function streamConversationTurn(
           throw new DOMException("Conversation turn aborted", "AbortError");
         }
         // Handover continuation (#314): run the same message once inside the
-        // target Assistant's latest Publication (one hop — the continuation's
+        // target Assistant's latest Publication (one hop, the continuation's
         // own handover signal is ignored). Same-org guard: a flow can never
         // hand a Visitor to another tenant's assistant. Unpublished target or
         // any failure keeps the acknowledgement already streamed.
@@ -1086,7 +962,7 @@ export async function streamConversationTurn(
                 history,
                 searchKnowledge: targetSearch,
                 // The continuation runs inside the target Assistant, so it gets
-                // the target's own integration and document boundary — never
+                // the target's own integration and document boundary, never
                 // the originating assistant's.
                 readKnowledgeDocument: documentReaderFor(target.id),
                 apiIntegration: await db
@@ -1157,7 +1033,7 @@ export async function streamConversationTurn(
             );
             if (session.dirty) {
               // Persist after the reply so a failed turn never half-writes
-              // state; isolated like effects — losing a memory must not break
+              // state; isolated like effects, losing a memory must not break
               // the chat.
               try {
                 await db.updateConversationSessionState(
@@ -1177,7 +1053,7 @@ export async function streamConversationTurn(
               });
             }
             // Memory promotion (#664): enqueue the durable extraction job,
-            // due once the conversation goes quiet — background only, so a
+            // due once the conversation goes quiet, background only, so a
             // failure to enqueue never breaks the chat.
             if (memoryEnabled && memorySubjectId) {
               try {

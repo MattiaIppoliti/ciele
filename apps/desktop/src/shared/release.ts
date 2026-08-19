@@ -1,10 +1,10 @@
-// Which release this build claims to be — and what to do when it claims none.
+// Which release this build claims to be, and what to do when it claims none.
 //
 // The app's version is load-bearing twice over: it is compared against the
 // latest release to decide whether to offer an update, and it is the image tag
 // the local stack is pinned to. Only the release workflow stamps a real one
-// (`desktop-release.yml`), so every other build — a contributor's, a CI
-// artifact, `pnpm dev` — carries the placeholder below.
+// (`desktop-release.yml`), so every other build, a contributor's, a CI
+// artifact, `pnpm dev`, carries the placeholder below.
 //
 // Left unhandled that placeholder is two bugs at once: the update banner nags
 // forever, and setup dies at the image pull against a tag that was never
@@ -24,8 +24,8 @@ export function isDevBuild(version: string): boolean {
  * The version this build should call itself, given what Electron reports.
  *
  * `app.getVersion()` is only the app's version once the app is packaged.
- * Launched as a raw script — `electron out/main/index.js`, which is `pnpm dev`,
- * `pnpm start` and a local E2E run — it returns **Electron's own version**
+ * Launched as a raw script: `electron out/main/index.js`, which is `pnpm dev`,
+ * `pnpm start` and a local E2E run, it returns **Electron's own version**
  * (43.3.0), because there is no app bundle whose manifest it could read.
  *
  * That is worse than useless here: 43.3.0 is not the placeholder, so the build
@@ -47,7 +47,7 @@ export function releaseVersion(isPackaged: boolean, reported: string): string {
  * A stamped build pins its own version, so updating the app is what rolls the
  * stack forward. An unstamped one has no published images to point at, and
  * guessing (`latest`, the newest tag we happen to find) would silently run a
- * different Ciele than the one that was built — so it asks for
+ * different Ciele than the one that was built, so it asks for
  * `CIELE_IMAGE_TAG` instead, and the wizard says so rather than failing at the
  * pull with a registry error nobody can act on.
  */

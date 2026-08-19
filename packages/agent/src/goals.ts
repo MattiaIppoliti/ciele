@@ -3,7 +3,7 @@ import type { ChatReplyPart } from "./types";
 
 /**
  * Deterministic grading for standing goals: a pure function of the reply
- * parts and the goal's expectations. No adjectives, no model judgment — if
+ * parts and the goal's expectations. No adjectives, no model judgment, if
  * this function couldn't check it, it isn't a goal expectation.
  */
 export interface GoalVerdict {

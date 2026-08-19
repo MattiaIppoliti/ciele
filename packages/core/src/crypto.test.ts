@@ -29,7 +29,7 @@ describe("encryptSecret / decryptSecret", () => {
     expect(decryptSecret(encryptSecret(""))).toBe("");
   });
 
-  it("produces a different ciphertext each time — the IV is fresh per call", () => {
+  it("produces a different ciphertext each time, the IV is fresh per call", () => {
     const a = encryptSecret("same-input");
     const b = encryptSecret("same-input");
     expect(a).not.toBe(b);

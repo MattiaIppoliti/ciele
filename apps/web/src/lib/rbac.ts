@@ -22,7 +22,7 @@ export function canManageMembers(role: Role | null): boolean {
 
 /**
  * Admins and above can read a stored turn's raw reasoning in the Inbox. The
- * Thinking panel itself — which tools ran, with what input and outcome — stays
+ * Thinking panel itself: which tools ran, with what input and outcome, stays
  * visible to everyone who can open the Inbox; only the model's own
  * chain-of-thought is gated, because it quotes the Visitor's message and
  * whatever the knowledge base returned back verbatim (#557).
@@ -47,7 +47,7 @@ export function canManageApiKeys(role: Role | null): boolean {
 }
 
 /**
- * An API key may never carry a Role above its creator's — the key acts as a
+ * An API key may never carry a Role above its creator's, the key acts as a
  * delegate of the human who minted it, so the ladder caps at their rank.
  */
 export function canAssignApiKeyRole(

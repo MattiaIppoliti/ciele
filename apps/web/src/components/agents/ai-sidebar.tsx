@@ -344,7 +344,7 @@ function ResourceRow({
   const isDragging = draggingId === row.item.id;
   const dropPosition = dropTarget?.id === row.item.id ? dropTarget.position : null;
 
-  // Reset the draft when a rename begins — during render, per the documented
+  // Reset the draft when a rename begins, during render, per the documented
   // derived-state adjustment pattern, so the input mounts with the right value.
   const [prevRenaming, setPrevRenaming] = useState(renaming);
   if (renaming !== prevRenaming) {

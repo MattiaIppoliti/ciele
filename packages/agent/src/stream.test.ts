@@ -148,7 +148,7 @@ describe("consumeTurnStream", () => {
       label: "Searching",
     });
 
-    // Work in flight — the panel spins and stays open.
+    // Work in flight: the panel spins and stays open.
     expect(await phases([{ type: "notice", label: "Classifying" }])).toBe("running");
     expect(await phases([search("t1")])).toBe("running");
     expect(await phases([{ type: "thought", text: "hmm" }])).toBe("running");
@@ -350,7 +350,7 @@ describe("consumeTurnStream", () => {
     expect(view.parts[0]).toMatchObject({
       type: "text",
       action: "fallback",
-      text: "Something went wrong — please try again.",
+      text: "Something went wrong, please try again.",
     });
   });
 

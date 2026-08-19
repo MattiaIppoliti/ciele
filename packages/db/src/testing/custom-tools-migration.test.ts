@@ -10,7 +10,7 @@ import { createSchemaLoadedPglite } from "./supabase-contract-harness";
  * (#575). Runs the REAL migration against seeded legacy rows: the harness
  * boots the full schema (the migration no-ops on an empty database), the test
  * then seeds pre-upgrade `assistants.tools.custom` configurations and re-runs
- * the file — legitimate because the migration is idempotent by design, and
+ * the file, legitimate because the migration is idempotent by design, and
  * exactly what a self-hoster's upgrade does to their existing rows.
  */
 

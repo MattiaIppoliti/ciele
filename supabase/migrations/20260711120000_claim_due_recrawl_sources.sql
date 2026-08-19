@@ -16,7 +16,7 @@
 -- Claiming flips a due Source to `processing` and strips the previous run's
 -- identity from config in one statement, so neither a second sweep (which
 -- needs `ready`) nor the finalize sweep (which needs a crawlRunId) can touch a
--- claimed Source before its fresh crawl starts — running the sweep twice in a
+-- claimed Source before its fresh crawl starts, running the sweep twice in a
 -- window therefore never double-crawls, and a Source already crawling is
 -- skipped. last_crawled_at is left untouched: it advances only when the new
 -- crawl finalizes successfully, keeping next-due honest in the meantime.

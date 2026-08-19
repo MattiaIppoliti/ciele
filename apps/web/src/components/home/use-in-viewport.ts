@@ -11,11 +11,11 @@ import {
 /* Activation seam for the home page's ambient animation. One place decides
    whether an idle loop (the hero mock's view cycling, the below-fold feature
    visuals) should be running: it should run only while its island is on
-   screen AND the Visitor hasn't asked for reduced motion. Off-screen islands
-   — including the CSS-hidden mock instance the hero mounts for the other
-   breakpoint — never intersect the viewport, so they stay inert for free. */
+   screen AND the Visitor hasn't asked for reduced motion. Off-screen islands,
+   including the CSS-hidden mock instance the hero mounts for the other
+   breakpoint, never intersect the viewport, so they stay inert for free. */
 
-/** Pure activation policy — extracted so the rule is node-testable. */
+/** Pure activation policy, extracted so the rule is node-testable. */
 export function shouldAnimate({
   visible,
   reducedMotion,
@@ -103,7 +103,7 @@ export function useOnceInViewport<T extends Element>(
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") {
       // No IntersectionObserver (very old engine): reveal rather than hide
-      // forever. Runs once, client-only — not a cascading-render concern.
+      // forever. Runs once, client-only, not a cascading-render concern.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSeen(true);
       return;

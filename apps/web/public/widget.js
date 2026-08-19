@@ -24,7 +24,7 @@
   var base = new URL(script.src).origin;
   var collection = script.getAttribute("data-collection") || "";
 
-  // Warm the connection to the app origin right away — DNS + TLS are done
+  // Warm the connection to the app origin right away, DNS + TLS are done
   // by the time the config fetch and the chat iframe need them.
   var preconnect = document.createElement("link");
   preconnect.rel = "preconnect";
@@ -55,7 +55,7 @@
       ? "dark"
       : "light";
   }
-  // The color the iframe chrome shows before the chat's own background paints —
+  // The color the iframe chrome shows before the chat's own background paints,
   // dark when the host is dark so there's no white flash on a dark page.
   function frameBackground() {
     return detectTheme() === "dark" ? "#121212" : "#f5f5f5";
@@ -71,7 +71,7 @@
   var query = "?launcher=1&theme=" + encodeURIComponent(detectTheme());
   if (collection) query += "&c=" + encodeURIComponent(collection);
   // The page the visitor is on. The chat is a cross-origin iframe, so its own
-  // referer describes us, not the host page — URL Flow Conditions (and the
+  // referer describes us, not the host page. URL Flow Conditions (and the
   // Inbox's Launch URL) need the host to say. Capped like the server does.
   var pageUrl = String(window.location.href).slice(0, 500);
   query += "&u=" + encodeURIComponent(pageUrl);
@@ -79,7 +79,7 @@
   frame.title = "Chat assistant";
   frame.allow = "clipboard-write";
 
-  // The chat iframe is the whole app — don't make every host-page view pay
+  // The chat iframe is the whole app: don't make every host-page view pay
   // for it up front. It loads when the browser is idle after the host page
   // finishes (so it never competes with the page's own load), and
   // immediately on hover/focus of the launcher (intent = warm it now).
@@ -102,8 +102,8 @@
     window.addEventListener("load", warmWhenIdle, { once: true });
   }
 
-  // Every frame geometry is written with the SAME properties — the launcher-side
-  // inset pair plus width/height — so card ↔ drawer ↔ full screen is one
+  // Every frame geometry is written with the SAME properties, the launcher-side
+  // inset pair plus width/height, so card ↔ drawer ↔ full screen is one
   // animatable set instead of three different layouts (the old code mixed
   // bottom/right with inset:0, which cannot tween). An iframe is a replaced
   // element, so its size must be width/height: stretching it between opposite
@@ -116,7 +116,7 @@
     ",bottom .42s " + EASE + ",right .42s " + EASE + ",left .42s " + EASE +
     ",border-radius .28s ease;";
   function frameTransition() {
-    // Honour the visitor's reduced-motion preference — snap instead of bounce.
+    // Honour the visitor's reduced-motion preference, snap instead of bounce.
     return window.matchMedia("(prefers-reduced-motion: reduce)").matches
       ? ""
       : FRAME_TRANSITION;
@@ -164,7 +164,7 @@
   }
 
   // Forward later host theme changes (a light/dark toggle on the embedding
-  // page) to the already-loaded iframe — its src can't be re-read, so the
+  // page) to the already-loaded iframe, its src can't be re-read, so the
   // widget applies `ciele:theme` messages live. Only meaningful when the host
   // hasn't pinned a theme via data-theme.
   var lastTheme = detectTheme();
@@ -203,14 +203,14 @@
     applyStyles();
   }
 
-  // Proactive triggers (#541, #542). The chat can't see the host page — not when
-  // it loaded, not its URL — so this script reports those events and the chat asks
+  // Proactive triggers (#541, #542). The chat can't see the host page, not when
+  // it loaded, not its URL, so this script reports those events and the chat asks
   // the server what, if anything, answers them. Which listeners are armed comes
   // from the published config below: an assistant with no proactive flows costs
   // this page nothing.
   //
   // Everything is posted into the frame, which can only hear it once its own
-  // listener is mounted — so events that happen while the frame is still loading
+  // listener is mounted, so events that happen while the frame is still loading
   // are replayed on its load.
   var frameReady = false;
   var pendingTriggers = [];
@@ -245,7 +245,7 @@
 
   // "Time on page": one timer per configured threshold, restarted whenever the
   // host page changes. An SPA route change is a new page, and the visitor has not
-  // lingered on it yet — so a dwell nudge must not inherit the previous page's
+  // lingered on it yet, so a dwell nudge must not inherit the previous page's
   // clock. History is patched rather than polled: pushState fires no event.
   var dwellTimers = [];
   var dwellThresholds = [];
@@ -299,7 +299,7 @@
   }
 
   button.addEventListener("click", function () {
-    warmFrame(); // touch devices skip hover — make sure the frame loads
+    warmFrame(); // touch devices skip hover, make sure the frame loads
     state.open = !state.open;
     if (state.open) unread = false; // opening is reading it
     render();

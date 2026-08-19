@@ -71,7 +71,7 @@ export interface PageMemberContext {
 }
 
 /**
- * The read-side twin of requireMember — the one preamble every (admin) page
+ * The read-side twin of requireMember, the one preamble every (admin) page
  * goes through instead of hand-repeating session → onboarding-redirect → db.
  * No /login redirect here: middleware already bounces signed-out visitors,
  * and pages have always sent a session-less render to /onboarding. The admin
@@ -96,7 +96,7 @@ export const requirePageMember = cache(async (): Promise<PageMemberContext> => {
  * The authorization seam every org-scoped server action goes through:
  * resolves the signed-in Member (redirecting to /login or /onboarding),
  * checks the required capability against their Role, and hands back the
- * request-scoped Db. RBAC policy lives here and in rbac.ts — nowhere else.
+ * request-scoped Db. RBAC policy lives here and in rbac.ts, nowhere else.
  */
 export async function requireMember(
   capability: MemberCapability = "member"

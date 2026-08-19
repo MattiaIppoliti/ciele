@@ -4,12 +4,12 @@ import { createSupabaseDb } from "./supabase";
 import type { Db } from "./types";
 
 /**
- * `@agent-hub/db` — the data-access seam, and only that.
+ * `@agent-hub/db`: the data-access seam, and only that.
  *
  * This package publishes the `Db` interface, its two adapters, and the few
  * operations that need a `Db` to mean anything. The **domain vocabulary** it
- * traffics in — Organization, Assistant, Flow, Concept, Publication, the OKF
- * derivations, the Insights oracle, the deterministic router — lives in
+ * traffics in, Organization, Assistant, Flow, Concept, Publication, the OKF
+ * derivations, the Insights oracle, the deterministic router, lives in
  * `@agent-hub/core`, which this package depends on (ADR-0019).
  *
  * So import a *type* from `@agent-hub/core` and an *operation* from here. There
@@ -21,7 +21,7 @@ import type { Db } from "./types";
 // The seam itself.
 export type { Db } from "./types";
 
-// The generic typed table accessor (ADR-0016 stage 1) — the escape hatch the
+// The generic typed table accessor (ADR-0016 stage 1): the escape hatch the
 // ~125 plain-CRUD passthroughs migrate onto.
 export type {
   DbTableAccessor,
@@ -58,7 +58,7 @@ export function isSupabaseConfigured(): boolean {
 
 /**
  * Supabase-backed Db bound to the caller's auth context. Build a fresh one
- * per request with a cookie-scoped client — RLS enforces tenant isolation.
+ * per request with a cookie-scoped client, RLS enforces tenant isolation.
  */
 export function createDb(client: SupabaseClient): Db {
   return createSupabaseDb(client);

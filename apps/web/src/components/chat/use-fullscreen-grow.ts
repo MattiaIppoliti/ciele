@@ -7,7 +7,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
  * curve the embed host uses (`public/widget.js`).
  *
  * Full screen flips a panel from in-flow to `fixed inset-0`, which is a layout
- * change no CSS transition can interpolate — the panel just teleports. This runs
+ * change no CSS transition can interpolate, the panel just teleports. This runs
  * a FLIP instead: measure the rect before the flip, then animate the real
  * geometry (top/left/width/height + radius) from it, so the panel visibly takes
  * over more and more of the screen. Geometry, not `transform: scale`, because
@@ -20,7 +20,7 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
  * `prefers-reduced-motion` skips straight to the end state.
  */
 const DURATION_MS = 420;
-/** easeOutBack — overshoots ~8% before settling; the bounce. */
+/** easeOutBack, overshoots ~8% before settling; the bounce. */
 const EASE = "cubic-bezier(.34,1.42,.64,1)";
 
 type Frame = {
@@ -123,7 +123,7 @@ export function useFullscreenGrow() {
     setFullscreen,
     /** Ref for the panel that grows. */
     surfaceRef,
-    /** True while the FLIP runs — the panel is out of flow. */
+    /** True while the FLIP runs, the panel is out of flow. */
     animating,
     /** Render in the panel's slot while `animating`, with the panel's own sizing classes. */
     spacerRef,

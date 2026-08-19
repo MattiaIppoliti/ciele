@@ -1,5 +1,5 @@
 "use client";
-// motion-primitives Spotlight — a cursor-following radial glow that lights up
+// motion-primitives Spotlight, a cursor-following radial glow that lights up
 // its parent element (classic use: behind an inset card for a glowing
 // border). https://motion-primitives.com
 

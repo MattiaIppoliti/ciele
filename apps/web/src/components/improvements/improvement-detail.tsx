@@ -125,7 +125,7 @@ export function ImprovementDetail({
   proposal: ImprovementProposal | null;
   canEdit: boolean;
   /**
-   * "drawer" drops the breadcrumb (the drawer has its own header) — the columns
+   * "drawer" drops the breadcrumb (the drawer has its own header), the columns
    * need no flag, they respond to the container's width, not the viewport's.
    */
   variant?: "page" | "drawer";

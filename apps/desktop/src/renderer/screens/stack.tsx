@@ -1,7 +1,7 @@
 // Day two: is my local Ciele up, and how do I stop it.
 //
 // Everything here reports what the stack is actually doing rather than what
-// the app last asked it to do — the status comes from probing Ciele and from
+// the app last asked it to do, the status comes from probing Ciele and from
 // Docker, polled while this screen is open.
 
 import { ArrowLeft, ExternalLink, Play, RotateCw, Square } from "lucide-react";
@@ -26,7 +26,7 @@ const HEALTH: Record<StackHealth, { label: string; blurb: string; dot: string }>
   },
   stopped: {
     label: "Stopped",
-    blurb: "The stack is not running. Your data is untouched — starting it brings everything back.",
+    blurb: "The stack is not running. Your data is untouched, starting it brings everything back.",
     dot: "bg-ink-muted/40",
   },
   "docker-unavailable": {
@@ -120,7 +120,7 @@ export function StackScreen(): ReactNode {
             </span>
           </div>
           <p className="pt-1 text-ink-muted">
-            Your assistants and knowledge live in Docker volumes, not in that folder — they
+            Your assistants and knowledge live in Docker volumes, not in that folder, they
             survive restarts and app updates. Quitting Ciele leaves the stack running.
           </p>
         </Card>
@@ -130,7 +130,7 @@ export function StackScreen(): ReactNode {
             <h2 className="text-sm font-semibold">Run setup again</h2>
             <p className="text-xs text-ink-muted">
               Takes you back through the wizard from the first step. Your configuration, your
-              database and your files are left exactly as they are — nothing here deletes data.
+              database and your files are left exactly as they are, nothing here deletes data.
             </p>
           </div>
           <Button

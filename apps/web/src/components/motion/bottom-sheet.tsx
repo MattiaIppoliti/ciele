@@ -22,7 +22,7 @@ import { EASE_DRAWER } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
 // Vaul-style glide: a long, fully-damped tween reads smoother than a spring on
-// open — no settle/overshoot, just one clean decel. Same curve drives the
+// open, no settle/overshoot, just one clean decel. Same curve drives the
 // backdrop fade so the surface and scrim move as one.
 const DRAWER = { duration: 0.5, ease: EASE_DRAWER } as const;
 const subscribeToClient = () => () => undefined;
@@ -117,7 +117,7 @@ export function BottomSheet({
   }, [closeSheet, open]);
 
   // Lock background scroll while open. overflow:hidden alone is ignored by
-  // iOS Safari — boundary scrolls inside the sheet chain to the page, which
+  // iOS Safari, boundary scrolls inside the sheet chain to the page, which
   // scrolls underneath and ends up somewhere else on close. position:fixed
   // is the lock that actually holds; restore the scroll position after.
   useEffect(() => {

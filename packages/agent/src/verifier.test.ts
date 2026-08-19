@@ -240,7 +240,7 @@ describe("runDueAnswerVerifications", () => {
       runDueAnswerVerifications({ db }, { model: verdictModel("pass") }),
     ]);
 
-    // Every candidate graded exactly once across both ticks — no double count.
+    // Every candidate graded exactly once across both ticks, no double count.
     expect(a.verified + b.verified).toBe(seeded.length);
     // A third tick finds nothing left.
     const drained = await runDueAnswerVerifications(
@@ -269,7 +269,7 @@ describe("runDueAnswerVerifications", () => {
     expect(second.map((c) => c.messageId)).not.toContain(messageId);
 
     // With a staleness cutoff in the future, the held claim is now expired and
-    // re-claimable — a crashed tick's candidates return.
+    // re-claimable, a crashed tick's candidates return.
     const reclaimed = await db.claimUnverifiedAnswers({
       limit: 10,
       staleBefore: new Date(Date.now() + 3_600_000).toISOString(),
@@ -316,7 +316,7 @@ describe("runDueAnswerVerifications", () => {
     }) as unknown as LanguageModel;
     const result = await runDueAnswerVerifications({ db }, { model: throwing });
     expect(result.verified).toBe(0);
-    // Still unverified — a later tick can retry.
+    // Still unverified: a later tick can retry.
     const retry = await runDueAnswerVerifications(
       { db },
       { model: verdictModel("pass") }

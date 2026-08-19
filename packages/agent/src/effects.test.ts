@@ -5,7 +5,7 @@ import { applyEffects } from "./effects";
 /**
  * The deferred-effects contract (ARCHITECTURE §5.1): effects run in order
  * AFTER the assistant message persisted, each isolated so one failure never
- * breaks the others — and `create_improvement` goes through the shared
+ * breaks the others, and `create_improvement` goes through the shared
  * conversation-scoped dedup walk (attach an occurrence to an open item,
  * never clone it).
  */

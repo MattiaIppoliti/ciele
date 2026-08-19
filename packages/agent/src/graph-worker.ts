@@ -1,6 +1,6 @@
 /**
  * Graph Knowledge Layer via a private cognee worker (its base URL + token come
- * from GRAPH_WORKER_BASE_URL / GRAPH_WORKER_API_TOKEN — never hardcode them).
+ * from GRAPH_WORKER_BASE_URL / GRAPH_WORKER_API_TOKEN, never hardcode them).
  * The worker itself (a pinned, authenticated container wrapping the cognee
  * library behind ingest/search/feedback/improve/health routes) is packaged
  * separately under `services/graph-worker/`; this module is the Ciele-side
@@ -32,7 +32,7 @@ import { redactBearerSecrets, trimTrailingSlash } from "./redact";
 const DATASET_PREFIX = "ciele_col_";
 
 /** Default request timeouts (ms). Search/feedback are interactive; ingest and
- * improve are slower graph-building passes but still submitted synchronously —
+ * improve are slower graph-building passes but still submitted synchronously,
  * the worker does the heavy lifting, we just wait for its ack. */
 const SEARCH_TIMEOUT_MS = 60_000;
 const WRITE_TIMEOUT_MS = 120_000;
@@ -43,7 +43,7 @@ export function isGraphWorkerConfigured(): boolean {
 
 /**
  * Scrubs worker credentials out of any text destined for an error, an Alert, a
- * client response, or telemetry — the configured token and any bearer/
+ * client response, or telemetry, the configured token and any bearer/
  * authorization echo (see `redactBearerSecrets`, shared with the crawler
  * adapter).
  */
@@ -67,7 +67,7 @@ function requireConfig(): { baseUrl: string; token: string } {
   const token = process.env.GRAPH_WORKER_API_TOKEN;
   if (!baseUrl || !token) {
     throw new Error(
-      "GRAPH_WORKER_BASE_URL and GRAPH_WORKER_API_TOKEN must be set — required for the graph knowledge worker."
+      "GRAPH_WORKER_BASE_URL and GRAPH_WORKER_API_TOKEN must be set, required for the graph knowledge worker."
     );
   }
   return { baseUrl: trimTrailingSlash(baseUrl), token };
@@ -104,7 +104,7 @@ async function workerRequest<T>(
 
 /**
  * Token usage the worker reports for the LLM calls one request triggered
- * internally (cognify, graph-completion, session guidance, distillation) —
+ * internally (cognify, graph-completion, session guidance, distillation),
  * cognee's HTTP payloads carry no usage of their own, so the worker meters its
  * litellm calls and returns the aggregate here for the ai_usage ledger.
  */
@@ -130,7 +130,7 @@ type RawUsage = {
 
 /**
  * Maps the worker's raw usage to `GraphWorkerUsage`, or null when the request
- * made no LLM calls (or the worker predates usage reporting) — so callers meter
+ * made no LLM calls (or the worker predates usage reporting), so callers meter
  * only real spend. Pure, unit-tested off the network like the other mappers.
  */
 export function mapGraphUsage(raw: RawUsage | undefined): GraphWorkerUsage | null {
@@ -148,7 +148,7 @@ export function mapGraphUsage(raw: RawUsage | undefined): GraphWorkerUsage | nul
 /**
  * Folds the worker's litellm provider naming into the ledger's `Provider`
  * vocabulary: gemini/vertex → google, anthropic → anthropic, and everything
- * else (openai, azure, ollama, custom) → openai — those are all served over
+ * else (openai, azure, ollama, custom) → openai; those are all served over
  * OpenAI-compatible endpoints, and the ledger's provider column is
  * attribution, not billing truth (pricing keys on the model id).
  */
@@ -170,7 +170,7 @@ export interface GraphDocument {
 /**
  * Ingests (or re-ingests) Concepts into a collection's graph: `add` + `cognify`
  * on the worker, into the dataset for `collectionId`, tagging each document so
- * results stay attributable. Idempotent on `conceptId` — re-ingesting a Concept
+ * results stay attributable. Idempotent on `conceptId`, re-ingesting a Concept
  * replaces its graph document. The token never appears in the request body.
  */
 export async function ingestConcepts(
@@ -216,7 +216,7 @@ export async function removeConcept(
  * unbounded fan-out of per-Concept removes over what may be a large collection.
  * Best-effort on the worker: a dataset that was never created (no graph worker
  * when the collection was ingested, or nothing ever ingested) is a no-op, not an
- * error — mirroring `/remove`.
+ * error, mirroring `/remove`.
  */
 export async function purgeCollection(collectionId: string): Promise<void> {
   const dataset = datasetForCollection(collectionId);
@@ -237,8 +237,8 @@ export interface GraphProvenance {
 }
 
 /** A graph search result: the composed answer (empty for `chunks` mode), the
- * provenance behind it, the worker's QA id for this turn — the handle the
- * feedback loop later scores (see `sendFeedback`) — and the LLM usage the
+ * provenance behind it, the worker's QA id for this turn, the handle the
+ * feedback loop later scores (see `sendFeedback`), and the LLM usage the
  * search cost (null when it made no LLM calls, e.g. pure `chunks` retrieval). */
 export interface GraphSearchResult {
   answer: string;
@@ -280,7 +280,7 @@ export function mapGraphProvenance(raw: RawProvenance[] | null | undefined): Gra
 
 /**
  * Searches a collection's graph. Always runs against the dataset for
- * `collectionId` (never a dataset-less call — the empty-default-graph gotcha is
+ * `collectionId` (never a dataset-less call, the empty-default-graph gotcha is
  * unreachable). Passing `sessionId` (the conversation id) makes the worker
  * record a Retrieval Trace so this answer's graph elements can later be
  * re-weighted by feedback. Evidence is mapped to Concept → Source provenance.
@@ -345,7 +345,7 @@ export async function sendFeedback(
 
 /**
  * Runs the worker's improve pass for a collection's dataset: applies feedback
- * weights (the zero-LLM stage, always) and — when `distill` is set — the LLM
+ * weights (the zero-LLM stage, always) and, when `distill` is set, the LLM
  * distillation stage. `distill` is gated by the caller against the org's daily
  * learning-token budget; this adapter only forwards the flag.
  */

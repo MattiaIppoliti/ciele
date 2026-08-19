@@ -5,7 +5,7 @@
  * Crawls run *asynchronously*: we start an Apify run (a quick POST), store its
  * run/dataset ids on the Source, and later poll the run and ingest its dataset
  * when it succeeds. This decouples a potentially minutes-long crawl from any
- * single request's lifetime — the reason a synchronous crawl could leave a
+ * single request's lifetime, the reason a synchronous crawl could leave a
  * Source stuck on `processing` when a serverless function timed out mid-crawl.
  */
 
@@ -59,12 +59,12 @@ export function buildCrawlInput(
     startUrls: [{ url }],
     maxCrawlPages: Math.min(options.maxPages ?? 20, MAX_CRAWL_PAGES),
     // Use the actor's adaptive engine: it renders JavaScript when a page needs
-    // it and stays on fast raw HTTP when it doesn't — so client-rendered pages
+    // it and stays on fast raw HTTP when it doesn't, so client-rendered pages
     // aren't silently missed. We used to force `cheerio` unless an admin set
     // `waitSecs`; admins never did, so JS-rendered pages came back nav-only.
     crawlerType: "playwright:adaptive",
     saveMarkdown: true,
-    // Isolate the main article — strip nav / menus / boilerplate to readable
+    // Isolate the main article: strip nav / menus / boilerplate to readable
     // text (the actor's own default, which our old input silently discarded).
     htmlTransformer: "readableText",
     removeCookieWarnings: true,
@@ -107,7 +107,7 @@ function requireToken(): string {
   const token = process.env.APIFY_API_TOKEN;
   if (!token) {
     throw new Error(
-      "APIFY_API_TOKEN is not set — required for website crawling."
+      "APIFY_API_TOKEN is not set, required for website crawling."
     );
   }
   return token;
@@ -152,7 +152,7 @@ export function isRunTerminal(status: ApifyRunStatus): boolean {
 
 /**
  * Kicks off an async crawl and returns immediately with its run/dataset ids.
- * A fast POST — safe to await inside a request without risking a timeout.
+ * A fast POST: safe to await inside a request without risking a timeout.
  */
 export async function startCrawl(
   url: string,

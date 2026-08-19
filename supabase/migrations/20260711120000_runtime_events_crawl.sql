@@ -2,7 +2,7 @@
 -- finalizer becomes the first non-chat writer: it meters one 'crawl' event per
 -- terminal crawl outcome (success / remote failure / empty), carrying the
 -- resolved crawler, the worker task/run correlation id (trace_id), duration,
--- usable page count, terminal status, and a sanitized error class — never the
+-- usable page count, terminal status, and a sanitized error class, never the
 -- crawler token, an Authorization header, or a provider response body.
 --
 -- Widens the `kind` vocabulary and adds two crawl-shaped columns; both are

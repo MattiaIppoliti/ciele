@@ -7,12 +7,12 @@ import type { ChatReplyPart } from "@agent-hub/agent/client";
  * with the reference platform's 29 fields, the last of which is a `Messages[]`
  * array whose items carry exactly `Sender`, `Timestamp`, `Content`, `Feedback` and
  * `AgenticTrace`. A parser written against a reference export file reads ours
- * unchanged — that is the whole requirement, and it is why the field *names* are
+ * unchanged; that is the whole requirement, and it is why the field *names* are
  * the reference's strings rather than our camelCase domain names.
  *
  * Two deliberate consequences:
  *
- * - **Everything is a string, and an absent value is `""`** — never `null`, never
+ * - **Everything is a string, and an absent value is `""`**: never `null`, never
  *   a missing key. A field whose producing feature has not shipped (LMS course
  *   anchoring, the CSAT survey) exports empty, which is exactly what the reference
  *   does for a tenant that does not use it, so the shape is right today and the
@@ -41,7 +41,7 @@ export const INBOX_EXPORT_MAX_CONVERSATIONS = 500;
  */
 export const INBOX_EXPORT_READ_BATCH = 20;
 
-/** One `Messages[]` item — exactly the reference's five fields. */
+/** One `Messages[]` item, exactly the reference's five fields. */
 export interface ConversationExportMessage {
   Sender: "User" | "Assistant";
   Timestamp: string;
@@ -51,7 +51,7 @@ export interface ConversationExportMessage {
   AgenticTrace: string;
 }
 
-/** One exported Conversation — the reference's 29-field record. */
+/** One exported Conversation, the reference's 29-field record. */
 export interface ConversationExportRow {
   "Conversation ID": string;
   "User Name": string;
@@ -94,7 +94,7 @@ export interface ConversationExportOptions {
   /**
    * Whether the exporting Member may read the model's own reasoning (#557). False
    * drops every `[Thinking:]` segment from `AgenticTrace` and keeps the tool
-   * timeline — the same gate the transcript panel applies, enforced here too
+   * timeline, the same gate the transcript panel applies, enforced here too
    * because an export leaves the console.
    */
   includeReasoning: boolean;
@@ -102,7 +102,7 @@ export interface ConversationExportOptions {
   iterationLimit?: number;
 }
 
-/** Empty string for anything absent — never null, never a missing key. */
+/** Empty string for anything absent, never null, never a missing key. */
 function str(value: string | number | null | undefined): string {
   return value === null || value === undefined ? "" : String(value);
 }

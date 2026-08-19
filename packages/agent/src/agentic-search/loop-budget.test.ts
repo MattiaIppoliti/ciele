@@ -17,7 +17,7 @@ describe("iterationNote", () => {
     const note = iterationNote(5, 6);
     expect(note).toContain("1 iteration");
     expect(note).toContain("MUST call ReadyToAnswer now");
-    // Not yet a prohibition — the model may still finish its thought.
+    // Not yet a prohibition: the model may still finish its thought.
     expect(note).not.toContain("Do not call any other tool");
   });
 

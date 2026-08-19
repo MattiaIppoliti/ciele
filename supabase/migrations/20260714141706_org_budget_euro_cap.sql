@@ -2,7 +2,7 @@
 -- (org_budgets.daily_token_limit, 20260710160000_org_budgets.sql). Either
 -- limit crossing today's usage trips `enforcement`. The euro figure is an
 -- estimate computed app-side from token counts (packages/db/src/pricing.ts),
--- not a billed amount — there is no per-call cost feed from any provider.
+-- not a billed amount; there is no per-call cost feed from any provider.
 
 alter table public.org_budgets
   add column daily_euro_limit_cents bigint;

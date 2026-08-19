@@ -1,5 +1,5 @@
 /**
- * Next.js instrumentation — runs once when the server process starts.
+ * Next.js instrumentation: runs once when the server process starts.
  *
  * Two startup registrations, both guarded to the Node.js runtime because each
  * pulls server-only code that must never load into the edge runtime:
@@ -24,7 +24,7 @@ export async function register() {
   registerRuntimeHost({
     getPlatformSystemPrompt,
     // `after` keeps the invocation alive for the returned promise, which is what
-    // makes it safe to hand a job drain to — see the port's contract.
+    // makes it safe to hand a job drain to, see the port's contract.
     scheduleAfterResponse: (work) => after(work),
     // Dev and preview deployments may point tenant-configured requests at
     // plain-HTTP / loopback mocks; production never does. The port defaults to

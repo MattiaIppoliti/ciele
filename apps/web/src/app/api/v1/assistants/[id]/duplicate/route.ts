@@ -4,7 +4,7 @@ import { assistantResource } from "@/lib/api-v1/resources";
 import { runApiOperation } from "@/lib/api-v1/run";
 
 /**
- * Duplicate an Assistant (#620): config + Flows copied, knowledge stays —
+ * Duplicate an Assistant (#620): config + Flows copied, knowledge stays,
  * the same operation behind the dashboard card's "Duplicate assistant".
  */
 export async function POST(

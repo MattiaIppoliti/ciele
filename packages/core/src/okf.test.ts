@@ -40,7 +40,7 @@ describe("actor convention (§7)", () => {
 });
 
 describe("verificationEvents (§5.2)", () => {
-  it("reads a bare mapping as a one-element list — a §11 MUST", () => {
+  it("reads a bare mapping as a one-element list, a §11 MUST", () => {
     expect(
       verificationEvents({ verified: { by: "human:a", at: "2026-06-25T09:00:00Z" } })
     ).toEqual([{ by: "human:a", at: "2026-06-25T09:00:00Z" }]);

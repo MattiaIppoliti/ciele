@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BouncyAccordion, type BouncyAccordionItem } from "@/components/motion/bouncy-accordion";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 import { SpotlightCard } from "@/components/marketing/spotlight-card";
@@ -34,12 +35,12 @@ const CAPABILITIES: Capability[] = [
   {
     icon: KeyRound,
     title: "Role-based access control",
-    body: "Members are assigned roles that scope what they can see and change within their organization. Sign-in is handled through our managed authentication layer, with single sign-on through Google and Microsoft.",
+    body: "Each member holds a role that scopes what they can see and change within their organization. Our managed authentication layer handles sign-in, with single sign-on through Google and Microsoft.",
   },
   {
     icon: Lock,
     title: "Encryption in transit and at rest",
-    body: "Traffic to the platform is served over TLS, and data is encrypted at rest by our managed database and storage providers. Secrets and access tokens are stored sealed, never in plain text.",
+    body: "The platform serves every request over TLS, and our managed database and storage providers encrypt data at rest. Secrets and access tokens are stored sealed, never in plain text.",
   },
   {
     icon: ShieldCheck,
@@ -49,12 +50,12 @@ const CAPABILITIES: Capability[] = [
   {
     icon: FileSearch,
     title: "Grounded, auditable answers",
-    body: "Assistants answer from the knowledge you connect and cite the exact Source behind each response, so every answer can be traced back to the page or document it came from rather than an opaque model guess.",
+    body: "Assistants answer from the knowledge you connect and cite the exact Source behind each response, so you can trace any answer back to the page or document it came from rather than to an opaque model guess.",
   },
   {
     icon: Plug,
     title: "Secure integrations",
-    body: "Connections to knowledge sources, help desks and identity providers use scoped credentials that are sealed at rest. Operational alerts flag an integration whose credentials stop working so it can be addressed quickly.",
+    body: "Connections to knowledge sources, help desks and identity providers use scoped credentials that are sealed at rest. Operational alerts flag an integration whose credentials stop working, so someone can fix it before answers go stale.",
   },
 ];
 
@@ -80,7 +81,7 @@ const GOVERNANCE: Array<{ term: string; detail: string }> = [
   {
     term: "Subprocessors",
     detail:
-      "A short, published list of hosting, database, email and model providers process data on our instructions. Changes are reflected on the subprocessor page.",
+      "A short, published list of hosting, database, email and model providers processes data on our instructions. We update the subprocessor page whenever that list changes.",
   },
   {
     term: "Data residency",
@@ -201,15 +202,15 @@ export function SecurityContent() {
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
       <div className="mx-auto w-full max-w-6xl">
-        {/* Hero — centred over the full column, the same shape every other
+        {/* Hero, centred over the full column, the same shape every other
             marketing page opens with. Left-aligned in a max-w-3xl box left the
             whole page hugging the left half of a wide screen. */}
         <MarketingHero eyebrow="Security" title="Security you can trace">
           <p className="text-muted-foreground mt-6 text-lg leading-relaxed">
-            Ciele is built so organizations can trust their AI assistants: tenant
-            data is isolated at the database layer, access is scoped by role,
-            answers are grounded in your own knowledge, and your content is never
-            used to train models.
+            Postgres row-level security isolates tenant data at the database
+            layer, roles scope what each member can reach, every answer is
+            grounded in your own knowledge and cited, and we never train models
+            on your content.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <StatusBadge label="SOC 2 Type II" />
@@ -244,7 +245,7 @@ export function SecurityContent() {
           })}
         </div>
 
-        {/* Compliance & governance — section header split across the full
+        {/* Compliance & governance, section header split across the full
             width (title left, the sentence that qualifies it right), then the
             rows run edge to edge with the term in a fixed left column. */}
         <section className="mt-24">
@@ -258,8 +259,8 @@ export function SecurityContent() {
               </h2>
             </div>
             <p className="text-muted-foreground max-w-md text-base leading-relaxed">
-              We are early in our formal compliance journey and are being
-              deliberate about what we claim. Here is where things stand today.
+              We are early in our formal compliance work, and deliberate about
+              what we claim. Here is where things stand today.
             </p>
           </div>
           <dl className="border-border/60 mt-10 border-t">
@@ -279,7 +280,7 @@ export function SecurityContent() {
           </dl>
         </section>
 
-        {/* Document index — the hub half of the page: everything a procurement
+        {/* Document index, the hub half of the page: everything a procurement
             or DPO review asks for, each on its own page. */}
         <section className="mt-24">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-12">
@@ -315,7 +316,7 @@ export function SecurityContent() {
           </div>
         </section>
 
-        {/* FAQ — centred block, rows left-aligned: a question centred against
+        {/* FAQ, centred block, rows left-aligned: a question centred against
             its own chevron reads as a layout bug. Same accordion as Pricing. */}
         <div className="mx-auto mt-24 max-w-3xl">
           <h2 className="text-foreground text-center text-2xl font-semibold tracking-tight">
@@ -340,8 +341,8 @@ export function SecurityContent() {
             </h2>
             <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
               If you believe you have found a vulnerability, or you have a question
-              about our security practices, please reach out. We take reports
-              seriously and will respond quickly. The{" "}
+              about our security practices, write to us. We acknowledge a report
+              within two business days. The{" "}
               <Link
                 href="/security/responsible-disclosure"
                 className="text-foreground font-medium underline underline-offset-4"
@@ -358,6 +359,14 @@ export function SecurityContent() {
             security@ciele.app
           </a>
         </div>
+
+        <CloudCallout
+          expression="suspicious"
+          eyebrow="Healthy suspicion"
+          title="Trusts nothing it can't verify"
+          body="Every answer is grounded in your sources and cited, tenants are isolated at the database row, and anything it can't back up never reaches a visitor."
+          cta={{ label: "Read the security page", href: "/security/gdpr" }}
+        />
 
         <CtaSection
           lead="Grounded, isolated, traceable."

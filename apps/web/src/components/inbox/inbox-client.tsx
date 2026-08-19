@@ -93,8 +93,8 @@ interface Filters {
   feedback: "" | "up" | "down";
   escalation: "" | "escalated" | "not_escalated";
   /**
-   * Staff (member-subject) conversations — admin Preview, the data
-   * assistant — are hidden by default (#668); "include" opts them in.
+   * Staff (member-subject) conversations, admin Preview, the data
+   * assistant, are hidden by default (#668); "include" opts them in.
    */
   staff: "" | "include" | "only";
 }
@@ -126,7 +126,7 @@ function dayLabel(iso: string): string {
 
 /**
  * Per-message time in the transcript. The conversation header already carries
- * the date, so a turn only needs its clock time — and reviewing a transcript
+ * the date, so a turn only needs its clock time, and reviewing a transcript
  * means reading the gaps between turns.
  */
 function MessageTime({ iso }: { iso: string }) {
@@ -146,8 +146,8 @@ function MessageTime({ iso }: { iso: string }) {
 
 /**
  * The Thinking panel's footer caveat. Says out loud when the stored trace is
- * not the whole turn — reasoning withheld by the Role gate, or steps the
- * runtime clipped on write — so a short panel is never mistaken for a turn that
+ * not the whole turn, reasoning withheld by the Role gate, or steps the
+ * runtime clipped on write, so a short panel is never mistaken for a turn that
  * did little work.
  */
 function traceNote(trace: {
@@ -290,7 +290,7 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
   }
   if (part.type === "progress") {
     // The narration the Visitor watched stream, kept as its own part so the
-    // transcript shows exactly what they saw — and stays distinguishable from
+    // transcript shows exactly what they saw, and stays distinguishable from
     // the answer itself (#560).
     return <ProgressLine text={part.text} className="max-w-[85%]" />;
   }
@@ -512,8 +512,8 @@ export function InboxClient({
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
 
   // The transcript must render even when the auxiliary lookups (improvement
-  // links, verifier verdicts) fail — e.g. a database that predates their
-  // tables — so each fetch settles independently instead of one Promise.all.
+  // links, verifier verdicts) fail, e.g. a database that predates their
+  // tables, so each fetch settles independently instead of one Promise.all.
   async function loadConversation(id: string) {
     setSelectedId(id);
     setDetailsOpen(false);
@@ -590,7 +590,7 @@ export function InboxClient({
   /**
    * The reference-parity JSON export (#561): 29-field Conversation records with
    * their full transcripts and a serialized `AgenticTrace` per message. Assembled
-   * server-side — the transcripts are not loaded in the browser, and the
+   * server-side, the transcripts are not loaded in the browser, and the
    * reasoning gate has to be enforced rather than requested.
    */
   async function exportParityJson() {
@@ -661,7 +661,7 @@ export function InboxClient({
     doc.write(transcriptDocument({ conversation: selected, messages }));
     doc.close();
     const win = frame.contentWindow;
-    // The frame must outlive print() — the dialog is modal but asynchronous, and
+    // The frame must outlive print(), the dialog is modal but asynchronous, and
     // removing the frame while it is open cancels the job.
     win.addEventListener("afterprint", () => frame.remove());
     win.focus();
@@ -916,7 +916,7 @@ export function InboxClient({
       <div className="flex min-h-0 flex-1 border-t">
         {/* Conversation log. Three panes need ~1100px to all be usable; below
             `lg` the list and the thread take turns owning the screen, the way
-            a phone mail client does — picking a conversation swaps to it and
+            a phone mail client does, picking a conversation swaps to it and
             "All conversations" comes back. */}
         <aside
           className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
@@ -952,7 +952,7 @@ export function InboxClient({
                 <span className="text-muted-foreground block truncate text-xs">
                   {c.title || "Untitled conversation"}
                 </span>
-                {/* The assistant spoke first and nobody answered — a nudge, not a
+                {/* The assistant spoke first and nobody answered, a nudge, not a
                     conversation. Marked so the queue isn't padded with these. */}
                 {c.notificationOnly && (
                   <span className="text-muted-foreground mt-1 mr-1 inline-block max-w-full truncate rounded-full border border-dashed px-2 py-0.5 text-[11px] font-medium">
@@ -1045,7 +1045,7 @@ export function InboxClient({
               {messages?.map((m) => {
                 if (m.role === "user") {
                   // Visitor messages sit on the right, assistant replies on the
-                  // left — the convention every messaging app trains readers on.
+                  // left, the convention every messaging app trains readers on.
                   return (
                     <div
                       key={m.id}
@@ -1193,7 +1193,7 @@ export function InboxClient({
           )}
         </section>
 
-        {/* Details — docked as a third column only where all three panes fit
+        {/* Details, docked as a third column only where all three panes fit
             (`xl`), and reachable everywhere else through the thread's
             "Details" button, which opens this same content as a sheet. */}
         {selected && (

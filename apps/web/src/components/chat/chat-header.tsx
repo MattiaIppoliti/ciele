@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 /**
- * The chat surface header — ONE component shared by the assistant editor's
+ * The chat surface header: ONE component shared by the assistant editor's
  * live Preview panel and the production widget, so the two can never drift
  * apart (the preview exists to show exactly what production renders).
  *
@@ -48,7 +48,7 @@ export function ChatHeader({
 }) {
   // Icons use the theme foreground token (via `text-primary`) rather than the
   // brand color: a dark brand color is invisible on the dark-mode surface, so
-  // the header must flip white in dark — same as the rest of the chrome.
+  // the header must flip white in dark, same as the rest of the chrome.
   return (
     <div className="flex items-center gap-1 border-b px-3 py-3">
       <Hint label="View history">

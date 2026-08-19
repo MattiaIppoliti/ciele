@@ -15,7 +15,7 @@ import {
 
 /**
  * These are compliance assertions, not style checks. A failure here means the
- * banner has stopped being lawful — treat it the way you would a failing
+ * banner has stopped being lawful, treat it the way you would a failing
  * security test, not as a snapshot to update.
  */
 
@@ -166,7 +166,7 @@ describe("consent is recorded, time-boxed and revocable", () => {
   it("knows how to erase every local-storage item an optional category declares", () => {
     /* Withdrawal has to remove what was stored, not merely stop new writes.
        The plugin's `autoClear` only understands cookies, so any local-storage
-       row needs machine-actionable keys or it would be silently left behind —
+       row needs machine-actionable keys or it would be silently left behind,
        which is exactly the bug this asserts against. */
     for (const category of OPTIONAL_CATEGORIES) {
       for (const item of category.items) {

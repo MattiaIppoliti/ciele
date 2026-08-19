@@ -16,7 +16,7 @@ import { createTurnSession } from "./session";
 import type { ActionContext, RuntimeEvent } from "./types";
 
 // api_request goes through the real egress guard's header policy but a mocked
-// network call — assertAllowedHeaders/sanitizeHeaderValue stay real.
+// network call, assertAllowedHeaders/sanitizeHeaderValue stay real.
 vi.mock("./egress", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./egress")>()),
   egressFetch: vi.fn(),
@@ -25,7 +25,7 @@ import { egressFetch } from "./egress";
 
 /**
  * Flow Action handlers, tested through the registry interface: each Adapter
- * gets an ActionContext and must return its parts/effects/halt — the engine
+ * gets an ActionContext and must return its parts/effects/halt, the engine
  * persists parts and applies effects post-commit (ARCHITECTURE §5.1). The
  * generative search_knowledge loop needs a model and is exercised end-to-end
  * instead (see turn.test.ts for the no-model path).
@@ -716,7 +716,7 @@ describe("handover", () => {
 
 describe("buildSystemPrompt (prompt layering)", () => {
   it("puts the platform layer first, above the assistant's answering style", () => {
-    // The style only appears in the WRITE phase — see the late-binding block
+    // The style only appears in the WRITE phase, see the late-binding block
     // below for why it is absent while the model is choosing tools.
     const prompt = buildSystemPrompt(
       "PLATFORM RULES",
@@ -730,7 +730,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
     expect(platformIdx).toBeGreaterThanOrEqual(0);
     expect(styleIdx).toBeGreaterThan(platformIdx);
     expect(flowIdx).toBeGreaterThan(styleIdx);
-    expect(prompt).toContain("immutable — highest precedence");
+    expect(prompt).toContain("immutable, highest precedence");
   });
 
   it("late-binds the answering style: absent while gathering, present when writing", () => {
@@ -882,7 +882,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
  * The two-phase turn's model fixtures (#558). A turn is now TWO generative
  * calls: phase 1 gathers and must end by calling `readyToAnswer`, phase 2 writes
  * with no tools. So a fixture is a SCRIPT of steps, and each step has to hand
- * back a fresh stream — `simulateReadableStream` yields a single-use stream, and
+ * back a fresh stream, `simulateReadableStream` yields a single-use stream, and
  * a fixture that reuses one silently gives phase 2 an already-consumed body.
  */
 const phaseUsage = () => ({
@@ -944,7 +944,7 @@ function reasonThenDeclareStep(
   });
 }
 
-/** Phase 2: the write. Deltas may be empty — that is the cut-off-before-writing case. */
+/** Phase 2: the write. Deltas may be empty; that is the cut-off-before-writing case. */
 function writeStep(
   deltas: string[] = [],
   unified: "stop" | "length" | "content-filter" = "stop",
@@ -1019,7 +1019,7 @@ describe("search_knowledge streamed thinking (#584)", () => {
   });
 
   it("narrates before EVERY tool call across a multi-search gather", async () => {
-    // The reference's cadence: Thinking → Tool → Result → Thinking → Tool —
+    // The reference's cadence: Thinking → Tool → Result → Thinking → Tool,
     // one reasoning burst ahead of each call, not one per turn.
     const reasonThenSearch =
       (deltas: string[], id: string, queries: string[]) => () => ({
@@ -1125,7 +1125,7 @@ describe("search_knowledge finish reasons (refusal & truncation)", () => {
     expect(text.text).not.toContain("knowledge base");
     expect(text.text).not.toContain("refusal");
     // Exactly one generative invocation: a refusal while gathering is terminal,
-    // so the write phase never runs — and refusals are not shopped around.
+    // so the write phase never runs, and refusals are not shopped around.
     expect(model.doStreamCalls).toHaveLength(1);
   });
 
@@ -1295,7 +1295,7 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
 
   it("caps a keeps-finding-nothing turn at the iteration budget, then still writes", async () => {
     let seq = 0;
-    // Always asks to search again with a fresh query — the budget, not the
+    // Always asks to search again with a fresh query, the budget, not the
     // model, must terminate the gather phase. Then the write phase runs with
     // nothing to write from, which is the honest dead-end path.
     let gatherCalls = 0;
@@ -1318,12 +1318,12 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
 
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
-    // The ITERATION budget ends it — one search per iteration here, so six —
+    // The ITERATION budget ends it: one search per iteration here, so six,
     // and the retrieval ceiling underneath is never reached.
     expect(searchKnowledge).toHaveBeenCalledTimes(MAX_AGENT_ITERATIONS);
     expect(MAX_AGENT_ITERATIONS).toBeLessThan(MAX_SEARCH_PASSES);
 
-    // A single text part — never a bare empty bubble, even when the model wrote
+    // A single text part: never a bare empty bubble, even when the model wrote
     // nothing at all.
     const textParts = result.parts.filter(
       (p): p is Extract<ChatReplyPart, { type: "text" }> => p.type === "text"
@@ -1377,7 +1377,7 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
 
     const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
-    // Rendered as a clarify part, not prose — and collected rather than
+    // Rendered as a clarify part, not prose, and collected rather than
     // streamed, so the Visitor never watches a half-question appear.
     expect(result.parts).toHaveLength(1);
     expect(result.parts[0]).toMatchObject({
@@ -1512,7 +1512,7 @@ describe("search_knowledge iteration budget + coverage gate (Agentic Search)", (
       );
       const result = await ACTION_HANDLERS.search_knowledge(ctx);
 
-      // Its own part, in phase order, before the answer text — never
+      // Its own part, in phase order, before the answer text, never
       // string-concatenated onto it (the reference platform's one flaw here).
       expect(result.parts.map((p) => p.type)).toEqual([
         "progress",

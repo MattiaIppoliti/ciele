@@ -148,7 +148,7 @@ describe("upgradeOptions", () => {
 
   it("offers the whole ladder when the current plan is not in the catalog", () => {
     // A retired or hand-edited slug: every tier is a step forward from unknown,
-    // which is the safe direction — it never hides a plan the org could buy.
+    // which is the safe direction; it never hides a plan the org could buy.
     expect(upgradeOptions("legacy", CATALOG, { paying: true })).toHaveLength(3);
     expect(upgradeOptions(null, CATALOG)).toHaveLength(3);
   });

@@ -34,7 +34,7 @@ test("the settings screen carries the configurable server address", async () => 
   await field.fill("ciele.example.edu/some/path");
   await window.getByRole("button", { name: "Save", exact: true }).click();
 
-  // Normalised to an origin — a path on a base URL would be carried into
+  // Normalised to an origin: a path on a base URL would be carried into
   // every navigation.
   await expect(field).toHaveValue("https://ciele.example.edu");
   await expect(window.getByText("Saved")).toBeVisible();
@@ -47,7 +47,7 @@ test("the settings screen carries the configurable server address", async () => 
  * given test id on it.
  *
  * Native screens and the product live in different BrowserWindows, and moving
- * between them destroys one and builds the other — so a handle taken before a
+ * between them destroys one and builds the other, so a handle taken before a
  * mode change is stale after it, and even the window LIST is briefly stale
  * mid-swap. Hence: ask by content, tolerate a window vanishing underneath the
  * question, and try again.
@@ -80,7 +80,7 @@ async function windowShowing(app: ElectronApplication, testId: string) {
 const LOCAL_ORIGIN = "http://localhost:3000";
 
 /**
- * Evidence that the app pointed a product window at `origin` — by whichever of
+ * Evidence that the app pointed a product window at `origin`, by whichever of
  * the two outcomes actually happened.
  *
  * Whether that origin is served decides which evidence exists, and this must
@@ -88,7 +88,7 @@ const LOCAL_ORIGIN = "http://localhost:3000";
  * the app falls back to its own screen naming the address. On a machine with
  * the web app already running, it loads and the window simply stays.
  *
- * Asserting only the loaded window is a race against that fallback — it
+ * Asserting only the loaded window is a race against that fallback, it
  * destroys the window a couple of hundred milliseconds in, while `expect.poll`
  * has already backed off to one-second intervals, so the check lands either
  * side of it. Asserting only the fallback breaks for a contributor with
@@ -130,7 +130,7 @@ test("sign-in follows the configured address, and says so when it does not load"
   // to the app rather than stranding the user on a browser error in a window
   // with no address bar and no reload button.
   //
-  // Asserting through the failure is what makes it deterministic — a test that
+  // Asserting through the failure is what makes it deterministic, a test that
   // loaded the real hosted app would break on a plane, and did.
   //
   // A high port nothing listens on, and not one of the low ports Chromium
@@ -194,7 +194,7 @@ test("the local path runs the wizard through to a working stack", async () => {
   await window.getByRole("button", { name: "Start" }).click();
   await expect(window.getByTestId("stack-health")).toHaveText("Running");
 
-  // "Subsequent launches skip the wizard — until reset." This is the reset:
+  // "Subsequent launches skip the wizard, until reset." This is the reset:
   // back in the wizard, and running the whole chain again rather than showing
   // the finished state it was left in.
   await window.getByTestId("reset-setup").click();
@@ -230,7 +230,7 @@ test("you can go back through the wizard, and reopen a choice you already made",
   await expect(window.getByTestId("wizard-title")).toHaveText("Demo content");
   await expect(window.getByTestId("continue")).toBeVisible();
 
-  // Skip it, then change your mind — the point of Back having teeth.
+  // Skip it, then change your mind, the point of Back having teeth.
   await window.getByRole("button", { name: "Skip" }).click();
   await expect(window.getByTestId("wizard-title")).toHaveText("Connect an AI model");
   await window.getByTestId("back").click();
@@ -249,8 +249,8 @@ test("you can go back through the wizard, and reopen a choice you already made",
 });
 
 test("a build pins the release it came from, and says so when it has none", async () => {
-  // No CIELE_IMAGE_TAG, so the tag can only come from the build's own version
-  // — which is the whole of what this asserts.
+  // No CIELE_IMAGE_TAG, so the tag can only come from the build's own version,
+  // which is the whole of what this asserts.
   const { app } = await launchApp({ imageTag: null });
   const window = await app.firstWindow();
 
@@ -262,7 +262,7 @@ test("a build pins the release it came from, and says so when it has none", asyn
   // Assuming the unstamped half is what broke the release run: it packages the
   // one build that IS stamped, so the guard the test waited on could never
   // fire, and it failed on a 30s timeout inside the release. Mirrors
-  // `releaseVersion(isPackaged, reported)` — unpackaged is a dev build by
+  // `releaseVersion(isPackaged, reported)`: unpackaged is a dev build by
   // definition, whatever Electron reports for itself.
   const stamped = await app.evaluate(
     ({ app }) => app.isPackaged && app.getVersion() !== "0.0.0-dev",
@@ -337,7 +337,7 @@ test("finishing setup opens the product window and later launches skip the wizar
   await app.close();
 
   // First-run cost is paid once: same settings directory, no wizard. Landing on
-  // the local origin at all is the proof — the wizard points at no address, so
+  // the local origin at all is the proof, the wizard points at no address, so
   // it could not have produced either outcome.
   const relaunched = await launchApp({ userDataDir });
   await productOpenedAt(relaunched.app, LOCAL_ORIGIN);

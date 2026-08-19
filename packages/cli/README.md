@@ -1,6 +1,6 @@
 # @ciele/cli
 
-The `ciele` CLI — manage your Organization from the terminal, against the
+The `ciele` CLI, manage your Organization from the terminal, against the
 SaaS or a self-hosted deployment. Built on `@ciele/client`; every command
 runs the same operations the admin app runs.
 
@@ -28,7 +28,7 @@ role you give it), then:
 # SaaS
 ciele login --key ciele_sk_…
 
-# Self-hosted — the base URL is remembered by login
+# Self-hosted, the base URL is remembered by login
 ciele login --key ciele_sk_… --base-url https://ciele.your-campus.example
 
 ciele whoami
@@ -187,6 +187,6 @@ ciele api-integrations set <assistantId> --file integration.json
 
 ## Running from the monorepo
 
-`node packages/cli/bin/ciele.mjs …` — the bin runs the TypeScript sources
+`node packages/cli/bin/ciele.mjs …`: the bin runs the TypeScript sources
 via Node's type stripping (Node ≥ 22.6; unflagged from 23.6). `pnpm --filter
 @ciele/cli build` produces the same standalone executable shipped to npm.

@@ -3,7 +3,7 @@ import type { SsoConnectionConfig, SsoProviderKind } from "@agent-hub/core";
 /**
  * The widget SSO adapter contract (spec #370, ticket #372). One implementation
  * per provider (Entra built; Clerk/WorkOS contract-ready). The whole flow runs
- * server-side on the Node runtime — the IdP is NEVER framed (see
+ * server-side on the Node runtime, the IdP is NEVER framed (see
  * docs/research/sso-provider-shapes.md): the widget opens it in a popup /
  * top-level context and our callback route mints a first-party gate cookie.
  */
@@ -28,7 +28,7 @@ export interface SsoProvider {
   /**
    * Probe the stored credentials without a full user login (e.g. a
    * client-credentials round-trip), so the admin gets a clear pass/fail when
-   * connecting. Never throws — validation failure is a result, not an error.
+   * connecting. Never throws, validation failure is a result, not an error.
    */
   validate?(creds: SsoCredentials): Promise<SsoValidationResult>;
 }
@@ -73,7 +73,7 @@ export interface SsoCallbackParams {
 /**
  * The result a gate needs. `subjectId` is always the verified OIDC `sub`.
  * `identityClaimValue` is present only when the connection opted into an
- * identity claim (config.identityClaim, #662) AND the ID token carried it —
+ * identity claim (config.identityClaim, #662) AND the ID token carried it,
  * a configured-but-missing claim fails soft (sign-in still succeeds; per-user
  * features that need the claim simply stay off for this user).
  */

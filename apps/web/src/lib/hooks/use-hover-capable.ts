@@ -23,7 +23,7 @@ function getServerSnapshot(): boolean {
 /**
  * True when the primary pointer can hover (mouse / trackpad), false on
  * touch-first devices. SSR-safe (renders `false` on the server and the first
- * client paint, then resolves) and updates live if the capability changes —
+ * client paint, then resolves) and updates live if the capability changes,
  * e.g. a tablet docking a mouse.
  */
 export function useHoverCapable(): boolean {

@@ -1,12 +1,12 @@
 /**
- * The one email transport seam. Every outbound email — the `send_email` Flow
+ * The one email transport seam. Every outbound email, the `send_email` Flow
  * Action effect, the widget escalation email channel, and the Improvement
- * assign/close notifications — goes through `sendEmail`, so the provider is
+ * assign/close notifications, goes through `sendEmail`, so the provider is
  * a single edit here, not one per caller.
  *
  * Provider: Resend's HTTP API called with `fetch` (no SDK dependency).
  * Configured via `RESEND_API_KEY` + `EMAIL_FROM`. Without both, `sendEmail`
- * reports `not_configured` instead of throwing — callers decide how to be
+ * reports `not_configured` instead of throwing, callers decide how to be
  * honest about it (the escalation route falls back to a mailto link; the
  * send_email action emits "couldn't forward" copy). A failing send never
  * breaks a chat turn: effects isolate errors, and this function never throws.
@@ -37,7 +37,7 @@ export async function sendEmail(message: EmailMessage): Promise<EmailDelivery> {
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
     console.warn(
-      `[email] transport not configured — would send to ${message.to}: "${message.subject}"`
+      `[email] transport not configured, would send to ${message.to}: "${message.subject}"`
     );
     return { delivered: false, reason: "not_configured" };
   }

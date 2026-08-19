@@ -41,7 +41,7 @@ const SECTIONS: LegalSection[] = [
       },
       {
         type: "p",
-        text: "Account data about the customer's own members — names, work email addresses, sign-in events, billing contacts — is processed by Ciele as a controller and is governed by the Privacy Policy rather than by this DPA.",
+        text: "Ciele processes account data about the customer's own members as a controller: names, work email addresses, sign-in events and billing contacts. The Privacy Policy governs that data, not this DPA.",
       },
     ],
   },
@@ -51,7 +51,7 @@ const SECTIONS: LegalSection[] = [
     blocks: [
       {
         type: "p",
-        text: "Ciele processes Customer Personal Data only to provide, secure and support the platform in accordance with the agreement, this DPA and the customer's documented instructions. Configuring the product — which sources are ingested, which assistants are published, which retention period applies, which integrations are connected — is a documented instruction.",
+        text: "Ciele processes Customer Personal Data only to provide, secure and support the platform in accordance with the agreement, this DPA and the customer's documented instructions. Configuring the product is a documented instruction: which sources are ingested, which assistants are published, which retention period applies, which integrations are connected.",
       },
       {
         type: "p",

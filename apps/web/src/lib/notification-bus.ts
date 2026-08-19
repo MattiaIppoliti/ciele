@@ -3,7 +3,7 @@ import type { NotificationStatus } from "@/lib/notifications";
 /**
  * One-slot pub/sub between the `toast` façade (`@/lib/toast`, callable from any
  * event handler) and the mounted notification banner. Kept React-free so the
- * façade never drags the admin banner into bundles that don't render it — and
+ * façade never drags the admin banner into bundles that don't render it, and
  * so anything raised while no banner is mounted (the widget, sign-in) can fall
  * back to a plain toast.
  */

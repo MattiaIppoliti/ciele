@@ -27,7 +27,7 @@ function codeLanguage(className: string | undefined): AgentCodeLanguage {
  * Renders assistant markdown (bold, italic, links, lists, headings, code,
  * tables) inside a chat bubble. Shared by the Widget, the admin Preview and
  * the Inbox transcript so every surface reads a reply the same way.
- * Links always open in a new tab — the widget lives in an iframe.
+ * Links always open in a new tab: the widget lives in an iframe.
  */
 export function ChatMarkdown({
   text,

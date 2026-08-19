@@ -3,7 +3,7 @@ import type { CieleClient } from "@ciele/client";
 
 /**
  * The ciele MCP tool set (#629): coarse domain tools with an `action`
- * discriminator — 10 tools, not one per endpoint, so an agent picks reliably.
+ * discriminator, 10 tools, not one per endpoint, so an agent picks reliably.
  * Every v1-perimeter operation is reachable through one of these.
  *
  * Handlers return plain JSON-able data; the server layer (server.ts) wraps
@@ -18,7 +18,7 @@ export interface CieleTool {
   name: string;
   description: string;
   schema: ZodRawShape;
-  /** Whether this call would write — the read-only mode gate. */
+  /** Whether this call would write, the read-only mode gate. */
   mutates(args: Record<string, unknown>): boolean;
   run(args: Record<string, unknown>): Promise<unknown>;
 }
@@ -488,7 +488,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_improvements",
       description:
-        "The answer-quality kanban: `list` items, `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/dueDate/title/description via `patch` — e.g. move a card to in_progress or done.",
+        "The answer-quality kanban: `list` items, `get` one (with the flagged messages and any drafted fix), `update` status/priority/tags/assigneeId/dueDate/title/description via `patch`, e.g. move a card to in_progress or done.",
       schema: {
         action: z.enum(["list", "get", "update"]),
         id: z.string().optional().describe("Improvement id (get/update)"),

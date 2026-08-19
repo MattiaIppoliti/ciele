@@ -3,7 +3,7 @@
 @import 'fumadocs-ui/css/preset.css';
 
 /* Tailwind v4 only scans this app's own tree, so utilities used exclusively
-   inside the shared UI package would never be generated — the components would
+   inside the shared UI package would never be generated, the components would
    render unstyled. Same declaration as apps/web's globals.css. */
 @source "../../../../packages/ui/src";
 
@@ -27,7 +27,7 @@
  * `border-s` there). This closes the pair by drawing the matching line after the
  * last icon link, so the two clusters read as bracketed groups instead of one
  * drifting apart. Hung on the repository button's `aria-label`
- * (REPO_BUTTON_LABEL in lib/layout.shared.tsx — keep them in step) because
+ * (REPO_BUTTON_LABEL in lib/layout.shared.tsx, keep them in step) because
  * fumadocs offers no hook inside that row; both the docked sidebar and the
  * mobile drawer are covered.
  */
@@ -83,7 +83,7 @@
  * documentation reflows instead of hiding behind the fixed panel. The width is
  * published by the widget as --ciele-ai-width. Self-contained (only touches the
  * root element + this variable) so a fumadocs upgrade never conflicts here.
- * Desktop only — on small screens the drawer is a full-screen overlay.
+ * Desktop only: on small screens the drawer is a full-screen overlay.
  */
 @media (min-width: 640px) {
   html.ciele-ai-open {

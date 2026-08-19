@@ -30,7 +30,7 @@ export interface SetupHost {
 }
 
 /**
- * Deploy assets — the compose definition and env template — ship inside the
+ * Deploy assets: the compose definition and env template, ship inside the
  * app and are versioned with it, so the stack a given build sets up is the one
  * that build was tested against. In development they are read from the repo.
  */
@@ -41,7 +41,7 @@ export function deployDir(): string {
 }
 
 /**
- * This build's version — NOT `app.getVersion()` directly, which reports
+ * This build's version: NOT `app.getVersion()` directly, which reports
  * Electron's own version when the app is unpackaged. See shared/release.ts.
  */
 export function appVersion(): string {
@@ -133,7 +133,7 @@ export function registerSetupHandlers(host: SetupHost): void {
   });
 }
 
-/** Only strings, only from the renderer's own fields — never a nested object. */
+/** Only strings, only from the renderer's own fields, never a nested object. */
 function sanitiseInput(values: unknown): Record<string, string> {
   if (typeof values !== "object" || values === null) return {};
   const out: Record<string, string> = {};

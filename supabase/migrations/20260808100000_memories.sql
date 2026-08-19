@@ -3,7 +3,7 @@
 -- Per-end-user durable facts, promoted from Conversations by a background
 -- extraction job and recalled semantically at the start of the user's next
 -- conversation. Memories key on the verified SSO subject *within* the
--- Organization (ADR-0018) — never on client-generated visitor ids — and the
+-- Organization (ADR-0018): never on client-generated visitor ids, and the
 -- whole capability sits behind an org-level toggle, off by default.
 
 -- The org-level capability toggle (mirrors compost_opt_out's shape).
@@ -13,7 +13,7 @@ alter table public.organizations
 create table public.memories (
   id text primary key,
   organization_id uuid not null references public.organizations (id) on delete cascade,
-  -- The verified OIDC subject (sealed gate cookie, ADR-0018) — org-scoped.
+  -- The verified OIDC subject (sealed gate cookie, ADR-0018): org-scoped.
   subject_id text not null,
   text text not null,
   -- The platform's shared 1536-dim embedding convention (ARCHITECTURE §7);
@@ -44,7 +44,7 @@ create policy "editors update memories" on public.memories
 create policy "editors delete memories" on public.memories
   for delete using (private.has_org_role(organization_id, 2));
 
--- Top-k semantic recall over one subject's memories — the match_chunks
+-- Top-k semantic recall over one subject's memories, the match_chunks
 -- pattern (0005_knowledge) scoped by (organization, subject).
 create or replace function public.match_memories(
   p_organization_id uuid,
@@ -73,7 +73,7 @@ $$;
 alter function public.match_memories(uuid, text, vector, int) set search_path = public;
 
 -- New durable job kind: promote_memories extracts durable facts from a
--- conversation that went quiet (background only — zero chat latency).
+-- conversation that went quiet (background only, zero chat latency).
 alter table public.background_jobs
   drop constraint if exists background_jobs_kind_check;
 

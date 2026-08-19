@@ -8,7 +8,7 @@ import { LoginForm } from "@/components/auth/login-form";
 const VIEW_LOGIN_IN_DEMO = false;
 
 export default function LoginPage() {
-  // Demo mode has no auth — go straight in.
+  // Demo mode has no auth: go straight in.
   if (!VIEW_LOGIN_IN_DEMO && !isSupabaseConfigured()) redirect("/");
 
   return (

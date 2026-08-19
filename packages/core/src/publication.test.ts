@@ -4,7 +4,7 @@ import type { Assistant, Entity, Flow, KnowledgeCollection } from "./types";
 
 /**
  * The Publication snapshot builder (context.md: Publication). The point of the
- * seam is that the frozen field selection lives in one tested place — so the
+ * seam is that the frozen field selection lives in one tested place, so the
  * central test asserts exactly which Assistant fields are captured, and will
  * fail loudly if a field is added or dropped.
  */
@@ -93,7 +93,6 @@ describe("buildPublicationConfig", () => {
     const collections: KnowledgeCollection[] = [
       {
         id: "col-1",
-        assistantId: "as-1",
         organizationId: "org-1",
         name: "MARKETING (A)",
         description: "long description that must not be snapshotted",
@@ -154,7 +153,7 @@ describe("buildPublicationConfig", () => {
     const config = buildPublicationConfig(makeAssistant(), [], [], [], [shared, userScoped]);
     // The tool-generation slice only (no key attribute, no timestamps).
     // User-scoped Entities freeze too (#667): the runtime's registration
-    // policy — not the snapshot — decides whether a turn may use them.
+    // policy, not the snapshot, decides whether a turn may use them.
     expect(config.entities).toEqual([
       {
         id: "en-1",

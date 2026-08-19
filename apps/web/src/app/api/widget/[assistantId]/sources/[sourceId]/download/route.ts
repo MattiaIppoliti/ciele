@@ -10,11 +10,11 @@ import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 
 /**
  * Direct access (PRD #726): hands a chat visitor the original of a cited file
- * Source — but only when the published assistant's link row carries the flag.
+ * Source: but only when the published assistant's link row carries the flag.
  * Every refusal is a uniform 404 so a probing visitor can never learn WHICH
  * leg failed (unpublished / unlinked / flag off / no original). Successful
  * calls redirect to a short-lived signed URL against the private originals
- * bucket — the object itself is never publicly reachable.
+ * bucket, the object itself is never publicly reachable.
  */
 export async function GET(
   request: NextRequest,

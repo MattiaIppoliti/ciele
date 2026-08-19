@@ -1,7 +1,7 @@
 # Local Graph Knowledge worker for Ciele's derived graph retrieval layer.
 #
 # Same image, auth model, and API contract as the managed deployment (see
-# RUNBOOK.md) — only the platform differs. Bring it up with:
+# RUNBOOK.md), only the platform differs. Bring it up with:
 #
 #   cp .env.example .env   # then set GRAPH_WORKER_API_TOKEN + LLM_API_KEY
 #   docker compose up -d --build
@@ -20,7 +20,7 @@ services:
     # Secrets are injected at runtime from ./.env (git-ignored), never baked in.
     environment:
       # The static operator token the Ciele adapter sends as `Bearer <token>`.
-      # The server refuses to boot if this is unset/weak — fail closed.
+      # The server refuses to boot if this is unset/weak, fail closed.
       GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN in .env}
       # LLM provider for cognify + graph-completion. Any litellm-supported
       # provider works; keep embeddings local (fastembed, set in the image).

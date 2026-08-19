@@ -3,7 +3,7 @@
 -- This realizes the seam documented in 0037_recrawl_schedule.sql: a page may
 -- override the site-level cadence set on its website source. NULL means the
 -- page inherits the source's recrawl_schedule (see `effectivePageSchedule`),
--- which is why this column is nullable with no default — unlike the
+-- which is why this column is nullable with no default, unlike the
 -- source-level column, "unset" is a meaningful state (inherit), not "never".
 
 alter table public.concepts

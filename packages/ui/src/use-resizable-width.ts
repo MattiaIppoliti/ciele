@@ -95,7 +95,7 @@ export function useResizableWidth({
     };
   }, [resizing, anchor, minWidth, maxWidth, defaultWidth]);
 
-  /** 0 at the rail, 1 from minWidth up — drives the content fade during overdrag. */
+  /** 0 at the rail, 1 from minWidth up, drives the content fade during overdrag. */
   const fade = overdrag
     ? Math.min(
         1,

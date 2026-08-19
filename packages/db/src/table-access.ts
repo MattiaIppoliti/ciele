@@ -10,14 +10,14 @@ import type {
 import { shortId } from "@agent-hub/core";
 
 /**
- * Generic typed table access — ADR-0016 stage 1.
+ * Generic typed table access: ADR-0016 stage 1.
  *
  * `Db.table(name)` is the seam the ~125 one-per-table CRUD passthroughs
  * migrate onto (stages 3–4). A table qualifies for this map only when its
  * column mapping is mechanical (camelCase field ↔ snake_case column, values
  * passed through verbatim) and its writes carry no semantics beyond
- * insert/patch/delete. Anything else — leases, counters, dedup, sealed
- * credentials, derived JSON — stays a named behavioural method on `Db`.
+ * insert/patch/delete. Anything else, leases, counters, dedup, sealed
+ * credentials, derived JSON, stays a named behavioural method on `Db`.
  *
  * Adding a table costs one `DbTableMap` entry + one `DB_TABLE_SPECS` row
  * (plus a store binding in the mock), not three hand-written methods.
@@ -31,7 +31,7 @@ export interface DbTableMap {
   /**
    * Append-only consent evidence. `update` and `delete` exist on the accessor
    * because every mapped table shares the five operations, but nothing should
-   * call them here — rewriting an audit log destroys the thing that makes it
+   * call them here, rewriting an audit log destroys the thing that makes it
    * evidence. A withdrawal is a new row, so `update` is deliberately `never`.
    */
   cookieConsentRecords: {
@@ -220,7 +220,7 @@ export function newTableRowId<K extends DbTableName>(
   return spec.id === "uuid" ? crypto.randomUUID() : shortId();
 }
 
-/** organizationId → organization_id. Mechanical by construction — tables
+/** organizationId → organization_id. Mechanical by construction, tables
  * whose mapping isn't mechanical don't belong in `DbTableMap`. */
 export function camelToSnakeKey(key: string): string {
   return key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);

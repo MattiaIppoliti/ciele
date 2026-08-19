@@ -2,7 +2,7 @@ import type { KnowledgeSearchResult } from "@agent-hub/core";
 import type { KnowledgeSearcher, RuntimeEvent, SearchScope } from "../types";
 
 /**
- * Agentic Search discipline (spec #61) — the module home for the retrieval
+ * Agentic Search discipline (spec #61): the module home for the retrieval
  * turn's scaffolding. Mostly pure, model-free policy the `search_knowledge`
  * generative loop consults, plus the one effectful primitive
  * ({@link runSearchPass}) that is the ONLY writer of the per-turn search-pass
@@ -10,25 +10,25 @@ import type { KnowledgeSearcher, RuntimeEvent, SearchScope } from "../types";
  * the LLM loop stays the generative core (runtime invariant: generation lives
  * inside `search_knowledge`).
  *
- * Slice 1 (#153) — the multi-pass backbone: a per-turn search-iteration
+ * Slice 1 (#153), the multi-pass backbone: a per-turn search-iteration
  * budget (`MAX_SEARCH_PASSES`), counting `searchKnowledge` calls
- * specifically — not all agent steps.
+ * specifically, not all agent steps.
  *
- * Slice 3 (#155) — reformulation over the current flat retrieval:
+ * Slice 3 (#155): reformulation over the current flat retrieval:
  *  3. a pure reformulation policy (`nextReformulation` + `rephraseQuery`) that,
- *     after a scoped pass comes up short, decides whether to search again —
+ *     after a scoped pass comes up short, decides whether to search again,
  *     rephrasing the query and widening the scope tier (Collection →
- *     assistant-wide) — within the same budget. OKF-graph / Deep-Search
+ *     assistant-wide), within the same budget. OKF-graph / Deep-Search
  *     multi-hop navigation is explicitly out of scope for v1 (see the #54
  *     retrieval-primitives audit); reformulation is rephrase + scope-tier only.
  *
- * The clarify part is deliberately NOT here — that is slice #156.
+ * The clarify part is deliberately NOT here; that is slice #156.
  */
 
 /**
  * How many search PASSES (individual queries) a single turn may run.
  *
- * Not the loop gate — that is `MAX_AGENT_ITERATIONS`, the number the model is
+ * Not the loop gate: that is `MAX_AGENT_ITERATIONS`, the number the model is
  * told and plans against, exactly as the reference platform does with search as
  * one of its six tools. This is a retrieval COST ceiling underneath it: one tool
  * call may batch several queries (#558), so six iterations can legitimately ask
@@ -51,7 +51,7 @@ export function searchBudgetExhausted(
   return passes.length >= budget;
 }
 
-/** One recorded `searchKnowledge` pass — the loop's iteration log for the gate. */
+/** One recorded `searchKnowledge` pass, the loop's iteration log for the gate. */
 export interface SearchPass {
   query: string;
   results: KnowledgeSearchResult[];
@@ -68,7 +68,7 @@ export interface SearchPass {
 // to live here; they are gone (#558): the model reformulates by batching queries
 // within an iteration budget it is told about, and it declares its own dead ends
 // through the terminal tool. The coverage gate (`scoreCoverage` + its verdict
-// recorded per pass) followed them out — its consumers were the same removed
+// recorded per pass) followed them out, its consumers were the same removed
 // policies, so it had been written into the ledger and read by nothing. What
 // is left is the ledger, the budget gate, and the primitive.
 
@@ -77,7 +77,7 @@ export interface SearchPass {
 /**
  * The per-turn runtime a search pass executes against. `passes` is the single
  * search-pass ledger the budget gate, coverage gate, clarify decision and
- * best-effort caveat all read — {@link runSearchPass} is its only writer.
+ * best-effort caveat all read, {@link runSearchPass} is its only writer.
  */
 export interface SearchPassRuntime {
   searchKnowledge: KnowledgeSearcher;
@@ -92,9 +92,9 @@ export interface SearchPassRuntime {
 
 /**
  * What one pass came to.
- * - `searched` — the pass ran and was recorded (results may be empty).
- * - `budget-exhausted` — refused before searching; nothing recorded.
- * - `failed` — the searcher threw under `onError: "report"`; nothing recorded,
+ * - `searched`: the pass ran and was recorded (results may be empty).
+ * - `budget-exhausted`: refused before searching; nothing recorded.
+ * - `failed`, the searcher threw under `onError: "report"`; nothing recorded,
  *   so a broken search does not consume budget.
  */
 export type SearchPassOutcome =
@@ -105,7 +105,7 @@ export type SearchPassOutcome =
 let passSeq = 0;
 
 /**
- * Runs ONE search pass — the primitive both callers share (#204): the
+ * Runs ONE search pass, the primitive both callers share (#204): the
  * deterministic seed/reformulation loop and the model's `searchKnowledge`
  * tool. One lifecycle for every pass, seeded or model-driven: emit
  * tool-start → check the budget → execute the search → score coverage →
@@ -115,7 +115,7 @@ let passSeq = 0;
  *
  * `onError` picks the failure semantics the caller needs: the seed loop
  * swallows a throwing searcher as an empty recorded pass (`record-empty`,
- * the default — a dead index still counts against the budget and feeds the
+ * the default, a dead index still counts against the budget and feeds the
  * gates); the model tool reports it (`report`) so the model sees `{ error }`
  * and a failed search never consumes budget.
  */
@@ -131,7 +131,7 @@ export async function runSearchPass(
      * Set false when the CALLER owns the panel row. One model tool call may run
      * several queries (#558); the batch is one row with a bulleted label, so the
      * per-pass lifecycle would turn one decision into N rows. The ledger,
-     * coverage gate and Sources collection are unaffected — this is only about
+     * coverage gate and Sources collection are unaffected; this is only about
      * who emits the events.
      */
     emitLifecycle?: boolean;
@@ -180,7 +180,7 @@ export async function runSearchPass(
       end(false, message);
       return { kind: "failed", message };
     }
-    // Visitors never see searcher internals — recorded as an empty pass.
+    // Visitors never see searcher internals, recorded as an empty pass.
     results = [];
     swallowed = true;
   }

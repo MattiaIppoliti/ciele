@@ -73,7 +73,7 @@ const formatCount = new Intl.NumberFormat("en-US").format;
 
 export default async function UsageSettingsPage() {
   const { session, organizationId, role, db } = await requirePageMember();
-  // Usage is org-wide operational data — admins and owners only, like the
+  // Usage is org-wide operational data, admins and owners only, like the
   // provider/budget settings it complements.
   if (!canManageMembers(role)) redirect("/settings/profile");
 

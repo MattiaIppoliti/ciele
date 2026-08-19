@@ -62,7 +62,7 @@ export const GripVerticalIcon = createAnimatedIcon(
     </svg>
   ),
   {
-    // Ripple once, then settle back — matches the original self-looping grip.
+    // Ripple once, then settle back, matches the original self-looping grip.
     start: async (controls) => {
       await controls.start("animate");
       await controls.start("normal");

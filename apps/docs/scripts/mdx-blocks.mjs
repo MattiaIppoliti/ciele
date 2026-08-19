@@ -5,7 +5,7 @@
  * A block is either `raw` (emitted byte-for-byte: code fences, imports, JSX,
  * diagrams, blank lines) or a translatable `text` block carrying the prefix and
  * indent needed to put the translation back where it came from. Splitting this
- * out keeps it unit-testable without a network call — see mdx-blocks.test.mjs.
+ * out keeps it unit-testable without a network call, see mdx-blocks.test.mjs.
  */
 
 const FENCE_RE = /^\s*(```|~~~)/;
@@ -215,7 +215,7 @@ export function toBlocks(source) {
 
 /**
  * Greedy wrap that never breaks inside a Markdown link, inline code span, or
- * JSX expression — those are single tokens as far as wrapping is concerned.
+ * JSX expression: those are single tokens as far as wrapping is concerned.
  */
 export function wrapText(value, { prefix, indent, width = 80 }) {
   const tokens = value.match(/(?:\[[^\]]*\]\([^)]*\)|`[^`]*`|\{[^}]*\}|\S)+/g) ?? [];
@@ -274,7 +274,7 @@ export function textsOf(blocks) {
 
 /**
  * Structural checks on a translated document. Anything that fails means the
- * translation must be discarded rather than committed — a mangled fence or a
+ * translation must be discarded rather than committed, a mangled fence or a
  * rewritten URL is worse than an untranslated page.
  * @returns {string[]} human-readable problems, empty when the output is sound
  */

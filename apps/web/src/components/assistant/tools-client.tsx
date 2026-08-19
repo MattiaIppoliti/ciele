@@ -43,7 +43,7 @@ const BUILT_INS: Array<{
   description: string;
   /** Runtime default when the assistant has no override. */
   defaultOn: boolean;
-  /** searchKnowledge is the grounding tool — always on. */
+  /** searchKnowledge is the grounding tool, always on. */
   locked?: boolean;
 }> = [
   {
@@ -103,7 +103,7 @@ export function ToolsClient({
   const [skillDraft, setSkillDraft] = useState<SkillDraft | null>(null);
   const [, startTransition] = useTransition();
 
-  // Rapid consecutive saves must not clobber each other — patch on the latest.
+  // Rapid consecutive saves must not clobber each other, patch on the latest.
   const latestTools = useRef(tools);
   const latestAttached = useRef(attached);
 
@@ -250,7 +250,7 @@ export function ToolsClient({
         <div className="mt-4 space-y-2">
           {entities.length === 0 && (
             <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
-              No Entities yet — create one in Settings → Data.
+              No Entities yet: create one in Settings → Data.
             </p>
           )}
           {entities.map((entity) => (

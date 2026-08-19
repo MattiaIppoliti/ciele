@@ -5,7 +5,7 @@
 -- discarded after the gate check and becomes the conversation's subject.
 -- 'visitor' (anonymous, client-generated id) and 'member' (admin preview) are
 -- unchanged. Widget traffic is served by API routes over the service role, so
--- no policy change is needed — only the check constraint widens.
+-- no policy change is needed, only the check constraint widens.
 --
 -- The opt-in identity claim lives in sso_connections.config (jsonb) and needs
 -- no schema change.

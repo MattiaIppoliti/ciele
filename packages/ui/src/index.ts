@@ -1,15 +1,15 @@
 /**
- * @agent-hub/ui — the UI primitives shared byte-for-byte by both apps.
+ * @agent-hub/ui, the UI primitives shared byte-for-byte by both apps.
  *
  * Raw workspace TypeScript, no build step (same convention as
  * @agent-hub/charts): consumers list the package in `transpilePackages` and
  * add `@source "../../../../packages/ui/src";` to their globals.css so
- * Tailwind scans these class strings — without that directive the utilities
+ * Tailwind scans these class strings: without that directive the utilities
  * are silently purged, not a build error.
  *
  * Only components identical in both apps live here. App-specific primitives
  * (and the deliberately divergent select / resizable-panel / table /
- * dropdown-menu — web's gained a shell-only sliding-highlight pill) stay in
+ * dropdown-menu, web's gained a shell-only sliding-highlight pill) stay in
  * each app's components/ui and can be promoted here once reconciled.
  */
 export { cn } from "./cn";

@@ -6,7 +6,7 @@ import type { Flow } from "./types";
  * The deterministic courtesy tier (#566). Pure: no model, no database, no
  * clock beyond what the caller passes.
  *
- * Every case here is really one question — "would routing this to Basic
+ * Every case here is really one question, "would routing this to Basic
  * Interaction cost the Visitor an answer?" A false negative costs a second of
  * latency; a false positive costs the whole reply. The table is weighted
  * accordingly: the negative cases are the ones that matter.
@@ -87,7 +87,7 @@ describe("isCourtesyOnly", () => {
 
   /**
    * The lexicon widening (#567). Per locale: the four courtesy shapes it has to
-   * recognise, and at least one same-language message that only LOOKS courteous —
+   * recognise, and at least one same-language message that only LOOKS courteous,
    * the proof that adding a language did not loosen the detector.
    */
   describe("courtesy across the widget's locales", () => {
@@ -186,13 +186,13 @@ describe("isCourtesyOnly", () => {
     });
   });
 
-  describe("not courtesy — a question wearing a greeting", () => {
+  describe("not courtesy, a question wearing a greeting", () => {
     it.each([
       // The case that started this: courtesy on the front, a real question behind.
       "ciao, quando è la scadenza?",
       "ciao quando e la scadenza",
       "hi, what are the opening hours",
-      "hello — where do I find the syllabus",
+      "hello, where do I find the syllabus",
       "thanks, but where is the exam room",
       "grazie, ma dove trovo il programma",
     ])("%s", (message) => {
@@ -200,7 +200,7 @@ describe("isCourtesyOnly", () => {
     });
   });
 
-  describe("not courtesy — the other rejections", () => {
+  describe("not courtesy, the other rejections", () => {
     it("rejects anything carrying a question mark", () => {
       // Even a message made entirely of courtesy words: a question mark means
       // something is being asked, whatever the words are.
@@ -214,7 +214,7 @@ describe("isCourtesyOnly", () => {
     });
 
     it("rejects a message with no courtesy word at all", () => {
-      // All stopwords, nothing left after filtering — but nothing courteous
+      // All stopwords, nothing left after filtering, but nothing courteous
       // either. Without this clause "the" and "is it" would read as greetings.
       expect(isCourtesyOnly("the")).toBe(false);
       expect(isCourtesyOnly("is it")).toBe(false);
@@ -232,9 +232,9 @@ describe("isCourtesyOnly", () => {
     });
   });
 
-  describe("not courtesy — an answer to the assistant's own question", () => {
+  describe("not courtesy, an answer to the assistant's own question", () => {
     it("rejects a bare acknowledgement after the assistant asked something", () => {
-      // "ok" here means "yes, go ahead" — routing it to a greeting resets the
+      // "ok" here means "yes, go ahead", routing it to a greeting resets the
       // conversation the assistant just tried to advance.
       const history = [
         { role: "user" as const, text: "I need help with enrolment" },
@@ -329,7 +329,7 @@ describe("basicInteractionFlow", () => {
     expect(basicInteractionFlow("ciao", [campaign, flow])).toBe(flow);
   });
 
-  it("inherits the objective condition gate — an off-page URL condition disqualifies it", () => {
+  it("inherits the objective condition gate, an off-page URL condition disqualifies it", () => {
     const flow = courtesyFlow({
       conditions: [
         { id: "c1", kind: "url", operator: "contains", value: "/courses/" },

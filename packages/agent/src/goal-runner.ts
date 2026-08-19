@@ -12,7 +12,7 @@ import { getRuntimeHost } from "./host";
  * The standing-goal re-verification loop (spec: nothing that passed once
  * goes unwatched). Each due goal runs headlessly through the real chat
  * engine against the assistant's latest Publication snapshot with fresh
- * empty history — no Conversation or messages are persisted; only the goal
+ * empty history, no Conversation or messages are persisted; only the goal
  * ledger, the goal's last result, and the per-goal Alert change.
  */
 export async function runDueGoalEvals(
@@ -58,7 +58,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
     return {
       pass: false,
       detail:
-        "The assistant has no Publication — goals verify what a live widget Visitor would get.",
+        "The assistant has no Publication, goals verify what a live widget Visitor would get.",
     };
   }
   const config = publication.config;
@@ -70,7 +70,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
   const connections = await db.listProviderConnections(
     assistant.organizationId
   );
-  // The same retrieval port a widget Visitor gets — goals verify the
+  // The same retrieval port a widget Visitor gets, goals verify the
   // production path, Knowledge Engine choice included, not a bespoke
   // vector-only copy. No Conversation row exists for synthetic traffic.
   const searchKnowledge = buildKnowledgeSearcher({
@@ -92,13 +92,13 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
     history: [],
     searchKnowledge,
     session: createTurnSession(`goal-${goal.id}`, {}),
-    // Synthetic traffic has no page, so URL conditions stay unevaluatable — but
+    // Synthetic traffic has no page, so URL conditions stay unevaluatable, but
     // it does happen at a moment, so a scheduled flow is honored here too.
     routing: { now: new Date() },
     emit: () => {},
   });
 
-  // Eval cost meters under its own stage — synthetic traffic never touches
+  // Eval cost meters under its own stage, synthetic traffic never touches
   // conversations, Insights, or Improvements, but it does cost tokens.
   await meterUsage(
     db,
@@ -137,7 +137,7 @@ async function finishRun(
     await signalHealth(db, goal.organizationId, { key, healthy: true }, "goal-runner");
   } else {
     // goal.lastRunAt is the claim stamp (now), so the detail sticks to
-    // status words — a timestamp here would lie.
+    // status words, a timestamp here would lie.
     const previously =
       goal.lastResult === "pass"
         ? "Was passing on the previous run."

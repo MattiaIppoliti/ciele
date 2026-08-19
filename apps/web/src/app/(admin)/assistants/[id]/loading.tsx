@@ -2,8 +2,8 @@ import { Skeleton } from "@agent-hub/ui";
 
 /**
  * Section-level streaming boundary inside the assistant editor: switching
- * SETUP route modules keep the shell chrome — sidebar, top bar,
- * Preview panel — in place and only the center column shows this while its
+ * SETUP route modules keep the shell chrome, sidebar, top bar,
+ * Preview panel: in place and only the center column shows this while its
  * data loads.
  */
 export default function AssistantSectionLoading() {

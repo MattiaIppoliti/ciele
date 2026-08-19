@@ -29,11 +29,11 @@ import { Switch } from "@/components/ui/switch";
 
 /**
  * Daily AI budget (AI usage ledger spec): admins set a per-org daily token
- * limit and/or euro limit — either one crossing today's usage raises an
+ * limit and/or euro limit, either one crossing today's usage raises an
  * auto-resolving Alert at the line (notify) or pauses AI answers (block).
  * The euro figure is an estimate from packages/db/src/pricing.ts, not a
  * billed amount. Null limit = unmetered. The weekly self-improvement
- * (compost) opt-out lives alongside it — both bound how much autonomous AI
+ * (compost) opt-out lives alongside it, both bound how much autonomous AI
  * work runs for the org.
  */
 export function BudgetCard({

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Self-contained HSV color picker in the shadcn style (saturation/value square
  * + hue bar + hex field + eyedropper). Deliberately dependency-free: the repo
  * ships neither the `color` package nor a slider primitive, so conversions and
- * drag handling live here. Controlled by a hex string — alpha is out of scope
+ * drag handling live here. Controlled by a hex string, alpha is out of scope
  * because the widget's brand color is stored as a plain hex.
  */
 
@@ -102,7 +102,7 @@ export function ColorPicker({
 }: ColorPickerProps) {
   // HSV is the interaction source of truth so hue/saturation survive round-trips
   // through an achromatic hex (e.g. black keeping its hue). We resync it during
-  // render when the controlled `value` moves to a color we didn't just emit —
+  // render when the controlled `value` moves to a color we didn't just emit,
   // React's supported "adjust state on prop change" pattern, no effect needed.
   const [hsv, setHsv] = useState<Hsv>(
     () => hexToHsv(value) ?? { h: 0, s: 0, v: 4 },
@@ -171,7 +171,7 @@ function normalize(e: React.PointerEvent): { x: number; y: number } {
 
 /**
  * Pointer-drag handlers for a 2D/1D control. Pointer capture keeps move/up
- * firing on the element even when the cursor leaves it — no window listeners,
+ * firing on the element even when the cursor leaves it, no window listeners,
  * no refs, so it stays clear of the render-phase hook rules.
  */
 function usePointerArea(handle: (x: number, y: number) => void) {
@@ -285,7 +285,7 @@ function EyeDropperButton({ onPick }: { onPick: (hex: string) => void }) {
           const { sRGBHex } = await dropper.open();
           onPick(sRGBHex);
         } catch {
-          // user cancelled — no-op
+          // user cancelled, no-op
         }
       }}
     >

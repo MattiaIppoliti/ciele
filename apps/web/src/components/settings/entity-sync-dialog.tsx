@@ -104,7 +104,7 @@ export function EntitySyncDialog({
     startTransition(async () => {
       try {
         await syncEntityNowAction(entity.id);
-        toast.success("Sync started — check back for the run report");
+        toast.success("Sync started, check back for the run report");
       } catch {
         toast.error("Save a sync source first");
       }
@@ -125,7 +125,7 @@ export function EntitySyncDialog({
             <Input id="sync-url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://api.example.com/orders" />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="sync-headers">Auth headers — one name: value per line{status?.config?.hasHeaders ? "; blank keeps current headers" : ""}</Label>
+            <Label htmlFor="sync-headers">Auth headers, one name: value per line{status?.config?.hasHeaders ? "; blank keeps current headers" : ""}</Label>
             <Textarea id="sync-headers" rows={2} value={headersText} onChange={(event) => setHeadersText(event.target.value)} placeholder="authorization: Bearer …" />
             {status?.config?.hasHeaders && (
               <label className="flex items-center gap-2 text-sm">
@@ -135,7 +135,7 @@ export function EntitySyncDialog({
             )}
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="sync-mapping">Field mapping — jsonField -&gt; attributeKey, one per line</Label>
+            <Label htmlFor="sync-mapping">Field mapping: jsonField -&gt; attributeKey, one per line</Label>
             <Textarea id="sync-mapping" rows={2} value={mappingText} onChange={(event) => setMappingText(event.target.value)} placeholder={`orderNumber -> ${entity.keyAttribute}`} />
           </div>
           <div className="flex items-center gap-4">
@@ -154,7 +154,7 @@ export function EntitySyncDialog({
               <ul className="mt-1 grid gap-1">
                 {status.runs.map((run) => (
                   <li key={run.id} className="text-muted-foreground">
-                    {new Date(run.finishedAt).toLocaleString()} — {run.status === "succeeded"
+                    {new Date(run.finishedAt).toLocaleString()}, {run.status === "succeeded"
                       ? `${run.upserted} upserted${run.pruned ? `, ${run.pruned} pruned` : ""}${run.rejected.length ? `, ${run.rejected.length} rejected` : ""}`
                       : `failed: ${run.error}`}
                     {run.rejected.slice(0, 3).map((reason) => <span key={reason} className="block pl-3">· {reason}</span>)}

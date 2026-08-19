@@ -1,6 +1,6 @@
 import type { CardAppearance } from "./types";
 
-/** Card appearance tokens — orthogonal to dot sections. */
+/** Card appearance tokens, orthogonal to dot sections. */
 export interface AppearanceTokens {
   card: string;
   glow: string;

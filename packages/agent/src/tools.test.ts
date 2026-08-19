@@ -55,7 +55,7 @@ function pinnedResponse(
 /**
  * The Runtime Tool Registry: which tools an assistant's config yields, and the
  * instrument wrapper's tool-start/tool-end lifecycle contract (structured
- * payloads, error containment — a throwing tool never aborts the turn).
+ * payloads, error containment, a throwing tool never aborts the turn).
  */
 
 function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
@@ -155,7 +155,7 @@ describe("buildToolset gating", () => {
 
   it("ignores a stored `custom` key left over from the per-endpoint tools", () => {
     // The contract step of spec #559 removed them from the type, but a
-    // pre-existing `assistants.tools` row may still carry the key — reading it
+    // pre-existing `assistants.tools` row may still carry the key, reading it
     // must register nothing rather than throw.
     const { ctx } = makeContext({
       assistant: makeAssistant({
@@ -357,7 +357,7 @@ describe("searchKnowledge multi-query batching (#558)", () => {
     })) as { results?: unknown[]; systemNote?: string };
 
     // Two passes on the ledger, so the budget and coverage gates still see the
-    // real work — but one model decision, so one row in the Thinking panel.
+    // real work, but one model decision, so one row in the Thinking panel.
     expect(searchKnowledge).toHaveBeenCalledTimes(2);
     expect(ctx.searchPasses).toHaveLength(2);
     expect(events.filter((e) => e.type === "tool-start")).toHaveLength(1);
@@ -367,7 +367,7 @@ describe("searchKnowledge multi-query batching (#558)", () => {
     expect(start.label).toContain("- deadlines");
     expect(output.results).toHaveLength(2);
 
-    // One call is one iteration, however many queries it batched — that is the
+    // One call is one iteration, however many queries it batched; that is the
     // whole incentive to batch.
     expect(loop.iteration).toBe(1);
     expect(output.systemNote).toContain("iteration 1 out of 6");
@@ -422,7 +422,7 @@ describe("spoken iteration budget (#558)", () => {
     };
     expect(first.systemNote).toContain("iteration 1 out of 6");
 
-    // One charge per STEP — the loop closes each step between generations.
+    // One charge per STEP: the loop closes each step between generations.
     for (let i = 0; i < 4; i++) {
       loop.endStep();
       await run(toolset, "remember", { fact: `fact ${i}` });
@@ -431,7 +431,7 @@ describe("spoken iteration budget (#558)", () => {
     const last = (await run(toolset, "remember", { fact: "last" })) as {
       systemNote?: string;
     };
-    // The last iteration says so in the strongest terms — being cut off is not
+    // The last iteration says so in the strongest terms, being cut off is not
     // the same as knowing the limit.
     expect(loop.iteration).toBe(6);
     expect(last.systemNote).toContain("CRITICAL");
@@ -637,11 +637,11 @@ describe("fetchUrl tool", () => {
  * The API catalogue's query tool against the REAL egress guard (only DNS and the
  * pinned transport are mocked). api-integration.security.test.ts stubs
  * `egressFetch` to pin the catalogue-before-network ordering; these two cases
- * are the other half — that a described, catalogue-approved endpoint is still
+ * are the other half, that a described, catalogue-approved endpoint is still
  * subject to the guard. They came from the per-endpoint custom tools the
  * contract step of spec #559 deleted; the properties outlived them.
  */
-describe("API catalogue query — egress containment", () => {
+describe("API catalogue query, egress containment", () => {
   const integration: ApiIntegration = {
     assistantId: "assistant-1",
     organizationId: "org-1",

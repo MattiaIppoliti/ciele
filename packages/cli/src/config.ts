@@ -17,7 +17,7 @@ export interface ConfigStore {
   load(): CliConfig;
   save(config: CliConfig): void;
   clear(): void;
-  /** Where the config lives — shown to the user by `login`/`logout`. */
+  /** Where the config lives, shown to the user by `login`/`logout`. */
   describe(): string;
 }
 

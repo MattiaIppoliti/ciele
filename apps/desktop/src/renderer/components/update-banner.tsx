@@ -1,4 +1,4 @@
-// "A newer version is out" — a strip, dismissible, never a dialog (#690).
+// "A newer version is out", a strip, dismissible, never a dialog (#690).
 //
 // The beta is unsigned, so it cannot update itself; the honest thing is to say
 // a newer build exists and link it. Absent when the app is current, and absent

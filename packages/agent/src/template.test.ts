@@ -11,7 +11,7 @@ const FULL = buildTemplateContext({
   message: "I need a refund",
   history: [
     { role: "user", text: "Hi" },
-    { role: "assistant", text: "Hello — how can I help?" },
+    { role: "assistant", text: "Hello, how can I help?" },
   ],
   conversationId: "conv-42",
   appOrigin: "https://platform.example",
@@ -27,7 +27,7 @@ const FULL = buildTemplateContext({
   },
 });
 
-describe("resolveTemplate — catalog", () => {
+describe("resolveTemplate, catalog", () => {
   it.each([
     ["{{user.name}}", "Ada Lovelace"],
     ["{{user.email}}", "ada@example.com"],
@@ -52,7 +52,7 @@ describe("resolveTemplate — catalog", () => {
 
   it("renders conversation.history as a bounded plain-text transcript", () => {
     expect(resolveTemplate("{{conversation.history}}", FULL)).toBe(
-      "User: Hi\nAssistant: Hello — how can I help?"
+      "User: Hi\nAssistant: Hello, how can I help?"
     );
   });
 
@@ -63,7 +63,7 @@ describe("resolveTemplate — catalog", () => {
   });
 });
 
-describe("resolveTemplate — missing values", () => {
+describe("resolveTemplate, missing values", () => {
   const empty = buildTemplateContext({
     conversationId: "conv-1",
     appOrigin: "https://platform.example",
@@ -89,7 +89,7 @@ describe("resolveTemplate — missing values", () => {
   });
 });
 
-describe("resolveTemplate — per-slot escaping", () => {
+describe("resolveTemplate, per-slot escaping", () => {
   const ctx = buildTemplateContext({
     user: { name: 'a/b c&d="e"', id: "x\r\ny" },
     message: 'line1\nline2 "quoted" \\path',
@@ -119,7 +119,7 @@ describe("resolveTemplate — per-slot escaping", () => {
 });
 
 describe("TEMPLATE_VARIABLES catalog", () => {
-  it("is the single source every surface consumes — every entry resolves", () => {
+  it("is the single source every surface consumes, every entry resolves", () => {
     for (const variable of TEMPLATE_VARIABLES) {
       expect(variable.token).toMatch(/^\{\{[a-z0-9_.]+\}\}$/);
       expect(variable.description.length).toBeGreaterThan(0);

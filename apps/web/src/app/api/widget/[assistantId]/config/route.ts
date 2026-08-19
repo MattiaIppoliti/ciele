@@ -24,7 +24,7 @@ export async function GET(
       collections,
       // Which proactive triggers this Publication has flows for (#542). The embed
       // arms only these listeners, so an assistant with no proactive flows costs
-      // the host page nothing. A capability hint, not an authorization — the
+      // the host page nothing. A capability hint, not an authorization, the
       // runtime re-selects the flows when an event is reported.
       proactiveTriggers: proactiveTriggers(flows),
       // The dwell thresholds the embed must arm a timer for (#547). Distinct and
@@ -38,7 +38,7 @@ export async function GET(
         // every host-page view stops paying an origin round-trip. A Publish
         // reaches new visitors immediately and cached ones within max-age.
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
-        // The CORS headers above depend on the caller's Origin — caches must
+        // The CORS headers above depend on the caller's Origin, caches must
         // not serve one origin's response to another.
         Vary: "Origin",
       },

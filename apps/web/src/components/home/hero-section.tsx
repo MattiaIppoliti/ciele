@@ -32,7 +32,7 @@ export function HeroSection() {
       {/* Flags theme toggles on <html> so the sun/moon handoff animates. */}
       <SkySceneTransition />
 
-      {/* Sun — visible in light mode; on a theme toggle its track arcs it
+      {/* Sun, visible in light mode; on a theme toggle its track arcs it
           down-left, shifting yellow → orange, before the moon takes over. */}
       <div
         aria-hidden="true"
@@ -44,7 +44,7 @@ export function HeroSection() {
       {/* Loose bird formations animate across the daytime sky. */}
       <FlyingBirds className="home-day-fade" />
 
-      {/* Moon — dark mode counterpart; rises in from beyond the right edge
+      {/* Moon, dark mode counterpart; rises in from beyond the right edge
           to the sun's spot during the day → night handoff. */}
       <div
         aria-hidden="true"
@@ -53,11 +53,11 @@ export function HeroSection() {
         <div className="home-moon size-full" />
       </div>
 
-      {/* Twinkling stars + falling-star streaks — dark mode only. */}
+      {/* Twinkling stars + falling-star streaks, dark mode only. */}
       <StarField dense className="home-night-fade" />
       <FallingStars className="home-night-fade" />
 
-      {/* Painterly clouds, both themes — dimmed to moonlit tones in dark.
+      {/* Painterly clouds, both themes, dimmed to moonlit tones in dark.
           Client component: entrance from the edges + scroll-linked motion. */}
       <HeroClouds />
 
@@ -81,7 +81,7 @@ export function HeroSection() {
           >
             Your organization&apos;s{" "}
             <span className="whitespace-nowrap">AI Teammates,</span>{" "}
-            {/* Desktop (lg+): hard break so the headline is exactly two lines —
+            {/* Desktop (lg+): hard break so the headline is exactly two lines,
                 only where line 1 fits at the current font size. Below lg the
                 break is hidden and the text wraps freely. */}
             <br className="hidden lg:block" />
@@ -93,7 +93,7 @@ export function HeroSection() {
             <span className="whitespace-nowrap">
               <HeroGhost className="mr-[0.18em] inline-block h-[0.9em] w-auto align-[-0.16em]" />
               {/* The closing noun rotates under the chromatic sweep:
-                  clouds → sky → ciele → cielo → back to clouds. No prefix —
+                  clouds → sky → ciele → cielo → back to clouds. No prefix,
                   the ghost sits immediately before it. */}
               <ChromaticTextReveal
                 words={["clouds", "sky", "ciele", "cielo"]}
@@ -147,7 +147,7 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Tilted product preview — triggerly-style 3D perspective plane,
+      {/* Tilted product preview, triggerly-style 3D perspective plane,
           rendered as live DOM (crisp + clickable) instead of a screenshot. */}
       <PreviewStage
         id="preview"
@@ -159,7 +159,7 @@ export function HeroSection() {
           transformStyle: "preserve-3d",
         }}
       >
-        {/* Extra night sky around the dashboard — the section-wide field
+        {/* Extra night sky around the dashboard, the section-wide field
             thins out this far down, so add a dense cluster + falling
             streaks that frame the tilted preview. Dark mode only, behind
             the plane. */}
@@ -211,7 +211,7 @@ export function HeroSection() {
         <div className="to-background pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-b from-transparent" />
       </PreviewStage>
 
-      {/* Mobile: the same live mock, flat — the 3D plane doesn't fit small
+      {/* Mobile: the same live mock, flat, the 3D plane doesn't fit small
           screens. Compact mode frames the top-left of the app (sidebar +
           header + main pane) and keeps the desktop's idle 1.5s view
           cycling, scaled to the phone's width. */}

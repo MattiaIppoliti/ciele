@@ -3,7 +3,7 @@
 #
 # Runs once, during Postgres' first initialisation (docker-entrypoint-initdb.d).
 # The supabase/postgres image creates these roles, but with passwords the
-# hosted platform sets out of band — so on a self-host GoTrue, PostgREST and
+# hosted platform sets out of band, so on a self-host GoTrue, PostgREST and
 # storage-api cannot authenticate until we set them here. Roles are created
 # if the image ever stops shipping them, so this stays correct either way.
 set -euo pipefail

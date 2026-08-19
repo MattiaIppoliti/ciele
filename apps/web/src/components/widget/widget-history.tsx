@@ -16,7 +16,7 @@ export interface WidgetMemory {
   createdAt: string;
 }
 
-/** "Today" / "Yesterday" / "07 Jul 2025" — matches the editor preview. */
+/** "Today" / "Yesterday" / "07 Jul 2025", matches the editor preview. */
 function historyDayLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "Earlier";
@@ -35,13 +35,13 @@ function historyDayLabel(iso: string): string {
 }
 
 /**
- * Full-panel conversation history — the beui AI Sidebar showing only the
+ * Full-panel conversation history, the beui AI Sidebar showing only the
  * visitor's conversations (date-grouped folders, most recent first), with the
  * same "My conversations" framing and New chat footer as before. Replaces the
  * chat body while open rather than stacking a list above it.
  *
  * For anonymous visitors this history is whatever the current browser holds
- * (keyed by the per-browser visitor id) — there is no cross-device sync.
+ * (keyed by the per-browser visitor id); there is no cross-device sync.
  */
 export function WidgetHistory({
   conversations,
@@ -56,7 +56,7 @@ export function WidgetHistory({
   onNewChat: () => void;
   /**
    * The Memory folder (#666): present only for SSO-signed users of an org
-   * with long-term memory on — anonymous visitors never receive one.
+   * with long-term memory on, anonymous visitors never receive one.
    */
   memoryFolder?: {
     memories: WidgetMemory[];

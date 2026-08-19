@@ -7,7 +7,7 @@ description: Appliquez une nouvelle version du dépôt ainsi que ses migrations 
 
 1. Lisez les modifications de la version.
 2. Enregistrez la validation ou l'étiquette actuelle.
-3. Sauvegardez la base de données et les fichiers téléchargés.
+3. Sauvegardez la base de données et les fichiers importés.
 4. Testez le processus de restauration.
 5. Planifiez une fenêtre de maintenance acceptable.
 
@@ -18,8 +18,19 @@ git pull
 docker compose -f deploy/docker-compose.yml up -d --build
 ```
 
+En mode image, remplacez `CIELE_IMAGE_TAG` dans `deploy/.env` par la nouvelle
+version et appliquez-la à la place :
+
+```bash
+docker compose up -d
+```
+
+Sur [Ciele Desktop](/self-hosting/desktop), la mise à jour de l'application
+effectue cette étape : chaque build fixe les images correspondant à sa propre
+version.
+
 Le service `migrate` applique uniquement les migrations en attente. Examinez son
-résultat avant d'accepter l'application comme étant en bon état.
+résultat avant de valider l'application comme étant en bon état.
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps
@@ -36,5 +47,5 @@ docker compose -f deploy/docker-compose.yml logs app
 5. Appelez `GET /api/v1/meta` lorsque des clients programmatiques sont utilisés.
 
 Ne restaurez pas une ancienne image d'application sur une base de données migrée
-incompatible. Utilisez les instructions de version pour un chemin de
+incompatible. Utilisez les instructions de publication pour un chemin de
 restauration pris en charge.

@@ -42,7 +42,17 @@ function fakeDb(overrides: Partial<Db> = {}): Db {
   return {
     getConcept: vi.fn().mockResolvedValue(concept()),
     getCollection: vi.fn().mockResolvedValue({ id: "col1", name: "Handbook" }),
-    getSource: vi.fn().mockResolvedValue({ id: "s1", name: "reset.pdf" }),
+    getSource: vi.fn().mockResolvedValue({
+      id: "s1",
+      name: "reset.pdf",
+      kind: "file",
+      originalObjectPath: "org/x/reset.pdf",
+    }),
+    listSourceAssistantLinks: vi
+      .fn()
+      .mockResolvedValue([
+        { assistantId: "a1", assistantName: "Alex", directAccess: false },
+      ]),
     recordAiUsage: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as Db;
@@ -82,6 +92,8 @@ describe("hydrateGraphProvenance", () => {
         sourceName: "reset.pdf",
         resourceUrl: "https://x/reset",
         content: "Open the portal.",
+        sourceId: "s1",
+        directAccess: false,
         // Rank-descending: 1 - 0/(1+1) = 1 for the sole (first) entry.
         similarity: 1,
         // …which is exactly why the engine is stamped: that 1 is a placeholder,
@@ -100,6 +112,60 @@ describe("hydrateGraphProvenance", () => {
     expect(results).toEqual([]);
     // Deduped: only one lookup for the repeated conceptId.
     expect(db.getConcept).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops hits whose Source is not linked to the querying assistant", async () => {
+    // The graph indexes the whole Collection, which may hold Sources linked to
+    // other Assistants: retrieval obeys the same link contract as vector.
+    const db = fakeDb({
+      listSourceAssistantLinks: vi
+        .fn()
+        .mockResolvedValue([
+          { assistantId: "other", assistantName: "Other", directAccess: true },
+        ]),
+    });
+    const results = await hydrateGraphProvenance(
+      db,
+      [{ conceptId: "c1", sourceId: "s1", excerpt: "Open the portal." }],
+      "a1"
+    );
+    expect(results).toEqual([]);
+  });
+
+  it("stamps direct access from the querying assistant's own link", async () => {
+    const db = fakeDb({
+      listSourceAssistantLinks: vi.fn().mockResolvedValue([
+        { assistantId: "a1", assistantName: "Alex", directAccess: true },
+        { assistantId: "other", assistantName: "Other", directAccess: false },
+      ]),
+    });
+    const results = await hydrateGraphProvenance(
+      db,
+      [{ conceptId: "c1", sourceId: "s1", excerpt: "Open the portal." }],
+      "a1"
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0].sourceId).toBe("s1");
+    expect(results[0].directAccess).toBe(true);
+  });
+
+  it("keeps direct access off when the original file is gone", async () => {
+    const db = fakeDb({
+      getSource: vi
+        .fn()
+        .mockResolvedValue({ id: "s1", name: "reset.pdf", kind: "file", originalObjectPath: null }),
+      listSourceAssistantLinks: vi
+        .fn()
+        .mockResolvedValue([
+          { assistantId: "a1", assistantName: "Alex", directAccess: true },
+        ]),
+    });
+    const results = await hydrateGraphProvenance(
+      db,
+      [{ conceptId: "c1", sourceId: "s1", excerpt: "Open the portal." }],
+      "a1"
+    );
+    expect(results[0].directAccess).toBe(false);
   });
 });
 

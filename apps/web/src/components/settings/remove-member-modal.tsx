@@ -16,7 +16,7 @@ const CONFIRMATION_WORD = "DELETE";
 /**
  * The same two-step (warning -> type-to-confirm) morphing modal the assistant
  * delete uses, retargeted at a Members-table row. A pending invite is revoked
- * rather than removed, but it goes through the identical gate — the row means
+ * rather than removed, but it goes through the identical gate, the row means
  * the same thing to an admin either way.
  */
 export function RemoveMemberModal({

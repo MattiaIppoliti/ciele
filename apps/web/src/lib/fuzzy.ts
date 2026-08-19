@@ -1,7 +1,7 @@
 /**
  * Minimum number of needle characters that must be treated as typos
  * (substituted or dropped) for the rest of needle to appear, in order, in
- * hay — i.e. an edit-distance-bounded subsequence match. Gaps in hay are
+ * hay, i.e. an edit-distance-bounded subsequence match. Gaps in hay are
  * always free (that's what makes it a subsequence match rather than a
  * literal edit distance), so this generalizes plain subsequence matching
  * (which is just this function equal to 0).
@@ -49,7 +49,7 @@ const WORD_BOUNDARY = /[\s\-_./:]/;
  * How good a *typo-free* match is, or {@link NO_MATCH}. This is the ranking
  * half of the pair: {@link fuzzyMatch} decides whether a candidate survives,
  * this decides where it lands. The score rewards characters that fall on a
- * word start or run consecutively and penalises what a match skips over — so
+ * word start or run consecutively and penalises what a match skips over, so
  * "csa" puts "Ciele Support Assistant" above a label that merely happens to
  * contain those letters scattered around.
  *
@@ -74,7 +74,7 @@ export function fuzzyScore(needle: string, hay: string): number {
       // Prefer the earliest place the query lands at all.
       score += Math.max(0, 4 - index * 0.1);
     } else if (index === previousIndex + 1) {
-      // A run of adjacent characters is the strongest signal — "sup" in
+      // A run of adjacent characters is the strongest signal, "sup" in
       // "Support desk" must beat the three word starts of "Sales unit planner".
       score += 10;
     } else {
@@ -95,7 +95,7 @@ export function fuzzyScore(needle: string, hay: string): number {
 }
 
 /**
- * Filter `items` with {@link fuzzyMatch} — typos and all — then order what
+ * Filter `items` with {@link fuzzyMatch}, typos and all, then order what
  * survives by {@link fuzzyScore}. A typo-only match scores nothing, so it
  * sinks below the clean matches instead of disappearing. Ties and an empty
  * needle keep the caller's original order (the sort is stable).

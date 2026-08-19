@@ -90,7 +90,7 @@ describe("entityToolSpecs", () => {
       Object.keys((filter.inputSchema as unknown as { shape: object }).shape)
     ).toEqual(["order_id", "status"]);
 
-    // Prompt-injection attempt: the model smuggles another subject's email —
+    // Prompt-injection attempt: the model smuggles another subject's email,
     // the server-side binding overwrites it unconditionally.
     await filter.execute(
       { status: "delayed", customer_email: "victim@example.com" },
@@ -181,7 +181,7 @@ describe("entityToolSpecs", () => {
     });
     await specs[0].execute({ sku: "A-1" }, {} as never);
     await specs[1].execute({ query: "A-1" }, {} as never);
-    // Two answered queries, one stable citation id — dedupSources collapses
+    // Two answered queries, one stable citation id, dedupSources collapses
     // them into a single chip.
     expect(cited).toHaveLength(2);
     expect(cited[0]).toMatchObject({

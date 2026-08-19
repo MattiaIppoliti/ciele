@@ -1,11 +1,11 @@
 ---
-title: "ciele CLI & MCP — connection architecture"
+title: "ciele CLI & MCP, connection architecture"
 ---
 
 ### What this shows
 
-How the `ciele` CLI and the ciele MCP server connect to a deployment — SaaS
-(`platform.ciele.app`) or self-hosted — and what stands between an API key and
+How the `ciele` CLI and the ciele MCP server connect to a deployment, SaaS
+(`platform.ciele.app`) or self-hosted, and what stands between an API key and
 the database. Both clients share one typed client (`@ciele/client`), one HTTP
 surface (`/api/v1`), and one operations layer (`@ciele/ops`); the diagrams below
 are the reference for `docs/api/connections.md` and the AI-client integration
@@ -22,7 +22,7 @@ guide.
     <div class="diagram-card"><strong>ciele MCP server</strong><span class="diagram-muted">7 coarse tools · stdio · read-only switch</span></div>
     <div class="diagram-card"><strong>your scripts / CI</strong><span class="diagram-muted">curl · SDKs from openapi.json</span></div>
   </div>
-  <div class="stack-arrow">▼ <span class="diagram-pill">@ciele/client</span> — Bearer ciele_sk_… · CIELE_BASE_URL</div>
+  <div class="stack-arrow">▼ <span class="diagram-pill">@ciele/client</span>, Bearer ciele_sk_… · CIELE_BASE_URL</div>
   <div class="diagram-box http">
     <strong>apps/web · /api/v1</strong>
     <div class="stack-row inner">
@@ -34,7 +34,7 @@ guide.
   </div>
   <div class="stack-arrow">▼ same operation objects the admin UI runs</div>
   <div class="diagram-box ops">
-    <strong>@ciele/ops — operations layer</strong>
+    <strong>@ciele/ops, operations layer</strong>
     <span class="diagram-muted">(context, validated input) → result · declares capability + mutated entities · effects via ports (jobs, OKF persist, crawl, cache invalidation, emails)</span>
   </div>
   <div class="stack-arrow">▼ tenancy boundary</div>
@@ -66,7 +66,7 @@ guide.
 
 ### MCP: an agent operating the Organization
 
-<Mermaid id="mcp-flow" caption="The MCP server is a thin stdio adapter over the same client; read-only mode refuses mutating actions before any request leaves the process." source={"sequenceDiagram\n  participant A as AI client (Claude Code, Cursor, …)\n  participant M as ciele-mcp (stdio)\n  participant API as /api/v1\n  A->>M: initialize / tools list\n  M-->>A: 7 tools (identity, assistants, flows, knowledge, publish, inbox, improvements)\n  A->>M: tools/call manage_knowledge {action add_faq, …}\n  alt CIELE_MCP_READ_ONLY=1 and action mutates\n    M-->>A: error result — refused locally, zero network\n  else allowed\n    M->>API: POST /collections/{id}/faqs (Bearer key)\n    API-->>M: 201 / error envelope\n    M-->>A: JSON text content (or isError)\n  end"} />
+<Mermaid id="mcp-flow" caption="The MCP server is a thin stdio adapter over the same client; read-only mode refuses mutating actions before any request leaves the process." source={"sequenceDiagram\n  participant A as AI client (Claude Code, Cursor, …)\n  participant M as ciele-mcp (stdio)\n  participant API as /api/v1\n  A->>M: initialize / tools list\n  M-->>A: 7 tools (identity, assistants, flows, knowledge, publish, inbox, improvements)\n  A->>M: tools/call manage_knowledge {action add_faq, …}\n  alt CIELE_MCP_READ_ONLY=1 and action mutates\n    M-->>A: error result, refused locally, zero network\n  else allowed\n    M->>API: POST /collections/{id}/faqs (Bearer key)\n    API-->>M: 201 / error envelope\n    M-->>A: JSON text content (or isError)\n  end"} />
 
 ### Where each client plugs in
 
@@ -90,9 +90,9 @@ guide.
 <Callout id="key-facts" tone="decision">
 
 Three properties every integration inherits, by construction: **(1)** the key's
-Role is the only permission model — a viewer-tier key cannot mutate anywhere,
+Role is the only permission model: a viewer-tier key cannot mutate anywhere,
 no per-client configuration involved; **(2)** SaaS and self-host differ only by
 `CIELE_BASE_URL`; **(3)** `CIELE_MCP_READ_ONLY=1` is enforced inside the MCP
-process, before any request leaves it — safe default for exploratory agents.
+process, before any request leaves it, safe default for exploratory agents.
 
 </Callout>

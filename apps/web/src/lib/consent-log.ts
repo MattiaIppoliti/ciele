@@ -11,8 +11,8 @@ import { CONSENT_CATEGORIES } from "@/lib/cookie-consent";
  * at any moment, so on its own it discharges nothing. This module is our copy:
  * what was chosen, against which revision of the declaration, and when.
  *
- * The endpoint is public and unauthenticated — anonymous visitors are exactly
- * who we need records for — which makes the parsing below a trust boundary, not
+ * The endpoint is public and unauthenticated, anonymous visitors are exactly
+ * who we need records for, which makes the parsing below a trust boundary, not
  * a formality. Everything here is hostile input except the two facts we take
  * from the request itself (the user agent header and our own clock).
  */
@@ -98,7 +98,7 @@ export interface ParsedConsentRecord {
 
 /**
  * Validates and normalises one submitted decision. Pure, so the trust boundary
- * is testable without a request — see consent-log.test.ts.
+ * is testable without a request, see consent-log.test.ts.
  *
  * Returns null on anything malformed. Callers answer 204 either way: a visitor
  * gets no signal about whether our audit log accepted their payload, and a
@@ -128,7 +128,7 @@ let serviceDb: Db | null = null;
 
 /**
  * Service-role Db for the consent log. The table has RLS enabled and no
- * policies, so `anon` can neither read nor write it — an audit log a visitor
+ * policies, so `anon` can neither read nor write it, an audit log a visitor
  * could rewrite would be worthless, and one they could read would leak other
  * visitors' records. Writes therefore have to come through the service role.
  *

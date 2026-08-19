@@ -12,7 +12,7 @@ import { sortFlows } from "@agent-hub/core";
 import { OperationError, defineOperation } from "./operation";
 
 /**
- * The Assistants domain (#620) — the first extraction from the web app's
+ * The Assistants domain (#620): the first extraction from the web app's
  * server actions, and the pattern every later domain follows: the action and
  * the /api/v1 route both call these, so behavior can't drift between the two
  * surfaces.
@@ -20,7 +20,7 @@ import { OperationError, defineOperation } from "./operation";
 
 /**
  * Scalars are validated for real; structured config fields (quick replies,
- * style, help-desk settings, tools) are shape-trusted via z.custom — they are
+ * style, help-desk settings, tools) are shape-trusted via z.custom; they are
  * editor-authored configuration whose deep validation lives with the editors
  * that build them, and tightening one later is additive here.
  */
@@ -114,15 +114,12 @@ export const deleteAssistantOp = defineOperation({
   entities: () => [{ kind: "assistantList" as const }],
   run: async (ctx, { id }) => {
     await requireAssistant(ctx, id);
-    // Deleting an Assistant cascade-deletes its Collections and Concepts,
-    // which would orphan each Collection's derived graph dataset (ADR-0017).
-    // Capture the Collections first and purge whole datasets through the
-    // host port — one purge per Collection, never a per-Concept fan-out.
-    const collections = await ctx.db.listCollections(id);
+    // PRD #726 contract: knowledge is org-owned and shared through
+    // assistant↔source links, so deleting an Assistant only drops its links
+    // (FK cascade), Collections, Concepts, and their derived graph datasets
+    // survive for every other linked Assistant. Dataset purging moved to
+    // Collection deletion.
     await ctx.db.deleteAssistant(id);
-    for (const collection of collections) {
-      await ctx.ports?.purgeCollectionGraph?.(collection.id);
-    }
   },
 });
 
@@ -224,7 +221,7 @@ export const duplicateAssistantOp = defineOperation({
     }
     await ctx.db.reorderFlows(copy.id, orderedCopyIds);
 
-    // The `copy` in hand predates the config patch — return the stored row.
+    // The `copy` in hand predates the config patch, return the stored row.
     return (await ctx.db.getAssistant(copy.id)) ?? copy;
   },
 });

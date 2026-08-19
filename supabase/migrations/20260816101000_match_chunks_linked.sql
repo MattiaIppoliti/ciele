@@ -4,7 +4,7 @@
 -- a chunk that knows its Source answers for exactly the Assistants linked to
 -- that Source; a legacy chunk (source_id null, pre-backfill) falls back to
 -- the denormalized assistant_id, so behavior is unchanged until links exist.
--- match_chunks itself is untouched here — it is retired by the contract step
+-- match_chunks itself is untouched here; it is retired by the contract step
 -- (#733) once the backfill has stamped every chunk.
 
 create or replace function public.match_chunks_linked(

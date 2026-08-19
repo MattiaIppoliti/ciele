@@ -41,7 +41,7 @@ describe("validateSalesLead", () => {
     expect(result.lead.message).toBe("hello");
   });
 
-  it("rejects a missing consent — the toggle is not the only gate", () => {
+  it("rejects a missing consent, the toggle is not the only gate", () => {
     const result = validateSalesLead(submission({ consent: false }));
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -131,7 +131,7 @@ describe("salesLeadEmail", () => {
     new Date("2026-08-05T10:00:00.000Z")
   );
 
-  it("carries the consent value and its timestamp — the mail is the record", () => {
+  it("carries the consent value and its timestamp, the mail is the record", () => {
     expect(lead.ok).toBe(true);
     if (!lead.ok) return;
     const mail = salesLeadEmail(lead.lead, { to: "sales@ciele.app" });

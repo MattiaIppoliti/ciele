@@ -10,7 +10,7 @@ import {
  * The host port registry is the seam that makes this package framework-free.
  *
  * Both ports have defaults that keep the runtime *correct* with nothing
- * registered — a host that never calls `registerRuntimeHost` gets the shipped
+ * registered, a host that never calls `registerRuntimeHost` gets the shipped
  * platform prompt and loses only the after-response latency optimization. That
  * property is what these tests pin: the runtime must never depend on its host
  * having wired itself up.
@@ -27,7 +27,7 @@ describe("runtime host ports", () => {
     );
   });
 
-  it("drops after-response work by default — the ledger, not this port, is the contract", () => {
+  it("drops after-response work by default, the ledger, not this port, is the contract", () => {
     const work = vi.fn();
     expect(() => getRuntimeHost().scheduleAfterResponse(work)).not.toThrow();
     // Deliberately NOT called: every caller has already written a durable job
@@ -52,7 +52,7 @@ describe("runtime host ports", () => {
     const work = vi.fn();
     getRuntimeHost().scheduleAfterResponse(work);
     expect(scheduled).toHaveLength(1);
-    // Handed over, not invoked — the host decides when it runs.
+    // Handed over, not invoked, the host decides when it runs.
     expect(work).not.toHaveBeenCalled();
     scheduled[0]!();
     expect(work).toHaveBeenCalledOnce();
@@ -79,7 +79,7 @@ describe("runtime host ports", () => {
   it("shares one registry across duplicated module instances", async () => {
     // Hosts bundle this package (`transpilePackages`), and the Next dev server
     // compiles instrumentation.ts and each route entry as separate module
-    // graphs — so host.ts is instantiated several times per process. The
+    // graphs, so host.ts is instantiated several times per process. The
     // registration made by one copy must be visible to every other copy, or
     // the after-response accelerator silently degrades to the no-op default
     // in dev. Two `vi.resetModules()` imports simulate exactly that split.
@@ -98,7 +98,7 @@ describe("runtime host ports", () => {
   });
 
   it("ships a platform prompt that states the non-negotiable rules", () => {
-    // The prompt itself is content, not behavior — pin only that the layer
+    // The prompt itself is content, not behavior, pin only that the layer
     // exists and carries the precedence claim the two-layer model depends on.
     expect(DEFAULT_PLATFORM_PROMPT).toContain("highest precedence");
     expect(DEFAULT_PLATFORM_PROMPT.length).toBeGreaterThan(200);

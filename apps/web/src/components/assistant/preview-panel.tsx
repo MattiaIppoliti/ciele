@@ -60,6 +60,7 @@ import {
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
+import { useRightRail } from "@/components/shell/right-rail";
 import {
   Message,
   MessageBubble,
@@ -104,7 +105,7 @@ type Msg = UserMsg | BotMsg;
 const PANEL_DEFAULT_WIDTH = 400;
 const PANEL_MIN_WIDTH = 320;
 const PANEL_MAX_WIDTH = 640;
-/** Width of the collapsed rail (w-12) — where an opening drag starts from. */
+/** Width of the collapsed rail (w-12), where an opening drag starts from. */
 const PANEL_RAIL_WIDTH = 48;
 /** Release a drag below this width and the panel collapses back to the rail. */
 const PANEL_COLLAPSE_THRESHOLD = 180;
@@ -125,7 +126,7 @@ function historyDayLabel(iso: string): string {
   });
 }
 
-/** "07 Jul, 14:32" — the hover timestamp on a sent message. */
+/** "07 Jul, 14:32", the hover timestamp on a sent message. */
 function sentAtLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -279,10 +280,10 @@ export function PreviewPanel({
 }: {
   assistant: Assistant;
   connectorScope: string | null;
-  /** Mount already mid-drag — the panel was opened by dragging the collapsed rail. */
+  /** Mount already mid-drag, the panel was opened by dragging the collapsed rail. */
   startResizing?: boolean;
   /**
-   * `"docked"` is the resizable right-hand column of the assistant editor — a
+   * `"docked"` is the resizable right-hand column of the assistant editor, a
    * pointer surface, hidden below `md`. `"page"` is the same preview filling a
    * route of its own (the "Preview" SETUP section), which is how the
    * preview is reachable at all on a phone or a portrait tablet: it drops the
@@ -390,8 +391,14 @@ export function PreviewPanel({
       },
     });
 
+  // Tell the shell's viewport-fixed furniture how much of the right edge this
+  // panel is holding, so the notification stack lands beside the chat instead
+  // of on top of its composer. Nothing to move aside for a collapsed rail (one
+  // button at its top) or for the full-route variant, which is the page.
+  useRightRail(asPage || collapsed ? null : { width, animated: !resizing });
+
   // PreviewPanelLauncher is this component's only mount point, and it
-  // already decided the panel should be open before rendering it — so
+  // already decided the panel should be open before rendering it, so
   // `collapsed` just starts false here. It must not re-derive its own
   // opinion from localStorage on mount (as it once did): that raced the
   // launcher's decision and could silently re-collapse the panel right
@@ -434,7 +441,7 @@ export function PreviewPanel({
    * Proactive triggers in Preview (#545). The preview has no host page, so a
    * preview run *is* the page: mounting or restarting it counts as the page load
    * and the chat opening, and the dwell clock starts there. Which listeners to arm
-   * comes from the live flows — the whole point of Preview is unpublished work, so
+   * comes from the live flows, the whole point of Preview is unpublished work, so
    * it cannot read the published config the embed reads.
    */
   const [previewRun, setPreviewRun] = useState(0);
@@ -763,9 +770,9 @@ export function PreviewPanel({
   );
 
   // Collapsed: slim rail with a « button that reopens the panel. Dragging the
-  // handle also reopens it — the panel grows from the rail under the pointer,
+  // handle also reopens it, the panel grows from the rail under the pointer,
   // fading in, and snaps to PANEL_MIN_WIDTH on release (Spotify-style).
-  // A page is never collapsed — there is nothing beside it to make room for.
+  // A page is never collapsed: there is nothing beside it to make room for.
   if (collapsed && !asPage) {
     return (
       <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
@@ -818,11 +825,11 @@ export function PreviewPanel({
           brandColor={assistant.style?.brandColor ?? "#0a0a0a"}
         />
       )}
-      {/* Clips the content only — the resize handle overhangs the panel's
+      {/* Clips the content only, the resize handle overhangs the panel's
           left edge and must stay fully visible. */}
       <div className="flex min-h-0 w-full flex-1 flex-col items-end overflow-hidden">
       {/* Content keeps its readable min width while the panel is dragged
-          narrower — it slides out of view fading, instead of reflowing. As a
+          narrower, it slides out of view fading, instead of reflowing. As a
           page there is no drag and no min width to defend: it just fills the
           route, capped so the chat does not sprawl on a desktop. */}
       <div
@@ -867,7 +874,7 @@ export function PreviewPanel({
         </p>
       )}
 
-      {/* While the panel grows it is out of flow, so this holds its slot — and
+      {/* While the panel grows it is out of flow, so this holds its slot, and
           is what the collapse measures back down to. */}
       {animating && <div ref={spacerRef} className="min-h-0 flex-1" />}
       <div
@@ -890,7 +897,7 @@ export function PreviewPanel({
           />
         )}
 
-        {/* Chat header — shared with the production widget (chat-header.tsx),
+        {/* Chat header, shared with the production widget (chat-header.tsx),
             so the preview always shows exactly what production renders. */}
         {!supportOpen && (
           <ChatHeader
@@ -1082,7 +1089,7 @@ export function PreviewPanel({
                 return (
                   <Message key={i} from="assistant">
                     <MessageContent className="gap-2">
-                      {/* Flows are deliberately invisible to chat users — routing
+                      {/* Flows are deliberately invisible to chat users, routing
                           is audited in the Inbox transcript only. */}
                       <ThinkingPanel
                         steps={msg.steps}
@@ -1182,7 +1189,7 @@ export function PreviewPanel({
         >
           {/* Always-available escalation button ("Contact Support Button
               Name"), hidden by the Help Desks "Hide Always Available
-              Escalation Button" toggle — same rule as the published widget. */}
+              Escalation Button" toggle, same rule as the published widget. */}
           {!hideEscalation && (
             <div className="flex justify-center pb-3">
               <button
@@ -1201,8 +1208,8 @@ export function PreviewPanel({
           {(composerPulse || pending) && (
             <ComposerPulse color="var(--primary)" focus={composerPulse} loading={pending} />
           )}
-          {/* Sending stays enabled while a reply streams — the preview's
-              follow-up scheduler queues or steers it — so the composer never
+          {/* Sending stays enabled while a reply streams, the preview's
+              follow-up scheduler queues or steers it, so the composer never
               enters PromptInput's own `loading` mode; a Stop control rides in
               the actions row instead. */}
           <PromptInput
@@ -1252,7 +1259,7 @@ export function PreviewPanel({
       </div>
       </div>
 
-      {/* Send feedback (chat-level, from the ⋯ menu) — shared dialog. */}
+      {/* Send feedback (chat-level, from the ⋯ menu), shared dialog. */}
       <FeedbackDialog
         open={feedbackOpen}
         onOpenChange={setFeedbackOpen}

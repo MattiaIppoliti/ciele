@@ -3,7 +3,7 @@
  *
  * A client that retries a mutation (network blip, timeout) sends the same
  * `Idempotency-Key` header; the first completed response is replayed instead
- * of running the mutation twice. The store is in-process and TTL-bounded —
+ * of running the mutation twice. The store is in-process and TTL-bounded,
  * best-effort per instance, which is the right cost for a skeleton: it makes
  * client retries against one server safe, and a durable store can replace
  * this module behind the same function when the API grows multi-instance.
@@ -27,7 +27,7 @@ function sweep(now: number) {
 /**
  * Runs `execute` unless this (scope, Idempotency-Key) pair already completed,
  * in which case the recorded response is replayed. No header = no caching.
- * `scope` keeps keys from colliding across routes and tenants — pass
+ * `scope` keeps keys from colliding across routes and tenants, pass
  * something like `"<orgId>:<METHOD /path>"`.
  */
 export async function withIdempotency(
@@ -65,7 +65,7 @@ export function clearIdempotencyStore() {
 
 /**
  * A tenant-safe scope for a mutation route: the caller's Authorization
- * header (hashed — the store must never hold a secret) plus the route name,
+ * header (hashed, the store must never hold a secret) plus the route name,
  * so two Organizations reusing the same Idempotency-Key value never collide.
  */
 export async function idempotencyScope(

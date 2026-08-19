@@ -1,5 +1,5 @@
--- API catalogue integration (spec #559): one integration per Assistant — a base
--- URL, one sealed credential, and a catalogue of described endpoints — which the
+-- API catalogue integration (spec #559): one integration per Assistant, a base
+-- URL, one sealed credential, and a catalogue of described endpoints, which the
 -- model reaches through three generic discovery/query tools instead of one
 -- hand-registered custom tool per endpoint.
 --
@@ -21,7 +21,7 @@ create table public.assistant_api_integrations (
   auth_username text not null default '',
   -- Sealed app-side with sealSecret; this schema never sees plaintext.
   encrypted_credential text,
-  -- ApiEndpointSpec[] — see packages/core/src/types.ts.
+  -- ApiEndpointSpec[], see packages/core/src/types.ts.
   endpoints jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

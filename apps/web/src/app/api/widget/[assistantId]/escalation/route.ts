@@ -10,12 +10,12 @@ import {
 } from "@/lib/widget-db";
 
 /**
- * Widget escalation surface — a thin adapter over `escalateConversation`
+ * Widget escalation surface: a thin adapter over `escalateConversation`
  * (the whole transaction lives in @/lib/escalation; the escalation *menu*
  * is served by the sibling help-desks route from the one widget-safe
  * channel projection in @/lib/escalation-desks).
  *
- * POST — records that the visitor escalated: marks the conversation escalated
+ * POST, records that the visitor escalated: marks the conversation escalated
  *        and, if the desk has "Auto-generate improvements" on, creates an
  *        Improvement from the last AI answer. When the body carries a
  *        channelId + form values (an email channel's form submission), the

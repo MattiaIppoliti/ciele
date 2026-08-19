@@ -13,7 +13,7 @@ Use these terms in English public documentation. Preserve exact interface labels
 | condition | Configuration that changes Flow eligibility or classification context. | filter |
 | action | One ordered response operation in a Flow. | step, block |
 | Knowledge | Content that an Assistant can search. | knowledge base |
-| Knowledge Collection | The Knowledge container for one Assistant. | collection |
+| Knowledge Collection | The Organization's container for Sources and Concepts. | collection |
 | Source | Original website, file, text, or FAQ content. | document |
 | Concept | An OKF document produced during ingestion. | chunk |
 | Publication | An immutable live Assistant snapshot. | deployment, version |

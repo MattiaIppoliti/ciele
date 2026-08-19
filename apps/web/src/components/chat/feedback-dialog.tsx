@@ -14,7 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 
 /**
- * "Send feedback" dialog opened from the chat header's ⋯ menu — shared by the
+ * "Send feedback" dialog opened from the chat header's ⋯ menu, shared by the
  * editor Preview panel and the production widget (see chat-header.tsx for why
  * the two surfaces share their chrome). How the feedback is persisted differs
  * per host (admin server action vs public widget endpoint), so the submit is
@@ -31,7 +31,7 @@ export function FeedbackDialog({
   nickname: string;
   /**
    * Persists the feedback. Resolve to `true` when saved (dialog closes and
-   * clears), `false` to keep the dialog open (e.g. no conversation yet —
+   * clears), `false` to keep the dialog open (e.g. no conversation yet,
    * the host is expected to have toasted why). Rejections toast a generic
    * failure and keep the text so nothing is lost.
    */

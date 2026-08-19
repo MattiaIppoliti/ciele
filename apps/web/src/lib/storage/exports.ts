@@ -41,7 +41,7 @@ export async function uploadExportArtifact(
     .from(ANALYTICS_EXPORTS_BUCKET)
     .upload(path, input.body, {
       contentType: FORMAT_CONTENT_TYPES[input.format],
-      // Re-runs (retry, stale reclaim) overwrite the same object — the job id
+      // Re-runs (retry, stale reclaim) overwrite the same object, the job id
       // is stable, so a repeated run is idempotent at the storage seam too.
       upsert: true,
     });

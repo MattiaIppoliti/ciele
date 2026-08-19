@@ -52,7 +52,7 @@ export function ImprovementDrawer({
   });
 
   // The board keys this component by improvement id, so a different id mounts a
-  // fresh drawer — the effect only has to fetch, never reset.
+  // fresh drawer, the effect only has to fetch, never reset.
   useEffect(() => {
     let live = true;
     getImprovementDetailAction(improvementId).then((result) => {
@@ -115,7 +115,7 @@ export function ImprovementDrawer({
           </Hint>
         </header>
 
-        {/* Inner scroll container — overflow lives here, not on the aside, so
+        {/* Inner scroll container, overflow lives here, not on the aside, so
             the handle poking out at -left-1.5 isn't clipped. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {detail ? (

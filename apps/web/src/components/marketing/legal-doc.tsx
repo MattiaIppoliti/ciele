@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
 
 /** One block of body content inside a legal section. */
@@ -6,7 +7,7 @@ export type LegalBlock =
   | { type: "p"; text: ReactNode }
   | { type: "h3"; text: string }
   | { type: "ul"; items: ReactNode[] }
-  /* Disclosure tables — what the Cookie Notice needs to list cookie names,
+  /* Disclosure tables, what the Cookie Notice needs to list cookie names,
      providers and retention side by side. */
   | { type: "table"; caption?: string; headers: string[]; rows: ReactNode[][] };
 
@@ -171,6 +172,14 @@ export function LegalDoc({
             ))}
           </div>
         </div>
+
+        <CloudCallout
+          expression="sleepy"
+          eyebrow="The fine print"
+          title="Even our cloud nods off here"
+          body="Short where it can be, precise where it must be. If anything in these pages is unclear, write to us and a human will answer."
+          cta={{ label: "Contact us", href: "/contact/sales" }}
+        />
       </div>
     </main>
   );

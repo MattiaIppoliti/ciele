@@ -10,7 +10,7 @@ import type { Db } from "@agent-hub/db";
  * The escalation menu data shared by the published widget and the editor
  * Preview: the help desks an assistant offers (helpDeskSettings.selectedIds)
  * with their enabled support channels. Only widget-safe fields leave the
- * server — channel auth config (API keys, basic credentials) never does;
+ * server, channel auth config (API keys, basic credentials) never does;
  * each kind exposes just what the client needs to act.
  */
 export interface EscalationFormField {
@@ -38,7 +38,7 @@ export interface EscalationChannel {
   availability: ChannelAvailability;
   /** tel/url target for actionable kinds; null renders as info-only. */
   target: string | null;
-  /** Present for email channels — submitting it sends the escalation email. */
+  /** Present for email channels, submitting it sends the escalation email. */
   form: EscalationForm | null;
 }
 
@@ -194,7 +194,7 @@ export async function listEscalationDesks(
           .filter((c) => c.enabled)
           .map(toEscalationChannel)
           // An email channel without a destination address can neither open a
-          // form nor a mailto — hide it rather than render a dead button.
+          // form nor a mailto, hide it rather than render a dead button.
           .filter((c) => c.kind !== "email" || c.target !== null || c.form !== null),
       };
     })

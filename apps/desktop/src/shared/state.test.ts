@@ -17,7 +17,7 @@ describe("normalizeBaseUrl", () => {
     expect(normalizeBaseUrl("http://10.0.0.5:3000")).toBe("http://10.0.0.5:3000");
   });
 
-  it("drops path, query and fragment — a base URL is an origin", () => {
+  it("drops path, query and fragment, a base URL is an origin", () => {
     expect(normalizeBaseUrl("https://ciele.example.edu/assistants?x=1#y")).toBe(
       "https://ciele.example.edu",
     );
@@ -54,7 +54,7 @@ describe("parseSettings", () => {
     });
   });
 
-  it("treats an unknown mode as no choice made — back to the welcome screen", () => {
+  it("treats an unknown mode as no choice made, back to the welcome screen", () => {
     expect(parseSettings({ mode: "kiosk" }).mode).toBeNull();
   });
 

@@ -18,7 +18,7 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient> {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Called from a Server Component — session refresh is
+            // Called from a Server Component: session refresh is
             // handled by the middleware, safe to ignore.
           }
         },

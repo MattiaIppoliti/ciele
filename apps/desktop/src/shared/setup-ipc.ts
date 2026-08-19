@@ -18,13 +18,13 @@ export interface SetupBridge {
     skip(): Promise<SetupSnapshot>;
     setInput(stepId: string, values: Record<string, string>): Promise<SetupSnapshot>;
     /**
-     * Put a settled optional step back on the table — the Back button's teeth.
+     * Put a settled optional step back on the table, the Back button's teeth.
      * Optional steps only; the ones after it keep their results.
      */
     revisit(stepId: string): Promise<SetupSnapshot>;
     /**
      * Back to a first run: clears the wizard's step state *and* the flag that
-     * makes later launches skip it. Does not touch the stack or its data —
+     * makes later launches skip it. Does not touch the stack or its data,
      * removing someone's database is not something a button should do.
      */
     reset(): Promise<SetupSnapshot>;

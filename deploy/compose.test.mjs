@@ -1,7 +1,7 @@
 // Contract test for the self-host stack (#440).
 //
 // Docker is not available everywhere this repo is developed, and `docker
-// compose config` in CI proves the file parses — not that it still says what
+// compose config` in CI proves the file parses, not that it still says what
 // we promise. This asserts the promises: which profiles are on by default,
 // that the heavy ones are not, that the app cannot serve before migrations
 // have run, and that the self-host scheduler stays in step with vercel.json.
@@ -24,7 +24,7 @@ let passed = 0;
 function check(label, fn) {
   fn();
   passed++;
-  console.log(`  ok — ${label}`);
+  console.log(`  ok, ${label}`);
 }
 
 const compose = read("docker-compose.yml");
@@ -85,7 +85,7 @@ check("every service declares exactly one profile", () => {
   }
 });
 
-check("workers and studio are opt-in — nothing heavy starts by default", () => {
+check("workers and studio are opt-in, nothing heavy starts by default", () => {
   const optIn = Object.entries(profiles)
     .filter(([, list]) => !defaultProfiles.includes(list[0]))
     .map(([service]) => service)
@@ -105,8 +105,8 @@ check("a worker cannot start without its credential", () => {
   // unauthenticated on the shared network. `:-` (empty default) would do the
   // opposite, silently.
   //
-  // The cost of the `:?` form is that `docker compose config` — which
-  // interpolates every service regardless of profile — needs placeholder
+  // The cost of the `:?` form is that `docker compose config`, which
+  // interpolates every service regardless of profile, needs placeholder
   // values; the CI job supplies them and separately asserts this guard fires.
   for (const variable of [
     "GRAPH_WORKER_API_TOKEN",
@@ -127,7 +127,7 @@ check("the image's deps stage copies every workspace manifest the app needs", ()
   /* The `app` service builds apps/web/Dockerfile, whose deps stage installs from
      the lockfile with an explicit list of manifests. A workspace package added to
      apps/web's dependency closure and not to that list gets no node_modules link,
-     and the build dies compiling the package's own source — packages ship as
+     and the build dies compiling the package's own source, packages ship as
      source, so the error reads "Can't resolve '@agent-hub/core'" from inside the
      new package rather than as a missing dependency of the app.
 
@@ -170,7 +170,7 @@ check("the image's deps stage copies every workspace manifest the app needs", ()
   for (const dir of [...closure].sort()) {
     assert.ok(
       dockerfile.includes(`COPY ${dir}/package.json ${dir}/`),
-      `apps/web/Dockerfile must COPY ${dir}/package.json — apps/web depends on it, so pnpm needs its manifest to link it`
+      `apps/web/Dockerfile must COPY ${dir}/package.json, apps/web depends on it, so pnpm needs its manifest to link it`
     );
   }
 });
@@ -182,10 +182,10 @@ check("the image's deps stage copies every workspace manifest the app needs", ()
 // default is untouched and that the overlay changes nothing but the source of
 // those three services.
 
-/** The services the repo builds — the only ones image mode can replace. */
+/** The services the repo builds, the only ones image mode can replace. */
 const BUILT_SERVICES = ["migrate", "app", "cron"];
 
-check("the default is still a source build — the overlay is opt-in", () => {
+check("the default is still a source build, the overlay is opt-in", () => {
   for (const service of BUILT_SERVICES) {
     assert.match(
       compose,
@@ -201,7 +201,7 @@ check("the default is still a source build — the overlay is opt-in", () => {
     assert.doesNotMatch(
       baseServiceSection(service),
       /^ {4}image:/m,
-      `${service} must not name an image in the base file — that is the overlay's job`
+      `${service} must not name an image in the base file; that is the overlay's job`
     );
   }
 });
@@ -211,13 +211,13 @@ check("image mode pins every built service to the release tag", () => {
   assert.deepEqual(
     overlayServices.sort(),
     [...BUILT_SERVICES].sort(),
-    "the overlay must cover exactly the services the repo builds — no more (it would shadow a published image), no fewer (that one would still build from source)"
+    "the overlay must cover exactly the services the repo builds, no more (it would shadow a published image), no fewer (that one would still build from source)"
   );
   for (const service of BUILT_SERVICES) {
     assert.match(
       imagesOverlay,
       new RegExp(`^ {2}${service}:$[\\s\\S]*?/${service}:\\$\\{CIELE_IMAGE_TAG:\\?`, "m"),
-      `${service} must resolve to <registry>/${service}:\${CIELE_IMAGE_TAG:?…} — the :? form refuses to start on an unset tag rather than pulling :latest`
+      `${service} must resolve to <registry>/${service}:\${CIELE_IMAGE_TAG:?…}, the :? form refuses to start on an unset tag rather than pulling :latest`
     );
   }
 });
@@ -241,13 +241,13 @@ check("the overlay changes nothing but where those services come from", () => {
     assert.doesNotMatch(
       imagesOverlay,
       new RegExp(`^ {4}${key}:`, "m"),
-      `the overlay sets ${key}: — that belongs in the base file, where both modes read it`
+      `the overlay sets ${key}: that belongs in the base file, where both modes read it`
     );
   }
 });
 
 check(".env.example documents the switch, and leaves it off", () => {
-  assert.match(envExample, /^COMPOSE_FILE=$/m, "COMPOSE_FILE must ship empty — image mode is opt-in");
+  assert.match(envExample, /^COMPOSE_FILE=$/m, "COMPOSE_FILE must ship empty, image mode is opt-in");
   assert.match(envExample, /^CIELE_IMAGE_TAG=$/m);
   assert.match(
     envExample,
@@ -274,7 +274,7 @@ check("bootstrap --images turns the overlay on and stops forcing a build", () =>
 });
 
 check("the published app image is built with the sentinels its entrypoint rewrites", () => {
-  // NEXT_PUBLIC_* is inlined at build time — measured: ~114 chunks under
+  // NEXT_PUBLIC_* is inlined at build time, measured: ~114 chunks under
   // .next/server, none under .next/static. A published image therefore cannot
   // carry a real anon key (it is a JWT signed with each install's own secret),
   // so it carries a sentinel and rewrites it at container start. The two
@@ -327,7 +327,7 @@ check("the scheduler runs exactly the jobs vercel.json schedules", () => {
   assert.deepEqual(
     selfHosted,
     scheduled,
-    "deploy/cron/crontab and vercel.json disagree — a self-host would silently skip or double-run maintenance"
+    "deploy/cron/crontab and vercel.json disagree, a self-host would silently skip or double-run maintenance"
   );
 });
 
@@ -348,7 +348,7 @@ check("bootstrap fills in every generated secret the compose file requires", () 
   assert.deepEqual(
     missing,
     [],
-    `bootstrap.sh does not generate: ${missing.join(", ")} — a default install would fail to start`
+    `bootstrap.sh does not generate: ${missing.join(", ")}, a default install would fail to start`
   );
 });
 

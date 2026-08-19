@@ -1,10 +1,10 @@
 /**
  * Presentation view over an OKF v0.2 Concept's trust, lifecycle and provenance
- * frontmatter — the plain-TS module the Knowledge browser's concept card
+ * frontmatter, the plain-TS module the Knowledge browser's concept card
  * delegates to, so the display rules are unit-tested (vitest only picks up
  * `.test.ts`; see apps/web/CLAUDE.md).
  *
- * The *derivations* stay in `@agent-hub/db` (`okf.ts`) — this only decides how
+ * The *derivations* stay in `@agent-hub/db` (`okf.ts`); this only decides how
  * they read to an admin: which labels, and which `sources` entries are
  * followable links versus plain text. That split matters because a
  * `sources[].resource` is allowed to be a scope descriptor or an internal
@@ -51,7 +51,7 @@ export interface ConceptProvenanceView {
   sources: ProvenanceSourceView[];
 }
 
-/** Absolute http(s) only — a storage key or scope descriptor is not a link. */
+/** Absolute http(s) only, a storage key or scope descriptor is not a link. */
 function hrefFor(resource: string): string | null {
   return /^https?:\/\//i.test(resource) ? resource : null;
 }
@@ -67,7 +67,7 @@ export function conceptProvenanceView(
 ): ConceptProvenanceView {
   const tier = trustTier(frontmatter);
   const status = conceptStatus(frontmatter);
-  // The latest event is the one worth naming — §5.2's "how recently" is the
+  // The latest event is the one worth naming, §5.2's "how recently" is the
   // latest `at`, so the actor shown must be that same event's actor.
   const latestVerifiedAt = lastVerifiedAt(frontmatter);
   const latest =

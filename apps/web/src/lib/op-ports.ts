@@ -2,6 +2,7 @@ import { openSecret, type Concept, type ConceptFrontmatter } from "@agent-hub/co
 import type { Db } from "@agent-hub/db";
 import type { OperationPorts } from "@ciele/ops";
 import {
+  embedConcept,
   enqueueGraphSyncJob,
   enqueueIngestJob,
   persistConcept,
@@ -27,7 +28,7 @@ export function webOperationPorts(
     actorEmail: string;
     /**
      * Server Actions keep the default `updateTag` path (read-your-own-writes);
-     * Route Handlers must pass the `revalidateTag`-based variant — Next
+     * Route Handlers must pass the `revalidateTag`-based variant, Next
      * forbids `updateTag` outside an action.
      */
     invalidatePublication?: (assistantId: string) => void;
@@ -71,6 +72,10 @@ export function webOperationPorts(
         organizationId: opts.organizationId,
         ...args,
       }),
+    reembedConcept: async (args) => {
+      const connections = await db.listProviderConnections(opts.organizationId);
+      await embedConcept({ db, connections, ...args });
+    },
     restartCrawl: async (sourceId) => {
       await restartWebsiteCrawl({ db, sourceId });
     },
@@ -129,7 +134,7 @@ export async function persistFaqConcept(args: {
   question: string;
   answer: string;
   /**
-   * OKF v0.2 trust + provenance for the Concept this writes (§5.1/§5.2) — who
+   * OKF v0.2 trust + provenance for the Concept this writes (§5.1/§5.2), who
    * authored it, who confirmed it, what it derives from. Required rather than
    * defaulted: callers differ exactly here (a person typing a FAQ is `human:`
    * generated; an accepted Suggested Fix is agent-generated and
@@ -148,8 +153,8 @@ export async function persistFaqConcept(args: {
       .slice(0, 60) || "faq") + (args.pathSuffix ?? "");
   const connections = await args.db.listProviderConnections(args.organizationId);
   // Every FAQ is a first-class `faq` Source (PRD #726): the question is the
-  // Source name, the answer stays on the Concept — which is what gives FAQs
-  // linked-assistant chips, status, and timestamps on the Knowledge hub.
+  // Source name, the answer stays on the Concept, which is what gives FAQs
+  // linked-assistant chips, status, and timestamps in the Library.
   const source = await args.db.createSource({
     collectionId: args.collectionId,
     name: question.slice(0, 500),

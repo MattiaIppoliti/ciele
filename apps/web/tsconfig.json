@@ -11,7 +11,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     // @ciele/mcp is consumed as source and its own bin runs on Node's type
-    // stripping, which requires explicit `.ts` import specifiers — so
+    // stripping, which requires explicit `.ts` import specifiers, so
     // typechecking through that package needs them allowed here too.
     "allowImportingTsExtensions": true,
     "isolatedModules": true,

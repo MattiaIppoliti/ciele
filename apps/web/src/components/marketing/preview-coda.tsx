@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 /* The coda picture on /features/assistants: the widget preview playing its
    scripted conversation on loop, standing alone under the claim rather than
    framed inside the admin shell (the hero above already shows the shell).
-   Split into its own chunk — it pulls the real chat components (Thinking
+   Split into its own chunk: it pulls the real chat components (Thinking
    panel, markdown, shiki) that the rest of the marketing bundle never needs. */
 const AssistantPreviewDemo = dynamic(
   () =>

@@ -13,10 +13,10 @@ export type {
 
 /**
  * Insights read module (apps/web façade): the aggregation lives in the Db
- * seam — a security-invoker SQL function in production, the in-memory oracle
- * in demo mode — so the browser only ever receives bounded metrics.
+ * seam, a security-invoker SQL function in production, the in-memory oracle
+ * in demo mode, so the browser only ever receives bounded metrics.
  *
- * A `client` may be passed for callers without a request session — the export
+ * A `client` may be passed for callers without a request session, the export
  * worker runs under the service role and supplies its own client so the same
  * reporting seam produces both the dashboard and the async artifact.
  */

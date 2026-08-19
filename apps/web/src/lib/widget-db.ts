@@ -7,7 +7,7 @@ import { SSO_GATE_COOKIE, gateForOrg, type SsoGatePayload } from "@/lib/sso";
 let widgetDb: Db | null = null;
 
 /**
- * Db for the public widget routes: service-role client (bypasses RLS —
+ * Db for the public widget routes: service-role client (bypasses RLS,
  * these routes only ever expose data that belongs to a Publication).
  * Falls back to the anon key (read-mostly) and to the demo store.
  * Module-level singleton: the client is env-configured and stateless
@@ -33,7 +33,7 @@ const publicationTag = (assistantId: string) => `publication:${assistantId}`;
  * The Publication lookup every widget surface goes through. Publications
  * are immutable and "which one is latest" changes only through Publish,
  * so the result is cached (tagged per assistant) and invalidated by
- * invalidatePublication() at the moment of Publish — the widget still
+ * invalidatePublication() at the moment of Publish, the widget still
  * always serves the latest Publication, without a Postgres round-trip on
  * every request. The TTL is only a backstop.
  *
@@ -56,7 +56,7 @@ export async function getLatestPublicationCached(
 /**
  * Called by the Publish/Republish actions (updateTag is server-action-only
  * and gives read-your-own-writes: the new version is live immediately).
- * The tag scheme is private to this module — callers only know "a new
+ * The tag scheme is private to this module, callers only know "a new
  * Publication exists for this assistant".
  */
 export function invalidatePublication(assistantId: string) {
@@ -65,7 +65,7 @@ export function invalidatePublication(assistantId: string) {
 
 /**
  * The Route Handler twin (#623): `updateTag` is Server-Action-only, so the
- * /api/v1 publish endpoints invalidate through `revalidateTag`. Best-effort —
+ * /api/v1 publish endpoints invalidate through `revalidateTag`. Best-effort,
  * outside a request scope (unit tests) Next throws, and cache freshness must
  * never fail the mutation that already committed.
  */
@@ -81,7 +81,7 @@ export function invalidatePublicationFromRoute(assistantId: string) {
 export interface WidgetContext {
   db: Db;
   assistantId: string;
-  /** The snapshot the widget serves — never the live assistant row. */
+  /** The snapshot the widget serves, never the live assistant row. */
   publication: Publication;
   /** CORS headers honoring the published allowed-domains list. */
   cors: HeadersInit;
@@ -91,7 +91,7 @@ export interface WidgetContext {
  * The shared entrypoint of every public widget route: resolves the latest
  * Publication for the assistant and derives the CORS headers from its
  * allowed domains. Returns a uniform 404 Response when the assistant was
- * never published — callers pass it straight through.
+ * never published, callers pass it straight through.
  */
 export async function resolveWidgetContext(
   request: { headers: Headers },
@@ -127,7 +127,7 @@ export interface SubjectRef {
   id: string;
 }
 
-/** Who a widget request speaks for — see {@link widgetSubject}. */
+/** Who a widget request speaks for, see {@link widgetSubject}. */
 export interface WidgetSubject extends SubjectRef {
   /** The verified gate payload when type === "sso" (identity claim included). */
   gate: SsoGatePayload | null;
@@ -136,7 +136,7 @@ export interface WidgetSubject extends SubjectRef {
 /**
  * Resolve the subject a widget request speaks for (#662): a valid SSO gate
  * for the assistant's Organization replaces the client-generated visitor id
- * with the verified OIDC subject — the gate is authoritative and cannot be
+ * with the verified OIDC subject, the gate is authoritative and cannot be
  * spoofed or overridden by request-body values. Without a gate, the visitor
  * id stands as before.
  */
@@ -156,7 +156,7 @@ export function widgetSubject(
 
 /**
  * Conversation ownership on the widget surface: the conversation must belong
- * to this assistant AND to this exact subject (type + id) — an anonymous
+ * to this assistant AND to this exact subject (type + id), an anonymous
  * visitor can never claim an SSO conversation by guessing its subject id.
  */
 export function subjectOwnsConversation(

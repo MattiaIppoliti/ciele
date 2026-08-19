@@ -188,7 +188,7 @@ describe("usageLimitsView, shape", () => {
 
   it("leaves an uncapped resource out of the total, numerator and denominator both", () => {
     // Adding usage to a denominator that does not include its cap would
-    // overstate the percentage — sometimes to a red figure that means nothing.
+    // overstate the percentage, sometimes to a red figure that means nothing.
     const view = usageLimitsView(
       snapshot([
         meter({ resource: "ai", window: monthWindow, cap: 100, usedCredits: 50 }),

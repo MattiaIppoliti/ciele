@@ -3,7 +3,7 @@ import { CieleApiError, CieleClient } from "./index";
 
 /**
  * The client against a stubbed fetch: request shapes (URL, headers, body)
- * and response handling (envelope errors, 204, pagination) — no network.
+ * and response handling (envelope errors, 204, pagination), no network.
  */
 
 interface Captured {

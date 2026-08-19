@@ -8,7 +8,7 @@ import {
 /**
  * The marketing hero's app mock advertises the console, so what it draws has to
  * be what the console has. It no longer *imports* the console's navigation
- * config — that dragged admin routing into the marketing module graph — so this
+ * config, that dragged admin routing into the marketing module graph, so this
  * is what keeps the claim true: rename a nav item or add a SETUP section without
  * updating the mock and the build fails here.
  *
@@ -43,7 +43,7 @@ describe("marketing app mock navigation", () => {
     );
   });
 
-  it("carries no routing — the mock never navigates", () => {
+  it("carries no routing, the mock never navigates", () => {
     // If an href ever appears here, the mock has started duplicating the
     // console's routing instead of illustrating it.
     for (const item of [...PREVIEW_GLOBAL_NAV, ...PREVIEW_SETUP_SECTIONS]) {

@@ -2,24 +2,32 @@
 
 ## Status
 
-Accepted — **stages 1–2 implemented** (see PRD #279 / arch candidate #3).
+Accepted: **stages 1–2 implemented** (see PRD #279 / arch candidate #3).
 
 - Stage 1: the additive accessor seam (`Db.table(name)`,
-  `packages/db/src/table-access.ts`) — both adapters implement it, the
+  `packages/db/src/table-access.ts`), both adapters implement it, the
   contract suite pins its semantics, `skills` is the first mapped table.
 - Stage 2: `describeDbContract("supabase (pglite)")` runs the REAL
   `createSupabaseDb` over the REAL migrations in in-process PGlite
   (`packages/db/src/testing/supabase-contract-harness.ts` +
   `postgrest-shim.ts`). The full-schema question below is resolved: it loads.
 
-Stages 3–4 (call-site migration, passthrough cleanup) remain gated on review —
+Stages 3–4 (call-site migration, passthrough cleanup) remain gated on review,
 this ADR is the decision record for that invasive remainder.
+
+- Stage 3, first batch: **skills**. `listSkills`/`createSkill`/`updateSkill`
+  migrated onto `table("skills")` and deleted from `Db` + both adapters;
+  `deleteSkill` keeps its named method for its `assistant_skills` cascade
+  (the mock detaches by hand where Postgres cascades, exactly the case the
+  staged plan carves out). The org-pinned wrapper's `table()` branch is now
+  generic over a `PINNED_TABLES` allow-list, so later batches extend a set
+  instead of duplicating the pinning.
 
 ## Context
 
 `packages/db/src/types.ts` declares the `Db` interface with **144 methods**,
-each implemented three times — the interface, the RLS-scoped Supabase adapter
-(`supabase.ts`, ~3200 lines), and the in-memory `mock.ts` (~3100 lines) — kept
+each implemented three times, the interface, the RLS-scoped Supabase adapter
+(`supabase.ts`, ~3200 lines), and the in-memory `mock.ts` (~3100 lines), kept
 in exact lockstep. `types.ts` changes in roughly **1 of every 5 commits**, so
 the triple-write tax is paid constantly.
 
@@ -42,19 +50,19 @@ Measured split of the 144 methods:
   update*/delete*`) whose implementation is about as complex as their signature
   and exists only to be mirrored in the mock.
 
-The seam itself is settled (two real adapters; the mock powers fast tests —
+The seam itself is settled (two real adapters; the mock powers fast tests,
 ADR-0002). Only its **width** is the friction. The shared contract harness,
 `describeDbContract(adapter, makeCtx)` (`db-contract.test.ts`), is written to run
-over multiple adapters but is instantiated for the **mock only** — so mock↔
+over multiple adapters but is instantiated for the **mock only**, so mock↔
 Supabase drift is asserted for none of the surface today.
 
 ## Decision
 
 1. Keep the ~19 behavioural methods verbatim on `Db`; they remain the legible,
    contract-pinned core.
-2. Introduce a **generic, typed table-access seam** for the plain CRUD — a small
+2. Introduce a **generic, typed table-access seam** for the plain CRUD, a small
    set of operations (`list`/`get`/`insert`/`update`/`delete` by table), typed
-   against the existing row types — and migrate the ~125 named passthroughs onto
+   against the existing row types, and migrate the ~125 named passthroughs onto
    it incrementally. A new table then costs one row-type, not three
    hand-written methods.
 3. Wire `describeDbContract("supabase", …)` against an in-process **PGlite**
@@ -63,31 +71,31 @@ Supabase drift is asserted for none of the surface today.
 
 ## Staged migration (each stage green + mergeable on its own)
 
-1. **Additive accessor** — add the generic table-access methods to `Db` + both
+1. **Additive accessor**: add the generic table-access methods to `Db` + both
    adapters + contract cases. No caller changes; nothing removed.
-2. **Supabase contract** — stand up the PGlite-backed contract context for the
+2. **Supabase contract**: stand up the PGlite-backed contract context for the
    table subset the spec exercises; run `describeDbContract` over both adapters.
-3. **Call-site migration** — move callers off named passthroughs onto the
+3. **Call-site migration**: move callers off named passthroughs onto the
    generic accessor, a section at a time, deleting each passthrough once unused.
    Passthroughs whose deletes carry link cleanup the database does via `ON
    DELETE CASCADE` but the mock does by hand (e.g. `deleteSkill` detaching
    `assistant_skills`) either keep their named method or grow a per-table
    cascade hook in the spec before migrating.
-4. **Cleanup** — remove the emptied passthrough surface; `Db` lands at ~19 + the
+4. **Cleanup**: remove the emptied passthrough surface; `Db` lands at ~19 + the
    generic accessor.
 
 ## Risks / why this is a draft
 
 - **Blast radius**: stage 3 touches call sites across `apps/web`; it must be
   reviewed and sequenced, not auto-merged.
-- **PGlite full-schema load** — RESOLVED by stage 2: the whole migration set
+- **PGlite full-schema load**, RESOLVED by stage 2: the whole migration set
   applies to PGlite. pgvector comes from `@electric-sql/pglite-pgvector`;
   `auth` (users + uid()/role()/jwt() reading a session GUC), `storage`
   (buckets/objects), and the anon/authenticated/service_role roles are small
   preamble stubs. Four migrations are skipped as fresh-database duplicates of
-  their backfill twins (0018/0025/0027/0028 — see the harness's
+  their backfill twins (0018/0025/0027/0028, see the harness's
   `FRESH_DB_SKIP`). Known limit: PGlite runs as table owner, so RLS policies
-  are loaded but not enforced — the contract pins interface semantics, not
+  are loaded but not enforced, the contract pins interface semantics, not
   tenant isolation.
 - **Type ergonomics**: the generic accessor must stay type-safe per table
   without regressing the call-site experience; design-it-twice before locking

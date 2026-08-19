@@ -47,7 +47,7 @@ interface ConnectionView {
  * default: only the opaque subject is captured at sign-in.
  */
 const IDENTITY_CLAIMS: Array<{ value: string; label: string }> = [
-  { value: "none", label: "Off — subject only" },
+  { value: "none", label: "Off, subject only" },
   { value: "email", label: "Email address (email claim)" },
   { value: "preferred_username", label: "Username (preferred_username claim)" },
 ];
@@ -150,7 +150,7 @@ export function AuthenticationClient({
       setTenantId("");
       setClientSecret("");
       setIdentityClaim("none");
-      toast.success("Connection saved — validate it to confirm the credentials.");
+      toast.success("Connection saved, validate it to confirm the credentials.");
       router.refresh();
     });
 
@@ -244,7 +244,7 @@ export function AuthenticationClient({
               <code className="bg-muted block truncate rounded-md px-2.5 py-1.5 text-xs">
                 {connection.config.identityClaim
                   ? claimLabel(connection.config.identityClaim)
-                  : "Off — subject only"}
+                  : "Off, subject only"}
               </code>
               <p className="text-muted-foreground text-xs">
                 When on, the verified claim identifies the signed-in user to

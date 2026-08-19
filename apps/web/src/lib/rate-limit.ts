@@ -1,7 +1,7 @@
 /**
  * A fixed-window, in-process rate limiter.
  *
- * Built for the one thing this app exposes without a session — the public
+ * Built for the one thing this app exposes without a session, the public
  * contact-sales Server Action. It is deliberately the smallest useful thing:
  * a `Map` of window counters, no Redis, no table, no network hop on the hot
  * path.
@@ -13,7 +13,7 @@
  * (see `lib/contact/sales-lead.ts`) rather than relied on alone. Move to a
  * shared store when there is a second caller that needs a real global budget.
  *
- * `now` is a parameter, not a `Date.now()` call inside — that is what makes
+ * `now` is a parameter, not a `Date.now()` call inside; that is what makes
  * the window behaviour testable without sleeping.
  */
 

@@ -10,13 +10,13 @@ import type { RuntimeToolSpec } from "./tools";
 import type { EntityRecordsFetcher } from "./types";
 
 /**
- * Auto-generated Entity retrieval tools (#665) — the config-to-schema pattern
+ * Auto-generated Entity retrieval tools (#665), the config-to-schema pattern
  * (see `customToolSpec`) applied to the org's structured business data: each
  * **shared** Entity the assistant selected yields
  *
- *   - a filter tool (`filter<Name>`) — one typed optional input per attribute,
+ *   - a filter tool (`filter<Name>`), one typed optional input per attribute,
  *     equality-matched against Record values, and
- *   - a text-search tool (`search<Name>`) — keyword over the Record's values,
+ *   - a text-search tool (`search<Name>`), keyword over the Record's values,
  *     generated only when the Entity has text attributes to search.
  *
  * The tool *set* rides the Publication snapshot (an EntitySnapshot list built
@@ -26,7 +26,7 @@ import type { EntityRecordsFetcher } from "./types";
  * User-scoped Entities (#667) additionally take an `identity` binding: the
  * Entity's identity attribute is removed from the model-facing input schema
  * and force-set server-side to the turn's verified claim value on every
- * query — a model-supplied value for it is discarded, never honored. Without
+ * query, a model-supplied value for it is discarded, never honored. Without
  * an identity binding a user-scoped Entity yields no tools (fail safe).
  */
 
@@ -44,7 +44,7 @@ const zodForAttribute: Record<EntityAttributeType, () => z.ZodType> = {
 
 /**
  * "Product catalog!" → "ProductCatalog": a tool-name fragment the model can
- * call (`TOOL_NAME_RE`-safe). Empty when the name has no usable characters —
+ * call (`TOOL_NAME_RE`-safe). Empty when the name has no usable characters,
  * the caller then skips the Entity rather than inventing a name.
  */
 export function entityToolNameFragment(name: string): string {
@@ -65,7 +65,7 @@ function describeEntity(entity: EntitySnapshot): string {
  * The citation an answered Entity query contributes (same pattern as the API
  * catalogue's `apiSource`, #559): namespaced so it can never collide with a
  * real Concept id, and stable per Entity so ten queries of one Entity cite
- * once (`dedupSources`). No URL — the chip names the data, it does not hand a
+ * once (`dedupSources`). No URL, the chip names the data, it does not hand a
  * Visitor an internal surface to click. A Record-grounded answer without this
  * showed no Sources at all, which read as ungrounded.
  */
@@ -106,7 +106,7 @@ export interface EntityIdentityBinding {
 /**
  * The specs one Entity yields. Returns [] for an Entity whose name yields no
  * valid tool name; the search tool is omitted when nothing is text-typed.
- * A user-scoped Entity yields tools only with an identity binding — and the
+ * A user-scoped Entity yields tools only with an identity binding, and the
  * bound attribute never appears in the model-facing schema.
  */
 export function entityToolSpecs(
@@ -116,13 +116,13 @@ export function entityToolSpecs(
   options?: {
     /**
      * Member-grade access (#668): a user-scoped Entity yields CROSS-RECORD
-     * tools — the identity filter is omitted and the identity attribute
+     * tools, the identity filter is omitted and the identity attribute
      * becomes an ordinary filterable attribute. Only the org-staff data
      * assistant's member turns set this; Widget turns never do.
      */
     crossRecord?: boolean;
     /**
-     * Receives the {@link entityCitation} whenever a query returned Records —
+     * Receives the {@link entityCitation} whenever a query returned Records,
      * the turn wires this to its `usedSources` collector so Record-grounded
      * answers carry a Sources chip like knowledge- and API-grounded ones.
      */

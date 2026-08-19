@@ -1,7 +1,7 @@
 /**
  * FAQ CSV import/export (the Knowledge → FAQs "Import FAQs" / "Export"
- * surface). The format is deliberately simple — exactly two columns,
- * question then answer — matching the reference platform's contract:
+ * surface). The format is deliberately simple, exactly two columns,
+ * question then answer, matching the reference platform's contract:
  * questions ≤1000 chars, answers ≤20000, file ≤10MB.
  *
  * Pure functions, client- and server-safe.
@@ -84,7 +84,7 @@ function isHeader(record: string[]): boolean {
 
 /**
  * Parses + validates an uploaded FAQ CSV into importable rows. Invalid rows
- * are reported, not fatal — a single bad line must not sink a 300-row import.
+ * are reported, not fatal, a single bad line must not sink a 300-row import.
  */
 export function parseFaqCsv(text: string): FaqCsvResult {
   const records = parseCsv(text);
@@ -128,7 +128,7 @@ function escapeCsvField(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-/** Serializes FAQs for the Export button — same two-column shape Import expects. */
+/** Serializes FAQs for the Export button, same two-column shape Import expects. */
 export function serializeFaqCsv(rows: FaqRow[]): string {
   const lines = ["question,answer"];
   for (const row of rows) {

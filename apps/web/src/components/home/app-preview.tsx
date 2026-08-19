@@ -31,7 +31,7 @@ import {
 import { AmbientActiveContext } from "@/components/home/use-in-viewport";
 
 /* Live replica of the admin dashboard for the marketing hero's tilted
-   plane — real DOM instead of a scaled screenshot (crisp at any angle),
+   plane, real DOM instead of a scaled screenshot (crisp at any angle),
    with the app's own hover-animated icons. It is a pure visual mock:
    nothing links into the app. The sidebar swaps the main pane between
    faked views (Assistants, Help Desks, Inbox, …) so visitors can poke
@@ -50,7 +50,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
     kind: "global",
     label: "Assistants",
   });
-  // Scope switcher ("All Assistants" ⌄) — null means org-wide scope.
+  // Scope switcher ("All Assistants" ⌄): null means org-wide scope.
   const [scope, setScope] = useState<string | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
   // Idle showcase: while the cursor is outside the mock it cycles through
@@ -191,7 +191,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
           <div className="mt-auto">
             {!compact && (
               <div className="mb-2 border-t pt-2">
-                {/* Alerts and Settings are decorative here — no pane behind them. */}
+                {/* Alerts and Settings are decorative here, no pane behind them. */}
                 {PREVIEW_GLOBAL_NAV.filter((item) => item.bottom).map((item) => (
                   <NavRow
                     key={item.label}
@@ -288,12 +288,12 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
             <span className="font-medium">{breadcrumb}</span>
           </header>
 
-          {/* PreviewGrid listens for pointermove on this wrapper; the z-10
-            layer keeps pane content painting above the grid lines. */}
+          {/* Static grid backdrop; the z-10 layer keeps pane content
+            painting above the grid lines. */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             <PreviewGrid />
             {/* Keyed on the view so every swap remounts and replays the
-              fade/slide-in — keeps the idle cycling from feeling choppy. */}
+              fade/slide-in, keeps the idle cycling from feeling choppy. */}
             <div
               key={view.kind === "global" ? view.label : view.slug}
               className="animate-in fade-in slide-in-from-bottom-2 relative z-10 flex min-h-0 flex-1 flex-col duration-500"

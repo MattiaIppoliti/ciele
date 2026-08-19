@@ -16,12 +16,12 @@ import {
 
 /* The screenshot on a feature page: the admin shell drawn in real DOM rather
    than captured as an image, so it stays crisp, follows the visitor's theme,
-   and cannot drift out of date the way a PNG does. Mostly static by design —
+   and cannot drift out of date the way a PNG does. Mostly static by design,
    the home page owns the fully interactive version of this mock; only the
    Knowledge mock's view tabs respond to clicks. */
 
 /* The one animated shot: the widget preview playing its scripted turn. Split
-   into its own chunk — it pulls the real chat components (Thinking panel,
+   into its own chunk, it pulls the real chat components (Thinking panel,
    markdown, shiki) that the rest of the marketing bundle never needs. */
 const AssistantPreviewDemo = dynamic(
   () =>
@@ -86,14 +86,14 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
       /* Masked at the foot rather than cut: the screen is a window onto a
          product that keeps going, so it dissolves into the page instead of
          ending on a border. The mask takes the border and shadow with it,
-         which is the whole point — any hard edge would read as the bottom. */
+         which is the whole point, any hard edge would read as the bottom. */
       style={{
         maskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
         WebkitMaskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
       }}
       className="bg-background text-foreground flex h-[420px] overflow-hidden rounded-2xl border sm:h-[520px]"
     >
-      {/* Sidebar — hidden on phones, where it would leave no room for the pane. */}
+      {/* Sidebar, hidden on phones, where it would leave no room for the pane. */}
       <aside className="hidden w-52 shrink-0 flex-col gap-1 border-r px-3 py-3 md:flex">
         <div className="flex items-center gap-2 px-1.5 pb-2">
           <span className="bg-muted size-6 shrink-0 rounded-full border" />

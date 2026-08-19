@@ -55,7 +55,7 @@ export function CalendarRange({
   from: string | null;
   to: string | null;
   /** `complete` is false on the first click of a new range (still picking
-   * the end date) and true once both ends are set — callers typically use
+   * the end date) and true once both ends are set, callers typically use
    * it to close the picker only when the range is finished. */
   onSelect: (from: string, to: string, complete: boolean) => void;
   className?: string;

@@ -11,7 +11,7 @@ const TRANSITION_MS = 1000;
  * <html> for the duration of a theme toggle so home.css can play the
  * sun/moon handoff (sun sets down-left, moon rises in from the right,
  * backdrop passes through dusk) instead of the instant settled-state swap.
- * First mount is skipped — page loads paint the settled scene directly.
+ * First mount is skipped: page loads paint the settled scene directly.
  */
 export function SkySceneTransition() {
   const { resolvedTheme } = useTheme();

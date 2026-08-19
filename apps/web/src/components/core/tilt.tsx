@@ -1,5 +1,5 @@
 "use client";
-// motion-primitives Tilt — pointer-tracking 3D tilt wrapper.
+// motion-primitives Tilt, pointer-tracking 3D tilt wrapper.
 // https://motion-primitives.com
 
 import {

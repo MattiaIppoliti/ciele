@@ -16,7 +16,7 @@ import type {
 /**
  * Pure Insights KPI computation (see CLAUDE.md §8): filtering + the Overview
  * aggregates, the time-series chart, and the usage breakdowns. This is the
- * oracle for the Insights read model — the in-memory Db adapter composes these
+ * oracle for the Insights read model, the in-memory Db adapter composes these
  * functions, and the production SQL function (`get_insights_overview`) mirrors
  * the same contract. No React, no presentation; series carry keys + values
  * only. The parity tests assert the assembled overview equals these pieces.
@@ -63,7 +63,7 @@ export function userKey(c: InboxConversation): string {
  * Whether a Conversation is nothing but proactive Notifications (#546).
  *
  * Such a Conversation is engagement the Assistant initiated and the Visitor never
- * joined, so Insights does not count it as a Conversation — one reply of any kind
+ * joined, so Insights does not count it as a Conversation, one reply of any kind
  * makes it a real one. A Conversation with no messages at all is not "only"
  * notifications, and keeps whatever treatment it had.
  */
@@ -82,7 +82,7 @@ export function isNotificationOnly(
 
 /**
  * Drops notification-only Conversations before anything else looks at them, which
- * is where the SQL drops them too (`all_conversations`) — so total, resolution
+ * is where the SQL drops them too (`all_conversations`), so total, resolution
  * rate, unique users, the breakdowns and even the role filter options all inherit
  * the rule from one place instead of restating it.
  *
@@ -110,8 +110,8 @@ export function filterConversations(
   const from = filters.from ? new Date(`${filters.from}T00:00:00`) : null;
   const to = filters.to ? new Date(`${filters.to}T23:59:59.999`) : null;
   return conversations.filter((c) => {
-    // Staff (member-subject) conversations — admin Preview, the org-staff
-    // data assistant — never distort customer analytics (#668). Mirrors the
+    // Staff (member-subject) conversations, admin Preview, the org-staff
+    // data assistant, never distort customer analytics (#668). Mirrors the
     // subject_type condition in the SQL get_insights_overview.
     if (c.subjectType === "member") return false;
     const created = new Date(c.createdAt);
@@ -272,7 +272,7 @@ export function computeInsightsChart(
     const i = index.get(keyOf(m.createdAt));
     if (i === undefined) continue;
     if (m.proactive) {
-      // Counted below, from the wider proactive set — skip so it is not doubled.
+      // Counted below, from the wider proactive set, skip so it is not doubled.
     } else if (m.role === "assistant") aiAnswers[i] += 1;
     else userMessages[i] += 1;
     if (m.feedback === 1) positive[i] += 1;
@@ -324,7 +324,7 @@ const BREAKDOWN_OTHER_KEY = "__other__";
 
 /**
  * Buckets conversation counts by day/week/month, stacked by an arbitrary
- * dimension (assistant, channel, …) — same bucketing as
+ * dimension (assistant, channel, …), same bucketing as
  * `computeInsightsChart` so the two charts share an x-axis. Groups beyond
  * `maxGroups` (ranked by total volume) fold into "Other".
  */
@@ -355,7 +355,7 @@ export function computeBreakdown(
     const g = groupOf(c) || "Unknown";
     totalsByGroup.set(g, (totalsByGroup.get(g) ?? 0) + 1);
   }
-  // Rank by volume desc, ties broken by key asc — matches the production SQL
+  // Rank by volume desc, ties broken by key asc, matches the production SQL
   // (`row_number() over (order by count(*) desc, key)`); see PRD #270.
   const ranked = [...totalsByGroup.entries()].sort(
     (a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0)
@@ -393,7 +393,7 @@ export function computeBreakdown(
       percent: Math.round((total / grandTotal) * 100),
     };
   });
-  // Order by total desc, ties by key asc — mirrors the SQL series ordering
+  // Order by total desc, ties by key asc, mirrors the SQL series ordering
   // (`order by g.total desc, g.key`). "Other" is not special-cased: it sorts
   // by the same rule, as in production. Color stays gray via its key regardless
   // of position.
@@ -405,7 +405,7 @@ export function computeBreakdown(
 }
 
 /**
- * Assembles the full Insights Overview from raw org rows — the in-memory
+ * Assembles the full Insights Overview from raw org rows, the in-memory
  * oracle behind `Db.getInsightsOverview`. The production SQL function returns
  * the same shape (minus breakdown colors, reapplied by `colorizeOverview`).
  */
@@ -417,13 +417,13 @@ export function computeInsightsOverview(
   filters: InsightsFilter
 ): InsightsOverview {
   // #546: a Conversation the Visitor never joined is not a Conversation here.
-  // Applied first, so every aggregate below — including the role options — sees
+  // Applied first, so every aggregate below, including the role options, sees
   // the same population the SQL does.
   const engaged = engagedConversations(conversations, messages);
   const filtered = filterConversations(engaged, filters);
   const filteredMessages = filterMessages(messages, filtered, filters.from, filters.to);
   // Delivered nudges are counted over the same window but *without* the
-  // engagement rule — a nudge nobody answered still went out, and reporting zero
+  // engagement rule, a nudge nobody answered still went out, and reporting zero
   // for it would defeat the KPI's whole purpose.
   const proactiveMessages = filterMessages(
     messages,

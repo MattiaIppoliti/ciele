@@ -3,7 +3,7 @@
 // Native screens (welcome, wizard, settings, stack status) are this app's own
 // renderer and need the preload bridge. The product window loads a REMOTE
 // origin, and remote content has no business holding a handle to the main
-// process — so it gets no preload at all, and lives in its own persistent
+// process, so it gets no preload at all, and lives in its own persistent
 // session partition whose cookies survive a restart and are what sign-out
 // clears.
 //
@@ -89,7 +89,7 @@ export function showNative(route: string): BrowserWindow {
     show: false,
     // `hiddenInset` is a macOS style: the traffic lights float over the page
     // and the renderer's drag strip stands in for the title bar. On Windows it
-    // would strip the frame — minimize/close included — so the native screens
+    // would strip the frame, minimize/close included, so the native screens
     // keep the standard frame there.
     ...(process.platform === "darwin" ? { titleBarStyle: "hiddenInset" as const } : {}),
     backgroundColor: "#0b0b0c",
@@ -117,7 +117,7 @@ export function showNative(route: string): BrowserWindow {
  * Turn Chromium's error codes into something a person can act on.
  *
  * The alternative is what the app did before: leave the browser's own error
- * page — or worse, a hosting provider's 404 — sitting in a window with no
+ * page, or worse, a hosting provider's 404, sitting in a window with no
  * address bar, no reload button and no way back except the menu bar.
  */
 export function loadFailureReason(errorCode: number, description: string): string {
@@ -133,7 +133,7 @@ export function loadFailureReason(errorCode: number, description: string): strin
     case -501: // ERR_INSECURE_RESPONSE
       return "The server's security certificate could not be trusted.";
     case -312: // ERR_UNSAFE_PORT
-      return "Browsers refuse to connect on that port. Use a different one — 3000 and 8080 are safe choices.";
+      return "Browsers refuse to connect on that port. Use a different one, 3000 and 8080 are safe choices.";
     default:
       return description ? `The server could not be reached (${description}).` : "The server could not be reached.";
   }
@@ -171,7 +171,7 @@ export function showProduct(
     // A real title bar, unlike the native screens.
     //
     // `hiddenInset` draws the page under the traffic lights and leaves it to
-    // the page to keep its top-left corner clear. Our own screens do that —
+    // the page to keep its top-left corner clear. Our own screens do that,
     // `TitleBar` reserves the strip and right-aligns into it. The product is a
     // page this app did not write and must not have to know it is being
     // hosted: its top bar puts the navigation toggle at the far left (a 36px
@@ -195,7 +195,7 @@ export function showProduct(
   openLinksExternally(window);
 
   // Keep the window on the product. A sign-in flow may bounce through an
-  // identity provider, so navigation itself is allowed — but anything that is
+  // identity provider, so navigation itself is allowed, but anything that is
   // not a web page (a custom scheme handed over by a page, say) is not.
   window.webContents.on("will-navigate", (event, url) => {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
@@ -216,7 +216,7 @@ export function showProduct(
 
   window.webContents.on("did-fail-load", (_event, errorCode, description, url, isMainFrame) => {
     // -3 is ERR_ABORTED, which is what a redirect or a cancelled load looks
-    // like — routine, not a failure.
+    // like, routine, not a failure.
     if (!isMainFrame || errorCode === -3) return;
     // The address is rendered on its own line by the screen, so the reason
     // stays a sentence rather than repeating it.

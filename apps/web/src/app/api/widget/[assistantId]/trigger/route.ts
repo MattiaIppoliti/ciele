@@ -14,8 +14,8 @@ export const maxDuration = 60;
 export const runtime = "nodejs";
 
 /**
- * Proactive Flow triggers (#541): the widget reports a client event — the chat
- * opening, and later a page load or a dwell threshold — and the runtime decides
+ * Proactive Flow triggers (#541): the widget reports a client event, the chat
+ * opening, and later a page load or a dwell threshold, and the runtime decides
  * whether any Flow answers it.
  *
  * The client reports; it never decides. Which Flows run, whether the nudge has
@@ -32,8 +32,8 @@ export async function POST(
   const { db, publication, cors } = ctx;
   const config = publication.config;
 
-  // Same authoritative gate as /chat: an enforced assistant says nothing at all
-  // — proactively included — until the visitor holds a valid gate cookie.
+  // Same authoritative gate as /chat: an enforced assistant says nothing at all,
+  // proactively included, until the visitor holds a valid gate cookie.
   if (
     config.assistant.requireSignIn &&
     !isGateValidForOrg(
@@ -64,7 +64,7 @@ export async function POST(
 
   // The referer on this request is the chat frame's own URL, so for a floater
   // embed the host page is only knowable from what the script reported. Trusted
-  // for display in the Inbox session panel and nothing else — it never selects a
+  // for display in the Inbox session panel and nothing else; it never selects a
   // flow or grants access.
   const metadata = sessionMetadata(request.headers);
   const launchUrl = reportedPageUrl(body.pageUrl) ?? metadata.launchUrl;
@@ -80,7 +80,7 @@ export async function POST(
     assistant,
     flows: config.flows,
     skills: config.skills ?? [],
-    // A proactive turn calls no model, so it needs no credential — the empty
+    // A proactive turn calls no model, so it needs no credential, the empty
     // list keeps that explicit rather than incidental.
     connections: [],
     organizationId: config.assistant.organizationId,

@@ -16,7 +16,7 @@ interface ShellContextValue {
   assistants: AssistantSummary[];
   openFind: () => void;
   /** Whether the sidebar is docked (visible in the layout flow). Only consulted
-   * from `lg` up — below it the sidebar is never in the flow at all. */
+   * from `lg` up, below it the sidebar is never in the flow at all. */
   sidebarDocked: boolean;
   setSidebarDocked: (docked: boolean) => void;
   /** Whether the off-canvas nav drawer is open. Phones and portrait tablets
@@ -63,7 +63,7 @@ export function ShellProvider({
   const [topBarActions, setTopBarActions] = useState<React.ReactNode | null>(null);
   const pathname = usePathname();
   // Tapping a row in the drawer navigates, and the drawer covers the very page
-  // it just navigated to — so it has to close itself. Storing *which route it
+  // it just navigated to, so it has to close itself. Storing *which route it
   // was opened on* makes that a derivation rather than an effect: any route
   // change (nav row, Find result, account menu) closes it, with no extra
   // render pass.

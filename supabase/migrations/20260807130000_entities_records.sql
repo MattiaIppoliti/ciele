@@ -2,7 +2,7 @@
 --
 -- An Entity is an org-level schema over structured business data: a name,
 -- typed attributes (text/number/date/boolean), a key attribute for idempotent
--- upserts, and a scope — 'shared' (readable by anyone the assistant serves)
+-- upserts, and a scope, 'shared' (readable by anyone the assistant serves)
 -- or 'user' (rows belong to one end-user, matched later via the verified SSO
 -- identity claim; the retrieval tickets consume this). Records are the rows,
 -- imported via CSV in v1, stored as attribute-keyed JSON.
@@ -12,7 +12,7 @@ create table public.entities (
   organization_id uuid not null references public.organizations (id) on delete cascade,
   name text not null,
   description text not null default '',
-  -- Array of { key, label, type } — see packages/db/src/types.ts EntityAttribute.
+  -- Array of { key, label, type }, see packages/db/src/types.ts EntityAttribute.
   attributes jsonb not null default '[]'::jsonb,
   -- Which attribute keys imports upsert by (unique per entity).
   key_attribute text not null,
@@ -43,7 +43,7 @@ create policy "editors delete entities" on public.entities
 create table public.entity_records (
   id text primary key,
   entity_id text not null references public.entities (id) on delete cascade,
-  -- The key attribute's value — the upsert identity within the entity.
+  -- The key attribute's value: the upsert identity within the entity.
   record_key text not null,
   -- Attribute-keyed values, validated app-side against the entity schema.
   "values" jsonb not null default '{}'::jsonb,

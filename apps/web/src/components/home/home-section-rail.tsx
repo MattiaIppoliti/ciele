@@ -41,7 +41,7 @@ export function HomeSectionRail() {
 
   // Highlight whichever section currently crosses the vertical middle of the
   // marketing scroll container (the page scrolls inside `.home-scene`, not the
-  // window — see home-shell.tsx — so the observer roots there).
+  // window, see home-shell.tsx, so the observer roots there).
   useEffect(() => {
     const root = document.querySelector<HTMLElement>(".home-scene");
     const targets = SECTIONS.map((section) =>

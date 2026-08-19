@@ -122,7 +122,7 @@ describe("runCompostPass", () => {
     const evidence = await db.listImprovementMessages(proposal!.id);
     expect(evidence.map((e) => e.messageId)).toContain(messageId);
 
-    // Same window again: assistant not due — nothing new happens.
+    // Same window again: assistant not due, nothing new happens.
     const second = await runCompostPass({ db }, { model: proposalModel(many) });
     expect(second.processed).toBe(0);
     expect((await db.listImprovements(DEMO_ORG.id)).length).toBe(before + 1);
@@ -182,7 +182,7 @@ describe("getCompostDigest demotions (from the event ledger)", () => {
     const assistant = await publishedAssistant("Compost Demotion Window Fixture");
     const since = new Date(Date.now() - 3_600_000).toISOString();
 
-    // auto → watch (the demotion), then watch → auto (recovery) — both inside
+    // auto → watch (the demotion), then watch → auto (recovery), both inside
     // the window. The nightly snapshot now reads auto, but the append-only
     // event ledger still holds the demotion.
     await db.recordFlowTrustEvent({

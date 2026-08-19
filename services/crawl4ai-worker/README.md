@@ -6,13 +6,13 @@ status, and health capabilities the app needs and is deployable both locally
 (Docker) and as a single private managed container service, over the same API
 contract.
 
-This directory is the **worker package** — the image pin, hardened config, auth
+This directory is the **worker package**, the image pin, hardened config, auth
 and health configuration, a smoke test, and a deployment/rollback runbook. The
 Ciele-side adapter that speaks to it lives at
 `packages/agent/src/crawl4ai.ts` and is not part of this package.
 
 > Deployable services live under `services/` (top level). `apps/*` are the two
-> Next.js apps and `packages/*` are JS libraries; this worker is neither — it is
+> Next.js apps and `packages/*` are JS libraries; this worker is neither; it is
 > a container image plus config, so it sits in its own `services/` directory and
 > is intentionally **not** a pnpm/Turbo workspace member (no `package.json`).
 
@@ -32,11 +32,11 @@ The adapter calls exactly these endpoints; the worker exposes exactly these:
   fail-closed (HTTP 401 without a valid token).
 - **Base URL**: the app sets `CRAWL4AI_BASE_URL` to this worker's origin.
 - Task statuses are matched case-insensitively; `completed` is the only ingested
-  state, `completed`/`failed` are terminal — same as the adapter.
+  state, `completed`/`failed` are terminal, same as the adapter.
 
 ## Image pin
 
-`unclecode/crawl4ai:0.9.1` — pinned, never `latest`. v0.9.x is the first line
+`unclecode/crawl4ai:0.9.1`: pinned, never `latest`. v0.9.x is the first line
 whose authentication is **fail-closed on every route** (earlier versions left
 the whole API open when `jwt_enabled` was `false`). It also disables arbitrary
 hooks/JS execution by default and ships the `/crawl/job` async queue the adapter
@@ -78,7 +78,7 @@ CRAWL4AI_API_TOKEN=$(grep '^CRAWL4AI_API_TOKEN=' .env | cut -d= -f2-) \
   ./scripts/smoke-test.sh
 ```
 
-Managed-container deployment uses the identical config, auth, and contract — see
+Managed-container deployment uses the identical config, auth, and contract, see
 [`RUNBOOK.md`](./RUNBOOK.md).
 
 ## What stays disabled

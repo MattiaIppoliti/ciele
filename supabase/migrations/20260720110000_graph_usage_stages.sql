@@ -1,8 +1,8 @@
 -- Widen the ai_usage stage vocabulary for the graph knowledge engine's metered
 -- LLM calls (ADR-0017): the graph worker now reports the token usage of its
 -- internal cognee LLM calls, and the runtime meters them as
---   graph_search   — search-time completion / session-guidance calls
---   graph_cognify  — graph-building cognify + distillation calls
+--   graph_search, search-time completion / session-guidance calls
+--   graph_cognify, graph-building cognify + distillation calls
 --
 -- Runs after 20260720100000_usage_recording (which rebuilt this constraint
 -- with 'enrich' + 'improvement_proposal'); this re-creates it as that full

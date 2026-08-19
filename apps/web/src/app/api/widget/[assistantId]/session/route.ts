@@ -29,7 +29,7 @@ export async function GET(
     ? await ctx.db.getSsoConnectionPublic(assistant.organizationId)
     : null;
   // The Memory folder (#666) shows only to SSO-signed users of an org whose
-  // long-term memory toggle is on — never to anonymous visitors.
+  // long-term memory toggle is on, never to anonymous visitors.
   const memories = gateValid
     ? await ctx.db.getMemoryEnabled(assistant.organizationId)
     : false;

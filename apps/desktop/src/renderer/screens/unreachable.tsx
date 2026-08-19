@@ -1,4 +1,4 @@
-// "That address did not load" — the app's own screen, not the browser's.
+// "That address did not load", the app's own screen, not the browser's.
 //
 // A window with no address bar and no reload button has nothing a user can
 // press when a page fails. Whatever the product window could not load, they

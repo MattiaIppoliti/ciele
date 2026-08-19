@@ -6,11 +6,11 @@ import { alertKeys, signalHealth } from "./health";
 /**
  * Flow trust ledger (spec: autonomy per capability, earned). Trust is a
  * rolling pass rate over the last TRUST_WINDOW graded signals per
- * (Assistant, Flow) — verifier verdicts plus explicit Visitor feedback,
+ * (Assistant, Flow), verifier verdicts plus explicit Visitor feedback,
  * verdict winning when both grade the same message (enforced upstream by
  * the signals query). Thresholds are the article-derived platform
  * constants: 20 runs and 95% earn `auto`; under 10 runs or under 90% is
- * `watch`; everything between is `queue`. Trust must be losable — the
+ * `watch`; everything between is `queue`. Trust must be losable, the
  * window rolls, it never accumulates for life.
  */
 
@@ -20,7 +20,7 @@ export const TRUST_AUTO_MIN_RATE = 0.95;
 export const TRUST_WATCH_MAX_RUNS = 10;
 export const TRUST_WATCH_MIN_RATE = 0.9;
 
-/** Pure tier math — a new pair (0 runs) lands at watch by construction. */
+/** Pure tier math, a new pair (0 runs) lands at watch by construction. */
 export function computeTier(runs: number, passes: number): TrustTier {
   const rate = runs > 0 ? passes / runs : 0;
   if (runs >= TRUST_AUTO_MIN_RUNS && rate >= TRUST_AUTO_MIN_RATE) return "auto";
@@ -32,7 +32,7 @@ export function computeTier(runs: number, passes: number): TrustTier {
  * The one runtime behavior tiers have in v1: a watch-tier Flow's generative
  * answers always offer the human exit ramp. Pure so the rule is testable
  * without a model; the engine appends the help-desk part when this returns
- * true (deduplicated — escalate-on-ungrounded may already have added one).
+ * true (deduplicated, escalate-on-ungrounded may already have added one).
  * Fail-open by construction: a missing tier (null) changes nothing.
  */
 export function needsWatchEscalation(
@@ -56,7 +56,7 @@ export interface TrustMaterializationResult {
 
 /**
  * Nightly materialization: pure aggregation over the stored signals into
- * flow_trust rows. Idempotent — same signals, same tiers; only a tier
+ * flow_trust rows. Idempotent, same signals, same tiers; only a tier
  * *transition* has side effects (demotion Alert / recovery auto-resolve).
  */
 export async function runTrustMaterialization(

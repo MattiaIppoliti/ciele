@@ -79,6 +79,12 @@ import {
   addSourceOp,
   createAssistantOp,
   createFaqOp,
+  createOrgFaqOp,
+  getOrgFaqOp,
+  getSourceOp,
+  importOrgFaqsOp,
+  listSourceConceptsOp,
+  updateOrgFaqOp,
   createFlowOp,
   createEntityOp,
   createHelpDeskOp,
@@ -95,6 +101,7 @@ import {
   deleteAssistantGoalOp,
   deleteMemoryOp,
   deleteSourceOp,
+  unlinkSourceOp,
   duplicateAssistantOp,
   importFaqsOp,
   importEntityRecordsOp,
@@ -192,7 +199,7 @@ export async function createOrganizationAction(name: string) {
 
 /**
  * Org switcher: persists which Organization the caller is browsing. Only
- * takes effect for multi-org members and platform superusers — a regular
+ * takes effect for multi-org members and platform superusers, a regular
  * single-org member has nothing else to switch to. Re-checks visibility via
  * getCurrentOrg before persisting so a user can't point the cookie at an
  * org RLS wouldn't otherwise let them see.
@@ -286,7 +293,7 @@ export async function updateCompostOptOutAction(
 
 /**
  * Org-level long-term memory toggle (#664), off by default. While off,
- * nothing is extracted and nothing is recalled — flipping it on is the one
+ * nothing is extracted and nothing is recalled, flipping it on is the one
  * deliberate act that enables the capability for every assistant.
  */
 export async function updateMemoryEnabledAction(enabled: boolean): Promise<void> {
@@ -295,7 +302,7 @@ export async function updateMemoryEnabledAction(enabled: boolean): Promise<void>
 
 /**
  * Admin memory lookup (#666): one subject's stored memories, newest first.
- * Read-only, so any Member may look — mirroring the memories-table RLS.
+ * Read-only, so any Member may look, mirroring the memories-table RLS.
  */
 export async function listSubjectMemoriesAction(
   subjectId: string
@@ -305,7 +312,7 @@ export async function listSubjectMemoriesAction(
 
 /**
  * Erasure, one item (#666). The memory must belong to the given subject in
- * the caller's Organization — a forged id from another org deletes nothing.
+ * the caller's Organization, a forged id from another org deletes nothing.
  */
 export async function deleteSubjectMemoryAction(
   _subjectId: string,
@@ -315,7 +322,7 @@ export async function deleteSubjectMemoryAction(
 }
 
 /**
- * Which Entities the org-staff data assistant may query (#668) — an
+ * Which Entities the org-staff data assistant may query (#668), an
  * org-level selection, separate from any customer-facing assistant's
  * per-assistant selection. Unknown/foreign entity ids are dropped.
  */
@@ -336,7 +343,7 @@ export async function updateDataAssistantEntitiesAction(
   );
 }
 
-/** Erasure, whole subject (#666): complete and immediate — GDPR requests. */
+/** Erasure, whole subject (#666): complete and immediate, GDPR requests. */
 export async function wipeSubjectMemoriesAction(subjectId: string): Promise<void> {
   await runOperation(wipeSubjectMemoriesOp, { subjectId });
 }
@@ -344,7 +351,7 @@ export async function wipeSubjectMemoriesAction(subjectId: string): Promise<void
 /**
  * Which Provider Connection embeds this Organization's knowledge (#437).
  * `null` returns to the runtime's automatic provider order. Changing it does
- * not re-embed anything already stored — see the card's own warning.
+ * not re-embed anything already stored, see the card's own warning.
  */
 export async function updateEmbeddingConnectionAction(
   connectionId: string | null,
@@ -378,7 +385,7 @@ export async function joinDemoOrgAction() {
 
 /**
  * Admins and owners edit roles; only owners may grant or revoke ownership.
- * The same asymmetry is enforced by RLS (20260728120000) — this check is the
+ * The same asymmetry is enforced by RLS (20260728120000), this check is the
  * one that produces a readable error instead of a silent no-op update.
  */
 export async function updateMemberRoleAction(userId: string, role: Role) {
@@ -406,7 +413,7 @@ export async function revokeInviteAction(inviteId: string) {
 
 /**
  * Mints an org API key. The plaintext secret is returned ONCE from here and
- * never stored — the Db seam only ever sees its hash and displayable hint.
+ * never stored, the Db seam only ever sees its hash and displayable hint.
  * The key's Role is capped at the creator's: a key acts as a delegate of the
  * human who minted it and can never out-rank them.
  */
@@ -423,7 +430,7 @@ export async function revokeApiKeyAction(keyId: string) {
 
 // --- Profile ----------------------------------------------------------------
 
-/** The signed-in caller's own profile — not org-scoped, no role gate. */
+/** The signed-in caller's own profile, not org-scoped, no role gate. */
 export async function updateProfileAction(patch: ProfilePatch) {
   await requireSession();
   const db = await getDb();
@@ -496,7 +503,7 @@ export async function updateAssistantAction(id: string, patch: AssistantPatch) {
  * template values so an editor can preview the outcome. Editor-gated; secrets
  * in the config are used to make the call but never returned to the browser
  * (the result carries only status, a bounded excerpt, extracted values and a
- * generic error — see api-request.ts).
+ * generic error, see api-request.ts).
  */
 export async function testApiRequestAction(
   settings: NonNullable<FlowActionSettings["api_request"]>,
@@ -554,7 +561,7 @@ export async function deleteAssistantAction(id: string) {
 
 /**
  * Deletes a Knowledge Collection (cascade-deletes its Sources and Concepts) and
- * reclaims its derived graph dataset with a single purge — the Collection-level
+ * reclaims its derived graph dataset with a single purge, the Collection-level
  * counterpart to `deleteAssistantAction`'s per-Collection purge. Inert on the
  * graph side without a worker.
  */
@@ -736,7 +743,7 @@ export async function setAssistantRequireSignInAction(
 }
 
 /**
- * Live SSO gate state for the editor Preview — reads the *current* assistant
+ * Live SSO gate state for the editor Preview, reads the *current* assistant
  * (not a Publication), so the gate reflects the require-sign-in toggle
  * immediately. Read-only; the visitor's gate cookie is checked server-side.
  */
@@ -820,7 +827,7 @@ export async function setAssistantSkillsAction(
 /**
  * The integration as the browser may see it: everything except the credential,
  * which is replaced by "is one set". A secret that is never sent to the client
- * cannot leak from the client, and the editor does not need it — saving without
+ * cannot leak from the client, and the editor does not need it, saving without
  * a new credential keeps the stored one.
  */
 export interface ApiIntegrationView {
@@ -841,7 +848,7 @@ export async function getApiIntegrationAction(
 
 /**
  * Saves the assistant's one API integration. The credential is sealed here and
- * only here — the browser posts it in the clear over TLS exactly once, the same
+ * only here, the browser posts it in the clear over TLS exactly once, the same
  * way every other credential in the console is set, and never reads it back.
  * `credential: undefined` leaves the stored one alone; `""` clears it.
  */
@@ -972,8 +979,8 @@ export async function createAzureOpenAiFederatedConnectionAction(input: {
 
 /**
  * OpenAI-compatible endpoint (#436): stores an `api_key` connection whose
- * config carries the base URL + model names. The key itself is optional —
- * local servers (Ollama, LM Studio) usually ignore authentication — and the
+ * config carries the base URL + model names. The key itself is optional,
+ * local servers (Ollama, LM Studio) usually ignore authentication, and the
  * generic key probe doesn't apply here; the Test action below is the health
  * check.
  */
@@ -992,7 +999,7 @@ export async function createOpenAiCompatibleConnectionAction(input: {
 /**
  * "Test connection" for the OpenAI-compatible form: probes the chat leg and
  * (when configured) the embedding leg without persisting anything. Never
- * throws for endpoint failures — each leg reports its own ok/detail.
+ * throws for endpoint failures, each leg reports its own ok/detail.
  */
 export async function testOpenAiCompatibleConnectionAction(input: {
   baseUrl: string;
@@ -1026,7 +1033,7 @@ async function ingestNewSource(
   kind: "file" | "url" | "text",
   rawText: string,
   original?: File,
-  /** The fetched URL for a `url` Source — retained so the OKF `sources` entry
+  /** The fetched URL for a `url` Source, retained so the OKF `sources` entry
    *  its Concepts carry names a followable artifact rather than a descriptor
    *  (the Source `name` is the page *title*, which is not addressable). */
   sourceUrl?: string,
@@ -1282,6 +1289,10 @@ export async function addWebsiteSourceAction(
         kind: "website",
         config: toWebsiteConfig(input),
       });
+      // Every create path links (#733): `createSource` stopped auto-linking
+      // when Collections became org-owned, and retrieval reads the link set
+      // alone, without this the crawled site is indexed and never retrieved.
+      await db.setSourceAssistantLinks(source.id, [assistantId]);
       // Start the crawl in the background; the client polls until it's ready.
       await beginWebsiteCrawl({ db, sourceId: source.id });
     },
@@ -1410,28 +1421,6 @@ export async function setPageRecrawlScheduleAction(
 
 // --- Org-level knowledge hub (PRD #726) --------------------------------------
 
-/**
- * Guard for hub reads: the Source must belong to the caller's Organization —
- * via the collection's org stamp, or the legacy owning assistant's org for
- * rows the backfill hasn't reached. RLS enforces this again underneath; the
- * guard keeps the mock db honest and the error uniform.
- */
-async function requireOrgSource(
-  db: Db,
-  organizationId: string,
-  sourceId: string
-) {
-  const source = await db.getSource(sourceId);
-  const collection = source ? await db.getCollection(source.collectionId) : null;
-  let orgId = collection?.organizationId ?? "";
-  if (!orgId && collection?.assistantId) {
-    orgId =
-      (await db.getAssistant(collection.assistantId))?.organizationId ?? "";
-  }
-  if (!source || orgId !== organizationId) throw new Error("Source not found");
-  return source;
-}
-
 /** The "View knowledge source" pages list (bounded server-side). */
 export async function listSourceConceptsAction(sourceId: string): Promise<{
   items: Array<{
@@ -1441,19 +1430,7 @@ export async function listSourceConceptsAction(sourceId: string): Promise<{
     resourceUrl: string | null;
   }>;
 }> {
-  const { db, organizationId } = await requireMember();
-  await requireOrgSource(db, organizationId, sourceId);
-  const concepts = await db.listConceptsBySource(sourceId);
-  return {
-    items: concepts
-      .filter((c) => !c.excluded)
-      .map((c) => ({
-        id: c.id,
-        title: c.frontmatter.title ?? c.path,
-        path: c.path,
-        resourceUrl: c.frontmatter.resource ?? null,
-      })),
-  };
+  return runOperation(listSourceConceptsOp, { sourceId });
 }
 
 /**
@@ -1465,8 +1442,7 @@ export async function listSourceConceptsAction(sourceId: string): Promise<{
 export async function downloadKnowledgeOriginalAction(
   sourceId: string
 ): Promise<{ url: string | null }> {
-  const { db, organizationId } = await requireMember();
-  const source = await requireOrgSource(db, organizationId, sourceId);
+  const source = await runOperation(getSourceOp, { id: sourceId });
   if (!source.originalObjectPath || !isSupabaseConfigured())
     return { url: null };
   const supabase = await createSupabaseServerClient();
@@ -1505,17 +1481,10 @@ export async function createOrgFaqAction(
   answer: string,
   assistantIds: string[],
 ) {
-  const { db, organizationId } = await requireMember("edit");
-  const library = await db.getOrCreateOrgLibraryCollection(organizationId);
-  await runOperation(createFaqOp, {
-    collectionId: library.id,
-    question,
-    answer,
-    assistantIds,
-  });
+  await runOperation(createOrgFaqOp, { question, answer, assistantIds });
 }
 
-/** Hub CSV import — same contract as the per-assistant one, org-wide. */
+/** Hub CSV import, same contract as the per-assistant one, org-wide. */
 export async function importOrgFaqsAction(formData: FormData): Promise<{
   imported: number;
   skipped: string[];
@@ -1529,10 +1498,7 @@ export async function importOrgFaqsAction(formData: FormData): Promise<{
     return { imported: 0, skipped: ["File exceeds the 10MB limit"] };
   const { rows, skipped } = parseFaqCsv(await file.text());
   if (rows.length === 0) return { imported: 0, skipped };
-  const { db, organizationId } = await requireMember("edit");
-  const library = await db.getOrCreateOrgLibraryCollection(organizationId);
-  const result = await runOperation(importFaqsOp, {
-    collectionId: library.id,
+  const result = await runOperation(importOrgFaqsOp, {
     fileName: file.name,
     rows,
     assistantIds,
@@ -1540,14 +1506,11 @@ export async function importOrgFaqsAction(formData: FormData): Promise<{
   return { imported: result.imported, skipped };
 }
 
-/** One FAQ with its full answer — the hub's edit dialog. */
+/** One FAQ with its full answer, the hub's edit dialog. */
 export async function getOrgFaqAction(
   sourceId: string,
 ): Promise<{ question: string; answer: string }> {
-  const { db, organizationId } = await requireMember();
-  const source = await requireOrgSource(db, organizationId, sourceId);
-  const [concept] = await db.listConceptsBySource(sourceId, 1);
-  return { question: source.name, answer: concept?.body ?? "" };
+  return runOperation(getOrgFaqOp, { sourceId });
 }
 
 /** Hub FAQ edit, keyed by the FAQ's Source (question = Source name). */
@@ -1556,49 +1519,13 @@ export async function updateOrgFaqAction(
   question: string,
   answer: string,
 ) {
-  const { db, organizationId, session } = await requireMember("edit");
-  const source = await requireOrgSource(db, organizationId, sourceId);
-  if (source.kind !== "faq") throw new Error("Not a FAQ");
-  const [existing] = await db.listConceptsBySource(sourceId, 1);
-  if (!existing) throw new Error("FAQ content missing");
-  const trimmed = question.trim();
-  const concept = await db.updateConcept(existing.id, {
-    frontmatter: {
-      ...existing.frontmatter,
-      type: "FAQ",
-      title: trimmed,
-      description: answer.slice(0, 140),
-      generated: {
-        by: okfActor.human(session.userId),
-        at: new Date().toISOString(),
-      },
-    },
-    body: answer,
-  });
-  await db.updateSource(sourceId, { name: trimmed.slice(0, 500) });
-  await db.deleteChunksByConcept(concept.id);
-  // Chunks are stamped with a linked Assistant; an unlinked FAQ is
-  // unreachable in retrieval anyway, so skipping the re-embed loses nothing.
-  const links = await db.listSourceAssistantLinks(sourceId);
-  if (links[0]) {
-    const connections = await db.listProviderConnections(organizationId);
-    await embedConcept({
-      db,
-      assistantId: links[0].assistantId,
-      collectionId: concept.collectionId,
-      conceptId: concept.id,
-      title: trimmed,
-      body: answer,
-      connections,
-    });
-  }
-  revalidatePath("/knowledge/faqs");
+  await runOperation(updateOrgFaqOp, { sourceId, question, answer });
 }
 
 /**
  * Hub website add. Crawler finalization derives its assistant stamp from the
  * owning Collection, so hub websites land in the FIRST linked assistant's
- * collection rather than the org library — retrieval reach for the rest
+ * collection rather than the org library, retrieval reach for the rest
  * comes from the link table either way.
  */
 export async function addOrgWebsiteSourceAction(
@@ -1616,16 +1543,11 @@ export async function addOrgWebsiteSourceAction(
         { kind: "assistantEditor", assistantId: unique[0] },
       ],
     },
-    async ({ db }) => {
-      const collections = await db.listCollections(unique[0]);
-      const collectionId =
-        collections[0]?.id ??
-        (
-          await db.createCollection(unique[0], {
-            name: "General knowledge",
-            description: "Default collection for this assistant",
-          })
-        ).id;
+    async ({ db, organizationId }) => {
+      // Hub-created knowledge lands in the per-org Knowledge Library,
+      // Collections have no owning assistant, reach comes from the links.
+      const library = await db.getOrCreateOrgLibraryCollection(organizationId);
+      const collectionId = library.id;
       const source = await db.createSource({
         collectionId,
         name: input.name.trim() || input.url,
@@ -1681,7 +1603,7 @@ export async function uploadOrgFileSourceAction(
   }
 }
 
-/** Org-wide FAQ CSV export — same two-column shape as the per-assistant one. */
+/** Org-wide FAQ CSV export, same two-column shape as the per-assistant one. */
 export async function exportOrgFaqsAction(): Promise<{ csv: string }> {
   const { db, organizationId } = await requireMember();
   const entries = await db.listOrgFaqs(organizationId);
@@ -1703,7 +1625,7 @@ export async function createFaqAction(
 }
 
 /**
- * Bulk FAQ import from a two-column CSV (question, answer) — the "Import
+ * Bulk FAQ import from a two-column CSV (question, answer), the "Import
  * FAQs" modal. Parsing/validation lives in lib/faq-csv.ts; every valid row
  * becomes an OKF FAQ concept through the same persistConcept path as a
  * single Q&A. Invalid rows are reported back, never fatal.
@@ -1750,7 +1672,7 @@ export async function updateFaqAction(
     frontmatter: {
       // Carry the prior frontmatter forward: an accepted Suggested Fix holds
       // `sources` and a `verified` stamp that a wholesale rewrite would erase.
-      // The old `verified.at` deliberately stays put — content changing without
+      // The old `verified.at` deliberately stays put, content changing without
       // re-confirmation is exactly the signal §5.2 keeps `generated` and
       // `verified` separate to express (edited-since-last-reviewed).
       ...existing?.frontmatter,
@@ -1764,7 +1686,7 @@ export async function updateFaqAction(
     },
     body: answer,
   });
-  // The FAQ's Source carries the question as its name (PRD #726) — keep it
+  // The FAQ's Source carries the question as its name (PRD #726), keep it
   // in step so the hub's FAQs tab shows the edited question.
   if (existing?.sourceId) {
     const faqSource = await db.getSource(existing.sourceId);
@@ -1785,7 +1707,7 @@ export async function updateFaqAction(
     connections,
   });
   revalidatePath(`/assistants/${assistantId}`);
-  revalidatePath("/knowledge/faqs");
+  revalidatePath("/library/faqs");
 }
 
 /**
@@ -1821,8 +1743,22 @@ export async function deleteSourceAction(
   assistantId: string,
   sourceId: string,
 ) {
-  // Cascade capture + graph retirement live in deleteSourceOp (#622).
+  // Cascade capture + graph retirement live in deleteSourceOp (#622). This
+  // destroys the Source for every Assistant linked to it, the editor offers
+  // it only as the explicit second choice, next to unlinkSourceAction.
   await runOperation(deleteSourceOp, { id: sourceId });
+}
+
+/**
+ * Takes a Source off one Assistant and leaves it in the Library for the
+ * others. The editor's default "remove" whenever a Source answers for more
+ * than this Assistant.
+ */
+export async function unlinkSourceAction(
+  assistantId: string,
+  sourceId: string,
+) {
+  await runOperation(unlinkSourceOp, { assistantId, sourceId });
 }
 
 export async function deleteConceptAction(
@@ -1864,7 +1800,7 @@ export async function deleteConceptAction(
 }
 
 /**
- * Backfills a Knowledge Collection into its derived Knowledge Graph — the
+ * Backfills a Knowledge Collection into its derived Knowledge Graph, the
  * on-demand counterpart to the automatic per-Concept sync (used to seed a
  * Collection that predates the graph, or to reconcile after an outage).
  * Idempotent; inert without a graph worker.
@@ -1903,13 +1839,13 @@ export async function getConversationMessagesAction(
  * with their full `Messages[]` transcripts and serialized `AgenticTrace`.
  *
  * Server-side because the transcripts are not on the client (the Inbox loads one
- * at a time) and because the reasoning gate has to be *enforced*, not asked for —
+ * at a time) and because the reasoning gate has to be *enforced*, not asked for,
  * an export leaves the console, so a Member below the gate must not be able to
  * request the chain-of-thought by passing a flag.
  *
  * Bounded twice over, because one click here turns into one transcript read per
  * Conversation: the id list is capped, and the reads run in fixed-size batches
- * rather than one `Promise.all` over the whole selection — 500 concurrent reads
+ * rather than one `Promise.all` over the whole selection, 500 concurrent reads
  * would be a self-inflicted load spike on the tenant's own database. RLS re-scopes
  * every id on the way through, so a forged id returns nothing.
  */
@@ -1987,7 +1923,7 @@ export async function listImprovementMessagesAction(
 }
 
 /**
- * The three reads the Improvement detail page does, in one round trip — so the
+ * The three reads the Improvement detail page does, in one round trip, so the
  * Improvements drawer renders the same screen without a navigation.
  * Returns null when the id is unknown or belongs to another Organization.
  */
@@ -2117,7 +2053,7 @@ export async function acceptImprovementProposalAction(
         collectionId,
         question: proposal.payload.draftQuestion,
         answer: proposal.payload.draftAnswer,
-        // Agent-drafted, then confirmed by the person who clicked accept — the
+        // Agent-drafted, then confirmed by the person who clicked accept, the
         // one place the platform produces a `human-reviewed` trust tier (§5.3).
         provenance: {
           generated: {
@@ -2133,7 +2069,7 @@ export async function acceptImprovementProposalAction(
         acceptedConceptId: concept.id,
       });
       await db.updateImprovement(improvementId, { status: "in_review" });
-      // The new FAQ lands in the target assistant's Knowledge — refresh it too
+      // The new FAQ lands in the target assistant's Knowledge, refresh it too
       // (orgMutation only revalidates the improvement/inbox entities).
       revalidatePath(`/assistants/${targetAssistantId}`);
     },
@@ -2248,7 +2184,7 @@ export async function resolveAlertAction(alertId: string): Promise<void> {
 
 /**
  * Guard shared by every Entity mutation: RLS already walls off other orgs on
- * Supabase, but the mock store has no RLS — resolve the Entity and check the
+ * Supabase, but the mock store has no RLS, resolve the Entity and check the
  * Organization explicitly so both implementations behave identically.
  */
 async function requireOrgEntity(
@@ -2302,7 +2238,7 @@ export async function importEntityRecordsAction(
   return runOperation(importEntityRecordsOp, { entityId, csv: csvText });
 }
 
-/** Records browser read (paged) — any member of the Entity's org. */
+/** Records browser read (paged), any member of the Entity's org. */
 /** The client-facing sync source shape (#670): sealed headers never leave the server. */
 export interface EntitySyncStatus {
   config:
@@ -2407,7 +2343,7 @@ export async function deleteEntitySyncConfigAction(entityId: string): Promise<vo
  * Authorization happens on the caller's RLS-scoped db; the enqueue (and the
  * `after()` accelerator that drains it) runs on the service-role db, because
  * the job ledger and run reports are operated by the job layer, not by
- * member sessions — exactly as the cron sweep does.
+ * member sessions, exactly as the cron sweep does.
  */
 export async function syncEntityNowAction(entityId: string): Promise<void> {
   await orgMutation(

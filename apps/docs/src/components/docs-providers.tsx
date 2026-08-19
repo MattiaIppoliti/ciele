@@ -14,13 +14,13 @@ import { i18n } from '@/lib/i18n';
  *
  * 1. **The canonical URL.** English has no prefix (`hideLocale:
  *    'default-locale'`), and the built-in handler swaps the first segment
- *    regardless — switching back to English lands on `/en/assistants`, which
+ *    regardless, switching back to English lands on `/en/assistants`, which
  *    only works because middleware then redirects it. This goes straight to
  *    `/assistants`.
  * 2. **A locale switch is a document load, not a client transition.** The
  *    localized root layout carries next-themes' inline `<script>`; re-rendering
  *    it on the client makes React 19 warn on every switch that a script rendered
- *    client-side (harmless — it already ran during SSR — but it fills the
+ *    client-side (harmless; it already ran during SSR, but it fills the
  *    console). A full navigation also guarantees `<html lang>` and the RSC tree
  *    agree, with no half-swapped client state.
  */

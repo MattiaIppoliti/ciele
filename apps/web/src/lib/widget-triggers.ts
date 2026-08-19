@@ -1,10 +1,10 @@
 /**
  * Client-side rules for reporting proactive Flow triggers (#541).
  *
- * The widget only *reports* events — which Flows run and whether a nudge is
+ * The widget only *reports* events, which Flows run and whether a nudge is
  * delivered are decided server-side (see the trigger route). What has to be
  * decided in the browser is narrower: *when* an event has happened at all. That
- * lives here rather than in the component so it is testable — this app's vitest
+ * lives here rather than in the component so it is testable, this app's vitest
  * collects `.ts` only.
  */
 
@@ -14,8 +14,8 @@ export const LAUNCHER_PARAM = "launcher";
 /**
  * Whether "chat opens" has already happened by the time the widget mounts.
  *
- * Inside our floater the chat is mounted long before it is shown — the script
- * warms the iframe on idle — so opening is an event the script reports with a
+ * Inside our floater the chat is mounted long before it is shown, the script
+ * warms the iframe on idle, so opening is an event the script reports with a
  * `ciele:open` message. Every other embedding (the iFrame publish option, the
  * standalone widget page, a docs drawer) renders the chat visible immediately,
  * and for those mounting *is* opening.
@@ -32,7 +32,7 @@ const REPORTABLE: ReportableTrigger[] = ["page_load", "time_on_page", "chat_open
 /** One event the floater script reports into the chat frame. */
 export interface TriggerReport {
   trigger: ReportableTrigger;
-  /** The host page's URL — the chat frame cannot read it cross-origin. */
+  /** The host page's URL, the chat frame cannot read it cross-origin. */
   url?: string;
   /** Seconds spent on the page, for a dwell report. */
   elapsedSeconds?: number;
@@ -54,7 +54,7 @@ export function triggerReportKey(report: TriggerReport): string {
  *
  * The frame shares its message channel with theme sync, SSO callbacks and the
  * host page's own traffic, so an unrecognised shape must be ignored rather than
- * guessed at — this is untrusted input from whatever page embedded us. The
+ * guessed at; this is untrusted input from whatever page embedded us. The
  * trigger name is only a claim: the server re-decides what (if anything) runs.
  */
 export function readTriggerMessage(data: unknown): TriggerReport | null {
@@ -85,7 +85,7 @@ export const UNREAD_MESSAGE = "ciele:unread";
  * A reported host-page URL, or undefined if it is not one we would store.
  *
  * The value comes from whatever page embedded the widget, and it ends up in the
- * Conversation's session context where the Inbox displays it — so only absolute
+ * Conversation's session context where the Inbox displays it, so only absolute
  * http(s) URLs are kept. A `javascript:` or `data:` string is not a page address.
  */
 export function reportedPageUrl(value: unknown): string | undefined {

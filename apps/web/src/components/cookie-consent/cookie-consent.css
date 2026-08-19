@@ -3,7 +3,7 @@
  * Two things to know before editing:
  *
  * 1. No JS drives the theme. Every colour resolves to a token from
- *    globals.css, and those tokens are redefined under `.dark` — so the banner
+ *    globals.css, and those tokens are redefined under `.dark`, so the banner
  *    and the modal follow the app's light/dark theme for free. The plugin's
  *    `cc--darkmode` class is intentionally never applied.
  *
@@ -35,7 +35,7 @@
   --cc-separator-border-color: var(--border);
   --cc-overlay-bg: color-mix(in oklch, var(--background) 70%, transparent);
 
-  /* Primary action — mirrors <Button variant="default"> */
+  /* Primary action, mirrors <Button variant="default"> */
   --cc-btn-primary-bg: var(--primary);
   --cc-btn-primary-color: var(--primary-foreground);
   --cc-btn-primary-border-color: var(--primary);
@@ -47,7 +47,7 @@
     transparent
   );
 
-  /* Secondary action — mirrors <Button variant="secondary">. Same size and
+  /* Secondary action, mirrors <Button variant="secondary">. Same size and
      radius as the primary, because "Reject all" must not read as the quieter
      option. */
   --cc-btn-secondary-bg: var(--secondary);
@@ -57,7 +57,7 @@
   --cc-btn-secondary-hover-color: var(--secondary-foreground);
   --cc-btn-secondary-hover-border-color: var(--border);
 
-  /* Toggles — modelled on components/ui/switch.tsx: coloured track, pale knob.
+  /* Toggles, modelled on components/ui/switch.tsx: coloured track, pale knob.
      The plugin draws the ✓/✗ inside the knob and strokes it with the *track*
      colour, so knob and track must contrast or the state icon disappears.
      A near-white knob works in both themes; the token pair would not, since
@@ -76,7 +76,7 @@
     var(--background)
   );
   /* --cc-toggle-enabled-icon-color / --cc-toggle-disabled-icon-color are
-     declared by the plugin but unused in v3 — setting them does nothing. */
+     declared by the plugin but unused in v3, setting them does nothing. */
 
   /* Category blocks in the preferences modal */
   --cc-cookie-category-block-bg: var(--secondary);
@@ -107,7 +107,7 @@
 /* --- Links ------------------------------------------------------------ */
 
 /* The plugin only colours `.cc__link`, which it never applies to authored
-   markup — so links inside our descriptions arrive as bold body text. Bold
+   markup, so links inside our descriptions arrive as bold body text. Bold
    alone is not a link affordance, and here there is no colour difference
    either, so underline them. */
 #cc-main .cm-wrapper a,

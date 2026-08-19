@@ -1,10 +1,10 @@
-/* The public marketing site — sky scenes and motion. Imported once, by the
+/* The public marketing site, sky scenes and motion. Imported once, by the
    (marketing) layout that owns the shared shell, and scoped by .home-scene:
    light mode is a day sky with birds, while dark mode is a starry night
    with falling-star streaks. */
 
 /* Footer day sky keeps the fixed warm corner glow (it never animates). The
-   sun glow is layered over a sky that stays blue all the way down — the
+   sun glow is layered over a sky that stays blue all the way down, the
    final band is a soft sky-blue rather than white so the whole footer reads
    as sky, matching the hero. */
 .home-sky-footer {
@@ -20,7 +20,7 @@
     linear-gradient(180deg, #9ecdf4 0%, #bbdefa 42%, #cfeafc 74%, #bfe2fb 100%);
 }
 
-/* Hero day sky is the plain blue gradient only — the warm glow lives on
+/* Hero day sky is the plain blue gradient only, the warm glow lives on
    the sun disc itself (see .home-sun) so it travels with the sun during a
    theme toggle instead of staying behind as a second, fixed light. */
 .home-sky-light {
@@ -44,7 +44,7 @@
   );
 }
 
-/* Dusk backdrop — only shows mid-handoff between day and night. Just a
+/* Dusk backdrop, only shows mid-handoff between day and night. Just a
    vertical dusk band (no localized glow): the sun disc is the only light
    source, so nothing reads as a second sun fixed in the corner. */
 .home-sky-sunset {
@@ -145,7 +145,7 @@ html[data-sky-transition]
   ) {
   animation-duration: 0.9s;
   /* linear: easing would restart between every keyframe pair, making the
-     arcs stutter. The curve lives in the keyframe positions instead — x
+     arcs stutter. The curve lives in the keyframe positions instead, x
      sweeps at constant speed while y follows a parabola. */
   animation-timing-function: linear;
   animation-fill-mode: both;
@@ -153,7 +153,7 @@ html[data-sky-transition]
 }
 
 /* Perf: promote exactly what each layer animates, nothing more. The discs
-   move (transform); the fullscreen sky layers only fade — giving those a
+   move (transform); the fullscreen sky layers only fade, giving those a
    transform hint would triple the compositor memory for no gain. Scoped to
    the transition so no layers linger after it ends. */
 html[data-sky-transition] :is(.home-sun-track, .home-moon-track) {
@@ -167,7 +167,7 @@ html[data-sky-transition]
 
 /* Each direction has its own forward keyframes (not a shared reverse) so
    the outgoing body always does the wide sweep off the left edge and the
-   incoming body the short entrance from the right — in BOTH directions.
+   incoming body the short entrance from the right, in BOTH directions.
    to-night: sun sets (wide left), moon rises (short right), sunset colors.
    to-day:   moon sets (wide left), sun rises (short right), dawn colors. */
 html[data-sky-transition="to-night"] .home-sun-track {
@@ -204,7 +204,7 @@ html[data-sky-transition] .home-sky-sunset {
 }
 
 /* Dawn palette for the night → day handoff: softer and more muted than
-   the evening — the sunset leans deep orange/purple, dawn stays pale and
+   the evening, the sunset leans deep orange/purple, dawn stays pale and
    tips toward gentle yellow rather than pink. */
 html[data-sky-transition="to-day"] .home-sky-sunset {
   background: linear-gradient(
@@ -220,8 +220,8 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
 /* Setting arc: x crosses the whole viewport at constant speed until the
    sun is fully past the left edge (it disappears by leaving the screen,
    not by fading), while y falls along a parabola. The yellow → orange
-   shift is NOT a filter animation — filters re-rasterize every frame on
-   some engines — it's an opacity crossfade to the pre-painted warm disc
+   shift is NOT a filter animation, filters re-rasterize every frame on
+   some engines, it's an opacity crossfade to the pre-painted warm disc
    (.home-sun::after below), which stays fully on the compositor. */
 @keyframes home-sun-set {
   0% {
@@ -269,7 +269,7 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   }
 }
 
-/* Moon setting (to-day): the wide arc — mirrors the sun's set. Sweeps the
+/* Moon setting (to-day): the wide arc, mirrors the sun's set. Sweeps the
    whole viewport at constant speed, falling along a parabola, and vanishes
    by leaving the left edge (no fade). Pale disc, so no hue shift. */
 @keyframes home-moon-set {
@@ -292,8 +292,8 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   }
 }
 
-/* Sun rising (to-day): short entrance from off the right edge — mirrors the
-   moon's rise — while the glow cools from deep orange (just risen) back to
+/* Sun rising (to-day): short entrance from off the right edge, mirrors the
+   moon's rise, while the glow cools from deep orange (just risen) back to
    its resting yellow. */
 @keyframes home-sun-rise {
   0% {
@@ -325,7 +325,7 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   }
 }
 
-/* Twilight flash shared by both directions (dusk or dawn — the gradient is
+/* Twilight flash shared by both directions (dusk or dawn, the gradient is
    swapped per direction, this only drives its opacity). */
 @keyframes home-sky-twilight {
   0% {
@@ -355,7 +355,7 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   }
 }
 
-/* Night lifts (to-day): the mirror — starts opaque and thins out late so
+/* Night lifts (to-day): the mirror, starts opaque and thins out late so
    the dawn twilight beneath shows before the day sky takes over. */
 @keyframes home-sky-night-out {
   0% {
@@ -380,8 +380,8 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   );
 }
 
-/* A soft, edgeless sun glow. It originates just above the top-right — near
-   the third feature card — and washes gently down and outward with no hard
+/* A soft, edgeless sun glow. It originates just above the top-right, near
+   the third feature card, and washes gently down and outward with no hard
    rim or defined beams. The blur smooths any banding so the falloff reads as
    pure haze. */
 .home-footer-sun-rays {
@@ -395,7 +395,7 @@ html[data-sky-transition="to-day"] .home-sky-sunset {
   );
   filter: blur(12px);
   /* A light feather at the very top removes the hard clip against the white
-     section above without hiding the sun — its body stays visible just below
+     section above without hiding the sun, its body stays visible just below
      the seam. */
   mask-image: linear-gradient(
     to bottom,
@@ -494,7 +494,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
   }
 }
 
-/* Moon (dark mode) — pale disc with a soft blue halo and a few crater
+/* Moon (dark mode), pale disc with a soft blue halo and a few crater
    shadings, breathing on the same glow animation as the sun. */
 .home-moon {
   background:
@@ -743,7 +743,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
 
 /* Metric lines for the Enterprise page's admin-dashboard visual: the series is
    drawn twice, side by side, and the group slides one full width left before
-   snapping back — so the traces read as an endless right-to-left scroll. */
+   snapping back, so the traces read as an endless right-to-left scroll. */
 @keyframes home-metric-scroll {
   from {
     transform: translateX(0);
@@ -766,7 +766,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
 /* Header CTA, chosen by the signed-in hint rather than by the server.
    ---------------------------------------------------------------------------
    The marketing pages are prerendered, so nothing server-side knows who is
-   asking — resolving that meant reading a cookie in the (marketing) layout,
+   asking, resolving that meant reading a cookie in the (marketing) layout,
    which made all seven routes dynamic. The header therefore renders BOTH CTA
    sets and these rules reveal one, keyed on the `data-signed-in` attribute a
    blocking inline script copies from the hint cookie onto <html> before first
@@ -774,7 +774,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
 
    `display: contents` for the visible half, so the wrappers add no box and the
    parent's own flex gap keeps spacing the buttons. `display: none` for the
-   hidden half, which also keeps it out of the accessibility tree — a screen
+   hidden half, which also keeps it out of the accessibility tree, a screen
    reader announces one CTA, not both. */
 .home-cta-anon {
   display: contents;
@@ -798,10 +798,10 @@ html[data-sky-transition="to-day"] .home-sun::after {
   }
 }
 
-/* Mobile nav menu (below lg) — Dia-style. The pill IS the menu: it stays a
+/* Mobile nav menu (below lg), Dia-style. The pill IS the menu: it stays a
    slim stadium when closed and, on open, its own bottom edge stretches down
    to cover almost the whole screen (one morphing component, no overlay). The
-   panel is just the content that fills the growing pill — the container (the
+   panel is just the content that fills the growing pill, the container (the
    pill) draws the card background/radius. At lg+ this is the inline desktop
    nav, untouched. */
 @media (max-width: 1023.98px) {
@@ -856,7 +856,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
 
   /* Mobile scroll-morph widths. Driven here rather than via Tailwind's
      max-w-* utilities because this file is unlayered and so beats those
-     layered utilities regardless of source order — the only reliable way to
+     layered utilities regardless of source order, the only reliable way to
      make the scrolled width win over the rest width on mobile.
      - Rest is pinned to the rendered width (viewport minus the nav's px-2) so
        the max-width tween below moves from frame one instead of idling until
@@ -881,13 +881,13 @@ html[data-sky-transition="to-day"] .home-sun::after {
 
   /* The pill container is the card. Its radius is a constant 2.5rem (set on
      the element): clamped to a stadium while the pill is short, reading as a
-     rounded card once tall — so the curvature opens up smoothly as the bottom
+     rounded card once tall, so the curvature opens up smoothly as the bottom
      descends, with no mid-animation bulge. Its background stays the same
      glassy translucent blur as the closed pill. All linear.
 
      This same transition drives the on-scroll morph (rest → glassy pill).
      max-width and backdrop-filter MUST be listed too: on scroll the pill
-     narrows (max-width) and its blur fades in — desktop animates these via
+     narrows (max-width) and its blur fades in, desktop animates these via
      Tailwind's transition-all, but here that utility is layered and this
      unlayered rule wins, so anything omitted would snap/pop instead of glide. */
   nav > div {
@@ -909,7 +909,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
   }
 }
 
-/* Hero entrance — same blur + rise + fade as the mobile menu reveal, but
+/* Hero entrance, same blur + rise + fade as the mobile menu reveal, but
    played once on load (all breakpoints) with a per-element --reveal-delay
    stagger across the heading, subtitle and CTAs. */
 @keyframes home-reveal-in {
@@ -937,7 +937,7 @@ html[data-sky-transition="to-day"] .home-sun::after {
   .home-mobile-menu :is(svg) {
     transition: none !important;
   }
-  /* Reveal falls back to a plain fade — no blur or movement. */
+  /* Reveal falls back to a plain fade, no blur or movement. */
   .home-reveal {
     transform: none !important;
     filter: none !important;

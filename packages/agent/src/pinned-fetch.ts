@@ -29,8 +29,8 @@ export interface PinnedRequestOptions {
  * Requests through Node's HTTP stack while pinning DNS to an address that has
  * already passed the egress-target checks (`validateEgressTarget`). The URL
  * hostname is retained for Host/SNI and certificate verification, closing the
- * validation/use gap (DNS rebinding). Redirects are never followed — Node's
- * client has none — so 3xx statuses surface to the caller.
+ * validation/use gap (DNS rebinding). Redirects are never followed, Node's
+ * client has none, so 3xx statuses surface to the caller.
  */
 export async function pinnedRequest(
   target: ValidatedEgressTarget,

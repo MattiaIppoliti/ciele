@@ -1,4 +1,4 @@
-/** Curated IANA timezones for the Availability schedule — common zones only. */
+/** Curated IANA timezones for the Availability schedule, common zones only. */
 export const TIMEZONES: Array<{ value: string; label: string }> = [
   { value: "UTC", label: "(GMT +0:00) Coordinated Universal Time" },
   { value: "Europe/London", label: "(GMT +0:00) London" },

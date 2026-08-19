@@ -4,7 +4,7 @@ import type { RecrawlSchedule } from "./types";
  * Next scheduled re-crawl time for a website source, derived from its
  * schedule and the last successful crawl. Pure: no clock, no I/O.
  *
- * Returns null when nothing is due on a schedule — the source is set to
+ * Returns null when nothing is due on a schedule, the source is set to
  * "never", or it has not completed a crawl yet (so there is no basis to
  * count from). A future per-page override inherits the site schedule, so
  * the same function serves page-level rows once that seam is built.

@@ -8,7 +8,7 @@
 # then run the repo's filename-ledger applier, then optionally seed.
 #
 # Env:
-#   SUPABASE_DB_URL     required — postgresql://… (read by the applier)
+#   SUPABASE_DB_URL     required, postgresql://… (read by the applier)
 #   WAIT_FOR_SCHEMAS    comma-separated schema names to wait for
 #   WAIT_TIMEOUT_SECS   how long to wait for each (default 180)
 #   LOAD_DEMO_SEED      "1" to load supabase/seed.sql after migrating
@@ -26,7 +26,7 @@ wait_for_schema() {
     if [ "$waited" -ge "$WAIT_TIMEOUT_SECS" ]; then
       echo "Error: schema '$schema' did not appear within ${WAIT_TIMEOUT_SECS}s." >&2
       echo "       The service that owns it (auth = GoTrue, storage = storage-api)" >&2
-      echo "       probably failed to start — check \`docker compose logs $schema\`." >&2
+      echo "       probably failed to start, check \`docker compose logs $schema\`." >&2
       exit 1
     fi
     [ "$((waited % 15))" -eq 0 ] && echo "Waiting for the '$schema' schema…"

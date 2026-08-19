@@ -160,7 +160,7 @@ describe("org embedding-connection choice", () => {
     ]);
   });
 
-  it("falls back to lexical — never another model — when the choice cannot embed", async () => {
+  it("falls back to lexical, never another model, when the choice cannot embed", async () => {
     // Anthropic has no embeddings API. Silently embedding with the platform
     // OpenAI key would split one collection across two vector spaces, which
     // is exactly what choosing a connection is meant to prevent.

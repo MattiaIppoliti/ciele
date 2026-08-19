@@ -1,7 +1,7 @@
 # Local Crawl4AI worker for the Ciele Website Source crawler.
 #
 # Same image, config, auth model, and API contract as the managed deployment
-# (see RUNBOOK.md) — only the platform differs. Bring it up with:
+# (see RUNBOOK.md), only the platform differs. Bring it up with:
 #
 #   cp .env.example .env   # then set CRAWL4AI_API_TOKEN and SECRET_KEY
 #   docker compose up -d
@@ -13,7 +13,7 @@
 
 services:
   crawl4ai:
-    # Pinned to a specific reviewed version — never `latest`. v0.9.x is the
+    # Pinned to a specific reviewed version, never `latest`. v0.9.x is the
     # first line whose auth is fail-closed on every route (earlier versions left
     # the API open when jwt_enabled was false). Upgrade only via the runbook.
     # For byte-for-byte reproducibility, pin by digest instead (see RUNBOOK.md):
@@ -27,7 +27,7 @@ services:
     environment:
       # The static operator token the Ciele adapter sends as `Bearer <token>`.
       # A non-loopback bind (config host 0.0.0.0) makes the server refuse to
-      # boot if this is unset — fail closed.
+      # boot if this is unset, fail closed.
       CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN in .env}
       # HS256 signing key for the (unused) JWT path; still validated at startup.
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}

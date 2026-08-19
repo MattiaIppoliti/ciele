@@ -22,7 +22,7 @@ export { MODEL_CATALOG } from "./catalog";
 
 /**
  * Providers with a fixed model catalog. The openai_compatible provider has no
- * catalog — its model ids live on the connection/env config — so the static
+ * catalog, its model ids live on the connection/env config, so the static
  * per-provider tables below deliberately exclude it; resolution reads its
  * config instead (see `compatibleModelId`).
  */
@@ -82,7 +82,7 @@ export type ProviderCredential =
   | {
       provider: "openai_compatible";
       kind: "platform" | "api_key";
-      /** Optional — many local/self-hosted servers ignore authentication. */
+      /** Optional, many local/self-hosted servers ignore authentication. */
       apiKey: string | null;
       config: OpenAiCompatibleEndpoint;
     }
@@ -141,7 +141,7 @@ function compatibleEnvEndpoint(): OpenAiCompatibleEndpoint | null {
 
 /**
  * Resolves the openai_compatible provider: an org's api_key connection wins
- * (its key is optional — many local servers ignore auth), then the
+ * (its key is optional, many local servers ignore auth), then the
  * OPENAI_COMPATIBLE_* platform env, so a self-host runs fully local with
  * zero in-app config.
  */
@@ -160,7 +160,7 @@ function resolveOpenAiCompatibleCredential(
       try {
         apiKey = openSecret(connection.encryptedKey) || null;
       } catch {
-        // An undecryptable key degrades to keyless — local servers allow it.
+        // An undecryptable key degrades to keyless, local servers allow it.
       }
     }
     return {
@@ -405,7 +405,7 @@ export function resolveChatModel(
   resolution: KeyResolution = {}
 ): ResolvedChatModel | null {
   // A member's connected local subscription outranks the assistant's
-  // configured provider in Preview — even when the organization holds an API
+  // configured provider in Preview, even when the organization holds an API
   // key or federated credential for it. The Chat-settings default model
   // (resolution.localSubscriptionModel) applied upstream lands on the first
   // branch below; this covers the "Automatic" preference.

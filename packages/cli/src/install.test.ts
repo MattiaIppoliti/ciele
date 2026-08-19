@@ -46,7 +46,7 @@ describe("installed ciele CLI", () => {
       cwd: installDir,
       encoding: "utf8",
     });
-    expect(output).toContain("ciele — manage your Organization from the terminal");
+    expect(output).toContain("ciele, manage your Organization from the terminal");
 
     const requests: string[] = [];
     const server = createServer((request, response) => {

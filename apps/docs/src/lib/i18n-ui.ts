@@ -7,7 +7,7 @@ import { uiStrings } from './ui-strings';
  * hands to `RootProvider`. The provider value also supplies the locale list the
  * sidebar's language switcher renders, each labelled by its own `displayName`.
  *
- * Separate from `i18n.ts` on purpose — see the note there about the edge
+ * Separate from `i18n.ts` on purpose, see the note there about the edge
  * middleware.
  */
 const { provider: build } = defineI18nUI(i18n, uiStrings);

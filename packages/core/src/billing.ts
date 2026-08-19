@@ -1,12 +1,12 @@
 /**
- * The billing / plan / usage-cap vocabulary — pure domain types with no
+ * The billing / plan / usage-cap vocabulary, pure domain types with no
  * behavior. Moved here from the runtime's enterprise capability registry
  * (`@agent-hub/agent`'s `ee.ts`, which re-exports them unchanged): this
  * package is the declared home for the domain, and these ~15 types are
  * vocabulary the admin surfaces, the pricing page and the enterprise
  * implementations all read. The extension-point interfaces the registry
  * gates on (`MeteringEnforcement`, `BillingAccessor`, `ActivationPolicy`)
- * stay in the runtime — they are the seam, not the vocabulary.
+ * stay in the runtime; they are the seam, not the vocabulary.
  */
 
 import type { UsageResource } from "./types";
@@ -22,7 +22,7 @@ export type UsageWindowName = "week" | "month";
 export interface UsageWindow {
   name: UsageWindowName;
   from: string;
-  /** Exclusive end — also the instant the window resets. */
+  /** Exclusive end, also the instant the window resets. */
   to: string;
 }
 
@@ -41,7 +41,7 @@ export const USAGE_WARN_FRACTION = 0.8;
  * Outcome of a usage check. OSS always returns `allow`.
  *
  * `warn` and `block` name the resource and window that tripped and when it
- * lifts, so a caller can tell an admin which limit to act on — and a visitor
+ * lifts, so a caller can tell an admin which limit to act on, and a visitor
  * only ever sees `message`, which discloses nothing about billing.
  */
 export type UsageOutcome =
@@ -97,7 +97,7 @@ export interface SubscriptionState {
   status: string;
   /**
    * A hosted checkout URL staff attached so this organization can convert
-   * (#444). Null whenever there is nothing to pay — always null in OSS.
+   * (#444). Null whenever there is nothing to pay, always null in OSS.
    */
   checkoutUrl: string | null;
   /**
@@ -128,7 +128,7 @@ export interface PlanVolumes {
 export interface PlanCatalogEntry {
   /**
    * The code's own tier slug, printed verbatim in public copy and used as the
-   * Stripe product name — so an invoice, a support conversation and the console
+   * Stripe product name: so an invoice, a support conversation and the console
    * all say the same word.
    */
   slug: string;
@@ -159,7 +159,7 @@ export interface PlanCatalog {
   answerBasis: AnswerModelBasis;
 }
 
-/** A card (or other method) as a billing page names it — never card data. */
+/** A card (or other method) as a billing page names it, never card data. */
 export interface BillingPaymentMethod {
   /** "visa", "amex", "sepa_debit"… straight from the provider. */
   brand: string;
@@ -174,7 +174,7 @@ export interface BillingInvoice {
   /**
    * The provider's human invoice number (e.g. "N3WRKR5S-0001"), or null before
    * one is assigned. This is the reference an accounts department reconciles
-   * against, so it is worth a column of its own — `id` is ours to key rows with.
+   * against, so it is worth a column of its own, `id` is ours to key rows with.
    */
   number: string | null;
   /** ISO instant the invoice was issued. */
@@ -194,11 +194,11 @@ export interface BillingInvoice {
  *
  * Distinct from `SubscriptionState`, which is our own stored row and is read on
  * every request: this one costs live provider calls, so it is fetched only by
- * the Billing tab. Null whenever there is no provider account to read — OSS,
+ * the Billing tab. Null whenever there is no provider account to read, OSS,
  * a comped grant, an unconfigured provider.
  */
 export interface BillingAccountSnapshot {
-  /** ISO instant the current period ends — the next invoice's date. */
+  /** ISO instant the current period ends, the next invoice's date. */
   renewsAt: string | null;
   /** Expected total of the next invoice, in minor units of `currency`. */
   nextAmountMinor: number | null;
@@ -232,7 +232,7 @@ export interface CheckoutReturn {
  * `pending` is a managed-edition state only: on ciele's hosted platform a
  * fresh signup waits for sales contact before its assistants answer, because
  * the managed promise includes ciele-funded model credentials. **A
- * self-hosted deployment must never see it** — there is nobody to activate an
+ * self-hosted deployment must never see it**; there is nobody to activate an
  * org there, and a locked-out self-host would be a broken product. That is why
  * the runtime's OSS default is unconditionally `active`.
  */

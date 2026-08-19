@@ -7,7 +7,7 @@ import {
 } from "./apify";
 
 /**
- * The pure crawl-config translation and response mapping — the parts of the
+ * The pure crawl-config translation and response mapping, the parts of the
  * Apify integration that carry real rules (page clamp, crawler-type switch,
  * conditional fields, content fallbacks) and would otherwise only be
  * exercised through a live network call.

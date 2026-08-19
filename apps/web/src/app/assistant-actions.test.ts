@@ -121,7 +121,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
   /**
    * Basic Interaction's one admin control (#565): a verbatim courtesy reply. The
    * editor writes it into `actionSettings`, so what matters is that it survives
-   * the round trip — a pinned wording that silently reverts to a generated one is
+   * the round trip, a pinned wording that silently reverts to a generated one is
    * worse than no control at all.
    */
   it("round-trips the Basic Interaction verbatim message through save/reload", async () => {
@@ -180,7 +180,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
 
   /**
    * A duplicate has to *behave* like its original, so every field a proactive
-   * flow fires on must be copied — not just the ones that show in the list (#548).
+   * flow fires on must be copied, not just the ones that show in the list (#548).
    */
   it("duplicateAssistantAction copies a proactive flow whole", async () => {
     const source = await db.createAssistant(DEMO_ORG.id, { title: "Original" });
@@ -350,7 +350,7 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
     });
   }
 
-  it("deleteAssistantAction purges each Collection's graph dataset when configured", async () => {
+  it("deleteAssistantAction leaves org-owned Collections and their graphs intact (PRD #726)", async () => {
     process.env.GRAPH_WORKER_BASE_URL = "https://graph.internal";
     process.env.GRAPH_WORKER_API_TOKEN = "tok";
     try {
@@ -361,19 +361,12 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
       await deleteAssistantAction(assistant.id);
 
       expect(await db.getAssistant(assistant.id)).toBeNull();
-      // One whole-dataset purge per Collection — no per-Concept fan-out.
+      // Knowledge is org-owned and possibly shared: deleting an assistant
+      // drops only its links, never a Collection's graph dataset.
       const payloads = (await claimGraphSyncJobs()).map((j) => j.payload);
-      expect(payloads).toContainEqual({
-        kind: "graph_sync_concept",
-        op: "purge",
-        collectionId: c1.id,
-      });
-      expect(payloads).toContainEqual({
-        kind: "graph_sync_concept",
-        op: "purge",
-        collectionId: c2.id,
-      });
-      expect(payloads).toHaveLength(2);
+      expect(payloads).toHaveLength(0);
+      expect(await db.getCollection(c1.id)).not.toBeNull();
+      expect(await db.getCollection(c2.id)).not.toBeNull();
     } finally {
       delete process.env.GRAPH_WORKER_BASE_URL;
       delete process.env.GRAPH_WORKER_API_TOKEN;

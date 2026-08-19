@@ -17,7 +17,7 @@
 -- so moving these ledgers there would break that runtime path. They therefore
 -- stay in `public`. RLS-enabled-with-no-policy already denies every anon /
 -- authenticated request (RLS default-denies when no policy grants access), and
--- service_role bypasses RLS by design — so this is a correct, intentional
+-- service_role bypasses RLS by design, so this is a correct, intentional
 -- deny-all. We make that intent explicit with a table comment and defensively
 -- revoke the table-level grants Supabase's default privileges hand to anon /
 -- authenticated (service_role keeps its grants, so the cron path is unaffected).
@@ -67,7 +67,7 @@ create index if not exists compost_runs_org_idx
 --
 -- 0033 did `revoke execute ... from public`, but Supabase's default privileges
 -- also grant EXECUTE directly to anon/authenticated, and revoking from PUBLIC
--- does not remove a direct grant — so the advisor still sees it RPC-callable.
+-- does not remove a direct grant, so the advisor still sees it RPC-callable.
 -- Revoke those direct grants. It is a trigger-only SECURITY DEFINER function:
 -- Postgres invokes trigger functions through the trigger manager (with the
 -- function owner's rights) regardless of EXECUTE grants, so removing RPC

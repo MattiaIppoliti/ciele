@@ -13,8 +13,8 @@ import { useResizableWidth } from '@agent-hub/ui/use-resizable-width';
  * panel), and it forwards the docs site's light/dark theme to the widget.
  *
  * Configurable via env, with production defaults baked in:
- *   NEXT_PUBLIC_CIELE_WIDGET_ORIGIN — origin serving the embeddable chat
- *   NEXT_PUBLIC_CIELE_ASSISTANT_ID  — the published assistant id
+ *   NEXT_PUBLIC_CIELE_WIDGET_ORIGIN, origin serving the embeddable chat
+ *   NEXT_PUBLIC_CIELE_ASSISTANT_ID, the published assistant id
  */
 const WIDGET_ORIGIN =
   process.env.NEXT_PUBLIC_CIELE_WIDGET_ORIGIN || 'https://ciele.app';
@@ -144,7 +144,7 @@ export function CieleWidget() {
               : ' transition-[width] duration-[420ms] ease-[cubic-bezier(.34,1.42,.64,1)] motion-reduce:transition-none'
           }`}
         >
-          {/* Drag handle — same behavior/look as the app's preview panel. */}
+          {/* Drag handle, same behavior/look as the app's preview panel. */}
           <div
             role="separator"
             aria-orientation="vertical"

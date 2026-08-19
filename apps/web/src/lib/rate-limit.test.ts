@@ -39,7 +39,7 @@ describe("createRateLimiter", () => {
 });
 
 describe("clientAddress", () => {
-  it("takes the left-most forwarded hop — the client as the edge saw it", () => {
+  it("takes the left-most forwarded hop, the client as the edge saw it", () => {
     const headers = new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" });
     expect(clientAddress(headers)).toBe("203.0.113.7");
   });

@@ -3,8 +3,8 @@
  *
  * A derivation over `AiCredentialKind`, kept in its own module because
  * `types.ts` holds declarations only. It lives here rather than in a consumer
- * because three surfaces need the same answer — the runtime's plan-cap gate, the
- * staff console's usage reporting, and billing — and the admin console used to
+ * because three surfaces need the same answer, the runtime's plan-cap gate, the
+ * staff console's usage reporting, and billing, and the admin console used to
  * restate it as a hand-maintained `Set<string>`.
  */
 
@@ -14,7 +14,7 @@ import type { AiCredentialKind } from "./types";
 export type FundingBucket = "platform" | "customer" | "unknown";
 
 /**
- * Funding attribution per credential kind — **exhaustive by construction**.
+ * Funding attribution per credential kind, **exhaustive by construction**.
  *
  * `satisfies Record<AiCredentialKind, …>` is the point: adding a kind to the
  * union above without classifying it here is a compile error. Funding is the
@@ -35,13 +35,13 @@ const FUNDING_BY_CREDENTIAL_KIND = {
  *
  * Takes a `string` on purpose: the value arrives from the usage ledger, so a row
  * written by a newer deployment can carry a kind this build has never heard of.
- * That case maps to `"unknown"` — never to `"customer"` — so unattributed
+ * That case maps to `"unknown"`, never to `"customer"`, so unattributed
  * traffic can never be silently billed to a customer. Within a single build the
  * map above makes every *known* kind a compile-time decision.
  */
 export function fundingBucket(credentialKind: string): FundingBucket {
   // `Object.hasOwn`, not a bare index: the argument is an arbitrary string from
-  // the ledger, and a raw lookup would inherit Object.prototype — making
+  // the ledger, and a raw lookup would inherit Object.prototype, making
   // `fundingBucket("constructor")` return a function rather than "unknown".
   return Object.hasOwn(FUNDING_BY_CREDENTIAL_KIND, credentialKind)
     ? FUNDING_BY_CREDENTIAL_KIND[credentialKind as AiCredentialKind]

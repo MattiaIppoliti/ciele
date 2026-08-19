@@ -1,11 +1,11 @@
 /**
- * The scheduled drains — one function per cron tick.
+ * The scheduled drains: one function per cron tick.
  *
  * These used to live inside `apps/web`'s cron route handlers, which meant the
  * *policy* of a scheduled run (how large a batch to claim, how long a lease is
  * stale, what a partial failure reports) sat in a Next.js route while the
- * pipeline it drives lived here. Now the route is a pure adapter — cron auth in,
- * `Response.json` out — and each tick's behavior is testable without a request.
+ * pipeline it drives lived here. Now the route is a pure adapter, cron auth in,
+ * `Response.json` out, and each tick's behavior is testable without a request.
  *
  * Both return the tick's report as the exact object the cron endpoint serializes,
  * so the operational payload an admin reads in Vercel's cron log is pinned by
@@ -76,7 +76,7 @@ export interface SweepDueRecrawlsReport {
  *
  * Atomically claims a bounded, oldest-crawled-first batch of due Sources across
  * all orgs, then runs each through the *same* provider resolution + crawl-start
- * pipeline as a manual re-crawl (`restartWebsiteCrawl`) — scheduling decides
+ * pipeline as a manual re-crawl (`restartWebsiteCrawl`), scheduling decides
  * only *when*, never *how*. Claiming flips a due Source to `processing`, so a
  * Source already crawling is skipped and running the sweep twice inside a
  * window never starts a duplicate remote run. The previous ready Concepts stay
@@ -138,7 +138,7 @@ export interface FinalizeDueCrawlsReport {
  *
  * The Knowledge UI polls in-flight crawls while it is open; an admin who closes
  * the tab mid-crawl would otherwise leave the Source on `processing`. This drains
- * the ledger (ingest, graph-sync, Suggested Fix drafting — each the cron backstop
+ * the ledger (ingest, graph-sync, Suggested Fix drafting, each the cron backstop
  * for the host's after-response accelerator), then atomically claims one bounded,
  * least-recently-attempted batch of `processing` crawls across all orgs and
  * finalizes any whose provider run has finished. A finalize failure is reported
@@ -152,7 +152,7 @@ export async function finalizeDueCrawls(
   const workerId = FINALIZE_WORKER_ID;
   const jobs = await runDueIngestJobs({ db }, { workerId, limit: 10 });
   // Durable backstop for the graph-sync ledger. Inert when the graph worker is
-  // unconfigured — no rows queue.
+  // unconfigured, no rows queue.
   const graphSync = await runDueGraphSyncJobs(
     { db },
     { workerId: `${workerId}-graph`, limit: 20 }
@@ -228,11 +228,11 @@ export interface AgenticOpsReport {
 
 /**
  * The nightly agentic-ops tick: standing goals, the answer verifier, trust
- * materialization, compost — in that order, and the ORDER is the policy:
+ * materialization, compost, in that order, and the ORDER is the policy:
  * trust materializes after verification so tonight's verdicts feed tonight's
  * tiers, and compost runs last over everything the night produced (internally
  * weekly-gated per assistant). This sequencing and the batch size used to
- * live in the `verify-goals` cron route — exactly what this module exists to
+ * live in the `verify-goals` cron route, exactly what this module exists to
  * keep out of Next handlers; the route is an auth-and-serialize adapter over
  * this one drain.
  */
@@ -265,7 +265,7 @@ export interface SweepExpiredTracesReport {
 /**
  * Per-Organization trace-retention sweep (#573). For every org that opted into
  * a retention window, strips the persisted Turn Trace from messages older than
- * the window — the message itself (content, feedback, timestamps) stays, so
+ * the window, the message itself (content, feedback, timestamps) stays, so
  * the Inbox keeps the bubble and simply renders no Thinking panel.
  *
  * Idempotent by construction: a cleared trace is null and never matches again,

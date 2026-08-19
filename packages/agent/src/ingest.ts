@@ -44,8 +44,8 @@ export const CRAWL_FINALIZE_LEASE_MS = 2 * 60 * 60_000;
 /**
  * Safety ceiling on a stored Concept body. This is a guard against pathological
  * inputs (a runaway multi-megabyte page), **not** a content limit: it is far
- * above any real documentation page, so ordinary long docs keep their full text
- * — `chunkMarkdown` splits an arbitrarily long body into embeddable chunks. The
+ * above any real documentation page, so ordinary long docs keep their full text,
+ * `chunkMarkdown` splits an arbitrarily long body into embeddable chunks. The
  * old 60k slice silently dropped the tail of normal doc pages; this does not.
  */
 export const MAX_CONCEPT_BODY_CHARS = 1_000_000;
@@ -56,7 +56,7 @@ export const MAX_CONCEPT_BODY_CHARS = 1_000_000;
  * the model cannot say within it gets dropped from the curated layer, and an
  * invisible default made that a silent, provider-dependent decision.
  *
- * 8k is deliberately conservative — `getClassifierModel` can resolve to any
+ * 8k is deliberately conservative, `getClassifierModel` can resolve to any
  * provider, including a user-configured `openai_compatible` model with a modest
  * cap, and exceeding a model's own limit is a hard error that would cost us the
  * whole enrichment. The window below is sized to this, not the other way round.
@@ -75,7 +75,7 @@ export const ENRICH_WINDOW_CHARS = 24_000;
 /**
  * How many windows one Source may spend. Bounded by wall clock, not by cost:
  * enrichment runs inside a job whose route caps at `maxDuration = 300`, and a
- * job killed mid-flight is retried by cron — burning tokens on every attempt
+ * job killed mid-flight is retried by cron, burning tokens on every attempt
  * without ever finishing. Four sequential calls stay well inside that.
  *
  * Past this the curated layer stops, but nothing is lost from retrieval: the
@@ -86,7 +86,7 @@ export const ENRICH_MAX_WINDOWS = 4;
 
 /**
  * Total span enrichment curates. Everything past it is still stored, indexed
- * and retrievable through the verbatim companion — only un-curated.
+ * and retrievable through the verbatim companion, only un-curated.
  */
 export const ENRICH_SOURCE_MAX_CHARS = ENRICH_WINDOW_CHARS * ENRICH_MAX_WINDOWS;
 
@@ -172,8 +172,8 @@ export function chunkMarkdown(body: string): string[] {
 
 /**
  * The OKF `sources` entry (§5.1) recording what a Source's drafted Concepts
- * derive from. `resource` prefers a followable artifact — the page URL for a
- * `url` Source, the retained original's storage key for an uploaded file — and
+ * derive from. `resource` prefers a followable artifact, the page URL for a
+ * `url` Source, the retained original's storage key for an uploaded file, and
  * otherwise falls back to a scope descriptor, which §5.1 explicitly permits for
  * material a consumer cannot fetch (pasted text has no artifact to point at).
  * The `id` is the stable footnote key per-claim attribution would use.
@@ -199,7 +199,7 @@ export const SOURCE_TEXT_CONCEPT_TYPE = "Source Text";
  *
  * Why it exists: enrichment rewrites. `chunkMarkdown` chunks the Concept body,
  * so before this, the *only* thing the vector index ever saw for a file / URL /
- * pasted-text Source was the model's rewrite — and any detail the rewrite
+ * pasted-text Source was the model's rewrite, and any detail the rewrite
  * dropped was unreachable no matter how good retrieval was. The enriched
  * Concepts stay the curated, citable layer; this one guarantees nothing in the
  * source is missing from the index.
@@ -224,11 +224,11 @@ function verbatimDraft(
     path: `originals/${slugify(source.name)}.md`,
     frontmatter: {
       type: SOURCE_TEXT_CONCEPT_TYPE,
-      // Reads sensibly as a citation chip — a visitor sees which source the
+      // Reads sensibly as a citation chip: a visitor sees which source the
       // answer came from, and that it came from the source's own words.
-      title: `${source.name} — full text`,
+      title: `${source.name}, full text`,
       description: `Unedited text of ${source.kind} source "${source.name}", indexed so detail the enrichment did not carry is still retrievable.`,
-      // No model wrote this — it is the extractor's output, copied.
+      // No model wrote this: it is the extractor's output, copied.
       generated: { by: okfActor.process("okf-verbatim-index"), at },
       sources: [provenance],
     },
@@ -239,7 +239,7 @@ function verbatimDraft(
 /**
  * OKF enrichment (ADR-0002): drafts one Concept per meaningful unit of the
  * source via LLM, **plus a verbatim companion Concept** carrying the source
- * text unedited ({@link verbatimDraft}) — curated knowledge and the raw index
+ * text unedited ({@link verbatimDraft}), curated knowledge and the raw index
  * side by side. With no classifier it falls back to a single pass-through
  * concept wrapping the raw text, which needs no companion because it already
  * is one. The enrichment call is a billable model call, so it meters under its
@@ -336,7 +336,7 @@ async function enrich(
         }
       } catch {
         // One window failing (a provider blip, a schema violation) must not
-        // discard the windows that succeeded — skip it and keep going.
+        // discard the windows that succeeded, skip it and keep going.
       }
     }
 
@@ -346,7 +346,7 @@ async function enrich(
       // source's own words next to it so nothing it dropped is unreachable.
       return [...drafts, verbatimDraft(source, rawText, at, provenance)];
     }
-    // Every window failed — fall through to the naive conversion, which keeps
+    // Every window failed: fall through to the naive conversion, which keeps
     // the full text and so needs no companion.
   }
 
@@ -387,7 +387,7 @@ async function enqueueGraphConceptRemovals(
       await enqueueGraphSyncJob({ op: "remove", collectionId, conceptId }, { db });
     }
   } catch {
-    // Swallow — the graph is derived; the backfill reconciles orphans.
+    // Swallow: the graph is derived; the backfill reconciles orphans.
   }
 }
 
@@ -408,14 +408,14 @@ export async function embedConcept(options: {
     .getAssistant(options.assistantId)
     .catch(() => null);
   if (!assistant) {
-    // The call still runs but meters zero — keep that loud, never silent.
+    // The call still runs but meters zero: keep that loud, never silent.
     console.warn(
       `[ingest] embedding without usage attribution: assistant ${options.assistantId} not resolvable`
     );
   }
   // Indexing spends the embedding allowance (#510). Gate it here, at the one
   // ingestion write path, rather than inside the embedding helper: a QUERY
-  // embedding goes through the same helper and must never be refused — an
+  // embedding goes through the same helper and must never be refused, an
   // exhausted indexing budget degrades what can be added to the index, never
   // the ability to search what is already in it.
   const capped =
@@ -457,12 +457,12 @@ export async function embedConcept(options: {
       );
   if (capped) {
     console.warn(
-      `[ingest] embedding allowance spent for organization ${assistant?.organizationId} — content stored for lexical search only`
+      `[ingest] embedding allowance spent for organization ${assistant?.organizationId}, content stored for lexical search only`
     );
   }
   // Chunks carry their Concept's Source so retrieval can scope them by the
-  // assistant↔source link table (PRD #726); source-less Concepts stay
-  // legacy-scoped by assistantId.
+  // assistant↔source link table (PRD #726), the only retrieval path since
+  // the contract migration; a source-less chunk is unreachable by design.
   const concept = await options.db
     .getConcept(options.conceptId)
     .catch(() => null);
@@ -470,7 +470,6 @@ export async function embedConcept(options: {
     chunks.map((content, i) => ({
       conceptId: options.conceptId,
       collectionId: options.collectionId,
-      assistantId: options.assistantId,
       sourceId: concept?.sourceId ?? null,
       content: `${options.title}\n\n${content}`,
       embedding: embeddings[i],
@@ -493,12 +492,12 @@ export async function embedConcept(options: {
       { db: options.db }
     );
   } catch {
-    // Swallow — the graph is derived, and OKF (the record) is already written.
+    // Swallow: the graph is derived, and OKF (the record) is already written.
     // NOTE: a failure here means no ledger row was created, so the cron backstop
     // cannot recover it; only a manual graph backfill reconciles the miss.
   }
   // An embedding *failure* (provider outage, not mere absence of a provider)
-  // silently downgrades the content to lexical-only retrieval — raise an
+  // silently downgrades the content to lexical-only retrieval, raise an
   // ingestion Alert so it's operationally visible, and auto-resolve it on the
   // next healthy batch. Best-effort: alerting never breaks ingestion (#312).
   const signalsHealth =
@@ -529,7 +528,7 @@ export async function embedConcept(options: {
 
 /**
  * Persists one drafted Concept into a Collection and indexes it for
- * retrieval — the single write path every ingestion route (enriched source,
+ * retrieval, the single write path every ingestion route (enriched source,
  * crawled page, FAQ) goes through. The retrieval title is the frontmatter
  * title, falling back to the path.
  */
@@ -580,7 +579,7 @@ export type CrawlStartResult =
        * `refused` means an allowance said no: nothing is wrong with the Source,
        * so its status and knowledge are left alone. `failed` means the start
        * itself broke (bad target, no provider) and the Source is in `error`.
-       * The two must stay distinguishable — a caller that rolls back a refusal
+       * The two must stay distinguishable: a caller that rolls back a refusal
        * would wipe a real failure's error message.
        */
       outcome: "refused" | "failed";
@@ -589,7 +588,7 @@ export type CrawlStartResult =
 
 /**
  * Whether the organization owning this Collection may spend scraping budget on a
- * crawl by this crawler — and the visitor-safe reason when it may not.
+ * crawl by this crawler, and the visitor-safe reason when it may not.
  *
  * A crawler that costs nothing (the in-process local one) is never gated: there
  * is no budget to spend. Every crawler credential is the platform's own, so the
@@ -604,10 +603,9 @@ async function crawlBudgetRefusal(
   if (isFreeCrawler(crawler)) return null;
   try {
     const collection = await db.getCollection(collectionId);
-    const assistant = collection
-      ? await db.getAssistant(collection.assistantId)
-      : null;
-    if (!assistant) {
+    // Collections carry their Organization directly (PRD #726 contract).
+    const organizationId = collection?.organizationId || null;
+    if (!organizationId) {
       // Allowing an unattributable crawl is the right call, but never a silent
       // one: it means a crawl ran outside any organization's allowance.
       console.warn(
@@ -616,7 +614,7 @@ async function crawlBudgetRefusal(
       return null;
     }
     const outcome = await getEnterpriseCapabilities().metering.checkUsage({
-      organizationId: assistant.organizationId,
+      organizationId,
       connectionKind: "platform",
       resource: "scraping",
     });
@@ -642,7 +640,7 @@ export async function beginWebsiteCrawl(options: {
 
     // Resolve once and persist the result so config/env changes cannot reroute
     // an in-flight crawl between its start and finalization. A failed run never
-    // auto-starts another provider — an explicit retry re-runs this policy.
+    // auto-starts another provider, an explicit retry re-runs this policy.
     const resolution = resolveWebsiteCrawlerProvider(
       config.crawlerProvider,
       crawlCharacteristicsFromConfig(config),
@@ -654,7 +652,7 @@ export async function beginWebsiteCrawl(options: {
     // Crawling spends the scraping allowance (#510). The gate runs AFTER
     // resolution on purpose: the resolved crawler is what costs money, and a
     // crawl that lands on the free in-process crawler must never be refused for
-    // budget. A refusal leaves the Source exactly as it was — the previously
+    // budget. A refusal leaves the Source exactly as it was, the previously
     // ingested Concepts and its `ready` status stay, because a spent budget is
     // not a reason to downgrade knowledge that already works.
     const refusal = await crawlBudgetRefusal(
@@ -761,7 +759,7 @@ export async function restartWebsiteCrawl(options: {
   const result = await beginWebsiteCrawl({ db, sourceId });
   if (!result.started && result.outcome === "refused") {
     // A re-crawl refused by an allowance must not leave the Source stuck on the
-    // `processing` this function just set, with no run behind it — the knowledge
+    // `processing` this function just set, with no run behind it, the knowledge
     // it already has is still good, and it must stay claimable by the next
     // scheduled sweep. `ready` is that state; a start FAILURE is left in
     // `error` on purpose, which is why the two outcomes are distinguishable.
@@ -807,7 +805,7 @@ export async function finalizeWebsiteCrawl(options: {
   // Captured once the run is read, then attributed to every terminal telemetry
   // event: the resolved crawler, the worker task/run correlation id, and the
   // crawl's start time (for wall-clock duration). Worker health and
-  // memory/concurrency signals are monitored on the worker itself — see
+  // memory/concurrency signals are monitored on the worker itself, see
   // services/crawl4ai-worker/RUNBOOK.md §5 (health probe, /metrics, queue
   // depth, memory threshold); this sink carries only the per-crawl outcome.
   let crawlerProvider: ResolvedWebsiteCrawlerProvider | null = null;
@@ -890,7 +888,7 @@ export async function finalizeWebsiteCrawl(options: {
         });
       }
     } catch {
-      // Telemetry/lookup is best-effort — never let it mask the real failure.
+      // Telemetry/lookup is best-effort, never let it mask the real failure.
     }
     return "error";
   };
@@ -937,7 +935,7 @@ export async function finalizeWebsiteCrawl(options: {
 
     // Escalation (#402): a *Local* crawl that extracted nothing has likely hit a
     // JS-rendered site the in-process cheerio crawler can't see. Retry once via
-    // a browser provider when one is configured — Local stays the cheap default,
+    // a browser provider when one is configured, Local stays the cheap default,
     // and this never discards data: if the browser crawl can't even start we
     // fall through to the usual empty-result handling below.
     if (
@@ -970,7 +968,7 @@ export async function finalizeWebsiteCrawl(options: {
           });
           return "processing";
         } catch {
-          // Browser escalation couldn't start — ingest Local's (thin) result.
+          // Browser escalation couldn't start: ingest Local's (thin) result.
         }
       }
     }
@@ -991,7 +989,7 @@ export async function finalizeWebsiteCrawl(options: {
     // Create-then-delete replacement (issue #162), shared with the file/text
     // re-ingest path via `replaceSourceKnowledge` (#191). Lease renewals are
     // the ownership checkpoints: losing the lease at any point aborts without
-    // touching knowledge — another worker may already own the replacement.
+    // touching knowledge, another worker may already own the replacement.
     const replacement = await replaceSourceKnowledge({
       db,
       collectionId,
@@ -1017,8 +1015,8 @@ export async function finalizeWebsiteCrawl(options: {
               title: page.title,
               description: page.url,
               resource: page.url,
-              // No model touches a crawled page — the body is the page text
-              // verbatim — so the actor is the crawl process, not an agent.
+              // No model touches a crawled page: the body is the page text
+              // verbatim, so the actor is the crawl process, not an agent.
               generated: { by: okfActor.process("website-crawl"), at: timestamp },
               sources: [{ id: slugify(page.title), resource: page.url, title: page.title }],
             },
@@ -1038,7 +1036,7 @@ export async function finalizeWebsiteCrawl(options: {
       status: "ready",
       lastCrawledAt: new Date().toISOString(),
     });
-    // Crawl recovered — clear any operational alert raised by earlier failures.
+    // Crawl recovered: clear any operational alert raised by earlier failures.
     await signalHealth(
       db,
       assistant.organizationId,
@@ -1075,8 +1073,8 @@ export async function finalizeWebsiteCrawl(options: {
 /**
  * Replaces a Source's knowledge atomically (create-then-delete, issue #162
  * generalized by #190): captures the Source's current Concept ids as the
- * "prior" set — including any partial debris a crashed earlier attempt left
- * behind — lets the caller persist and embed the FULL new set alongside it,
+ * "prior" set, including any partial debris a crashed earlier attempt left
+ * behind, lets the caller persist and embed the FULL new set alongside it,
  * and only then retires the prior set. Because Concepts have no uniqueness
  * constraint on `path` within a Source, old and new coexist (and the old stays
  * searchable) for the duration of the ingest without conflict.
@@ -1091,7 +1089,7 @@ export async function finalizeWebsiteCrawl(options: {
  *   "aborted" with neither commit nor rollback: ownership was lost (e.g. a
  *   crawl-finalize lease expired), so another worker may already be writing.
  *
- * The caller owns the terminal Source status write — "committed" means the
+ * The caller owns the terminal Source status write, "committed" means the
  * replacement is durable and the Source may flip `ready`.
  */
 export async function replaceSourceKnowledge(options: {
@@ -1137,7 +1135,7 @@ export async function replaceSourceKnowledge(options: {
 
 /**
  * Full ingestion pipeline: enrich → persist Concepts → mark Source ready.
- * Knowledge replacement is atomic — a re-ingest keeps the Source's last-good
+ * Knowledge replacement is atomic: a re-ingest keeps the Source's last-good
  * Concepts live until the full new set commits, and a failure never destroys
  * them (see `replaceSourceKnowledge`); callers must not pre-delete.
  * Also owns the operational-health signal for this Source (parity with the
@@ -1159,7 +1157,7 @@ export async function ingestSource(options: {
   // reused by the health signals below.
   const assistant = await db.getAssistant(assistantId).catch(() => null);
   if (!assistant) {
-    // The enrichment call still runs but meters zero — keep that loud.
+    // The enrichment call still runs but meters zero, keep that loud.
     console.warn(
       `[ingest] enriching without usage attribution: assistant ${assistantId} not resolvable`
     );
@@ -1193,11 +1191,11 @@ export async function ingestSource(options: {
         return "persisted";
       },
     });
-    // No checkpoint is passed today, so an abort can't happen — but only a
+    // No checkpoint is passed today, so an abort can't happen, but only a
     // committed replacement may ever flip the Source ready.
     if (replacement === "aborted") return;
     await db.updateSource(source.id, { status: "ready" });
-    // Ingestion recovered — clear any operational alert from earlier failures.
+    // Ingestion recovered: clear any operational alert from earlier failures.
     if (assistant) {
       await signalHealth(
         db,

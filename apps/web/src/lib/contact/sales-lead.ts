@@ -11,7 +11,7 @@ import type { EmailMessage } from "@agent-hub/agent";
  * form itself is a `.tsx` the vitest include never picks up.
  *
  * The three option lists are exported for the form to render *and* for the
- * action to validate against — a select is a client-side suggestion, never a
+ * action to validate against, a select is a client-side suggestion, never a
  * guarantee about what arrives.
  */
 
@@ -184,14 +184,14 @@ export function validateSalesLead(
   };
 }
 
-/** Where the lead lands. Unset means the funnel is not wired — the action says so. */
+/** Where the lead lands. Unset means the funnel is not wired, the action says so. */
 export function salesInboxAddress(): string {
   return process.env.CONTACT_SALES_EMAIL?.trim() ?? "";
 }
 
 /**
  * The lead as an email. The consent value and its timestamp travel in the body
- * because this message *is* the record of consent — there is no lead table.
+ * because this message *is* the record of consent; there is no lead table.
  * `replyTo` is the enquirer, so a reply from the alias reaches them directly.
  */
 export function salesLeadEmail(
@@ -215,7 +215,7 @@ export function salesLeadEmail(
   ];
   return {
     to: meta.to,
-    subject: `Sales enquiry — ${lead.name} (${lead.email})`,
+    subject: `Sales enquiry, ${lead.name} (${lead.email})`,
     body: lines.join("\n"),
     replyTo: lead.email,
   };

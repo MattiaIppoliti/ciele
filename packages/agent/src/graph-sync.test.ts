@@ -15,7 +15,7 @@ import * as graphWorker from "./graph-worker";
 
 // Off-network: the graph-worker client is faked and the job ledger's other
 // import (./ingest) is stubbed so nothing real runs. The after-response
-// accelerator needs no stub — with no host registered it is a no-op by
+// accelerator needs no stub, with no host registered it is a no-op by
 // default, which is exactly the contract `host.ts` guarantees.
 vi.mock("./ingest", () => ({ ingestSource: vi.fn() }));
 vi.mock("./graph-worker", async (importOriginal) => {
@@ -51,7 +51,11 @@ function fakeDb(overrides: Partial<Db> = {}): Db {
   return {
     getConcept: vi.fn().mockResolvedValue(concept()),
     listConcepts: vi.fn().mockResolvedValue([concept(), concept({ id: "c2" })]),
-    getCollection: vi.fn().mockResolvedValue({ id: "col1", assistantId: "a1", name: "Handbook" }),
+    getCollection: vi.fn().mockResolvedValue({
+      id: "col1",
+      organizationId: "org1",
+      name: "Handbook",
+    }),
     getAssistant: vi.fn().mockResolvedValue({ id: "a1", organizationId: "org1" }),
     recordAiUsage: vi.fn().mockResolvedValue(undefined),
     createBackgroundJob: vi.fn().mockResolvedValue({ id: "job1" }),
@@ -133,7 +137,7 @@ describe("performGraphSyncConcept", () => {
     expect(db.recordAiUsage).toHaveBeenCalledWith([
       {
         organizationId: "org1",
-        assistantId: "a1",
+        assistantId: null,
         stage: "graph_cognify",
         provider: "google",
         modelId: "gemini/gemini-2.0-flash",

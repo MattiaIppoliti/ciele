@@ -35,7 +35,7 @@ describe("gradeGoalReply", () => {
 
   it("fails the fallback apology (always checked)", () => {
     const verdict = gradeGoalReply(
-      [{ type: "text", action: "fallback", text: "Sorry — I ran into a problem." }],
+      [{ type: "text", action: "fallback", text: "Sorry, I ran into a problem." }],
       {}
     );
     expect(verdict.pass).toBe(false);

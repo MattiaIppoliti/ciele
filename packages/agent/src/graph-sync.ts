@@ -2,7 +2,7 @@
  * Graph-sync jobs: keep each Knowledge Collection's derived Knowledge Graph in
  * step with its OKF Concepts (ADR-0017). Every create/update/delete of a
  * Concept enqueues one `graph_sync_concept` job (see `enqueueGraphSyncJob` in
- * `./jobs`) that pushes — or removes — that Concept's document on the graph
+ * `./jobs`) that pushes, or removes, that Concept's document on the graph
  * worker, tagged so a graph answer resolves back to Concept → Source. Deleting a
  * whole Collection (or the Assistant that owns it) instead enqueues one `purge`
  * job per Collection, which drops the entire dataset in a single worker call.
@@ -11,7 +11,7 @@
  * payload is rehydrated from the Db at run time (like `ingest_source`), so a
  * Concept edited between enqueue and run syncs its latest body.
  *
- * This module holds only the *performer* + payload shapes — deliberately no
+ * This module holds only the *performer* + payload shapes, deliberately no
  * import of `./jobs`, so the ledger (which imports `./ingest`, which enqueues
  * these) has no import cycle. The handler registration + enqueue live in
  * `./jobs`.
@@ -35,9 +35,9 @@ export const GRAPH_SYNC_KIND = "graph_sync_concept" as const;
  * Two shapes share the kind because both run through the same handler + cron
  * backstop:
  *  - Concept-scoped (`ingest` / `remove`): (re)build or drop one Concept's graph
- *    document — needs `conceptId`.
+ *    document, needs `conceptId`.
  *  - Collection-scoped (`purge`): drop a whole Collection's dataset on Collection
- *    or Assistant delete — no Concept, so no `conceptId` (a per-Concept remove
+ *    or Assistant delete, no Concept, so no `conceptId` (a per-Concept remove
  *    fan-out would be unbounded for a large collection; ADR-0017 follow-up).
  * The graph dataset is keyed by `collectionId` alone in every case.
  */
@@ -54,7 +54,7 @@ export type GraphSyncJob =
       collectionId: string;
     };
 
-/** A GraphSyncJob minus the fixed `kind` — the caller-supplied shape passed to
+/** A GraphSyncJob minus the fixed `kind`, the caller-supplied shape passed to
  * `enqueueGraphSyncJob`. Distributes over the union so each member keeps its own
  * fields (a plain `Omit` would collapse to the shared keys and lose `conceptId`
  * from the ingest/remove shape). */
@@ -88,7 +88,7 @@ export function graphSyncJobFromRecord(record: { payload: unknown }): GraphSyncJ
  * Runs one graph-sync job against the graph worker. A no-op when the worker is
  * unconfigured, so the whole layer stays inert without a sidecar. For `ingest`,
  * a Concept that has since been deleted or marked excluded is removed from the
- * graph instead — keeping the index a faithful projection of the searchable
+ * graph instead, keeping the index a faithful projection of the searchable
  * OKF Concepts.
  */
 export async function performGraphSyncConcept(
@@ -100,7 +100,7 @@ export async function performGraphSyncConcept(
   if (job.op === "purge") {
     // Whole-collection drop (Collection/Assistant deleted): reclaim the dataset
     // in one worker call rather than a per-Concept remove fan-out. There is no
-    // OKF to reconcile against — the Collection is gone.
+    // OKF to reconcile against: the Collection is gone.
     await purgeCollection(job.collectionId);
     return;
   }
@@ -112,7 +112,7 @@ export async function performGraphSyncConcept(
 
   const concept = await deps.db.getConcept(job.conceptId);
   if (!concept || concept.excluded) {
-    // Gone or excluded from the search index since enqueue — mirror that on
+    // Gone or excluded from the search index since enqueue, mirror that on
     // the graph rather than leaving a stale document behind.
     await removeConcept(job.collectionId, job.conceptId);
     return;
@@ -133,7 +133,7 @@ export async function performGraphSyncConcept(
 /**
  * Meters the cognify LLM usage the worker reported for a graph-building call
  * into the ai_usage ledger (`graph_cognify`), attributed to the Collection's
- * assistant/org. Attribution lookups are best-effort like the write itself —
+ * assistant/org. Attribution lookups are best-effort like the write itself,
  * a missing Collection (deleted mid-flight) just skips the row.
  */
 export async function meterGraphUsage(
@@ -142,18 +142,17 @@ export async function meterGraphUsage(
   usage: GraphWorkerUsage
 ): Promise<void> {
   const collection = await db.getCollection(collectionId).catch(() => null);
-  const assistant = collection
-    ? await db.getAssistant(collection.assistantId).catch(() => null)
-    : null;
-  if (!assistant) return;
+  // Collections carry their Organization directly (PRD #726 contract); graph
+  // work is a per-Collection cost, so it meters org-level with no assistant.
+  if (!collection?.organizationId) return;
   await meterUsage(db, [
     {
-      organizationId: assistant.organizationId,
-      assistantId: assistant.id,
+      organizationId: collection.organizationId,
+      assistantId: null,
       stage: "graph_cognify",
       provider: graphUsageProvider(usage),
       modelId: usage.modelId,
-      // The worker runs on its own env-configured LLM key — the deployment
+      // The worker runs on its own env-configured LLM key, the deployment
       // operator's credential, i.e. the funded bucket.
       credentialKind: "platform",
       inputTokens: usage.inputTokens,

@@ -16,7 +16,7 @@ import { retrySourceIngestAction } from "./actions";
 
 /**
  * Regression for spec #189 / ticket #190: the retry action must no longer
- * destroy a Source's Concepts up front — last-good knowledge stays live while
+ * destroy a Source's Concepts up front, last-good knowledge stays live while
  * the re-ingest job is pending and survives a failing job. Asserted as
  * observable Db state, never as internal call ordering.
  */

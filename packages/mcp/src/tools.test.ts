@@ -265,7 +265,7 @@ describe("ciele MCP tools", () => {
   /**
    * 2026-07-28 asks servers to return tools in a deterministic order so
    * clients can cache and LLM prompt caches hit (#701). `buildTools` returns
-   * an array literal, which already satisfies it — this locks that in, because
+   * an array literal, which already satisfies it, this locks that in, because
    * the obvious future refactor (build from a map/registry) would silently
    * break it.
    */
@@ -282,7 +282,7 @@ describe("ciele MCP tools", () => {
   /**
    * SEP-2106 loosened `inputSchema` to any JSON Schema 2020-12. Every tool
    * declares a raw Zod shape that `server.ts` wraps in `z.object`, so what
-   * reaches the wire must be an object schema — a tool whose schema is not an
+   * reaches the wire must be an object schema, a tool whose schema is not an
    * object would be rejected by a strict client.
    */
   it("every tool declares an object-shaped input schema", () => {

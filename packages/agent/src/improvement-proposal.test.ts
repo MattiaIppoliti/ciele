@@ -9,7 +9,7 @@ import type { Db } from "@agent-hub/db";
 import { EMBEDDING_DIMS } from "./embeddings";
 import { draftImprovementProposal } from "./improvement-proposal";
 
-// Only the two calls that would leave the machine are faked — the drafter's
+// Only the two calls that would leave the machine are faked, the drafter's
 // structured-output call and the embedding call. Everything else (context
 // gathering, credential resolution, the vector retrieval path) is the real
 // code running against a fake Db, so both mocks spread the original module:
@@ -94,7 +94,7 @@ function fakeDb(over: Partial<Db> = {}): Db {
 }
 
 /** The query the drafter builds from the visitor question + the reviewer note. */
-const QUERY = "how do I reset? — missed the portal step";
+const QUERY = "how do I reset? missed the portal step";
 
 let errors: string[];
 
@@ -193,7 +193,7 @@ describe("draftImprovementProposal", () => {
     });
     await draftImprovementProposal({ db, improvementId: "imp1", messageId: "m1" });
 
-    // The searcher was reached — the failure under test is the store's, not a
+    // The searcher was reached: the failure under test is the store's, not a
     // mock gap upstream of it.
     expect(db.searchChunks).toHaveBeenCalled();
     const prompt = mocks.generateObject.mock.calls[0][0].prompt as string;

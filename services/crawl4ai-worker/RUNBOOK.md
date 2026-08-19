@@ -10,7 +10,7 @@ bearer-token auth, and the same API contract (see [`README.md`](./README.md)).
 
 ---
 
-## 1. Why one managed container — no GKE / no Kubernetes
+## 1. Why one managed container: no GKE / no Kubernetes
 
 **Decision:** run Crawl4AI as a single private managed container service (Cloud
 Run or equivalent). Do **not** introduce GKE, Kubernetes, a self-operated
@@ -18,7 +18,7 @@ cluster, an external Redis, or a browser-fleet autoscaler for this feature.
 
 **Why:** the pilot needs exactly one bounded browser worker. Crawl4AI needs
 Chromium, several GiB of RAM, and a process lifecycle unsuited to Vercel
-functions — but that is a *container-shaped* need, not a *cluster-shaped* one. A
+functions, but that is a *container-shaped* need, not a *cluster-shaped* one. A
 managed container service gives us a pinned image, runtime secret injection,
 health probes, request/instance concurrency limits, scale bounds, and revision
 rollback with no control plane to operate. A cluster would add node pools,
@@ -46,19 +46,19 @@ Two layers, both auditable and both keeping secrets out of the image:
 | `SECRET_KEY` | HS256 signing key for the JWT path (unused by Ciele but validated at startup). | Required, ≥32 chars, not a known-weak value. Generate: `python3 -c "import secrets; print(secrets.token_hex(32))"`. |
 | `CRAWL4AI_HOOKS_ENABLED` | Arbitrary hook / JS execution. | Keep `false` (default). `true` is an RCE risk and is never set. |
 
-**Mounted config** (`/app/config.yml`) — fully replaces the image default, so it
+**Mounted config** (`/app/config.yml`): fully replaces the image default, so it
 is kept complete. Ciele-specific deltas from the pinned default (each marked
 `Ciele:` inline in the file):
 
-- `app.host: 0.0.0.0` — accept connections from the app; also arms the
+- `app.host: 0.0.0.0`: accept connections from the app; also arms the
   no-token-no-boot guard.
-- `security`: `enabled: true`, `jwt_enabled: false` — the static bearer token
+- `security`: `enabled: true`, `jwt_enabled: false`, the static bearer token
   is the auth. `api_token` left empty (comes from the env var).
-- `limits.max_pages: 50` — the product page budget, as defense in depth behind
-  the adapter's own clamp; `limits.wall_clock_s: 600` — per-crawl deadline;
-  `limits.queue.workers: 2`, `per_principal: 4` — bound concurrency.
-- `crawler.pool.max_pages: 8` — cap concurrent browser pages for a ~4 GiB box.
-- `webhooks.enabled: false` — completion is by polling, per the parent spec.
+- `limits.max_pages: 50`: the product page budget, as defense in depth behind
+  the adapter's own clamp; `limits.wall_clock_s: 600`, per-crawl deadline;
+  `limits.queue.workers: 2`, `per_principal: 4`, bound concurrency.
+- `crawler.pool.max_pages: 8`: cap concurrent browser pages for a ~4 GiB box.
+- `webhooks.enabled: false`: completion is by polling, per the parent spec.
 
 **Never** put the token, secret key, or any credential in `config.yml`, the
 image, logs, telemetry, Source config, or client payloads. The token is
@@ -77,7 +77,7 @@ Sized for a small pilot; each knob has a home so it is tunable later.
 | Shared memory | **1 GiB** | `shm_size` (local); gen2 `/dev/shm` (Cloud Run) | Chromium crashes on Docker's 64 MB default `/dev/shm`. |
 | Request concurrency | **2** | `containerConcurrency` / queue `workers` | Bound browser fan-out independently of Vercel concurrency. |
 | Min instances | **1** | `autoscaling…/minScale` | Never scale to zero while an async job is in flight; CPU stays for polling. |
-| Max instances | **1** | `autoscaling…/maxScale` | The job queue + rate store are in-container Redis — a task submitted to one instance is only pollable there. Raising this REQUIRES a shared external Redis first. |
+| Max instances | **1** | `autoscaling…/maxScale` | The job queue + rate store are in-container Redis, a task submitted to one instance is only pollable there. Raising this REQUIRES a shared external Redis first. |
 | CPU allocation | **always allocated** | `run.googleapis.com/cpu-throttling: "false"` | The crawl runs after the submit response returns; request-scoped CPU would freeze it between polls. |
 
 The single-instance constraint (`maxScale: 1` + session affinity) is the
@@ -125,7 +125,7 @@ TOKEN="$(gcloud secrets versions access latest --secret=crawl4ai-api-token)"
 CRAWL4AI_BASE_URL="$URL" CRAWL4AI_API_TOKEN="$TOKEN" ./scripts/smoke-test.sh
 ```
 
-Then set the app's server-side env (Vercel project settings — server scope only,
+Then set the app's server-side env (Vercel project settings, server scope only,
 never a `NEXT_PUBLIC_` var):
 
 ```
@@ -145,7 +145,7 @@ The app treats the crawler as available only when both are set
 - **Browser runtime:** local Docker verifies it on every health check
   (`scripts/healthcheck.py` renders an inline fixture). Cloud Run service probes
   are HTTP-only, so browser health is verified by running `scripts/smoke-test.sh`
-  against the deployed URL — as the post-deploy readiness gate and periodically
+  against the deployed URL, as the post-deploy readiness gate and periodically
   (e.g. an external uptime job or the schedule that owns re-crawls).
 - **Metrics:** `GET /metrics` (Prometheus, auth-gated) exposes request and job
   telemetry. Watch: task failure rate, queue depth (`maxsize` 1000 → 503 when
@@ -162,7 +162,7 @@ The app treats the crawler as available only when both are set
 ## 6. Version upgrades
 
 The Crawl4AI Docker API has changed substantially across releases, so upgrades
-are intentional, reviewed, and verified — never `latest`.
+are intentional, reviewed, and verified, never `latest`.
 
 1. **Read the release notes** for the target tag; confirm `/crawl/job`,
    `/crawl/job/{task_id}`, `/health`, the `CRAWL4AI_API_TOKEN` static-bearer
@@ -189,7 +189,7 @@ are intentional, reviewed, and verified — never `latest`.
 ## 7. Rollback
 
 - **Cloud Run:** every deploy is an immutable revision. Roll back by shifting
-  traffic to the last-good revision — no rebuild:
+  traffic to the last-good revision, no rebuild:
   ```bash
   gcloud run services update-traffic ciele-crawl4ai-worker \
     --region <REGION> --to-revisions <PREVIOUS_REVISION>=100
@@ -200,7 +200,7 @@ are intentional, reviewed, and verified — never `latest`.
 - **App-side:** the app never fails an in-flight run over to another provider;
   if the worker is unhealthy, an org admin's explicit retry re-resolves the
   provider (Automatic may pick Local or Apify). Disabling the crawler entirely
-  is just unsetting `CRAWL4AI_BASE_URL`/`CRAWL4AI_API_TOKEN` on the app —
+  is just unsetting `CRAWL4AI_BASE_URL`/`CRAWL4AI_API_TOKEN` on the app,
   Automatic then routes elsewhere and existing Apify/local runs still finalize.
 
 ---

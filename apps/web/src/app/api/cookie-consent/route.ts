@@ -14,7 +14,7 @@ const NO_STORE = { "Cache-Control": "no-store" } as const;
 /**
  * Records one cookie-consent decision (GDPR Art. 7(1) accountability).
  *
- * Public and unauthenticated by necessity — the visitors whose consent we must
+ * Public and unauthenticated by necessity, the visitors whose consent we must
  * be able to evidence are anonymous. That makes this a trust boundary:
  *
  * - Every response is 204, whatever happens. A visitor gets no feedback about
@@ -23,8 +23,8 @@ const NO_STORE = { "Cache-Control": "no-store" } as const;
  * - Cross-origin posts are refused: only our own pages have any business
  *   writing here, and the check turns drive-by junk into a cheap 204.
  * - A storage failure is swallowed after logging. Failing the request would do
- *   nothing for the visitor — their choice is already applied client-side and
- *   held in their own cookie — and surfacing it would only invite probing.
+ *   nothing for the visitor, their choice is already applied client-side and
+ *   held in their own cookie, and surfacing it would only invite probing.
  */
 export async function POST(request: NextRequest) {
   if (!isSameOrigin(request)) return noContent();
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   const record = parseConsentRecord(body, {
-    // Taken from the request, not the payload — one of the two facts here we
+    // Taken from the request, not the payload, one of the two facts here we
     // do not have to treat as hostile.
     userAgent: request.headers.get("user-agent"),
   });

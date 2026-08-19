@@ -1,7 +1,7 @@
 // Pins the fake env template to the real one.
 //
 // The fake exists so the smoke and the engine tests can run without the
-// bundled deploy assets — which also means nothing in that path ever reads
+// bundled deploy assets, which also means nothing in that path ever reads
 // `deploy/.env.example`. Without these two tests, the fake and the real file
 // drift apart in silence: a key renamed or added there would still pass every
 // fake-backed check and only fail on a user's machine.

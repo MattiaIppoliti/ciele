@@ -12,7 +12,7 @@ import { getApiV1Db } from "@/lib/api-v1/db";
 import { apiError } from "@/lib/api-v1/http";
 
 /**
- * The authentication seam every /api/v1 route goes through (#619) — the
+ * The authentication seam every /api/v1 route goes through (#619), the
  * API-key twin of `requireMember`: resolve the caller, check the capability,
  * hand back a Db that cannot leave the caller's Organization.
  */
@@ -24,7 +24,7 @@ export interface ApiKeyContext {
   keyId: string;
   /** Human who delegated this key; used for audit fields on derived writes. */
   actorUserId: string;
-  /** Org-pinned, fail-closed Db view — the only Db routes may touch. */
+  /** Org-pinned, fail-closed Db view, the only Db routes may touch. */
   db: Db;
 }
 
@@ -53,8 +53,8 @@ const unauthorized = () =>
 
 /**
  * The one definition of what an `Authorization: Bearer ciele_sk_…` header
- * looks like. Callers that need the raw secret rather than a resolved context
- * — the MCP endpoint forwards it to the tools — share it from here so a header
+ * looks like. Callers that need the raw secret rather than a resolved context,
+ * the MCP endpoint forwards it to the tools, share it from here so a header
  * this rejects can never be one a caller accepts.
  */
 export function bearerApiKeySecret(header: string | null): string | undefined {

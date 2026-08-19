@@ -1,5 +1,5 @@
 /**
- * Turn Session — the runtime's view of a conversation's persistent cross-turn
+ * Turn Session: the runtime's view of a conversation's persistent cross-turn
  * state (tau-style sessions). A Conversation already persists its transcript;
  * this is the *working state* that isn't a message: facts the `remember` tool
  * saved, anything a tool wants to find again next turn.
@@ -7,7 +7,7 @@
  * The seam is deliberately narrow: turn.ts loads `conversations.session_state`
  * into a TurnSession before running the engine, tools mutate it through
  * `remember`, and turn.ts writes it back after the assistant message is
- * persisted — only when something actually changed (`dirty`), so read-only
+ * persisted, only when something actually changed (`dirty`), so read-only
  * turns cost no extra write. The generic `get`/`set` pair exists for runtime
  * state that rides the same bag without being memory: the proactive
  * delivery-rule patches and the graph QA map (turn.ts) both use it.

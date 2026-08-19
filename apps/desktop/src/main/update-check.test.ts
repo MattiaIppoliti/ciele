@@ -69,7 +69,7 @@ describe("checkForUpdate", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("fails silently offline — a plane is not an error state", async () => {
+  it("fails silently offline, a plane is not an error state", async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error("getaddrinfo ENOTFOUND");
     });

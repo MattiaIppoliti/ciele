@@ -45,8 +45,8 @@ const COLUMNS: Array<{
 
 /* The footer mirrors the hero sky: daytime birds in light mode, stars and
    falling-star streaks in dark mode. The content sits in a rounded card
-   inset from the edges — same translucent surface as the scrolled navbar
-   pill — so the sky stays visible around it and blurs through it. */
+   inset from the edges, same translucent surface as the scrolled navbar
+   pill, so the sky stays visible around it and blurs through it. */
 export function HomeFooter() {
   return (
     <footer
@@ -57,8 +57,8 @@ export function HomeFooter() {
       className="home-below-fold home-sky-footer relative scroll-mt-24 overflow-hidden px-4 pt-16 sm:px-8 sm:pt-24 lg:px-12"
     >
       {/* Light-mode top seam: the white section above blends gradually down
-          into the sky over a tall band, so the two never meet on a hard edge
-          — the same soft handoff the night gradient gives for free in dark
+          into the sky over a tall band, so the two never meet on a hard edge,
+          the same soft handoff the night gradient gives for free in dark
           mode. It sits at the bottom of the stack so the sun and birds paint
           over it and stay visible through the blend. */}
       <div

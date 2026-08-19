@@ -9,7 +9,7 @@
 // can be grouped by where the module came from.
 //
 // IMPORTANT: `compressed_size` is each module compressed *in isolation*, so the
-// column does not sum to the route's real gzip size — a route's parts add up to
+// column does not sum to the route's real gzip size, a route's parts add up to
 // noticeably more than the transferred bytes. Use these numbers for *ratios*
 // ("the animated wrappers are 1.7x the lucide glyphs"), and measure-bundle.mjs
 // or an A/B build for absolute totals. See docs/runbooks/bundle-measurement.md.
@@ -25,7 +25,7 @@ const topN = Number(process.argv[3] ?? 20);
 if (!existsSync(join(dataDir, route, "analyze.data"))) {
   const available = existsSync(dataDir)
     ? readdirSync(dataDir).filter((f) => !f.includes(".")).join(", ")
-    : "(none — run `pnpm analyze` first)";
+    : "(none, run `pnpm analyze` first)";
   console.error(`No analyze data for "${route}". Available: ${available}`);
   process.exit(1);
 }
@@ -75,7 +75,7 @@ function fullPath(index, seen = new Set()) {
   return path;
 }
 
-// Client chunks only — the same analyze data also covers the SSR bundle, which
+// Client chunks only: the same analyze data also covers the SSR bundle, which
 // the browser never downloads.
 const isClient = (index) =>
   /\[client-fs\]|\/_next\/static\//.test(data.output_files[index]?.filename ?? "");

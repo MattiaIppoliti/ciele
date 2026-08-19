@@ -6,7 +6,7 @@ Why: OKF makes the knowledge portable (export/import a collection as a tarball, 
 
 **Rejected:** storing only raw files + embedding chunks (simplest, but knowledge is not portable, not human-curatable, and citations can only point at page offsets instead of curated Concepts).
 
-## Update — OKF v0.2 (2026-07-26)
+## Update: OKF v0.2 (2026-07-26)
 
 The format moved to **v0.2**, which makes provenance, trust and lifecycle first-class for a corpus that is mostly agent-written. We adopt it in full on the *producer* and *consumer* side; the format module is [`packages/db/src/okf.ts`](../../packages/db/src/okf.ts) (`OKF_VERSION`, the frontmatter types, and the pure derivations), re-exported through `@agent-hub/db`.
 
@@ -15,19 +15,19 @@ What every Concept we write now carries:
 | Family | Field | Who stamps it |
 |---|---|---|
 | Trust (§5.2) | `generated: { by, at }` | LLM enrichment → `okf-enricher/<modelId>`; verbatim companion → `process:okf-verbatim-index`; crawl → `process:website-crawl`; no-model ingest → `process:okf-ingest-passthrough`; FAQ authoring/import → `human:<userId>`; accepted Suggested Fix → `suggested-fix-drafter/<model>` |
-| Trust (§5.2) | `verified: [{ by, at }]` | Only a real confirmation event. Today that is exactly one: accepting a Suggested Fix stamps `human:<reviewer>` — the sole path that yields the `human-reviewed` tier |
+| Trust (§5.2) | `verified: [{ by, at }]` | Only a real confirmation event. Today that is exactly one: accepting a Suggested Fix stamps `human:<reviewer>`, the sole path that yields the `human-reviewed` tier |
 | Provenance (§5.1) | `sources: [{ id, resource, title }]` | The Source the Concept derives from: the page URL, the retained original's storage key, or a scope descriptor when there is no followable artifact |
 
 Deliberate non-decisions, so they are not mistaken for oversights:
 
-- **No backfill of `generated` onto pre-upgrade rows.** `generated.by` is required within `generated` and we do not know who authored v0.1 rows; inventing an actor would be a provenance lie. §13.1 blesses the read-time fallback instead, so `conceptGeneratedAt()` reads `generated.at` and falls back to the legacy `timestamp`. Old rows stay readable and honestly unattributed. No migration ships with this change — `frontmatter` is `jsonb`, so the new families need no schema change.
+- **No backfill of `generated` onto pre-upgrade rows.** `generated.by` is required within `generated` and we do not know who authored v0.1 rows; inventing an actor would be a provenance lie. §13.1 blesses the read-time fallback instead, so `conceptGeneratedAt()` reads `generated.at` and falls back to the legacy `timestamp`. Old rows stay readable and honestly unattributed. No migration ships with this change, `frontmatter` is `jsonb`, so the new families need no schema change.
 - **We do not stamp `status` or `stale_after`.** Absent `status` means `stable` (§5.4), which is true of everything we write, and we have no signal that would justify a freshness date. Both are modeled and read; nothing fabricates them.
-- **Attested Computations (§10) are modeled, not executed.** `runtime` / `parameters` / `computation` / `executor` / `attester` are typed so a bundle authored elsewhere survives a round-trip through the platform. Shipping an executor/attester runner is out of scope — OKF fixes the interface, and the spec itself defers the runtime protocol (§12).
+- **Attested Computations (§10) are modeled, not executed.** `runtime` / `parameters` / `computation` / `executor` / `attester` are typed so a bundle authored elsewhere survives a round-trip through the platform. Shipping an executor/attester runner is out of scope, OKF fixes the interface, and the spec itself defers the runtime protocol (§12).
 - **Credibility signals (`author`, `usage_count`, `last_modified`, `usage_window`) are modeled but unpopulated.** We have no usage telemetry per source to report, and a fabricated count is worse than none.
 
-Consumers read these only through the derivations (`trustTier`, `verificationEvents`, `conceptStatus`, `isStale`, `conceptGeneratedAt`) — the `verified`-is-a-mapping-or-a-list rule (§5.2, a §11 MUST) and the legacy-`timestamp` fallback each live in exactly one place. The Knowledge browser surfaces trust tier, non-default status, staleness and `sources` on each concept card.
+Consumers read these only through the derivations (`trustTier`, `verificationEvents`, `conceptStatus`, `isStale`, `conceptGeneratedAt`), the `verified`-is-a-mapping-or-a-list rule (§5.2, a §11 MUST) and the legacy-`timestamp` fallback each live in exactly one place. The Knowledge browser surfaces trust tier, non-default status, staleness and `sources` on each concept card.
 
-## Update — the verbatim companion Concept (2026-07-26)
+## Update: the verbatim companion Concept (2026-07-26)
 
 Enrichment rewrites, and `embedConcept` chunks the Concept *body*, so for a file / URL / pasted-text
 Source the vector index only ever saw the model's rewrite: detail the rewrite dropped was
@@ -38,7 +38,7 @@ prompt's 60k characters. Website crawls were unaffected (their bodies are verbat
 `originals/<slug>.md`, `type: Source Text`, `generated: process:okf-verbatim-index`, body = the
 extracted text unedited and uncapped. It is an ordinary Concept on the ordinary `persistConcept`
 seam, so it chunks, embeds, graph-syncs and atomically replaces like any other, and citations still
-resolve Concept → Source. Written **only when enrichment ran** — the no-model pass-through Concept
+resolve Concept → Source. Written **only when enrichment ran**, the no-model pass-through Concept
 already is the verbatim text, and crawled pages already are too, so a companion there would be a
 duplicate competing for the same top-*k* slots.
 
@@ -47,7 +47,7 @@ source is absent from the index, with cosine arbitrating between the two.
 
 **Rejected:** chunk-level provenance (verbatim chunks attached to whichever Concept covers them). It
 keeps one Concept per unit and avoids near-duplicate hits, but requires the enricher to emit
-trustworthy text spans back into the original plus a `concept_chunks` schema change — LLM-reported
+trustworthy text spans back into the original plus a `concept_chunks` schema change, LLM-reported
 offsets are exactly the kind of thing that is silently wrong.
 
 **Cost accepted:** embedding roughly doubles per enriched Source (negligible), and `graph_cognify`

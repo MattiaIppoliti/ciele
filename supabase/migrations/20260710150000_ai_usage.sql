@@ -36,7 +36,7 @@ create policy "members read ai usage" on public.ai_usage
 create policy "members record ai usage" on public.ai_usage
   for insert with check (private.is_org_member(organization_id));
 
--- Today's (UTC) token total for an organization — the budget pre-turn check.
+-- Today's (UTC) token total for an organization, the budget pre-turn check.
 -- Security invoker: RLS scopes callers, the service role sees everything.
 create or replace function public.org_ai_tokens_today(p_organization_id uuid)
 returns bigint

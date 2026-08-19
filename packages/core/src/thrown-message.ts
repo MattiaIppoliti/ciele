@@ -1,5 +1,5 @@
 /** PostgREST failures surface as plain objects with a `message`, not Error
- *  instances — read it before falling back so admins see the real cause. */
+ *  instances, read it before falling back so admins see the real cause. */
 export function thrownMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) return error.message;
   if (

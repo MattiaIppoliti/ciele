@@ -21,7 +21,7 @@ import {
  * an email channel's configured form. Opened by the floating contact-support
  * button, an escalation quick reply, or an AI-recommended help_desk part.
  * Reads the live Help Desks settings (server action), not a Publication
- * snapshot. Submitting a form here only previews the confirmation message —
+ * snapshot. Submitting a form here only previews the confirmation message,
  * no escalation email leaves the Preview.
  */
 export function PreviewEscalation({

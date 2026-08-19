@@ -12,12 +12,12 @@
 #   cron      the six scheduled jobs, no Vercel needed
 # and these two stay off until you ask for them:
 #   workers   graph + crawler (heavy: ~8 GiB RAM, browser runtime)
-#   studio    the database admin UI — a standing privileged surface
+#   studio    the database admin UI, a standing privileged surface
 #
 # The database layer is the Supabase OSS stack trimmed to what Ciele uses:
 # Postgres (with pgvector), GoTrue for auth, PostgREST for the data API, and
 # storage-api for files. Realtime, Edge Functions, Analytics and the Kong
-# gateway are not started — a small nginx does the one job Ciele needs from
+# gateway are not started, a small nginx does the one job Ciele needs from
 # the gateway, routing /auth /rest /storage under a single origin so the app
 # has one SUPABASE_URL.
 #
@@ -123,7 +123,7 @@ services:
 
   # One origin for auth + rest + storage, the single job Ciele needs from a
   # gateway. Replaces Kong (which additionally does key-auth and rate
-  # limiting Ciele does not rely on — PostgREST and GoTrue verify the JWT
+  # limiting Ciele does not rely on, PostgREST and GoTrue verify the JWT
   # themselves against JWT_SECRET).
   gateway:
     profiles: [db]

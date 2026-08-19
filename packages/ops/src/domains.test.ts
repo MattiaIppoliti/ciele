@@ -446,6 +446,7 @@ describe("knowledge operations (#622)", () => {
     });
 
     const { source } = await addSourceOp.run(withPorts, {
+      assistantId: assistant.id,
       collectionId: collection.id,
       name: "Handbook",
       kind: "text",
@@ -490,11 +491,13 @@ describe("knowledge operations (#622)", () => {
     });
 
     await createFaqOp.run(withPort, {
+      assistantId: assistant.id,
       collectionId: collection.id,
       question: "When is tuition due?",
       answer: "October.",
     });
     const { imported } = await importFaqsOp.run(withPort, {
+      assistantId: assistant.id,
       collectionId: collection.id,
       fileName: "faqs.csv",
       rows: [
@@ -518,6 +521,7 @@ describe("knowledge operations (#622)", () => {
     const { source } = await addSourceOp.run(
       ctx({ ports: { enqueueIngest: async () => {} } }),
       {
+        assistantId: assistant.id,
         collectionId: collection.id,
         name: "note",
         kind: "text",

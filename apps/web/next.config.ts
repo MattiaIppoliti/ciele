@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
   images: {
     // AVIF first, WebP second (Next's default is WebP alone). The marketing
     // hero's two painterly clouds are the heaviest images the public site
-    // serves and they are `priority`, so they are preloaded — AVIF typically
+    // serves and they are `priority`, so they are preloaded, AVIF typically
     // lands 20-30% under WebP on exactly this kind of soft-gradient artwork.
     // The cost is a slower first optimization per size; the result is cached.
     formats: ["image/avif", "image/webp"],
@@ -39,10 +39,25 @@ const nextConfig: NextConfig = {
     // standalone bundle. The terminal one-liner is served from here too.
     "/api/local-connector/runtime": [connectorArtifact],
   },
+  // The org-level knowledge hub moved from /knowledge to /library with its nav
+  // label, so bookmarks and browser history keep resolving. Only the two
+  // console URLs that existed are listed: `:tab` matches a single segment, so
+  // the `/api/v1/knowledge/*` endpoints, a different surface that keeps its
+  // name, are never touched.
+  async redirects() {
+    return [
+      { source: "/knowledge", destination: "/library", permanent: true },
+      {
+        source: "/knowledge/:tab",
+        destination: "/library/:tab",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       // Images (assistant avatars, org logos, profile photos) no longer travel
-      // through Server Actions as base64 — they upload their binary directly to
+      // through Server Actions as base64, they upload their binary directly to
       // object storage (see lib/storage/assets.ts). The cap that remains is
       // solely for knowledge file uploads, whose Server Action would otherwise
       // hit the default 1 MB limit and reject most PDFs. Vercel still enforces

@@ -49,7 +49,7 @@ describe("testApiRequest", () => {
     expect(result.error).toBeNull();
   });
 
-  it("defaults to the strict egress posture — no HTTP, no loopback — unless the host relaxes it", async () => {
+  it("defaults to the strict egress posture, no HTTP, no loopback, unless the host relaxes it", async () => {
     // The environment is a host fact behind the `allowRelaxedEgress` port
     // (#577): unwired means strict, and only an explicit registration relaxes.
     try {

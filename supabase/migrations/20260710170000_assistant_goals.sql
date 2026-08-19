@@ -36,7 +36,7 @@ create policy "editors update goals" on public.assistant_goals
 create policy "editors delete goals" on public.assistant_goals
   for delete using (private.has_org_role(organization_id, 2));
 
--- Run ledger: appended by the scheduled runner (service role only — no
+-- Run ledger: appended by the scheduled runner (service role only, no
 -- insert policy on purpose); members read for flakiness triage.
 create table public.assistant_goal_runs (
   id uuid primary key default gen_random_uuid(),

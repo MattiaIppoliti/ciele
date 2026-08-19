@@ -41,7 +41,7 @@ const DUE_DATE_PRESETS: Array<{ label: string; days: number }> = [
 
 /**
  * Right-click (or long-press / Shift+F10) menu on an Improvement, shared by the
- * list rows and the Kanban cards — the same menu component the Assistants grid
+ * list rows and the Kanban cards, the same menu component the Assistants grid
  * uses, with this entity's fields instead of its actions.
  *
  * Tags offer the ones already in use across the Organization: coining a new tag
@@ -60,7 +60,7 @@ export function ImprovementContextMenu({
   members: Array<{ userId: string; email: string }>;
   tagOptions: string[];
   canEdit: boolean;
-  /** "Open in side panel" — the board's drawer. */
+  /** "Open in side panel", the board's drawer. */
   onOpenDrawer: () => void;
   /**
    * Called with a tag as it is removed: the options come from the tags in use,
@@ -97,7 +97,7 @@ export function ImprovementContextMenu({
     : matchingMembers.slice(0, COLLAPSED_MEMBERS);
   const hiddenMemberCount = matchingMembers.length - visibleMembers.length;
 
-  /** "…more" — hand the pointer to the search field and flash its border. */
+  /** "…more", hand the pointer to the search field and flash its border. */
   function nudgeSearch() {
     searchRef.current?.focus();
     setSearchNudged(true);

@@ -6,7 +6,7 @@ import type { HistoryMessage } from "./types";
  * resolver: the runtime (Button text today, the API request action next)
  * consumes TEMPLATE_VARIABLES and resolveTemplate. The Flow Builder's variable
  * picker/docs modal consumes the same catalog once it's surfaced through a
- * barrel (#185) — keeping every surface derived from this single source.
+ * barrel (#185), keeping every surface derived from this single source.
  * Internal to the runtime deep module until then.
  *
  * Catalog scope (locked on wayfinder map #170): `conversation.summary` is
@@ -79,7 +79,7 @@ function renderHistory(history: HistoryMessage[]): string {
   );
   const transcript = lines.join("\n");
   if (transcript.length <= HISTORY_CHAR_CAP) return transcript;
-  // Keep the tail — the most recent turns are the most relevant.
+  // Keep the tail: the most recent turns are the most relevant.
   return `…\n${transcript.slice(transcript.length - HISTORY_CHAR_CAP)}`;
 }
 
@@ -175,7 +175,7 @@ const TOKEN = /\{\{([A-Za-z0-9_.]+)\}\}/g;
  * `mode`. A token resolves when its name is a catalog variable *or* a key the
  * context carries (e.g. an api_request JSON-path extraction); unresolved
  * catalog variables become empty strings. A token that is neither is left
- * verbatim — it isn't ours (`{{course.name}}`, `{{session.id}}`).
+ * verbatim, it isn't ours (`{{course.name}}`, `{{session.id}}`).
  */
 export function resolveTemplate(
   text: string,

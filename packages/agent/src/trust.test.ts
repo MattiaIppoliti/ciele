@@ -63,7 +63,7 @@ describe("needsWatchEscalation (runtime behavior rule)", () => {
   });
   it("a courtesy reply never gets the escalation offer stapled to it", () => {
     // Basic Interaction (#565) is generated, but it grounds nothing and answers
-    // no question — "Contact support" under "Hello!" reads as a broken assistant.
+    // no question, "Contact support" under "Hello!" reads as a broken assistant.
     const courtesy: ChatReplyPart = {
       type: "text",
       action: "basic_reply",

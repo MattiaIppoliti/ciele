@@ -26,7 +26,7 @@ import {
 } from "./ready-to-answer";
 
 /**
- * The Agentic Search entrypoint (#206) — the whole generative retrieval turn
+ * The Agentic Search entrypoint (#206): the whole generative retrieval turn
  * behind one call. Everything between "the `search_knowledge` handler decided
  * to run a generative turn" and "reply parts are ready" lives here: context
  * frame → query understanding → pre-search clarify → the deterministic
@@ -54,13 +54,13 @@ export interface FlowStyleContext {
 /**
  * Composes the turn's system prompt from its layers, highest precedence
  * first (see docs/agentic-chat-runtime.md):
- * 1. Platform (Ciele) — immutable, owner-only, orgs can't see or change it.
- * 2. Assistant — identity + the org's answeringStyle system prompt.
- * 3. Attached Skills — reusable org prompt templates (below the style).
- * 4. Session memory — facts the `remember` tool saved in earlier turns.
- * 5. Retrieval context — the Agentic Search frame for this turn (resolved
+ * 1. Platform (Ciele): immutable, owner-only, orgs can't see or change it.
+ * 2. Assistant: identity + the org's answeringStyle system prompt.
+ * 3. Attached Skills: reusable org prompt templates (below the style).
+ * 4. Session memory: facts the `remember` tool saved in earlier turns.
+ * 5. Retrieval context: the Agentic Search frame for this turn (resolved
  *    intent + scope guidance + any seeded findings); omitted when empty.
- * 6. Flow — the routing context of this specific turn, including any per-flow
+ * 6. Flow: the routing context of this specific turn, including any per-flow
  *    Search-knowledge answering style / search guidelines.
  *
  * A flow's answering style either overrides the org default (when
@@ -107,9 +107,9 @@ export function buildSystemPrompt(
     retrievalContext?: string;
     /**
      * Which half of the two-phase turn this prompt is for (#558).
-     * - `gather` (default) — tools are available and the model may NOT write to
+     * - `gather` (default): tools are available and the model may NOT write to
      *   the user; it must finish by calling the terminal tool.
-     * - `write` — no tools; the answering style applies and the model writes.
+     * - `write`: no tools; the answering style applies and the model writes.
      */
     phase?: "gather" | "write";
     /**
@@ -129,7 +129,7 @@ export function buildSystemPrompt(
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
 
   return [
-    "# Platform instructions (immutable — highest precedence)",
+    "# Platform instructions (immutable, highest precedence)",
     platformPrompt,
     "",
     "# Assistant configuration (set by the organization)",
@@ -143,7 +143,7 @@ export function buildSystemPrompt(
     ...(skills.length > 0
       ? [
           "",
-          "# Attached skills (organization-authored playbooks — apply when relevant)",
+          "# Attached skills (organization-authored playbooks, apply when relevant)",
           ...skills.map((s) => `## Skill: ${s.name}\n${s.prompt.trim()}`),
         ]
       : []),
@@ -169,17 +169,17 @@ export function buildSystemPrompt(
       ? [
           "",
           "# This turn has two phases and you are in the FIRST one",
-          "Gather what you need, then declare you are done. Do NOT write anything addressed to the user in this phase — no answer, no apology, no clarification question. Any prose you produce here is treated as your private reasoning.",
+          "Gather what you need, then declare you are done. Do NOT write anything addressed to the user in this phase, no answer, no apology, no clarification question. Any prose you produce here is treated as your private reasoning.",
           // Streamed thinking (#584): the reasoning is watched live in the
           // Thinking panel, so the model narrates every step of the loop in
-          // the Visitor's language — the reference's [Thinking:] cadence.
-          "Think out loud as you go — this is REQUIRED, not optional: NEVER emit a tool call without first writing one or two short sentences of reasoning in the user's own language, saying what you have learned so far and what you will do next. That includes your FIRST tool call and the final readyToAnswer call. The user watches this reasoning stream in a side panel while they wait, so keep it presentable; it is still reasoning, not the answer.",
-          "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts — one call costs one iteration however many queries it carries.",
+          // the Visitor's language, the reference's [Thinking:] cadence.
+          "Think out loud as you go; this is REQUIRED, not optional: NEVER emit a tool call without first writing one or two short sentences of reasoning in the user's own language, saying what you have learned so far and what you will do next. That includes your FIRST tool call and the final readyToAnswer call. The user watches this reasoning stream in a side panel while they wait, so keep it presentable; it is still reasoning, not the answer.",
+          "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts, one call costs one iteration however many queries it carries.",
           "If a search comes back thin, search again with different wording; you do not need permission to reformulate.",
-          "The knowledge base is often written in a different language than the user's message. When the user writes in another language, include translated variants (English plus the organization's likely language) among the queries of the SAME call — retrieval matches the document's own words, so a query in the wrong language finds nothing even when the answer is there.",
+          "The knowledge base is often written in a different language than the user's message. When the user writes in another language, include translated variants (English plus the organization's likely language) among the queries of the SAME call, retrieval matches the document's own words, so a query in the wrong language finds nothing even when the answer is there.",
           "You MUST finish by calling readyToAnswer exactly once, with the status that matches what you found. You will then get a second phase in which to write, and its instructions arrive on that tool's result.",
           context?.alreadyClarified
-            ? "This conversation has ALREADY asked the visitor to clarify once. Do not ask again — answer as best you can from what you find and say plainly what you could not determine."
+            ? "This conversation has ALREADY asked the visitor to clarify once. Do not ask again, answer as best you can from what you find and say plainly what you could not determine."
             : undefined,
           searchGuidelines &&
             `Search guidelines for this flow (apply them when calling searchKnowledge):\n${searchGuidelines}`,
@@ -187,7 +187,7 @@ export function buildSystemPrompt(
           // describes, so it costs nothing and can never describe a phase that
           // did not run. The schema field only exists while the toggle is on.
           assistant.simplifiedThinking
-            ? `Every tool call MUST also set \`progress\`: one short sentence, in the user's own language, telling them what you are about to do — e.g. "Sto cercando i video nella sezione Video Prova del corso…". The user reads it while the call runs, so write it for them, keep it under ${PROGRESS_MAX_CHARS} characters, and never put reasoning, tool names or internal detail in it.`
+            ? `Every tool call MUST also set \`progress\`: one short sentence, in the user's own language, telling them what you are about to do, e.g. "Sto cercando i video nella sezione Video Prova del corso…". The user reads it while the call runs, so write it for them, keep it under ${PROGRESS_MAX_CHARS} characters, and never put reasoning, tool names or internal detail in it.`
             : undefined,
           "When the user shares a durable fact worth carrying into later turns (their role, product, account, or preference), save it with the remember tool.",
         ]
@@ -255,7 +255,7 @@ export interface AgenticSearchTurnInput {
   /** Label for the human exit-ramp chip on a safety refusal. */
   contactLabel: string;
   /**
-   * Assembles the turn's ToolSet around the run's live pass state — injected
+   * Assembles the turn's ToolSet around the run's live pass state, injected
    * by the handler (which owns the tool registry wiring) so this module never
    * imports the registry that already imports it.
    */
@@ -270,8 +270,8 @@ export interface AgenticSearchTurnInput {
     writeTimeStyle: WriteTimeStyle;
     /**
      * Simplified-thinking sink (#560), or undefined when the toggle is off. The
-     * registry calls it as each tool phase starts — naming the tool being
-     * narrated (#576) — and the turn turns the line into a streamed and
+     * registry calls it as each tool phase starts, naming the tool being
+     * narrated (#576), and the turn turns the line into a streamed and
      * persisted `progress` part.
      */
     narrate: ((text: string, tool: string) => void) | undefined;
@@ -286,8 +286,8 @@ export interface AgenticSearchTurnInput {
 
 /**
  * What the retrieval turn came to, for the handler's flow-action policy.
- * `grounded` — a Sources part was produced (the answer cites knowledge).
- * `terminal` — the turn ended on a clarify, refusal, or truncation; flow
+ * `grounded`: a Sources part was produced (the answer cites knowledge).
+ * `terminal`: the turn ended on a clarify, refusal, or truncation; flow
  * policy (escalation chip, auto-Improvement) must not apply on top.
  */
 export interface AgenticSearchOutcome {
@@ -351,10 +351,10 @@ export async function runAgenticSearch(
 
   // The live signals retrieval may use, stated for the model rather than
   // resolved for it: the anchored Knowledge Collection. Deictic follow-ups
-  // ("what about the second one?") are the model's job now — it has the
+  // ("what about the second one?") are the model's job now; it has the
   // history, and its own reasoning resolves them (#558). Remembered facts are
   // NOT part of the frame: the system prompt's two memory blocks (session /
-  // long-term, below) are their single owner — rendering them here too used to
+  // long-term, below) are their single owner, rendering them here too used to
   // put every fact in the gather prompt twice and erase the session-vs-durable
   // distinction the two blocks exist to preserve.
   const frame = buildContextFrame({
@@ -365,7 +365,7 @@ export async function runAgenticSearch(
 
   // Simplified thinking (#560): the narration lines the tool phases produce.
   // Streamed the moment each phase starts, and returned with the reply so the
-  // saved message — and the Inbox transcript — carry the same narration the
+  // saved message, and the Inbox transcript, carry the same narration the
   // Visitor watched. Their own parts, never concatenated onto the answer text.
   const progressParts: ChatReplyPart[] = [];
   const narrate = assistant.simplifiedThinking
@@ -414,13 +414,13 @@ export async function runAgenticSearch(
     ],
     tools,
     stopWhen: [
-      // The declaration ends the phase — there is nothing left to gather for.
+      // The declaration ends the phase: there is nothing left to gather for.
       () => terminal.status !== null,
       // The binding gate: the budget the model has been planning against, and
       // the number it was told. Declaring is free, so a model that spends every
       // iteration searching can still finish by declaring.
       () => loop.iteration >= loop.limit,
-      // Retrieval cost ceiling underneath it — only a pathological batch hits it.
+      // Retrieval cost ceiling underneath it, only a pathological batch hits it.
       () => searchBudgetExhausted(searchPasses),
       // Runaway guard: a model that neither searches nor declares still cannot
       // loop forever.
@@ -447,7 +447,7 @@ export async function runAgenticSearch(
   for await (const chunk of gather.fullStream) {
     if (chunk.type === "text-delta") {
       reasoning += chunk.text;
-      // Stream the reasoning as it is written — the Visitor watches it build
+      // Stream the reasoning as it is written, the Visitor watches it build
       // in the Thinking panel; the terminal `thought` on the next tool call
       // stays the authoritative whole.
       if (reasoning.trim()) {
@@ -473,7 +473,7 @@ export async function runAgenticSearch(
   try {
     recordUsage?.(usageTotals(await gather.totalUsage));
   } catch {
-    // usage unavailable from this provider/mock — accounting must never fail a
+    // usage unavailable from this provider/mock, accounting must never fail a
     // turn that already did its work
   }
 
@@ -513,7 +513,7 @@ export async function runAgenticSearch(
   // second clarification request into a best-effort answer (the anti-loop
   // guarantee), so nothing downstream has to re-derive that rule.
   const status = resolveTerminalStatus(terminal.status, sourcesPart !== null);
-  // A clarification is one question, rendered as its own part — so it is
+  // A clarification is one question, rendered as its own part, so it is
   // collected rather than streamed, and the Visitor never sees a half-question
   // that then turns into a part.
   const streaming = status !== "needs_clarification";
@@ -528,7 +528,7 @@ export async function runAgenticSearch(
       phase: "write",
     }),
     // The gather phase's own messages carry the tool results and the write-time
-    // instructions the terminal tool returned — the model writes from what it
+    // instructions the terminal tool returned, the model writes from what it
     // actually saw, not from a summary we made of it.
     messages: [
       ...history.map((m) => ({ role: m.role, content: m.text })),
@@ -567,7 +567,7 @@ export async function runAgenticSearch(
   if (status === "needs_clarification") {
     const question =
       text.trim() ||
-      "I want to make sure I look up the right thing — which topic (or which part of the material) are you asking about?";
+      "I want to make sure I look up the right thing: which topic (or which part of the material) are you asking about?";
     const part: ChatReplyPart = {
       type: "clarify",
       action: "search_knowledge",
@@ -577,21 +577,21 @@ export async function runAgenticSearch(
     return { parts: [...progressParts, part], grounded: false, terminal: true };
   }
 
-  // The write phase produced nothing — never leave the Visitor with an empty
+  // The write phase produced nothing: never leave the Visitor with an empty
   // bubble. What to say depends on what was actually found, so the honest copy
   // is the same two cases the status already distinguishes.
   if (!text.trim()) {
     text =
       sourcesPart === null
-        ? "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have — try rephrasing or narrowing the question, or reach out to support."
-        : "I found some relevant material but was cut off before I could summarize it — the sources below are what I pulled up. Try asking a more specific question.";
+        ? "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have, try rephrasing or narrowing the question, or reach out to support."
+        : "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question.";
     emit({
       type: "part",
       part: { type: "text", action: "search_knowledge", text },
     });
   }
 
-  // The narration comes first, in the order the phases ran — the same order the
+  // The narration comes first, in the order the phases ran, the same order the
   // Visitor saw it stream, and the same place the reference platform puts it
   // (there, glued onto the front of the answer string; here, still separable).
   const parts: ChatReplyPart[] = [
@@ -603,7 +603,7 @@ export async function runAgenticSearch(
     const notePart: ChatReplyPart = {
       type: "text",
       action: "fallback",
-      text: "That answer was cut short by the length limit — try asking a more specific question.",
+      text: "That answer was cut short by the length limit, try asking a more specific question.",
     };
     emit({ type: "part", part: notePart });
     parts.push(notePart);

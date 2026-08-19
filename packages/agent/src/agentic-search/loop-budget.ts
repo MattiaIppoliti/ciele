@@ -1,12 +1,12 @@
 /**
- * The agent loop's iteration budget, and — the point of this module — the fact
+ * The agent loop's iteration budget, and, the point of this module, the fact
  * that the MODEL IS TOLD ABOUT IT (#558).
  *
  * The loop has always been bounded: `stopWhen` cuts it off. But being cut off
  * is not the same as knowing the limit, and a model that does not know how many
  * turns it has left cannot plan. The reference platform states the budget in
  * every single tool result, escalating as it runs down, and its traces show the
- * model reacting to it — dropping a third search it would otherwise have run,
+ * model reacting to it, dropping a third search it would otherwise have run,
  * or deciding to ask one clarifying question instead of guessing.
  *
  * So the hard stop stays exactly where it was; this adds the telling.
@@ -24,8 +24,8 @@ export interface LoopBudget {
    * (1-based). Idempotent within a step: a step that calls three tools in
    * parallel spends one iteration, not three.
    *
-   * This is what the reference platform counts — its notes run 1, 2, 3… per
-   * assistant turn, not per tool call — and it is load-bearing rather than
+   * This is what the reference platform counts, its notes run 1, 2, 3… per
+   * assistant turn, not per tool call, and it is load-bearing rather than
    * cosmetic. Its own prompt tells the model to fetch endpoint details **in
    * parallel** for every endpoint it expects to need, so charging per call would
    * spend the whole budget on discovery before anything was queried.
@@ -34,7 +34,7 @@ export interface LoopBudget {
   /** Closes the current step, so the next one may spend again. */
   endStep: () => void;
   /**
-   * The system note for the iteration just spent — appended to the tool result
+   * The system note for the iteration just spent, appended to the tool result
    * the model is about to read.
    */
   note: () => string;
@@ -48,7 +48,7 @@ export interface LoopBudget {
  *  - with room to spare: state where it is, and that the terminal tool is
  *    mandatory before any answer;
  *  - one iteration left: stop planning, finalize now;
- *  - final iteration: no more tools, no answer text yet — the next thing has to
+ *  - final iteration: no more tools, no answer text yet, the next thing has to
  *    be the terminal tool, and there will not be another turn.
  */
 export function iterationNote(iteration: number, limit: number): string {
@@ -57,7 +57,7 @@ export function iterationNote(iteration: number, limit: number): string {
     return (
       `CRITICAL: this is iteration ${iteration}/${limit}, your final turn. ` +
       "You MUST call ReadyToAnswer now. Do not call any other tool and do not " +
-      "write answer text yet — you will not get another turn."
+      "write answer text yet; you will not get another turn."
     );
   }
   if (remaining === 1) {
@@ -103,7 +103,7 @@ export function createLoopBudget(limit = MAX_AGENT_ITERATIONS): LoopBudget {
  * to read the note without the tool having to cooperate in its own metering.
  *
  * Nothing is attached when the turn has no budget wired (pure tests, the
- * deterministic no-model path) — the note is guidance, never load-bearing.
+ * deterministic no-model path), the note is guidance, never load-bearing.
  */
 export function withBudgetNote(output: unknown, budget?: LoopBudget): unknown {
   if (!budget) return output;

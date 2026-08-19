@@ -16,7 +16,7 @@ set username = nullif(split_part(email, '@', 1), '')
 where username is null;
 
 -- handle_new_user (moved to `private` in 0018, redefined in 0034 for the
--- superuser allowlist) — replace again to seed username on signup. Only the
+-- superuser allowlist), replace again to seed username on signup. Only the
 -- insert's default changes; the on-conflict branch still only touches email,
 -- so re-running this trigger never clobbers a username the user has since set.
 create or replace function private.handle_new_user()
@@ -39,13 +39,13 @@ begin
   return new;
 end $$;
 
--- profiles never had an UPDATE policy — only "read profiles of shared orgs"
+-- profiles never had an UPDATE policy, only "read profiles of shared orgs"
 -- (select). Needed for the Settings > Profile page to actually persist.
 create policy "users update own profile" on public.profiles
   for update using (id = auth.uid()) with check (id = auth.uid());
 
 -- Org branding: a circular logo, like an assistant's. Broaden the org UPDATE
--- policy from owner-only to admin+ — the same rank the rest of the schema
+-- policy from owner-only to admin+, the same rank the rest of the schema
 -- uses for "can manage this org" (canManageMembers in rbac.ts).
 alter table public.organizations
   add column logo_url text;

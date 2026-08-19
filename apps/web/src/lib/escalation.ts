@@ -26,8 +26,8 @@ import { subjectOwnsConversation, type SubjectRef } from "./widget-db";
  * The "a Visitor escalates a Conversation" transaction, owned in one place
  * (its widget-safe *menu* projections live next door in escalation-desks.ts).
  * The widget escalation route is a thin adapter over `escalateConversation`;
- * everything decidable — ownership, channel eligibility, form validation,
- * email composition, the escalated flag, the desk's auto-Improvement policy —
+ * everything decidable, ownership, channel eligibility, form validation,
+ * email composition, the escalated flag, the desk's auto-Improvement policy,
  * is decided here, where the mock Db and a fake transport can exercise it.
  */
 
@@ -63,7 +63,7 @@ export type EscalationOutcome =
       kind: "ok";
       /**
        * Present when a channel form was submitted: whether the escalation
-       * email actually left, and — when it did not — the destination address
+       * email actually left, and, when it did not, the destination address
        * so the widget can offer an honest mailto fallback instead of a fake
        * success confirmation.
        */

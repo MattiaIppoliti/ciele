@@ -3,7 +3,7 @@
 #
 # Why not `supabase db push`: the live project's migration history was written
 # out-of-band (dashboard/MCP) with timestamp versions and names that don't
-# match the local filename prefixes — which also contain duplicates (0017,
+# match the local filename prefixes, which also contain duplicates (0017,
 # 0034, 0037, 0038) that can't coexist in the CLI's version-keyed history.
 # This script tracks applied migrations by FILENAME in a private ledger
 # instead, matching how this repo's migrations have actually been applied.
@@ -11,7 +11,7 @@
 # Ledger: private.applied_migrations (filename primary key). Files listed in
 # supabase/migrations-baseline.txt are recorded without being executed (they
 # predate the ledger); every other file runs in C-locale filename order, each
-# inside its own transaction that also records it — so a failed migration
+# inside its own transaction that also records it, so a failed migration
 # leaves no ledger row and the next run retries it. An advisory transaction
 # lock plus a re-check inside the transaction make concurrent runs safe.
 set -euo pipefail
@@ -95,7 +95,7 @@ SQL
 
 apply_dir "$MIGRATIONS_DIR"
 # The EE chain runs strictly after the full OSS chain, whatever the filename
-# prefixes say — the two chains are ordered by phase, not interleaved by name.
+# prefixes say, the two chains are ordered by phase, not interleaved by name.
 if compgen -G "$EE_MIGRATIONS_DIR/*.sql" > /dev/null; then
   apply_dir "$EE_MIGRATIONS_DIR"
 fi

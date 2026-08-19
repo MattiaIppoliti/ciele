@@ -20,10 +20,10 @@ import { useShouldAnimate } from "@/components/home/use-in-viewport";
 import { cn } from "@/lib/utils";
 
 /* The live-preview shot on /features/assistants, played rather than framed:
-   one scripted conversation through the real widget components — quick
+   one scripted conversation through the real widget components, quick
    replies, the Thinking panel with its plan and tool calls, Simplified-
    thinking progress lines, a streamed markdown answer with citations, and
-   the follow-up questions — looping while it is on screen. The same script
+   the follow-up questions, looping while it is on screen. The same script
    the dev showcase runs (/dev/chat-showcase), retold with neutral copy.
 
    Pure fixture data through the real components; nothing here talks to the
@@ -94,7 +94,7 @@ interface ScriptApi {
   setAnswered: (answered: boolean) => void;
 }
 
-/** The scripted step sequence — (delayMs, apply) pairs run in order. */
+/** The scripted step sequence, (delayMs, apply) pairs run in order. */
 function buildScript(api: ScriptApi): Array<[number, () => void]> {
   const { setSteps, setPhase, setProgress, setStreaming, setAnswered } = api;
   const upsert = (step: TurnStep) =>
@@ -199,7 +199,7 @@ function buildScript(api: ScriptApi): Array<[number, () => void]> {
   ];
 }
 
-/** The frame every loop ends on — also the still shown before the loop has
+/** The frame every loop ends on, also the still shown before the loop has
  *  ever run (reduced motion, or the observer's first tick). */
 const FINAL_STEPS: TurnStep[] = (() => {
   const steps: TurnStep[] = [];
@@ -222,7 +222,7 @@ const FINAL_STEPS: TurnStep[] = (() => {
 const DWELL_MS = 4000;
 
 /* One dial over the whole script's tempo. The delays above are written as the
-   turn's *shape* — which beat is longer than which — and this stretches them:
+   turn's *shape*, which beat is longer than which, and this stretches them:
    played at their raw speed the assistant reasoned and answered faster than a
    reader can follow the panel, so the thinking never registered. */
 const PACE = 1.5;

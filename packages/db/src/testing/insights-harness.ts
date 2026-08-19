@@ -11,8 +11,8 @@ import { colorizeOverview } from "@agent-hub/core";
 /**
  * Seeded-Postgres harness for the Insights read model (PRD #270, slice #271).
  *
- * Runs the REAL `get_insights_overview` SQL function — read verbatim from its
- * migration — inside an in-process PGlite instance, so the shipping analytics
+ * Runs the REAL `get_insights_overview` SQL function, read verbatim from its
+ * migration, inside an in-process PGlite instance, so the shipping analytics
  * path is exercised by a test with no Docker and no live database. The pure TS
  * `computeInsightsOverview` is the oracle; the parity tests diff the two over
  * identical seeded rows.
@@ -20,7 +20,7 @@ import { colorizeOverview } from "@agent-hub/core";
  * The schema below is a deliberate SUBSET: only the columns of the five tables
  * (`assistants`, `knowledge_collections`, `conversations`, `messages`,
  * `sources`) that `get_insights_overview` actually reads. It is harness-owned
- * test infra — the function definition itself is the production artifact and is
+ * test infra, the function definition itself is the production artifact and is
  * never copied here.
  */
 

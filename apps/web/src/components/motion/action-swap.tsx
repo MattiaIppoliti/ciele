@@ -209,7 +209,7 @@ export function ActionSwapText({
             >
               {label.split("").map((char, i) => (
                 <motion.span
-                  // biome-ignore lint/suspicious/noArrayIndexKey: position is the slot identity — the letter at a position is exactly what rolls.
+                  // biome-ignore lint/suspicious/noArrayIndexKey: position is the slot identity, the letter at a position is exactly what rolls.
                   key={i}
                   custom={i * CASCADE_STAGGER}
                   variants={CASCADE_LETTER_VARIANTS}
@@ -246,7 +246,7 @@ export function ActionSwapIcon({
   className,
 }: ActionSwapIconProps) {
   const reduce = useReducedMotion();
-  // Icons are single elements — cascade maps to its closest motion, roll.
+  // Icons are single elements: cascade maps to its closest motion, roll.
   const coreAnimation: CoreAnimation =
     animation === "cascade" ? "roll" : animation;
 

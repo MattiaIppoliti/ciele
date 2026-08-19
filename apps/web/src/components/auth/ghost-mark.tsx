@@ -7,10 +7,10 @@ export function GhostMark({
   eyesRef,
 }: {
   className?: string;
-  /** Optional class applied to the <g> wrapping the two eyes — lets callers
+  /** Optional class applied to the <g> wrapping the two eyes, lets callers
    *  animate the gaze (e.g. the footer's left/right glance). */
   eyesClassName?: string;
-  /** Refs to the root <svg> and the eyes <g> — lets a client caller drive the
+  /** Refs to the root <svg> and the eyes <g>, lets a client caller drive the
    *  gaze imperatively (e.g. follow the cursor on the home hero). */
   svgRef?: Ref<SVGSVGElement>;
   eyesRef?: Ref<SVGGElement>;

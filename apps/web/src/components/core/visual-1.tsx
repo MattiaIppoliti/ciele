@@ -1,5 +1,5 @@
 "use client";
-// badtz-ui.com — Animated Card "Visual 1" (rising bar + line chart). Adapted:
+// badtz-ui.com, Animated Card "Visual 1" (rising bar + line chart). Adapted:
 // fixed the arbitrary cubic-bezier easing classes for Tailwind v4, renamed the
 // default legend pills, and added a `label` slot so callers can replace the
 // hover caption (it keeps the slide-in-from-top-on-hover behaviour).

@@ -22,7 +22,7 @@ const caps = (
   crawl4aiConfigured: boolean
 ): WebsiteCrawlerCapabilities => ({ apifyConfigured, crawl4aiConfigured });
 
-describe("resolveWebsiteCrawlerProvider — explicit choices", () => {
+describe("resolveWebsiteCrawlerProvider, explicit choices", () => {
   it("honors an explicit Local choice even when Apify is configured", () => {
     expect(
       resolveWebsiteCrawlerProvider("local", STATIC, caps(true, true))
@@ -36,7 +36,7 @@ describe("resolveWebsiteCrawlerProvider — explicit choices", () => {
   });
 
   it("honors an explicit Apify choice even when Apify is not configured", () => {
-    // Not rerouted — the adapter surfaces the missing token at crawl start.
+    // Not rerouted: the adapter surfaces the missing token at crawl start.
     expect(
       resolveWebsiteCrawlerProvider("apify", STATIC, caps(false, true))
     ).toEqual({ provider: "apify" });
@@ -55,7 +55,7 @@ describe("resolveWebsiteCrawlerProvider — explicit choices", () => {
   });
 });
 
-describe("resolveWebsiteCrawlerProvider — Automatic", () => {
+describe("resolveWebsiteCrawlerProvider, Automatic", () => {
   it("routes a small static crawl to Local even when remote crawlers exist", () => {
     expect(resolveWebsiteCrawlerProvider("auto", STATIC, caps(true, true))).toEqual({
       provider: "local",

@@ -6,7 +6,7 @@ import { API_V1_ENDPOINTS, buildOpenApiDocument } from "./openapi";
 /**
  * The contract drift check (#626): the registry in openapi.ts and the route
  * files on disk must describe the same surface. Shipping a route without
- * registering it — or registering one that doesn't exist — fails here, so
+ * registering it, or registering one that doesn't exist, fails here, so
  * the served OpenAPI document can't silently lag the API.
  */
 

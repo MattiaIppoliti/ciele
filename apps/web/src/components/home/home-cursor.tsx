@@ -14,7 +14,7 @@ const CLICKABLE_SELECTOR =
 // any element opted in with `data-cursor-more` (e.g. the Download CTA).
 const MORE_SELECTOR = "[data-feature-card], [data-cursor-more]";
 
-/** Arrow pointer shown over clickable elements — black fill with a white
+/** Arrow pointer shown over clickable elements, black fill with a white
  * outline (macOS-style), so it stays visible on both light and dark surfaces. */
 function ArrowCursor(props: SVGProps<SVGSVGElement>) {
   return (
@@ -58,10 +58,10 @@ export function HomeCursor() {
   const [mode, setMode] = useState<CursorMode>("default");
   // Show the custom cursor only while the pointer is genuinely over the home
   // scene (not over a portaled dialog, and not off-window). Controlled here so
-  // it can't get stuck hidden — see the `visible` prop on <Cursor>.
+  // it can't get stuck hidden, see the `visible` prop on <Cursor>.
   const [visible, setVisible] = useState(false);
   // Only a real mouse/trackpad drives this cursor. Touch devices (phones,
-  // iPads) report a coarse pointer with no hover — there we render nothing and
+  // iPads) report a coarse pointer with no hover, there we render nothing and
   // leave the native (absent) cursor alone, so no dot follows taps around.
   const [enabled, setEnabled] = useState(false);
 
@@ -74,7 +74,7 @@ export function HomeCursor() {
   }, []);
 
   // Hide the OS cursor across the entire home scene while the custom cursor is
-  // active — only on fine-pointer devices, never on touch.
+  // active, only on fine-pointer devices, never on touch.
   useEffect(() => {
     if (!enabled) return;
     const scene = document.querySelector(".home-scene");
@@ -139,7 +139,7 @@ export function HomeCursor() {
   if (!enabled) return null;
 
   return (
-    // Snappy, critically-damped spring — near-1:1 with the real pointer and a
+    // Snappy, critically-damped spring, near-1:1 with the real pointer and a
     // hair of smoothing, no float/lag.
     <Cursor
       attachToParent

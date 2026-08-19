@@ -1,4 +1,4 @@
-// Which Provider Connections can embed — the one fact the settings UI needs
+// Which Provider Connections can embed, the one fact the settings UI needs
 // from the runtime to offer the org-level embedding picker (#437).
 //
 // Deliberately pure and dependency-free (no AI SDK, no credentials) so it is
@@ -10,8 +10,8 @@ import type { ProviderConnection } from "@agent-hub/core";
 /**
  * True when this connection could produce embeddings.
  *
- * - `openai` / `google` — first-party embeddings APIs.
- * - `openai_compatible` — only when the endpoint declares an embedding model;
+ * - `openai` / `google`, first-party embeddings APIs.
+ * - `openai_compatible`: only when the endpoint declares an embedding model;
  *   a chat-only endpoint (the common Ollama setup) cannot embed.
  * - `anthropic` has no embeddings API; `azure_openai` is chat-only here.
  *

@@ -17,7 +17,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/*.md",
-        "../../supabase/migrations/**"
+        "$TURBO_ROOT$/supabase/migrations/**",
+        "$TURBO_ROOT$/ee/migrations/**"
       ],
       "env": [
         "APP_ENCRYPTION_KEY",

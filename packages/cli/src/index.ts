@@ -58,7 +58,7 @@ const COMMAND_GROUPS: Record<
  *
  * Credential resolution, in order: `--api-key` flag → `CIELE_API_KEY` env →
  * the config file `ciele login` wrote. Base URL likewise (`--base-url` →
- * `CIELE_BASE_URL` → config → the SaaS) — a self-hosted deployment is one
+ * `CIELE_BASE_URL` → config → the SaaS), a self-hosted deployment is one
  * env var away, never a special case.
  *
  * Exit codes: 0 ok · 1 server/unexpected · 2 usage or rejected input ·
@@ -103,7 +103,7 @@ function parseArgs(argv: string[]): Parsed {
   return { positional, flags };
 }
 
-const USAGE = `ciele — manage your Organization from the terminal
+const USAGE = `ciele, manage your Organization from the terminal
 
 Usage: ciele <command> [options]
 
@@ -232,7 +232,7 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
         deps.stderr("login needs a key: pass --key or run interactively");
         return EXIT.usage;
       }
-      // Validate before storing — a typo'd key should fail now, not later.
+      // Validate before storing: a typo'd key should fail now, not later.
       const identity = await client(key).whoami();
       deps.config.save({ apiKey: key, ...(baseUrl ? { baseUrl } : {}) });
       emit(
@@ -311,7 +311,7 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
   }
 }
 
-/** Entry point for bin/ciele.mjs — real stdio, real config file. */
+/** Entry point for bin/ciele.mjs, real stdio, real config file. */
 export async function main(argv: string[]): Promise<number> {
   return runCli(argv, {
     env: process.env,

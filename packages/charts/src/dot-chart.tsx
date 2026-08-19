@@ -36,7 +36,7 @@ const DOT_TRANSITION = {
   mass: 0.45,
 };
 
-// Module-level default — must be a stable reference so it doesn't
+// Module-level default, must be a stable reference so it doesn't
 // invalidate useMemo on every render.
 const DEFAULT_FALLBACK_PALETTE: DotPalette = {
   filled: "rgba(147,197,253,0.72)",
@@ -45,7 +45,7 @@ const DEFAULT_FALLBACK_PALETTE: DotPalette = {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   DotColumn — memoized leaf renderer
+   DotColumn: memoized leaf renderer
    ═══════════════════════════════════════════════════════════════ */
 
 interface DotColumnProps {
@@ -125,7 +125,7 @@ const DotColumn = memo(function DotColumn({
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   SkeletonColumn — loading state leaf
+   SkeletonColumn: loading state leaf
    ═══════════════════════════════════════════════════════════════ */
 
 interface SkeletonColumnProps {
@@ -186,7 +186,7 @@ const SkeletonColumn = memo(function SkeletonColumn({
 });
 
 /* ═══════════════════════════════════════════════════════════════
-   DotChart — headless primitive
+   DotChart: headless primitive
    ═══════════════════════════════════════════════════════════════ */
 
 /**
@@ -526,7 +526,7 @@ function DotChartImpl<TData extends DotChartDataPoint = DotChartDataPoint>({
               />
             ))}
 
-          {/* Compare (previous) series — rendered BEFORE data so dots sit on
+          {/* Compare (previous) series, rendered BEFORE data so dots sit on
               top. Previous is visually secondary, so a lighter stroke + area
               fill are fine under the dots. */}
           {effectiveStatus === "idle" &&
@@ -580,7 +580,7 @@ function DotChartImpl<TData extends DotChartDataPoint = DotChartDataPoint>({
               );
             })}
 
-          {/* Primary (current) series line — rendered AFTER dots so the line
+          {/* Primary (current) series line, rendered AFTER dots so the line
               sits on top. This is the "bold" line in compare view; stroke is
               thicker than the compare line to establish visual hierarchy. */}
           {effectiveStatus === "idle" && showPrimaryLine && primaryLinePath && (

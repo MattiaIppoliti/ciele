@@ -209,7 +209,7 @@ export function FlowsList({
                     Built-in
                   </Badge>
                 )}
-                {/* Which event starts the flow — so a proactive nudge is
+                {/* Which event starts the flow, so a proactive nudge is
                     distinguishable from an answer without opening it (#548). */}
                 {!flow.isDefault && (
                   <Badge
@@ -223,7 +223,7 @@ export function FlowsList({
                   const flowTrust = trust.find((t) => t.flowId === flow.id);
                   if (flowTrust) return <TrustBadge trust={flowTrust} />;
                   // Only generative flows are graded, so only they carry a
-                  // meaningful tier — badge those with no history as watch.
+                  // meaningful tier, badge those with no history as watch.
                   const generative =
                     flow.isDefault || flow.actions.includes("search_knowledge");
                   return generative ? <TrustBadge trust={null} /> : null;

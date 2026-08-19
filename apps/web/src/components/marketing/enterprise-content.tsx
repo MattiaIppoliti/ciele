@@ -1,5 +1,6 @@
 import { MousePointerClick } from "lucide-react";
 import { AdminMetrics } from "@/components/marketing/admin-metrics";
+import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { GovernanceOrbit } from "@/components/marketing/governance-orbit";
 import { MarketingHero } from "@/components/marketing/marketing-hero";
@@ -81,7 +82,7 @@ export function EnterpriseContent() {
         >
           <p className="text-muted-foreground mt-5 text-lg leading-relaxed">
             Every assistant, knowledge source and conversation configured, monitored and
-            governed from one control plane your whole institution shares.
+            governed from one console your whole organization shares.
           </p>
         </MarketingHero>
 
@@ -112,6 +113,14 @@ export function EnterpriseContent() {
           </div>
           <ColumnList columns={DASHBOARD} />
         </section>
+
+        <CloudCallout
+          expression="proud"
+          eyebrow="Run with confidence"
+          title="Proud of every answer it gives"
+          body="Roles enforced in the database, organization-owned model access, and a full trace behind each response. Governance your auditors can read."
+          cta={{ label: "Talk to sales", href: "/contact/sales" }}
+        />
 
         <CtaSection
           lead="One console."

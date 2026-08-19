@@ -2,7 +2,7 @@ import type { Provider } from "@agent-hub/core";
 
 /**
  * Editable catalog of models offered per provider. Client-safe (no node
- * deps). Key order drives the provider picker's dropdown order — Google
+ * deps). Key order drives the provider picker's dropdown order, Google
  * comes first as the platform default for this deployment.
  */
 export const MODEL_CATALOG: Record<Provider, { id: string; label: string }[]> = {

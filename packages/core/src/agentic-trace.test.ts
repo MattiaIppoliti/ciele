@@ -10,7 +10,7 @@ import type { TurnStep } from "./types";
  * `AgenticTrace` is the reference platform's export format: the whole turn as one
  * flat bracketed string. We store the structured {@link TurnStep} list and
  * serialize to this only at export time, so a parser written against a reference
- * file reads ours unchanged — and the round trip has to keep segment order and
+ * file reads ours unchanged, and the round trip has to keep segment order and
  * boundaries intact, or the two representations are not the same trace.
  */
 
@@ -140,7 +140,7 @@ describe("parseAgenticTrace", () => {
 
   it("keeps a payload that itself contains brackets in one segment", () => {
     // Tool results are rendered YAML/JSON, so brackets inside a payload are
-    // ordinary — the boundary is the marker vocabulary, not the next `]`.
+    // ordinary, the boundary is the marker vocabulary, not the next `]`.
     const source = serializeAgenticTrace({
       flowName: "F",
       steps: [
@@ -186,7 +186,7 @@ describe("parseAgenticTrace", () => {
       "thinking",
       "workflow_completed",
     ]);
-    // Only the opening bracket is rewritten — that is the character that could
+    // Only the opening bracket is rewritten; that is the character that could
     // forge a boundary; the payload's own words are left alone.
     expect(parsed[1].text).toContain("(Tool: do something]");
     expect(reserialize(parsed)).toBe(source);
@@ -219,8 +219,8 @@ describe("parseAgenticTrace", () => {
 
   it("round-trips a narrated turn: one [Thinking:] before every tool call (#584)", () => {
     // Streamed thinking narrates in the Visitor's language before EACH tool
-    // call; the persisted steps must export as the reference's cadence —
-    // Thinking → Tool → Result → Thinking → Tool → Result — and read back.
+    // call; the persisted steps must export as the reference's cadence,
+    // Thinking → Tool → Result → Thinking → Tool → Result, and read back.
     const source = serializeAgenticTrace({
       flowName: "Default behavior",
       steps: [
@@ -275,7 +275,7 @@ describe("parseAgenticTrace", () => {
   });
 
   it("round-trips a payload whose last character is a closing bracket", () => {
-    // Serialize appends its own `]`, so the doubled bracket is unambiguous — the
+    // Serialize appends its own `]`, so the doubled bracket is unambiguous, the
     // parser strips exactly one.
     const source = serializeAgenticTrace({
       flowName: "F",
@@ -318,7 +318,7 @@ describe("parseAgenticTrace", () => {
   });
 });
 
-/** Rebuilds the flat string from parsed segments — the round trip's other half. */
+/** Rebuilds the flat string from parsed segments, the round trip's other half. */
 function reserialize(segments: AgenticTraceSegment[]): string {
   const label: Record<AgenticTraceSegment["marker"], string> = {
     workflow_started: "Workflow started",

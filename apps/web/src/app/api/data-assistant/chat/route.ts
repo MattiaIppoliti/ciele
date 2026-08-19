@@ -12,12 +12,12 @@ export const maxDuration = 300;
 /**
  * Org-staff data assistant (#668): signed-in Members ask questions over the
  * Organization's imported Records. Same conversation-turn pipeline as the
- * live Preview (member subject — the turn's tool policy is what gives
+ * live Preview (member subject, the turn's tool policy is what gives
  * members cross-record access over user-scoped Entities), no Publication,
  * no SSO gate. The Entity set is the org-level data-assistant selection,
  * deliberately separate from any customer-facing assistant's selection;
  * flows are omitted so every turn runs the default agentic behavior over
- * the retrieval tools. Members never read or write long-term Memories —
+ * the retrieval tools. Members never read or write long-term Memories,
  * that path gates on SSO subjects.
  */
 export async function POST(request: NextRequest) {

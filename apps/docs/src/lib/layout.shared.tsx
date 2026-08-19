@@ -7,7 +7,7 @@ import { DOCS_REPO_URL, SITE_URL } from '@/lib/repo';
 /**
  * `aria-label`s of the two footer buttons. They are also the CSS hooks for the
  * rules in global.css that draw the divider after the repository button and size
- * both glyphs — keep the two in step.
+ * both glyphs, keep the two in step.
  */
 export const HOME_BUTTON_LABEL = 'Back to ciele.app';
 export const REPO_BUTTON_LABEL = 'Ciele on GitHub';
@@ -20,7 +20,7 @@ export function baseOptions(): BaseLayoutProps {
   // pushed to its far end (fumadocs' docs sidebar reserves that row for
   // `type: 'icon'` items). Home first, then the repo: leaving the docs is the
   // more common intent of the two. The repository button is declared here
-  // rather than through the `githubUrl` shortcut so this app owns its label —
+  // rather than through the `githubUrl` shortcut so this app owns its label,
   // which is what global.css hangs the trailing divider on.
   const links: LinkItemType[] = [
     {
@@ -33,7 +33,7 @@ export function baseOptions(): BaseLayoutProps {
     },
   ];
 
-  // Only when this deployment declares its repository (see lib/repo.ts) — there
+  // Only when this deployment declares its repository (see lib/repo.ts), there
   // is no default slug to fall back on. Without it the row is just the home
   // button, and global.css's divider rule simply matches nothing.
   if (DOCS_REPO_URL) {

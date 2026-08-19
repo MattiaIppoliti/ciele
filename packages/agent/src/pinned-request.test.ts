@@ -107,7 +107,7 @@ describe("pinnedRequest", () => {
     expect(response.text).toHaveLength(64 * 1024);
   });
 
-  it("does not follow redirects — the 3xx surfaces to the caller", async () => {
+  it("does not follow redirects, the 3xx surfaces to the caller", async () => {
     const response = await pinnedRequest(target("/redirect"), {
       timeoutMs: 5_000,
     });

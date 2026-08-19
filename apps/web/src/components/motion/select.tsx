@@ -193,7 +193,7 @@ export function SelectTrigger({ className, children }: SelectTriggerProps) {
       aria-controls={ctx.listId}
       onClick={() => ctx.setOpen(!ctx.open)}
       // Gooey: the edge facing the panel snaps flat (panel attached) then rounds
-      // back once the panel pulls away — the two pinch apart.
+      // back once the panel pulls away, the two pinch apart.
       initial={false}
       animate={{
         borderTopLeftRadius: isTop ? kf : 12,
@@ -295,7 +295,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
     : { duration: 0.16, ease: EASE_OUT };
 
   // Items stay mounted (open just animates the panel) so each item's label
-  // registration persists — otherwise the trigger would fall back to the
+  // registration persists, otherwise the trigger would fall back to the
   // placeholder the moment the panel closes.
   return (
     <motion.div

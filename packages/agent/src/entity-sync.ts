@@ -10,7 +10,7 @@ import { egressFetch } from "./egress";
 import { alertKeys, signalHealth } from "./health";
 
 /**
- * Synced Record ingestion (#670): one sync run — fetch a REST/JSON source
+ * Synced Record ingestion (#670): one sync run, fetch a REST/JSON source
  * through the guarded egress path, map JSON fields to the Entity's typed
  * attributes (same forgiving semantics as the CSV import), validate per
  * row, upsert idempotently by the key attribute, optionally prune Records
@@ -21,7 +21,7 @@ import { alertKeys, signalHealth } from "./health";
 
 const SYNC_TIMEOUT_MS = 30_000;
 const SYNC_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
-/** Mirrors ENTITY_IMPORT_MAX_ROWS — one sync can't become an unbounded write burst. */
+/** Mirrors ENTITY_IMPORT_MAX_ROWS, one sync can't become an unbounded write burst. */
 export const ENTITY_SYNC_MAX_ROWS = 5000;
 
 /** Test seam: replaces the guarded egress fetch. */
@@ -73,7 +73,7 @@ export interface MappedSyncRows {
 /**
  * Map raw JSON rows onto the Entity's schema. `mapping` is JSON field →
  * attribute key; attributes without a mapping entry read the field named
- * like their key. Rows are rejected individually (1-based reports) — one
+ * like their key. Rows are rejected individually (1-based reports), one
  * bad row never blocks the batch.
  */
 export function mapSyncRows(
@@ -180,7 +180,7 @@ export async function runEntitySync(input: EntitySyncInput): Promise<EntitySyncR
     const upserted = await db.upsertEntityRecords(entityId, rows);
     // Prune deliberately skips a run with zero valid rows: an empty (or
     // fully rejected) response is far likelier a source hiccup than a real
-    // "everything was deleted" — say so in the report instead of wiping.
+    // "everything was deleted", say so in the report instead of wiping.
     const pruned =
       config.prune && rows.length > 0
         ? await db.pruneEntityRecords(entityId, rows.map((r) => r.key))

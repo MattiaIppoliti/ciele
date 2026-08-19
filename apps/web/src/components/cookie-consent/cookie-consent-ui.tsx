@@ -15,7 +15,7 @@ import "./cookie-consent.css";
 
 /**
  * The banner itself, plus the analytics scripts it gates. Loaded lazily by
- * `<CookieConsent />` — never import this directly, or the plugin lands in the
+ * `<CookieConsent />`: never import this directly, or the plugin lands in the
  * shared layout chunk that the embedded widget also downloads.
  *
  * Owning <Analytics/> here rather than in the root layout is the point: it makes
@@ -24,14 +24,14 @@ import "./cookie-consent.css";
  * already ran is worse than no banner, because it documents the violation.
  *
  * Vercel's analytics happen to be cookieless, so a narrow reading of ePrivacy
- * would let them run unasked. We gate them anyway — it costs one conditional and
+ * would let them run unasked. We gate them anyway, it costs one conditional and
  * keeps the notice honest about the one place we measure anything.
  */
 export function CookieConsentUi() {
   useEffect(() => {
     void ConsentPlugin.run(buildConsentConfig());
     /* Refusing a category has to remove what it stored, not just stop new
-       writes — otherwise the identifier survives the refusal. The plugin's own
+       writes, otherwise the identifier survives the refusal. The plugin's own
        `autoClear` only erases cookies, and everything our optional categories
        persist is in local storage, so we sweep it ourselves. Runs on every
        consent event (not only on change) so storage written under an older
@@ -44,7 +44,7 @@ export function CookieConsentUi() {
         }
       }
     };
-    /* Our own record of the decision (GDPR Art. 7(1)) — the visitor's cookie is
+    /* Our own record of the decision (GDPR Art. 7(1)), the visitor's cookie is
        evidence they hold and can erase, so it cannot discharge our
        accountability on its own.
 
@@ -79,7 +79,7 @@ export function CookieConsentUi() {
 
   /* Unmounting the components is not enough to undo a withdrawal: the vendor
      scripts are injected outside React's tree and, once evaluated, keep their
-     globals and listeners for the life of the document — a script cannot be
+     globals and listeners for the life of the document, a script cannot be
      un-loaded. So on a true→false transition we reload, which is the only way
      to genuinely stop collection in the current session. It only ever fires
      right after the visitor clicked reject in the modal, so the navigation is
@@ -105,7 +105,7 @@ export function CookieConsentUi() {
 
 function subscribeToConsentChanges(onStoreChange: () => void) {
   // `cc:onConsent` fires on load once a valid choice exists; `cc:onChange` fires
-  // when the visitor edits or withdraws it — so a change takes effect in the
+  // when the visitor edits or withdraws it, so a change takes effect in the
   // current page rather than at the next navigation.
   window.addEventListener("cc:onConsent", onStoreChange);
   window.addEventListener("cc:onChange", onStoreChange);

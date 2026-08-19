@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Landing for a SETUP section reached without an assistant in scope
- * (Vercel's "Continue to Analytics — Choose a project to continue").
+ * (Vercel's "Continue to Analytics, Choose a project to continue").
  */
 export default async function SetupSectionPage({
   params,

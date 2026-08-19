@@ -23,14 +23,14 @@ import {
  * The sidebar the marketing hero's app mock draws.
  *
  * Deliberately its own list rather than an import of `components/shell/nav`.
- * The mock needs a *picture* of the console — labels, icons, order — and none of
+ * The mock needs a *picture* of the console (labels, icons, order) and none of
  * what makes that module the console's routing config: hrefs, active-state match
  * prefixes, `adminOnly`, the Settings dialog's entry point, or the path helpers.
  * Reading it from here dragged the admin shell's configuration into the
  * marketing pages' module graph, so a renamed route prefix invalidated the
  * marketing build and the mock carried config it never looked at.
  *
- * The marketing claim — that this is what the product actually looks like — is
+ * The marketing claim: that this is what the product actually looks like, is
  * kept honest by `preview-nav.test.ts`, which fails if these labels drift from
  * the real navigation. A build-time assertion instead of a runtime dependency,
  * the same trade `console-routes.test.ts` makes for the console/public split.
@@ -50,7 +50,7 @@ export const PREVIEW_GLOBAL_NAV: PreviewNavItem[] = [
   { label: "Inbox", icon: Archive },
   { label: "Improvements", icon: FlaskConical },
   { label: "Insights", icon: ChartLine },
-  { label: "Knowledge", icon: BookText },
+  { label: "Library", icon: BookText },
   { label: "Alerts", icon: Bell, bottom: true },
   { label: "Settings", icon: Settings, bottom: true },
 ];

@@ -5,7 +5,7 @@ import { buildHelpDeskRecommender } from "./help-desk-recommend";
 
 /**
  * The desk recommender tested through its closure: what id it resolves for a
- * given toggle/desks/model configuration — the model is mocked, never called
+ * given toggle/desks/model configuration, the model is mocked, never called
  * for real (prior art: engine.test.ts pickerModel).
  */
 

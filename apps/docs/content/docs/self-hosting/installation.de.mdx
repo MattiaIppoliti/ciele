@@ -3,15 +3,44 @@ title: Installation
 description: Starten Sie die aktuelle Docker-Compose-Bereitstellung für einen einzelnen Host.
 ---
 
+<Callout title="No terminal? Use the desktop app">
+[Ciele Desktop](/self-hosting/desktop) performs every step on this page for you,
+including generating the secrets and starting the stack. It needs only Docker
+Desktop. This page is the server path.
+</Callout>
+
 ## Anforderungen
 
 - Installieren Sie Git.
 - Installieren Sie Docker mit Docker Compose.
-- Reservieren Sie ausreichend Speicherplatz auf der Festplatte für Bilder,
-  Postgres und hochgeladene Dateien.
+- Reservieren Sie ausreichend Speicherplatz für Bilder, Postgres und
+  hochgeladene Dateien.
 - Reservieren Sie mehr Speicher, wenn Sie die optionalen Worker aktivieren.
 
+## Ein Befehl
+
+Das Installationsprogramm führt jeden Schritt im nächsten Abschnitt aus: Es
+überprüft die Voraussetzungen, holt den Quellcode in `./ciele` und führt
+`bootstrap.sh` aus.
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh
+```
+
+Geben Sie Bootstrap-Flags mit `-s --` über die Pipe weiter und setzen Sie
+`CIELE_DIR`, um das Checkout-Verzeichnis auszuwählen, oder `CIELE_REF`, um einen
+Release-Tag zu installieren:
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
+```
+
+Das Installationsprogramm löscht niemals etwas: Wenn das Zielverzeichnis
+existiert und kein Ciele-Checkout ist, stoppt es und informiert Sie darüber.
+
 ## Bootstrappen Sie den Stack
+
+So führen Sie dieselben Schritte manuell aus:
 
 ```bash
 git clone https://github.com/MattiaIppoliti/ciele.git
@@ -20,7 +49,7 @@ cd ciele
 ```
 
 Das Skript generiert die erforderlichen Secrets in `deploy/.env`. Anschließend
-erstellt und startet es die Standardprofile.
+baut es die Standardprofile und startet sie.
 
 Öffnen Sie [http://localhost:3000](http://localhost:3000), sobald die Dienste
 fehlerfrei laufen. Das erste Konto wird zum Eigentümer der Organisation.
@@ -28,15 +57,49 @@ fehlerfrei laufen. Das erste Konto wird zum Eigentümer der Organisation.
 Verwenden Sie `./deploy/bootstrap.sh --seed`, um bereinigte Demo-Inhalte
 hinzuzufügen.
 
+## Veröffentlichte Images ausführen, anstatt zu bauen
+
+Das Erstellen von `app`, `migrate` und `cron` aus dem Checkout nimmt viel Zeit
+in Anspruch und erfordert das vollständige Repository. Jedes Release
+veröffentlicht diese drei auch als Container-Images:
+
+```bash
+./deploy/bootstrap.sh --images v0.4.0
+```
+
+Der Befehl schreibt zwei Einstellungen in `deploy/.env` und führt einen Pull
+durch, anstatt zu bauen:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
+CIELE_IMAGE_TAG=v0.4.0
+```
+
+Da sich beide in `deploy/.env` befinden, bleibt ein späterer
+`docker compose up -d` in diesem Verzeichnis im Image-Modus. Deaktivieren Sie
+beide Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
+`CIELE_IMAGE_REGISTRY` so ein, dass ein Mirror oder Ihr eigener Rebuild
+verwendet wird.
+
+Profile, Service-Ordering und die Datenbankebene sind in beiden Modi identisch.
+Nur die Herkunft dieser drei Dienste ändert sich.
+
+<Callout title="Recreate the container after changing the public URL">
+The published application image resolves `SUPABASE_PUBLIC_URL` once, when the
+container starts, because Next.js inlines that class of value at build time.
+Run `docker compose up -d` to recreate the container after you change it. A
+restart alone keeps the previous value.
+</Callout>
+
 ## Standardprofile
 
 | Profil | Standard | Dienste |
 | --- | :---: | --- |
 | `db` | Ja | Postgres, pgvector, Authentifizierung, Daten-API, Speicher und Gateway. |
 | `migrate` | Ja | Ausstehende Migrationen und erforderliche Speicher-Buckets. |
-| `app` | Ja | Administratorkonsole, Widget-Laufzeitumgebung und API v1. |
+| `app` | Ja | Administratorkonsole, Widget-Runtime und API v1. |
 | `cron` | Ja | Geplante Anwendungsaufträge. |
-| `workers` | Nein | Graph-Abruf- und JavaScript-Rendering-Crawl-Dienste. |
+| `workers` | Nein | Dienste zum Abrufen von Graphen und zum Crawlen mit JavaScript-Rendering. |
 | `studio` | Nein | Datenbank-Administrationsschnittstelle. |
 
 ## Überprüfen Sie den Stack

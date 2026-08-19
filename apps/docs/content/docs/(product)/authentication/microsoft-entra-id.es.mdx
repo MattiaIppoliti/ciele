@@ -3,7 +3,7 @@ title: Microsoft Entra ID
 description: Configura la conexión actual de OpenID Connect para el inicio de sesión de visitantes.
 ---
 
-Microsoft Entra ID es el proveedor de identidad de visitantes disponible.
+Microsoft Entra ID es el proveedor de identidad para visitantes disponible.
 
 ## Crea la aplicación de Entra
 
@@ -32,15 +32,15 @@ Ciele utiliza el flujo de código de autorización con Proof Key for Code Exchan
 
 ## Elige una notificación de identidad
 
-El valor predeterminado es **Off — subject only**. A continuación, Ciele
-almacena el sujeto OIDC opaco sin un identificador legible por humanos.
+El valor predeterminado es **Off, subject only**. A continuación, Ciele almacena
+el sujeto OIDC opaco sin un identificador legible por humanos.
 
 Elige **Email address** o **Username (preferred_username claim)** cuando un
 Asistente deba hacer coincidir a los Visitantes que han iniciado sesión con
 [Registros con ámbito de usuario](/data/entities-and-records#protect-user-scoped-records).
 
-Ciele verifica la notificación seleccionada dentro del token de identificación
-firmado. El servidor lo lleva a la Conversación y al turno de ejecución.
+Ciele verifica la afirmación seleccionada dentro del token de ID firmado. El
+servidor lo lleva a la Conversación y al turno de ejecución.
 
 El cuerpo de una solicitud o la entrada de una herramienta de modelos no pueden
 reemplazar el valor verificado. Si falta una afirmación configurada, se
@@ -65,6 +65,6 @@ almacenados.
 6. Inicia una conversación y confirma que la bandeja de entrada muestra al
    sujeto que ha iniciado sesión.
 
-Prueba una Entidad con ámbito de usuario cuando esté habilitada una notificación
+Prueba una entidad con ámbito de usuario cuando esté habilitada una notificación
 de identidad. Confirma que otro visitante que haya iniciado sesión no pueda
 recuperar los registros del primer visitante.

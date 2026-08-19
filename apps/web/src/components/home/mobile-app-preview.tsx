@@ -7,7 +7,7 @@ import {
   useShouldAnimate,
 } from "@/components/home/use-in-viewport";
 
-/* Compact mock dimensions — must match HomeAppPreview's compact shell. */
+/* Compact mock dimensions, must match HomeAppPreview's compact shell. */
 const MOCK_W = 560;
 const MOCK_H = 480;
 
@@ -20,7 +20,7 @@ export function MobileAppPreview() {
   const ref = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0);
   // The aspect-ratio box is not transformed (only the inner mock is scaled),
-  // so it's a reliable viewport target — gate the mock's idle cycling on it.
+  // so it's a reliable viewport target, gate the mock's idle cycling on it.
   const active = useShouldAnimate(ref);
 
   useEffect(() => {

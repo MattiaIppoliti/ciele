@@ -40,7 +40,7 @@ export interface EntraDeps {
  * Microsoft Entra ID adapter: a confidential-client OIDC authorization-code +
  * PKCE flow run entirely server-side. Validates the `id_token` (signature via
  * the tenant JWKS, issuer, audience, nonce, expiry) and returns `sub` as the
- * subject id — nothing richer (personalization is out of scope). See
+ * subject id, nothing richer (personalization is out of scope). See
  * docs/research/sso-provider-shapes.md §"Microsoft Entra ID".
  */
 export function createEntraProvider(deps: EntraDeps = {}): SsoProvider {

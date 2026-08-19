@@ -61,13 +61,13 @@ function profileDisplayName(profile: Profile | null, email: string): string {
 
 const DEFAULT_WIDTH = 240;
 const MAX_WIDTH = 400;
-/** Below this width, labels would truncate illegibly — switch to icons only. */
+/** Below this width, labels would truncate illegibly, switch to icons only. */
 const ICON_ONLY_AT = 168;
-/** Fixed width of the collapsed icon-only rail — hugs the icons instead of
+/** Fixed width of the collapsed icon-only rail, hugs the icons instead of
  * following the drag position, so there's no dead space next to them. */
 const RAIL_WIDTH = 60;
 /** Dragging the resize handle past this point hides the sidebar entirely.
- * Must stay below RAIL_WIDTH — otherwise the handle (parked at RAIL_WIDTH
+ * Must stay below RAIL_WIDTH, otherwise the handle (parked at RAIL_WIDTH
  * while collapsed) starts inside the hide zone and dragging right to expand
  * closes the sidebar instead. */
 const HIDE_AT = 48;
@@ -76,15 +76,15 @@ interface AppSidebarProps {
   orgId: string;
   orgName: string;
   orgLogoUrl?: string | null;
-  /** Every Organization the caller can switch into — a platform superuser
+  /** Every Organization the caller can switch into, a platform superuser
    * sees every Organization, everyone else just their own. */
   organizations: Organization[];
   email: string;
   role: Role | null;
   demo: boolean;
-  /** The signed-in caller's own profile — bottom account row + menu. */
+  /** The signed-in caller's own profile, bottom account row + menu. */
   profile: Profile | null;
-  /** Active operational alerts — rendered as the Alerts nav badge. */
+  /** Active operational alerts, rendered as the Alerts nav badge. */
   alertCount: number;
 }
 
@@ -109,13 +109,13 @@ function NavRow({
   collapsed,
 }: {
   icon?: LucideIcon;
-  /** Renders the assistant's circular logo instead of `icon` — used for the
+  /** Renders the assistant's circular logo instead of `icon`, used for the
    * scoped assistant's "Overview" row when the assistant has an image. */
   avatarUrl?: string;
   label: string;
   href: string;
   active: boolean;
-  /** Numeric badge (e.g. active alert count) — a dot when collapsed. */
+  /** Numeric badge (e.g. active alert count), a dot when collapsed. */
   badge?: number;
   collapsed: boolean;
 }) {
@@ -179,8 +179,8 @@ function OrgAvatar({ name, logoUrl }: { name: string; logoUrl?: string | null })
  * Vercel-style organization switcher: a circular org avatar that opens a
  * popover with a search box and every Organization the caller can switch
  * into (a platform superuser sees every org; everyone else just their own)
- * plus a settings gear on the active row — visible only to roles that can
- * manage members — linking straight to the org's Members page.
+ * plus a settings gear on the active row, visible only to roles that can
+ * manage members, linking straight to the org's Members page.
  */
 function OrgAvatarSwitcher({
   orgId,
@@ -614,8 +614,8 @@ function SidebarContent({
 
           {/* Settings opens the org-settings dialog, so the entry only exists
               for roles that can change something in it (owner / admin).
-              Everyone else reaches their personal settings — Profile and
-              theme — from the account menu below. */}
+              Everyone else reaches their personal settings, Profile and
+              theme, from the account menu below. */}
           {settingsNav && canManageMembers(role) && (
             <NavRow
               icon={settingsNav.icon}
@@ -629,7 +629,7 @@ function SidebarContent({
         </HoverHighlight>
       </nav>
 
-      {/* Account row (Vercel's bottom-left user block) — the caller's own
+      {/* Account row (Vercel's bottom-left user block), the caller's own
           identity, not the org's (the org already has its own switcher
           above). */}
       <div
@@ -687,7 +687,7 @@ function SidebarContent({
               </p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {/* Org-level settings live in the sidebar's Settings dialog — the
+            {/* Org-level settings live in the sidebar's Settings dialog, the
                 account menu only carries personal items, which is also how a
                 non-admin reaches their own profile at all. */}
             <DropdownMenuItem render={<Link href="/settings/profile" />}>
@@ -715,7 +715,7 @@ function SidebarContent({
  * Off-canvas navigation for phones and portrait tablets, where a 240px
  * permanent sidebar would leave the page barely a third of the screen.
  *
- * It is the *same* `SidebarContent`, always in its full (labelled) form — a
+ * It is the *same* `SidebarContent`, always in its full (labelled) form, a
  * collapsed icon rail is a pointing device's affordance, and there is no
  * hover to reveal what an icon means on touch. Opened from the top bar's
  * hamburger; closed by the backdrop, the toggle, Escape, or navigating
@@ -767,7 +767,7 @@ function NavDrawer(props: AppSidebarProps) {
  * edge peeks a floating panel; the top bar shows a reopen button.
  *
  * All of that is desktop behaviour (`lg` and up). Below it the sidebar leaves
- * the layout entirely and navigation moves into `NavDrawer` — dragging a
+ * the layout entirely and navigation moves into `NavDrawer`, dragging a
  * resize handle and hovering a 6px screen edge are both mouse affordances,
  * and the space simply isn't there.
  */
@@ -801,7 +801,7 @@ export function AppSidebar(props: AppSidebarProps) {
     };
   }, [dragging, setSidebarDocked]);
 
-  // Toggle = fully hide the sidebar (it leaves the layout entirely — not an
+  // Toggle = fully hide the sidebar (it leaves the layout entirely, not an
   // icon rail). The width is preserved on purpose: reopening restores the
   // exact state the sidebar had before closing, so a full sidebar reopens
   // full and one dragged down to the icon rail reopens as the rail.
@@ -820,7 +820,7 @@ export function AppSidebar(props: AppSidebarProps) {
             collapsed={collapsed}
             expandsOnToggle={false}
             // Toggle fully hides the sidebar (never a rail). Width is preserved
-            // so reopening from the top bar restores the same state — full or
+            // so reopening from the top bar restores the same state, full or
             // the dragged-down icon rail. Rail is reached only by dragging.
             onToggle={close}
           />

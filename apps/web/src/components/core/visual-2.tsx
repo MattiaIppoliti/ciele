@@ -1,5 +1,5 @@
 "use client";
-// badtz-ui.com — Animated Card "Visual 2" (donut + orbiting tags). Adapted:
+// badtz-ui.com, Animated Card "Visual 2" (donut + orbiting tags). Adapted:
 // fixed the arbitrary cubic-bezier easing classes for Tailwind v4, derived the
 // donut progress straight from `hovered` (no setState-in-effect), and added a
 // `label` slot so callers can replace the default caption card.

@@ -1,7 +1,7 @@
 # CLI & MCP connection architecture
 
-How the `ciele` CLI, the ciele MCP server, and any script reach a deployment —
-SaaS (`platform.ciele.app`) or self-hosted — and what stands between an API key
+How the `ciele` CLI, the ciele MCP server, and any script reach a deployment,
+SaaS (`platform.ciele.app`) or self-hosted, and what stands between an API key
 and the database. Companion pages: [`v1-operations.md`](v1-operations.md) (the
 operation catalogue) and [`connect-ai-clients.md`](connect-ai-clients.md)
 (per-client setup). A reviewable diagram version of this page lives in
@@ -20,7 +20,7 @@ flowchart TB
         RAW["Your scripts / CI<br/>(curl, SDKs from openapi.json)"]
     end
 
-    CLIENTPKG["@ciele/client — Bearer ciele_sk_… + CIELE_BASE_URL"]
+    CLIENTPKG["@ciele/client, Bearer ciele_sk_… + CIELE_BASE_URL"]
     CLI --> CLIENTPKG
     MCP --> CLIENTPKG
     RAW -.HTTP.-> API
@@ -33,7 +33,7 @@ flowchart TB
     end
     CLIENTPKG --> API
 
-    OPS["@ciele/ops — operations layer<br/>(context, validated input) → result<br/>declares capability + mutated entities<br/>effects via ports: jobs · OKF persist · crawl · cache · emails"]
+    OPS["@ciele/ops, operations layer<br/>(context, validated input) → result<br/>declares capability + mutated entities<br/>effects via ports: jobs · OKF persist · crawl · cache · emails"]
     API --> OPS
 
     PINNED["org-pinned Db wrapper<br/>fail-closed allow-list · org args replaced ·<br/>id args resolved → owner checked<br/>(stands in for RLS on the service-role client)"]
@@ -47,13 +47,13 @@ flowchart TB
 
 Key properties, by construction:
 
-- **The web app and the API cannot drift** — both surfaces execute the same
+- **The web app and the API cannot drift**: both surfaces execute the same
   operation objects from `@ciele/ops`; only context resolution differs
   (session + RLS-scoped Db vs API key + org-pinned Db).
-- **A key can never out-rank its creator** — the Role is assigned at mint time,
+- **A key can never out-rank its creator**: the Role is assigned at mint time,
   capped at the minting Member's Role, and every capability check reuses the
   same rank ladder as the admin app.
-- **Cross-tenant access fails closed** — the org-pinned wrapper replaces
+- **Cross-tenant access fails closed**: the org-pinned wrapper replaces
   organization arguments and resolves id-addressed rows to their owner before
   delegating; anything not allow-listed throws.
 
@@ -86,7 +86,7 @@ sequenceDiagram
 ## MCP connection flow
 
 The MCP server is a thin stdio adapter over the same client. Read-only mode is
-enforced *inside the MCP process* — a refused mutation never produces network
+enforced *inside the MCP process*, a refused mutation never produces network
 traffic.
 
 ```mermaid
@@ -99,7 +99,7 @@ sequenceDiagram
     M-->>A: 7 tools (identity, assistants, flows,<br/>knowledge, publish, inbox, improvements)
     A->>M: tools/call manage_knowledge { action: add_faq, … }
     alt CIELE_MCP_READ_ONLY=1 and the action mutates
-        M-->>A: error result — refused locally, zero network
+        M-->>A: error result, refused locally, zero network
     else allowed
         M->>API: POST /collections/{id}/faqs (Bearer key)
         API-->>M: 201 · or the {error:{code,message}} envelope

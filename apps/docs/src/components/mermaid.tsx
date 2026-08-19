@@ -37,7 +37,7 @@ function token(name: string, fallback: string): string {
  *
  * Registered as `<Mermaid />` in `components/mdx.tsx`, so any page can write a
  * diagram inline without importing anything. The `mermaid` package is loaded
- * through a dynamic `import()`, which keeps it in its own chunk — pages without
+ * through a dynamic `import()`, which keeps it in its own chunk, pages without
  * a diagram never download it.
  *
  * Theme: Fumadocs' `RootProvider` toggles a `dark` class on `<html>`, so the
@@ -100,7 +100,7 @@ export function Mermaid({
           look: 'handDrawn',
           handDrawnSeed: seedOf(source),
           // `useMaxWidth: false` keeps each diagram at its natural size rather
-          // than scaling it down to the prose column — a wide diagram squeezed
+          // than scaling it down to the prose column, a wide diagram squeezed
           // into ~650px is unreadable. Wide ones scroll inside the figure
           // instead; see the wrapper below.
           flowchart: {
@@ -120,7 +120,7 @@ export function Mermaid({
             fontSize: '13px',
             // The hand-drawn look fills shapes with hachure (diagonal pencil
             // strokes). Filling with the figure's own background makes that
-            // hatch blend away, leaving the sketched outline — the Excalidraw
+            // hatch blend away, leaving the sketched outline, the Excalidraw
             // look rather than a shaded box.
             mainBkg: card,
             nodeBorder: fg,
@@ -137,7 +137,7 @@ export function Mermaid({
         const rendered = await mermaid.render(id, source);
         if (!cancelled) setSvg(rendered.svg);
       } catch {
-        // A malformed diagram must not take the page down — fall back to the
+        // A malformed diagram must not take the page down, fall back to the
         // source, which is still readable.
         if (!cancelled) setFailed(true);
       }

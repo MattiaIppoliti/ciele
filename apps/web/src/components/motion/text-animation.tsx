@@ -218,7 +218,7 @@ export function ChromaticTextReveal({
           </span>
           {/* The sweep starts fully clipped, so the server-rendered word is
               invisible until the client animation runs. Without scripting it
-              would never appear — render a plain first word in that case. */}
+              would never appear, render a plain first word in that case. */}
           <noscript>
             <span className="col-start-1 row-start-1 whitespace-nowrap">
               {words[0]}

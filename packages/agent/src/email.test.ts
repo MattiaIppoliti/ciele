@@ -3,7 +3,7 @@ import { emailTransportConfigured, sendEmail } from "./email";
 
 /**
  * The email transport tested through its public seam: what it reports and
- * what leaves over the wire (mocked fetch) — Resend never called for real.
+ * what leaves over the wire (mocked fetch), Resend never called for real.
  */
 
 const MESSAGE = {

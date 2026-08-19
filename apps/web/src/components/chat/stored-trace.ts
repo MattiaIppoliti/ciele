@@ -6,7 +6,7 @@ import type {
 
 /**
  * Projects a persisted turn trace into what the Thinking panel should render
- * for the Member looking at it. Pure so it can be tested directly — the panel
+ * for the Member looking at it. Pure so it can be tested directly, the panel
  * itself is a `.tsx` component and this app's vitest only picks up `.ts`.
  *
  * The gate drops the model's own reasoning (`kind: "thought"`) and keeps the
@@ -53,7 +53,7 @@ export function visibleTraceSteps(
 
 /**
  * The Inbox badge for how the loop declared itself done (#574). Null when the
- * trace predates the terminal declaration — no badge beats a guessed one.
+ * trace predates the terminal declaration, no badge beats a guessed one.
  */
 export function terminalBadge(
   terminal: TurnTerminalStatus | undefined
@@ -67,7 +67,7 @@ export function terminalBadge(
 /**
  * The panel header for a finished, stored turn. The live panel counts elapsed
  * time as it streams; a trace read back from the database has no such clock, so
- * it reports what it knows — how much work the turn did — the way the reference
+ * it reports what it knows, how much work the turn did, the way the reference
  * platform's transcript does.
  */
 export function storedTraceLabel(trace: VisibleTrace): string {
@@ -76,7 +76,7 @@ export function storedTraceLabel(trace: VisibleTrace): string {
   if (tools > 0) parts.push(`${tools} ${tools === 1 ? "tool call" : "tool calls"}`);
   const thoughts = trace.steps.filter((step) => step.kind === "thought").length;
   if (thoughts > 0) parts.push(`${thoughts} ${thoughts === 1 ? "thought" : "thoughts"}`);
-  // `iteration 4/6` — only when the stored trace knows both numbers (#574),
+  // `iteration 4/6`: only when the stored trace knows both numbers (#574),
   // so a pre-#574 trace reads exactly as it always did.
   if (trace.iteration !== undefined && trace.iterationLimit !== undefined) {
     parts.push(`iteration ${trace.iteration}/${trace.iterationLimit}`);
@@ -85,7 +85,7 @@ export function storedTraceLabel(trace: VisibleTrace): string {
   return `Thought · ${parts.join(", ")}`;
 }
 
-/** Longest live label before it is clipped — a header line, not a paragraph. */
+/** Longest live label before it is clipped, a header line, not a paragraph. */
 const LIVE_LABEL_MAX = 64;
 
 /**
@@ -97,11 +97,11 @@ const LIVE_LABEL_MAX = 64;
  * Naming the running tool is strictly more specific, and it cannot drift from
  * what the panel below it lists.
  *
- * **Only tool steps.** A tool label is written to be read — "Searching knowledge
+ * **Only tool steps.** A tool label is written to be read, "Searching knowledge
  * for 'fees'". The other two kinds are not: a `thought`'s label is the model's
  * raw reasoning, which reads as gibberish clipped at 64 characters and does not
  * belong in a collapsed header a Visitor sees; a `notice`'s label is an operator
- * diagnostic ("No AI provider credential configured for this organization — add
+ * diagnostic ("No AI provider credential configured for this organization, add
  * one in Settings → AI") that is addressed to an admin, not to whoever is waiting
  * for an answer. Both still appear as rows in the expanded panel, which is where
  * they make sense. Between tool calls the header says "Thinking…".
@@ -111,7 +111,7 @@ const LIVE_LABEL_MAX = 64;
  */
 /**
  * What the chat UIs actually render out of a turn's steps. Drops the
- * "Generating answer" bookkeeping notice (the Visitor sees the answer stream —
+ * "Generating answer" bookkeeping notice (the Visitor sees the answer stream,
  * naming the model adds nothing) and the routing notice when the classifier
  * only landed on the Default behavior catch-all; routing is worth surfacing
  * only when a specific flow matched.

@@ -25,7 +25,7 @@ const LAUNCH_URL_LIMIT = 500;
  * A page URL reported by the embed, or undefined when it is unusable.
  *
  * The floater launcher runs on the customer's page and the chat runs in an
- * iframe on our origin, so `referer` describes *us*, not the visitor's page —
+ * iframe on our origin, so `referer` describes *us*, not the visitor's page,
  * which is why the embed has to say. Only http(s) is accepted, so a hostile
  * embed cannot park a `javascript:` string in a field the Inbox renders.
  */

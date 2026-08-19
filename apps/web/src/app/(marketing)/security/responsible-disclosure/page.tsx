@@ -38,7 +38,7 @@ const SECTIONS: LegalSection[] = [
         type: "ul",
         items: [
           "What the issue is, and what an attacker could do with it.",
-          "Where it is — the URL, endpoint or component, and the affected version or commit if you know it.",
+          "Where it is: the URL, endpoint or component, and the affected version or commit if you know it.",
           "Reproduction steps precise enough for us to see it ourselves.",
           "Any proof-of-concept request, payload or screenshot.",
           "Whether you accessed any data that was not yours, and how much.",
@@ -77,11 +77,11 @@ const SECTIONS: LegalSection[] = [
       {
         type: "ul",
         items: [
-          "Give us reasonable time to fix an issue before disclosing it — ninety days is the default, and we will usually be much faster.",
+          "Give us reasonable time to fix an issue before disclosing it. Ninety days is the default, and we are usually much faster.",
           "Use only accounts and organizations you own, or ones you have written permission to test.",
           "Stop as soon as you have confirmed an issue: do not enumerate further records, escalate laterally or persist access.",
           "Do not exfiltrate, retain or share data belonging to anyone else, and delete anything you incidentally accessed once you have reported it.",
-          "Do not degrade the service — no denial of service, no load testing, no spam through platform email or escalation channels.",
+          "Do not degrade the service: no denial of service, no load testing, no spam through platform email or escalation channels.",
           "Do not social-engineer our staff, customers or their students, and do not attack physical premises.",
         ],
       },
@@ -118,7 +118,7 @@ const SECTIONS: LegalSection[] = [
           "Denial of service, volumetric or resource-exhaustion testing, and rate-limit absence without further impact.",
           "Social engineering, phishing of staff or customers, and physical attacks.",
           "Self-XSS, and issues that require a compromised device, a rooted browser or a malicious extension.",
-          "Vulnerabilities in third-party services we do not control — report those to the provider; tell us if the exposure is ours.",
+          "Vulnerabilities in third-party services we do not control. Report those to the provider, and tell us if the exposure is ours.",
           "Content an assistant generates that is merely wrong, off-topic or unhelpful. That is a quality issue, not a vulnerability, and the product has an Improvements tracker for it.",
         ],
       },
@@ -148,20 +148,20 @@ const SECTIONS: LegalSection[] = [
           <>
             <Link href="/security" className={LINK_CLASS}>
               Security overview
-            </Link>{" "}
-            — the practices and compliance status behind this policy.
+            </Link>
+            . The practices and compliance status behind this policy.
           </>,
           <>
             <Link href="/security/gdpr" className={LINK_CLASS}>
               GDPR
-            </Link>{" "}
-            — our processor role and the measures protecting personal data.
+            </Link>
+            . Our processor role and the measures protecting personal data.
           </>,
           <>
             <Link href="/policies/dpa" className={LINK_CLASS}>
               Data Processing Addendum
-            </Link>{" "}
-            — including the breach-notification commitment.
+            </Link>
+            . Including the breach-notification commitment.
           </>,
         ],
       },

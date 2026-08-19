@@ -5,11 +5,11 @@ sites), not `revalidateTag`. A performance review (2026-07, NextFaster-playbook 
 migrating to granular tags; we evaluated it and **decided against**.
 
 **Why paths are correct here.** Admin reads flow through the request-scoped, RLS-bound `Db`
-(`getDb()`, cookie-bound Supabase client) and are **never stored in the server data cache** — they
+(`getDb()`, cookie-bound Supabase client) and are **never stored in the server data cache**, they
 are per-Member and re-queried on every render (the admin routes are `force-dynamic`). For such
 routes, `revalidatePath`'s only real effect is purging the **client router cache** so the mutating
 Member sees their change on the next navigation. Tags would have **no server cache entries to
-invalidate** — a tag migration would add plumbing to every action and change nothing observable.
+invalidate**, a tag migration would add plumbing to every action and change nothing observable.
 
 **Where tags ARE used.** Shared, publicly cacheable reads: the Publication lookup
 (`lib/widget-db.ts`, `unstable_cache` tagged `publication:{assistantId}`, busted by
@@ -28,5 +28,5 @@ tool, not a shortcut.
   largely delivers.
 
 **Revisit when** an admin surface becomes read-heavy enough that per-org shared caching is worth
-the isolation analysis (e.g. Insights over large orgs) — that read should then get an org-scoped
+the isolation analysis (e.g. Insights over large orgs), that read should then get an org-scoped
 tag, following the Publication pattern.

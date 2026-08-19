@@ -2,7 +2,7 @@
 
 Ciele is open source under the AGPL-3.0-only license, and Ciele also offers a
 commercial managed edition built from the same core. To be able to ship your
-contribution in both, we need your permission — so every pull request to this
+contribution in both, we need your permission, so every pull request to this
 repository must be covered by this agreement.
 
 Signing takes one comment: when you open your first pull request, a bot posts a
@@ -17,12 +17,12 @@ once.
 
 That is the whole grant. In plain terms:
 
-- **You keep your copyright.** This is a license, not an assignment — you can
+- **You keep your copyright.** This is a license, not an assignment; you can
   use and relicense your own work however you like, forever.
 - **Ciele may ship your contribution under the AGPL** (as it does today) **and
   inside the commercial managed edition.** Without that permission, an accepted
   contribution would leave Ciele unable to distribute its own product.
-- **You confirm you have the right to grant it** — the work is yours, or your
+- **You confirm you have the right to grant it**: the work is yours, or your
   employer permits you to contribute it.
 
 ## If your employer needs a formal document

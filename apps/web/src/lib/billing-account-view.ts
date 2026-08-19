@@ -5,7 +5,7 @@
  * two reasons:
  *
  *  1. **They are testable.** vitest only picks up `.test.ts` in this app, so
- *     anything worth pinning has to sit in a plain module — and money formatting
+ *     anything worth pinning has to sit in a plain module, and money formatting
  *     on a page about charges is worth pinning.
  *  2. **They must not drift between server and client.** The card is server-
  *     rendered; `Intl` output depends on the runtime's locale data, so both the
@@ -57,7 +57,7 @@ export type InvoiceBadgeVariant = "secondary" | "outline" | "destructive";
 
 /**
  * Status → wording + badge. `paid` is the only settled outcome; `open` is still
- * payable and `uncollectible` has been given up on — different facts to a
+ * payable and `uncollectible` has been given up on, different facts to a
  * customer reading their own history, so they must not share one neutral badge.
  * An unknown status prints verbatim rather than being flattened into a guess.
  */
@@ -82,7 +82,7 @@ export function invoiceStatusView(status: string): {
   }
 }
 
-/** One invoice row, fully formatted — the component only lays it out. */
+/** One invoice row, fully formatted, the component only lays it out. */
 export interface InvoiceRow {
   id: string;
   dateLabel: string;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Alert } from "@agent-hub/core";
 import { NotificationStack } from "@/components/motion/notification-stack";
+import { RIGHT_RAIL_TRANSITION_VAR } from "@/components/shell/right-rail";
 import {
   setNotificationListener,
   type NotificationInput,
@@ -22,9 +23,9 @@ const VISIBLE_LIMIT = 3;
 /**
  * The admin shell's bottom-right notification banner. It merges two streams:
  *
- * - **Alerts** rendered on the server (operational health) — they stay until an
+ * - **Alerts** rendered on the server (operational health), they stay until an
  *   admin resolves them, and clicking through opens `/alerts`.
- * - **Events** raised by the UI through `@/lib/toast` — "Published v3",
+ * - **Events** raised by the UI through `@/lib/toast`, "Published v3",
  *   "Upload failed". Successes and notices clear themselves; errors and
  *   warnings wait for the close control.
  *
@@ -120,7 +121,19 @@ export function NotificationCenter({
   return (
     // right-6 leaves room for the dismiss control, which floats past the
     // banner's own right edge.
-    <div className="pointer-events-none fixed right-3 bottom-3 z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] justify-end sm:right-6 sm:bottom-4 sm:max-w-[calc(100vw-3rem)]">
+    //
+    // From `md` up the inset is measured from the workspace's right rail rather
+    // than from the viewport: a docked live preview is user-resizable, and
+    // floating over it hid the panel's composer. `--right-rail-width` is 0
+    // wherever the rail is empty, and the offset starts at `md` because that is
+    // the breakpoint at which the rail's panel enters the flow at all, below it
+    // there is no rail to stand beside. Raising z-index instead would have
+    // hidden the alerts, which is the wrong way round: an active alert has to
+    // stay readable.
+    <div
+      style={{ transition: `var(${RIGHT_RAIL_TRANSITION_VAR})` }}
+      className="pointer-events-none fixed right-3 bottom-3 z-40 flex w-[22rem] max-w-[calc(100vw-1.5rem)] justify-end sm:right-6 sm:bottom-4 sm:max-w-[calc(100vw-3rem)] md:right-[calc(var(--right-rail-width)_+_1.5rem)] md:max-w-[calc(100vw_-_var(--right-rail-width)_-_3rem)]"
+    >
       <NotificationStack
         items={items.map((item) => ({
           id: item.id,

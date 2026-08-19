@@ -46,7 +46,7 @@ describe("generateStackSecrets", () => {
 
   it("gives the API keys a lifetime measured in years, not hours", () => {
     // Rotating them means rotating JWT_SECRET, which is a deliberate
-    // operation — not something a self-hoster should hit by surprise.
+    // operation, not something a self-hoster should hit by surprise.
     const { anonKey } = generate();
     const claims = JSON.parse(Buffer.from(anonKey.split(".")[1]!, "base64url").toString());
     expect(claims.exp - claims.iat).toBeGreaterThan(31_536_000);

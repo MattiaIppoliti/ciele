@@ -33,7 +33,7 @@ export function classifyCommit(message) {
   const text = String(message);
   const subject = text.split("\n", 1)[0] ?? "";
 
-  // `feat!:` / `fix(scope)!:` — the `!` marks a breaking change.
+  // `feat!:` / `fix(scope)!:`, the `!` marks a breaking change.
   if (/^[a-z]+(\([^)]*\))?!:/i.test(subject)) return "breaking";
   if (/^BREAKING[ -]CHANGE:/m.test(text)) return "breaking";
   if (/^feat(\([^)]*\))?:/i.test(subject)) return "feat";

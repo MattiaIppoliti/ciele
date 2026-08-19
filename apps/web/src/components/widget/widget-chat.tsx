@@ -577,7 +577,7 @@ export function WidgetChat({
     provider: string | null;
   } | null>(requireSignIn ? null : { authenticated: true, provider: null });
   // Memory folder availability (#666): true only for SSO-signed users of an
-  // org whose long-term memory toggle is on — resolved server-side.
+  // org whose long-term memory toggle is on, resolved server-side.
   const [memoriesOn, setMemoriesOn] = useState(false);
   const [memories, setMemories] = useState<WidgetMemory[]>([]);
 

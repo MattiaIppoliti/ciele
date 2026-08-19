@@ -57,7 +57,7 @@ export default async function BillingPage({
   const params = await searchParams;
   // Straight back from Checkout: write the subscription from the session before
   // reading anything, so a customer who lands ahead of the webhook is not told
-  // their organization is still pending. Failures are swallowed on purpose — the
+  // their organization is still pending. Failures are swallowed on purpose, the
   // webhook is the source of record and will apply the same row moments later.
   const returnedSession = params.session_id;
   if (params.checkout === "success" && typeof returnedSession === "string") {
@@ -75,7 +75,7 @@ export default async function BillingPage({
     capabilities.billing.getSubscription(session.organization.id),
     capabilities.metering.getUsageLimits(organizationId),
     // Live Stripe: renewal, card, invoices. A provider failure must not take the
-    // whole tab down — everything else here comes from our own row, which is
+    // whole tab down, everything else here comes from our own row, which is
     // still worth showing.
     capabilities.billing
       .getBillingAccount(session.organization.id)

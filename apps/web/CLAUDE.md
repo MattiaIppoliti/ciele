@@ -1,4 +1,4 @@
-# apps/web — `@agent-hub/web`
+# apps/web, `@agent-hub/web`
 
 The tenant-facing product (`platform.ciele.app`). Next.js 16 App Router, React 19, Tailwind v4,
 shadcn/ui on Base UI. Admin console under `src/app/(admin)/`, widget runtime under
@@ -16,7 +16,7 @@ pnpm --filter @agent-hub/web lint        # eslint
 
 Single test file: `pnpm --filter @agent-hub/web exec vitest run src/lib/escalation.test.ts`.
 
-Bundle size (Next 16 prints none, and `@next/bundle-analyzer` does not work under Turbopack —
+Bundle size (Next 16 prints none, and `@next/bundle-analyzer` does not work under Turbopack,
 see [`docs/runbooks/bundle-measurement.md`](../../docs/runbooks/bundle-measurement.md)):
 
 ```bash
@@ -26,11 +26,11 @@ pnpm --filter @agent-hub/web attribute home   # per-module buckets; ratios only,
 ```
 
 Dev server: use the Browser pane (`preview_start` with `web`, or `web-demo` for the
-Supabase-less mock build) — see `.claude/launch.json`. Never `pnpm dev` in a shell.
+Supabase-less mock build), see `.claude/launch.json`. Never `pnpm dev` in a shell.
 
 ## Test conventions
 
-- Vitest, `environment: "node"`, `include: ["src/**/*.test.ts"]` — **`.tsx` tests are not
+- Vitest, `environment: "node"`, `include: ["src/**/*.test.ts"]`, **`.tsx` tests are not
   picked up**. Component behaviour is tested through the plain-TS module it delegates to.
 - Tests live next to their subject (`engine.ts` → `engine.test.ts`). Suffixed variants split a
   large surface by concern (`ingest.security.test.ts`, `ingest.crawl.test.ts`).
@@ -41,7 +41,7 @@ Supabase-less mock build) — see `.claude/launch.json`. Never `pnpm dev` in a s
 The runtime lives in [`packages/agent`](../../packages/agent/CLAUDE.md) (`@agent-hub/agent`), with
 three entry points: `@agent-hub/agent` (server), `@agent-hub/agent/client` (client-safe) and
 `@agent-hub/agent/local-providers` (provider CLIs). Its `exports` map declares only those, so a deep
-import into its internals does not resolve — no lint rule needed (ADR-0005). Adding a public
+import into its internals does not resolve, no lint rule needed (ADR-0005). Adding a public
 capability = export it from a barrel **and** update `packages/agent/src/interface.test.ts`
 deliberately; that test locks the surface.
 
@@ -59,7 +59,7 @@ These are ESLint errors, not style preferences (`eslint.config.mjs`):
 
 ## Data access
 
-Everything goes through the `Db` seam in `@agent-hub/db` — never a raw Supabase query in a page
+Everything goes through the `Db` seam in `@agent-hub/db`, never a raw Supabase query in a page
 or component. **Domain types come from `@agent-hub/core`, operations from `@agent-hub/db`**
 (ADR-0019): the db barrel does not re-export the vocabulary. Every read is org-scoped by Postgres
 RLS; with no Supabase env the app falls back to the in-memory mock db, which is how `web-demo` runs.
@@ -79,11 +79,11 @@ Server Actions live in `src/app/actions.ts`, `src/app/auth/actions.ts`, and rout
   use one `CONNECTOR_DEADLINE_MS` safety net, not a latency assertion.
 - The connector is a **checked-in release artifact**, not built from source, so shipping a change to
   `public/connectors/*.mjs` is a coordinated bump: rename the artifact, its own `VERSION`,
-  `CURRENT_CONNECTOR_VERSION`, `CONNECTOR_SHA256` (recompute — `shasum -a 256`), and the filename +
+  `CURRENT_CONNECTOR_VERSION`, `CONNECTOR_SHA256` (recompute, `shasum -a 256`), and the filename +
   version rows in `local-connector-installer.test.ts` / `local-connector-protocol.test.ts`. Miss the
   digest and `/api/local-connector/runtime` 503s; miss `connectorNeedsUpgrade` and every installed
   connector is told to upgrade to the version it already runs.
-- The connector's relay poll is the app's most-invoked endpoint by an order of magnitude — an idle
+- The connector's relay poll is the app's most-invoked endpoint by an order of magnitude, an idle
   paired connector bills Vercel functions forever. It backs off 1→12s when no job is claimed, and
   the ceiling must stay under `DEVICE_FRESH_MS` (30s) in `local-inference-relay.ts` or a healthy
   connector reads as offline. Anything slow (the local-CLI probe) belongs off that path.

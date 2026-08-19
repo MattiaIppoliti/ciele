@@ -3,7 +3,7 @@
  * let a fully static page draw the right header CTA before first paint.
  *
  * Why it exists. The marketing pages are identical for every visitor except for
- * one button — "Open app" for a signed-in caller, "Log in / Get a demo"
+ * one button, "Open app" for a signed-in caller, "Log in / Get a demo"
  * otherwise. Resolving that on the server meant reading the session cookie in
  * the (marketing) layout, and a layout that reads cookies makes every route
  * under it dynamic: seven pages re-rendered per request to decide one button.
@@ -14,14 +14,14 @@
  * pages prerender; the button is still right on the first frame.
  *
  * It is emphatically NOT an auth mechanism:
- *   - it carries no identity, no token and no claim — just "1" or nothing;
+ *   - it carries no identity, no token and no claim, just "1" or nothing;
  *   - nothing is authorized by it, ever. Every gate stays where it was: the
  *     middleware's validated claims and each page's own session read;
  *   - a stale or forged hint costs a visitor one wrong-looking button. Clicking
  *     "Open app" without a session lands on /login exactly as before.
  *
  * The middleware owns it (see `middleware.ts`), because that is where the session
- * claims are already validated on every request — so the hint self-corrects when
+ * claims are already validated on every request, so the hint self-corrects when
  * a session expires, and signing in or out needs no extra bookkeeping.
  */
 
@@ -37,7 +37,7 @@ export const AUTH_HINT_ATTR = "data-signed-in";
  * The middleware writes the cookie only when this returns false. That matters
  * for more than tidiness: a `Set-Cookie` header on an otherwise-static response
  * stops a CDN caching it, which would undo the prerendering this hint exists to
- * enable. In the steady state — the overwhelming majority of requests — nothing
+ * enable. In the steady state, the overwhelming majority of requests, nothing
  * is written and the response stays cacheable.
  */
 export function authHintIsCurrent(
@@ -50,7 +50,7 @@ export function authHintIsCurrent(
 /**
  * Blocking inline script: mirrors the hint cookie onto <html> before first paint.
  *
- * Deliberately tiny and exception-swallowing — if anything here throws, the page
+ * Deliberately tiny and exception-swallowing, if anything here throws, the page
  * still renders and the visitor sees the signed-out CTA, which is the safe
  * default for a page most visitors read while signed out.
  */

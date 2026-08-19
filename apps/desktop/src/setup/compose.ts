@@ -2,7 +2,7 @@
 //
 // Both the wizard's steps and the stack controller drive the same project,
 // with the same bundled definition and the same generated env. Two copies of
-// this list is two places to forget when the overlay changes — and a stack
+// this list is two places to forget when the overlay changes, and a stack
 // status screen reporting on a *different* compose project than the wizard
 // created is a bug with no visible cause.
 

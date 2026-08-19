@@ -4,8 +4,8 @@ import { escapeHtml, transcriptDocument } from "./transcript-print";
 
 /**
  * The printable transcript document (#561). The requirement worth a test is that
- * a long transcript is not truncated — every turn reaches the document, and the
- * browser paginates — plus that transcript text can never inject markup into it.
+ * a long transcript is not truncated, every turn reaches the document, and the
+ * browser paginates, plus that transcript text can never inject markup into it.
  */
 
 const conversation: InboxConversation = {

@@ -4,14 +4,14 @@
  * One source of truth, two consumers: the preferences modal built by
  * `buildConsentConfig()` and the public Cookie Notice page
  * (`/policies/cookies`), which renders the same tables. Adding a cookie in one
- * place therefore discloses it in both — the two can never drift, which is the
+ * place therefore discloses it in both, the two can never drift, which is the
  * failure mode that makes a cookie notice legally worthless.
  *
  * GDPR/ePrivacy invariants this module encodes (locked by cookie-consent.test.ts):
  *
  * - Opt-in. Nothing beyond the strictly necessary category runs before the
  *   visitor chooses; no non-essential category is pre-ticked.
- * - Rejecting is exactly as easy as accepting — "Reject all" sits next to
+ * - Rejecting is exactly as easy as accepting, "Reject all" sits next to
  *   "Accept all" on the first layer, same visual weight, no extra click.
  * - Granular. Every category the visitor can control is a separate toggle with
  *   its own purpose and cookie table.
@@ -26,13 +26,13 @@
 import type { CookieConsentConfig } from "vanilla-cookieconsent";
 
 /**
- * Categories a visitor can act on. `necessary` is present but read-only — it
+ * Categories a visitor can act on. `necessary` is present but read-only, it
  * is listed for transparency, not as a choice.
  *
  * There is deliberately no `marketing` category: nothing on ciele.app serves
  * advertising or cross-site tracking storage, and declaring a category we do
  * not use would misstate what we do. Adding one later means appending an entry
- * here — the banner, the modal and the notice page all pick it up.
+ * here, the banner, the modal and the notice page all pick it up.
  */
 export type ConsentCategoryId = "necessary" | "functional" | "analytics";
 
@@ -42,7 +42,7 @@ export type StorageKind = "Cookie" | "Local storage";
 export interface DeclaredItem {
   /** Cookie name or storage key, as it appears on the device. */
   name: string;
-  /** Who sets it — us, or the named third party acting for us. */
+  /** Who sets it, us, or the named third party acting for us. */
   provider: string;
   purpose: string;
   /** Plain-language lifetime, e.g. "Session" or "6 months". */
@@ -84,7 +84,7 @@ export const CONSENT_COOKIE_NAME = "cc_cookie";
 export const CONSENT_COOKIE_DAYS = 182;
 
 /**
- * Bump this whenever the declaration below changes materially — a new category,
+ * Bump this whenever the declaration below changes materially, a new category,
  * a new third party, a new purpose. Every visitor is then asked again, because
  * consent given to the old declaration does not cover the new one.
  */
@@ -250,7 +250,7 @@ export function localStorageKeysFor(id: ConsentCategoryId): string[] {
 /**
  * Picks the keys present in `existingKeys` that a withdrawn category owns.
  *
- * Withdrawal has to remove what a category stored, not merely stop new writes —
+ * Withdrawal has to remove what a category stored, not merely stop new writes,
  * otherwise the identifier survives the refusal. Pure and key-list-driven so the
  * matching (including the prefix rule) is testable without a browser, and so it
  * can never reach past the keys the category actually declared.
@@ -302,7 +302,7 @@ export function buildConsentConfig(): CookieConsentConfig {
     mode: "opt-in",
     revision: CONSENT_REVISION,
     autoShow: true,
-    // No cookie wall. The banner never blocks reading the page — consent has
+    // No cookie wall. The banner never blocks reading the page, consent has
     // to be freely given, and trapping the page behind it is coercive.
     disablePageInteraction: false,
     hideFromBots: true,
@@ -315,7 +315,7 @@ export function buildConsentConfig(): CookieConsentConfig {
     },
 
     guiOptions: {
-      // Small card, bottom right — the same corner and radius language as the
+      // Small card, bottom right, the same corner and radius language as the
       // rest of the product's floating surfaces.
       consentModal: {
         layout: "box",
@@ -336,7 +336,7 @@ export function buildConsentConfig(): CookieConsentConfig {
       // false, but stating it makes the no-pre-ticked-boxes rule explicit and
       // testable rather than a default nobody notices.
       // Everything these two categories persist lives in local storage, which
-      // the plugin's `autoClear` cannot touch — it only erases cookies. The
+      // the plugin's `autoClear` cannot touch; it only erases cookies. The
       // clearing is done from the mount instead, driven by the
       // `localStorageKeys` in the declaration above; see `withdrawableKeys`.
       functional: { enabled: false },

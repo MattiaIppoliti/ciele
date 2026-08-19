@@ -1,6 +1,6 @@
-# apps/desktop — `@ciele/desktop`
+# apps/desktop, `@ciele/desktop`
 
-Ciele Desktop: an Electron shell whose first screen offers two ways in — sign in
+Ciele Desktop: an Electron shell whose first screen offers two ways in, sign in
 to your organization, or stand up a complete Ciele on this machine. The product
 UI is the existing web app; this workspace owns only the welcome screen, the
 setup wizard and the stack status screen.
@@ -14,7 +14,7 @@ This file is for people changing it.
 pnpm --filter @ciele/desktop electron:install   # fetch the Electron runtime (once)
 pnpm --filter @ciele/desktop dev                # electron-vite dev, with HMR
 pnpm --filter @ciele/desktop build              # bundle main + preload + renderer
-pnpm --filter @ciele/desktop test               # vitest — the engine and the pure modules
+pnpm --filter @ciele/desktop test               # vitest, the engine and the pure modules
 pnpm --filter @ciele/desktop typecheck          # both tsconfigs
 pnpm --filter @ciele/desktop lint
 pnpm --filter @ciele/desktop package:mac        # unsigned .app + .zip into dist/
@@ -24,14 +24,14 @@ pnpm --filter @ciele/desktop test:e2e           # Playwright, against a built or
 
 Electron 43 dropped its `postinstall` in favour of an `install-electron` bin, so
 the runtime binary is fetched explicitly rather than on every install in the
-monorepo — most work here never needs it, and it is ~100 MB.
+monorepo, most work here never needs it, and it is ~100 MB.
 
-Developing on Windows needs nothing beyond the repo's usual Node 22 + pnpm —
+Developing on Windows needs nothing beyond the repo's usual Node 22 + pnpm,
 every command above works there, `package:win` produces the unsigned NSIS
 installer plus the `dist/win-unpacked/` build the smoke drives, and testing the
 wizard against a real stack needs Docker Desktop for Windows (WSL2 or Hyper-V
 backend, either works). Run the commands from a shell with bash semantics (Git
-Bash or WSL) or plain PowerShell — none of them depend on a Unix shell.
+Bash or WSL) or plain PowerShell, none of them depend on a Unix shell.
 
 Run the whole flow without Docker with `--fake-ports`:
 
@@ -43,7 +43,7 @@ pnpm --filter @ciele/desktop dev -- --fake-ports
 
 ```
 src/
-  setup/      the setup engine — pure, framework-free, ports-injected
+  setup/      the setup engine, pure, framework-free, ports-injected
   main/       Electron main: windows, settings, IPC, the real ports
   preload/    the entire bridge, one file
   renderer/   React: welcome, wizard, settings, stack status
@@ -53,7 +53,7 @@ e2e/          the Playwright Electron smoke
 
 ## Where the design lives
 
-**`src/setup/` is the deep module, and the only one.** The steps are data —
+**`src/setup/` is the deep module, and the only one.** The steps are data,
 each with `execute` and `verify` over five injected ports (docker, fs, probe,
 crypto, clock). It imports no `electron`, no `node:*`, no React. That is why
 the wizard's behaviour can be tested exhaustively against scripted fakes, and
@@ -77,7 +77,7 @@ and gets no preload at all, in its own persistent session partition. Moving
 than rebuilding it.
 
 **Secret generation is `deploy/bootstrap.sh`'s block in TypeScript**, over the
-crypto port — not a shell-out. A GUI-launched macOS app cannot count on bash and
+crypto port, not a shell-out. A GUI-launched macOS app cannot count on bash and
 openssl being on its PATH, and a wrongly signed JWT gives a stack that starts
 cleanly and then 401s everything. `src/setup/secrets.test.ts` verifies the
 signatures the same way `deploy/compose.test.mjs` does for the shell version;
@@ -89,7 +89,7 @@ with ENOENT on a machine where the terminal finds it instantly.
 
 ## Testing
 
-Breadth lives in `pnpm test` — the engine, the steps, the secrets, the stack
+Breadth lives in `pnpm test`, the engine, the steps, the secrets, the stack
 controller, the update check, all against `src/setup/testing/fake-ports.ts`.
 The Electron glue has no unit tests; it is covered by the smoke.
 
@@ -108,7 +108,7 @@ Docker volumes and outlives both.
 
 ## Beta constraints
 
-Unsigned, macOS and Windows, no auto-update — an unsigned app cannot
+Unsigned, macOS and Windows, no auto-update, an unsigned app cannot
 auto-update, so `publish: null` and the app shows a notice linking the download
 instead. First-open instructions ship in the release notes: Gatekeeper's
 right-click-to-open on macOS, SmartScreen's "More info → Run anyway" on

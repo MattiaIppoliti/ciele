@@ -1,7 +1,7 @@
 // The guided local setup.
 //
 // The engine decides everything; this draws it. Which step is showing, whether
-// Continue is available, what a failure says — all of it is read off the
+// Continue is available, what a failure says, all of it is read off the
 // snapshot, so the screen cannot disagree with what actually ran.
 
 import {
@@ -136,7 +136,7 @@ export function WizardScreen(): ReactNode {
    *
    * Looking and running are separate on purpose: the engine's position is
    * derived from what has actually happened, so the renderer cannot move it by
-   * asking. Going back is therefore browsing — and where it can be more than
+   * asking. Going back is therefore browsing, and where it can be more than
    * browsing (an optional step), the button that does it says so.
    */
   const [viewIndex, setViewIndex] = useState<number | null>(null);
@@ -166,7 +166,7 @@ export function WizardScreen(): ReactNode {
   const direction = viewing >= previousView.current ? 1 : -1;
   previousView.current = viewing;
 
-  /** Any action puts the user back on the live step — that is where it lands. */
+  /** Any action puts the user back on the live step; that is where it lands. */
   const act = async (action: () => Promise<unknown>) => {
     setViewIndex(null);
     await action();
@@ -231,7 +231,7 @@ export function WizardScreen(): ReactNode {
               {!isLive ? (
                 <>
                   {/* A required step's result is what everything after it
-                      stands on, so only an optional one can be reopened — and
+                      stands on, so only an optional one can be reopened, and
                       the label promises exactly that much. */}
                   {step.optional ? (
                     <Button

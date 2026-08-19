@@ -11,7 +11,7 @@ const MILLION = 1_000_000;
 /** The generic rate an unpriced chat model falls back to (pricing.ts). */
 const FALLBACK_INPUT_EUR_PER_MILLION = 3;
 
-describe("estimateCostEur — chat models", () => {
+describe("estimateCostEur, chat models", () => {
   it("prices a catalog model from its own rate", () => {
     // Gemini 3.5 Flash: €0.30 in / €1.20 out per 1M.
     expect(
@@ -31,7 +31,7 @@ describe("estimateCostEur — chat models", () => {
   });
 });
 
-describe("estimateCostEur — embedding models", () => {
+describe("estimateCostEur, embedding models", () => {
   // None of the embedding models the runtime can resolve were in the price
   // table, so every batch was priced at the chat fallback. What that did to the
   // daily AI budget an admin actually reads is asserted at the ledger level in
@@ -81,7 +81,7 @@ describe("estimateCrawlCostEur", () => {
   it("prices a crawler named after an object prototype member at the same rate", () => {
     // The crawler arrives as free text from the telemetry column, so it can be
     // any string at all. A naive key lookup resolves "constructor" and friends
-    // to inherited members and multiplies pages by a function — NaN, which is
+    // to inherited members and multiplies pages by a function, NaN, which is
     // worse than free: every downstream `used > cap` comparison is false, so a
     // cap would read as never reached.
     const dearest = estimateCrawlCostEur("apify", 500);

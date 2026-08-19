@@ -2,7 +2,7 @@
 //
 // The engine is pure: it never imports `electron`, `node:fs`, `node:crypto` or
 // anything else that only exists in one process. Everything it can actually
-// *do* arrives through these ports — which is why the step list can be tested
+// *do* arrives through these ports, which is why the step list can be tested
 // exhaustively against scripted fakes, and why the same steps run unchanged
 // against Docker in the app and against nothing at all in CI.
 //
@@ -25,7 +25,7 @@ export interface DockerPort {
    * and telling a user the wrong one wastes their afternoon.
    */
   locate(): Promise<string | null>;
-  /** Whether the daemon answers — installed is not running. */
+  /** Whether the daemon answers, installed is not running. */
   isRunning(): Promise<boolean>;
   /** A `docker compose` invocation against the app's own stack. */
   compose(args: readonly string[], onOutput?: (chunk: string) => void): Promise<CommandResult>;
@@ -33,7 +33,7 @@ export interface DockerPort {
 
 export interface FsPort {
   ensureDir(path: string): Promise<void>;
-  /** null when the file does not exist — absence is not an error here. */
+  /** null when the file does not exist, absence is not an error here. */
   readFile(path: string): Promise<string | null>;
   writeFile(path: string, contents: string, options?: { mode?: number }): Promise<void>;
   exists(path: string): Promise<boolean>;
@@ -51,7 +51,7 @@ export interface ProbePort {
 
 /**
  * The two primitives secret generation needs. Not a "generate my secrets"
- * port: the *derivation* — which secrets, how long, how the JWTs are signed —
+ * port: the *derivation*, which secrets, how long, how the JWTs are signed,
  * is the part with rules in it, so it belongs in the engine where it can be
  * tested, not behind a seam where a fake would simply agree with itself.
  */
@@ -93,7 +93,7 @@ export interface SetupConfig {
   dockerDownloadUrl: string;
   /**
    * What separates entries in the COMPOSE_FILE list this platform's Compose
-   * expects — `;` on Windows (a colon is a drive letter there), `:` elsewhere.
+   * expects, `;` on Windows (a colon is a drive letter there), `:` elsewhere.
    * Injected so the engine never asks what platform it is on.
    */
   composePathSeparator: string;

@@ -17,7 +17,7 @@ const FLYING_BIRDS: Array<[number, number, number, number]> = [
   [63, -7.3, 31, 0.5],
 ];
 
-/* Footer flock — tuned to the glassy card's geometry. Each bird crosses the
+/* Footer flock, tuned to the glassy card's geometry. Each bird crosses the
    full width, so the upper band (open sky above the card) keeps them in
    plain view while the lower band stays readable in the gutters to the left
    and right of the card (and drifts as a soft silhouette behind its glass in
@@ -80,7 +80,7 @@ export function FlyingBirds({
 }
 
 /* Static scene pieces for the marketing home: a field of twinkling stars
-   and the falling-star streaks. All server-safe — positions are fixed
+   and the falling-star streaks. All server-safe, positions are fixed
    constants so SSR and client markup always match. (The hero clouds are
    painterly PNGs in public/images/home, not drawn here.) */
 
@@ -95,7 +95,7 @@ const HERO_STARS: Array<[number, number, number, number]> = [
   [48, 66, 1, 2.8], [43, 80, 2, 0.1], [46, 94, 1, 1.6],
 ];
 
-/* Extra stars for the denser hero sky — fills the gaps and reaches lower
+/* Extra stars for the denser hero sky, fills the gaps and reaches lower
    (50–80%) than the base field. Same deterministic-constants rule. */
 const HERO_STARS_DENSE: Array<[number, number, number, number]> = [
   [3, 15, 1, 0.6], [9, 45, 1, 2.1], [14, 68, 2, 1.3], [4, 72, 1, 2.8],

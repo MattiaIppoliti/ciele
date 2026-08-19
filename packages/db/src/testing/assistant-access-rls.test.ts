@@ -7,7 +7,7 @@ import { createSchemaLoadedPglite } from "./supabase-contract-harness";
  * RLS enforcement for per-assistant access overrides (PRD #296, #297).
  *
  * The contract harness runs queries as the PGlite superuser, which BYPASSES
- * row-level security — fine for adapter semantics, useless for proving the
+ * row-level security, fine for adapter semantics, useless for proving the
  * policies. This suite drops to the `authenticated` role (granting it the
  * table privileges the Supabase platform normally grants project-wide) so
  * `private.has_assistant_role` and the rewritten "members read assistants"
@@ -190,7 +190,7 @@ describe("assistant access RLS (supabase)", () => {
   });
 
   it("write policies: org admins can grant, editors cannot", async () => {
-    await asUser(ADMIN); // org role admin — per-assistant 'viewer' must NOT matter
+    await asUser(ADMIN); // org role admin, per-assistant 'viewer' must NOT matter
     await pg.query(
       `insert into public.assistant_access (assistant_id, user_id, role) values ($1, $2, 'viewer')`,
       [ASSISTANT, OUTSIDER]
@@ -203,7 +203,7 @@ describe("assistant access RLS (supabase)", () => {
     // Audit trigger stamped the caller, whatever the client sent.
     expect(granted.rows[0].granted_by).toBe(ADMIN);
 
-    await asUser(EDITOR); // org role editor — below the admin bar
+    await asUser(EDITOR); // org role editor, below the admin bar
     await expect(
       pg.query(
         `insert into public.assistant_access (assistant_id, user_id, role) values ($1, $2, 'admin')`,

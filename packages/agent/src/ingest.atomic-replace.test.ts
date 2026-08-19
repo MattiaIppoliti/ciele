@@ -15,11 +15,11 @@ import { finalizeWebsiteCrawl } from "./ingest";
 /**
  * Issue #162: a Website Source re-crawl replaces its Concepts atomically
  * (create-then-delete). These tests assert observable Source status + resulting
- * Concepts at the public finalize seam — never the finalizer's internal call
- * ordering — and inject failures at the existing persist/embed boundary
+ * Concepts at the public finalize seam, never the finalizer's internal call
+ * ordering, and inject failures at the existing persist/embed boundary
  * (`db.saveChunks`). Runs offline: no Provider Connections → lexical embeddings.
  */
-describe("finalizeWebsiteCrawl — atomic knowledge replacement", () => {
+describe("finalizeWebsiteCrawl, atomic knowledge replacement", () => {
   const getRunStateMock = vi.mocked(getRunState);
   const fetchPagesMock = vi.mocked(fetchCrawledPages);
 
@@ -91,7 +91,7 @@ describe("finalizeWebsiteCrawl — atomic knowledge replacement", () => {
     getRunStateMock.mockResolvedValue({ status: "SUCCEEDED", datasetId: "ds_1" });
     fetchPagesMock.mockResolvedValue([page("a"), page("b")]);
 
-    // Fail persisting the *second* page's chunks — a transient embed/persist error
+    // Fail persisting the *second* page's chunks, a transient embed/persist error
     // mid-ingest, after the first new Concept has already been written.
     let saveCalls = 0;
     const realSaveChunks = db.saveChunks.bind(db);
@@ -207,7 +207,7 @@ describe("finalizeWebsiteCrawl — atomic knowledge replacement", () => {
 
     expect(status).toBe("ready");
     const concepts = await db.listConcepts(collectionId);
-    // Exactly the new set — the prior Concept and the leftover debris are gone,
+    // Exactly the new set: the prior Concept and the leftover debris are gone,
     // and the new set is written once (no duplication).
     expect(concepts).toHaveLength(1);
     expect(concepts.some((c) => c.id === prior.id)).toBe(false);

@@ -22,7 +22,7 @@ import { finalizeWebsiteCrawl } from "./ingest";
  * Runs offline: mock DB + no Provider Connections (lexical embeddings), and the
  * one Crawl4AI status call is stubbed.
  */
-describe("finalizeWebsiteCrawl — Crawl4AI visibility", () => {
+describe("finalizeWebsiteCrawl, Crawl4AI visibility", () => {
   const taskMock = vi.mocked(getCrawl4aiTask);
 
   async function seed(db: Db, name: string) {

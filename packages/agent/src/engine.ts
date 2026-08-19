@@ -70,11 +70,11 @@ export interface ProviderHealthEvent {
 /**
  * Renders one flow as a catalog entry for the classifier prompt: trigger
  * description plus builder conditions with their should/should-not examples.
- * (Exported for tests — the routing chain is pinned in engine.test.ts.)
+ * (Exported for tests, the routing chain is pinned in engine.test.ts.)
  */
 export function flowCatalogEntry(flow: Flow): string {
   const lines = [
-    `- id: ${flow.id} — name: ${flow.name} — triggers when: ${flow.description}`,
+    `- id: ${flow.id}, name: ${flow.name}, triggers when: ${flow.description}`,
   ];
   // Only semantic conditions belong in a prompt. URL and Schedule are objective
   // facts, already gated in `messageFlowCandidates` before this flow became a
@@ -135,7 +135,7 @@ export async function classifyIntent(
         // Flows capture intent toward the assistant/support process; factual
         // questions must reach the knowledge base (Default behavior), or FAQs
         // and documents become unreachable behind canned flow replies.
-        'Flows describe the user\'s intent toward the assistant or the support process (e.g. asking what the assistant can do, asking to reach a human). A request for FACTS or information — about a person, product, organization, deadline, policy, or any content topic — must go to "default": the default behavior searches the knowledge base (FAQs, documents, websites) and is the only path that can answer it. This applies even when the question shares words or names with a flow description.',
+        'Flows describe the user\'s intent toward the assistant or the support process (e.g. asking what the assistant can do, asking to reach a human). A request for FACTS or information, about a person, product, organization, deadline, policy, or any content topic, must go to "default": the default behavior searches the knowledge base (FAQs, documents, websites) and is the only path that can answer it. This applies even when the question shares words or names with a flow description.',
         assistantName
           ? `The assistant itself is named "${assistantName}". Only questions about the assistant's own identity, capabilities or purpose concern the assistant; questions about people or things with the same or a similar name are content questions and go to "default".`
           : null,
@@ -163,7 +163,7 @@ export async function classifyIntent(
  * templatePatch into the context, capturing handover, and honoring halt.
  * The paths differ only in the context they build and in how a failed action
  * is turned into a fallback part (`onActionError`; return null to stop
- * dispatching, e.g. after an abort). Mutates `parts`/`effects` in place —
+ * dispatching, e.g. after an abort). Mutates `parts`/`effects` in place,
  * `ctx.priorParts` aliases `parts` so handlers see earlier output.
  */
 async function dispatchActions(options: {
@@ -181,7 +181,7 @@ async function dispatchActions(options: {
   // Built-in catch-alls (Default behavior, Assistant Information, …) ship with
   // no actions. Rather than dead-end on the "no actions configured" fallback,
   // an unconfigured built-in flow generatively answers from the assistant's
-  // knowledge — the expected out-of-the-box behavior (search_knowledge is
+  // knowledge, the expected out-of-the-box behavior (search_knowledge is
   // generative; see context.md). An admin's own empty flow still surfaces the
   // misconfiguration hint below.
   const actions =
@@ -224,7 +224,7 @@ async function dispatchActions(options: {
  * trigger picked the flows, and each one's actions execute in order.
  *
  * Deliberately *not* `dispatchActions`: a proactive flow has no message to
- * answer, so neither of that loop's message-turn courtesies applies — an
+ * answer, so neither of that loop's message-turn courtesies applies, an
  * unconfigured flow must stay silent rather than emit "this flow has no actions
  * configured", and an empty built-in must not fall back to generative search. No
  * model is resolved here at all, which is what makes a proactive turn free.
@@ -236,7 +236,7 @@ async function dispatchActions(options: {
 export async function runProactiveFlows(options: {
   assistant: Assistant;
   platformPrompt?: string;
-  /** Flows to run, in order — already selected and cleared for delivery. */
+  /** Flows to run, in order, already selected and cleared for delivery. */
   flows: Flow[];
   templateContext?: ActionContext["templateContext"];
   session: TurnSession;
@@ -247,7 +247,7 @@ export async function runProactiveFlows(options: {
 }): Promise<{
   parts: ChatReplyPart[];
   effects: ActionEffect[];
-  /** The first flow that produced output — the message's flow marker. */
+  /** The first flow that produced output, the message's flow marker. */
   flowId: string | null;
   flowName: string;
 }> {
@@ -348,13 +348,13 @@ export async function runAssistantChat(options: {
   /**
    * Page URL + clock the objective Flow Conditions (URL, Schedule) are gated
    * against (spec #550). Omitted leaves them unevaluatable, which never
-   * disqualifies a Flow — an unwired caller keeps the previous behaviour.
+   * disqualifies a Flow, an unwired caller keeps the previous behaviour.
    */
   routing?: FlowRoutingContext;
   searchKnowledge?: KnowledgeSearcher;
   /**
    * Reads one knowledge document whole, for the windowed `readKnowledgeSource`
-   * tool (spec #559). Absent leaves that tool unregistered — an unwired caller
+   * tool (spec #559). Absent leaves that tool unregistered, an unwired caller
    * keeps exactly the previous behaviour.
    */
   readKnowledgeDocument?: (id: string) => Promise<KnowledgeDocument | null>;
@@ -392,7 +392,7 @@ export async function runAssistantChat(options: {
   entities?: EntitySnapshot[];
   /** Live Record read for the auto-generated Entity tools (#665). */
   queryEntityRecords?: ActionContext["queryEntityRecords"];
-  /** Who the turn verifiably speaks for — Entity tool policy input (#667). */
+  /** Who the turn verifiably speaks for, Entity tool policy input (#667). */
   toolSubject?: ActionContext["toolSubject"];
   /**
    * The desks this assistant may recommend ("AI recommended help desk"):
@@ -407,7 +407,7 @@ export async function runAssistantChat(options: {
   onProviderHealth?: (event: ProviderHealthEvent) => void | Promise<void>;
   /**
    * Live trust-tier lookup for the routed flow (flow trust ledger). Read at
-   * turn time — never snapshotted into Publications — and fail-open: null
+   * turn time, never snapshotted into Publications, and fail-open: null
    * (missing row or error) behaves like `queue`, changing nothing.
    */
   getFlowTrust?: (flowId: string) => Promise<TrustTier | null>;
@@ -486,7 +486,7 @@ export async function runAssistantChat(options: {
   });
 
   // Basic Interaction (#566): courtesy is recognised deterministically, before
-  // anything is spent. Deliberately ABOVE the chat-model branch — both engines
+  // anything is spent. Deliberately ABOVE the chat-model branch, both engines
   // consult one decision from one call site, so they cannot drift. A hit skips
   // Intent Classification entirely and emits no notices, which is what leaves
   // the turn with a null trace and the Visitor with no Thinking panel.
@@ -495,8 +495,8 @@ export async function runAssistantChat(options: {
     history,
   });
 
-  // Above the courtesy check would put one notice on a turn that must have none
-  // — and which provider answered a greeting is not worth a Thinking panel. The
+  // Above the courtesy check would put one notice on a turn that must have none,
+  // and which provider answered a greeting is not worth a Thinking panel. The
   // fallback is still recorded where it matters: the usage ledger names the
   // provider that actually ran.
   //
@@ -512,7 +512,7 @@ export async function runAssistantChat(options: {
   ) {
     emit({
       type: "notice",
-      label: `No ${PROVIDER_NAMES[assistant.modelProvider]} credential configured — answering with ${PROVIDER_NAMES[resolved.provider]} (${resolved.modelId}) instead`,
+      label: `No ${PROVIDER_NAMES[assistant.modelProvider]} credential configured, answering with ${PROVIDER_NAMES[resolved.provider]} (${resolved.modelId}) instead`,
     });
   }
 
@@ -527,7 +527,7 @@ export async function runAssistantChat(options: {
       emit({
         type: "notice",
         label:
-          "No AI provider credential configured for this organization — using keyword matching (add a provider connection in Settings → AI)",
+          "No AI provider credential configured for this organization, using keyword matching (add a provider connection in Settings → AI)",
       });
     }
     const flow = matchFlow(message, flows, routing);
@@ -535,7 +535,7 @@ export async function runAssistantChat(options: {
       const part: ChatReplyPart = {
         type: "text",
         action: "fallback",
-        text: "No enabled flow can handle this message — enable the Default behavior flow or add a new one.",
+        text: "No enabled flow can handle this message, enable the Default behavior flow or add a new one.",
       };
       emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
       emit({ type: "part", part });
@@ -625,7 +625,7 @@ export async function runAssistantChat(options: {
     const part: ChatReplyPart = {
       type: "text",
       action: "fallback",
-      text: "No enabled flow can handle this message — enable the Default behavior flow or add a new one.",
+      text: "No enabled flow can handle this message, enable the Default behavior flow or add a new one.",
     };
     emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
     emit({ type: "part", part });
@@ -638,7 +638,7 @@ export async function runAssistantChat(options: {
     };
   }
 
-  // The routing decision, stated once the classifier has made it — the emitter
+  // The routing decision, stated once the classifier has made it, the emitter
   // knows which flow matched, so the trace row carries it directly instead of a
   // later event patching an earlier row (#560). Skipped for a courtesy turn:
   // no classification happened, and the one notice would be the only thing
@@ -747,7 +747,7 @@ export async function runAssistantChat(options: {
         action: "fallback",
         text: diagnostic
           ? `The "${action}" step failed (${errorMessageOf(error)}). Check the provider configuration in Settings → AI.`
-          : "Sorry — I ran into a problem answering that. Please try again in a moment.",
+          : "Sorry, I ran into a problem answering that. Please try again in a moment.",
       };
     },
   });
@@ -761,7 +761,7 @@ export async function runAssistantChat(options: {
   }
 
   // Watch-tier flows always offer the human exit ramp with their generative
-  // answers (flow trust ledger — the one behavioral consequence in v1).
+  // answers (flow trust ledger, the one behavioral consequence in v1).
   if (needsWatchEscalation(parts, await trustTierPromise)) {
     const recommended = await recommendHelpDesk();
     const part: ChatReplyPart = {

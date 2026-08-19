@@ -1,7 +1,7 @@
 // Settings: the base URL, the current mode, and how to leave it.
 //
 // The base URL is what makes one app serve both the hosted product and a
-// self-hosted server — the sign-in path is "load this origin", so pointing it
+// self-hosted server, the sign-in path is "load this origin", so pointing it
 // somewhere else is the whole of remote self-host support.
 
 import { ArrowLeft } from "lucide-react";

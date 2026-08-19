@@ -578,7 +578,7 @@ export function InsightsClient({
           className="col-span-12 xl:col-span-6"
         />
 
-        {/* Usage — Metrics / Assistants / Channels breakdown */}
+        {/* Usage, Metrics / Assistants / Channels breakdown */}
         <div className="col-span-12">
           <UsageCard
             labels={chart.labels}

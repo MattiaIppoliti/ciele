@@ -8,7 +8,7 @@ function key(): Buffer {
   const secret = process.env.APP_ENCRYPTION_KEY;
   if (!secret) {
     throw new Error(
-      "APP_ENCRYPTION_KEY is not set — required to store provider API keys."
+      "APP_ENCRYPTION_KEY is not set, required to store provider API keys."
     );
   }
   return createHash("sha256").update(secret).digest();
@@ -36,7 +36,7 @@ export function decryptSecret(ciphertext: string): string {
 export function sealSecret(plaintext: string): string {
   if (!process.env.APP_ENCRYPTION_KEY) {
     console.warn(
-      "APP_ENCRYPTION_KEY not set — storing provider key UNENCRYPTED. Set it in production."
+      "APP_ENCRYPTION_KEY not set, storing provider key UNENCRYPTED. Set it in production."
     );
     return `plain:${plaintext}`;
   }

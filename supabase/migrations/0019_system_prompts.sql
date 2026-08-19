@@ -1,9 +1,9 @@
 -- System prompts, two layers (see docs/agentic-chat-runtime.md):
 --
--- 1. `assistants.answering_style` — the org-authored system prompt for one
+-- 1. `assistants.answering_style`: the org-authored system prompt for one
 --    assistant (the reference platform's "Answering style", ≤10000 chars,
 --    enforced in the UI). Layered UNDER the platform prompt at runtime.
--- 2. `platform_settings.system_prompt` — the platform-wide (Ciele) system
+-- 2. `platform_settings.system_prompt`: the platform-wide (Ciele) system
 --    prompt. Single row, editable only by the platform owner through a
 --    service-role path; organizations can neither read nor change it.
 

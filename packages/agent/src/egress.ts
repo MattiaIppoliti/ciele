@@ -3,7 +3,7 @@ import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 
 /**
- * Shared egress guard — the one policy gate for every server-side fetch of an
+ * Shared egress guard: the one policy gate for every server-side fetch of an
  * admin/model-supplied URL (SSRF surface). Validation happens at
  * DNS-resolution time (`validateEgressTarget`), and `egressFetch` closes the
  * validate/connect gap by pinning the connection to the validated addresses
@@ -12,7 +12,7 @@ import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
  * Policy: docs/audits/api-request-egress-policy.md (issue #173). Consumers:
  * the website crawler (via `crawl-target.ts`), knowledge URL extraction
  * (`extract.ts`), the `fetchUrl` built-in (`tools.ts`), the API catalogue's
- * query tool (`api-integration.ts` — which validates the path against the
+ * query tool (`api-integration.ts`, which validates the path against the
  * catalogue *before* reaching this gate, #559) and the `api_request` Flow
  * Action executor (`api-request.ts`, #177).
  */
@@ -145,8 +145,8 @@ export interface ValidatedEgressTarget {
  * Rejects unsafe targets before anything connects to them: scheme allowlist,
  * embedded credentials, blocked hostnames, and blocked IP ranges checked
  * against **every** resolved address (one private record among public ones is
- * a DNS-rebinding primitive). IP-literal hostnames — including decimal/hex
- * forms the OS resolver normalizes — end up address-checked either way.
+ * a DNS-rebinding primitive). IP-literal hostnames, including decimal/hex
+ * forms the OS resolver normalizes, end up address-checked either way.
  */
 export async function validateEgressTarget(
   rawUrl: string,

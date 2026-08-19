@@ -46,7 +46,7 @@ const HEIGHT_DURATION = 0.28;
 /**
  * One panel shared by every dropdown (resend.com-style): it slides along the
  * nav to sit under the open trigger and morphs to that panel's size, while the
- * contents cross-slide — outgoing leaves toward the previous trigger, incoming
+ * contents cross-slide, outgoing leaves toward the previous trigger, incoming
  * enters from the new one. `direction` is +1 when moving right along the nav.
  *
  * The caller keeps the last opened item rendering while the panel closes, so
@@ -77,7 +77,7 @@ function DropdownPanel({
 
   /* The card tweens to each panel's height instead of snapping. Measured off
      the body (`popLayout` pulls the outgoing panel out of flow, so this is the
-     incoming panel's height), not animated with `layout` — that measures
+     incoming panel's height), not animated with `layout`, that measures
      through the `-translate-x-1/2` ancestor and pinned the width. */
   React.useEffect(() => {
     const node = bodyRef.current;
@@ -184,7 +184,7 @@ function ThemeToggle() {
  *
  * Not a React branch on purpose: knowing the caller server-side meant reading a
  * cookie in the marketing layout, which made all seven pages dynamic. The hidden
- * half is `display: none`, so it is out of the accessibility tree too — a screen
+ * half is `display: none`, so it is out of the accessibility tree too, a screen
  * reader announces one CTA, not both. Rules live in home.css.
  */
 export function HomeHeader({ scrolled }: { scrolled: boolean }) {
@@ -302,7 +302,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
         <div
           className={cn(
             // The border and radius exist in both states (transparent border
-            // when expanded) so the pill morphs smoothly — otherwise the
+            // when expanded) so the pill morphs smoothly, otherwise the
             // 1px border pops in as a hard rectangle mid-transition.
             // max-lg:rounded-[2.5rem]: on mobile the pill is a stadium when
             // closed and reads as a rounded card once the menu stretches it
@@ -311,9 +311,9 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
             // Collapse to a definite max-width (not max-w-fit): CSS reliably
             // tweens length→length everywhere, so the pill glides narrower
             // instead of snapping. Sized per auth state to clear the widest the
-            // row can get — logo + the three nav items (two of them dropdown
+            // row can get, logo + the three nav items (two of them dropdown
             // triggers, so they carry a chevron) + the CTA cluster. Too narrow
-            // and the row squeezes or wraps instead of gliding — the four nav
+            // and the row squeezes or wraps instead of gliding, the four nav
             // items alone measure ~680px at rest.
             // The signed-out width is the wider one; home.css trims it for a
             // signed-in caller, since that is now a CSS fact, not a React one.
@@ -326,12 +326,12 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               // justify-between in BOTH states with no lg gap: while wide the
               // links spread edge-to-edge; as the pill's max-width tweens
               // narrower on scroll, justify-between keeps distributing the
-              // shrinking free space so the groups glide together — one
+              // shrinking free space so the groups glide together, one
               // animatable property (max-width), no layout-mode swap, no jump.
               // gap-0 on mobile keeps the closed pill slim (the menu card is
-              // pulled out of flow — see home.css).
+              // pulled out of flow, see home.css).
               // lg:flex-nowrap: on desktop the row is one line, always. Mobile
-              // still wraps — that is how the menu card drops below the pill.
+              // still wraps; that is how the menu card drops below the pill.
               "relative flex flex-wrap items-center justify-between gap-0 py-3 transition-[padding] duration-500 ease-in-out lg:flex-nowrap lg:gap-0 lg:py-4",
               scrolled && "lg:py-2.5"
             )}
@@ -374,8 +374,8 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
             </div>
 
             {/* Hover opens; leaving the whole cluster (list *and* panel) arms
-                the close timer, so sliding sideways between triggers — or
-                diagonally down into the open panel — never flickers it shut. */}
+                the close timer, so sliding sideways between triggers, or
+                diagonally down into the open panel, never flickers it shut. */}
             <div
               className="relative hidden size-fit lg:block"
               onMouseEnter={() => {
@@ -426,7 +426,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
                 )}
               </ul>
 
-              {/* One panel for the whole nav — it glides between triggers and
+              {/* One panel for the whole nav, it glides between triggers and
                   morphs to each panel's size (see DropdownPanel). Sibling of
                   the list, not a child: a <ul> may only contain <li>. */}
               <DropdownPanel
@@ -461,7 +461,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               >
                 <ThemeToggle />
                 {/* `display: contents` while shown, so the cluster's gap-3 still
-                    spaces the buttons themselves — see home.css. */}
+                    spaces the buttons themselves, see home.css. */}
                 <div className="home-cta-authed">
                   <Magnetic range={38} intensity={0.14} maxOffset={7}>
                     <Button size="sm" nativeButton={false} render={<Link href="/" />}>

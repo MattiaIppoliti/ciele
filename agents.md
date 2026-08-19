@@ -1,13 +1,13 @@
-# agents.md — AI runtime & assistant model
+# agents.md, AI runtime & assistant model
 
-How an **Assistant** behaves at runtime — the conversational engine's design. Read with
+How an **Assistant** behaves at runtime, the conversational engine's design. Read with
 [`CLAUDE.md`](CLAUDE.md) (feature surface) and [`context.md`](context.md) (domain language).
 
 > **Repository-agent pull requests:** GPT Codex must follow the complete automatic PR contract in
 > [`docs/agents/pull-requests.md`](docs/agents/pull-requests.md).
 
 > **This document is the target conversational design.** For exactly how *this repo* implements it
-> today — the **two-engine runtime**, wire-event contract, and per-action/-condition status — see
+> today, the **two-engine runtime**, wire-event contract, and per-action/-condition status, see
 > [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §5. Current-state deltas to keep in mind while
 > reading below:
 > - **Intent Classification is real** in the production/widget runtime (`runAssistantChat`): a cheap
@@ -16,21 +16,21 @@ How an **Assistant** behaves at runtime — the conversational engine's design. 
 >   offline/demo path (ADR-0003).
 > - **`search_knowledge` is a real agent loop** (`streamText` + a knowledge tool, ≤5 steps, cited
 >   Sources).
-> - **Live actions**: `custom_message` (verbatim), `basic_reply` (one call, no retrieval — §4.3),
+> - **Live actions**: `custom_message` (verbatim), `basic_reply` (one call, no retrieval, §4.3),
 >   `search_knowledge`, `suggest_help_desk`
 >   (with AI desk recommendation when enabled), `follow_up_questions`, `show_button`, `iframe`,
 >   `api_request` (full config), `send_email` (Resend transport; honest copy when unconfigured),
->   `improvement`, `notification` (verbatim, proactive-only — see §4.2). **[partial]**: `handover`
+>   `improvement`, `notification` (verbatim, proactive-only, see §4.2). **[partial]**: `handover`
 >   (acknowledges + halts; no target-assistant continuation yet).
 > - **AI Tutor is out of scope**: Study Mode / H5P interactives have no SETUP nav entry and no
 >   `study_mode`/`h5p` flow actions in this repo (see `context.md` §Scope).
 > - **Conditions**: three kinds exist, gated two different ways on purpose.
 >   `conversation_context` is **soft context** fed to the classifier (few-shot), not a hard gate;
 >   **URL** and **Schedule** are objective, so they are a **hard gate applied before classification**
->   — `flowConditionsAllowRouting` runs inside `messageFlowCandidates` (and inside
+>, `flowConditionsAllowRouting` runs inside `messageFlowCandidates` (and inside
 >   `proactiveFlowCandidates`), the candidate filters every router shares, and objective kinds are
 >   kept out of the classifier prompt entirely. User role, External data and Course remain
->   **[target]** and are **not offered in the picker at all** — an affordance that cannot do anything
+>   **[target]** and are **not offered in the picker at all**, an affordance that cannot do anything
 >   is worse than its absence.
 > - **Triggers**: all four fire. `message` flows route through Intent Classification;
 >   `page_load` / `time_on_page` / `chat_open` are reported by the embed (and by Preview) and run
@@ -69,24 +69,24 @@ configured; only **Search knowledge** and the **Default behavior** run the gener
 
 ## 2. Triggers (what starts a flow)
 
-- **User sends a message** — the common path; drives intent classification.
-- **On page load** — proactive flow when the host page loads (e.g. greeting/announcement).
-- **Time on page** — fire after a dwell threshold; config is a duration (**minutes + seconds**).
-- **Chat opens** — fire when the widget is opened.
+- **User sends a message**: the common path; drives intent classification.
+- **On page load**: proactive flow when the host page loads (e.g. greeting/announcement).
+- **Time on page**: fire after a dwell threshold; config is a duration (**minutes + seconds**).
+- **Chat opens**: fire when the widget is opened.
 
-A flow can have **multiple triggers** ("Add trigger") — **[target]**; this repo stores exactly one.
+A flow can have **multiple triggers** ("Add trigger"), **[target]**; this repo stores exactly one.
 Non-message triggers do not need intent classification; they fire on the client event and then run
 their conditions + response.
 
 **How a proactive trigger reaches the runtime here.** The chat frame cannot see the host page, so the
-embed script reports the events it alone can observe — page loaded, its URL, dwell elapsed, chat
-opened — and the runtime decides what answers them. The report is a *claim*: which flows run, whether
+embed script reports the events it alone can observe, page loaded, its URL, dwell elapsed, chat
+opened, and the runtime decides what answers them. The report is a *claim*: which flows run, whether
 the dwell was really reached, and whether the nudge has already been delivered are all re-decided
 server-side, so a reopen loop or a replayed report changes nothing. An assistant with no proactive
 flows arms no listeners at all (the published config says which triggers exist), and a trigger nothing
 is configured for writes nothing and streams nothing.
 
-Delivery is bounded by the Notification's **delivery rule** — once per conversation (default), once
+Delivery is bounded by the Notification's **delivery rule**, once per conversation (default), once
 per user, or every time. Preview ignores it: an admin pressing Refresh expects to see the nudge again.
 
 **Trigger-dependent editor** (important): the trigger changes what Conditions and Response actions are
@@ -95,9 +95,9 @@ available.
   offers the **full action catalog** (§4).
 - With a **proactive trigger** (On page load / Time on page / Chat opens): **Conversation context** is
   NOT offered as a condition (only User role / URL / External data / Course / Schedule), and the
-  Response collapses to a single **Notification** action (§4.2) — a proactive in-widget nudge.
+  Response collapses to a single **Notification** action (§4.2), a proactive in-widget nudge.
   Here that means a proactive flow has **no conditions at all** (the other condition types are still
-  `[target]` for message flows too), and the pairing is enforced on save *and* at dispatch — stored
+  `[target]` for message flows too), and the pairing is enforced on save *and* at dispatch, stored
   data cannot make the runtime run what the editor forbids.
 
 ---
@@ -106,18 +106,18 @@ available.
 
 Combined with **Any condition matches** (OR) or **All conditions match** (AND). Types:
 
-- **Conversation context** — semantic NL match on the user/assistant turns ("mentions stress,
+- **Conversation context**: semantic NL match on the user/assistant turns ("mentions stress,
   anxiety, …"), tuned with few-shot **matching** (positive) and **non-matching** (negative) examples.
   This is the same mechanism as the flow matcher, reusable as a gate.
-- **User role** — "Select user role/s" (multi-select of roles from the connected IdP; e.g. student
+- **User role**: "Select user role/s" (multi-select of roles from the connected IdP; e.g. student
   vs instructor).
-- **URL** — match-operator dropdown (**Matches** / …) + URL value; exact-match semantics including
+- **URL**: match-operator dropdown (**Matches** / …) + URL value; exact-match semantics including
   scheme and `?query` (e.g. `…/courses` does not match `…/courses/psychology`).
-- **External data** — a value from imported User data / an external source (disabled until user
+- **External data**: a value from imported User data / an external source (disabled until user
   data is connected).
-- **Course** — attribute dropdown (**Name** / …) + operator (**Equals** / …) + "Select courses"
+- **Course**: attribute dropdown (**Name** / …) + operator (**Equals** / …) + "Select courses"
   multi-select.
-- **Schedule** — **Start date & time** + **End date & time** window (date picker + time-of-day +
+- **Schedule**: **Start date & time** + **End date & time** window (date picker + time-of-day +
   timezone, e.g. Europe/Rome).
 
 (Note: the **Add condition** menu allows stacking multiple conditions of the same or different types,
@@ -127,8 +127,8 @@ Implement conditions as small predicate evaluators keyed by type; keep the `matc
 classifier and conditions share the same semantic-match implementation.
 
 **How this repo does it** (spec #550): the objective kinds are evaluated by pure predicates in
-`packages/core/src/flow-conditions.ts` and gated in `messageFlowCandidates` — the single candidate
-filter `matchFlow` and `classifyIntent` both call — so the two engines cannot disagree. A satisfied
+`packages/core/src/flow-conditions.ts` and gated in `messageFlowCandidates`, the single candidate
+filter `matchFlow` and `classifyIntent` both call, so the two engines cannot disagree. A satisfied
 objective condition is *necessary, not sufficient*: it keeps a flow eligible, it never promotes it,
 and under **Any** logic a flow is disqualified only when every condition on it returned a false
 verdict. The semantic kind stays with the classifier; URL/Schedule never enter its prompt.
@@ -142,7 +142,7 @@ Actions run **in order**; multiple per flow, reorderable.
 | Action | Generative? | Behavior |
 |--------|:-----------:|----------|
 | **Message** | no | Emit configured text **verbatim** (never paraphrased by a model). |
-| **Basic reply** | yes (one call) | Answer conversational courtesy — greeting, thanks, farewell — with **no retrieval, no tools and no citations**. See §4.3. |
+| **Basic reply** | yes (one call) | Answer conversational courtesy: greeting, thanks, farewell, with **no retrieval, no tools and no citations**. See §4.3. |
 | **Button** | no | Render a clickable button/link (label + target). |
 | **Search knowledge** | **yes** | Run the RAG + agent loop over the assistant's knowledge; return an answer **with Source citations** and Thinking Steps. |
 | **Follow-ups** | partial | Suggest predictive follow-up questions to click. |
@@ -159,8 +159,8 @@ The **Default behavior** flow is locked and always last; it typically runs **Sea
 
 ### 4.1 Per-action configuration (from the builder)
 
-Every text/URL/field input supports **template variables** — `{{user.name}}`, `{{session.id}}`, and
-external-data aliases — so actions personalize from SSO profile + imported User data.
+Every text/URL/field input supports **template variables**, `{{user.name}}`, `{{session.id}}`, and
+external-data aliases, so actions personalize from SSO profile + imported User data.
 
 - **Message** ("Custom message"): rich-text body + **"Instruct AI to generate message"** toggle
   (off = emit verbatim; on = the text is a generation instruction) + `{}` variable insert.
@@ -170,7 +170,7 @@ external-data aliases — so actions personalize from SSO profile + imported Use
   (auto-file an Improvements item) · **Advanced settings**.
 - **Follow-ups**: suggest predictive follow-up questions (count/config).
 - **Iframe**: Title · Link (`https://`) · "open in lightbox if possible" · Iframe height (vh, default 30).
-- **API request** ("API POST request — perform actions in external systems"): method · Endpoint URL ·
+- **API request** ("API POST request, perform actions in external systems"): method · Endpoint URL ·
   **Authentication Type** · Headers · Query Parameters · **JSON path mapping** (extract a value from
   the response) · Request JSON body · **Test API** · "Inform user of result" (per-outcome success/
   failure in-chat messages).
@@ -186,55 +186,55 @@ out once added); Message/Button/API/Email can repeat.
 ### 4.2 Notification action (proactive-trigger flows only)
 
 When the flow's trigger is proactive (On page load / Time on page / Chat opens), the only Response
-action is **Notification** — a proactive in-widget message:
+action is **Notification**, a proactive in-widget message:
 - **Title** (≤100) · **Notification content** (rich text, ≤5000).
-- **Delivery rule** — how often it's delivered to the same user (e.g. *Once per session*).
-- **Auto-delete notification** — remove from the inbox after a selected time (e.g. *Never*).
+- **Delivery rule**: how often it's delivered to the same user (e.g. *Once per session*).
+- **Auto-delete notification**: remove from the inbox after a selected time (e.g. *Never*).
   **[target]** here: it needs a notification-inbox surface this repo does not have.
 - **Allow users to reply** (toggle) · **Add button** (attach clickable buttons).
 
 This is the proactive-engagement primitive (nudge/announcement), distinct from the reactive
 answer/action flows driven by "User sends a message".
 
-**As implemented here.** The content is emitted **verbatim**, exactly as `custom_message` is — a
+**As implemented here.** The content is emitted **verbatim**, exactly as `custom_message` is, a
 proactive turn makes no model call and meters no tokens. It is persisted as an Assistant message on
 the Visitor's Conversation, so it appears in the chat window and in the Inbox transcript with its flow
 marker like any other reply; nothing is persisted on the Visitor's behalf, because nobody spoke.
-Buttons ride the same reply part the Button action emits (link out or send-text-into-chat only — a
+Buttons ride the same reply part the Button action emits (link out or send-text-into-chat only, a
 help-desk or FAQ button answers a question nobody asked). Turning replies off closes the composer and
 says so, and only the newest reply decides that, so an announcement cannot lock a chat the Visitor was
 later invited back into. Delivery state lives in the Conversation's session state; nothing is recorded
 for a flow that produced no output, so it can still be delivered later.
 
 **How it counts.** A Notification is *not* an AI answer, and a Conversation containing nothing but
-Notifications is not a Conversation — so turning proactive flows on cannot move the answer KPIs or the
+Notifications is not a Conversation: so turning proactive flows on cannot move the answer KPIs or the
 AI Resolution Rate. What it does move is a KPI of its own, **Notifications Sent**, plus a matching
 chart series. The Inbox still shows those Conversations, marked "Notification only" so a queue is not
 padded with non-conversations. One reply of any kind makes it a real conversation again, counted
 normally from then on. The rules live in `packages/core/src/insights.ts` and are mirrored by the SQL
 aggregate, which the parity test holds to the same answers (ADR-0010).
 
-### 4.3 Basic reply — the courtesy turn
+### 4.3 Basic reply, the courtesy turn
 
 Not every message is a question. A Visitor who types `ciao` has an intent, but not an information
 need, and answering it through the retrieval pipeline is the worst of both worlds: several seconds, a
 Thinking panel full of machinery that found nothing, three or more model calls, and sometimes an
 empty Sources panel with an escalation chip underneath. So courtesy is its own intent, with its own
-built-in Flow — **Basic Interaction**, first in priority — and its own action.
+built-in Flow, **Basic Interaction**, first in priority, and its own action.
 
 **Basic reply** is one `streamText` call. No tools, no knowledge searcher, no gather phase, no second
-write phase, and — deliberately — **no `notice`, `thought` or tool events at all**, which makes the
+write phase, and, deliberately, **no `notice`, `thought` or tool events at all**, which makes the
 stored trace null and leaves the widget and the Inbox with no Thinking panel to render (the same
 treatment a verbatim Message gets). Its prompt carries only the platform layer, the assistant's
 identity and the organization's answering style: retrieval context, Skills and session memory cannot
 inform "hello", so paying prompt tokens for them would buy nothing. The one hard instruction is the
-honesty rule — a turn that looked nothing up must assert nothing about the organization.
+honesty rule, a turn that looked nothing up must assert nothing about the organization.
 
 Setting a message on the action pins the exact wording and skips the model entirely, on the same
 invariant as Message. That same string is what answers when no chat model resolves at all, so an
 offline or unconfigured deployment still greets coherently rather than apologising.
 
-**How it counts.** A courtesy reply *is* an AI answer — a Visitor spoke and the assistant answered —
+**How it counts.** A courtesy reply *is* an AI answer, a Visitor spoke and the assistant answered,
 so it counts as one. What it is not is a *graded* answer: the verifier and the flow trust ledger both
 select on the `search_knowledge` action, so a reply that cites nothing is never sent to a grader that
 would have nothing to grade it against. For the same reason the watch-tier escalation rule passes it
@@ -244,15 +244,15 @@ by: "Contact support" under "Hello!" reads as an assistant that has already give
 either way.
 
 *Tier 1* is `basicInteractionFlow` in `packages/core/src/basic-interaction.ts`, consulted from **one**
-call site in `runAssistantChat` that sits **above** the chat-model branch — so the LLM path and the
+call site in `runAssistantChat` that sits **above** the chat-model branch, so the LLM path and the
 offline keyword path share one decision and cannot drift. A hit skips Intent Classification outright:
 **zero** model calls to route, one to answer. It fires only when all three of these hold, each of
 which can only ever *prevent* the shortcut:
 
-1. An **enabled** Flow exists that is `builtIn` and carries `basic_reply`. Structural, never by name —
+1. An **enabled** Flow exists that is `builtIn` and carries `basic_reply`. Structural, never by name,
    an admin may rename the Flow and keep the behaviour, and disabling it is the supported off switch.
 2. `isCourtesyOnly` holds: every word is courtesy or filler, at least one is courtesy, the message is
-   short and question-mark-free, and the assistant's own last turn did not ask something — a bare
+   short and question-mark-free, and the assistant's own last turn did not ask something, a bare
    `ok` after a clarification is an *answer*, not a greeting. That last rule reads the text's
    trailing `?`, plus an explicit `askedQuestion` flag for the case the text cannot show: a
    clarification is persisted as a `clarify` part with no text part, so it flattens to `""`. The
@@ -260,12 +260,12 @@ which can only ever *prevent* the shortcut:
    history the model sees.
 3. Nothing positioned **ahead** of it clears the keyword router's match threshold. Flow priority stays
    authoritative: an admin's own higher-priority Flow that matches a greeting wins, and the turn
-   classifies normally. Note the direction — the keyword router is consulted about *other* Flows
+   classifies normally. Note the direction, the keyword router is consulted about *other* Flows
    here; it carries no courtesy vocabulary of its own, because a second additive copy scored
    "ciao grazie dove trovo il programma" as a greeting.
 
 *Tier 2* is the classifier, as a backstop: the Flow is an ordinary catalogue entry, so anything Tier 1
-misses still reaches it for one classify call — still skipping retrieval and the write phase.
+misses still reaches it for one classify call, still skipping retrieval and the write phase.
 
 The asymmetry of the two failure modes is what makes Tier 1 safe to keep conservative. A **miss**
 costs one classify call. A **false positive** costs the Visitor their answer. So `ciao, quando è la
@@ -277,8 +277,8 @@ this funnel exactly as they gate the other two.
 The courtesy vocabulary is **data, per locale** (EN · IT · ES · FR · DE · NL · PT-BR), so adding a
 language is a list plus a test row and never a change to the rules. Two things stay out of it in
 every locale: **bare affirmatives** (`yes` / `sì` / `oui` / `ja` / `sim`), because after the assistant
-asks a question those are the Visitor's *answer* — keeping them out means the last-turn guard is a
-second line of defence rather than the only one — and **words that also read as a topic** (`fine` is
+asks a question those are the Visitor's *answer*, keeping them out means the last-turn guard is a
+second line of defence rather than the only one, and **words that also read as a topic** (`fine` is
 courtesy in English and "the end" in Italian). Each locale carries at least one negative test: a
 short same-language message that looks courteous but carries a question or a content word.
 
@@ -295,7 +295,7 @@ content and always point back to their Concept → original **Source**.
 The **Search knowledge** loop:
 1. Retrieve candidate Concepts (vector + lexical fallback), optionally anchored to a Course /
    Collection via a **Context Hint**.
-2. Optionally navigate the OKF graph (`index.md` → linked Concepts → Sources) — **Deep Search** gives
+2. Optionally navigate the OKF graph (`index.md` → linked Concepts → Sources): **Deep Search** gives
    the loop more iterations / multi-hop (knowledge-only, never the open web).
 3. Generate the answer with **native tool-use**; attach **Source citations** that resolve to a
    Concept and its Source.
@@ -308,15 +308,15 @@ The **Search knowledge** loop:
 
 Per ADR-0001, the runtime is **multi-provider** (Anthropic / OpenAI / Google) behind one abstraction
 (Vercel AI SDK). Each Organization configures **Provider Connections** of three types:
-- **Platform plan** — bundled models on our keys.
-- **Subscription** — a member's personal plan via provider OAuth — **preview-only** (never serves
+- **Platform plan**: bundled models on our keys.
+- **Subscription**: a member's personal plan via provider OAuth, **preview-only** (never serves
   published widget traffic; ToS + rate limits).
-- **API key** — BYOK, stored encrypted.
+- **API key**: BYOK, stored encrypted.
 
 Each Assistant selects the provider+model it runs on. When building AI features here, default to the
 latest Claude models (see the API reference skill for current model IDs).
 
-> Note: the per-assistant model picker is a deliberate product choice (ADR-0001) — many admin
+> Note: the per-assistant model picker is a deliberate product choice (ADR-0001), many admin
 > platforms keep model/provider selection platform-managed; Ciele exposes it per assistant.
 
 ---
@@ -343,7 +343,7 @@ latest Claude models (see the API reference skill for current model IDs).
   history / user data / metadata), respect **availability**, and open a **ticket** in a connected
   system.
 - Escalations and 👎 feedback feed **Improvements**: the Flow **Improvement** action and the desk's
-  **Auto-generate improvements** create trackable items linked back to the exact flagged message —
+  **Auto-generate improvements** create trackable items linked back to the exact flagged message,
   closing the answer-quality loop (edit knowledge/FAQ → re-answer improves).
 
 ---
@@ -361,15 +361,15 @@ latest Claude models (see the API reference skill for current model IDs).
 
 ## 10. Runtime build checklist
 
-1. `matchFlow(message, flows)` — semantic intent classifier returning the winning enabled flow
+1. `matchFlow(message, flows)`: semantic intent classifier returning the winning enabled flow
    (or Default). Shared with condition evaluation.
-2. `evaluateConditions(flow, ctx)` — Any/All over typed predicates (context/role/url/external/course/
+2. `evaluateConditions(flow, ctx)`: Any/All over typed predicates (context/role/url/external/course/
    schedule).
-3. `runActions(flow.actions, ctx)` — ordered executor; verbatim for non-generative actions; agent
+3. `runActions(flow.actions, ctx)`: ordered executor; verbatim for non-generative actions; agent
    loop for Search knowledge / Study Mode / H5P.
-4. `searchKnowledge(query, collection)` — pgvector + lexical over OKF Concepts, Deep-Search hops,
+4. `searchKnowledge(query, collection)`: pgvector + lexical over OKF Concepts, Deep-Search hops,
    Source citations, Thinking Steps.
-4b. The **API catalogue triad** — `getApiDetails` / `viewEndpointDetails` / `queryApi` over one
+4b. The **API catalogue triad**, `getApiDetails` / `viewEndpointDetails` / `queryApi` over one
    registered integration per Assistant (base URL + sealed credential + described endpoints), with
    path parameters substituted by the model and every path validated against the catalogue before
    egress. Plus the windowed readers `readApiResponse(handle, from, to)` and
@@ -395,21 +395,21 @@ the target UX to reproduce:
 - **Agentic answer trace**: while generating, a live **"Thinking…"** row streams short progress
   lines; the composer send-button becomes **Stop**. When done it collapses to a summary chip
   **"🔍 ×N  📖 ×M  Thought for Xs"** (N searches, M knowledge reads, elapsed time). Expanding it shows
-  the full reasoning interleaved with **🔍 Search** tool-call chips — a visible multi-step loop
+  the full reasoning interleaved with **🔍 Search** tool-call chips, a visible multi-step loop
   (reason → search → "found some, need more about X" → search again → generate).
 - **Answer**: rich markdown (headings, bold, nested bullets, links). Followed by a **Sources** toggle
-  that expands to **named citation chips** (each a Source with an external-link icon — never opaque
+  that expands to **named citation chips** (each a Source with an external-link icon, never opaque
   chunks), 👍/👎 feedback, and **Suggested questions** (predictive follow-ups generated from the answer).
 - **Escalation**: an always-available **Contact support** button. Opening it shows *"How would you
-  like to contact {AI-selected help desk}?"* — the desk is chosen by relevance to the conversation
+  like to contact {AI-selected help desk}?"*, the desk is chosen by relevance to the conversation
   (an admissions chat → "Admissions Office"). Channels list their **availability** (e.g. Email
-  *Available*; Call *Unavailable — Next available: Monday 10:30–19:00 (Europe/Rome)*). Selecting a
+  *Available*; Call *Unavailable, Next available: Monday 10:30–19:00 (Europe/Rome)*). Selecting a
   channel opens its configured form.
 - **Starter-button flow**: a "Send Text" starter button posts its preset message verbatim as the user
   turn; the assistant then answers under its normal scope guard (a general role-play request is
-  politely declined and redirected to in-scope topics — behavior driven by Answering style + knowledge,
+  politely declined and redirected to in-scope topics, behavior driven by Answering style + knowledge,
   not a hard-coded refusal).
 
 Implementation note: the summary chip's search/read counts and the expandable trace ARE the product's
-Thinking-Steps surface — expose `search_knowledge` tool calls and iteration counts to the UI, and
+Thinking-Steps surface, expose `search_knowledge` tool calls and iteration counts to the UI, and
 resolve citations to named Concepts/Sources.

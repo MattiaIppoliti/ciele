@@ -93,7 +93,7 @@ export function AssistantMultiSelect({
   );
 }
 
-/** "Manage linked assistants" — choose which assistants can use this item. */
+/** "Manage linked assistants", choose which assistants can use this item. */
 export function LinkAssistantsDialog({
   item,
   assistants,
@@ -258,7 +258,7 @@ function CollapsibleSection({
   );
 }
 
-/** Hub "Add website" — entire site or page list, with the advanced knobs. */
+/** Hub "Add website", entire site or page list, with the advanced knobs. */
 export function AddWebsiteDialog({
   open,
   assistants,
@@ -294,7 +294,7 @@ export function AddWebsiteDialog({
           },
           selected
         );
-        toast.success("Website added — crawling in the background.");
+        toast.success("Website added, crawling in the background.");
         router.refresh();
         onClose();
       } catch (error) {
@@ -400,7 +400,7 @@ export function AddWebsiteDialog({
   );
 }
 
-/** Hub "Add file" — upload + link in one step. */
+/** Hub "Add file", upload + link in one step. */
 export function AddFileDialog({
   open,
   assistants,
@@ -427,7 +427,7 @@ export function AddFileDialog({
         toast.error(result.error);
         return;
       }
-      toast.success("File uploaded — indexing in the background.");
+      toast.success("File uploaded, indexing in the background.");
       router.refresh();
       onClose();
     });
@@ -584,7 +584,7 @@ export function FaqDialog({
   );
 }
 
-/** Hub CSV import — two columns, question then answer. */
+/** Hub CSV import, two columns, question then answer. */
 export function ImportFaqsDialog({
   open,
   assistants,

@@ -18,7 +18,7 @@ export const MODE_DRAWS: Record<ModeKey, ModeDraw> = {
   web: drawWeb,
   braid: drawBraid,
   ribbon: drawRibbon,
-  // ring shares ribbon's painter — the `faceOn` profile flag switches it
+  // ring shares ribbon's painter, the `faceOn` profile flag switches it
   ring: drawRibbon,
   morph: drawMorph
 };

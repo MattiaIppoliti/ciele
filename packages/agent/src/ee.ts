@@ -1,5 +1,5 @@
 /**
- * Enterprise capability registry — the single edition-gating seam (#435).
+ * Enterprise capability registry: the single edition-gating seam (#435).
  *
  * The open-source and enterprise editions are the SAME codebase; they differ
  * only by which implementations back the extension points declared here. OSS
@@ -15,7 +15,7 @@
  * surface is exported through the runtime barrel and locked by
  * `interface.test.ts` (ADR-0005), so widening the open-core boundary is a
  * reviewed act, not an accident. No build-time aliasing or config flag gates
- * editions — the mirror simply omits the enterprise code and its stub is a
+ * editions, the mirror simply omits the enterprise code and its stub is a
  * no-op.
  */
 
@@ -32,7 +32,7 @@ import type {
 } from "@agent-hub/core";
 
 // The billing / plan / usage-cap VOCABULARY lives in @agent-hub/core
-// (billing.ts) — the domain package is its declared home, and it is pure
+// (billing.ts), the domain package is its declared home, and it is pure
 // types plus one shared constant. Re-exported here unchanged so every
 // consumer that learned these names through the runtime barrel keeps
 // compiling; new code should import them from @agent-hub/core. What stays in
@@ -64,7 +64,7 @@ export interface MeteringEnforcement {
   checkUsage(input: UsageCheckInput): Promise<UsageOutcome>;
   /**
    * The caps and consumption an admin surface shows (#509), or null when the
-   * organization is not capped at all — which is what a self-hosted deployment
+   * organization is not capped at all, which is what a self-hosted deployment
    * always sees, and why the Usage page can render honestly with no enterprise
    * code present.
    */
@@ -76,7 +76,7 @@ export interface BillingAccessor {
   getSubscription(organizationId: string): Promise<SubscriptionState | null>;
   /**
    * The purchasable tiers with their prices and derived allowances, or null when
-   * there is nothing to sell — which is what a self-hosted deployment always
+   * there is nothing to sell, which is what a self-hosted deployment always
    * sees, and why the public pricing page renders honestly with no enterprise
    * code present.
    */
@@ -84,7 +84,7 @@ export interface BillingAccessor {
   /**
    * Start hosted checkout for a NEW subscription and return its URL, or null
    * when this deployment cannot sell it (OSS, an unconfigured Stripe Price, a
-   * sales-led tier, or an organization that already has a live subscription —
+   * sales-led tier, or an organization that already has a live subscription,
    * that is a Customer Portal change, not a second Checkout).
    *
    * Returns null rather than throwing for any of those *configuration* cases; a
@@ -92,7 +92,7 @@ export interface BillingAccessor {
    */
   startUpgradeCheckout(input: UpgradeCheckoutInput): Promise<string | null>;
   /**
-   * Open the Stripe Customer Portal — where an existing subscriber changes tier,
+   * Open the Stripe Customer Portal: where an existing subscriber changes tier,
    * updates a card, or cancels. Null when there is no Stripe customer to open it
    * for (OSS, a comped grant, an unconfigured Stripe).
    */
@@ -100,7 +100,7 @@ export interface BillingAccessor {
   /**
    * Write the subscription for a checkout session the buyer has just returned
    * from, so activation does not wait on the webhook. `true` when a row was
-   * written; `false` for every case that legitimately writes nothing — no
+   * written; `false` for every case that legitimately writes nothing, no
    * checkout provider, a session that does not belong to this organization, one
    * that has not paid, or a subscription already recorded.
    *
@@ -111,7 +111,7 @@ export interface BillingAccessor {
   reconcileCheckout(input: CheckoutReturn): Promise<boolean>;
   /**
    * The live provider-side account: renewal, card, invoices. Null when there is
-   * nothing to read (OSS, a comped grant, an unconfigured provider) — the
+   * nothing to read (OSS, a comped grant, an unconfigured provider), the
    * Billing tab then shows only what our own row already says.
    *
    * Costs provider round-trips, so call it from a billing surface, never from a
@@ -186,8 +186,8 @@ const OSS_DEFAULTS: EnterpriseCapabilities = {
  *
  * Why: registration happens once at startup from the host's instrumentation
  * entrypoint, and reads happen inside request handlers. A bundler is free to
- * compile those two into separate module instances — Next's dev server does
- * exactly that for `instrumentation.ts` — and a module-scoped variable then
+ * compile those two into separate module instances, Next's dev server does
+ * exactly that for `instrumentation.ts`, and a module-scoped variable then
  * gives the writer and the reader *different* cells: the enterprise edition
  * registers, and every request still sees the OSS defaults. A production build
  * shares one graph, so the bug appears only in development, which is the worst
@@ -221,7 +221,7 @@ export function registerEnterpriseCapabilities(
 }
 
 /**
- * The active enterprise capabilities — OSS no-op defaults unless the enterprise
+ * The active enterprise capabilities: OSS no-op defaults unless the enterprise
  * edition registered overrides at startup. Read this wherever the editions
  * diverge (e.g. the turn pipeline's usage gate).
  */

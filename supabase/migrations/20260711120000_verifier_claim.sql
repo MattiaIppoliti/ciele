@@ -1,6 +1,6 @@
 -- Verifier claim (spec: overlapping ticks must never double-grade an answer).
 -- The one-verdict-per-message primary key on answer_verdicts is the final
--- backstop, but it only guards the write — the model call happens first, so a
+-- backstop, but it only guards the write, the model call happens first, so a
 -- second concurrent tick could still pay to grade the same answer. A dedicated
 -- per-message claim stamp closes that window: a tick claims candidates before
 -- grading; a claim expires with the cadence window, so a crashed run simply

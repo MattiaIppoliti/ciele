@@ -9,7 +9,7 @@
 //   pnpm --filter @agent-hub/web build
 //   pnpm --filter @agent-hub/web measure:bundle
 //
-// Only statically prerendered routes appear — a dynamic route emits no HTML at
+// Only statically prerendered routes appear, a dynamic route emits no HTML at
 // build time. That covers the whole marketing surface plus a few admin pages,
 // which is where first-load regressions matter most. For module-level
 // attribution (which package is the weight), use `pnpm analyze` instead; see

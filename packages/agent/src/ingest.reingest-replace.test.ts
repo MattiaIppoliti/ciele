@@ -5,7 +5,7 @@ import { runIngestJob } from "./jobs";
 /**
  * Issue #190 (spec #189): re-ingesting a file/text Source replaces its
  * Concepts atomically (create-then-delete), with the same guarantees the
- * website-crawl finalizer already has — a failed re-ingest keeps last-good
+ * website-crawl finalizer already has, a failed re-ingest keeps last-good
  * knowledge, a successful one leaves exactly the new set. These tests assert
  * observable Source status + resulting Concepts at the Ingestion Job seam
  * (`runIngestJob`, the path both the re-process and retry actions enqueue),
@@ -13,7 +13,7 @@ import { runIngestJob } from "./jobs";
  * persist/embed boundary (`db.saveChunks`). Runs offline: no Provider
  * Connections → naive enrichment + lexical embeddings.
  */
-describe("runIngestJob — atomic knowledge replacement on re-ingest", () => {
+describe("runIngestJob, atomic knowledge replacement on re-ingest", () => {
   async function seed(db: Db, name: string) {
     const assistant = await db.createAssistant(DEMO_ORG.id, { title: name });
     const collection = await db.createCollection(assistant.id, { name });
@@ -82,7 +82,7 @@ describe("runIngestJob — atomic knowledge replacement on re-ingest", () => {
     const prior = await seedPriorConcept(db, collectionId, source.id, "docs/previous.md");
 
     // While the new set is being persisted, the prior Concept must still be
-    // live (searchable) — replacement is create-then-delete, never a hole.
+    // live (searchable), replacement is create-then-delete, never a hole.
     const realSaveChunks = db.saveChunks.bind(db);
     vi.spyOn(db, "saveChunks").mockImplementation(async (chunks) => {
       const during = await db.listConcepts(collectionId);

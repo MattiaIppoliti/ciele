@@ -1,9 +1,9 @@
 /**
- * The `Db` interface — the data-access seam (ADR-0002), and nothing else.
+ * The `Db` interface, the data-access seam (ADR-0002), and nothing else.
  *
  * Every noun this interface traffics in is a domain type from `@agent-hub/core`;
  * this file declares only the *operations*. Two adapters implement it in
- * lockstep — `supabase.ts` (RLS-scoped) and `mock.ts` (in-memory) — and
+ * lockstep, `supabase.ts` (RLS-scoped) and `mock.ts` (in-memory), and
  * `db-contract.suite.ts` runs one spec against both.
  *
  * ADR-0016 is narrowing this surface vertically (behavioural methods stay
@@ -106,8 +106,6 @@ import type {
   RuntimeEventInput,
   ServiceNowConfig,
   Skill,
-  SkillInput,
-  SkillPatch,
   Source,
   SourceKind,
   SourceStatus,
@@ -136,7 +134,7 @@ export interface Db {
   /**
    * Resolves the caller's active Organization. When `preferredOrgId` is
    * given, tries that org first (falls back to the caller's first
-   * membership if it isn't visible to them) — used to let a platform
+   * membership if it isn't visible to them), used to let a platform
    * superuser browse an org they aren't a member of. Callers with a real
    * `organization_members` row get their actual per-org Role; a superuser
    * browsing an org with no membership row gets a synthetic 'owner' Role
@@ -144,7 +142,7 @@ export interface Db {
    */
   getCurrentOrg(preferredOrgId?: string): Promise<CurrentOrg | null>;
   /**
-   * Every Organization visible to the caller under RLS — for a regular
+   * Every Organization visible to the caller under RLS, for a regular
    * Member this is just their own org(s); for a platform superuser this is
    * every Organization in the database. Powers the org switcher.
    */
@@ -165,13 +163,13 @@ export interface Db {
     email?: string
   ): Promise<Invite>;
   revokeInvite(inviteId: string): Promise<void>;
-  /** Org name + logo — admin+ only (enforced by RLS and requireMember). */
+  /** Org name + logo, admin+ only (enforced by RLS and requireMember). */
   updateOrganization(
     organizationId: string,
     patch: OrganizationPatch
   ): Promise<Organization>;
 
-  // Organization API keys (#618) — programmatic access credentials.
+  // Organization API keys (#618): programmatic access credentials.
   // Admin+ only (enforced by RLS and requireMember); the secret itself never
   // passes through this seam, only its hash and displayable hint.
   listApiKeys(organizationId: string): Promise<OrgApiKey[]>;
@@ -183,14 +181,14 @@ export interface Db {
   revokeApiKey(keyId: string): Promise<void>;
   /**
    * Auth-time lookup for /api/v1: the presented secret is hashed and looked
-   * up verbatim. Returns revoked keys too — the auth seam is what turns
+   * up verbatim. Returns revoked keys too, the auth seam is what turns
    * `revokedAt` into a 401, so the decision stays in one place.
    */
   getApiKeyByHash(secretHash: string): Promise<OrgApiKey | null>;
   /** Stamps `lastUsedAt` = now. Best-effort; never blocks a request. */
   touchApiKeyLastUsed(keyId: string): Promise<void>;
 
-  // Profile (the signed-in caller's own — Settings > Profile)
+  // Profile (the signed-in caller's own, Settings > Profile)
   getProfile(): Promise<Profile | null>;
   updateProfile(patch: ProfilePatch): Promise<Profile>;
 
@@ -204,7 +202,7 @@ export interface Db {
   updateAssistant(id: string, patch: AssistantPatch): Promise<Assistant>;
   deleteAssistant(id: string): Promise<void>;
 
-  // Per-assistant access overrides ("Manage access" — PRD #296).
+  // Per-assistant access overrides ("Manage access", PRD #296).
   // Reads/writes are org-Admin+ (RLS-enforced); a per-assistant admin
   // override never grants access management.
   listAssistantAccess(assistantId: string): Promise<AssistantAccessEntry[]>;
@@ -321,16 +319,24 @@ export interface Db {
   ): Promise<void>;
 
   // Knowledge (OKF collections)
+  /**
+   * Derived membership (PRD #726): the Collections holding Sources linked to
+   * the Assistant. A Collection with no linked Source is not listed.
+   */
   listCollections(assistantId: string): Promise<KnowledgeCollection[]>;
   /**
    * The per-org "Knowledge Library" default collection hub-created items land
-   * in (PRD #726) — deterministic per organization, created on first use (the
+   * in (PRD #726), deterministic per organization, created on first use (the
    * backfill migration seeds it for orgs that existed then).
    */
   getOrCreateOrgLibraryCollection(
     organizationId: string
   ): Promise<KnowledgeCollection>;
   getCollection(id: string): Promise<KnowledgeCollection | null>;
+  /**
+   * Creates an org-owned Collection in the Assistant's Organization (the
+   * assistant is the org anchor only; Collections have no owning assistant).
+   */
   createCollection(
     assistantId: string,
     input: { name: string; description?: string }
@@ -341,7 +347,7 @@ export interface Db {
    * When the Collection has a legacy owning assistant, the new Source is
    * auto-linked to it (direct access off), so assistant-editor add flows keep
    * answering without an explicit linking step (PRD #726). Org-owned
-   * Collections ("" assistant) create the Source unlinked — the hub's add
+   * Collections ("" assistant) create the Source unlinked, the hub's add
    * flows set links explicitly.
    */
   createSource(input: {
@@ -457,7 +463,7 @@ export interface Db {
    * Deletes exactly the given Concepts (and their chunks) by id, ignoring ids
    * that no longer exist. Targeting a known prior set (rather than everything
    * under a Source) lets a crawl finalizer persist the full new set of Concepts
-   * first and only then retire the previous one — an atomic create-then-delete
+   * first and only then retire the previous one, an atomic create-then-delete
    * replacement that never destroys last-good knowledge on a mid-ingest failure.
    * An empty list is a no-op.
    */
@@ -474,7 +480,7 @@ export interface Db {
     question: string
   ): Promise<{ concept: Concept; collectionName: string } | null>;
   /**
-   * Concepts that have at least one chunk without an embedding — content
+   * Concepts that have at least one chunk without an embedding, content
    * ingested while no embedding provider was available (or during a provider
    * outage), reachable only lexically. Feeds the re-embed backfill (#312).
    */
@@ -502,11 +508,10 @@ export interface Db {
     chunks: Array<{
       conceptId: string;
       collectionId: string;
-      assistantId: string;
       /**
-       * The chunk's Source (PRD #726). When set, retrieval scopes the chunk by
-       * the assistant↔source link table; null means legacy scoping by
-       * assistantId (pre-backfill chunks).
+       * The chunk's Source (PRD #726). Retrieval scopes chunks by the
+       * assistant↔source link table alone (#733); a null-source chunk (a
+       * Concept with no Source) is unreachable by design.
        */
       sourceId?: string | null;
       content: string;
@@ -530,6 +535,13 @@ export interface Db {
     organizationId: string,
     filter: OrgKnowledgeSourceFilter
   ): Promise<OrgKnowledgeSourcePage>;
+  /**
+   * The ids of the Sources linked to this Assistant, its retrieval corpus.
+   * Post-contract (#733/#741) reach is the link set alone: a Collection is
+   * org-owned and may hold Sources this Assistant never answers from, so an
+   * assistant-scoped read narrows with this, never with a collectionId.
+   */
+  listAssistantSourceIds(assistantId: string): Promise<string[]>;
   /** The Assistants a Source is linked to (with per-assistant Direct access). */
   listSourceAssistantLinks(sourceId: string): Promise<AssistantSourceLink[]>;
   /**
@@ -546,10 +558,10 @@ export interface Db {
     assistantId: string,
     directAccess: boolean
   ): Promise<void>;
-  /** Every FAQ with its full answer, newest first — the org-wide CSV export. */
+  /** Every FAQ with its full answer, newest first, the org-wide CSV export. */
   listOrgFaqs(organizationId: string): Promise<OrgFaqEntry[]>;
   /**
-   * A Source's Concepts, path-ordered — the hub's "View knowledge source"
+   * A Source's Concepts, path-ordered, the hub's "View knowledge source"
    * pages list. Bounded (default 500) so one 10k-page site can't flood the
    * modal payload.
    */
@@ -613,7 +625,7 @@ export interface Db {
     /**
      * The turn's Thinking Steps, already capped and redacted by the runtime.
      * Absent (or null) for user messages and for turns that did no agentic
-     * work — the Inbox renders no panel for those.
+     * work, the Inbox renders no panel for those.
      */
     trace?: StoredTurnTrace | null;
   }): Promise<StoredMessage>;
@@ -627,7 +639,7 @@ export interface Db {
   >;
   /**
    * Strips the stored Turn Trace from this organization's messages older than
-   * the cutoff; content, feedback and timestamps stay. Idempotent — a cleared
+   * the cutoff; content, feedback and timestamps stay. Idempotent, a cleared
    * trace never matches again. Returns how many messages were swept.
    */
   clearExpiredTraces(organizationId: string, cutoffIso: string): Promise<number>;
@@ -640,7 +652,7 @@ export interface Db {
   /**
    * Bounded Insights Overview (KPI cards + time series + breakdowns),
    * aggregated org-side by an RLS-safe SQL function in production and computed
-   * in memory by the demo adapter — never returns raw Conversations/Messages.
+   * in memory by the demo adapter, never returns raw Conversations/Messages.
    */
   getInsightsOverview(
     organizationId: string,
@@ -684,7 +696,7 @@ export interface Db {
 
   // Alerts (operational health)
   listAlerts(organizationId: string): Promise<Alert[]>;
-  /** Newest active alerts, capped — the shell's bottom-right notification stack. */
+  /** Newest active alerts, capped, the shell's bottom-right notification stack. */
   listActiveAlerts(organizationId: string, limit?: number): Promise<Alert[]>;
   /** Active-alert count for the sidebar badge. */
   countActiveAlerts(organizationId: string): Promise<number>;
@@ -707,13 +719,13 @@ export interface Db {
   recordAiUsage(rows: AiUsageInput[]): Promise<void>;
   /** Append a runtime telemetry event (ADR-0011); post-commit, failures isolated by the caller. */
   recordRuntimeEvent(event: RuntimeEventInput): Promise<void>;
-  /** Input+output tokens the organization consumed today (UTC) — the budget pre-turn check. */
+  /** Input+output tokens the organization consumed today (UTC), the budget pre-turn check. */
   getOrgTokensUsedToday(organizationId: string): Promise<number>;
-  /** Estimated EUR cost (see pricing.ts) of today's (UTC) usage — the euro budget pre-turn check. */
+  /** Estimated EUR cost (see pricing.ts) of today's (UTC) usage, the euro budget pre-turn check. */
   getOrgCostUsedToday(organizationId: string): Promise<number>;
   /**
    * Recomputes the last `days` UTC days (today included) of the usage_daily
-   * rollup from the raw ledger. Cross-org — the rollup-usage cron's write
+   * rollup from the raw ledger. Cross-org, the rollup-usage cron's write
    * path (service role). Idempotent; returns rows upserted.
    */
   rollupUsageDaily(days?: number): Promise<number>;
@@ -735,7 +747,7 @@ export interface Db {
     to: string
   ): Promise<UsageMeterRow[]>;
   /** Cross-org: every Knowledge Collection whose assistant uses the graph
-   * engine — the datasets the nightly graph-learning cron sweeps. Service-role
+   * engine, the datasets the nightly graph-learning cron sweeps. Service-role
    * (spans orgs), like the other cron-claim reads. */
   listActiveGraphDatasets(): Promise<
     Array<{ organizationId: string; collectionId: string }>
@@ -860,7 +872,7 @@ export interface Db {
     staleBefore: string;
     limit: number;
   }): Promise<DueCompostAssistant[]>;
-  /** The assistant's exhaust since `since` — every input optional by construction. */
+  /** The assistant's exhaust since `since`, every input optional by construction. */
   getCompostDigest(assistantId: string, since: string): Promise<CompostDigest>;
   /** Records the run (idempotence marker + clean-week evidence). */
   recordCompostRun(input: {
@@ -880,13 +892,13 @@ export interface Db {
   /** Personal local AI subscriptions are disabled by default per Organization. */
   getPersonalAiSubscriptionsAllowed(organizationId: string): Promise<boolean>;
 
-  // Local-connector relay (server-only; requires a service-role Db — the
+  // Local-connector relay (server-only; requires a service-role Db, the
   // relay tables carry no RLS policies, so RLS-scoped clients see nothing).
   /**
    * Atomically consumes the unused, unexpired pairing matching the hashed
    * code + origin (a one-time compare-and-set on `usedAt`). Returns the
    * consumed pairing, or null when no such pairing exists / it was already
-   * used / it expired — the three cases are indistinguishable by design.
+   * used / it expired, the three cases are indistinguishable by design.
    */
   consumeLocalConnectorPairing(input: {
     codeHash: string;
@@ -907,7 +919,7 @@ export interface Db {
   }): Promise<LocalConnectorDevice[]>;
   /**
    * Deletes the device's expired jobs (a server request may disappear after
-   * the connector claimed its job — expired work must not linger), then
+   * the connector claimed its job, expired work must not linger), then
    * atomically claims its oldest pending unexpired job (pending → claimed).
    * Returns the claimed job, or null when there is no work or a concurrent
    * claim won.
@@ -930,17 +942,16 @@ export interface Db {
     now: string;
   }): Promise<boolean>;
 
-  // Platform settings (single-row, service-role only — org members can
+  // Platform settings (single-row, service-role only, org members can
   // neither read nor write; see docs/agentic-chat-runtime.md)
   /** The stored platform-wide system-prompt override ("" = use the shipped default). */
   getPlatformSystemPromptOverride(): Promise<string>;
   /** Persists the platform prompt override, stamping the editing owner. */
   setPlatformSystemPrompt(prompt: string, updatedBy: string): Promise<void>;
 
-  // Skills (reusable org-level prompt templates)
-  listSkills(organizationId: string): Promise<Skill[]>;
-  createSkill(organizationId: string, input: SkillInput): Promise<Skill>;
-  updateSkill(id: string, patch: SkillPatch): Promise<Skill>;
+  // Skills (reusable org-level prompt templates). Plain CRUD lives on
+  // `table("skills")` (ADR-0016 stage 3); only the delete stays named, the
+  // mock detaches assistant_skills by hand where Postgres cascades.
   deleteSkill(id: string): Promise<void>;
   /** Skills attached to an assistant, in attachment order. */
   listAssistantSkills(assistantId: string): Promise<Skill[]>;
@@ -1007,7 +1018,7 @@ export interface Db {
     entityIds: string[]
   ): Promise<void>;
 
-  // Generic table access (ADR-0016) — the seam the plain CRUD passthroughs
+  // Generic table access (ADR-0016): the seam the plain CRUD passthroughs
   // above migrate onto. Only tables in DbTableMap are reachable; behavioural
   // methods (leases, counters, dedup, sealed credentials) stay first-class.
   table<K extends DbTableName>(name: K): DbTableAccessor<K>;

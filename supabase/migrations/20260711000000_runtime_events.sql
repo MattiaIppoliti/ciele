@@ -1,5 +1,5 @@
 -- Runtime telemetry sink (ADR-0011: AI observability within budget). One
--- privacy-safe, structured event per runtime boundary — the durable source of
+-- privacy-safe, structured event per runtime boundary, the durable source of
 -- truth for operational metrics (latency, tokens, tool calls, error outcomes)
 -- without storing prompts, message text, retrieved chunks, model outputs, keys
 -- or personal contact data. Written post-commit, isolated like the ai_usage

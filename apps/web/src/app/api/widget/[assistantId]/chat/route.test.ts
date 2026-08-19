@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   streamConversationTurn: vi.fn(),
 }));
 
-// Keep the real widgetSubject/subjectOwnsConversation — the gate-to-subject
+// Keep the real widgetSubject/subjectOwnsConversation, the gate-to-subject
 // resolution (#662) is exactly what these tests exercise.
 vi.mock("@/lib/widget-db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/widget-db")>();
@@ -71,7 +71,7 @@ afterAll(() => {
   else process.env.APP_ENCRYPTION_KEY = priorKey;
 });
 
-describe("widget chat route — SSO gate enforcement", () => {
+describe("widget chat route, SSO gate enforcement", () => {
   beforeEach(() => {
     mocks.resolveWidgetContext.mockReset();
     mocks.streamConversationTurn.mockReset();

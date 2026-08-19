@@ -8,6 +8,6 @@ everyone whose work has landed that way is listed here.
 
 Thank you to everyone below.
 
-<!-- One line per contributor: `- Name (@github-handle) — what they contributed` -->
+<!-- One line per contributor: `- Name (@github-handle), what they contributed` -->
 
-_No external contributions yet — yours can be the first._
+_No external contributions yet, yours can be the first._

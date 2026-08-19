@@ -10,7 +10,7 @@ export default async function MembersPage() {
   const { session, organizationId, role, db } = await requirePageMember();
   if (!canViewMembers(role)) redirect("/settings/profile");
 
-  // Invites are admin-only (RLS enforces it too) — skip the fetch for editors.
+  // Invites are admin-only (RLS enforces it too), skip the fetch for editors.
   const canManage = canManageMembers(role);
   const [members, invites] = await Promise.all([
     db.listMembers(organizationId),

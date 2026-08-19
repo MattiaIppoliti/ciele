@@ -47,7 +47,7 @@ export function TopBar({ demo }: { demo: boolean }) {
   const title = pageTitle(pathname);
   // topBarActions is registered from page components via useEffect, so with
   // selective hydration it can be set before this boundary hydrates. Server
-  // HTML never contains it — render it only after hydration to keep both
+  // HTML never contains it: render it only after hydration to keep both
   // trees identical while hydrating.
   const mounted = useSyncExternalStore(
     subscribeNoop,
@@ -59,7 +59,7 @@ export function TopBar({ demo }: { demo: boolean }) {
     <header className="bg-background/95 relative flex h-14 shrink-0 items-center gap-2 border-b px-2 backdrop-blur sm:gap-3 sm:px-4">
       {/* Below `lg` the sidebar is off-canvas, so the hamburger is the only way
           into navigation and is always present. From `lg` up it disappears and
-          the reopen button takes over — but only while the sidebar is hidden. */}
+          the reopen button takes over, but only while the sidebar is hidden. */}
       <button
         type="button"
         aria-label="Open navigation"

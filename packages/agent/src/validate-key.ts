@@ -40,7 +40,7 @@ function probeFor(provider: Provider, apiKey: string): ProbeRequest {
       };
     default:
       // Runtime value from a server action, not guaranteed by the Provider
-      // type at the boundary — never silently "pass" an unrecognized value.
+      // type at the boundary, never silently "pass" an unrecognized value.
       throw new Error(`Unknown provider: ${String(provider)}`);
   }
 }
@@ -48,7 +48,7 @@ function probeFor(provider: Provider, apiKey: string): ProbeRequest {
 /**
  * Best-effort live check of a BYOK API key with a cheap list-models call.
  * Throws InvalidProviderKeyError only when the provider explicitly rejects
- * the credential; network failures and other statuses pass — validation must
+ * the credential; network failures and other statuses pass, validation must
  * never block key entry when the provider is unreachable (e.g. offline dev).
  * An unrecognized `provider` is a caller bug, not a network condition, so it
  * throws unconditionally instead of being swallowed by the network catch.

@@ -145,7 +145,7 @@ export function MembersClient({
       accessor: (row) => row.role,
       sortable: true,
       width: "18%",
-      // A pending invite's role is fixed at creation — there is no member row
+      // A pending invite's role is fixed at creation; there is no member row
       // to update yet, so it renders as a badge like an unmanageable member.
       cell: (row) =>
         row.kind === "member" && canManageRow(row, manageOpts) ? (
@@ -246,7 +246,7 @@ export function MembersClient({
         onClose={() => setPendingRemoval(null)}
       />
 
-      {/* Invite — admins only; editors get a read-only roster. */}
+      {/* Invite, admins only; editors get a read-only roster. */}
       {canInvite && (
         <div>
           <h2 className="text-lg font-semibold">Invite people</h2>

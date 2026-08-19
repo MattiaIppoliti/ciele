@@ -10,7 +10,7 @@ export default async function ToolsPage({ params }: { params: Promise<{ id: stri
   const assistant = await getAssistantCached(id);
   if (!assistant) notFound();
   const [skills, attachedSkills, orgEntities, integration] = await Promise.all([
-    db.listSkills(assistant.organizationId),
+    db.table("skills").list({ organizationId: assistant.organizationId }),
     db.listAssistantSkills(id),
     db.table("entities").list({ organizationId: assistant.organizationId }),
     db.getApiIntegration(id),

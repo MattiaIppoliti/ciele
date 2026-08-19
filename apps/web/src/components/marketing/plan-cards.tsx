@@ -6,8 +6,8 @@ import { TiltCard } from "@/components/motion/tilt-card";
  * pricing page (and the download page's CTA) share: the tilt shell and the CTA
  * look.
  *
- * There is deliberately no ladder here. Ciele is offered exactly two ways —
- * self-hosted (free, open source) and Enterprise (managed, sales-led) — and the
+ * There is deliberately no ladder here. Ciele is offered exactly two ways,
+ * self-hosted (free, open source) and Enterprise (managed, sales-led), and the
  * self-hosted half is not a purchasable tier at all, so the only offering this
  * module describes is the one sales sells. No price appears either: Enterprise
  * is sized in a conversation, and printing a number here is how a marketing
@@ -40,14 +40,14 @@ export const ENTERPRISE = {
     "Onboarding, a named contact and an availability commitment",
   ],
   // Sales-led on purpose: Enterprise carries custom terms, an availability
-  // commitment and often tenant-billed models — none of it a card can settle.
+  // commitment and often tenant-billed models, none of it a card can settle.
   salesCta: "Talk to sales",
 } as const;
 
 /**
  * The shared plan-card shell: every card tilts towards the cursor.
  *
- * `overflow-visible` overrides TiltCard's own clip — `Card` draws its outline
+ * `overflow-visible` overrides TiltCard's own clip, `Card` draws its outline
  * as a ring, which sits outside the padding box and would be clipped away
  * entirely. The glare rounds itself to the same radius instead of relying on
  * that clip.
@@ -74,14 +74,14 @@ export function PlanTilt({ children }: { children: React.ReactNode }) {
  * inverts to a filled one with a faint halo on hover.
  *
  * Both cards carry the same button on purpose: with exactly two offerings that
- * answer different questions — "do we run it or do you?" — neither is the
+ * answer different questions, "do we run it or do you?", neither is the
  * recommended one, and a filled button on one card would make the other read as
  * the disabled alternative.
  *
  * `text-foreground` is explicit rather than inherited: these buttons sit on a
  * translucent card over the page's own gradient, and inheriting a muted colour
  * from an ancestor is how the label ends up unreadable at rest. The hover half
- * restates the `default` variant's invert so `outline` borrows it —
+ * restates the `default` variant's invert so `outline` borrows it,
  * tailwind-merge drops `outline`'s own `hover:bg-*`/`hover:text-*` in favour of
  * these, which is why they stay a className rather than move into the variant.
  */

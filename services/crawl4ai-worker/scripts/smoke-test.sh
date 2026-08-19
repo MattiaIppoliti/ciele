@@ -12,7 +12,7 @@
 # Success = the task reaches "completed" with at least one page carrying text.
 #
 # Requires a RUNNING worker. Point it at a local `docker compose up` worker or a
-# managed one — the contract is identical:
+# managed one, the contract is identical:
 #
 #   export CRAWL4AI_API_TOKEN=<token>
 #   export CRAWL4AI_BASE_URL=http://localhost:11235   # or the managed URL
@@ -73,7 +73,7 @@ print(json.dumps({
 PY
 )"
 else
-  echo "==> [2/3] POST /crawl/job  (inline raw:// fixture — offline, deterministic)"
+  echo "==> [2/3] POST /crawl/job  (inline raw:// fixture, offline, deterministic)"
   job_body="$(python3 - <<'PY'
 import json
 fixture = "raw://<html><body><h1>Ciele smoke test</h1><p>terminal result</p></body></html>"

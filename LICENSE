@@ -5,9 +5,9 @@ Ciele is licensed under the GNU Affero General Public License v3.0 only
 
 - All source in this repository is licensed under AGPL-3.0-only (the full
   text follows below) EXCEPT the paths listed under "Commercial" next.
-- Commercial: the enterprise edition — everything under `ee/` (including the
+- Commercial: the enterprise edition, everything under `ee/` (including the
   enterprise apps in `ee/apps/`), plus `apps/web/src/ee/` and
-  `apps/web/src/app/api/ee/` — is NOT licensed under AGPL-3.0. It is
+  `apps/web/src/app/api/ee/`: is NOT licensed under AGPL-3.0. It is
   proprietary and provided only under a separate commercial agreement with
   Ciele. These paths are excluded from the public open-source distribution, so
   a checkout of the public repository contains no enterprise-licensed code.

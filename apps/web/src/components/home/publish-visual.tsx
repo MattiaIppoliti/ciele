@@ -14,7 +14,7 @@ import { AmbientActiveContext } from "@/components/home/use-in-viewport";
 import { EASE_OUT } from "@/lib/ease";
 
 /** Swipe-to-publish control: the handle auto-demos across the track and loops.
- * No success/green state, no confetti — it just conveys the swipe affordance,
+ * No success/green state, no confetti, it just conveys the swipe affordance,
  * then slides away with its Layer2 slot on card hover. */
 function SwipeTrack() {
   const reduce = useReducedMotion();
@@ -72,7 +72,7 @@ function SwipeTrack() {
 }
 
 /**
- * Publish card visual — the badtz-ui "Visual 2" animated graph in neutral grey,
+ * Publish card visual: the badtz-ui "Visual 2" animated graph in neutral grey,
  * with the swipe-to-publish control standing in for the default caption. On
  * card hover the swipe slides down and fades while the donut chart and channel
  * tags animate in.

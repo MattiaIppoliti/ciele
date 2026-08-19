@@ -44,7 +44,7 @@ export function EntityRecordsDialog({
         {records === null ? (
           <p className="text-muted-foreground text-sm">Loading…</p>
         ) : records.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No records yet — import a CSV to fill this entity.</p>
+          <p className="text-muted-foreground text-sm">No records yet, import a CSV to fill this entity.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">

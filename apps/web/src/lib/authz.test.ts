@@ -3,7 +3,7 @@ import type { Session } from "@/lib/auth";
 
 /**
  * The authorization seam (requireMember): every org-scoped server action
- * starts here. Tested by stubbing the session — the RBAC ladder itself is
+ * starts here. Tested by stubbing the session, the RBAC ladder itself is
  * pure (lib/rbac.ts) and exercised through the guard's capability map.
  */
 

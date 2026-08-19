@@ -15,9 +15,9 @@ import { FeatherIcon } from "@/components/ui/feather-icon";
 
 /**
  * Per-step icon lookup for the Thinking panel / ThinkingTimeline. Every
- * Thinking Step gets the icon that matches what it is — flow (routing),
+ * Thinking Step gets the icon that matches what it is, flow (routing),
  * palette (generating the answer), search, book (knowledge), or wrench
- * (any tool call) — in the panel's muted monochrome palette, never one icon
+ * (any tool call), in the panel's muted monochrome palette, never one icon
  * reused for every step.
  */
 
@@ -34,7 +34,7 @@ interface IconSpec {
  * call is a wrench.
  */
 const TOOL_ICONS: Record<string, IconSpec> = {
-  // The terminal declaration — the last step before the answer is written.
+  // The terminal declaration: the last step before the answer is written.
   // Never the generic tool wrench: it reads as "picking up the pen".
   readyToAnswer: {
     icon: <FeatherIcon size={14} className="flex items-center justify-center" />,
@@ -109,7 +109,7 @@ function iconSpecFor(step: TurnStep): IconSpec {
   if (step.kind === "notice") {
     // Routing notices get the Flow glyph; every other diagnostic falls back to
     // the search lens (never a bare "info" glyph). The *name* stays the
-    // notice's own — it is the tooltip and the header pill's screen-reader
+    // notice's own; it is the tooltip and the header pill's screen-reader
     // text, so a generic "Runtime notice" would drop what it says.
     const routing =
       step.label.startsWith("Classifying intent") ||
@@ -138,7 +138,7 @@ export function formatToolName(name: string): string {
     .join(" ");
 }
 
-/** The muted icon circle for one step — same palette as the rest of the panel. */
+/** The muted icon circle for one step, same palette as the rest of the panel. */
 export function StepIcon({
   step,
   className = "size-6",

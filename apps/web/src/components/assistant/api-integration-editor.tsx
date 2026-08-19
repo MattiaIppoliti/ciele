@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
  * endpoint catalogue the assistant's model discovers, reads and queries through
  * three generic tools.
  *
- * The catalogue is not decoration — it is the allow-list. A path the model
+ * The catalogue is not decoration: it is the allow-list. A path the model
  * produces is matched against these entries before any request goes out, so the
  * copy here says so: describing an endpoint is what makes it reachable, and
  * removing one is what makes it unreachable.

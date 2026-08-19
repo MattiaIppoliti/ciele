@@ -1,8 +1,8 @@
 // The multi-step-form shell, kept as supplied: step title and description,
 // dot progress, animated height, directional slide between steps.
 //
-// The demo's fields are gone — this wizard's steps do work rather than collect
-// a form — but the chrome is the point, and it is unchanged: `useMeasure` on
+// The demo's fields are gone: this wizard's steps do work rather than collect
+// a form, but the chrome is the point, and it is unchanged: `useMeasure` on
 // the content drives the height spring, and `AnimatePresence` with a custom
 // `direction` gives the slide its sense of travel.
 
@@ -30,7 +30,7 @@ export function WizardShell({
   description: string;
   stepCount: number;
   currentStep: number;
-  /** 1 forward, -1 back — what gives the slide its direction. */
+  /** 1 forward, -1 back, what gives the slide its direction. */
   direction: number;
   footer: ReactNode;
   children: ReactNode;

@@ -3,7 +3,7 @@ import { messageContent } from "./conversation-export";
 
 /**
  * A single Conversation transcript as a self-contained, printable HTML document
- * (#561) — the reference platform's "export this transcript as PDF" affordance.
+ * (#561), the reference platform's "export this transcript as PDF" affordance.
  *
  * There is no PDF library here on purpose. The browser's own print pipeline turns
  * this document into a PDF, which means it **paginates** rather than fitting a
@@ -69,7 +69,7 @@ export function transcriptDocument(input: TranscriptDocumentInput): string {
     .map((message) => {
       const body = messageContent(message.content ?? []);
       // A turn whose parts render to nothing (a bare button, an iframe chip) still
-      // happened — printing a blank block is more honest than dropping the turn.
+      // happened, printing a blank block is more honest than dropping the turn.
       const text = body.trim() || "(no text content)";
       const vote = VOTE_LABELS[message.feedback];
       const meta = [

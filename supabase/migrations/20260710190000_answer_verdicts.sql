@@ -1,5 +1,5 @@
 -- Answer verdicts (spec: independent answer verifier). One verdict per
--- message — the primary key doubles as the idempotence guard, so concurrent
+-- message, the primary key doubles as the idempotence guard, so concurrent
 -- verifier ticks can never double-grade an answer. Written by the scheduled
 -- verifier via the service role; members read for Inbox surfacing and the
 -- trust ledger.
@@ -11,7 +11,7 @@ create table public.answer_verdicts (
   flow_id text,
   verdict text not null check (verdict in ('pass', 'fail')),
   reason text not null default '',
-  -- The grading model (fresh-context, cheap tier) — never the answering model's chain.
+  -- The grading model (fresh-context, cheap tier): never the answering model's chain.
   model_id text not null default '',
   created_at timestamptz not null default now()
 );

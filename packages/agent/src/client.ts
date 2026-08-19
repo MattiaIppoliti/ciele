@@ -1,5 +1,5 @@
 /**
- * Runtime — client-safe public interface.
+ * Runtime: client-safe public interface.
  *
  * The counterpart to `./index` for browser bundles. Everything here is either
  * type-only or pure static data, so importing it from a client component never
@@ -26,21 +26,21 @@ export type {
 // spec #194); flows through the RuntimeEvent `part` event.
 export type { ChatReplyPart, RuntimeEvent, StepStage } from "./types";
 
-// Whether a Provider Connection can embed — powers the org embedding picker
+// Whether a Provider Connection can embed, powers the org embedding picker
 // in Settings > AI (#437). Pure predicate, no credentials, no AI SDK.
 export { canEmbedWithConnection } from "./embedding-capability";
 
 // Static model catalog for editor UI (provider labels + model lists).
 export { MODEL_CATALOG, PROVIDER_NAMES } from "./catalog";
 
-// The agent loop's iteration budget — the number the model is TOLD about (#558).
+// The agent loop's iteration budget: the number the model is TOLD about (#558).
 // Public because the Inbox export re-states it in the reference platform's
 // `[System note]` ("iteration 2 out of 6"), and that note has to quote the same
 // budget the turn actually ran under.
 //
 // Imported from `loop-budget` directly, NOT through the `agentic-search` barrel:
 // that barrel value-exports `runAgenticSearch`, so routing through it would pull
-// `streamText` — the whole AI SDK — into every client bundle. `loop-budget.ts`
+// `streamText`: the whole AI SDK, into every client bundle. `loop-budget.ts`
 // has no imports at all, which is what makes the constant client-safe.
 export { MAX_AGENT_ITERATIONS } from "./agentic-search/loop-budget";
 
@@ -58,7 +58,7 @@ export type {
 
 // The local provider-CLI status shapes (ADR-0015). The Settings client
 // components render these; the value exports stay on `./local-providers`
-// because they spawn CLIs and read the filesystem — server-only.
+// because they spawn CLIs and read the filesystem, server-only.
 export type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,

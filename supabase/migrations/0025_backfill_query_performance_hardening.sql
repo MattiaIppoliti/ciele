@@ -1,14 +1,14 @@
 -- Backfill: this was applied directly to the live project
 -- on 2026-07-05 without ever being captured as a local migration file. Added
 -- here so a fresh environment built from this repo matches production. Must
--- run BEFORE 0026_backfill_private_schema_hardening — it still calls
+-- run BEFORE 0026_backfill_private_schema_hardening; it still calls
 -- public.has_org_role(), which is correct for the schema state at the time
 -- this actually ran live (before that function moved to `private`).
 --
 -- Query performance hardening, driven by the Supabase Performance Advisor:
 -- fix RLS policies that re-evaluate auth.uid()
 -- per row, add missing FK-covering indexes, and remove a duplicate
--- permissive SELECT policy. No behavior change — same access rules, cheaper
+-- permissive SELECT policy. No behavior change, same access rules, cheaper
 -- to evaluate as tables grow.
 
 -- 1. auth_rls_initplan: a bare `auth.uid()` in a policy is re-checked for

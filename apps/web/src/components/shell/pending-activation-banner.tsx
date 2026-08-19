@@ -7,7 +7,7 @@ import { selfServeTiers } from "@/lib/plan-pricing";
  * The pending-activation state, shown on every console page (#444).
  *
  * A fresh managed signup can configure everything but its assistants do not
- * answer yet, and that is not obvious from a console that otherwise works — so
+ * answer yet, and that is not obvious from a console that otherwise works, so
  * it is said once, everywhere, with the action that resolves it.
  *
  * Renders nothing at all on a self-hosted deployment: the OSS activation
@@ -25,7 +25,7 @@ export async function PendingActivationBanner({
     const activation = await capabilities.activation.getActivation(organizationId);
     pending = activation.state === "pending";
     // Where a plan can actually be bought, paying is the fastest way out of this
-    // state — activation is derived from the billing row — so the banner names
+    // state, activation is derived from the billing row, so the banner names
     // that instead of a conversation.
     selfServe =
       selfServeTiers(capabilities.billing.getPlanCatalog()?.tiers ?? null)

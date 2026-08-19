@@ -20,7 +20,7 @@ export interface TiltCardProps {
   glare?: boolean;
   /**
    * Strength of the highlight. It is drawn in `--foreground`, so on a light
-   * theme it reads as a grey wash — and it is painted at rest, not only while
+   * theme it reads as a grey wash, and it is painted at rest, not only while
    * the pointer is over the card. Turn it down on large, text-heavy surfaces.
    */
   glareOpacity?: number;

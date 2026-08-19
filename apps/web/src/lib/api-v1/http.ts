@@ -1,6 +1,6 @@
 /**
  * /api/v1 response conventions (#619): one error envelope, one pagination
- * shape. Every route speaks these — clients (the CLI, the MCP server) parse
+ * shape. Every route speaks these, clients (the CLI, the MCP server) parse
  * one format, not one per endpoint.
  */
 
@@ -39,7 +39,7 @@ export interface Page<T> {
 /**
  * Cursor pagination over an already-ordered list: the cursor is the id of
  * the last item served. An unknown cursor restarts from the top rather than
- * erroring — cursors are opaque bookmarks, not queries.
+ * erroring, cursors are opaque bookmarks, not queries.
  */
 export function paginate<T extends { id: string }>(
   items: T[],

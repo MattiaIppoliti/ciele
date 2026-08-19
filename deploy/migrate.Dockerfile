@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # One-shot migration runner for the self-host stack (#440).
 #
-# Runs the repo's own filename-ledger applier — the same script CI runs
-# against the hosted deployment — so a self-host and the hosted project never
+# Runs the repo's own filename-ledger applier, the same script CI runs
+# against the hosted deployment, so a self-host and the hosted project never
 # diverge on how migrations are applied. Built from the repo root:
 #
 #   docker build -f deploy/migrate.Dockerfile -t ciele-migrate .

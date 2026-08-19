@@ -15,7 +15,7 @@ import type { Db } from "./types";
 /**
  * Db contract tests: interface-level behavior every Db adapter must share.
  * The suite is written against a context factory so the same expectations can
- * run over the Supabase adapter (with a test database) — that is what makes it
+ * run over the Supabase adapter (with a test database); that is what makes it
  * a contract and what catches mockâ†”supabase drift. Semantics pinned here are
  * the drift-prone ones: creation defaults, patch semantics, cascades,
  * per-org counters, Publication versioning, metadata merge, lexical search.
@@ -44,7 +44,7 @@ export interface DbContractContext {
   foreignOrganizationId: string;
   /**
    * Optional: hand back the user id of a Member of `organizationId` other
-   * than the caller (creating one if needed) — for cases that exercise
+   * than the caller (creating one if needed), for cases that exercise
    * member-scoped rows (e.g. assistant-access cascades). Adapters that
    * can't seed extra members omit it and those cases self-skip.
    */
@@ -168,7 +168,7 @@ export function describeDbContract(
         const found = await db.getApiKeyByHash(input.secretHash);
         expect(found?.id).toBe(created.id);
         expect(found?.role).toBe("viewer");
-        // A wrong hash finds nothing — there is no fuzzy path to a key.
+        // A wrong hash finds nothing: there is no fuzzy path to a key.
         expect(await db.getApiKeyByHash(hashApiKeySecret("nope"))).toBeNull();
 
         expect(found?.lastUsedAt).toBeNull();
@@ -194,7 +194,7 @@ export function describeDbContract(
           expect(a.organizationId).toBe(ctx.organizationId);
         }
 
-        // Anything outside the allow-lists throws — new routes must extend them.
+        // Anything outside the allow-lists throws, new routes must extend them.
         expect(() => pinned.createOrganization("outside pinned scope")).toThrowError(
           OrgPinnedDbError
         );
@@ -207,7 +207,7 @@ export function describeDbContract(
         // foreign: reads come back absent, mutations refuse before executing.
         const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
 
-        // getAssistant: post-checked — a foreign row reads as null, not an error.
+        // getAssistant: post-checked, a foreign row reads as null, not an error.
         expect((await pinned.getAssistant(assistant.id))?.id).toBe(assistant.id);
         expect(await foreignPinned.getAssistant(assistant.id)).toBeNull();
 
@@ -236,6 +236,42 @@ export function describeDbContract(
 
         // The mutation the guard blocked really did not run.
         expect((await db.getFlow(flow.id))?.enabled).toBe(false);
+      });
+
+      it("org-pins assistant-source link mutations (PRD #726)", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Pinned Link Collection",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Pinned link source",
+          kind: "text",
+        });
+        const pinned = createOrgPinnedDb(db, ctx.organizationId);
+        const foreignPinned = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+
+        await pinned.setSourceAssistantLinks(source.id, [assistant.id]);
+        expect(
+          (await pinned.listSourceAssistantLinks(source.id)).map(
+            (l) => l.assistantId
+          )
+        ).toEqual([assistant.id]);
+
+        // Both sides are resolved: a foreign key can neither read the links nor
+        // hand this Source to an Assistant it does not own.
+        await expect(
+          foreignPinned.listSourceAssistantLinks(source.id)
+        ).rejects.toThrowError(OrgPinnedDbError);
+        await expect(
+          foreignPinned.setSourceAssistantLinks(source.id, [assistant.id])
+        ).rejects.toThrowError(OrgPinnedDbError);
+        await expect(
+          foreignPinned.setSourceDirectAccess(source.id, assistant.id, true)
+        ).rejects.toThrowError(OrgPinnedDbError);
+
+        // The refusals really did not run.
+        expect(await db.listSourceAssistantLinks(source.id)).toHaveLength(1);
       });
 
       it("org-pins Entity Records and Memory erasure for API-key callers (#663–#667)", async () => {
@@ -345,7 +381,7 @@ export function describeDbContract(
         expect(assistant.modelProvider).toBeTruthy();
         expect(assistant.modelId).toBeTruthy();
         expect(assistant.welcomeMessage.length).toBeGreaterThan(0);
-        // SSO is off by default — a fresh assistant never gates chat.
+        // SSO is off by default: a fresh assistant never gates chat.
         expect(assistant.requireSignIn).toBe(false);
 
         const flows = await db.listFlows(assistant.id);
@@ -355,7 +391,7 @@ export function describeDbContract(
         expect(flows.at(-1)?.isDefault).toBe(true);
         // Basic Interaction (#565) is the one built-in that ships configured:
         // its behaviour IS its action, and an empty built-in would fall through
-        // to generative search — the opposite of a courtesy fast path.
+        // to generative search, the opposite of a courtesy fast path.
         const courtesy = flows.filter((f) => f.actions.includes("basic_reply"));
         expect(courtesy).toHaveLength(1);
         expect(courtesy[0]).toMatchObject({ builtIn: true, enabled: true });
@@ -675,7 +711,7 @@ export function describeDbContract(
         const collection = await db.createCollection(assistant.id, {
           name: "Lease Collection",
         });
-        // createSource defaults to `processing` — the leasable state.
+        // createSource defaults to `processing`, the leasable state.
         return db.createSource({
           collectionId: collection.id,
           name: "Leased crawl",
@@ -686,7 +722,7 @@ export function describeDbContract(
 
       it("renews a lease for the owning worker only, and renewal extends it", async () => {
         const source = await leasedSource();
-        // Renewing a lease that was never claimed proves nothing — refuse.
+        // Renewing a lease that was never claimed proves nothing, refuse.
         expect(
           await db.renewProcessingCrawlSourceClaim({
             sourceId: source.id,
@@ -1137,7 +1173,7 @@ export function describeDbContract(
         expect(await db.countEntityRecords(entity.id)).toBe(2);
         const originalIds = (await db.listEntityRecords(entity.id)).map((r) => r.id);
 
-        // Re-import: same keys, one changed value — no duplicates, stable ids.
+        // Re-import: same keys, one changed value, no duplicates, stable ids.
         const changed = await db.upsertEntityRecords(entity.id, [
           { key: "A-1", values: { order_id: "A-1", status: "refunded", total: 10 } },
           { key: "A-2", values: { order_id: "A-2", status: "delayed", total: 25 } },
@@ -1202,7 +1238,7 @@ export function describeDbContract(
 
       it("scopes a user-scoped query to one identity value alongside other filters (#667)", async () => {
         // The runtime binds the Entity's identity attribute to the turn's
-        // verified claim; this is the query path that binding rides on —
+        // verified claim; this is the query path that binding rides on,
         // combined identity + attribute filters, and identity + search.
         const entity = await db.table("entities").insert({
           organizationId: ctx.organizationId,
@@ -1427,7 +1463,7 @@ export function describeDbContract(
 
       it("recalls semantically when embeddings are present (match path on both impls)", async () => {
         // Orthogonal unit vectors in the platform's 1536-dim convention: the
-        // query leans toward axis 0, so the color memory must rank first —
+        // query leans toward axis 0, so the color memory must rank first,
         // on the vector path (Supabase match_memories) and the lexical
         // fallback (mock) alike, since the query keywords agree.
         const axis = (i: number) => {
@@ -1600,27 +1636,37 @@ export function describeDbContract(
       });
 
       it("lists graph-engine collections and excludes vector-engine ones", async () => {
-        const graphAssistant = await newAssistant();
-        const graphCollection = await db.createCollection(graphAssistant.id, {
-          name: "Graph KB",
-        });
-        const vectorAssistant = await newAssistant();
-        await db.updateAssistant(vectorAssistant.id, { knowledgeEngine: "vector" });
-        const vectorCollection = await db.createCollection(vectorAssistant.id, {
-          name: "Vector KB",
+        // Post-contract (#733) a Collection has no owning assistant: a
+        // Collection is an active graph dataset when any Assistant LINKED to
+        // one of its Sources runs the graph engine.
+        const seed = async (name: string) => {
+          const assistant = await newAssistant();
+          const collection = await db.createCollection(assistant.id, { name });
+          const source = await db.createSource({
+            collectionId: collection.id,
+            name: `${name} Source`,
+            kind: "text",
+          });
+          await db.setSourceAssistantLinks(source.id, [assistant.id]);
+          return { assistant, collection };
+        };
+        const graph = await seed("Graph KB");
+        const vector = await seed("Vector KB");
+        await db.updateAssistant(vector.assistant.id, {
+          knowledgeEngine: "vector",
         });
 
         const datasets = await db.listActiveGraphDatasets();
         expect(
           datasets.some(
             (d) =>
-              d.collectionId === graphCollection.id &&
+              d.collectionId === graph.collection.id &&
               d.organizationId === ctx.organizationId
           )
         ).toBe(true);
-        expect(datasets.some((d) => d.collectionId === vectorCollection.id)).toBe(
-          false
-        );
+        expect(
+          datasets.some((d) => d.collectionId === vector.collection.id)
+        ).toBe(false);
       });
     });
 
@@ -1964,6 +2010,8 @@ export function describeDbContract(
           },
           recrawlSchedule,
         });
+        // The claim's routing assistant derives from the earliest link (#733).
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         await db.updateSource(source.id, { status, lastCrawledAt });
         return { assistant, collection, source };
       };
@@ -2064,7 +2112,6 @@ export function describeDbContract(
             {
               conceptId: concept.id,
               collectionId: collection.id,
-              assistantId: assistant.id,
               content: `chunk for ${path}`,
               embedding: null,
             },
@@ -2126,6 +2173,9 @@ export function describeDbContract(
           kind,
           config: kind === "website" ? { url: "https://hub.example" } : {},
         });
+        // Post-contract there is no implicit link (createSource stopped
+        // auto-linking): the fixture links explicitly, like the ops layer.
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         return { assistant, collection, source };
       };
 
@@ -2134,7 +2184,6 @@ export function describeDbContract(
           ctx.organizationId
         );
         expect(first.organizationId).toBe(ctx.organizationId);
-        expect(first.assistantId).toBe("");
         expect(first.name).toBe("Knowledge Library");
         const second = await db.getOrCreateOrgLibraryCollection(
           ctx.organizationId
@@ -2240,14 +2289,45 @@ export function describeDbContract(
         ).toEqual([]);
       });
 
-      it("auto-links a new Source to its collection's owning assistant", async () => {
-        const { assistant, source } = await newKnowledgeFixture(
-          "website",
-          "Hub Autolink Site"
+      it("creates Sources without implicit links (the ops layer links explicitly)", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Hub No-Autolink Collection",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Hub No-Autolink Site",
+          kind: "website",
+          config: { url: "https://hub.example" },
+        });
+        expect(await db.listSourceAssistantLinks(source.id)).toEqual([]);
+      });
+
+      it("lists an assistant's linked Source ids, never its Collection's", async () => {
+        const { assistant, collection, source } = await newKnowledgeFixture(
+          "file",
+          "Reach File"
         );
-        const links = await db.listSourceAssistantLinks(source.id);
-        expect(links.map((l) => l.assistantId)).toEqual([assistant.id]);
-        expect(links[0].directAccess).toBe(false);
+        // A second Source in the SAME org-owned Collection, linked to nobody:
+        // collection membership must not put it in this assistant's corpus.
+        const unlinked = await db.createSource({
+          collectionId: collection.id,
+          name: "Someone else's file",
+          kind: "file",
+        });
+        expect(await db.listAssistantSourceIds(assistant.id)).toEqual([
+          source.id,
+        ]);
+
+        await db.setSourceAssistantLinks(unlinked.id, [assistant.id]);
+        expect(
+          (await db.listAssistantSourceIds(assistant.id)).sort()
+        ).toEqual([source.id, unlinked.id].sort());
+
+        await db.setSourceAssistantLinks(source.id, []);
+        expect(await db.listAssistantSourceIds(assistant.id)).toEqual([
+          unlinked.id,
+        ]);
       });
 
       it("replaces the linked-assistant set, preserving Direct access on kept links", async () => {
@@ -2298,7 +2378,6 @@ export function describeDbContract(
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
             sourceId: source.id,
             content: "zebra migration corridors cross the plain",
             embedding: null,
@@ -2317,7 +2396,7 @@ export function describeDbContract(
         expect(afterUnlink.map((r) => r.conceptId)).not.toContain(concept.id);
       });
 
-      it("keeps legacy chunks (no sourceId) answering for their assistant", async () => {
+      it("keeps source-less chunks out of retrieval (link-only contract)", async () => {
         const { assistant, collection, source } = await newKnowledgeFixture(
           "file",
           "Hub Legacy File"
@@ -2329,22 +2408,32 @@ export function describeDbContract(
           frontmatter: { type: "Note", title: "Legacy" },
           body: "quokka habitat notes",
         });
+        // A source-less chunk cannot ride a link, so post-contract it is
+        // unreachable by design (the contract migration re-keys real rows).
         await db.saveChunks([
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
             content: "quokka habitat notes for rangers",
             embedding: null,
           },
         ]);
-        // The chunk itself is source-less (the pre-backfill world), so it is
-        // reachable through the legacy assistant_id path regardless of links.
-        const results = await db.searchChunks(assistant.id, null, {
-          embedding: null,
-          text: "quokka habitat",
-        });
-        expect(results.map((r) => r.conceptId)).toContain(concept.id);
+        const query = { embedding: null, text: "quokka habitat" };
+        const orphaned = await db.searchChunks(assistant.id, null, query);
+        expect(orphaned.map((r) => r.conceptId)).not.toContain(concept.id);
+
+        // Re-keyed onto its Source (what the migration does), it answers.
+        await db.saveChunks([
+          {
+            conceptId: concept.id,
+            collectionId: collection.id,
+            sourceId: source.id,
+            content: "quokka habitat notes for rangers",
+            embedding: null,
+          },
+        ]);
+        const rekeyed = await db.searchChunks(assistant.id, null, query);
+        expect(rekeyed.map((r) => r.conceptId)).toContain(concept.id);
       });
 
       it("marks search results direct-access only for flagged file links", async () => {
@@ -2358,6 +2447,7 @@ export function describeDbContract(
           kind: "file",
           originalObjectPath: "org/x/access.pdf",
         });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         const concept = await db.createConcept({
           collectionId: collection.id,
           sourceId: source.id,
@@ -2369,7 +2459,6 @@ export function describeDbContract(
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
             sourceId: source.id,
             content: "wombat burrow depths measured",
             embedding: null,
@@ -2399,6 +2488,7 @@ export function describeDbContract(
           name: question,
           kind: "faq",
         });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         await db.createConcept({
           collectionId: collection.id,
           sourceId: source.id,
@@ -2456,9 +2546,15 @@ export function describeDbContract(
         const collection = await db.createCollection(assistant.id, {
           name: "Contract Collection",
         });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Contract Topic",
+          kind: "text",
+        });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         const concept = await db.createConcept({
           collectionId: collection.id,
-          sourceId: null,
+          sourceId: source.id,
           path: "contract/topic.md",
           frontmatter: { type: "Note", title: "Enrollment deadlines" },
           body: "Enrollment closes in September.",
@@ -2467,14 +2563,14 @@ export function describeDbContract(
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
+            sourceId: source.id,
             content: "Enrollment closes in September for all programs.",
             embedding: null,
           },
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
+            sourceId: source.id,
             content: "Cafeteria menu changes weekly.",
             embedding: null,
           },
@@ -2504,9 +2600,15 @@ export function describeDbContract(
           name: "Backfill Collection",
         });
         const make = async (path: string, embedding: number[] | null) => {
+          const source = await db.createSource({
+            collectionId: collection.id,
+            name: path,
+            kind: "text",
+          });
+          await db.setSourceAssistantLinks(source.id, [assistant.id]);
           const concept = await db.createConcept({
             collectionId: collection.id,
-            sourceId: null,
+            sourceId: source.id,
             path,
             frontmatter: { type: "Note", title: path },
             body: "content",
@@ -2515,7 +2617,7 @@ export function describeDbContract(
             {
               conceptId: concept.id,
               collectionId: collection.id,
-              assistantId: assistant.id,
+              sourceId: source.id,
               content: `chunk for ${path}`,
               embedding,
             },
@@ -2537,9 +2639,15 @@ export function describeDbContract(
         const collection = await db.createCollection(assistant.id, {
           name: "FAQ Collection",
         });
+        const faqSource = await db.createSource({
+          collectionId: collection.id,
+          name: "What are the opening hours?",
+          kind: "faq",
+        });
+        await db.setSourceAssistantLinks(faqSource.id, [assistant.id]);
         const faq = await db.createConcept({
           collectionId: collection.id,
-          sourceId: null,
+          sourceId: faqSource.id,
           path: "faq/opening-hours.md",
           frontmatter: { type: "FAQ", title: "What are the opening hours?" },
           body: "We are open 9–17, Monday to Friday.",
@@ -2566,9 +2674,15 @@ export function describeDbContract(
         const collection = await db.createCollection(assistant.id, {
           name: "Exclusion Collection",
         });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Old tuition page",
+          kind: "text",
+        });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
         const concept = await db.createConcept({
           collectionId: collection.id,
-          sourceId: null,
+          sourceId: source.id,
           path: "contract/excluded.md",
           frontmatter: { type: "Web Page", title: "Old tuition page" },
           body: "Tuition fees for 2019.",
@@ -2577,7 +2691,7 @@ export function describeDbContract(
           {
             conceptId: concept.id,
             collectionId: collection.id,
-            assistantId: assistant.id,
+            sourceId: source.id,
             content: "Tuition fees for 2019 were outdated.",
             embedding: null,
           },
@@ -2611,6 +2725,8 @@ export function describeDbContract(
         return v;
       };
 
+      // Post-contract, retrieval is purely link-based: every Concept rides a
+      // Source, linked explicitly to its assistant (reach is link-only).
       const seedChunk = async (
         assistantId: string,
         collectionId: string,
@@ -2618,15 +2734,27 @@ export function describeDbContract(
         content: string,
         embedding: number[] | null
       ) => {
+        const source = await db.createSource({
+          collectionId,
+          name: path,
+          kind: "text",
+        });
+        await db.setSourceAssistantLinks(source.id, [assistantId]);
         const concept = await db.createConcept({
           collectionId,
-          sourceId: null,
+          sourceId: source.id,
           path,
           frontmatter: { type: "Web Page", title: path },
           body: content,
         });
         await db.saveChunks([
-          { conceptId: concept.id, collectionId, assistantId, content, embedding },
+          {
+            conceptId: concept.id,
+            collectionId,
+            sourceId: source.id,
+            content,
+            embedding,
+          },
         ]);
         return concept;
       };
@@ -2709,7 +2837,7 @@ export function describeDbContract(
         expect(scoped.map((r) => r.conceptId)).toEqual([mine.id]);
 
         // Unscoped (null collection): the assistant's collections, never
-        // another assistant's — even with an identical embedding and content.
+        // another assistant's, even with an identical embedding and content.
         const unscoped = await db.searchChunks(assistant.id, null, {
           embedding: axisEmbedding(0),
           text: "alpha campus parking",
@@ -2969,7 +3097,7 @@ export function describeDbContract(
       });
 
       it("accepts every AiUsageStage value (type ↔ constraint drift guard)", async () => {
-        // Each stage in the type must be insertable — a stage added to the
+        // Each stage in the type must be insertable, a stage added to the
         // union but not to the ai_usage check constraint is silently dropped
         // in production (meterUsage isolates the failure), which is exactly
         // how improvement_proposal rows went missing before 20260720100000.
@@ -3068,7 +3196,7 @@ export function describeDbContract(
         const after = await db.getOrgCostUsedToday(ctx.organizationId);
         // 40M embedding tokens at €0.019/1M is €0.76. Until embedding models
         // were priced, the same batch fell through to the €3/1M chat fallback
-        // and was reported as €120 — enough to trip a euro budget on
+        // and was reported as €120, enough to trip a euro budget on
         // indexing that cost cents.
         expect(after - before).toBeCloseTo(0.76, 5);
       });
@@ -3094,7 +3222,7 @@ export function describeDbContract(
     describe("usage rollup & reporting (usage_daily)", () => {
       // The shared context accumulates ledger rows across the suite, so every
       // assertion here is a before/after delta keyed by (day, kind,
-      // credentialKind) — never an absolute read.
+      // credentialKind), never an absolute read.
       type UsageKey = string;
       const keyOf = (r: {
         day: string;
@@ -3102,7 +3230,7 @@ export function describeDbContract(
         credentialKind: string;
       }): UsageKey => `${r.day}|${r.kind}|${r.credentialKind}`;
       // The rollup's grain includes the provider and model that ran, so more
-      // than one row can share a (day, kind, credential) key — fold them.
+      // than one row can share a (day, kind, credential) key, fold them.
       const indexRows = async (): Promise<
         Map<UsageKey, { calls: number; inputTokens: number; outputTokens: number }>
       > => {
@@ -3338,7 +3466,7 @@ export function describeDbContract(
     describe("usage meters over an arbitrary window", () => {
       // The seam can only ever record rows at `now()`, so every window here
       // lands inside today and exercises the LIVE branch. The closed-day and
-      // partial-day arithmetic — including UTC pinning — is driven against real
+      // partial-day arithmetic, including UTC pinning, is driven against real
       // SQL with backdated rows in src/testing/usage-rollup.test.ts; the case
       // below is the most this seam can say about the boundary itself.
       const wideWindow = (): [string, string] => [
@@ -3501,7 +3629,7 @@ export function describeDbContract(
       });
 
       it("reads the same window whether the instant is spelled with Z or an offset", async () => {
-        // Two legal spellings of one instant must not compare differently — a
+        // Two legal spellings of one instant must not compare differently, a
         // string comparison would put them in different windows.
         const [from, to] = wideWindow();
         const withOffset = (iso: string) => iso.replace("Z", "+00:00");
@@ -3811,7 +3939,7 @@ export function describeDbContract(
           name: "Service desk API",
           baseUrl: "https://api.example.com/v1",
           authType: "bearer",
-          // Stored verbatim — this seam never seals and never unseals.
+          // Stored verbatim: this seam never seals and never unseals.
           encryptedCredential: "sealed:desk-token",
           authHeaderName: "",
           authUsername: "",
@@ -3876,7 +4004,7 @@ export function describeDbContract(
         });
         await db.updateAssistantGoal(quarantined.id, { status: "quarantined" });
 
-        // The claim is cross-org; other fixtures may be due too — filter by id.
+        // The claim is cross-org; other fixtures may be due too, filter by id.
         const dueBefore = new Date().toISOString();
         const first = await db.claimDueAssistantGoals({ dueBefore, limit: 1000 });
         const mine = first.find((g) => g.id === goal.id);
@@ -3981,7 +4109,7 @@ export function describeDbContract(
         });
         expect(third.some((c) => c.messageId === answer.id)).toBe(true);
 
-        // A stale claim (older than staleBefore) is re-claimable — a crashed
+        // A stale claim (older than staleBefore) is re-claimable, a crashed
         // run retries on the next tick without manual cleanup.
         const fourth = await db.claimUnverifiedAnswers({
           limit: 1000,
@@ -4132,17 +4260,13 @@ export function describeDbContract(
         expect(skill.updatedAt).toBeTruthy();
       });
 
-      it("reads and writes the same table as the named passthroughs", async () => {
+      it("shares the table with the named cascade delete (deleteSkill)", async () => {
+        // deleteSkill kept its named method for its assistant_skills cascade
+        // (ADR-0016 stage 3): rows written through the accessor must be the
+        // rows it deletes.
         const viaAccessor = await newSkill({ name: "Accessor Written" });
-        const named = await db.listSkills(ctx.organizationId);
-        expect(named.some((s) => s.id === viaAccessor.id)).toBe(true);
-
-        const viaNamed = await db.createSkill(ctx.organizationId, {
-          name: "Named Written",
-          prompt: "Say hi",
-        });
-        const listed = await skills().list({ organizationId: ctx.organizationId });
-        expect(listed.some((s) => s.id === viaNamed.id)).toBe(true);
+        await db.deleteSkill(viaAccessor.id);
+        expect(await skills().get(viaAccessor.id)).toBeNull();
       });
 
       it("filters lists by domain field names; foreign org stays invisible", async () => {
@@ -4209,7 +4333,7 @@ export function describeDbContract(
       });
     });
 
-    /* Our own evidence that a visitor consented (GDPR Art. 7(1)) — the cookie
+    /* Our own evidence that a visitor consented (GDPR Art. 7(1)), the cookie
        on their device is evidence they hold and can erase, so it cannot
        discharge our accountability obligation on its own. Unlike everything
        else here these rows are not org-scoped: anonymous visitors have no
@@ -4252,7 +4376,7 @@ export function describeDbContract(
         expect(record.consentedAt).toBeNull();
         expect(record.pageUrl).toBe("");
         expect(record.userAgent).toBe("");
-        // Ours is the trusted clock — it must be set even though the visitor's
+        // Ours is the trusted clock: it must be set even though the visitor's
         // `consentedAt` was not supplied.
         expect(record.createdAt).toBeTruthy();
       });
@@ -4443,7 +4567,7 @@ export function describeDbContract(
         });
         expect(limited.map((d) => d.id)).toEqual([fresher.id]);
 
-        // A different origin sees nothing — pairing is per-origin.
+        // A different origin sees nothing: pairing is per-origin.
         expect(
           await db.listFreshLocalConnectorDevices({
             organizationId: ctx.organizationId,

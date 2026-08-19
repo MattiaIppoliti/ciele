@@ -112,7 +112,7 @@ function DropdownMenuLabel({
 }: MenuPrimitive.GroupLabel.Props & {
   inset?: boolean;
 }) {
-  // Base UI requires GroupLabel to live inside a Menu.Group — wrap one here
+  // Base UI requires GroupLabel to live inside a Menu.Group, wrap one here
   // so the label keeps working standalone at call sites.
   return (
     <MenuPrimitive.Group>

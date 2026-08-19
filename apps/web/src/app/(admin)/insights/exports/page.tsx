@@ -11,7 +11,7 @@ export default async function ExportsPage() {
 
   const jobs = await db.listExportJobs(organizationId);
 
-  // Finished artifacts are served through short-lived signed URLs — the
+  // Finished artifacts are served through short-lived signed URLs, the
   // bucket is private, so a link is minted per page load and never persisted.
   const downloadUrls: Record<string, string> = {};
   if (isSupabaseConfigured()) {

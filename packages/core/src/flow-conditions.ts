@@ -1,7 +1,7 @@
 import type { Flow, FlowCondition } from "./types";
 
 /**
- * Objective Flow Conditions — the deterministic half of the Conditions step
+ * Objective Flow Conditions: the deterministic half of the Conditions step
  * (spec #550).
  *
  * `url` and `schedule` are checkable facts, so they are *checked*: this module
@@ -12,14 +12,14 @@ import type { Flow, FlowCondition } from "./types";
  * classifier, which is what a judgement call is for.
  *
  * Everything here is pure. The clock and the page URL arrive as a
- * `FlowRoutingContext` — nothing reads `Date.now()` or a global, so any instant
+ * `FlowRoutingContext`: nothing reads `Date.now()` or a global, so any instant
  * is testable and the package stays I/O-free.
  */
 
 /** The facts objective conditions are evaluated against. */
 export interface FlowRoutingContext {
   /**
-   * The page the Visitor is on — the Conversation's launch URL. Absent for
+   * The page the Visitor is on: the Conversation's launch URL. Absent for
    * surfaces that cannot report one (an unwired host, the editor Preview).
    */
   url?: string;
@@ -29,7 +29,7 @@ export interface FlowRoutingContext {
 
 /**
  * Longest regular expression a URL condition may carry. The only ReDoS
- * mitigation here beyond compiling inside a try/catch — a linear-time engine or
+ * mitigation here beyond compiling inside a try/catch, a linear-time engine or
  * an evaluation timeout is a follow-up if user-authored patterns turn out to be
  * a real exposure.
  */
@@ -64,7 +64,7 @@ function wallClock(value: string | undefined): string | null {
  *
  * Comparing wall-clock to wall-clock is what makes a schedule survive a DST
  * change without any offset arithmetic. An unknown zone id falls back to the
- * host zone rather than throwing — the same fail-soft choice
+ * host zone rather than throwing, the same fail-soft choice
  * `channelAvailabilityNow` makes.
  */
 function wallClockInZone(now: Date, timezone: string): string {
@@ -145,7 +145,7 @@ export function flowConditionDefect(
 /**
  * Evaluates one objective condition against the routing context.
  *
- * Returns null — "no verdict" — for a semantic condition, a defective one, or
+ * Returns null: "no verdict", for a semantic condition, a defective one, or
  * one whose input the context does not carry. A null verdict never disqualifies
  * a Flow.
  */
@@ -194,8 +194,8 @@ export function evaluateFlowCondition(
  *
  * The rule is "cannot pass", not "does pass":
  *
- * - **all** — every objective verdict must be true; one false disqualifies.
- * - **any** — disqualified only when *every* condition on the Flow produced a
+ * - **all**: every objective verdict must be true; one false disqualifies.
+ * - **any**: disqualified only when *every* condition on the Flow produced a
  *   verdict and all of them are false. A semantic condition (or an
  *   unevaluatable one) can still satisfy `any`, so it keeps the Flow eligible.
  *

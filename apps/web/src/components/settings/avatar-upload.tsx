@@ -24,7 +24,7 @@ export function AvatarUpload({
   /** Storage-backed upload: the caller receives the File and owns upload. */
   onFile: (file: File) => void;
   /** When given, a "Remove" button appears next to the avatar once `value`
-   * is set (e.g. an org logo, which — unlike an assistant's — can be
+   * is set (e.g. an org logo, which, unlike an assistant's, can be
    * cleared back to the initial-letter fallback). */
   onRemove?: () => void;
   /** Rendered in place of the image when `value` is empty. */

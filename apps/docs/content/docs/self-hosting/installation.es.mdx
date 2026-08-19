@@ -3,6 +3,12 @@ title: Instalación
 description: Inicia la implementación actual de Docker Compose de un solo host.
 ---
 
+<Callout title="No terminal? Use the desktop app">
+[Ciele Desktop](/self-hosting/desktop) performs every step on this page for you,
+including generating the secrets and starting the stack. It needs only Docker
+Desktop. This page is the server path.
+</Callout>
+
 ## Requisitos
 
 - Instala Git.
@@ -11,7 +17,30 @@ description: Inicia la implementación actual de Docker Compose de un solo host.
   subidos.
 - Reserva más memoria cuando habilites los trabajadores opcionales.
 
+## Un comando
+
+El instalador realiza todos los pasos de la siguiente sección: verifica los
+requisitos previos, descarga el código fuente en `./ciele` y ejecuta
+`bootstrap.sh`.
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh
+```
+
+Pasa los indicadores de arranque a través de la canalización con `-s --` y
+configura `CIELE_DIR` para elegir el directorio de extracción o `CIELE_REF` para
+instalar una etiqueta de versión:
+
+```bash
+curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
+```
+
+El instalador nunca elimina nada: si el directorio de destino existe y no es una
+copia de Ciele, se detiene y te lo indica.
+
 ## Inicializa la pila
+
+Para realizar los mismos pasos manualmente:
 
 ```bash
 git clone https://github.com/MattiaIppoliti/ciele.git
@@ -26,8 +55,41 @@ Abre [http://localhost:3000](http://localhost:3000) cuando los servicios estén
 en buen estado. La primera cuenta se convierte en la propietaria de la
 organización.
 
-Usa `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
+Utiliza `./deploy/bootstrap.sh --seed` para añadir contenido de demostración
 depurado.
+
+## Ejecuta imágenes publicadas en lugar de compilar
+
+Compilar `app`, `migrate` y `cron` desde el «checkout» lleva bastante tiempo y
+requiere el repositorio completo. Cada versión también publica esas tres como
+imágenes de contenedor:
+
+```bash
+./deploy/bootstrap.sh --images v0.4.0
+```
+
+El comando escribe dos configuraciones en `deploy/.env` y extrae en lugar de
+compilar:
+
+```bash
+COMPOSE_FILE=docker-compose.yml:docker-compose.images.yml
+CIELE_IMAGE_TAG=v0.4.0
+```
+
+Dado que ambos se encuentran en `deploy/.env`, un `docker compose up -d`
+posterior en ese directorio permanece en modo de imagen. Borra ambos ajustes
+para volver a compilar desde el código fuente. Configura `CIELE_IMAGE_REGISTRY`
+para que use una réplica o tu propia recompilación.
+
+Los perfiles, el orden de los servicios y la capa de base de datos son idénticos
+en ambos modos. Solo cambia el origen de esos tres servicios.
+
+<Callout title="Recreate the container after changing the public URL">
+The published application image resolves `SUPABASE_PUBLIC_URL` once, when the
+container starts, because Next.js inlines that class of value at build time.
+Run `docker compose up -d` to recreate the container after you change it. A
+restart alone keeps the previous value.
+</Callout>
 
 ## Perfiles predeterminados
 
@@ -37,7 +99,7 @@ depurado.
 | `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
 | `app` | Sí | Consola de administrador, entorno de ejecución de widgets y API v1. |
 | `cron` | Sí | Tareas programadas de la aplicación. |
-| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización en JavaScript. |
+| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización de JavaScript. |
 | `studio` | No | Interfaz de administración de la base de datos. |
 
 ## Inspecciona la pila

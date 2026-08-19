@@ -10,7 +10,7 @@ import type { HistoryMessage } from "./types";
  * description best matches the conversation, so the widget opens that desk's
  * channels directly instead of the generic menu.
  *
- * Built once per turn as a lazy, cached closure — several emission sites may
+ * Built once per turn as a lazy, cached closure, several emission sites may
  * ask (escalate-on-ungrounded, watch-tier trust, the suggest_help_desk
  * action) but at most one cheap classifier call runs. Every failure mode
  * (toggle off, no desks, no model, classifier error, hallucinated id)
@@ -76,7 +76,7 @@ export function buildHelpDeskRecommender(options: {
 
   return () => {
     if (!enabled || desks.length === 0) return Promise.resolve(null);
-    // One selected desk needs no model call — it's the recommendation.
+    // One selected desk needs no model call, it's the recommendation.
     if (desks.length === 1) return Promise.resolve(desks[0].id);
     cached ??= recommend().catch(() => null);
     return cached;

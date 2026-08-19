@@ -1,7 +1,7 @@
 // The real implementations of the setup engine's ports.
 //
 // Each is as thin as it can be: the decisions live in the engine, where they
-// are tested. What is here is the part that genuinely cannot be — talking to
+// are tested. What is here is the part that genuinely cannot be, talking to
 // Docker, the disk, the network and the platform's crypto.
 
 import { createHmac, randomBytes } from "node:crypto";

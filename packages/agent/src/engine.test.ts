@@ -29,7 +29,7 @@ vi.mock("./actions", () => ({
 
 /**
  * Intent Classification, tested through its interface (context.md: the router
- * is authoritative — the classifier picks *which* flow, never *what* it does).
+ * is authoritative, the classifier picks *which* flow, never *what* it does).
  * The mock model runs the real generateObject pipeline offline, so the
  * schema-parse path and the classify → matchFlow → Default fallback chain are
  * exercised exactly as in production.
@@ -297,7 +297,7 @@ describe("flowCatalogEntry", () => {
     const entry = flowCatalogEntry(
       makeFlow({ id: "f1", name: "Exams", description: "exam questions" })
     );
-    expect(entry).toBe("- id: f1 — name: Exams — triggers when: exam questions");
+    expect(entry).toBe("- id: f1, name: Exams, triggers when: exam questions");
   });
 
   it("renders conditions with logic, examples and notes; skips blank examples", () => {
@@ -366,7 +366,7 @@ describe("flowCatalogEntry", () => {
         ],
       })
     );
-    expect(entry).toBe("- id: f1 — name: Course help — triggers when: course questions");
+    expect(entry).toBe("- id: f1, name: Course help, triggers when: course questions");
   });
 });
 
@@ -374,7 +374,7 @@ describe("flowCatalogEntry", () => {
  * The shared Flow-action dispatch loop (one loop for both the no-model and
  * model paths): accumulation, templatePatch merge, handover capture, halt,
  * per-action error fallback, and the empty-flow fallback. Exercised through
- * runAssistantChat's no-model path — the model path calls the same helper.
+ * runAssistantChat's no-model path, the model path calls the same helper.
  */
 describe("dispatchActions (via runAssistantChat, no-model path)", () => {
   function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
@@ -546,7 +546,7 @@ describe("dispatchActions (via runAssistantChat, no-model path)", () => {
 /**
  * The courtesy short-circuit (#566). The saving it exists for is *not* observable
  * as latency, so it is asserted as absence: no "Classifying intent" notice, no
- * classify usage entry, and no notice events at all — the trace is folded from
+ * classify usage entry, and no notice events at all, the trace is folded from
  * notices (#560), so none of them is what makes the stored trace null.
  *
  * The short-circuit sits ABOVE the chat-model branch on purpose, so both engines
@@ -693,7 +693,7 @@ describe("Basic Interaction short-circuit (#566)", () => {
  * The cross-provider fallback notice is an operator diagnostic: it names which
  * credential the organization is missing and which model answered instead.
  * Preview (an admin configuring the Assistant) sees it; a Visitor in an embedded
- * widget never does — same rule as the provider-error text.
+ * widget never does, same rule as the provider-error text.
  */
 describe("cross-provider fallback notice is Preview-only", () => {
   // Only the Default behavior: no classifier candidates, so the turn resolves a

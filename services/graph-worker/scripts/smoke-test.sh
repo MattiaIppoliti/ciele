@@ -16,7 +16,7 @@
 #
 # Requires a RUNNING worker WITH a working LLM key (cognify + graph-completion
 # make real LLM calls). Point it at a local `docker compose up` worker or a
-# managed one — the contract is identical:
+# managed one, the contract is identical:
 #
 #   export GRAPH_WORKER_API_TOKEN=<token>
 #   export GRAPH_WORKER_BASE_URL=http://localhost:8000   # or the managed URL
@@ -108,7 +108,7 @@ case "$verdict" in
     echo "    PASS: graph answered with provenance resolving to the ingested Concept."
     ;;
   PARTIAL*)
-    echo "WARN: got an answer but provenance did not carry the conceptId — check ingest tagging." >&2
+    echo "WARN: got an answer but provenance did not carry the conceptId, check ingest tagging." >&2
     exit 1
     ;;
   *)

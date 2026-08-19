@@ -1,4 +1,4 @@
-# Runtime secrets — injected at deploy time, never committed.
+# Runtime secrets: injected at deploy time, never committed.
 .env
 .env.*
 !.env.example

@@ -34,7 +34,7 @@ export interface ChannelKindMeta {
   subtitle: string;
   icon: LucideIcon;
   defaultName: string;
-  /** Needs the ticketing integration — selectable in a later iteration. */
+  /** Needs the ticketing integration, selectable in a later iteration. */
   requiresTicketing?: boolean;
 }
 

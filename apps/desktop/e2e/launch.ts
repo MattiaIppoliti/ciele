@@ -1,7 +1,7 @@
 // How the smoke gets an app to drive.
 //
-// The packaged .app when there is one — that is what a user downloads, and
-// packaging is the step most likely to leave something behind — and the built
+// The packaged .app when there is one: that is what a user downloads, and
+// packaging is the step most likely to leave something behind, and the built
 // main entry otherwise, so the same smoke runs on a laptop after `pnpm build`
 // without waiting on electron-builder.
 
@@ -47,7 +47,7 @@ export interface LaunchOptions {
   /**
    * Release tag the stack pins. Defaults to a stand-in, because the build
    * under test is never a stamped release and the fakes have no registry to
-   * pull from — without one, every wizard test would stop at the "this build
+   * pull from, without one, every wizard test would stop at the "this build
    * is not a release" guard instead of exercising the flow.
    *
    * Pass `null` to leave it unset and drive that guard on purpose.

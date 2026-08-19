@@ -12,7 +12,7 @@ const DEFAULT_TRANSITION: Transition = {
 };
 
 /**
- * Animated counterpart of lucide's `CreditCard` — the Billing tab's rail icon.
+ * Animated counterpart of lucide's `CreditCard`, the Billing tab's rail icon.
  *
  * The card tips as if handed over, and its magnetic stripe swipes across: two
  * motion elements on the one `controls` object, so the tilt and the swipe are a

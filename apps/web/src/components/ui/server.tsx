@@ -4,7 +4,7 @@ import type { Variants } from "motion/react";
 import { motion } from "motion/react";
 import { createAnimatedIcon } from "@/components/ui/create-animated-icon";
 
-/* The two racks swap places and swap back — one pass, not a loop. */
+/* The two racks swap places and swap back, one pass, not a loop. */
 const TOP_RECT_VARIANTS: Variants = {
   normal: { y: 0 },
   animate: {

@@ -15,7 +15,7 @@ import {
 import { FEATURES, type FeatureEntry } from "@/components/marketing/feature-catalog";
 
 /**
- * What the marketing nav contains — the menu tree and the docs tile grid.
+ * What the marketing nav contains: the menu tree and the docs tile grid.
  *
  * Data only, and its own module because the header's chrome (the morphing pill,
  * the panel that glides between triggers) and the nav's *contents* change for
@@ -48,14 +48,14 @@ export type MenuItem = MenuLink & {
 
 export const DOCS = "https://docs.ciele.app";
 
-/** Every docs link is external and opens in a new tab — spelled once. */
+/** Every docs link is external and opens in a new tab, spelled once. */
 const doc = (name: string, path: string): MenuLink => ({
   name,
   href: `${DOCS}${path}`,
   external: true,
 });
 
-/** The Features group is the feature catalogue — one entry, one page. */
+/** The Features group is the feature catalogue, one entry, one page. */
 const featureLink = (feature: FeatureEntry): MenuLink => ({
   name: feature.label,
   href: `/features/${feature.slug}`,
@@ -145,7 +145,7 @@ export const menuItems: MenuItem[] = [
         doc("Self-hosting", "/self-hosting"),
       ],
     ],
-    /* Getting started gets the folder — the manual opening itself — in its own
+    /* Getting started gets the folder, the manual opening itself, in its own
        slot between the link column and the area tiles. */
     cards: [
       {
@@ -164,7 +164,7 @@ export const menuItems: MenuItem[] = [
    Icons, not vendor logos: the docs are product documentation, not an SDK
    reference, so what belongs here is the shape of the manual. These are the
    `@lucide-animated` icons, rendered through `AnimatedIcon` so the animation is
-   driven by the tile's own hover — the glyph is 19px inside a 44px target, and
+   driven by the tile's own hover, the glyph is 19px inside a 44px target, and
    the icon's built-in listeners would only fire on the glyph itself. */
 export const docsAreas = [
   { name: "Getting started", href: "/getting-started", Icon: Rocket },

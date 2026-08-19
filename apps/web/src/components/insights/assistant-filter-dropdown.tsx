@@ -12,7 +12,7 @@ interface AssistantOption {
 
 /**
  * Vercel-style "All Projects ⌄" control, scoped to filtering Insights by a
- * single assistant instead of navigating — search + list, current pick
+ * single assistant instead of navigating, search + list, current pick
  * checked.
  */
 export function AssistantFilterDropdown({

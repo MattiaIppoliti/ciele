@@ -14,7 +14,7 @@ import {
  * Lives outside the page component for two reasons: the app's vitest only picks
  * up `.test.ts`, so logic in a `.tsx` page is untestable; and the same fold is
  * what the plan gauges (#509) will read. Everything here is a pure function of
- * the rows — no dates, no environment.
+ * the rows, no dates, no environment.
  *
  * Every total is reported in **credits** as well as in raw units, because
  * credits are the unit a plan is denominated in and the only one that compares
@@ -32,7 +32,7 @@ export interface ResourceUsage {
   /** Every credit spent on this resource, however it was funded. */
   credits: number;
   /**
-   * The part the platform funded — the only part a plan allowance bounds, and
+   * The part the platform funded: the only part a plan allowance bounds, and
    * therefore the number a meter should lead with. Work on the customer's own
    * credentials is their own cost and is never counted against a cap.
    */
@@ -52,7 +52,7 @@ export interface FundingUsage {
 
 export interface UsageSummary {
   byResource: Record<UsageResource, ResourceUsage>;
-  /** Work the platform funds — the only work a plan allowance bounds. */
+  /** Work the platform funds, the only work a plan allowance bounds. */
   platform: FundingUsage;
   /** Work the customer's own credentials funded; never counted against a plan. */
   own: FundingUsage;
@@ -65,8 +65,8 @@ function unitOf(row: UsageDailyRow): MeteredUnit {
     : {
         kind: "model",
         // The rollup stores the provider as free text. A value this build does
-        // not know — a retired provider, or the empty string on a row
-        // aggregated before provider attribution existed — prices at the
+        // not know, a retired provider, or the empty string on a row
+        // aggregated before provider attribution existed, prices at the
         // unknown-model fallback, which costs more rather than less.
         provider: row.provider as Provider,
         modelId: row.modelId,

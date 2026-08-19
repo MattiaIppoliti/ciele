@@ -7,7 +7,7 @@ import { Visual1 } from "@/components/core/visual-1";
 import { AmbientActiveContext } from "@/components/home/use-in-viewport";
 import { EASE_OUT } from "@/lib/ease";
 
-/** Compact "document indexing" row — a file with a looping upload bar. Appears
+/** Compact "document indexing" row, a file with a looping upload bar. Appears
  * on card hover in place of Visual1's default caption. */
 function UploadingFileRow() {
   const reduce = useReducedMotion();
@@ -62,7 +62,7 @@ function UploadingFileRow() {
 }
 
 /**
- * Knowledge card visual — the badtz-ui "Visual 1" rising bar/line chart in
+ * Knowledge card visual: the badtz-ui "Visual 1" rising bar/line chart in
  * neutral grey (accuracy climbing as company knowledge is connected). On card
  * hover the document-indexing row slides in from the top.
  */

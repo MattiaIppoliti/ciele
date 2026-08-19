@@ -1,21 +1,21 @@
 /**
- * `@agent-hub/core` — the domain, and everything derivable from it.
+ * `@agent-hub/core`: the domain, and everything derivable from it.
  *
  * This package holds the vocabulary `CONTEXT.md` fixes (Organization, Assistant,
  * Member, Knowledge Collection, Source, Concept, Publication, Flow, …) as types,
- * plus the pure functions that derive facts *from* those types — flow routing,
+ * plus the pure functions that derive facts *from* those types, flow routing,
  * OKF trust/lifecycle, the Insights read model, publication snapshots, re-crawl
  * scheduling, cost estimates. **Zero runtime dependencies, no I/O, no framework.**
  *
  * `@agent-hub/db` declares the `Db` interface over these types and depends on
  * this package. `@agent-hub/agent` runs on both. Nothing here may depend on
- * either — the arrow points one way, and that is what makes the vocabulary
+ * either, the arrow points one way, and that is what makes the vocabulary
  * usable without dragging an adapter behind it (ADR-0019).
  *
  * Two kinds of module here, exported two ways on purpose:
  *
  * - The **vocabulary** (`types`, `okf`) is `export *`. It has no internals to
- *   hide — its whole content *is* the vocabulary — so curating it would be
+ *   hide, its whole content *is* the vocabulary, so curating it would be
  *   ceremony, and `export *` keeps barrel and module from drifting.
  * - The **derivations** are curated, because they do have internals. The
  *   Insights read model composes seven helpers into `computeInsightsOverview`;
@@ -23,7 +23,7 @@
  *   locks. Export what has a consumer, and add a name when something needs it.
  */
 
-// The domain vocabulary — every noun in CONTEXT.md, as a type.
+// The domain vocabulary: every noun in CONTEXT.md, as a type.
 export * from "./types";
 // The billing / plan / usage-cap vocabulary (pure types + the one shared
 // warn threshold). The runtime's enterprise registry re-exports these; new
@@ -33,19 +33,19 @@ export { coerceEntityValue } from "./entity-values";
 
 // Open Knowledge Format v0.2: the Concept frontmatter vocabulary and the
 // read-time derivations over it (trust tier, lifecycle status, staleness).
-// Never re-implement these rules — derive through them (ADR-0002).
+// Never re-implement these rules, derive through them (ADR-0002).
 export * from "./okf";
 
 // --- Derivations: curated, because these modules have internals ------------
 
 // The deterministic keyword router: the offline/no-model `matchFlow` fallback
-// half of the two-engine runtime (ADR-0003). Routing only — action rendering
+// half of the two-engine runtime (ADR-0003). Routing only, action rendering
 // lives in @agent-hub/agent.
 export { matchFlow, messageFlowCandidates } from "./engine";
 
 // Proactive triggers (page load / time on page / chat opens): which flows a
 // fired client event runs, whether a nudge may be delivered into a Conversation
-// again, and which actions a trigger may pair with. Routing + policy only — the
+// again, and which actions a trigger may pair with. Routing + policy only, the
 // Notification itself is rendered by @agent-hub/agent.
 export {
   DEFAULT_DWELL_SECONDS,
@@ -88,7 +88,7 @@ export type {
 // The API catalogue (spec #559): what the model is told an API integration can
 // do, and whether a path it produced is one the catalogue describes. The
 // validation is here rather than in the runtime because "is this path
-// described?" is a fact about the catalogue — and a path it does not describe
+// described?" is a fact about the catalogue, and a path it does not describe
 // must never reach the network.
 export {
   apiCatalogSummary,
@@ -134,7 +134,7 @@ export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
 // message is a proactive Notification (the Insights accounting rule, #546).
 export { isProactiveMessage, messageText } from "./message";
 
-// `AgenticTrace` — the reference platform's flat bracketed turn trace, produced
+// `AgenticTrace`: the reference platform's flat bracketed turn trace, produced
 // only at export time from the structured Thinking Steps we actually store, and
 // read back by the round-trip test that keeps the two representations honest.
 export { parseAgenticTrace, serializeAgenticTrace } from "./agentic-trace";
@@ -147,7 +147,7 @@ export type {
 // Per-model token prices and the cost estimate derived from them.
 export { estimateCostEur } from "./pricing";
 
-// Credits — the cost unit plan allowances are denominated in. Only the
+// Credits: the cost unit plan allowances are denominated in. Only the
 // conversion is public; the rate tables behind it stay package-private so
 // there is one place a price list is read.
 export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
@@ -181,6 +181,6 @@ export {
   hashApiKeySecret,
 } from "./api-keys";
 
-// Reads a message off a thrown value — including the plain objects PostgREST
+// Reads a message off a thrown value: including the plain objects PostgREST
 // throws instead of Error instances.
 export { thrownMessage } from "./thrown-message";

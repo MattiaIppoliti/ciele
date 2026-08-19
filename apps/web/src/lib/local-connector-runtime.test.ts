@@ -12,15 +12,15 @@ const TOKEN = "connector_test_token_1234567890";
 /**
  * These cases spawn the real connector process and talk to it over HTTP, so
  * every wait needs a deadline or a hang becomes a hung suite. The deadline is a
- * safety net, not an assertion about latency — keep it well clear of what a
+ * safety net, not an assertion about latency, keep it well clear of what a
  * contended machine needs (turbo runs this suite alongside the agent package's).
  */
 const CONNECTOR_DEADLINE_MS = 60_000;
 // Each case spawns the connector, which in turn spawns 5–7 short-lived node
 // child processes (CLI status probes, an inference check per provider, the
 // codex app-server snapshot, then the job inference itself), paced by the
-// connector's 1s relay tick. That is real wall clock no fake timer can absorb
-// — a single case has taken >10s on an idle machine — so this file overrides
+// connector's 1s relay tick. That is real wall clock no fake timer can absorb,
+// a single case has taken >10s on an idle machine, so this file overrides
 // the suite-wide 15s testTimeout instead of asserting latency it cannot
 // control. Keep it above CONNECTOR_DEADLINE_MS so a hang fails with that
 // deadline's descriptive error rather than a bare vitest timeout.

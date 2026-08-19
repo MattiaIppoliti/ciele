@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTurnSession } from "./session";
 
 /**
- * The Turn Session seam: persistent cross-turn state with change tracking —
+ * The Turn Session seam: persistent cross-turn state with change tracking,
  * turn.ts only writes the state back when `dirty` flipped, so the contract
  * that reads stay clean and writes mark dirty is what these tests pin. The
  * interface is deliberately memory-only (remember/memory/snapshot/dirty); a

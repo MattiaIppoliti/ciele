@@ -34,7 +34,7 @@ export interface SettingsTab {
 
 export type SettingsScope = "organization" | "personal";
 
-/** Organization-wide tabs — the reason that scope is admin-only. */
+/** Organization-wide tabs, the reason that scope is admin-only. */
 export const ORG_SETTINGS_TABS: SettingsTab[] = [
   {
     label: "General",
@@ -64,7 +64,7 @@ export const ORG_SETTINGS_TABS: SettingsTab[] = [
   },
 ];
 
-/** The signed-in person's own settings — open to every role. */
+/** The signed-in person's own settings, open to every role. */
 export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
   {
     label: "Profile",

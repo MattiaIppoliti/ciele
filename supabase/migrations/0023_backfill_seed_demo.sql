@@ -3,7 +3,7 @@
 -- built from this repo gets the same row ids. Content is the neutral demo set
 -- (same rows as supabase/seed.sql): a generic demo org + generic assistants,
 -- no real institution's data (#432). Note the live project ran the original,
--- differently-worded seed — same ids, different text — so on live this
+-- differently-worded seed, same ids, different text, so on live this
 -- backfill is inert (`on conflict do nothing`), and only fresh environments
 -- get the neutral wording.
 insert into public.assistants
@@ -66,7 +66,7 @@ cross join (
     ('Human Help Needed',
      'User explicitly asks for human help, wants to contact support, escalate to a person, or otherwise reach a human',
      true, false, 1, array['search_knowledge', 'custom_message', 'suggest_help_desk'],
-     'Of course — sometimes it''s best to talk to a person. You can reach the support team through the help desk below.',
+     'Of course, sometimes it''s best to talk to a person. You can reach the support team through the help desk below.',
      false),
     ('Default behavior',
      'No other flow matches the user query',

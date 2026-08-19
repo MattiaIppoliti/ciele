@@ -22,7 +22,7 @@ import {
 /**
  * Admin erasure surface over long-term memories (#666): look up a signed-in
  * user by subject or identity claim, review what the assistants remember
- * about them, delete a single memory, or wipe everything — enough to honor
+ * about them, delete a single memory, or wipe everything, enough to honor
  * a data-erasure request on the spot. The org is the data controller.
  */
 export function MemorySubjectsCard({
@@ -98,7 +98,7 @@ export function MemorySubjectsCard({
         </CardTitle>
         <CardDescription>
           Every signed-in user your assistants hold memories about. Look a
-          user up to review, delete, or fully erase what is remembered —
+          user up to review, delete, or fully erase what is remembered,
           erasure is complete and immediate.
         </CardDescription>
       </CardHeader>

@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "crypto";
  * Organization API key secrets (#618). Pure helpers shared by the web app
  * (mint + display) and, later, the /api/v1 auth layer (verify): the secret is
  * generated once, only its SHA-256 hash is ever stored, and verification is a
- * hash lookup — no plaintext comparison, no decryption path.
+ * hash lookup, no plaintext comparison, no decryption path.
  */
 
 export const API_KEY_PREFIX = "ciele_sk_";

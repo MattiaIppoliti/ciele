@@ -4,8 +4,6 @@ import {
   createContext,
   createElement,
   useContext,
-  useEffect,
-  useRef,
   useState,
 } from "react";
 import {
@@ -47,7 +45,7 @@ import {
 
 /* The hover-animated icons are the mock's only heavy dependency: the
    AnimatedIcon module statically pulls motion/react plus every animated
-   icon variant — none of which the marketing page needs while the mock
+   icon variant, none of which the marketing page needs while the mock
    just idles through its views. So the icons start as plain lucide
    glyphs and the animated module is fetched on the first pointerenter,
    the earliest moment a hover animation could matter. Until it lands
@@ -58,7 +56,7 @@ export const PreviewIconContext = createContext<AnimatedIconRenderer | null>(
   null,
 );
 
-/* Compact mode — the mobile hero renders the same live mock, but framed
+/* Compact mode, the mobile hero renders the same live mock, but framed
    on the top-left corner of the app (sidebar + start of the main pane)
    and scaled to the phone's width. Panes drop to single columns and hug
    the left edge so the visible slice reads as intentional UI instead of
@@ -101,7 +99,7 @@ export function NavRow({
       type="button"
       onClick={onSelect}
       // Focus inside the hero's 3D-transformed, contain:strict plane makes
-      // the browser scroll-to-focus jump wildly — suppress mouse focus.
+      // the browser scroll-to-focus jump wildly, suppress mouse focus.
       onMouseDown={(event) => event.preventDefault()}
       className={cn(ROW, active ? "bg-muted text-foreground" : ROW_IDLE)}
     >
@@ -366,7 +364,7 @@ function InboxPane() {
 function ImprovementsPane() {
   const compact = useContext(CompactContext);
   // The one live behaviour in this pane: the cards drag between lanes, the
-  // way they do on the real Improvements board. Local state only — a page
+  // way they do on the real Improvements board. Local state only, a page
   // reload puts every card back where the fixture data has it.
   const [columns, setColumns] = useState(() =>
     IMPROVEMENT_COLUMNS.map((column) => ({
@@ -666,7 +664,7 @@ function InsightsPane() {
 }
 
 /* ---------------------------------------------------------------- */
-/* Setup picker — same screen for every SETUP section                */
+/* Setup picker, same screen for every SETUP section                */
 /* ---------------------------------------------------------------- */
 
 export function SetupPane({ slug }: { slug: string }) {
@@ -730,65 +728,22 @@ export function SetupPane({ slug }: { slug: string }) {
 /* Animated square grid behind the main pane                         */
 /* ---------------------------------------------------------------- */
 
-/* Same treatment as AuthGrid on /contact/sales — drifting square grid
-   with a cursor-following highlight — but theme-aware via color-mix on
-   --foreground instead of a fixed light/dark tone, since the mock swaps
-   themes with the page. Listeners attach to the parent pane so the grid
-   itself never intercepts clicks. */
+/* Same square grid as AuthGrid on /contact/sales, but static and
+   theme-aware via color-mix on --foreground, since the mock swaps themes
+   with the page. Static on purpose: this grid sits inside the hero's 3D
+   plane, so a background-position drift (or the old cursor-following
+   highlight) invalidated the full 1600×900 texture every frame and the
+   compositor re-rasterized the whole mock, the single biggest source of
+   scroll jank on /home. Painted once, it costs nothing after first raster. */
 const PREVIEW_GRID_IMAGE =
   "linear-gradient(to right, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px)";
-const PREVIEW_GRID_HIGHLIGHT =
-  "linear-gradient(to right, color-mix(in oklab, var(--foreground) 30%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 30%, transparent) 1px, transparent 1px)";
 
 export function PreviewGrid() {
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [cursor, setCursor] = useState({ x: -320, y: -320 });
-
-  useEffect(() => {
-    const container = gridRef.current?.parentElement;
-    if (!container) return;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const bounds = container.getBoundingClientRect();
-      setCursor({
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
-      });
-    };
-    const clearCursor = () => setCursor({ x: -320, y: -320 });
-
-    container.addEventListener("pointermove", handlePointerMove);
-    container.addEventListener("pointerleave", clearCursor);
-    return () => {
-      container.removeEventListener("pointermove", handlePointerMove);
-      container.removeEventListener("pointerleave", clearCursor);
-    };
-  }, []);
-
   return (
-    <div
-      ref={gridRef}
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0"
-    >
-      {/* Slower drift than the shared 12s (login/contact sales): inside the
-          mock the grid is close to real content, so it should barely move.
-          Both layers share the duration to keep their lines aligned. */}
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
       <div
-        className="auth-grid-layer absolute inset-0"
-        style={{
-          backgroundImage: PREVIEW_GRID_IMAGE,
-          animationDuration: "32s",
-        }}
-      />
-      <div
-        className="auth-grid-layer absolute inset-0"
-        style={{
-          backgroundImage: PREVIEW_GRID_HIGHLIGHT,
-          animationDuration: "32s",
-          maskImage: `radial-gradient(300px circle at ${cursor.x}px ${cursor.y}px, black, transparent)`,
-          WebkitMaskImage: `radial-gradient(300px circle at ${cursor.x}px ${cursor.y}px, black, transparent)`,
-        }}
+        className="auth-grid-layer auth-grid-layer--static absolute inset-0"
+        style={{ backgroundImage: PREVIEW_GRID_IMAGE }}
       />
     </div>
   );

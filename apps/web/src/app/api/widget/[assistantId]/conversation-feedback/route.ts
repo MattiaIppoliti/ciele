@@ -7,7 +7,7 @@ import {
 } from "@/lib/widget-db";
 
 /**
- * Conversation-level "Send feedback" from the widget's ⋯ menu — the public
+ * Conversation-level "Send feedback" from the widget's ⋯ menu, the public
  * counterpart of the admin preview's sendConversationFeedbackAction, writing
  * the same metadata fields so the Inbox shows both identically. Ownership is
  * the widget surface's standard rule: the visitor may only leave feedback on

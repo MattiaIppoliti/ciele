@@ -149,7 +149,7 @@ function ModelPicker({
   );
 }
 
-// One provider row in the "Local AI accounts" card — the connector-reported
+// One provider row in the "Local AI accounts" card, the connector-reported
 // rows and the direct-CLI (local test) rows share this shape; only the detail
 // text, the disabled rule and the action wiring differ per caller.
 function ProviderRow({

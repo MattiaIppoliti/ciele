@@ -16,7 +16,7 @@ import {
 
 /**
  * The Flow Builder's Conditions logic (spec #550). The component itself is a
- * `.tsx`, which this suite does not collect — so the pieces worth testing live
+ * `.tsx`, which this suite does not collect, so the pieces worth testing live
  * in the plain-TS module and are tested here.
  */
 
@@ -38,7 +38,7 @@ describe("flowConditionPicker", () => {
     ).toBe(false);
   });
 
-  // Kinds the runtime cannot evaluate are not offered at all — no greyed chip
+  // Kinds the runtime cannot evaluate are not offered at all, no greyed chip
   // for User role, External data or Course.
   it("offers no kind that cannot be evaluated", () => {
     expect(flowConditionPicker("message").map((m) => m.kind)).toEqual([

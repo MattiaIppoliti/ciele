@@ -11,9 +11,9 @@ import { meterUsage, usageTotals } from "./usage";
 
 /**
  * Independent answer verifier (spec: nothing grades its own homework).
- * A scheduled pass re-reads recent generative answers with fresh eyes — only
+ * A scheduled pass re-reads recent generative answers with fresh eyes, only
  * the question, the answer text, and the cited Concepts' content re-fetched
- * at grade time; never the answering model's prompts or tool traces — and
+ * at grade time; never the answering model's prompts or tool traces, and
  * records a one-line verdict per message. Out-of-band by design: a Visitor's
  * answer never waits on a second model call.
  */
@@ -26,7 +26,7 @@ const VERDICT_SCHEMA = z.object({
 const VERIFIER_SYSTEM = [
   "You are an independent quality verifier for a support assistant. You receive a user question, the assistant's answer, and the content of the knowledge Concepts the answer cited.",
   "Judge only what is in front of you. PASS when every factual claim in the answer is supported by the cited content (or the answer honestly says it doesn't know). FAIL when the answer contradicts the cited content, asserts facts the content does not support, or answers a different question.",
-  "The assistant was confident — that is not evidence. Output only the verdict and a one-sentence reason.",
+  "The assistant was confident; that is not evidence. Output only the verdict and a one-sentence reason.",
 ].join(" ");
 
 export interface VerifierResult {
@@ -94,8 +94,8 @@ export async function runDueAnswerVerifications(
 
 /**
  * Grades one answer. Returns the recorded verdict, or null when the
- * candidate was skipped (no credential, malformed output, already verified)
- * — a skipped candidate simply stays unverified for a later tick; one bad
+ * candidate was skipped (no credential, malformed output, already verified),
+ * a skipped candidate simply stays unverified for a later tick; one bad
  * candidate never fails the run.
  */
 async function verifyOne(
@@ -148,7 +148,7 @@ async function verifyOne(
         candidate.organizationId
       );
       const classifier = getClassifierModel("anthropic", connections);
-      // No credential — leave the answer unverified rather than guess.
+      // No credential: leave the answer unverified rather than guess.
       if (!classifier) return null;
       model = classifier.model;
       modelId = classifier.modelId;
@@ -177,7 +177,7 @@ async function verifyOne(
       prompt: [
         `User question: """${candidate.question ?? "(unknown)"}"""`,
         `Assistant answer: """${answer}"""`,
-        `Cited Concept content:\n${excerpts || "(content unavailable — judge scope and internal consistency only)"}`,
+        `Cited Concept content:\n${excerpts || "(content unavailable, judge scope and internal consistency only)"}`,
       ].join("\n\n"),
     });
 

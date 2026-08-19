@@ -54,6 +54,13 @@
 }
 
 :root {
+  /* How much of the viewport's right edge the workspace's right rail occupies
+     (the assistant editor's docked live preview). Viewport-fixed furniture,
+     the bottom-right notification stack, offsets by this so it lands beside
+     the rail instead of over its content. Whatever occupies the rail overwrites
+     both values while it is mounted; see components/shell/right-rail.ts. */
+  --right-rail-width: 0px;
+  --right-rail-transition: none;
   /* Match the neutral surface scale used by docs.ciele.app. The widget
      renders under this same root, so its chat chrome stays in sync. */
   --background: #f5f5f5;
@@ -168,7 +175,7 @@
 }
 
 /* Forces light-theme tokens on a subtree regardless of an ancestor .dark
-   class — needed on the auth pages, which are always light, but can render
+   class, needed on the auth pages, which are always light, but can render
    under <html class="dark"> left over from a client-side nav out of the
    (dark-mode) admin shell. */
 .light {
@@ -214,7 +221,7 @@
   html {
     @apply font-sans;
   }
-  /* The display serif (Sorts Mill Goudy) is a *marketing-only* brand accent —
+  /* The display serif (Sorts Mill Goudy) is a *marketing-only* brand accent,
      home, pricing, policies, etc. The actual app (admin console, assistant
      editor, chat widget) stays entirely in the sans UI font. The marketing
      route group's layout opts in with `.marketing-serif` (see (marketing)/). */
@@ -222,7 +229,7 @@
     @apply font-heading;
   }
   /* One highlighter across every surface and both themes: a fixed dark grey
-     marker with white ink. Deliberately *not* theme tokens — the selection
+     marker with white ink. Deliberately *not* theme tokens, the selection
      used to invert with the theme, which read as two different brand
      behaviours between the marketing pages and the app. Keep this value in
      step with apps/docs and the staff console, which declare the same pair. */
@@ -339,7 +346,7 @@
 .auth-grid-layer {
   background-position: 0 0;
   background-size: 64px 64px;
-  /* One 64px cell every 12s — slow enough to feel ambient, not distracting. */
+  /* One 64px cell every 12s, slow enough to feel ambient, not distracting. */
   animation: auth-grid-drift 12s linear infinite;
 }
 
@@ -390,13 +397,13 @@
 }
 
 /* Keeps a container scrollable without rendering the OS/browser scrollbar
-   chrome — used on the shell's left nav rail and the right widget-preview
+   chrome, used on the shell's left nav rail and the right widget-preview
    panel, where a gray scrollbar reads as a stray UI element next to their
    flush borders. */
 /* `scrollbar-hide` is the name the vendored agent-chat kit (components/agents,
    and the composer it puts in both the Preview panel and the widget) writes on
    its scroll containers. It comes from a Tailwind plugin we do not install, so
-   without this alias every one of those elements shows OS scrollbar chrome —
+   without this alias every one of those elements shows OS scrollbar chrome,
    most visibly as arrow buttons inside the chat composer on Windows. */
 .no-scrollbar,
 .scrollbar-hide {
@@ -468,7 +475,7 @@
 }
 
 /* Home marketing page renders its own custom cursor (HomeCursor). Hide the
-   native cursor across the whole scene — including descendants that set their
+   native cursor across the whole scene, including descendants that set their
    own `cursor: pointer` (buttons, links, the card triggers) which would
    otherwise override an inline `cursor: none` on the scene. Fine-pointer only
    so touch is unaffected. */
@@ -479,7 +486,7 @@
   }
 }
 
-/* GridBeam — soft glow travelling along the dividers of a comparison grid.
+/* GridBeam, soft glow travelling along the dividers of a comparison grid.
    Two identical lattices are stacked over the same tracks: the lower one draws
    the static hairlines, the upper one draws them in `--foreground` but is
    revealed only through a moving radial mask, so the highlight reads as light

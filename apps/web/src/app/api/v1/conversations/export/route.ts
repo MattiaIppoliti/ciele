@@ -8,7 +8,7 @@ import { canViewReasoning } from "@/lib/rbac";
 /**
  * Message-level export (#624): the same 29-field records as the admin app's
  * Inbox export (#561). Body: { conversationIds: string[] } (≤500). The
- * reasoning gate is enforced by the key's Role — never by a request flag.
+ * reasoning gate is enforced by the key's Role, never by a request flag.
  */
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);

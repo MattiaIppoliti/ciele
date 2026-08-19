@@ -3,7 +3,7 @@
 import { Visual3 } from "@/components/core/visual-3";
 
 /**
- * Insights card visual — the badtz-ui "Visual 3" animated bar chart in neutral
+ * Insights card visual: the badtz-ui "Visual 3" animated bar chart in neutral
  * grey tones (instead of the demo's orange). `group/animated-card` scopes the
  * hover reveal of the chart's overlay layers to this visual area.
  */

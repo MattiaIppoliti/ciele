@@ -4,8 +4,8 @@ import { getWidgetDb } from "@/lib/widget-db";
 
 /**
  * Nightly graph-learning pass (ADR-0017 / #389). For every active graph dataset
- * (cross-org, via the service role) it applies feedback weights — the zero-LLM
- * stage, always — and runs LLM distillation only for orgs within their daily
+ * (cross-org, via the service role) it applies feedback weights, the zero-LLM
+ * stage, always, and runs LLM distillation only for orgs within their daily
  * token budget. Per-org worker failures raise an auto-resolving Alert and are
  * counted, never thrown. Inert (no-op) when no graph worker is configured.
  *

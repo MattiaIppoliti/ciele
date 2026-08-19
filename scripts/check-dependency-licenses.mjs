@@ -2,7 +2,7 @@
 //
 // Ciele's core is AGPL-3.0-only. Both the public mirror and the shipped
 // Next.js client bundle are *distribution* events, so the dependency policy
-// must assume conveyance — the SaaS "loophole" does not apply here.
+// must assume conveyance, the SaaS "loophole" does not apply here.
 //
 // This denies licenses that are either incompatible with distributing an
 // AGPL-3.0 work (GPL-2.0-only) or carry use restrictions that make them
@@ -32,7 +32,7 @@ export const DEFAULT_DENYLIST = [
 // GPL-2.0 with no "or later" reach is what's incompatible with AGPL-3.0.
 // Anchored so the denial never spills onto compatible neighbours:
 // GPL-2.0-or-later / GPL-2.0+ upgrade to GPLv3, and LGPL-2.x grants a
-// GPL-upgrade path — all of those are allowed. Bare "GPL-2.0" (old packages
+// GPL-upgrade path, all of those are allowed. Bare "GPL-2.0" (old packages
 // predating the -only suffix) is treated as exactly-v2, i.e. denied.
 const GPL2_NO_LATER = /^gpl-2(\.0)?(-only)?$/;
 
@@ -44,7 +44,7 @@ function isDeniedOperand(operand, denyList) {
   if (GPL2_NO_LATER.test(o)) return true;
   return denyList.some((token) => {
     const t = token.toLowerCase();
-    // GPL-2.0 tokens are handled by the anchored regex above — substring
+    // GPL-2.0 tokens are handled by the anchored regex above, substring
     // matching them would false-deny LGPL-2.x and GPL-2.0-or-later.
     if (t.startsWith("gpl-2")) return false;
     return o.includes(t);
@@ -71,7 +71,7 @@ export function isDeniedExpression(expression, denyList = DEFAULT_DENYLIST) {
   return operands.some((op) => isDeniedOperand(op, denyList));
 }
 
-// licenseMap: { "<license string>": [{ name, versions, ... }, ...] } —
+// licenseMap: { "<license string>": [{ name, versions, ... }, ...] },
 // the shape emitted by `pnpm licenses list --json`.
 // Returns [{ package, version, license }] for every denied dependency.
 export function findLicenseViolations(licenseMap, denyList = DEFAULT_DENYLIST) {
@@ -90,7 +90,7 @@ export function findLicenseViolations(licenseMap, denyList = DEFAULT_DENYLIST) {
 }
 
 function readWorkspaceLicenses() {
-  // execSync (shell) so the platform resolves pnpm's launcher — on Windows
+  // execSync (shell) so the platform resolves pnpm's launcher, on Windows
   // that is `pnpm.cmd`, which execFileSync would not find on PATH.
   const out = execSync("pnpm licenses list --json", {
     encoding: "utf8",
@@ -109,12 +109,12 @@ function main() {
   }
   const violations = findLicenseViolations(licenseMap);
   if (violations.length === 0) {
-    console.log("Dependency license check passed — no denied licenses found.");
+    console.log("Dependency license check passed, no denied licenses found.");
     return;
   }
   console.error("Denied dependency licenses found:\n");
   for (const v of violations) {
-    console.error(`  ${v.package}@${v.version} — ${v.license}`);
+    console.error(`  ${v.package}@${v.version}, ${v.license}`);
   }
   console.error(
     `\n${violations.length} violation(s). Denylist: ${DEFAULT_DENYLIST.join(", ")}`,

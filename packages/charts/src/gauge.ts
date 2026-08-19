@@ -2,7 +2,7 @@
  * Geometry for the radial gauge: concentric rings drawn as dashed circles.
  *
  * A ring is one `<circle>` whose stroke is dashed to exactly its own
- * circumference and then offset by the unfilled part — the cheapest way to draw
+ * circumference and then offset by the unfilled part, the cheapest way to draw
  * an arc with no path maths and no charting dependency. The numbers live here
  * rather than in the component so the awkward cases (a cap exceeded, a cap of
  * zero producing a non-finite fraction, more rings than fit) are unit tests
@@ -25,7 +25,7 @@ export interface GaugeDash {
 
 /**
  * Dash values for one ring at `fraction` full. The fraction is clamped to
- * `[0, 1]`: usage can exceed a cap, and a full ring is the honest picture —
+ * `[0, 1]`: usage can exceed a cap, and a full ring is the honest picture,
  * winding round a second time would read as almost empty. A non-finite
  * fraction (`0/0` upstream) draws empty rather than NaN, which SVG ignores
  * entirely.

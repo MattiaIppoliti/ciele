@@ -106,7 +106,7 @@ export function CommandMenu({
     return Array.from(map.entries());
   }, [items]);
 
-  // Reset the search on close and the selection on every keystroke — done in
+  // Reset the search on close and the selection on every keystroke, done in
   // the handlers (not effects) to avoid cascading renders.
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -128,7 +128,7 @@ export function CommandMenu({
   }, [active]);
 
   // One highlight element slides between rows (translateY + height transition)
-  // instead of each row toggling its own background — the beui "layout"
+  // instead of each row toggling its own background, the beui "layout"
   // effect, done in CSS. The callback ref covers first mount (the dialog
   // portal mounts after this component renders, so an effect on `open` runs
   // too early and finds nothing); the layout effect covers re-filters that

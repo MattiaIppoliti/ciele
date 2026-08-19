@@ -1,14 +1,14 @@
 -- Migrate legacy per-endpoint custom HTTP tools to API Integrations (#575).
 --
 -- The contract step of spec #559 deleted the custom-tool form after verifying
--- zero configurations on the live project — but an OSS self-hoster upgrading
+-- zero configurations on the live project, but an OSS self-hoster upgrading
 -- across that release would have an Assistant whose working tool silently
 -- stopped. This is the skipped expand-contract *migrate* step, shipped late:
 --
 --  * A convertible configuration (every entry on one origin, no custom
 --    headers, no query string in the URL, and no API Integration already on
 --    the Assistant) becomes one integration whose catalogue has one endpoint
---    per legacy tool. Legacy tools had no sealed credential to carry — auth
+--    per legacy tool. Legacy tools had no sealed credential to carry, auth
 --    lived in plaintext headers, which make a config non-convertible below.
 --  * Anything else is preserved visibly instead of dropped silently: an
 --    active Alert (type 'integration') carries the original configuration

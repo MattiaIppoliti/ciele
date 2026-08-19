@@ -3,11 +3,11 @@ import { getWidgetDb } from "@/lib/widget-db";
 import { sweepDueRecrawls } from "@agent-hub/agent";
 
 /**
- * Scheduled re-crawl sweep (#36) — the HTTP adapter.
+ * Scheduled re-crawl sweep (#36), the HTTP adapter.
  *
- * Cron auth in, the tick's report out. What a tick actually does — claiming a
+ * Cron auth in, the tick's report out. What a tick actually does, claiming a
  * bounded batch of due Sources and starting each through the same pipeline as a
- * manual re-crawl — is `sweepDueRecrawls` in `@agent-hub/agent`, where it is
+ * manual re-crawl, is `sweepDueRecrawls` in `@agent-hub/agent`, where it is
  * tested without a request.
  *
  * Scheduled daily in vercel.json (the deployment-plan cron limit); a

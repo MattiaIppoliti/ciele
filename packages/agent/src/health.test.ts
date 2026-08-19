@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Db } from "@agent-hub/db";
-import { alertKeys, signalHealth } from "./health";
+import { DEMO_ORG, getMockDb } from "@agent-hub/db";
+import { alertKeys, recordProviderHealth, signalHealth } from "./health";
 
 /**
  * The keyed health-signal seam: unhealthy raises (deduped by sourceKey),
@@ -74,5 +75,59 @@ describe("signalHealth", () => {
     expect(alertKeys.budget("o")).toBe("budget:o");
     expect(alertKeys.flowTrust("f")).toBe("flow-trust:f");
     expect(alertKeys.goal("g")).toBe("goal:g");
+  });
+});
+
+describe("recordProviderHealth", () => {
+  it("raises, deduplicates, and auto-resolves federated provider alerts", async () => {
+    const db = getMockDb();
+    await recordProviderHealth({
+      db,
+      organizationId: DEMO_ORG.id,
+      assistantTitle: "Campus AI",
+      event: {
+        provider: "google",
+        credentialKind: "google_vertex_federated",
+        ok: false,
+        detail: "invalid_grant",
+      },
+    });
+    await recordProviderHealth({
+      db,
+      organizationId: DEMO_ORG.id,
+      assistantTitle: "Campus AI",
+      event: {
+        provider: "google",
+        credentialKind: "google_vertex_federated",
+        ok: false,
+        detail: "quota exceeded",
+      },
+    });
+
+    const sourceKey = "provider:google:google_vertex_federated";
+    const active = (await db.listAlerts(DEMO_ORG.id)).filter(
+      (a) => a.sourceKey === sourceKey && a.status === "active"
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0]).toMatchObject({
+      type: "provider",
+      title: "Google Vertex federated auth failed",
+    });
+    expect(active[0].detail).toContain("quota exceeded");
+
+    await recordProviderHealth({
+      db,
+      organizationId: DEMO_ORG.id,
+      assistantTitle: "Campus AI",
+      event: {
+        provider: "google",
+        credentialKind: "google_vertex_federated",
+        ok: true,
+      },
+    });
+    const after = (await db.listAlerts(DEMO_ORG.id)).filter(
+      (a) => a.sourceKey === sourceKey && a.status === "active"
+    );
+    expect(after).toHaveLength(0);
   });
 });

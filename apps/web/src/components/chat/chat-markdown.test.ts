@@ -5,7 +5,7 @@ import { ChatMarkdown } from "./chat-markdown";
 
 /**
  * The chat surfaces (Widget, Preview, Inbox) must actually render assistant
- * markdown — bold/italic/links/lists were previously shown as raw asterisks.
+ * markdown, bold/italic/links/lists were previously shown as raw asterisks.
  */
 
 const render = (text: string) =>

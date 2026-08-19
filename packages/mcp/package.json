@@ -4,7 +4,7 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
-  "description": "The ciele MCP server — let an AI agent operate your Organization over /api/v1.",
+  "description": "The ciele MCP server, let an AI agent operate your Organization over /api/v1.",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "bin": {

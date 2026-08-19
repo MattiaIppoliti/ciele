@@ -48,7 +48,9 @@ function fakeDb(over: Partial<Db> = {}): Db {
       .mockResolvedValue([{ organizationId: "org1", collectionId: "col1" }]),
     getOrgBudget: vi.fn().mockResolvedValue(null),
     getOrgTokensUsedToday: vi.fn().mockResolvedValue(0),
-    getCollection: vi.fn().mockResolvedValue({ id: "col1", assistantId: "a1" }),
+    getCollection: vi
+      .fn()
+      .mockResolvedValue({ id: "col1", organizationId: "org1" }),
     getAssistant: vi.fn().mockResolvedValue({ id: "a1", organizationId: "org1" }),
     recordAiUsage: vi.fn().mockResolvedValue(undefined),
     raiseAlert: vi.fn().mockResolvedValue(undefined),
@@ -165,7 +167,7 @@ describe("runGraphLearning", () => {
     expect(db.recordAiUsage).toHaveBeenCalledWith([
       {
         organizationId: "org1",
-        assistantId: "a1",
+        assistantId: null,
         stage: "graph_cognify",
         provider: "google",
         modelId: "gemini/gemini-2.0-flash",

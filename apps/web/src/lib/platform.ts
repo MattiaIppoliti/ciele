@@ -4,11 +4,11 @@ import { DEFAULT_PLATFORM_PROMPT } from "@agent-hub/agent";
 import { getWidgetDb } from "./widget-db";
 
 /**
- * The platform (Ciele) system-prompt layer — the app's half.
+ * The platform (Ciele) system-prompt layer, the app's half.
  *
  * Two-layer prompt model (see docs/agentic-chat-runtime.md):
  * - The PLATFORM prompt is owned by Ciele itself. Organizations and their
- *   assistants can never read or change it — it is stored in
+ *   assistants can never read or change it; it is stored in
  *   `platform_settings` (RLS: service-role only) and edited exclusively by
  *   the platform owner (PLATFORM_OWNER_EMAIL) from Settings → AI.
  * - Each assistant's `answeringStyle` is the org-authored layer underneath:
@@ -27,7 +27,7 @@ const PLATFORM_PROMPT_TAG = "platform-system-prompt";
 /**
  * Data access goes through the Db facade: `getWidgetDb()` is the app's
  * service-role-backed Db (falling back to the anon key, and to the in-memory
- * mock when Supabase env is absent — which keeps the owner flow fully working
+ * mock when Supabase env is absent, which keeps the owner flow fully working
  * in demo mode, the mock store holding the prompt).
  */
 function platformDb() {
@@ -52,7 +52,7 @@ export function isPlatformOwner(email: string | null | undefined): boolean {
 /**
  * The effective platform prompt for a chat turn: the stored override when the
  * owner has set one, otherwise the shipped default. Read with the service
- * role — org-scoped clients cannot see the row at all.
+ * role, org-scoped clients cannot see the row at all.
  */
 export async function getPlatformSystemPrompt(): Promise<string> {
   if (!isSupabaseConfigured()) {

@@ -13,7 +13,7 @@ import {
  * Provider key resolution: BYOK wins over the platform env key, and retired
  * subscription connections never resolve on any surface. The classifier falls
  * back across providers by availability. Pure logic with a load-bearing
- * security boundary — worth pinning even though the module needs no refactor.
+ * security boundary, worth pinning even though the module needs no refactor.
  * BYOK keys use the `plain:` seal so no APP_ENCRYPTION_KEY is required (see
  * crypto.ts).
  */
@@ -300,7 +300,7 @@ describe("resolveChatModel (cross-provider fallback)", () => {
     expect(resolved).toMatchObject({
       provider: "openai",
       credentialKind: "local_subscription",
-      // Deliberate precedence, not a degraded fallback — no "No X credential"
+      // Deliberate precedence, not a degraded fallback, no "No X credential"
       // step should be emitted.
       usedFallback: false,
     });
@@ -375,7 +375,7 @@ describe("resolveChatModel (cross-provider fallback)", () => {
     });
   });
 
-  it("falls back to another keyed provider's cheap tier — never the keyword engine", () => {
+  it("falls back to another keyed provider's cheap tier, never the keyword engine", () => {
     // The regression that motivated this: assistant set to Anthropic, but the
     // org only holds a Google key â†’ the turn must still run through an LLM so
     // the platform prompt + answering style keep applying. The fallback model

@@ -4,7 +4,7 @@ import type { SetupConfig, SetupPorts } from "./ports";
 
 export type StepStatus = "pending" | "running" | "done" | "failed" | "skipped";
 
-/** A value the user supplies to a step — a provider key, a model name. */
+/** A value the user supplies to a step, a provider key, a model name. */
 export interface StepField {
   id: string;
   label: string;
@@ -23,14 +23,14 @@ export interface VerifyResult {
   /**
    * How to fix it, one plain-language instruction per entry, rendered as a
    * numbered list. For someone who has never installed developer tooling this
-   * is the difference between a wall and a path — each failure mode can carry
+   * is the difference between a wall and a path, each failure mode can carry
    * its own walkthrough ("install it" and "start it" are different journeys).
    */
   guide?: string[];
 }
 
 /**
- * Values a step wrote for later steps to read — the env file's contents, the
+ * Values a step wrote for later steps to read, the env file's contents, the
  * chosen model. A plain bag rather than a typed record: steps are data, and
  * the set of keys is theirs to decide.
  */
@@ -60,7 +60,7 @@ export interface SetupStep {
   execute(context: StepContext): Promise<void>;
   /**
    * Proves the work landed. The next step does not unlock until this returns
-   * ok — "it ran without error" is not the same as "it worked", and the whole
+   * ok, "it ran without error" is not the same as "it worked", and the whole
    * point of the wizard is that the user can believe the green check.
    */
   verify(context: StepContext): Promise<VerifyResult>;

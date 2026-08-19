@@ -17,21 +17,21 @@ import type { TurnTrace } from "./stream";
  * has to be bounded before it lands.
  *
  * Three things happen here and nowhere else:
- *  1. **Caps** — step count and per-step text, with `truncated` set so a
+ *  1. **Caps**: step count and per-step text, with `truncated` set so a
  *     clipped trace reads as clipped rather than as a turn that did less work.
  *     The FIRST steps are kept: they are the ones that explain how the turn
  *     started reasoning, which is what an auditor reads first.
- *  2. **Redaction** — every stored string goes through
+ *  2. **Redaction**: every stored string goes through
  *     {@link redactBearerSecrets}. Tool inputs are already safe to show (the
  *     registry only ever puts model-supplied arguments on the wire), but a tool
  *     that echoes an `Authorization` header into its outcome summary must not
  *     turn the Inbox into a credential viewer.
- *  3. **Unresolved calls settle** — a step still `running` at persist time is a
+ *  3. **Unresolved calls settle**: a step still `running` at persist time is a
  *     tool call whose end never arrived (an aborted or crashed turn). Stored as
  *     `error`, so the Inbox shows a call that failed instead of a spinner that
  *     never stops.
  *
- * Returns null when the turn produced no steps — a verbatim `custom_message`
+ * Returns null when the turn produced no steps, a verbatim `custom_message`
  * Flow Action or a proactive Notification does no agentic work, and an empty
  * trace row would only make the Inbox render an empty panel.
  */
@@ -79,7 +79,7 @@ export function prepareTraceForStorage(trace: TurnTrace): StoredTurnTrace | null
     steps,
     searchCount: trace.searchCount,
     truncated,
-    // The loop counters and the terminal declaration (#574) — copied only when
+    // The loop counters and the terminal declaration (#574), copied only when
     // the turn actually had them, so a no-budget turn stores no misleading 0/0.
     ...(trace.iteration !== null ? { iteration: trace.iteration } : {}),
     ...(trace.iterationLimit !== null
@@ -90,7 +90,7 @@ export function prepareTraceForStorage(trace: TurnTrace): StoredTurnTrace | null
 }
 
 /**
- * Redacts and bounds one of a step's structured objects — the model-supplied
+ * Redacts and bounds one of a step's structured objects, the model-supplied
  * input, or a tool's structured result. Serializing to measure is deliberate:
  * the cap that matters is the size of the stored row, and a per-field cap would
  * let a wide object through under any per-string limit. An object that cannot be

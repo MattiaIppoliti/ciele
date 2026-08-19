@@ -1,7 +1,7 @@
 -- Suggested Fix (ADR-0017 / #390): a drafted, human-approved knowledge
 -- improvement proposal attached to an Improvement. One row per Improvement,
 -- created by the drafting job; a Member accepts it (→ a real FAQ Concept) or
--- dismisses it with a reason. OKF stays the record — nothing here edits
+-- dismisses it with a reason. OKF stays the record, nothing here edits
 -- knowledge until a human accepts.
 
 create table public.improvement_proposals (

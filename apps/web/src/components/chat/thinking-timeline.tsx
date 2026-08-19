@@ -18,7 +18,7 @@ import {
 
 /**
  * The Thinking panel's body: the same vertical timeline of one turn's steps
- * as before — per-step icon (tool-icons.tsx) linked by a connector line —
+ * as before, per-step icon (tool-icons.tsx) linked by a connector line,
  * with the beui agent components rendering what each row expands into:
  *
  * - tool calls → a beui ToolResult disclosure (live status, roll-swapped
@@ -31,15 +31,15 @@ import {
  *   morphing status marks.
  *
  * Everything shown here was already deemed safe client-side by
- * runtime/tools.ts — never raw secrets.
+ * runtime/tools.ts, never raw secrets.
  */
 
 /**
  * A `status` row on a tool result. Two kinds share the key: HTTP outcomes (a
- * number, or the string `"failed"` a refused call records — it never reached
+ * number, or the string `"failed"` a refused call records; it never reached
  * the network, so inventing a status would be a lie) get a pass/fail badge;
- * anything else is a declaration, not an outcome — the terminal tool's
- * `answer` / `needs_clarification` / `insufficient_information` — where
+ * anything else is a declaration, not an outcome, the terminal tool's
+ * `answer` / `needs_clarification` / `insufficient_information`, where
  * failure iconography would misread an honest "I'm ready to answer".
  */
 function StatusBadge({ value }: { value: unknown }) {
@@ -114,7 +114,7 @@ function toolStatus(status: TurnStep["status"]): ToolResultStatus {
   return "success";
 }
 
-/** First line of a (possibly multi-line) label — headers are one-liners. */
+/** First line of a (possibly multi-line) label, headers are one-liners. */
 function firstLine(label: string): string {
   return label.split("\n")[0].trim();
 }
@@ -137,8 +137,8 @@ function ToolStepBody({ step }: { step: TurnStep }) {
           </ToolResultOutput>
         </div>
       )}
-      {/* A structured result reads as labelled rows — Endpoint, Method,
-          Status, Response — rather than a JSON blob. `status` gets a
+      {/* A structured result reads as labelled rows, Endpoint, Method,
+          Status, Response, rather than a JSON blob. `status` gets a
           pass/fail badge; a response body is the one row that can run to
           thousands of characters (spec #559), and the ToolResult viewport
           already scrolls it. */}
@@ -176,7 +176,7 @@ function toolCopyText(step: TurnStep): string | undefined {
   return step.detail || undefined;
 }
 
-/** Header meta: just the seconds this call took, in grey — nothing else. */
+/** Header meta: just the seconds this call took, in grey, nothing else. */
 function toolMeta(step: TurnStep): string | undefined {
   if (step.durationMs === undefined) return undefined;
   return `${(step.durationMs / 1000).toFixed(1)}s`;
@@ -189,14 +189,14 @@ function ToolStepRow({ step }: { step: TurnStep }) {
       step.detail
   );
   if (!hasBody) {
-    // Nothing to disclose — the one-line label row, exactly as before.
+    // Nothing to disclose: the one-line label row, exactly as before.
     return <PlainStepRow step={step} />;
   }
   const title = firstLine(step.label);
   return (
     <ToolResult
       // The timeline column already carries the step's icon, and the title
-      // already names the work — no grey tool-name repeat in the header.
+      // already names the work, no grey tool-name repeat in the header.
       icon={<span />}
       tool=""
       // The header truncates a long label; hovering it shows the whole line
@@ -222,11 +222,11 @@ function ToolStepRow({ step }: { step: TurnStep }) {
  * still writing it, a shimmering "Thinking…" label with the streamed text
  * gliding underneath; once it completes it collapses to "Thought for Xs"
  * (expandable), so every step of the chatbot's thinking is bracketed by its
- * own elapsed clock — not just the turn-level header.
+ * own elapsed clock, not just the turn-level header.
  *
  * The clock prefers the trace's own `durationMs`; a live turn that lacks one
  * is timed from when the streaming row mounted. A stored trace with neither
- * (read back from the database, never seen running) says just "Thought" —
+ * (read back from the database, never seen running) says just "Thought",
  * no clock beats a guessed one.
  */
 function ThoughtRow({ step }: { step: TurnStep }) {
@@ -288,7 +288,7 @@ function PlainStepRow({ step }: { step: TurnStep }) {
         step.kind === "thought" ? "italic whitespace-pre-wrap" : ""
       } ${
         // A running tool label pulses; a streaming thought is text being
-        // written — it gets a cursor, not a blink.
+        // written; it gets a cursor, not a blink.
         step.status === "running" && !streamingThought ? "animate-pulse" : ""
       }`}
     >

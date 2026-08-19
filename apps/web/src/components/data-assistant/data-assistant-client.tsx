@@ -195,7 +195,7 @@ export function DataAssistantClient({
     <div className="flex h-full flex-col">
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-6 sm:px-8 sm:py-8">
         {/* The button never shrinks, so on a phone the title and its blurb are
-            what give — stack them instead of squeezing the heading into a
+            what give, stack them instead of squeezing the heading into a
             one-word column. */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0">
@@ -203,7 +203,7 @@ export function DataAssistantClient({
               <Database className="size-7" /> Data Assistant
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Ask questions over your organization&apos;s imported records —
+              Ask questions over your organization&apos;s imported records,
               &quot;every delayed order, with totals&quot;. Answers show the
               queries they ran.
             </p>
@@ -232,7 +232,7 @@ export function DataAssistantClient({
             </p>
             {entities.length === 0 ? (
               <p className="text-muted-foreground mt-3 text-sm">
-                No Entities yet — define one under Settings → Data.
+                No Entities yet: define one under Settings → Data.
               </p>
             ) : (
               <div className="mt-3 grid gap-2">
@@ -250,8 +250,8 @@ export function DataAssistantClient({
                       <Badge variant="outline">per-user data</Badge>
                     )}
                     {entity.description && (
-                      <span className="text-muted-foreground truncate">
-                        — {entity.description}
+                      <span className="text-muted-foreground truncate">,
+                        {entity.description}
                       </span>
                     )}
                   </Label>
@@ -268,7 +268,7 @@ export function DataAssistantClient({
                 ? selectedCount > 0
                   ? "Ask anything about the selected data."
                   : "Select at least one data source, then ask away."
-                : "Create an assistant first — the data assistant uses your organization's model configuration."}
+                : "Create an assistant first, the data assistant uses your organization's model configuration."}
             </p>
           )}
           {turns.map((turn, i) =>
@@ -293,7 +293,7 @@ export function DataAssistantClient({
                       >
                         <Wrench className="size-3" />
                         {call.label}
-                        {call.summary ? ` — ${call.summary}` : ""}
+                        {call.summary ? `, ${call.summary}` : ""}
                       </span>
                     ))}
                   </div>

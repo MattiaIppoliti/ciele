@@ -1,4 +1,4 @@
-# Ciele scheduled jobs — the same routes and UTC schedules as vercel.json,
+# Ciele scheduled jobs: the same routes and UTC schedules as vercel.json,
 # so a self-host runs the same maintenance the hosted deployment does.
 # Keep this file and vercel.json in step; deploy/compose.test.mjs fails if
 # they drift.
