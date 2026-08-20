@@ -342,6 +342,13 @@ refusals, Goal violations, demotions) into at most three **proposed** Improvemen
 accepts or archives, never auto-applied). A clean week is recorded, not silent.
 _Avoid_: auto-fix, retro.
 
+**Developer Panel**:
+The docked panel in the admin console that shows the current page's programmatic surface (its
+/api/v1 operations as CLI, cURL and MCP snippets carrying the page's own ids), titled after the
+domain it presents ("Flows API"). Present only where the page has an /api/v1 domain behind it; the
+Role each snippet names is the Role an **API key** must carry, never the Role of the Member reading it.
+_Avoid_: API drawer, code sidebar, developer mode.
+
 ## Functional surface index
 
 Nine assistant SETUP sections: **General, Knowledge (Websites/Courses/Applications/Files/EdTech

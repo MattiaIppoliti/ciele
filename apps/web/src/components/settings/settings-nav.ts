@@ -1,3 +1,4 @@
+import type { ApiV1Domain } from "@/lib/api-v1/meta";
 import {
   Building2,
   CreditCard,
@@ -78,6 +79,26 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
 export const SETTINGS_HOME = ORG_SETTINGS_TABS[0].href;
 /** Where the account menu and the org rail's footer land. */
 export const PERSONAL_SETTINGS_HOME = PERSONAL_SETTINGS_TABS[0].href;
+
+/**
+ * Which /api/v1 domains each settings route can be driven through (#754).
+ *
+ * Declared here rather than on the sidebar's single Settings entry because
+ * Settings is a dialog over tab routes, not one page: the claims belong with the
+ * tab list, the same way an Assistant section claims on `SETUP_SECTIONS`. Tabs
+ * absent from this map (Usage, Billing, Profile) deliberately have no Developer
+ * Panel.
+ */
+export const SETTINGS_API_DOMAINS: Record<string, ApiV1Domain[]> = {
+  general: ["organization"],
+  members: ["members"],
+  ai: ["providers", "memories"],
+  "api-keys": ["api-keys"],
+  // A live, RLS-scoped route that the tab rail does not list yet, Entities are
+  // reachable by URL only. Claiming it here is what gives that page a panel;
+  // getting it into the rail is a separate question.
+  data: ["entities"],
+};
 
 /** The tab a pathname is inside, or null when it is not a settings route. */
 export function settingsTabFromPath(pathname: string): string | null {

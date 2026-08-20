@@ -3,6 +3,7 @@
 // silently depends on that depth.
 import '@/app/global.css';
 import { DocsProviders } from '@/components/docs-providers';
+import { ProgressiveBlur } from '@agent-hub/ui';
 import { Architects_Daughter, Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
@@ -55,6 +56,15 @@ export default async function Layout({
     >
       <body className="flex flex-col min-h-screen">
         <DocsProviders i18n={provider(lang)}>{children}</DocsProviders>
+        {/* Same viewport-bottom progressive blur as the marketing pages, but
+            shorter and gentler: this is a reading surface, so the band only
+            softens the last line or two as it exits the screen. Fumadocs owns
+            the theme tokens here, hence the fd background instead of ours. */}
+        <ProgressiveBlur
+          className="h-20"
+          maxBlur={8}
+          tint="var(--color-fd-background)"
+        />
       </body>
     </html>
   );

@@ -25,3 +25,6 @@ export const API_V1_DOMAINS = [
   "api-integrations",
   "providers",
 ] as const;
+
+/** One of the domains this deployment advertises. */
+export type ApiV1Domain = (typeof API_V1_DOMAINS)[number];

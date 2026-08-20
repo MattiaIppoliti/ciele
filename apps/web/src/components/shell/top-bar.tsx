@@ -7,6 +7,7 @@ import { Badge } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { ScopeSwitcher } from "@/components/shell/scope-switcher";
+import { DeveloperPanelButton } from "@/components/developer-panel/developer-panel-button";
 import { useShell } from "@/components/shell/shell-provider";
 import {
   GLOBAL_NAV,
@@ -101,6 +102,7 @@ export function TopBar({ demo }: { demo: boolean }) {
       </div>
       <div className="z-10 flex shrink-0 items-center gap-1 sm:gap-2">
         {mounted && topBarActions}
+        <DeveloperPanelButton />
         {demo && (
           <Badge variant="secondary" className="text-muted-foreground">
             {/* The full sentence needs room the phone header doesn't have. */}

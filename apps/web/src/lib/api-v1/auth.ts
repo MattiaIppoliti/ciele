@@ -1,13 +1,8 @@
 import type { Role } from "@agent-hub/core";
 import { API_KEY_PREFIX, hashApiKeySecret } from "@agent-hub/core";
 import { createOrgPinnedDb, type Db } from "@agent-hub/db";
-import {
-  canChangeRoles,
-  canEdit,
-  canManageApiKeys,
-  canManageMembers,
-  canPublish,
-} from "@/lib/rbac";
+import type { OperationCapability } from "@ciele/ops";
+import { CAPABILITY_GUARDS } from "@/lib/rbac";
 import { getApiV1Db } from "@/lib/api-v1/db";
 import { apiError } from "@/lib/api-v1/http";
 
@@ -28,25 +23,11 @@ export interface ApiKeyContext {
   db: Db;
 }
 
-/** Same ladder as server actions; "member" = any valid key. */
-export type ApiCapability =
-  | "member"
-  | "edit"
-  | "publish"
-  | "manageMembers"
-  | "manageApiKeys"
-  | "changeRoles";
-
-const CAPABILITY_GUARDS: Record<
-  Exclude<ApiCapability, "member">,
-  (role: Role | null) => boolean
-> = {
-  edit: canEdit,
-  publish: canPublish,
-  manageMembers: canManageMembers,
-  manageApiKeys: canManageApiKeys,
-  changeRoles: canChangeRoles,
-};
+/**
+ * Same ladder as server actions; "member" = any valid key. The routes enforce
+ * the ops layer's own union rather than a hand-written copy of it.
+ */
+export type ApiCapability = OperationCapability;
 
 const unauthorized = () =>
   apiError(401, "unauthorized", "Provide a valid API key as a Bearer token");

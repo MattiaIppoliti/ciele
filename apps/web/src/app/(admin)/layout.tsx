@@ -5,6 +5,7 @@ import { ShellProvider } from "@/components/shell/shell-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
 import { TopBar } from "@/components/shell/top-bar";
+import { DeveloperPanelLauncher } from "@/components/developer-panel/developer-panel-launcher";
 import { StaticIcons } from "@/components/ui/animated-icon";
 import { TooltipProvider } from "@agent-hub/ui";
 import { requirePageMember } from "@/lib/authz";
@@ -59,9 +60,16 @@ export default async function AdminLayout({
                 <Suspense fallback={null}>
                   <PendingActivationBanner organizationId={organizationId} />
                 </Suspense>
-                <main className="bg-content min-h-0 flex-1 overflow-hidden">
-                  <StaticIcons>{children}</StaticIcons>
-                </main>
+                {/* The workspace and its right rail. The rail has one occupant
+                    at a time (#754): the Developer Panel here, or the Assistant
+                    editor's live Preview, which docks inside `main` from the
+                    assistant layout. */}
+                <div className="flex min-h-0 flex-1">
+                  <main className="bg-content min-h-0 flex-1 overflow-hidden">
+                    <StaticIcons>{children}</StaticIcons>
+                  </main>
+                  <DeveloperPanelLauncher />
+                </div>
               </div>
               <NotificationCenter
                 alerts={activeAlerts}

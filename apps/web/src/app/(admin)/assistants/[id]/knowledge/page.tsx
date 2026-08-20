@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { KnowledgeClient } from "@/components/assistant/knowledge-client";
+import { SnippetVariables } from "@/components/developer-panel/snippet-variables";
 import { SharedKnowledgePanel } from "@/components/assistant/shared-knowledge-panel";
 import { requirePageMember } from "@/lib/authz";
 import {
@@ -100,6 +101,9 @@ export default async function KnowledgePage({
         organization and reach this assistant through a link, managed here or
         in the Library; each one is indexed into concepts an answer can cite.
       </p>
+      {/* The selected Collection lives in a query parameter, so the Developer
+          Panel cannot read it from the route the way it reads the Assistant. */}
+      <SnippetVariables values={{ collectionId: selected?.id }} />
       <KnowledgeClient
         assistantId={id}
         selected={selected}

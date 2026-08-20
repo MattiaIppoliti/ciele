@@ -47,6 +47,20 @@ export function canManageApiKeys(role: Role | null): boolean {
 }
 
 /**
+ * One guard per named capability. The /api/v1 auth seam and the Developer
+ * Panel's Role badges both index this map, so what a key may do and what the
+ * panel says it may do cannot diverge. "member" (any valid key) is deliberately
+ * absent: it guards nothing.
+ */
+export const CAPABILITY_GUARDS = {
+  edit: canEdit,
+  publish: canPublish,
+  manageMembers: canManageMembers,
+  manageApiKeys: canManageApiKeys,
+  changeRoles: canChangeRoles,
+} satisfies Record<string, (role: Role | null) => boolean>;
+
+/**
  * An API key may never carry a Role above its creator's, the key acts as a
  * delegate of the human who minted it, so the ladder caps at their rank.
  */

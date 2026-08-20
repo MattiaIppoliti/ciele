@@ -277,11 +277,21 @@ export function PreviewPanel({
   connectorScope,
   startResizing = false,
   variant = "docked",
+  collapsed: collapsedProp,
+  onCollapsedChange,
 }: {
   assistant: Assistant;
   connectorScope: string | null;
   /** Mount already mid-drag, the panel was opened by dragging the collapsed rail. */
   startResizing?: boolean;
+  /**
+   * Collapsed state, when the mount point owns it. The docked panel shares the
+   * workspace's single right rail with the Developer Panel (#754), so "collapsed"
+   * means "does not hold the rail" and only the launcher can know that. Omitted
+   * (the page variant) falls back to local state.
+   */
+  collapsed?: boolean;
+  onCollapsedChange?: (collapsed: boolean) => void;
   /**
    * `"docked"` is the resizable right-hand column of the assistant editor, a
    * pointer surface, hidden below `md`. `"page"` is the same preview filling a
@@ -377,7 +387,8 @@ export function PreviewPanel({
     setComposerPulse(true);
     window.setTimeout(() => setComposerPulse(false), 1100);
   }
-  const [collapsed, setCollapsed] = useState(false);
+  const [ownCollapsed, setOwnCollapsed] = useState(false);
+  const collapsed = collapsedProp ?? ownCollapsed;
   const { width, fade, resizing, beginResize, containerRef: asideRef } =
     useResizableWidth({
       defaultWidth: PANEL_DEFAULT_WIDTH,
@@ -397,19 +408,14 @@ export function PreviewPanel({
   // button at its top) or for the full-route variant, which is the page.
   useRightRail(asPage || collapsed ? null : { width, animated: !resizing });
 
-  // PreviewPanelLauncher is this component's only mount point, and it
-  // already decided the panel should be open before rendering it, so
-  // `collapsed` just starts false here. It must not re-derive its own
-  // opinion from localStorage on mount (as it once did): that raced the
-  // launcher's decision and could silently re-collapse the panel right
-  // after a "Show preview" click had just opened it.
+  // PreviewPanelLauncher is this component's only docked mount point, and it
+  // owns both the persisted preference and the rail claim, so this component
+  // must not re-derive its own opinion from localStorage on mount (as it once
+  // did): that raced the launcher's decision and could silently re-collapse the
+  // panel right after a "Show preview" click had just opened it.
   function toggleCollapsed(value: boolean) {
-    setCollapsed(value);
-    try {
-      window.localStorage.setItem("preview-panel-collapsed", value ? "1" : "0");
-    } catch {
-      /* private mode */
-    }
+    if (onCollapsedChange) onCollapsedChange(value);
+    else setOwnCollapsed(value);
   }
   const abortRef = useRef<AbortController | null>(null);
   const abortWhenStartedRef = useRef(false);

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { ResizeHandle } from "@/components/ui/resizable-panel";
+import { useShell } from "@/components/shell/shell-provider";
 
 const PreviewPanel = dynamic(
   () => import("./preview-panel").then((module) => module.PreviewPanel),
@@ -29,6 +30,11 @@ const COLLAPSED_KEY = "preview-panel-collapsed";
  * this component's own "open" state, silently re-collapsing the panel right
  * after the launcher had just opened it and making the first "Show preview"
  * click on a new assistant appear to do nothing.
+ *
+ * Open/collapsed is now the workspace's **right rail** (#754), which the preview
+ * shares with the Developer Panel: whichever one the user opens takes the rail,
+ * and taking it collapses the other. Once mounted the preview *stays* mounted
+ * while collapsed, so collapsing it does not throw away the conversation.
  */
 export function PreviewPanelLauncher({
   assistant,
@@ -38,12 +44,14 @@ export function PreviewPanelLauncher({
   connectorScope: string | null;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const { rightRail, openRightRail, claimRightRail, closeRightRail } = useShell();
+  const [mounted, setMounted] = useState(false);
   const [viaDrag, setViaDrag] = useState(false);
   // The "Preview" section *is* the preview; docking a second copy of
   // it alongside would show the same chat twice, with two separate
   // conversations.
   const onPreviewRoute = pathname.endsWith("/preview");
+  const open = rightRail === "preview";
 
   // Restore the user's choice; with none stored, start collapsed on narrow
   // viewports so the panel doesn't crush the settings form (client-only to
@@ -52,28 +60,46 @@ export function PreviewPanelLauncher({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const stored = window.localStorage.getItem(COLLAPSED_KEY);
-      setOpen(stored !== null ? stored === "0" : window.innerWidth >= 1280);
+      const wanted = stored !== null ? stored === "0" : window.innerWidth >= 1280;
+      if (wanted) {
+        setMounted(true);
+        // Claim, not open: this fires on every navigation into an Assistant
+        // section, and must not evict a Developer Panel opened on the page
+        // before.
+        claimRightRail("preview");
+      }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [claimRightRail]);
 
-  function openExplicitly() {
+  function remember(collapsed: boolean) {
     try {
-      window.localStorage.setItem(COLLAPSED_KEY, "0");
+      window.localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch {
       /* private mode */
     }
-    setOpen(true);
+  }
+
+  function openExplicitly() {
+    remember(false);
+    setMounted(true);
+    openRightRail("preview");
   }
 
   if (onPreviewRoute) return null;
 
-  if (open) {
+  if (mounted) {
     return (
       <PreviewPanel
         assistant={assistant}
         connectorScope={connectorScope}
         startResizing={viaDrag}
+        collapsed={!open}
+        onCollapsedChange={(collapsed) => {
+          remember(collapsed);
+          if (collapsed) closeRightRail("preview");
+          else openRightRail("preview");
+        }}
       />
     );
   }

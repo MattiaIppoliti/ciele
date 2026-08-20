@@ -49,6 +49,33 @@ The runtime is framework-free, so this app hands it the two Next-specific facts 
 `registerRuntimeHost` in `src/instrumentation.ts`. Anything the runtime needs from Next goes through
 a port there, never an import.
 
+## The Developer Panel
+
+Per-page CLI/cURL/MCP snippets (#754/#755). Three conventions decide whether it stays honest:
+
+- **One list.** `EndpointSpec` in `src/lib/api-v1/openapi.ts` carries `domain`, `capability`, `cli`
+  and `mcp` beside the fields the OpenAPI document already read (the document builder ignores the new
+  four). The MCP *tool name* lives on the domain in `src/lib/developer-panel/domains.ts`, because the
+  14 coarse tools map onto the 18 domains many-to-one; only the `action` is per-endpoint. Per-domain
+  copy (titles, agent prompts, docs links) lives there too, so `buildOpenApiDocument` never carries
+  UI strings.
+- **Pages declare, they never derive.** `apiDomains` on the `shell/nav.ts` entries, and
+  `SETTINGS_API_DOMAINS` in `settings/settings-nav.ts` for the Settings dialog's tab routes. No claim
+  → no button, which is why `/insights` and SETUP Style show none. Ask
+  `panelDomainsForPath(pathname)`, never `apiDomains` directly: claiming a domain and being able to
+  present it are two facts, and asking them separately let them disagree.
+- **Three drift tests, because the templates are prose about other packages.** `openapi.test.ts`
+  derives each endpoint's real capability from the ops its route file references;
+  `developer-panel/cli-fidelity.test.ts` reads `packages/cli` and `packages/mcp` **sources** and
+  rejects a noun, verb, flag, action or argument that does not exist; `catalogue.test.ts` fails when a
+  claimed domain has nothing to present. A wrong snippet is worse than no snippet, someone scripts
+  against it. Adding a domain means filling all three or failing CI.
+
+The panel is a client component; the registry imports `@ciele/ops`, so the catalogue is built
+server-side and fetched from `/api/developer-panel` on open rather than imported. The one new seam is
+the pure builder in `developer-panel/snippets.ts` (placeholder substitution, the absent-CLI case,
+body shapes, the deployment's own origin), tested directly, since vitest ignores `.tsx`.
+
 ## Boundaries the linter enforces
 
 These are ESLint errors, not style preferences (`eslint.config.mjs`):
