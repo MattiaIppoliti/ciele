@@ -23,8 +23,8 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Das Tar-Archiv enthält seine Laufzeitabhängigkeiten. Der Befehl installed
-benötigt das Repository nicht mehr.
+Das Tarball enthält seine Laufzeitabhängigkeiten. Der Befehl installed benötigt
+das Repository nicht mehr.
 
 Nachdem `@ciele/cli` in npm veröffentlicht wurde, installiert
 `npm install --global @ciele/cli` dasselbe Artefakt.
@@ -64,7 +64,7 @@ Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
 den gespeicherten Ursprung. Der gehostete Ursprung ist die letzte
 Standardeinstellung.
 
-## Automatisierungsausgabe verwenden
+## Automatisierungs-Ausgabe verwenden
 
 Fügen Sie `--json` zu einem Befehl hinzu, um eine maschinenlesbare Ausgabe zu
 erhalten.
@@ -92,6 +92,26 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
+### Quell-Links
+
+Eine Source antwortet für die mit ihr verknüpften Assistants. Diese Befehle
+lesen und ändern die Links.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` listet jede Quelle auf, die der Organisation gehört, und zwar
+für alle Assistenten.
+
+`sources link` ersetzt den Link-Satz. Eine leere Liste entfernt jeden Link, und
+die Quelle antwortet nicht mehr.
+
+`sources direct-access` entscheidet, ob dieser eine Assistant einem Besucher die
+Originaldatei geben kann.
+
 ## Befehle für Vorgänge und Organisationen
 
 ```bash
@@ -113,14 +133,14 @@ ciele providers list
 ciele sso connection
 ```
 
-Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltens-Flow kann
-nicht gelöscht werden.
+Befehle, die Daten löschen, erfordern `--yes`. Der Standard-Verhaltensablauf
+kann nicht gelöscht werden.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
 Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
 einen Patch akzeptiert.
 
-## Beispiel für eine CI-Prüfung
+## Beispiel für einen CI-Check
 
 ```bash
 export CIELE_API_KEY="ciele_sk_..."

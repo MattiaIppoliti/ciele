@@ -5,7 +5,7 @@ description: Aprende los términos estables que Ciele utiliza en el producto y e
 
 ## Organización
 
-Una Organización posee miembros, Asistentes, Servicios de ayuda, conexiones con
+Una Organización posee miembros, Asistentes, Help Desks, conexiones con
 proveedores, claves de API, Habilidades y datos operativos.
 
 ## Asistente
@@ -14,11 +14,23 @@ Un Asistente es un agente conversacional configurado. Tiene identidad,
 conocimiento, flujos, herramientas, un modelo, apariencia y estado de
 publicación.
 
-## Colección de conocimientos
+## Fuente y colección de conocimientos
 
-Una colección de conocimientos pertenece a un asistente. Contiene Fuentes,
-Conceptos y preguntas frecuentes seleccionadas que se utilizan para dar
-respuestas fundamentadas.
+Una Fuente es un sitio web, un archivo, un texto o un contenido de preguntas
+frecuentes original. La ingesta convierte una Fuente en Conceptos, los
+documentos que permiten realizar búsquedas y que sustentan una respuesta
+fundamentada.
+
+Las Fuentes pertenecen a la Organización. Una colección de conocimiento es el
+contenedor de la organización que las almacena.
+
+## Enlace de la fuente
+
+Un enlace conecta una Fuente con un Asistente. Un Asistente busca en una Fuente
+solo a través de un enlace.
+
+El enlace también contiene **Direct access**, que decide si el Asistente puede
+proporcionar el archivo original a un Visitante.
 
 ## Flujo
 
@@ -31,7 +43,7 @@ mensaje apto cuando ningún flujo anterior gana.
 ## Publicación
 
 Una publicación es una instantánea inmutable del asistente. El widget utiliza la
-Publicación activa, no el borrador actual del administrador.
+publicación activa, no el borrador actual del administrador.
 
 ## Conversación
 
@@ -39,7 +51,7 @@ Una Conversación almacena los mensajes del Visitante y del Asistente, las parte
 de las respuestas, las citas, los seguimientos del tiempo de ejecución y los
 metadatos de la sesión.
 
-## Servicio de asistencia
+## Centro de ayuda
 
 Un Help Desk define uno o más canales de contacto. Un Asistente puede sugerir un
 Help Desk relevante durante la escalada.
@@ -51,5 +63,5 @@ Puede enlazar al mensaje exacto de la conversación.
 
 ## Objetivo y alerta
 
-Un objetivo ejecuta una comprobación programada de respuestas. Un objetivo
-fallido crea una alerta para un administrador.
+Un objetivo ejecuta una comprobación de respuesta programada. Cuando un objetivo
+falla, se crea una alerta para un administrador.

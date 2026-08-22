@@ -7,7 +7,10 @@ import { Cards, Card } from 'fumadocs-ui/components/card';
 
 Ciele provides three interfaces for programmatic administration. Each interface uses the same operations and role checks as the administrator console.
 
+To find the operation behind a console control, open the [Developer Panel](/developers/developer-panel) on that page.
+
 <Cards>
+  <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
   <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
   <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
   <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
@@ -18,13 +21,13 @@ Ciele provides three interfaces for programmatic administration. Each interface 
 
 All three interfaces require an Organization API key. The assigned Role controls the operations that the key can use.
 
-```mermaid
+<Mermaid
+  title="Three clients, one API, one set of operations"
+  chart={`
 flowchart TB
-  subgraph Clients
-    CLI["Ciele CLI"]
-    MCP["Ciele MCP server"]
-    HTTP["HTTP client"]
-  end
+  CLI["Ciele CLI"]
+  MCP["Ciele MCP server"]
+  HTTP["HTTP client"]
   API["Ciele API v1"]
   OPS["Shared operations"]
   DB[("Organization data")]
@@ -33,7 +36,8 @@ flowchart TB
   HTTP --> API
   API --> OPS
   OPS --> DB
-```
+`}
+/>
 
 The hosted service uses `https://platform.ciele.app` by default. A self-hosted installation uses its own public origin.
 

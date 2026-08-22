@@ -13,7 +13,7 @@
     "translate:docs": "node scripts/translate-docs.mjs",
     "check:ste": "node scripts/check-ste.mjs",
     "check:links": "node scripts/check-links.mjs",
-    "test": "node --test scripts/*.test.mjs"
+    "test": "node --test scripts/*.test.mjs && node scripts/check-ste.mjs && node scripts/check-links.mjs"
   },
   "dependencies": {
     "@agent-hub/ui": "workspace:*",
@@ -33,10 +33,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "postcss": "^8",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }

@@ -10,14 +10,26 @@ provider, chiavi API, Competenze e dati operativi.
 
 ## Assistente
 
-Un Assistente è un agente conversazionale configurato. Ha un'identità,
-Conoscenza, Flussi, strumenti, un modello, un aspetto e uno stato di
+Un Assistente è un agente conversazionale configurato. Ha un'identità, una
+Conoscenza, dei Flussi, degli strumenti, un modello, un aspetto e uno stato di
 pubblicazione.
 
-## Raccolta di conoscenze
+## Fonte e raccolta di conoscenze
 
-Una Knowledge Collection appartiene a un Assistente. Contiene Fonti, Concetti e
-FAQ curate, utilizzate per fornire risposte fondate.
+Una Fonte è un sito web, un file, un testo o un contenuto FAQ originale.
+L'ingestione trasforma una Fonte in Concetti, i documenti ricercabili alla base
+di una risposta fondata.
+
+Le fonti appartengono all'Organizzazione. Una Knowledge Collection è il
+contenitore dell'Organization in cui vengono archiviate.
+
+## Link alla fonte
+
+Un link collega una Fonte a un Assistente. Un Assistente cerca in una Fonte solo
+tramite un link.
+
+Il collegamento contiene anche **Direct access**, che decide se l'Assistente può
+fornire a un Visitatore il file originale.
 
 ## Flusso
 
@@ -48,7 +60,7 @@ un Help Desk pertinente durante l'escalation.
 Un miglioramento è un elemento di revisione per un problema di qualità della
 risposta. Può collegarsi al messaggio esatto della Conversazione.
 
-## Obiettivo e Avviso
+## Obiettivo e avviso
 
-Un Obiettivo esegue un controllo programmato della risposta. Un Goal non
-riuscito crea un Avviso per un amministratore.
+Un Goal esegue un controllo delle risposte pianificato. Un Goal non riuscito
+crea un Avviso per un amministratore.

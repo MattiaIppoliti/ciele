@@ -29,7 +29,16 @@ export async function register() {
     // Dev and preview deployments may point tenant-configured requests at
     // plain-HTTP / loopback mocks; production never does. The port defaults to
     // strict, so only this registration ever relaxes it (#577).
-    allowRelaxedEgress: () => process.env.VERCEL_ENV !== "production",
+    //
+    // Tested positively, never as "not production": `VERCEL_ENV` is unset on
+    // every non-Vercel host, so `!== "production"` read an absent variable as a
+    // dev signal and relaxed the policy on all self-host, Docker and Desktop
+    // installs. `NODE_ENV` is pinned to production by the Dockerfile and by
+    // `next start`, so this keeps the carve-out for `next dev` only.
+    allowRelaxedEgress: () =>
+      process.env.NODE_ENV !== "production" ||
+      process.env.VERCEL_ENV === "preview" ||
+      process.env.VERCEL_ENV === "development",
   });
 
   await import("@/ee/register");

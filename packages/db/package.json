@@ -18,8 +18,9 @@
     "@electric-sql/pglite": "^0.5.4",
     "@electric-sql/pglite-pgvector": "^0.0.5",
     "@types/node": "^20.19.43",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9.39.4",
-    "typescript": "^5",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "^4.1.9"
   },
   "scripts": {

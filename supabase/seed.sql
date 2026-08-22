@@ -100,16 +100,9 @@ update public.assistants
 set organization_id = '00000000-0000-0000-0000-000000000001'
 where organization_id is null;
 
--- Convenience for trying the app: lets any authenticated user join the
--- demo org as owner. Remove in a real deployment.
-create or replace function public.join_demo_org()
-returns uuid language plpgsql security definer set search_path = public as $$
-begin
-  if auth.uid() is null then
-    raise exception 'not authenticated';
-  end if;
-  insert into organization_members (organization_id, user_id, role)
-  values ('00000000-0000-0000-0000-000000000001', auth.uid(), 'owner')
-  on conflict (organization_id, user_id) do nothing;
-  return '00000000-0000-0000-0000-000000000001'::uuid;
-end $$;
+-- `join_demo_org()` used to live here: a SECURITY DEFINER function that made any
+-- authenticated caller an **owner** of the demo org. It was reachable straight
+-- from PostgREST, so it is gone (see
+-- migrations/20260820120000_drop_join_demo_org.sql). Add a member to the demo org
+-- with an explicit insert below if you want one locally; do not reintroduce a
+-- self-service owner grant.

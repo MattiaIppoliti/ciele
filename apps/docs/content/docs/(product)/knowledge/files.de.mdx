@@ -1,17 +1,17 @@
 ---
 title: Dateien und Text
-description: Laden Sie eine Datei hoch oder fügen Sie Text zu einer Assistant Knowledge Collection hinzu.
+description: Laden Sie eine Datei hoch oder fügen Sie Text hinzu und wählen Sie aus, welche Assistenten darauf antworten sollen.
 ---
 
 ## Datei hochladen
 
-1. Öffnen Sie den Assistant.
+1. Öffnen Sie den Assistenten.
 2. Wählen Sie **Knowledge**.
 3. Fügen Sie eine Dateiquelle hinzu.
 4. Wählen Sie die Datei aus.
 5. Starten Sie die Aufnahme.
 6. Warten Sie, bis der Status der Quelle **Ready** lautet.
-7. Testen Sie eine Antwort und deren Zitat.
+7. Testen Sie eine Antwort und deren Zitierung.
 
 Ciele speichert die Originaldatei und extrahiert unterstützten Text für die
 Aufnahme. Der Status „Source“ zeigt an, ob Extraktion und Indizierung
@@ -38,3 +38,21 @@ erzeugt.
 
 Durch das Löschen einer Quelle werden ihre Konzepte aus dem aktiven
 Wissensgraphen und dem Suchindex entfernt.
+
+## Entfernen im Vergleich zu Löschen
+
+Eine Datei-Quelle kann für mehr als einen Assistenten antworten. Der
+Assistant-Editor bietet daher zwei Aktionen an.
+
+- **Remove from this Assistant** löscht einen Link. Die anderen Assistenten
+  behalten die Datei.
+- **Delete** entfernt die Quelle für jeden verknüpften Assistenten. In der
+  Bestätigung wird jeder einzeln benannt.
+
+Wenn nur dieser Assistent aus der Datei antwortet, löscht der Editor sie direkt.
+
+## Geben Sie dem Besucher die Originaldatei
+
+Aktivieren Sie **Direct access** in der [Bibliothek](/knowledge/library), damit
+der Assistent die Originaldatei an seine Zitierung anhängen kann. Die
+Einstellung gilt für einen Assistant-Link und ist standardmäßig deaktiviert.

@@ -105,6 +105,12 @@ async function verifyOne(
 ): Promise<"pass" | "fail" | null> {
   try {
     const parts = candidate.content as ChatReplyPart[];
+    // Only the written answer is graded. A Reply Component's props are NOT: no
+    // pass here reads them, and none should start to without deciding how a
+    // table of cells is checked against a Concept. That is why the render
+    // catalogue's entries must arrange retrieved data rather than compute a new
+    // claim (`render-tools.ts`), and why `verifier.test.ts` locks the omission
+    // as a choice rather than leaving it an accident.
     const answer = parts
       .filter(
         (p): p is Extract<ChatReplyPart, { type: "text" }> =>

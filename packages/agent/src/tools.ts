@@ -9,6 +9,7 @@ import type {
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type {
+  ChatReplyPart,
   EntityRecordsFetcher,
   KnowledgeDocument,
   KnowledgeSearcher,
@@ -33,6 +34,7 @@ import {
   READ_KNOWLEDGE_SOURCE_SPEC,
   type ApiResponseStore,
 } from "./api-catalog-tools";
+import { RENDER_TOOL_SPECS, type RenderToolSpec } from "./render-tools";
 
 /**
  * Runtime Tool Registry: the pluggable tool surface of the agent loop
@@ -80,8 +82,15 @@ export interface ToolRuntimeContext {
    * labelled rows rather than a one-line summary (the API card's
    * endpoint/method/status/response). Bound per call by {@link instrument}; a
    * spec calls it, never the other way round.
+   *
+   * `result` is the full operator record (stored trace + Inbox card); `shown` is
+   * the subset safe for an anonymous Visitor's Thinking panel. Omit `shown` only
+   * when every field is safe for any audience.
    */
-  recordResult?: (result: Record<string, unknown>) => void;
+  recordResult?: (
+    result: Record<string, unknown>,
+    shown?: Record<string, unknown>
+  ) => void;
   /** Collector the reply's Sources part is built from (see actions.ts). */
   usedSources: KnowledgeSearchResult[];
   /**
@@ -130,11 +139,25 @@ export interface ToolRuntimeContext {
    * (#576).
    */
   narrate?: (text: string, tool: string) => void;
+  /**
+   * Sink for a render-only tool's component part (`render-tools.ts`). Same
+   * shape and same reason as {@link narrate}: the *collector* belongs to the
+   * turn (agentic-search/run.ts), which owns the reply parts, so a component
+   * the Visitor saw is persisted with the answer and shows up in the Inbox
+   * transcript. Absent leaves the render catalogue unregistered, because a
+   * component that streams but is never saved would make the live chat and the
+   * transcript disagree about what the assistant said.
+   */
+  showPart?: (part: ChatReplyPart) => void;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
 }
 
-/** One registry entry; `execute` returns the value handed back to the model. */
+/**
+ * One registry entry; `execute` returns the value handed back to the model.
+ * A render-only entry is a {@link RenderToolSpec} instead: it has a `part`
+ * builder and no `execute`, and {@link instrument} takes either.
+ */
 export interface RuntimeToolSpec {
   name: string;
   description: string;
@@ -498,12 +521,147 @@ const BUILT_IN_SPECS: RuntimeToolSpec[] = [
 const BUILT_IN_DEFAULTS: Record<string, boolean> = {
   fetchUrl: false,
   remember: true,
+  // Generative UI is opt-in: an assistant nobody configured for it must keep
+  // answering in text only.
+  renderTable: false,
 };
 
 let callSeq = 0;
 
 /**
- * Wraps a spec into an AI-SDK tool whose execute emits the
+ * The `tool-start` half of the lifecycle. Both instrumented shapes emit it
+ * through here so there is one definition of the event's payload.
+ */
+function emitToolStart(
+  ctx: ToolRuntimeContext,
+  spec: { name: string; label: (input: Record<string, unknown>) => string },
+  callId: string,
+  input: Record<string, unknown>
+): void {
+  ctx.emit({
+    type: "tool-start",
+    callId,
+    tool: spec.name,
+    label: spec.label(input),
+    input,
+    iteration: ctx.loop?.iteration,
+    iterationLimit: ctx.loop?.limit,
+  });
+}
+
+/** The `tool-end` half; `operatorResult` is the tier `turn.ts` strips for clients. */
+function emitToolEnd(
+  ctx: ToolRuntimeContext,
+  tool: string,
+  callId: string,
+  outcome: {
+    ok: boolean;
+    startedAt: number;
+    summary?: string;
+    result?: Record<string, unknown>;
+    operatorResult?: Record<string, unknown>;
+  }
+): void {
+  ctx.emit({
+    type: "tool-end",
+    callId,
+    tool,
+    ok: outcome.ok,
+    summary: outcome.summary,
+    result: outcome.result,
+    ...(outcome.operatorResult ? { operatorResult: outcome.operatorResult } : {}),
+    durationMs: Date.now() - outcome.startedAt,
+  });
+}
+
+/**
+ * Everything both shapes do before the tool's own work runs: mint the call id,
+ * spend the iteration, narrate the phase, open the lifecycle.
+ *
+ * Narration happens before the call, not after: the line says what is *about*
+ * to happen, and the Visitor is watching it happen.
+ */
+function openToolCall(
+  spec: RuntimeToolSpec | RenderToolSpec,
+  ctx: ToolRuntimeContext,
+  rawInput: Record<string, unknown>,
+  options: { toolCallId?: string } | undefined
+): { callId: string; startedAt: number; input: Record<string, unknown> } {
+  const callId = options?.toolCallId ?? `call-${++callSeq}`;
+  const startedAt = Date.now();
+  ctx.loop?.spend();
+  const { progress, args: input } = takeProgress(rawInput);
+  if (progress) ctx.narrate?.(progress, spec.name);
+  emitToolStart(ctx, spec, callId, input);
+  return { callId, startedAt, input };
+}
+
+/**
+ * The input schema the model is offered: the spec's own, plus the
+ * Simplified-thinking narration field while the toggle is on. `takeProgress`
+ * strips the line before the tool sees its arguments, and `stripNonProps`
+ * (`reply-components.ts`) does the same for the streamed-arguments path, which
+ * never reaches an execute.
+ */
+function offeredSchema(
+  spec: RuntimeToolSpec | RenderToolSpec,
+  ctx: ToolRuntimeContext
+): z.ZodObject<z.ZodRawShape> {
+  return ctx.narrate
+    ? spec.inputSchema.extend({ progress: PROGRESS_FIELD })
+    : spec.inputSchema;
+}
+
+/**
+ * A render-only tool (`render-tools.ts`): no server work and no result the
+ * model reads for information, the call's whole effect is the Reply Component
+ * it puts in front of the Visitor. It still runs the full lifecycle, so it gets
+ * its Thinking-panel row, its duration and its narration like any other tool.
+ *
+ * A `part` builder that returns null could make nothing of arguments the schema
+ * already accepted; that should not be reachable, and it reaches the model as a
+ * tool error it recovers from by answering in prose rather than as a throw.
+ */
+function instrumentRender(spec: RenderToolSpec, ctx: ToolRuntimeContext): Tool {
+  return tool({
+    description: spec.description,
+    inputSchema: offeredSchema(spec, ctx),
+    execute: async (rawInput: Record<string, unknown>, options) => {
+      const { callId, startedAt, input } = openToolCall(spec, ctx, rawInput, options);
+      try {
+        const part = spec.part(input, callId);
+        if (part) {
+          // The collector belongs to the turn (agentic-search/run.ts owns the
+          // reply parts), so the component persists with the answer.
+          ctx.showPart?.(part);
+          ctx.emit({ type: "part", part });
+        }
+        emitToolEnd(ctx, spec.name, callId, {
+          ok: Boolean(part),
+          summary: part ? "Shown to the user" : "Nothing renderable",
+          startedAt,
+        });
+        return withBudgetNote(
+          part
+            ? { shown: true, note: spec.ack }
+            : {
+                error:
+                  "Those arguments had nothing renderable in them. Answer in prose instead.",
+              },
+          ctx.loop
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Tool call failed";
+        emitToolEnd(ctx, spec.name, callId, { ok: false, summary: message, startedAt });
+        return withBudgetNote({ error: message }, ctx.loop);
+      }
+    },
+  });
+}
+
+/**
+ * Wraps an ordinary spec into an AI-SDK tool whose execute emits the
  * tool-start/tool-end lifecycle: structured payloads (tool name, model input,
  * outcome summary, duration) instead of label-only steps. A throwing execute
  * becomes an `{ error }` result for the model plus an `ok: false` tool-end,
@@ -516,34 +674,19 @@ let callSeq = 0;
  * one step's parallel calls cost one iteration by design, so a shared slot
  * would attribute one call's result to another.
  */
-function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
+function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
   return tool({
     description: spec.description,
-    inputSchema: ctx.narrate
-      ? spec.inputSchema.extend({ progress: PROGRESS_FIELD })
-      : spec.inputSchema,
+    inputSchema: offeredSchema(spec, ctx),
     execute: async (rawInput: Record<string, unknown>, options) => {
-      const callId = options?.toolCallId ?? `call-${++callSeq}`;
-      const startedAt = Date.now();
-      ctx.loop?.spend();
-      // Narrate before the call, not after: the line says what is *about* to
-      // happen, and the Visitor is watching it happen.
-      const { progress, args: input } = takeProgress(rawInput);
-      if (progress) ctx.narrate?.(progress, spec.name);
-      ctx.emit({
-        type: "tool-start",
-        callId,
-        tool: spec.name,
-        label: spec.label(input),
-        input,
-        iteration: ctx.loop?.iteration,
-        iterationLimit: ctx.loop?.limit,
-      });
+      const { callId, startedAt, input } = openToolCall(spec, ctx, rawInput, options);
       let recorded: Record<string, unknown> | undefined;
+      let recordedShown: Record<string, unknown> | undefined;
       const callCtx: ToolRuntimeContext = {
         ...ctx,
-        recordResult: (result) => {
+        recordResult: (result, shown) => {
           recorded = result;
+          recordedShown = shown;
         },
       };
       try {
@@ -553,32 +696,37 @@ function instrument(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool {
           output !== null &&
           "error" in output &&
           Boolean((output as { error?: unknown }).error);
-        ctx.emit({
-          type: "tool-end",
-          callId,
-          tool: spec.name,
+        emitToolEnd(ctx, spec.name, callId, {
           ok: !failed,
           summary: spec.summarize?.(output),
-          result: recorded,
-          durationMs: Date.now() - startedAt,
+          // Two tiers when the tool declared one: the Visitor sees `result`,
+          // the stored trace and the Inbox see `operatorResult`.
+          result: recordedShown ?? recorded,
+          ...(recordedShown && recorded ? { operatorResult: recorded } : {}),
+          startedAt,
         });
         return withBudgetNote(output, ctx.loop);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Tool call failed";
-        ctx.emit({
-          type: "tool-end",
-          callId,
-          tool: spec.name,
+        emitToolEnd(ctx, spec.name, callId, {
           ok: false,
           summary: message,
           result: recorded,
-          durationMs: Date.now() - startedAt,
+          startedAt,
         });
         return withBudgetNote({ error: message }, ctx.loop);
       }
     },
   });
+}
+
+/** Registry entry to AI-SDK tool. The one check that tells the shapes apart. */
+function instrument(
+  spec: RuntimeToolSpec | RenderToolSpec,
+  ctx: ToolRuntimeContext
+): Tool {
+  return "part" in spec ? instrumentRender(spec, ctx) : instrumentAction(spec, ctx);
 }
 
 /** Assembles the turn's ToolSet for the agent loop (see module docs above). */
@@ -592,7 +740,15 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   if (ctx.searchMemories) {
     toolset[searchMemoriesSpec.name] = instrument(searchMemoriesSpec, ctx);
   }
-  for (const spec of BUILT_IN_SPECS) {
+  // Built-ins and the render catalogue share one gate: the assistant's override
+  // over the runtime default. A Reply Component additionally needs a part
+  // collector, one that streams to the Visitor but is never persisted would
+  // leave the Inbox transcript disagreeing with what the chat actually showed.
+  const gated: Array<RuntimeToolSpec | RenderToolSpec> = [
+    ...BUILT_IN_SPECS,
+    ...(ctx.showPart ? RENDER_TOOL_SPECS : []),
+  ];
+  for (const spec of gated) {
     const enabled =
       overrides[spec.name as keyof typeof overrides] ??
       BUILT_IN_DEFAULTS[spec.name];
@@ -610,12 +766,21 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   // with a described catalogue behind them: an assistant with no integration
   // must not be told an API exists. This is the ONLY way an org reaches its own
   // HTTP API from a turn: the per-endpoint custom tools it replaced are gone.
-  const integrationNeedsIdentity = ctx.apiIntegration?.endpoints.some((endpoint) =>
-    endpoint.params?.some((param) =>
-      param.value?.includes("{{identity.")
-    )
-  );
-  const verifiedSso = ctx.toolSubject?.type === "sso" && Boolean(ctx.toolSubject.subjectId);
+  // A pin needs the value it interpolates, not merely *some* verified identity.
+  // `{{identity.claim}}` against a connection with no configured claim (or a
+  // token that omitted it) used to register the tools anyway, and the pin then
+  // resolved to nothing: the promise in lib/sso/types.ts is that a per-user
+  // feature stays OFF for that user, so each placeholder is checked for the
+  // value it actually needs.
+  const pinUses = (placeholder: string) =>
+    ctx.apiIntegration?.endpoints.some((endpoint) =>
+      endpoint.params?.some((param) => param.value?.includes(placeholder))
+    ) ?? false;
+  const integrationNeedsIdentity = pinUses("{{identity.");
+  const verifiedSso =
+    ctx.toolSubject?.type === "sso" &&
+    Boolean(ctx.toolSubject.subjectId) &&
+    (!pinUses("{{identity.claim}}") || Boolean(ctx.toolSubject.claimValue));
   if (
     ctx.apiIntegration &&
     ctx.apiIntegration.endpoints.length > 0 &&

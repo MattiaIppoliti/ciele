@@ -1,3 +1,4 @@
+import { redactFlowsSecrets } from "@agent-hub/core";
 import { notFound, redirect } from "next/navigation";
 import { AssistantOverview } from "@/components/assistant/assistant-overview";
 import { legacyAssistantSectionHref } from "@/components/shell/nav";
@@ -23,7 +24,7 @@ export default async function AssistantPage({
   if (!assistant) notFound();
 
   const [flows, collections, publications] = await Promise.all([
-    db.listFlows(id),
+    db.listFlows(id).then(redactFlowsSecrets),
     db.listCollections(id),
     db.listPublications(id),
   ]);

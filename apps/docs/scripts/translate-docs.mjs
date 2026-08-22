@@ -9,6 +9,10 @@
  *
  *   LARA_ACCESS_KEY_ID=… LARA_ACCESS_KEY_SECRET=… pnpm translate:docs
  *
+ * The two variables may also sit in apps/docs/.env.local, which .gitignore
+ * excludes. That is what makes the run repeatable without a human pasting a
+ * secret each time. Never commit them, and never put them in .env.example.
+ *
  * Flags:
  *   --lang it,es     only these targets (default: every language but English)
  *   --only <substr>  only source paths containing <substr>
@@ -24,9 +28,28 @@
 
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { AccessKey, Translator } from '@translated/lara';
 import { fromBlocks, textsOf, toBlocks, validate } from './mdx-blocks.mjs';
+
+/**
+ * Load apps/docs/.env.local into process.env, without a dependency and without
+ * overriding anything the caller already exported. Only the two Lara keys are
+ * read: this is a credential loader, not a general dotenv, and widening it
+ * would make the script's inputs impossible to reason about.
+ */
+function loadLocalEnv(file) {
+  if (!existsSync(file)) return;
+  const wanted = new Set(['LARA_ACCESS_KEY_ID', 'LARA_ACCESS_KEY_SECRET']);
+  for (const line of readFileSync(file, 'utf8').split('\n')) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    if (!wanted.has(key) || process.env[key]) continue;
+    process.env[key] = rawValue.trim().replace(/^["']|["']$/g, '');
+  }
+}
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CONTENT = path.join(ROOT, 'content/docs');
@@ -167,11 +190,12 @@ function chunk(texts) {
 }
 
 function createClient() {
+  loadLocalEnv(path.join(ROOT, '.env.local'));
   const id = process.env.LARA_ACCESS_KEY_ID;
   const secret = process.env.LARA_ACCESS_KEY_SECRET;
   if (!id || !secret) {
     throw new Error(
-      'Set LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET (Lara Translate access key). They are never read from a file in this repo.',
+      'Set LARA_ACCESS_KEY_ID and LARA_ACCESS_KEY_SECRET (Lara Translate access key), in the environment or in apps/docs/.env.local. Neither is ever committed.',
     );
   }
   return new Translator(new AccessKey(id, secret));

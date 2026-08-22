@@ -4,6 +4,8 @@
     "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // TS 7 defaults `types` to []; the @types this workspace depends on are named here.
+    "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

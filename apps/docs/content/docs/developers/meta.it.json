@@ -5,6 +5,7 @@
   "root": true,
   "pages": [
     "index",
+    "developer-panel",
     "api-keys",
     "api",
     "cli",

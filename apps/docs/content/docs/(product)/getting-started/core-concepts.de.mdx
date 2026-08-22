@@ -1,5 +1,5 @@
 ---
-title: Zentrale Konzepte
+title: Kernkonzepte
 description: Lernen Sie die festen Begriffe, die Ciele im Produkt und in der Dokumentation verwendet.
 ---
 
@@ -14,24 +14,36 @@ Ein Assistent ist ein konfigurierter Konversationsagent. Er verfügt über eine
 Identität, Wissen, Flows, Tools, ein Modell, ein Erscheinungsbild und einen
 Veröffentlichungsstatus.
 
-## Wissenssammlung
+## Quelle und Wissenssammlung
 
-Eine Wissenssammlung gehört zu einem Assistenten. Sie enthält Quellen, Konzepte
-und kuratierte FAQs, die für fundierte Antworten verwendet werden.
+Eine Quelle ist eine ursprüngliche Website, eine Datei, ein Text oder
+FAQ-Inhalt. Durch die Aufnahme wird eine Quelle in Konzepte umgewandelt, die
+durchsuchbaren Dokumente, die einer fundierten Antwort zugrunde liegen.
+
+Die Quellen gehören zur Organisation. Eine Knowledge Collection ist der
+Container der Organisation, in dem sie gespeichert werden.
+
+## Quelllink
+
+Ein Link verbindet eine Quelle mit einem Assistenten. Ein Assistant durchsucht
+eine Source nur über einen Link.
+
+Der Link enthält auch **Direct access**, was entscheidet, ob der Assistent einem
+Besucher die Originaldatei zur Verfügung stellen kann.
 
 ## Flow
 
 Ein Flow ist eine geordnete Routing-Regel. Er enthält einen Trigger, verfügbare
 Bedingungen und geordnete Antwortaktionen.
 
-Der gesperrte **Default behavior**-Flow bleibt der letzte. Er verarbeitet eine
-berechtigte Nachricht, wenn kein früherer Flow gewinnt.
+Der gesperrte **Default behavior**-Flow bleibt an letzter Stelle. Er verarbeitet
+eine berechtigte Nachricht, wenn kein früherer Flow gewinnt.
 
 ## Veröffentlichung
 
 Eine Veröffentlichung ist ein unveränderlicher Snapshot eines Assistenten. Das
 Widget verwendet die aktive Veröffentlichung, nicht den aktuellen
-Administratorentwurf.
+Administrator-Entwurf.
 
 ## Konversation
 
@@ -50,5 +62,5 @@ Antwortqualität. Sie kann auf die genaue Konversationsnachricht verweisen.
 
 ## Ziel und Warnung
 
-Ein Ziel führt eine geplante Antwortprüfung durch. Ein fehlgeschlagenes Ziel
-erzeugt eine Warnung für einen Administrator.
+Ein Goal führt eine geplante Antwortprüfung durch. Ein fehlgeschlagenes Goal
+erstellt eine Warnung für einen Administrator.

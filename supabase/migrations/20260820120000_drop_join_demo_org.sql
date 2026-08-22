@@ -1,0 +1,23 @@
+-- Drops `public.join_demo_org()`, a demo convenience that became a privilege
+-- escalation primitive.
+--
+-- The function was SECURITY DEFINER, checked only `auth.uid() is not null`, and
+-- inserted the caller into the hardcoded demo Organization
+-- ('00000000-0000-0000-0000-000000000001') with role **owner**, bypassing the
+-- "admins add members" insert policy. Its own comment in 0023 said "Remove in a
+-- real deployment"; that never happened, and 0018/0026 re-granted `execute` to
+-- `authenticated`, so it stayed callable.
+--
+-- The server action that wrapped it is unreferenced (and Turbopack drops unused
+-- Server Actions from the production manifest), but the grant made it reachable
+-- straight from PostgREST: any signed-in user could
+-- `POST /rest/v1/rpc/join_demo_org` with the browser-visible anon key and their
+-- own session JWT, then read and rewrite everything that Organization owns.
+-- 0023's backfill swept every pre-multi-tenant Assistant into that same org, so
+-- the reachable data is not limited to seed fixtures.
+--
+-- `if exists` because 0023 is in migrations-baseline.txt: it never runs against a
+-- database built from this repo, so on a fresh install there is nothing to drop.
+-- Deliberately NOT added to the baseline list, or CI would skip it too.
+
+drop function if exists public.join_demo_org();

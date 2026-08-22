@@ -1,34 +1,47 @@
 ---
 title: Pläne und Abrechnung
-description: Wählen Sie einen verwalteten Plan aus und überprüfen Sie das aktuelle Stripe-Abrechnungskonto.
+description: Überprüfen Sie den Status des verwalteten Plans und das Stripe-Abrechnungskonto.
 ---
 
-Öffnen Sie **Settings > Billing** in der Managed-Edition. Die Seite zeigt den
-aktuellen Planstatus und die verfügbaren Katalogeinträge an.
+Ciele wird auf zwei Arten verkauft. Die Open-Source-Edition ist kostenlos, und
+Sie betreiben sie selbst. Die verwaltete Edition heißt Enterprise und wird über
+den Vertrieb angeboten.
 
-## Starten oder ändern Sie einen Plan
+Es gibt keine Self-Service-Tarifstufen. Um einen verwalteten Plan zu starten
+oder zu ändern,
+[wenden Sie sich an den Vertrieb](https://ciele.app/contact/sales). Ciele ordnet
+Ihrer Organisation den vereinbarten Plan zu.
 
-1. Überprüfen Sie die Limits und den Preis des verfügbaren Plans.
-2. Wählen Sie den gewünschten Plan aus.
-3. Schließen Sie den Stripe-Checkout ab, wenn Sie dazu aufgefordert werden.
-4. Kehren Sie zu Ciele zurück.
-5. Bestätigen Sie den aktiven Tarifstatus.
+## Aktivierung
+
+Eine neue verwaltete Organisation beginnt im Status **Aktivierung ausstehend**.
+Die Konsole ist in diesem Zustand vollständig nutzbar. Sie können Assistenten
+konfigurieren, Wissen hinzufügen und Mitglieder einladen.
+
+Assistenten antworten erst, wenn Ciele die Organisation aktiviert hat. Die
+Aktivierung erfolgt nach Vertragsabschluss oder nach Erteilung einer Bewilligung
+durch die Personalbeurteilung.
+
+Die ausstehende Aktivierung bedeutet keine Datensperre. Alles, was Sie
+konfiguriert haben, bleibt erhalten.
+
+## Abrechnungskonto
+
+Öffnen Sie **Settings > Billing** in der verwalteten Edition. Wenn Stripe die
+Daten zurückgibt, kann die Seite Folgendes anzeigen:
+
+- den aktuellen Planstatus
+- Informationen zur Verlängerung
+- die aktuelle Zahlungskartenübersicht
+- Rechnungen
+
+Abrechnungsfelder können fehlen, wenn Stripe sie nicht bereitgestellt hat.
 
 Ciele gleicht den Abrechnungsstatus mit Stripe ab. Gehen Sie nicht davon aus,
 dass eine abgeschlossene Browser-Umleitung die Aktivierung des Plans beweist.
 
-## Abrechnungskonto
-
-Wenn Stripe die Daten zurückgibt, kann die Seite Folgendes anzeigen:
-
-- Informationen zur Verlängerung
-- die aktuelle Zahlungskartenübersicht
-- Rechnungen
-- Aktionen zur Änderung des Tarifs
-
-Abrechnungsfelder können fehlen, wenn Stripe sie nicht bereitgestellt hat.
-
 ## Selbst gehostete Edition
 
-In der selbst gehosteten Edition werden weder der Katalog der verwalteten Pläne
-noch das Abonnementkonto angezeigt.
+Die selbst gehostete Edition zeigt weder einen Planstatus noch ein
+Abonnementkonto an. Es ist kein Ciele-Abonnement erforderlich. Siehe
+[Open Source](/self-hosting).

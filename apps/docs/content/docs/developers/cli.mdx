@@ -80,6 +80,22 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
+### Source links
+
+A Source answers for the Assistants linked to it. These commands read and change the links.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` lists every Source the Organization owns, across all Assistants.
+
+`sources link` replaces the link set. An empty list removes every link, and the Source stops answering.
+
+`sources direct-access` decides whether that one Assistant can give a Visitor the original file.
+
 ## Operations and Organization commands
 
 ```bash

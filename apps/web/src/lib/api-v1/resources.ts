@@ -1,4 +1,5 @@
 import type { Assistant, Flow, Source } from "@agent-hub/core";
+import { redactFlowSecrets } from "@agent-hub/core";
 
 /**
  * API resource projections (#620): what /api/v1 serves is a deliberate
@@ -36,8 +37,14 @@ export function sourceResource(s: Source) {
   };
 }
 
-/** Flows serve their full router config: it is what the API exists to edit. */
-export function flowResource(f: Flow) {
+/**
+ * Flows serve their router config, minus the `api_request` credentials in it:
+ * that is what the API exists to edit, and a token is not part of it. The ops
+ * layer already redacts, so this is the second of two independent projections,
+ * because this function is the documented boundary for what /api/v1 emits.
+ */
+export function flowResource(flow: Flow) {
+  const f = redactFlowSecrets(flow);
   return {
     id: f.id,
     assistantId: f.assistantId,

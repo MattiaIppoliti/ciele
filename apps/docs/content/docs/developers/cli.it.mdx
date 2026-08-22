@@ -61,7 +61,7 @@ La CLI risolve una chiave in questo ordine:
 La CLI utilizza lo stesso ordine per `--base-url`, `CIELE_BASE_URL` e l'origine
 salvata. L'origine ospitata è l'ultima opzione predefinita.
 
-## Usa l'output di automazione
+## Usa l'output dell'automazione
 
 Aggiungi `--json` a un comando per ricevere un output leggibile da una macchina.
 
@@ -88,7 +88,27 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
-## Comandi Operations e Organization
+### Collegamenti alla fonte
+
+Una Source risponde per gli Assistant ad essa collegati. Questi comandi leggono
+e modificano i collegamenti.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` elenca tutte le Sorgenti di proprietà dell'Organizzazione,
+per tutti gli Assistenti.
+
+`sources link` sostituisce il set di link. Un elenco vuoto rimuove tutti i
+collegamenti e la Sorgente smette di rispondere.
+
+`sources direct-access` decide se quell'Assistant può fornire a un Visitor il
+file originale.
+
+## Comandi per Operazioni e Organizzazione
 
 ```bash
 ciele conversations list --assistant <assistant-id>

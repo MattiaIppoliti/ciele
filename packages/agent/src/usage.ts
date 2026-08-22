@@ -32,9 +32,23 @@ export function usageTotals(usage: unknown): {
 }
 
 /**
- * The one way runtime code writes the ledger: isolated so losing accounting
- * never breaks the work that was already done (a turn, an eval, a pass).
+ * Record a model stream's token usage. Both turn phases end this way, and
+ * neither may fail for it: a provider (or a test mock) that reports no usage
+ * still produced a reply, and losing the accounting must never lose the work.
  */
+export async function recordStreamUsage(
+  totalUsage: PromiseLike<unknown>,
+  recordUsage?: (usage: { inputTokens: number; outputTokens: number }) => void
+): Promise<void> {
+  try {
+    recordUsage?.(usageTotals(await totalUsage));
+  } catch {
+    // Either the provider never resolved a usage figure, or the recorder
+    // itself threw. Both are accounting failures, and neither may undo a
+    // reply that has already been written.
+  }
+}
+
 /**
  * Rolls a turn's per-call usage events into the single turn-level telemetry
  * record: total tokens in/out, and the provider/model that actually answered
@@ -64,6 +78,10 @@ export function summarizeTurnUsage(usage: UsageEvent[]): {
   };
 }
 
+/**
+ * The one way runtime code writes the ledger: isolated so losing accounting
+ * never breaks the work that was already done (a turn, an eval, a pass).
+ */
 export async function meterUsage(db: Db, rows: AiUsageInput[]): Promise<void> {
   if (rows.length === 0) return;
   try {

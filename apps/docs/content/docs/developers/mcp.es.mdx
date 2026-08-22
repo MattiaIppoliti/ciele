@@ -3,10 +3,56 @@ title: Servidor Ciele MCP
 description: Concede a un cliente MCP acceso controlado a las operaciones de administración de Ciele.
 ---
 
-El servidor Ciele Model Context Protocol (MCP) es un proceso `stdio` local.
-Llama a la API de Ciele a través del cliente tipado.
+El servidor Ciele Model Context Protocol (MCP) expone las operaciones de
+administración a un agente de IA. Dispone de dos transportes y ambos registran
+las mismas herramientas.
 
-## Requisitos
+- El **punto de conexión alojado** es `POST /api/mcp` en tu implementación.
+  Úsalo para un cliente que se conecte a través de HTTP.
+- El **servidor local** es un proceso `stdio` que inicias desde una copia de
+  trabajo del repositorio.
+
+Cada llamada de herramienta llega a la Organización a través de `/api/v1`, por
+lo que una operación tiene una ruta de ejecución, independientemente del
+transporte que la haya solicitado.
+
+## Punto de conexión alojado
+
+Cada implementación de Ciele sirve al punto de conexión en su propio origen.
+Esto incluye el servicio alojado, un autoalojamiento de Docker y la pila local
+de Ciele Desktop. El punto de conexión no necesita configuración.
+
+```text
+https://ciele.example.edu/api/mcp
+```
+
+Autentícate con una [clave API de la organización](/developers/api-keys) en el
+encabezado `Authorization`:
+
+```text
+Authorization: Bearer ciele_sk_...
+```
+
+Una clave desconocida o ausente se rechaza con `401` antes de que se muestre
+cualquier herramienta.
+
+<Callout title="The key Role is the permission boundary">
+The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+</Callout>
+
+## Revisiones del protocolo
+
+El servidor habla la revisión `2026-07-28` y las revisiones de 2025. Decide la
+revisión a partir del intercambio inicial, por lo que un cliente que no haya
+migrado a `2026-07-28` sigue funcionando.
+
+La revisión `2026-07-28` eliminó las sesiones de protocolo. Cada solicitud es
+autónoma, por lo que el punto de conexión alojado no necesita enrutamiento
+persistente ni almacenamiento de sesiones.
+
+## Servidor `stdio` local
+
+### Requisitos
 
 - Utiliza Node.js 22.6 o una versión posterior.
 - Clona el repositorio de Ciele.
@@ -19,16 +65,21 @@ Inicia este programa desde el repositorio:
 node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-## Variables de entorno
+### Variables de entorno
 
 | Variable | Requisito | Finalidad |
 | --- | --- | --- |
-| `CIELE_API_KEY` | Obligatorio | Autentica a la Organización. |
+| `CIELE_API_KEY` | Obligatorio | Autentica a la organización. |
 | `CIELE_BASE_URL` | Opcional | Selecciona un origen autoalojado. |
 | `CIELE_MCP_READ_ONLY` | Opcional | Rechaza las acciones de mutación cuando el valor es `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Opcional | Rechaza clientes de la revisión 2025 cuando el valor es `1`. |
 
 La comprobación de solo lectura se realiza dentro del proceso MCP. Una mutación
 rechazada no realiza una solicitud a la API.
+
+<Callout type="warn" title="These variables apply to the local server only">
+A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+</Callout>
 
 <Callout title="Recommended first connection">
 Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
@@ -38,14 +89,14 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Herramienta | Operaciones actuales |
 | --- | --- |
-| `ciele_identity` | Leer información de implementación, organización y rol. |
+| `ciele_identity` | Leer información sobre la implementación, la organización y los roles. |
 | `manage_assistants` | Enumerar, leer, crear, actualizar, duplicar o eliminar Asistentes. |
 | `manage_flows` | Enumerar, leer, crear, actualizar, reordenar o eliminar flujos. |
 | `manage_knowledge` | Gestionar colecciones, fuentes y preguntas frecuentes. |
 | `publish_assistant` | Leer el estado, publicar, anular la publicación o restaurar una publicación. |
-| `read_inbox` | Enumerar, leer, exportar, anclar, anotar, valorar o eliminar conversaciones. |
+| `read_inbox` | Listar, leer, exportar, anclar, anotar, valorar o eliminar conversaciones. |
 | `manage_improvements` | Listar, leer o actualizar mejoras. |
-| `manage_entities` | Gestiona las entidades de la organización y los registros tipificados. |
+| `manage_entities` | Gestionar entidades de la organización y registros tipificados. |
 | `manage_memories` | Inspecciona la configuración y realiza un borrado de memoria con ámbito. |
 | `manage_sso` | Gestiona las notificaciones de identidad y la conexión SSO de la organización. |
 | `manage_help_desks` | Gestiona los servicios de asistencia, los canales, los pedidos y ServiceNow. |
@@ -53,21 +104,20 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_organization` | Gestiona la configuración de la organización, los miembros, las invitaciones y las claves de API. |
 | `manage_integrations` | Gestiona las integraciones de la API del Asistente y los proveedores de modelos. |
 
-Actualmente, el servidor registra catorce herramientas. Cada herramienta de
-dominio utiliza un campo `action` para sus operaciones.
+El servidor registra catorce herramientas. Cada herramienta de dominio utiliza
+un campo `action` para sus operaciones.
 
 El modo de solo lectura clasifica cada acción. Permite las acciones de listar,
 leer, estado, consultar y exportar, pero rechaza las mutaciones.
 
-El servidor MCP no proporciona un transporte HTTP remoto. Consulta
-[Clientes de IA](/developers/ai-clients) para obtener información sobre
-compatibilidad.
+Consulta [Clientes de IA](/developers/ai-clients) para ver la configuración de
+cada cliente compatible.
 
 ## Comprueba la conexión
 
 Pide al cliente que llame a `ciele_identity`. Confirma el ID de organización, el
 rol, la versión de la API y la lista de dominios esperados.
 
-La suite de pruebas del repositorio también inicia el proceso real de `stdio`.
-Verifica la inicialización, el descubrimiento de herramientas y una llamada a la
-API autenticada.
+El conjunto de pruebas del repositorio también inicia el proceso real de
+`stdio`. Verifica la inicialización, el descubrimiento de herramientas y una
+llamada a la API autenticada.

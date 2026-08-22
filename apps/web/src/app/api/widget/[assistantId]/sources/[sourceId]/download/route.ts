@@ -48,7 +48,10 @@ export async function GET(
   const service = createSupabaseServiceClient();
   const { data, error } = await service.storage
     .from(KNOWLEDGE_ORIGINALS_BUCKET)
-    .createSignedUrl(source!.originalObjectPath!, 600);
+    // `download` makes Storage answer with an attachment disposition rather
+    // than replaying the stored type inline, so an original can never render as
+    // a document on the storage origin.
+    .createSignedUrl(source!.originalObjectPath!, 600, { download: true });
   if (error || !data?.signedUrl) return refuse();
   return Response.redirect(data.signedUrl, 302);
 }

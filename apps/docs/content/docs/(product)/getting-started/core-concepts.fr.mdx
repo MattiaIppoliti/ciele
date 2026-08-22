@@ -15,11 +15,22 @@ Un Assistant est un agent conversationnel configuré. Il possède une identité,
 des connaissances, des flux, des outils, un modèle, une apparence et un état de
 publication.
 
-## Collection de connaissances
+## Source et collection de connaissances
 
-Une collection de connaissances appartient à un assistant. Elle contient des
-Sources, des Concepts et des FAQ sélectionnées, utilisés pour fournir des
-réponses fondées.
+Une Source est un site Web, un fichier, un texte ou un contenu de FAQ d'origine.
+L'ingestion transforme une Source en Concepts, les documents consultables qui
+sous-tendent une réponse fondée.
+
+Les sources appartiennent à l'organisation. Une Collection de connaissances est
+le conteneur de l'Organisation qui les stocke.
+
+## Lien de la source
+
+Un lien relie une Source à un Assistant. Un Assistant effectue une recherche
+dans une Source uniquement via un lien.
+
+Le lien contient également **Direct access**, qui détermine si l'Assistant peut
+fournir le fichier original à un Visiteur.
 
 ## Flux
 
@@ -31,7 +42,7 @@ Le flux **Default behavior** verrouillé reste le dernier. Il traite un message
 
 ## Publication
 
-Une Publication est un instantané immuable d'un Assistant. Le widget utilise la
+Une Publication est un instantané immuable de l'Assistant. Le widget utilise la
 Publication active, et non le brouillon actuel de l'administrateur.
 
 ## Conversation
@@ -47,9 +58,9 @@ peut suggérer un Centre d'assistance pertinent lors de l'escalade.
 ## Amélioration
 
 Une amélioration est un élément d'examen pour un problème de qualité de réponse.
-Elle peut être liée au message exact de la conversation.
+Elle peut renvoyer au message exact de la conversation.
 
-## Objectif et Alerte
+## Objectif et alerte
 
-Un objectif exécute une vérification planifiée de la réponse. Un objectif ayant
+Un objectif exécute une vérification de réponse planifiée. Un objectif ayant
 échoué crée une alerte pour un administrateur.

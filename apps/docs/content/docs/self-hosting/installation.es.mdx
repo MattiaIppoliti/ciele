@@ -27,8 +27,8 @@ requisitos previos, descarga el código fuente en `./ciele` y ejecuta
 curl -fsSL https://ciele.app/install.sh | sh
 ```
 
-Pasa los indicadores de arranque a través de la canalización con `-s --` y
-configura `CIELE_DIR` para elegir el directorio de extracción o `CIELE_REF` para
+Pasa los indicadores de Bootstrap a través de la canalización con `-s --` y
+configura `CIELE_DIR` para elegir el directorio de descarga o `CIELE_REF` para
 instalar una etiqueta de versión:
 
 ```bash
@@ -38,7 +38,14 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 El instalador nunca elimina nada: si el directorio de destino existe y no es una
 copia de Ciele, se detiene y te lo indica.
 
-## Inicializa la pila
+En un Mac sin Docker, el instalador no se detiene ante un error. Abre
+[Ciele Desktop](/self-hosting/desktop) y, si la aplicación no está presente,
+primero descarga la versión. La configuración guiada que aparece allí vincula
+Docker Desktop e inicia la misma pila que se describe en esta página. En Linux,
+el instalador se niega porque no hay ninguna aplicación de escritorio a la que
+pasarle el trabajo.
+
+## Arranca la pila
 
 Para realizar los mismos pasos manualmente:
 
@@ -99,7 +106,7 @@ restart alone keeps the previous value.
 | `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
 | `app` | Sí | Consola de administrador, entorno de ejecución de widgets y API v1. |
 | `cron` | Sí | Tareas programadas de la aplicación. |
-| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización de JavaScript. |
+| `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización en JavaScript. |
 | `studio` | No | Interfaz de administración de la base de datos. |
 
 ## Inspecciona la pila

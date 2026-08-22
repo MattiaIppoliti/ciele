@@ -3,7 +3,8 @@ title: Ciele Desktop
 description: Laden Sie eine App herunter und melden Sie sich entweder bei Ihrer Organisation an oder führen Sie eine vollständige Ciele-Version auf Ihrem Computer aus.
 ---
 
-Ciele Desktop ist eine macOS-Anwendung, die sich nach Ihrer Wahl öffnet.
+Ciele Desktop ist eine Anwendung für macOS und Windows, die sich nach Ihrer Wahl
+öffnet.
 
 - **Sign in to your organization**: Die App öffnet die Konsole Ihrer
   Organisation in einem eigenen Fenster, wobei die Sitzung auch nach einem
@@ -16,13 +17,12 @@ Ciele Desktop ist eine macOS-Anwendung, die sich nach Ihrer Wahl öffnet.
 
 Beide können nebeneinander existieren, und Sie können jederzeit zwischen ihnen
 wechseln. Alles, was Sie tatsächlich mit Ciele machen, geschieht in der Ihnen
-bereits bekannten Produkt-Benutzeroberfläche. Die App fügt lediglich ein Fenster
-hinzu, keine zweite Benutzeroberfläche.
+bereits bekannten Produkt-Benutzeroberfläche. Die App fügt ein Fenster darum
+herum hinzu, keine zweite Benutzeroberfläche.
 
 <Callout type="warn" title="Beta">
-The macOS build is unsigned, which means one extra step the first time you open
-it (below) and no automatic updates. Windows and Linux builds are not part of
-the beta.
+Both builds are unsigned. That means one extra step the first time you open the
+app (below) and no automatic updates. Linux is not part of the beta.
 </Callout>
 
 ## Welchen Weg wählen?
@@ -33,48 +33,61 @@ the beta.
 | Sie möchten das Produkt testen | | Ja |
 | Einrichtungszeit | Sekunden | Einige Minuten |
 | Wo die Daten gespeichert sind | Auf dem Server | Auf diesem Rechner |
-| Bietet Produktions-Widgets | Ja | Nein: Lokale Widgets dienen zum Testen |
+| Bereitstellung von Produktions-Widgets | Ja | Nein: Lokale Widgets dienen zum Testen |
 | Benötigt Docker Desktop | Nein | Ja |
 
 Der lokale Pfad ist ein echtes Ciele, keine Demo: dieselben Container, dieselben
-Migrationen, dieselben geplanten Jobs, die der selbst gehostete Server ausführt.
-Es ist nicht dafür gedacht, ein Produktions-Widget für die Öffentlichkeit
+Migrationen, dieselben geplanten Jobs, die der Server-Self-Host ausführt. Es ist
+nicht dafür gedacht, ein Produktions-Widget für die Öffentlichkeit
 bereitzustellen, da dafür eine Adresse erforderlich ist, die die Öffentlichkeit
 erreichen kann.
 
 ## Installieren
 
-1. Laden Sie `.zip` aus der
-   [neuesten Version](https://github.com/MattiaIppoliti/ciele/releases/latest)
-   herunter.
+Beide Downloads finden Sie im
+[neuesten Release](https://github.com/MattiaIppoliti/ciele/releases/latest).
+
+### macOS
+
+1. Laden Sie die `.zip` für Ihren Prozessor herunter.
 2. Entpacken Sie es und verschieben Sie **Ciele.app** in Ihren Ordner
    „Programme“.
 3. **Right-click (or Control-click) Ciele.app and choose Open**, dann im
    Dialogfeld erneut **Open**.
 
 Dieser dritte Schritt ist wichtig. Die Beta-Version ist nicht signiert. Daher
-blockiert macOS einen Doppelklick darauf auf die übliche Weise, bis Sie sie
-einmal auf diese Weise geöffnet haben. Sie müssen dies nur einmal tun.
+blockiert macOS einen Doppelklick auf die übliche Weise, bis Sie sie einmal auf
+diese Weise geöffnet haben. Sie müssen dies nur einmal tun.
+
+### Windows
+
+1. Laden Sie das Installationsprogramm `Setup.exe` herunter.
+2. Führen Sie es aus. SmartScreen meldet „Windows hat Ihren PC geschützt“, da
+   die Beta-Version nicht signiert ist. Wählen Sie **More info** und dann **Run
+   anyway**.
+
+Wenn der Download selbst blockiert ist, klicken Sie mit der rechten Maustaste
+auf die Datei, öffnen Sie **Properties** und aktivieren Sie **Unblock**.
 
 ## Anmeldung bei Ihrer Organisation
 
 Wählen Sie **Sign in** auf dem Begrüßungsbildschirm. Die App lädt die Konsole
-Ihrer Organisation und merkt sich die Sitzung, sodass Sie beim späteren Starten
+Ihrer Organisation und merkt sich die Sitzung, sodass Sie beim späteren Start
 direkt dorthin gelangen.
 
 Um die App stattdessen auf einen selbst gehosteten Server zu verweisen, öffnen
-Sie **Settings** (das Steuersymbol auf dem Begrüßungsbildschirm oder `⌘,`) und
-ändern Sie die Serveradresse. Alles, was `http://` oder `https://` ist,
-funktioniert. Die App behält den Ursprung bei und entfernt jeden Pfad, den Sie
-zusammen mit ihm einfügen.
+Sie **Settings** und ändern Sie die Serveradresse. Sie erreichen sie über das
+Steuersymbol auf dem Begrüßungsbildschirm oder mit `⌘,` unter macOS und `Ctrl+,`
+unter Windows. Alles, was `http://` oder `https://` ist, funktioniert. Die App
+behält den Ursprung bei und entfernt jeden Pfad, den Sie damit einfügen.
 
-**Sign out** löscht die gespeicherte Sitzung der App für diesen Server: Cookies,
-Cache und alles. Es schließt mehr als nur das Fenster. Auf einem gemeinsam
-genutzten Computer ist dies die richtige Vorgehensweise.
+**Sign out** löscht die in der App gespeicherte Sitzung für diesen Server:
+Cookies, Cache und alles. Es schließt mehr als nur das Fenster. Auf einem
+gemeinsam genutzten Computer ist dies die richtige Vorgehensweise.
 
 Wenn die Adresse nicht geladen wird, zeigt die App dies auf ihrem eigenen
 Bildschirm an. Sie zeigt die Adresse an, die sie versucht hat, was
-schiefgelaufen ist, und Schaltflächen, um es erneut zu versuchen oder zu
+schiefgelaufen ist, sowie Schaltflächen, um es erneut zu versuchen oder zu
 korrigieren. Sie landen niemals auf einer Browser-Fehlerseite in einem Fenster
 ohne Adressleiste.
 
@@ -88,32 +101,34 @@ funktioniert hat, nicht, dass er abgeschlossen ist.
 
 Der Assistent prüft, ob Docker Desktop installiert ist *und* ausgeführt wird.
 Das sind unterschiedliche Probleme mit unterschiedlichen Lösungen, und es wird
-angezeigt, welches Problem bei Ihnen vorliegt. Wenn es fehlt, finden Sie den
-Download-Link genau dort. Installieren oder starten Sie Docker Desktop und
-drücken Sie dann **Try again**. Die Prüfung wird an Ort und Stelle erneut
-ausgeführt.
+angegeben, welches Problem Sie haben. Für jeden Fehler gibt es eine eigene
+Schritt-für-Schritt-Anleitung, die für jemanden geschrieben wurde, der noch nie
+Entwicklertools installiert hat. Der Installationslink verweist auf die Seite
+für Ihre Plattform. Installieren oder starten Sie Docker Desktop und drücken Sie
+dann **Try again**. Die Prüfung wird an Ort und Stelle erneut ausgeführt.
 
 ### 2. Datenordner und Secrets
 
 Die App erstellt einen Ordner für diese Installation und generiert jedes
-Passwort und jeden Schlüssel, den der Stack benötigt. Sie bearbeiten niemals
+Passwort und jeden Schlüssel, die der Stack benötigt. Sie bearbeiten niemals
 eine Umgebungsdatei.
 
 Wenn bereits eine Konfiguration vorhanden ist, behält die App diese bei, anstatt
 eine neue zu generieren. Ihre Datenbank ist mit den Secrets versiegelt, die sich
-bereits in diesem Ordner befinden. Neue Secrets würden Sie davon ausschließen.
+bereits in diesem Ordner befinden. Neue Secrets würden Sie daran hindern, darauf
+zuzugreifen.
 
 ### 3. Laden Sie Ciele herunter
 
 Ruft die veröffentlichten Container-Images für diese Version der App ab. Dies
 ist der langsame Schritt bei der ersten Ausführung. Es wird nichts aus dem
 Quellcode erstellt, weshalb die Einrichtung nur eine Kaffeepause dauert und
-nicht einen ganzen Nachmittag.
+nicht den ganzen Nachmittag in Anspruch nimmt.
 
 ### 4. Starten Sie den Stack
 
-Startet die Datenbank, die App und die geplanten Jobs im Hintergrund. Sie laufen
-weiter, nachdem Sie Ciele Desktop beendet haben.
+Startet die Datenbank, die App und die geplanten Jobs in einem separaten
+Prozess. Sie laufen weiter, nachdem Sie Ciele Desktop beendet haben.
 
 ### 5. Vorbereiten der Datenbank
 
@@ -124,8 +139,8 @@ Schritt wartet auf die zweite.
 ### 6. Demo-Inhalte (optional)
 
 Lädt eine Beispielorganisation mit Assistenten, sodass Sie ein bereits befülltes
-Produkt sehen, bevor Sie eigene Inhalte hinzufügen. **Skip** hinterlässt Ihnen
-ein leeres, funktionsfähiges Ciele.
+Produkt sehen, bevor Sie eigene Inhalte hinzufügen. **Skip** hinterlässt ein
+leeres, aber funktionsfähiges Ciele.
 
 ### 7. Verbinden Sie ein KI-Modell (optional)
 
@@ -135,12 +150,12 @@ die Adresse `http://host.docker.internal:11434/v1`: innerhalb eines Containers
 ist `localhost` der Container.
 
 Sie können diesen Schritt überspringen. Ohne Modell antworten die Assistenten
-mithilfe der integrierten Schlüsselwörter-Engine, und die Wissenssuche greift
-auf lexikalischen Abgleich zurück. Alles andere funktioniert.
+mithilfe der integrierten Schlüsselwort-Engine, und die Wissenssuche greift auf
+lexikalischen Abgleich zurück. Alles andere funktioniert.
 
 Wenn ein Schritt fehlschlägt, wird angezeigt, was fehlgeschlagen ist, und die
-Protokolle werden unter **Show details** gespeichert. **Try again** setzt dann
-an diesem Schritt fort, anstatt von vorne zu beginnen.
+Protokolle werden in **Show details** gespeichert. **Try again** setzt dann an
+diesem Schritt fort, anstatt von vorne zu beginnen.
 
 Sobald die Einrichtung abgeschlossen ist, lädt **Open Ciele** die lokale
 Konsole. Das erste Konto, das Sie erstellen, ist Eigentümer der Organisation.
@@ -154,29 +169,30 @@ den letzten Schritt des Assistenten, über die Einstellungen oder über das
 bedeutet dort, dass Ciele geantwortet hat, nicht, dass Container existieren.
 
 Das Stoppen ist reversibel und berührt keine Daten. Wenn Sie die App beenden,
-wird der Stack nicht gestoppt. Sie läuft bewusst im Hintergrund.
+wird der Stack nicht gestoppt. Sie läuft absichtlich getrennt.
 
 ### Wo Ihre Daten gespeichert sind
 
-| Was | Wo | Überdauert |
+| Was | Wo | Überlebt |
 | --- | --- | --- |
-| Assistenten, Konversationen, Wissen | Docker-Volumes (`ciele_postgres-data`) | App-Neustarts und App-Updates |
+| Assistenten, Konversationen, Wissen | Docker-Volumes (`ciele_postgres-data`) | Neustarts und Updates der App |
 | Hochgeladene Dateien | Docker-Volume (`ciele_storage-data`) | Neustarts und Updates der App |
 | Generierte Konfiguration und Secrets | Der Datenordner der App (angezeigt auf dem Stack-Bildschirm) | App-Updates |
 
 Sichern Sie die Datenbank auf die gleiche Weise wie bei jedem Self-Hosting,
-siehe [Datenbank](/self-hosting/database). Das Löschen von Ciele.app entfernt
-weder die Volumes noch den Stack.
+siehe [Datenbank](/self-hosting/database). Durch die Deinstallation der App
+werden weder die Volumes noch der Stack entfernt.
 
 ### Aktualisierung
 
 Die App prüft beim Start, ob eine neuere Version verfügbar ist, und zeigt einen
 ausblendbaren Hinweis mit einem Download-Link an. Es gibt keine automatische
-Aktualisierung: macOS aktualisiert eine nicht signierte App nicht automatisch.
+Aktualisierung, da keine der Plattformen eine nicht signierte App automatisch
+aktualisiert.
 
-Durch das Aktualisieren der App wird Ihr lokaler Stack aktualisiert. Jeder Build
-fixiert die Container-Images, die zu seiner eigenen Version passen, sodass das
-nächste Setup oder der nächste Start diese zieht und die Migrationen erneut
+Durch das Aktualisieren der App wird Ihr lokaler Stack weiterentwickelt. Jeder
+Build fixiert die Container-Images, die zu seiner eigenen Version passen, sodass
+das nächste Setup oder der nächste Start diese abruft und die Migrationen erneut
 ausführt. Ihre Daten bleiben dort, wo sie sind.
 
 ### Neustart
@@ -190,20 +206,23 @@ docker compose --project-name ciele down -v
 ```
 
 Dadurch werden die lokale Datenbank und die hochgeladenen Dateien gelöscht. Wenn
-Sie das nächste Mal **Use locally** wählen, wird der Assistent von vorne
-gestartet.
+Sie das nächste Mal **Use locally** wählen, wird der Assistent von Anfang an
+ausgeführt.
 
 ## Fehlerbehebung
 
-**"Docker Desktop ist nicht installiert", obwohl dies der Fall ist.** Eine vom
-Dock gestartete App erbt nicht die `PATH` Ihrer Shell. Ciele sucht daher nach
-der Docker-CLI dort, wo Docker Desktop und Homebrew sie installieren. Es wird
-keinen Docker finden, den Sie an anderer Stelle installiert haben. Ein Symlink
-nach `/usr/local/bin` behebt das.
+**"Docker Desktop ist nicht installiert", obwohl dies der Fall ist.** Eine
+Anwendung, die über das Dock oder das Startmenü gestartet wird, übernimmt nicht
+die `PATH` Ihrer Shell. Ciele sucht daher nach der Docker-CLI dort, wo Docker
+Desktop sie installiert. Unter macOS sind dies die Speicherorte Homebrew und
+`/usr/local/bin`. Unter Windows sind dies der Ordner „Programme“ und der
+benutzerdefinierte Ordner „Programme“. Es wird nirgendwo anders einen Docker
+finden, den Sie installiert haben. Unter macOS behebt ein Symlink nach
+`/usr/local/bin` dieses Problem.
 
 **The stack sits on "Starting".** Postgres initialisiert möglicherweise noch bei
 der ersten Ausführung. Warten Sie eine Minute und drücken Sie dann **Check
-again**. Wenn es dort bleibt, öffnen Sie die Protokolle von Docker Desktop. Ein
+again**. Wenn es dort bleibt, öffnen Sie die Protokolle über Docker Desktop. Ein
 Container, der immer wieder neu startet, hat in der Regel zu wenig Speicher.
 
 **"Die Bilder konnten nicht heruntergeladen werden."** Der Pull konnte die
@@ -217,8 +236,8 @@ Schlüsselwortabgleich zurück. Fügen Sie ein Embedding-Modell in
 [Configuration](/self-hosting/configuration) hinzu.
 
 **„Ciele wurde nicht geladen“ beim Anmelden.** Die Adresse in den Einstellungen
-liefert Ciele nicht. Auf dem Bildschirm wird angegeben, was schiefgelaufen ist.
-Ein Tippfehler führt zu der Meldung „Diese Adresse existiert nicht“. Ein
+liefert Ciele nicht. Der Bildschirm benennt, was schiefgelaufen ist. Ein
+Tippfehler führt zu der Meldung „Diese Adresse existiert nicht“. Ein
 ausgeschalteter Server meldet „nothing is listening“. Eine Adresse, die
 antwortet, ohne Ciele zu sein, sagt dies. **Change address** führt Sie direkt
 zur Einstellung.
@@ -227,6 +246,11 @@ zur Einstellung.
 Das ist Gatekeeper bei einer nicht signierten App. Klicken Sie mit der rechten
 Maustaste auf Ciele.app, wählen Sie **Open** und dann erneut **Open**. Ein
 Doppelklick bietet diese Option nicht an.
+
+**Windows blocks the installer.** Das ist SmartScreen bei einer nicht signierten
+App. Wählen Sie **More info** und dann **Run anyway**. Wenn die Datei beim
+Herunterladen blockiert wurde, heben Sie zuerst die Blockierung in ihrem
+**Properties** auf.
 
 ## Was die Desktop-App nicht ist
 

@@ -48,6 +48,7 @@ import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { ProgressLine } from "@/components/chat/progress-line";
+import { ComponentReplyPart } from "@/components/chat/component-part";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
@@ -252,6 +253,9 @@ function PartView({
         </div>
       </div>
     );
+  }
+  if (part.type === "component") {
+    return <ComponentReplyPart part={part} onAsk={onSend} />;
   }
   if (part.type === "follow_ups") {
     return (

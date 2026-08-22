@@ -37,7 +37,14 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 Il programma di installazione non elimina mai nulla: se la directory di
 destinazione esiste e non è un checkout di Ciele, si ferma e te lo comunica.
 
-## Esegui il bootstrap dello stack
+Su un Mac senza Docker, il programma di installazione non si ferma in caso di
+errore. Apre [Ciele Desktop](/self-hosting/desktop), scaricando prima la release
+quando l'app non è presente. La configurazione guidata che trovi lì collega
+Docker Desktop e avvia lo stesso stack descritto in questa pagina. Su Linux il
+programma di installazione si rifiuta, perché non c'è un'app desktop a cui
+affidare il lavoro.
+
+## Avvia lo stack
 
 Per eseguire gli stessi passaggi manualmente:
 

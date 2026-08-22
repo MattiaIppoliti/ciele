@@ -4,6 +4,8 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    // TS 7 defaults `types` to []; the @types this workspace depends on are named here.
+    "types": ["react"],
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,

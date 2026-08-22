@@ -14,18 +14,20 @@ flowchart TB
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
-  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> CONTEXT
-  CONTEXT --> ACTIONS
+  CLASSIFY --> ACTIONS
   ACTIONS --> PARTS
 `}
 />
+
+Verifizierte Identität, Entity Records und Langzeitgedächtnis sind Eingaben, die
+die Aktionen lesen. Sie sind keine Phasen des Routers, daher werden sie in der
+Abbildung nicht dargestellt.
 
 `messageFlowCandidates` liefert Kandidaten an beide Routing-Engines. Diese
 Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen
@@ -41,7 +43,7 @@ Ein optionaler verifizierter Anspruch kann mit Entity Records auf Benutzerebene
 übereinstimmen.
 
 Ausgewählte Entitäten erzeugen generierte Filter- und Textsuchwerkzeuge. Tools
-im Benutzerbereich lassen das Attribut „identity“ in der modellseitigen Eingabe
+im Benutzerbereich lassen das Identitätsattribut in der modellseitigen Eingabe
 weg.
 
 Der Server fügt den Filter für die verifizierte Identität hinzu, nachdem er die
@@ -49,7 +51,7 @@ Eingabe des Tools validiert hat. Das Modell kann ihn weder auslassen noch
 überschreiben.
 
 Beim ersten Zug einer neuen Konversation kann die Laufzeitumgebung bis zu fünf
-relevante Langzeiterinnerungen einspeisen. Ein integriertes Speichersuchwerkzeug
+relevante Langzeiterinnerungen injizieren. Ein integriertes Speichersuchwerkzeug
 ermöglicht den späteren Abruf.
 
 Für beide Speicherpfade sind der Schalter „Organization“ und ein verifizierter
@@ -58,11 +60,11 @@ SSO-Benutzer erforderlich.
 ## Höflichkeits-Shortcut
 
 Der integrierte Basic Interaction Flow kann eine kurze, reine
-Höflichkeitsnachricht verarbeiten, bevor die Intent Classification erfolgt. Ein
-früherer berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
+Höflichkeitsnachricht vor der Intent Classification verarbeiten. Ein früherer
+berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
 
-Die Verknüpfung wird nicht aktiviert, wenn der Assistent eine Frage stellt oder
-wenn eine Nachricht eine Informationsanfrage enthält.
+Die Shortcut wird nicht aktiviert nach einer Frage des Assistenten oder bei
+einer Nachricht, die eine Informationsanfrage enthält.
 
 ## Proaktiver Pfad
 

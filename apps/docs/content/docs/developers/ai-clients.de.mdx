@@ -1,32 +1,52 @@
 ---
 title: KI-Clients verbinden
-description: Verbinden Sie unterstützte KI-Clients mit dem lokalen Ciele MCP-Server.
+description: Verbinden Sie unterstützte KI-Clients mit dem gehosteten oder lokalen Ciele-MCP-Server.
 ---
 
-Der Ciele MCP-Server verwendet den lokalen `stdio`-Transport. Der Client muss
-den Server als untergeordneten Prozess starten.
+Der Ciele-MCP-Server verfügt über zwei Transportmöglichkeiten. Beide
+registrieren dieselben Tools.
 
-Diese Seite spiegelt die am 6. August 2026 geprüfte Client-Dokumentation wider.
+- Der **gehostete Endpunkt** ist `POST /api/mcp` in Ihrer Bereitstellung. Jeder
+  Client, der eine Remote-MCP-URL akzeptiert, kann diese verwenden.
+- Der **lokale Server** ist ein `stdio`-Prozess, den der Client als
+  untergeordneten Prozess startet.
+
+Bevorzugen Sie den gehosteten Endpunkt. Es erfordert weder einen Checkout, noch
+Node.js auf dem Client-Rechner, noch einen Pfad, der auf dem neuesten Stand
+gehalten werden muss.
+
+Diese Seite spiegelt die am 6. August 2026 geprüfte Kundendokumentation wider.
 Client-Schnittstellen und Konfigurationsformate können sich ändern.
 
 ## Kompatibilität
 
-| Client | Direkte Verbindung | Konfiguration |
-| --- | :---: | --- |
-| Claude Code | Ja | Lokaler `stdio`-Server |
-| Codex CLI, Codex-App und Codex-IDE-Erweiterung | Ja | Geteilte Codex-MCP-Konfiguration |
-| ChatGPT-Desktop-App | Ja | Gemeinsame lokale Codex-MCP-Konfiguration |
-| Cursor | Ja | Lokaler `stdio`-Server |
-| OpenCode | Ja | Lokaler MCP-Server |
-| GitHub Copilot in VS Code | Ja | Lokaler `stdio`-Server |
-| GitHub Copilot CLI | Ja | Lokaler `stdio`-Server |
-| ChatGPT Web | Keine direkte Verbindung | ChatGPT benötigt einen entfernten MCP-Endpunkt. |
-| Pi | Keine integrierte Prozedur | Verwenden Sie die Ciele-CLI oder installieren Sie eine geprüfte Pi-Erweiterung. |
+| Client | Gehosteter Endpunkt | Lokal `stdio` |
+| --- | :---: | :---: |
+| Claude Code | Ja | Ja |
+| Codex CLI, Codex-App und Codex-IDE-Erweiterung | Ja | Ja |
+| ChatGPT-Desktop-App | Ja | Ja |
+| Cursor | Ja | Ja |
+| OpenCode | Ja | Ja |
+| GitHub Copilot in VS Code | Ja | Ja |
+| GitHub Copilot CLI | Ja | Ja |
+| ChatGPT Web | Ja | Kein lokaler Prozess |
+| Pi | Keine integrierte Prozedur | Keine integrierte Prozedur |
 
-Der aktuelle Ciele-Server bietet keinen Remote-HTTP-Transport. Daher kann
-ChatGPT Web keine direkte Verbindung herstellen.
+## Verbinden Sie sich mit dem gehosteten Endpunkt
 
-## Bereiten Sie die Verbindung vor
+1. Erstellen Sie einen Viewer-[API-Schlüssel](/developers/api-keys).
+2. Geben Sie dem Client die Endpunkt-URL für Ihre Bereitstellung.
+3. Konfigurieren Sie den Header `Authorization` als `Bearer <key>`.
+
+```bash
+claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
+  --header "Authorization: Bearer ciele_sk_..."
+```
+
+Der gehostete Endpunkt verfügt über keinen Schreibschutz-Schalter. Verwenden Sie
+einen Viewer-Schlüssel, wenn der Agent keine Daten ändern darf.
+
+## Bereiten Sie eine lokale Verbindung vor
 
 1. Installieren Sie Node.js 22.6 oder höher.
 2. Klonen Sie das Ciele-Repository.
@@ -49,7 +69,7 @@ claude mcp add ciele \
 ```
 
 Öffnen Sie `/mcp` in Claude Code. Vergewissern Sie sich, dass der `ciele`-Server
-sieben Tools anzeigt.
+vierzehn Tools anzeigt.
 
 Informationen zu Client-Optionen und Konfigurationsbereichen finden Sie im
 [Claude Code MCP-Leitfaden](https://docs.anthropic.com/en/docs/claude-code/mcp).
@@ -114,7 +134,7 @@ Cursor-Konfiguration verwenden.
 angeforderten Tool-Aufruf.
 
 Informationen zur globalen Konfiguration und zur Client-Sicherheit finden Sie im
-[Cursor MCP-Leitfaden](https://docs.cursor.com/context/model-context-protocol).
+[Cursor-MCP-Leitfaden](https://docs.cursor.com/context/model-context-protocol).
 
 ## OpenCode
 
@@ -176,8 +196,7 @@ Erstellen Sie `.vscode/mcp.json`:
 Führen Sie **MCP: List Servers** über die Befehlspalette aus. Starten Sie
 `ciele` und überprüfen Sie die Ausgabe, wenn eine Verbindung fehlschlägt.
 
-Informationen zu Konfigurationsspeicherorten und Vertrauenskontrollen finden Sie
-im
+Informationen zu Konfigurationsorten und Vertrauenskontrollen finden Sie im
 [VS Code MCP-Leitfaden](https://code.visualstudio.com/docs/agent-customization/mcp-servers).
 
 ## GitHub Copilot CLI
@@ -192,7 +211,7 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
 Fügen Sie die drei Ciele-Umgebungsvariablen über die Copilot-MCP-Konfiguration
-hinzu. Legen Sie den API-Schlüssel nicht in der Quellcodeverwaltung ab.
+hinzu. Fügen Sie den API-Schlüssel nicht in die Quellcodeverwaltung ein.
 
 Das aktuelle Konfigurationsformat finden Sie im
 [GitHub Copilot CLI MCP-Leitfaden](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers).
@@ -216,7 +235,7 @@ Identify duplicate or unclear Flow names. Do not change data.
 Verwenden Sie diese Eingabeaufforderung, um die Wissensaufnahme zu überprüfen:
 
 ```text
-List the Knowledge Collections for Assistant <assistant-id>.
+List the Sources linked to Assistant <assistant-id>.
 List each Source and its ingestion status.
 Report Sources that are not ready. Do not retry or delete a Source.
 ```
@@ -225,7 +244,7 @@ Verwenden Sie diese Eingabeaufforderung, nachdem Sie den Schreibzugriff
 aktiviert haben:
 
 ```text
-Create one FAQ in Collection <collection-id>.
+Create one FAQ for Assistant <assistant-id>.
 Question: "When does enrollment close?"
 Answer: "Enrollment closes on <date>."
 Show the proposed tool input and ask for approval before the call.
@@ -242,14 +261,14 @@ Summarize the current live version. Do not publish or unpublish anything.
 Read the proposed tool input before you approve it. API Roles and MCP read-only mode are independent controls.
 </Callout>
 
-## Nicht unterstützte direkte Verbindungen
+## Clients ohne lokalen Prozess
 
-ChatGPT Web erfordert einen Remote-MCP-Endpunkt. Der aktuelle Ciele-MCP-Server
-bietet nur lokale `stdio`.
+ChatGPT Web kann keinen lokalen `stdio`-Server starten. Verweisen Sie ihn
+stattdessen auf den gehosteten Endpunkt. Die Bereitstellung muss über das
+öffentliche Internet erreichbar sein, was bei einem lokalen Ciele-Desktop-Stack
+nicht der Fall ist.
 
 Pi enthält kein integriertes MCP-Verbindungsverfahren. Pi-Erweiterungen können
 MCP-Unterstützung hinzufügen, aber Ciele liefert oder testet eine solche
-Erweiterung nicht.
-
-Verwenden Sie für beide Clients `ciele ... --json` über einen genehmigten
-Shell-Workflow. Sie können auch die [HTTP-API](/developers/api) direkt aufrufen.
+Erweiterung nicht. Verwenden Sie `ciele ... --json` über einen genehmigten
+Shell-Workflow oder rufen Sie die [HTTP-API](/developers/api) direkt auf.

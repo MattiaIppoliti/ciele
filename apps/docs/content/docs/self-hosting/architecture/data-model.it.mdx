@@ -1,11 +1,11 @@
 ---
-title: Modello dati
+title: Modello di dati
 description: Comprendi le relazioni principali tra tenant, configurazione, Knowledge e Conversation.
 ---
 
 ## Proprietà del tenant
 
-Un'Organizzazione è il tenant principale. I membri si uniscono a
+Un'Organizzazione è il tenant principale. I membri entrano a far parte di
 un'Organizzazione con un solo Ruolo.
 
 I record di proprietà dell'organizzazione includono Assistenti, Entità, Memorie,
@@ -15,21 +15,16 @@ Obiettivi, Avvisi e record di utilizzo.
 ## Configurazione dell'assistente
 
 <Mermaid
-  title="Le relazioni tra tenant principale e runtime"
+  title="Un Assistente è proprietario del proprio routing e delle proprie istantanee"
   chart={`
-erDiagram
-  ORGANIZATION ||--o{ ASSISTANT : owns
-  ASSISTANT ||--o{ FLOW : routes
-  ASSISTANT ||--o{ PUBLICATION : snapshots
-  ASSISTANT ||--o{ COLLECTION : knows
-  COLLECTION ||--o{ SOURCE : contains
-  SOURCE ||--o{ CONCEPT : produces
-  ASSISTANT ||--o{ CONVERSATION : serves
-  CONVERSATION ||--o{ MESSAGE : stores
-  ORGANIZATION ||--o{ ENTITY : defines
-  ENTITY ||--o{ RECORD : contains
-  ORGANIZATION ||--o{ MEMORY : isolates
-  CONVERSATION ||--o{ MEMORY : originates
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
 `}
 />
 
@@ -37,21 +32,49 @@ Una Pubblicazione memorizza un'istantanea immutabile della configurazione
 dell'Assistente. I record in bozza rimangono modificabili dopo la pubblicazione.
 
 Un Flow memorizza un trigger, la configurazione delle condizioni e le azioni
-ordinate. La convalida in fase di runtime impone coppie valide di trigger e
+ordinate. La convalida in fase di esecuzione impone coppie valide di trigger e
 azioni.
 
-Un Assistente seleziona gli schemi delle Entità per la sua prossima
-Pubblicazione. L'istantanea dello schema controlla gli strumenti generati,
-mentre ogni query legge i Record correnti.
+Un Assistente seleziona gli schemi di Entità per la sua prossima Pubblicazione.
+Lo snapshot dello schema controlla gli strumenti generati, mentre ogni query
+legge i Record correnti.
 
-Le Entità condivise espongono i dati comuni dell'Organizzazione. Le Entità con
-ambito utente indicano un attributo di identità per il filtraggio vincolato al
+Le Shared Entities espongono i dati comuni dell'Organization. Le Entità con
+ambito utente indicano un attributo di identità per il filtraggio legato al
 server.
+
+## Proprietà della conoscenza
+
+<Mermaid
+  title="È un link, non una Collection, a decidere cosa cerca un Assistant"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+La conoscenza appartiene all'Organizzazione. Una Collection è un contenitore,
+non un proprietario, e non decide quale Assistente risponde da una Source.
+
+È il collegamento tra Assistente e Sorgente a farlo. Il recupero legge il set di
+collegamenti, quindi una Fonte non collegata non risponde a nessuno. Il
+collegamento include anche l'accesso diretto per ogni Assistente.
+
+L'eliminazione di un Assistente rimuove i suoi collegamenti e lascia intatte
+tutte le Sorgenti.
 
 ## Dati della conversazione
 
-Una Conversazione appartiene all'Assistente che la serve e tiene traccia di una
-sessione del Visitatore. I messaggi memorizzano parti digitate per testo,
+Una Conversazione appartiene all'Assistant che la gestisce e tiene traccia di
+una sessione del Visitatore. I messaggi memorizzano le parti digitate per testo,
 citazioni, pulsanti, tracce e altre risposte.
 
 Lo stato della sessione registra anche l'invio di notifiche proattive. Una
@@ -74,7 +97,7 @@ viene memorizzato.
 
 L'accesso autenticato alla console utilizza la sicurezza a livello di riga, ove
 applicabile. I percorsi dei ruoli di servizio devono aggiungere un limite
-esplicito per l'organizzazione.
+esplicito per l'Organizzazione.
 
 L'API v1 utilizza l'Organizzazione determinata dalla chiave API. Non accetta
-come autorità un'Organizzazione selezionata dal chiamante.
+come autorità un'Organization selezionata dal chiamante.

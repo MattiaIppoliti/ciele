@@ -44,20 +44,16 @@ nuevas escrituras eliminan los hechos más antiguos una vez alcanzado ese límit
   chart={`
 flowchart TB
   TURN["Signed-in Conversation"]
-  QUIET["15 minutes without a new message"]
-  JOB["Durable promote_memories job"]
-  GATE["Check toggle, subject, model, and budget"]
-  STORE["Extract, embed, deduplicate, and store"]
-  NEXT["First turn of a later Conversation"]
-  PROMPT["Inject up to five relevant memories"]
-  TOOL["searchMemories handles later recall"]
+  QUIET["15 quiet minutes"]
+  JOB["promote_memories job"]
+  STORE["Extract, deduplicate, and store"]
+  NEXT["A later Conversation opens"]
+  PROMPT["Up to five memories join the prompt"]
   TURN --> QUIET
   QUIET --> JOB
-  JOB --> GATE
-  GATE --> STORE
+  JOB --> STORE
   STORE --> NEXT
   NEXT --> PROMPT
-  PROMPT --> TOOL
 `}
 />
 
@@ -65,23 +61,27 @@ Una tarea de promoción espera hasta que la conversación permanezca en silencio
 durante 15 minutos. Un mensaje más reciente reemplaza a una tarea pendiente más
 antigua.
 
-El primer turno de una Conversación posterior puede recibir hasta cinco
-recuerdos relevantes. El tiempo de ejecución puede buscar en las memorias del
-mismo sujeto más adelante.
+Antes de almacenar nada, el trabajo comprueba cuatro cosas: el conmutador de
+Organización, el sujeto de SSO, un modelo disponible y el presupuesto.
+Cualquiera de ellos puede detener la promoción.
 
-Recall nunca traspasa los límites de una organización o de un sujeto SSO.
+Solo el primer turno de una Conversación posterior recibe recuerdos de esta
+manera. Después de eso, el tiempo de ejecución los alcanza a través de la
+herramienta `searchMemories`.
 
-## Permite que un visitante inspeccione y elimine recuerdos
+Recall nunca cruza los límites de una organización o de un sujeto SSO.
+
+## Permite que un Visitante inspeccione y elimine recuerdos
 
 Un Visitante que haya iniciado sesión puede abrir el panel de historial del
 Widget. La carpeta **Memory** aparece cuando la memoria a largo plazo está
 habilitada.
 
 La carpeta enumera los hechos recordados para ese Visitante. Selecciona el
-control de eliminación junto a un hecho para olvidarlo.
+control de eliminación junto a un dato para olvidarlo.
 
-Al eliminarlo, el dato deja de aparecer en futuras recuperaciones de
-indicaciones y búsquedas en la memoria.
+Al eliminarlo, el hecho desaparece de futuras recuperaciones de prompts y
+búsquedas en la memoria.
 
 ## Gestionar una solicitud de supresión
 

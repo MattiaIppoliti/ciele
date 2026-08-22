@@ -1,5 +1,4 @@
-import { streamText, stepCountIs } from "ai";
-import type { LanguageModel, ToolSet } from "ai";
+import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "../session";
@@ -9,9 +8,7 @@ import type {
   KnowledgeSearcher,
   RuntimeEvent,
 } from "../types";
-import { usageTotals } from "../usage";
-import { errorMessageOf } from "../telemetry";
-import { searchBudgetExhausted, type SearchPass } from "./search-pass";
+import type { SearchPass } from "./search-pass";
 import { buildContextFrame, describeContextFrame } from "./query-understanding";
 import {
   MAX_AGENT_ITERATIONS,
@@ -24,6 +21,12 @@ import {
   type TerminalState,
   type WriteTimeStyle,
 } from "./ready-to-answer";
+import { refusalParts, runGatherPhase } from "./gather-phase";
+import {
+  clarifyQuestion,
+  resolveWriteEnding,
+  runWritePhase,
+} from "./write-phase";
 
 /**
  * The Agentic Search entrypoint (#206): the whole generative retrieval turn
@@ -190,6 +193,14 @@ export function buildSystemPrompt(
             ? `Every tool call MUST also set \`progress\`: one short sentence, in the user's own language, telling them what you are about to do, e.g. "Sto cercando i video nella sezione Video Prova del corso…". The user reads it while the call runs, so write it for them, keep it under ${PROGRESS_MAX_CHARS} characters, and never put reasoning, tool names or internal detail in it.`
             : undefined,
           "When the user shares a durable fact worth carrying into later turns (their role, product, account, or preference), save it with the remember tool.",
+          // The render catalogue needs saying out loud (#generative-ui): this
+          // phase's own instructions forbid addressing the user, and a
+          // component plainly does address them. A tool call is not prose, so
+          // the two do not actually conflict, but a model reading the ban
+          // strictly would never reach for the tool.
+          assistant.tools?.builtIns?.renderTable
+            ? "You may also show the user a table with the renderTable tool, and doing so does not break the rule above: a tool call is not prose. Use it when the answer compares several things across the same few attributes, call it before readyToAnswer, put only facts you retrieved in it, and still write the answer afterwards, referring to the table instead of repeating it."
+            : undefined,
         ]
       : [
           "",
@@ -275,6 +286,12 @@ export interface AgenticSearchTurnInput {
      * persisted `progress` part.
      */
     narrate: ((text: string, tool: string) => void) | undefined;
+    /**
+     * Sink for a render-only tool's component part (`render-tools.ts`). Same
+     * contract as {@link narrate}: the registry emits the part, this collects it
+     * so the saved message carries the component the Visitor was shown.
+     */
+    showPart: (part: ChatReplyPart) => void;
   }) => ToolSet;
   emit: (event: RuntimeEvent) => void;
   signal?: AbortSignal;
@@ -364,10 +381,12 @@ export async function runAgenticSearch(
   const retrievalContext = describeContextFrame(frame);
 
   // Simplified thinking (#560): the narration lines the tool phases produce.
-  // Streamed the moment each phase starts, and returned with the reply so the
-  // saved message, and the Inbox transcript, carry the same narration the
-  // Visitor watched. Their own parts, never concatenated onto the answer text.
-  const progressParts: ChatReplyPart[] = [];
+  // Everything the gather phase put in front of the Visitor before the answer
+  // was written: the Simplified-thinking narration, and any component a
+  // render-only tool showed. One array, appended as each is emitted, so the
+  // saved message, and the Inbox transcript, carry them in the order they were
+  // watched. Their own parts, never concatenated onto the answer text.
+  const streamedParts: ChatReplyPart[] = [];
   const narrate = assistant.simplifiedThinking
     ? (text: string, tool: string) => {
         const part: ChatReplyPart = {
@@ -379,7 +398,7 @@ export async function runAgenticSearch(
           action: tool === "searchKnowledge" ? "search_knowledge" : tool,
           text,
         };
-        progressParts.push(part);
+        streamedParts.push(part);
         emit({ type: "part", part });
       }
     : undefined;
@@ -391,14 +410,17 @@ export async function runAgenticSearch(
     terminal,
     writeTimeStyle: { answeringStyle, alreadyClarified },
     narrate,
+    // The registry has already emitted it; collecting is what makes it persist.
+    showPart: (part) => streamedParts.push(part),
   });
 
-  // ── Phase 1: gather ────────────────────────────────────────────────────────
-  // Tools are available and the model may not address the user. Everything it
-  // writes here is private reasoning, which is what makes "no answer text
-  // without a terminal declaration" structural rather than a hope.
-  const gather = streamText({
-    model: chatModel,
+  // ── Phase 1: gather (gather-phase.ts) ─────────────────────────────────────
+  const baseMessages: ModelMessage[] = [
+    ...history.map((m) => ({ role: m.role, content: m.text })),
+    { role: "user" as const, content: message },
+  ];
+  const gather = await runGatherPhase({
+    chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       skills,
       memory: session.memory(),
@@ -408,103 +430,32 @@ export async function runAgenticSearch(
       phase: "gather",
       alreadyClarified,
     }),
-    messages: [
-      ...history.map((m) => ({ role: m.role, content: m.text })),
-      { role: "user" as const, content: message },
-    ],
+    messages: baseMessages,
     tools,
-    stopWhen: [
-      // The declaration ends the phase: there is nothing left to gather for.
-      () => terminal.status !== null,
-      // The binding gate: the budget the model has been planning against, and
-      // the number it was told. Declaring is free, so a model that spends every
-      // iteration searching can still finish by declaring.
-      () => loop.iteration >= loop.limit,
-      // Retrieval cost ceiling underneath it, only a pathological batch hits it.
-      () => searchBudgetExhausted(searchPasses),
-      // Runaway guard: a model that neither searches nor declares still cannot
-      // loop forever.
-      stepCountIs(MAX_AGENT_ITERATIONS + 2),
-    ],
-    // An iteration is a STEP, not a tool call: the step's parallel calls have
-    // all run by now and between them spent exactly one (see loop-budget.ts).
-    onStepFinish: () => loop.endStep(),
-    abortSignal: signal,
+    loop,
+    terminal,
+    searchPasses,
+    emit,
+    signal,
+    recordUsage,
   });
 
-  let reasoning = "";
-  // Chars of `reasoning` already streamed as thought-deltas (#584). Deltas are
-  // withheld while the accumulation is pure whitespace, so a model that emits
-  // a stray newline never opens an empty thought in the panel.
-  let streamed = 0;
-  let finishReason: string | null = null;
-  let rawFinishReason: string | undefined;
-  const flushReasoning = () => {
-    if (reasoning.trim()) emit({ type: "thought", text: reasoning.trim() });
-    reasoning = "";
-    streamed = 0;
-  };
-  for await (const chunk of gather.fullStream) {
-    if (chunk.type === "text-delta") {
-      reasoning += chunk.text;
-      // Stream the reasoning as it is written, the Visitor watches it build
-      // in the Thinking panel; the terminal `thought` on the next tool call
-      // stays the authoritative whole.
-      if (reasoning.trim()) {
-        const delta =
-          streamed === 0 ? reasoning.trimStart() : reasoning.slice(streamed);
-        if (delta) emit({ type: "thought-delta", delta });
-        streamed = reasoning.length;
-      }
-    } else if (chunk.type === "tool-call") {
-      flushReasoning();
-    } else if (chunk.type === "finish") {
-      // Refusals are successes with a distinct stop reason (HTTP 200):
-      // check the finish reason, never the error path.
-      finishReason = chunk.finishReason;
-      rawFinishReason = chunk.rawFinishReason;
-    } else if (chunk.type === "error") {
-      throw chunk.error instanceof Error
-        ? chunk.error
-        : new Error(errorMessageOf(chunk.error));
-    }
-  }
-  flushReasoning();
-  try {
-    recordUsage?.(usageTotals(await gather.totalUsage));
-  } catch {
-    // usage unavailable from this provider/mock, accounting must never fail a
-    // turn that already did its work
-  }
-
-  // Safety refusal: answer honestly and offer the human exit ramp. Never
-  // dressed up as a knowledge gap, never retried on another provider, and
-  // excluded from the escalate-on-ungrounded heuristic (handler policy).
-  if (finishReason === "content-filter" || rawFinishReason === "refusal") {
-    const refusalPart: ChatReplyPart = {
-      type: "text",
-      action: "refusal",
-      text:
-        "I can't help with that request." +
-        (previewSurface && rawFinishReason
-          ? ` (Provider finish reason: ${rawFinishReason}.)`
-          : ""),
-    };
-    const helpPart: ChatReplyPart = {
-      type: "help_desk",
-      action: "suggest_help_desk",
-      label: contactLabel,
-    };
+  if (gather.refused) {
+    const [refusalPart, helpPart] = refusalParts({
+      contactLabel,
+      previewSurface,
+      rawFinishReason: gather.rawFinishReason,
+    });
     emit({ type: "part", part: refusalPart });
     emit({ type: "part", part: helpPart });
     return {
-      parts: [...progressParts, refusalPart, helpPart],
+      parts: [...streamedParts, refusalPart, helpPart],
       grounded: false,
       terminal: true,
     };
   }
 
-  // ── Phase 2: write ─────────────────────────────────────────────────────────
+  // ── Phase 2: write (write-phase.ts) ────────────────────────────────────────
   // The status the reply is written under. Normally the model's declaration; a
   // phase that ran out of budget mid-gather still has to produce a reply, and
   // the fallback reads the grounding rather than assuming it.
@@ -513,13 +464,9 @@ export async function runAgenticSearch(
   // second clarification request into a best-effort answer (the anti-loop
   // guarantee), so nothing downstream has to re-derive that rule.
   const status = resolveTerminalStatus(terminal.status, sourcesPart !== null);
-  // A clarification is one question, rendered as its own part, so it is
-  // collected rather than streamed, and the Visitor never sees a half-question
-  // that then turns into a part.
-  const streaming = status !== "needs_clarification";
 
-  const write = streamText({
-    model: chatModel,
+  const write = await runWritePhase({
+    chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
       skills,
       memory: session.memory(),
@@ -530,81 +477,45 @@ export async function runAgenticSearch(
     // The gather phase's own messages carry the tool results and the write-time
     // instructions the terminal tool returned, the model writes from what it
     // actually saw, not from a summary we made of it.
-    messages: [
-      ...history.map((m) => ({ role: m.role, content: m.text })),
-      { role: "user" as const, content: message },
-      ...(await gather.response).messages,
-    ],
-    abortSignal: signal,
+    messages: [...baseMessages, ...gather.responseMessages],
+    // A clarification is one question, rendered as its own part, so it is
+    // collected rather than streamed, and the Visitor never sees a
+    // half-question that then turns into a part.
+    streaming: status !== "needs_clarification",
+    emit,
+    signal,
+    recordUsage,
   });
-
-  let text = "";
-  let textOpen = false;
-  let writeFinishReason: string | null = null;
-  for await (const chunk of write.fullStream) {
-    if (chunk.type === "text-delta") {
-      if (streaming && !textOpen) {
-        emit({ type: "text-start", action: "search_knowledge" });
-        textOpen = true;
-      }
-      text += chunk.text;
-      if (streaming) emit({ type: "text-delta", delta: chunk.text });
-    } else if (chunk.type === "finish") {
-      writeFinishReason = chunk.finishReason;
-    } else if (chunk.type === "error") {
-      throw chunk.error instanceof Error
-        ? chunk.error
-        : new Error(errorMessageOf(chunk.error));
-    }
-  }
-  if (textOpen) emit({ type: "text-end" });
-  try {
-    recordUsage?.(usageTotals(await write.totalUsage));
-  } catch {
-    // as above
-  }
-
   if (status === "needs_clarification") {
-    const question =
-      text.trim() ||
-      "I want to make sure I look up the right thing: which topic (or which part of the material) are you asking about?";
     const part: ChatReplyPart = {
       type: "clarify",
       action: "search_knowledge",
-      question,
+      question: clarifyQuestion(write.text),
     };
     emit({ type: "part", part });
-    return { parts: [...progressParts, part], grounded: false, terminal: true };
+    return { parts: [...streamedParts, part], grounded: false, terminal: true };
   }
 
-  // The write phase produced nothing: never leave the Visitor with an empty
-  // bubble. What to say depends on what was actually found, so the honest copy
-  // is the same two cases the status already distinguishes.
-  if (!text.trim()) {
-    text =
-      sourcesPart === null
-        ? "I couldn't find anything about that in the knowledge base. I don't want to guess, so this may be outside the material I have, try rephrasing or narrowing the question, or reach out to support."
-        : "I found some relevant material but was cut off before I could summarize it, the sources below are what I pulled up. Try asking a more specific question.";
+  // What the finished stream says, and the copy its ending calls for.
+  const ending = resolveWriteEnding(write, sourcesPart !== null);
+  // Nothing was streamed to the Visitor, so the stand-in has to be emitted.
+  if (ending.fellBack) {
     emit({
       type: "part",
-      part: { type: "text", action: "search_knowledge", text },
+      part: { type: "text", action: "search_knowledge", text: ending.text },
     });
   }
 
-  // The narration comes first, in the order the phases ran, the same order the
-  // Visitor saw it stream, and the same place the reference platform puts it
-  // (there, glued onto the front of the answer string; here, still separable).
+  // What the gather phase showed comes first, in the order it streamed, which
+  // is where the reference platform puts its narration too (there, glued onto
+  // the front of the answer string; here, still separable parts).
   const parts: ChatReplyPart[] = [
-    ...progressParts,
-    { type: "text", action: "search_knowledge", text },
+    ...streamedParts,
+    { type: "text", action: "search_knowledge", text: ending.text },
   ];
   // Output-limit truncation: say so instead of pretending nothing was found.
-  if (writeFinishReason === "length") {
-    const notePart: ChatReplyPart = {
-      type: "text",
-      action: "fallback",
-      text: "That answer was cut short by the length limit, try asking a more specific question.",
-    };
+  if (ending.lengthNotice) {
+    const notePart = ending.lengthNotice;
     emit({ type: "part", part: notePart });
     parts.push(notePart);
     return { parts, grounded: false, terminal: true };

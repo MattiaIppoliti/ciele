@@ -1,6 +1,6 @@
 ---
 title: Fichiers et texte
-description: Téléchargez un fichier ou ajoutez du texte à une collection de connaissances d'assistant.
+description: Importez un fichier ou ajoutez du texte, puis choisissez les Assistants qui répondront à partir de celui-ci.
 ---
 
 ## Téléchargez un fichier
@@ -33,8 +33,27 @@ visiteurs.
 ## Remplacez le contenu obsolète
 
 Supprimez l'ancienne Source avant de vous fier à une solution de remplacement.
-Confirmez ensuite que la nouvelle Source est **Ready** et qu'elle génère des
-citations correctes.
+Ensuite, confirmez que la nouvelle Source est **Ready** et produit des citations
+correctes.
 
 La suppression d'une Source supprime ses Concepts du graphe de connaissances
 actif et de l'index de recherche.
+
+## Supprimer par opposition à effacer
+
+Une Source de type fichier peut répondre pour plusieurs Assistants. L'éditeur
+d'Assistant propose donc deux opérations.
+
+- **Remove from this Assistant** supprime un lien. Les autres Assistants
+  conservent le fichier.
+- **Delete** supprime la Source pour chaque Assistant lié. La confirmation nomme
+  chacun d'entre eux.
+
+Lorsque seul cet Assistant répond à partir du fichier, l'éditeur le supprime
+directement.
+
+## Remettez le fichier original au Visiteur
+
+Activez **Direct access** dans la [Bibliothèque](/knowledge/library) pour
+permettre à l'Assistant de joindre le fichier original à sa citation. Le
+paramètre s'applique à un lien d'Assistant et est désactivé par défaut.

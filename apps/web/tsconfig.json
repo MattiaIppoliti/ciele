@@ -9,6 +9,8 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // TS 7 defaults `types` to []; the @types this workspace depends on are named here.
+    "types": ["node", "react", "react-dom"],
     "resolveJsonModule": true,
     // @ciele/mcp is consumed as source and its own bin runs on Node's type
     // stripping, which requires explicit `.ts` import specifiers, so

@@ -12,21 +12,16 @@ Organization-owned records include Assistants, Entities, Memories, Help Desks, p
 ## Assistant configuration
 
 <Mermaid
-  title="The main tenant and runtime relationships"
+  title="An Assistant owns its routing and its snapshots"
   chart={`
-erDiagram
-  ORGANIZATION ||--o{ ASSISTANT : owns
-  ASSISTANT ||--o{ FLOW : routes
-  ASSISTANT ||--o{ PUBLICATION : snapshots
-  ASSISTANT ||--o{ COLLECTION : knows
-  COLLECTION ||--o{ SOURCE : contains
-  SOURCE ||--o{ CONCEPT : produces
-  ASSISTANT ||--o{ CONVERSATION : serves
-  CONVERSATION ||--o{ MESSAGE : stores
-  ORGANIZATION ||--o{ ENTITY : defines
-  ENTITY ||--o{ RECORD : contains
-  ORGANIZATION ||--o{ MEMORY : isolates
-  CONVERSATION ||--o{ MEMORY : originates
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
 `}
 />
 
@@ -37,6 +32,30 @@ A Flow stores one trigger, condition configuration, and ordered actions. Runtime
 An Assistant selects Entity schemas for its next Publication. The schema snapshot controls generated tools, while each query reads current Records.
 
 Shared Entities expose common Organization data. User-scoped Entities name one identity attribute for server-bound filtering.
+
+## Knowledge ownership
+
+<Mermaid
+  title="A link, not a Collection, decides what an Assistant searches"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+Knowledge belongs to the Organization. A Collection is a container, not an owner, and it does not decide which Assistant answers from a Source.
+
+The Assistant-to-Source link does. Retrieval reads the link set, so an unlinked Source answers nobody. The link also carries per-Assistant Direct access.
+
+Deleting an Assistant drops its links and leaves every Source in place.
 
 ## Conversation data
 

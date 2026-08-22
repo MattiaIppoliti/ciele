@@ -71,6 +71,40 @@ export type ChatReplyPart =
       heightUnit?: "vh" | "px";
     }
   /**
+   * A component from the closed render catalogue (`render-tools.ts`), chosen by
+   * the model and filled from its own tool-call arguments.
+   *
+   * Closed on purpose: `name` selects a component the chat clients already
+   * ship, and `props` were validated by that component's zod schema before this
+   * part existed. The model never supplies markup, which is what keeps a reply
+   * rendering inside an iframe on a third-party page from being an injection
+   * surface.
+   *
+   * `callId` is the tool call that produced it, the same id that call's `tool`
+   * step carries in the stored trace, so a persisted component joins to the
+   * step that produced it. It is also what lets a live client replace the
+   * provisional render it grew from the streamed arguments with this validated
+   * part.
+   *
+   * Nothing grades these props. `verifier.ts` re-reads question, answer and
+   * cited Concepts, all text, so a component asserts something no scheduled
+   * pass checks; that is why the first catalogue entry renders retrieved rows
+   * rather than computed numbers.
+   */
+  | {
+      type: "component";
+      action: "search_knowledge";
+      name: ReplyComponentName;
+      props: Record<string, unknown>;
+      callId: string;
+      /**
+       * Set ONLY by the live client, while the arguments are still streaming,
+       * so a half-built component can render as pending. The runtime never
+       * emits it and a persisted part never carries it.
+       */
+      pending?: boolean;
+    }
+  /**
    * Agentic Search terminal clarify (spec #61 / #156): instead of guessing or
    * dead-ending, the assistant asks one focused question. Emitted when query
    * understanding can't resolve the message into a searchable intent
@@ -141,6 +175,13 @@ export type ChatReplyPart =
         directAccess?: boolean;
       }>;
     };
+
+/**
+ * A **Reply Component** (the term is fixed in `context.md`): one name per
+ * component the chat clients ship. Adding one is a component, a zod schema and
+ * a spec in `render-tools.ts`, never a free-text string the model made up.
+ */
+export type ReplyComponentName = "table";
 
 /**
  * Which knowledge-scope tier a search pass targets (Agentic Search #155).
@@ -235,9 +276,18 @@ export type RuntimeEvent =
       /**
        * Structured outcome for tools whose result reads as labelled rows rather
        * than a one-line summary (an API call's endpoint/method/status/response).
-       * Must already be safe to show: the runtime caps and redacts it on write.
+       * Safe to show ANY audience, the anonymous Visitor included: this is the
+       * tier that goes on the wire.
        */
       result?: Record<string, unknown>;
+      /**
+       * The same outcome, undiminished, for the operator surfaces only (the
+       * stored trace and the Inbox card). Carries what `result` withholds: an
+       * upstream response body, an absolute request URL. `turn.ts` strips this
+       * before the event is serialized to a chat client, so it must never be
+       * the only copy of something a surface needs.
+       */
+      operatorResult?: Record<string, unknown>;
       durationMs: number;
     }
   /**
@@ -254,6 +304,36 @@ export type RuntimeEvent =
    * this is what turns "text… then a search" into a visible thought.
    */
   | { type: "thought"; text: string }
+  /**
+   * The model has begun writing a render-only tool's arguments. Those arguments
+   * ARE the component's props, so a live client opens a provisional render here
+   * and grows it from the deltas that follow; `name` is what it renders,
+   * `tool` keeps the pairing with the `tool-start`/`tool-end` lifecycle.
+   *
+   * This cannot be folded into `tool-start`: that event is emitted by the
+   * tool's execute, and execute does not run until the arguments are complete.
+   * These two are the only events that precede it for a given call.
+   */
+  | {
+      type: "tool-input-start";
+      callId: string;
+      tool: string;
+      name: ReplyComponentName;
+    }
+  /**
+   * A slice of the JSON text of a render-only tool's arguments: the analogue of
+   * `text-delta` and `thought-delta` for props, and the shape AG-UI's
+   * `TOOL_CALL_ARGS` carries. Raw text rather than a re-serialized partial
+   * object, so wire cost stays linear in the payload instead of quadratic in
+   * the number of deltas; `parsePartialJson` turns the accumulation into props
+   * on the client.
+   *
+   * **Never guaranteed.** Some providers stream tool arguments only behind a
+   * flag (Google wants `streamFunctionCallArguments`), so a turn may go
+   * straight from `tool-input-start` to the finished `part`. Progressive
+   * rendering is the enhancement; the component appearing whole is the floor.
+   */
+  | { type: "tool-input-delta"; callId: string; delta: string }
   | { type: "part"; part: ChatReplyPart }
   | { type: "text-start"; action: string }
   | { type: "text-delta"; delta: string }

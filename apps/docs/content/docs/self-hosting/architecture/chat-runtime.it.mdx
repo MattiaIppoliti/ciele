@@ -14,22 +14,23 @@ flowchart TB
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
-  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> CONTEXT
-  CONTEXT --> ACTIONS
+  CLASSIFY --> ACTIONS
   ACTIONS --> PARTS
 `}
 />
 
+L'identità verificata, i record delle entità e la memoria a lungo termine sono
+input letti dalle azioni. Non sono fasi del router, quindi l'immagine le omette.
+
 `messageFlowCandidates` fornisce candidati a entrambi i motori di routing.
-Questo limite impedisce che le condizioni oggettive producano risultati di
-routing diversi.
+Questo limite impedisce che condizioni oggettive producano risultati di routing
+diversi.
 
 Il contesto della conversazione fornisce esempi semantici per la
 classificazione. Non funge da gate booleano indipendente.
@@ -37,8 +38,7 @@ classificazione. Non funge da gate booleano indipendente.
 ## Contesto legato all'identità
 
 Un gate SSO Widget valido fornisce un soggetto con ambito Organization. Un claim
-verificato facoltativo può corrispondere ai record di entità nell'ambito
-dell'utente.
+verificato facoltativo può corrispondere a Entity Record con ambito utente.
 
 Le Entità selezionate producono strumenti generati di filtro e ricerca testuale.
 Gli strumenti con ambito utente omettono l'attributo identity dall'input rivolto
@@ -52,24 +52,24 @@ memorie a lungo termine pertinenti. Uno strumento di ricerca integrato nella
 memoria consente il richiamo successivo.
 
 Entrambi i percorsi di memoria richiedono l'attivazione dell'opzione
-Organizzazione e un soggetto SSO verificato.
+Organization e un soggetto SSO verificato.
 
 ## Scorciatoia di cortesia
 
 Il flusso di interazione di base integrato può gestire un breve messaggio di
-cortesia prima della classificazione dell'intento. Un flusso personalizzato
-idoneo precedente ha comunque la priorità.
+cortesia prima della classificazione dell'intento. Un Flow personalizzato idoneo
+precedente ha comunque la priorità.
 
 La scorciatoia non si attiva dopo una domanda dell'Assistente o per un messaggio
 che contiene una richiesta di informazioni.
 
 ## Percorso proattivo
 
-L'embed riporta il caricamento della pagina, il tempo di permanenza e gli eventi
-di apertura della chat. Il server convalida il trigger configurato e lo stato di
+L'embed riporta gli eventi di caricamento della pagina, tempo di permanenza e
+apertura della chat. Il server convalida il trigger configurato e lo stato di
 consegna.
 
-Un Flow proattivo contiene un'azione di notifica e nessuna condizione. L'azione
+Un Flow proattivo contiene un'azione di Notifica e nessuna condizione. L'azione
 emette il contenuto configurato senza una chiamata al modello.
 
 ## Esecuzione dell'azione
@@ -83,8 +83,8 @@ Follow-up generati e percorsi di raccomandazione supportati.
 ## Passaggio di consegne
 
 Handover carica un Assistente di destinazione pubblicato nella stessa
-Organizzazione. Esegue il messaggio del Visitatore attraverso quell'obiettivo
-una volta.
+Organizzazione. Esegue una sola volta il messaggio del Visitatore attraverso
+quell'assistente di destinazione.
 
 L'esecuzione di destinazione ignora un altro passaggio di consegne. Questa
 regola impedisce una catena di Assistenti illimitata.

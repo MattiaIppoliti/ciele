@@ -42,8 +42,15 @@ import {
   setMessageFeedbackAction,
 } from "@/app/actions";
 import { transcriptDocument } from "@/lib/inbox/transcript-print";
+import {
+  defaultInboxFilters,
+  filterConversations,
+  subjectName,
+  type InboxFilters,
+} from "@/lib/inbox/conversation-filter";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { CitationList } from "@/components/chat/citation-list";
+import { ComponentReplyPart } from "@/components/chat/component-part";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { ThinkingPanel } from "@/components/chat/thinking-panel";
@@ -76,48 +83,6 @@ import { formatDateTime } from "@/lib/format";
 interface AssistantOption {
   id: string;
   title: string;
-}
-
-interface Filters {
-  userInfo: string;
-  location: string;
-  city: string;
-  role: string;
-  from: string;
-  to: string;
-  assistantId: string;
-  helpDesk: string;
-  language: string;
-  workflow: string;
-  conversationIds: string;
-  feedback: "" | "up" | "down";
-  escalation: "" | "escalated" | "not_escalated";
-  /**
-   * Staff (member-subject) conversations, admin Preview, the data
-   * assistant, are hidden by default (#668); "include" opts them in.
-   */
-  staff: "" | "include" | "only";
-}
-
-function defaultFilters(): Filters {
-  const to = new Date();
-  const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
-  return {
-    userInfo: "",
-    location: "",
-    city: "",
-    role: "",
-    from: isoDay(from),
-    to: isoDay(to),
-    assistantId: "",
-    helpDesk: "",
-    language: "",
-    workflow: "",
-    conversationIds: "",
-    feedback: "",
-    escalation: "",
-    staff: "",
-  };
 }
 
 function dayLabel(iso: string): string {
@@ -212,14 +177,6 @@ function DateField({
       </PopoverContent>
     </Popover>
   );
-}
-
-function subjectName(c: InboxConversation): string {
-  if (c.metadata.userName) return c.metadata.userName;
-  if (c.metadata.userEmail) return c.metadata.userEmail.split("@")[0];
-  if (c.metadata.ssoClaimValue) return c.metadata.ssoClaimValue;
-  if (c.subjectType === "member") return "Member";
-  return c.subjectType === "sso" ? "Signed-in user" : "Visitor";
 }
 
 function subjectInitials(c: InboxConversation): string {
@@ -388,6 +345,12 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
       </a>
     );
   }
+  if (part.type === "component") {
+    // The same component the Visitor was shown: this is what the `showPart`
+    // collector in the runtime exists for. No `onAsk` here, a transcript is a
+    // record, and its rows are not buttons a Member can press.
+    return <ComponentReplyPart part={part} />;
+  }
   if (part.type === "iframe") {
     return (
       <span className="text-foreground/80 inline-flex max-w-[85%] items-center gap-1.5 truncate rounded-md border px-2.5 py-1 text-xs">
@@ -437,7 +400,7 @@ export function InboxClient({
 
   const [search, setSearch] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [filters, setFilters] = useState<InboxFilters>(defaultInboxFilters);
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
@@ -461,51 +424,10 @@ export function InboxClient({
     };
   }, [conversations]);
 
-  const filtered = useMemo(() => {
-    const ids = filters.conversationIds
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const from = filters.from ? new Date(`${filters.from}T00:00:00`) : null;
-    const to = filters.to ? new Date(`${filters.to}T23:59:59.999`) : null;
-    const needle = search.trim().toLowerCase();
-    const userNeedle = filters.userInfo.trim().toLowerCase();
-
-    return conversations.filter((c) => {
-      const updated = new Date(c.updatedAt);
-      if (from && updated < from) return false;
-      if (to && updated > to) return false;
-      if (
-        needle &&
-        ![c.title, c.metadata.userEmail, c.metadata.userName, subjectName(c)]
-          .filter(Boolean)
-          .some((v) => v!.toLowerCase().includes(needle))
-      )
-        return false;
-      if (
-        userNeedle &&
-        ![c.metadata.userEmail, c.metadata.userName, c.metadata.userRole, c.subjectId]
-          .filter(Boolean)
-          .some((v) => v!.toLowerCase().includes(userNeedle))
-      )
-        return false;
-      // Default views hide staff (member-subject) conversations (#668).
-      if (filters.staff === "" && c.subjectType === "member") return false;
-      if (filters.staff === "only" && c.subjectType !== "member") return false;
-      if (filters.location && c.metadata.location !== filters.location) return false;
-      if (filters.city && c.metadata.city !== filters.city) return false;
-      if (filters.role && c.metadata.userRole !== filters.role) return false;
-      if (filters.assistantId && c.assistantId !== filters.assistantId) return false;
-      if (filters.language && c.metadata.language !== filters.language) return false;
-      if (filters.workflow && !c.flowNames.includes(filters.workflow)) return false;
-      if (ids.length > 0 && !ids.includes(c.id)) return false;
-      if (filters.feedback === "up" && c.feedback !== 1) return false;
-      if (filters.feedback === "down" && c.feedback !== -1) return false;
-      if (filters.escalation === "escalated" && !c.metadata.escalated) return false;
-      if (filters.escalation === "not_escalated" && c.metadata.escalated) return false;
-      return true;
-    });
-  }, [conversations, filters, search]);
+  const filtered = useMemo(
+    () => filterConversations(conversations, { ...filters, search }),
+    [conversations, filters, search]
+  );
 
   // A selected conversation should show even if the current filters would hide
   // it (e.g. when opened via a deep link outside the default date range).
@@ -812,13 +734,6 @@ export function InboxClient({
                 onChange={(assistantId) => setFilters({ ...filters, assistantId })}
               />
               <FilterSelect
-                label="Help Desks"
-                value={filters.helpDesk}
-                placeholder="All Help Desks"
-                options={[]}
-                onChange={(helpDesk) => setFilters({ ...filters, helpDesk })}
-              />
-              <FilterSelect
                 label="Languages"
                 value={filters.language}
                 placeholder="All Languages"
@@ -859,7 +774,7 @@ export function InboxClient({
                   { value: "down", label: "Negative 👎" },
                 ]}
                 onChange={(feedback) =>
-                  setFilters({ ...filters, feedback: feedback as Filters["feedback"] })
+                  setFilters({ ...filters, feedback: feedback as InboxFilters["feedback"] })
                 }
               />
               <FilterSelect
@@ -873,7 +788,7 @@ export function InboxClient({
                 onChange={(escalation) =>
                   setFilters({
                     ...filters,
-                    escalation: escalation as Filters["escalation"],
+                    escalation: escalation as InboxFilters["escalation"],
                   })
                 }
               />
@@ -886,13 +801,13 @@ export function InboxClient({
                   { value: "only", label: "Staff only" },
                 ]}
                 onChange={(staff) =>
-                  setFilters({ ...filters, staff: staff as Filters["staff"] })
+                  setFilters({ ...filters, staff: staff as InboxFilters["staff"] })
                 }
               />
               <div className="flex justify-end pt-1">
                 <Button
                   variant="ghost"
-                  onClick={() => setFilters(defaultFilters())}
+                  onClick={() => setFilters(defaultInboxFilters())}
                   className="text-sm"
                 >
                   Reset filters

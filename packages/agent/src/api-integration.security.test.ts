@@ -88,6 +88,9 @@ describe("queryApiEndpoint, nothing undescribed reaches the network", () => {
     ["a protocol-relative host", "//evil.example/tickets/1/comments", "absolute"],
     ["directory traversal", "/tickets/../../../etc/passwd", "traversal"],
     ["an unsubstituted placeholder", "/tickets/{ticketId}/comments", "missing_path_param"],
+    ["an encoded dot segment", "/%2e%2e/tickets", "traversal"],
+    ["an upper-case encoded dot segment", "/%2E%2E/admin", "traversal"],
+    ["a half-encoded dot segment", "/.%2e/internal", "traversal"],
     ["an empty path", "", "empty"],
   ])("refuses %s before any request", async (_label, path, reason) => {
     const outcome = await queryApiEndpoint(integration(), { path });
@@ -222,4 +225,83 @@ describe("resolveIntegrationUrl", () => {
     const resolved = resolveIntegrationUrl("https://h.example/api/", "/a/b");
     expect(resolved.ok && resolved.url.toString()).toBe("https://h.example/api/a/b");
   });
+});
+
+/**
+ * A server-pinned path parameter is what stops the model choosing WHOSE record
+ * an endpoint reads. When the pin cannot resolve (an SSO connection with no
+ * identity claim configured, or a token that omitted it), the endpoint must
+ * become uncallable, never model-fillable: leaving `{name}` in the template
+ * handed the model the very value the pin exists to take away from it, and
+ * `resolveCatalogPath` would then match a model-supplied path against it.
+ */
+describe("unresolvable identity-pinned path parameters", () => {
+  const pinned = (): ApiIntegration =>
+    integration({
+      endpoints: [
+        {
+          id: "p1",
+          name: "My record",
+          path: "/customers/{email}",
+          method: "GET",
+          purpose: "The signed-in user's own record.",
+          params: [
+            {
+              name: "email",
+              in: "path",
+              type: "string",
+              required: true,
+              value: "{{identity.claim}}",
+            },
+          ],
+        },
+      ],
+    });
+
+  beforeEach(() => {
+    egressFetchMock.mockReset();
+    egressFetchMock.mockResolvedValue(ok("{}") as never);
+  });
+
+  it("substitutes the pin when the claim is present", async () => {
+    const outcome = await queryApiEndpoint(
+      pinned(),
+      { path: "/customers/{email}" },
+      undefined,
+      { subjectId: "sub-1", claimValue: "me@example.com" }
+    );
+    expect(outcome.ok).toBe(true);
+    expect(egressFetchMock.mock.calls[0][0]).toBe(
+      "https://api.example.com/v1/customers/me%40example.com"
+    );
+  });
+
+  it("refuses a model-chosen value even when the claim is present", async () => {
+    const outcome = await queryApiEndpoint(
+      pinned(),
+      { path: "/customers/victim@example.com" },
+      undefined,
+      { subjectId: "sub-1", claimValue: "me@example.com" }
+    );
+    expect(egressFetchMock).not.toHaveBeenCalled();
+    expect(outcome.ok).toBe(false);
+  });
+
+  it.each([
+    ["no claim value", { subjectId: "sub-1", claimValue: null }],
+    ["no identity at all", undefined],
+  ])(
+    "makes the endpoint uncallable with %s, rather than model-fillable",
+    async (_label, identity) => {
+      const outcome = await queryApiEndpoint(
+        pinned(),
+        { path: "/customers/victim@example.com" },
+        undefined,
+        identity ?? undefined
+      );
+      expect(egressFetchMock).not.toHaveBeenCalled();
+      expect(outcome.errorCode).toBe("unknown_endpoint");
+      expect(outcome.requestUrl).toBeNull();
+    }
+  );
 });

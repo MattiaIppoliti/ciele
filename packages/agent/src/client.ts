@@ -25,6 +25,21 @@ export type {
 // The reply-part contract every chat surface renders (owned by the runtime,
 // spec #194); flows through the RuntimeEvent `part` event.
 export type { ChatReplyPart, RuntimeEvent, StepStage } from "./types";
+// The render catalogue's entry names (generative UI): the chat clients switch on
+// this to pick which component a `component` part renders. Type-only, the
+// catalogue itself (zod schemas, part builders) stays server-side.
+export type { ReplyComponentName } from "./types";
+// Flattens a rendered component back to text, for the surfaces that read an
+// answer instead of drawing it (the Inbox JSON export's `Content`). Pure, and
+// deliberately not from `render-tools.ts`, which would pull the zod catalogue
+// into the bundle.
+export { componentPartText } from "./component-text";
+// The Reply Component shape rules: squaring, caps and type narrowing, as one
+// call the server's part builder, the Inbox export AND the live client all make.
+// Public because the client renders props parsed out of a half-written argument
+// stream, which passed through no schema at all.
+export { normalizeTable } from "./reply-components";
+export type { NormalizedTable } from "./reply-components";
 
 // Whether a Provider Connection can embed, powers the org embedding picker
 // in Settings > AI (#437). Pure predicate, no credentials, no AI SDK.

@@ -1,6 +1,6 @@
 ---
 title: Daten und Speicher
-description: Verankern Sie Antworten in strukturierten Datensätzen und merken Sie sich angemeldete Besucher über Konversationen hinweg.
+description: Verankern Sie Antworten in strukturierten Datensätzen und merken Sie sich angemeldete Besucher über alle Konversationen hinweg.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
@@ -11,35 +11,18 @@ Besucher kombinieren. Diese Funktionen nutzen eine verifizierte Identität und
 bleiben unter der Kontrolle der Organisation.
 
 <Mermaid
-  title="Wie strukturierte Daten und Langzeitspeicher einen Assistenten erreichen"
+  title="Datensätze werden erst dann zu Tools, wenn Sie sie veröffentlichen"
   chart={`
 flowchart TB
-  subgraph SETUP["Admin setup"]
-    ID["Entra subject<br/>optional identity claim"]
-    DATA["Entity schema<br/>CSV Records"]
-    SELECT["Select Entity<br/>in Tools & Skills"]
-  end
-  PUB["Publish the tool set"]
-  subgraph TURN["Signed-in Widget turn"]
-    SHARED["Shared lookup<br/>or text search"]
-    SCOPED["User-scoped lookup<br/>server identity filter"]
-    TRACE["Thinking and Inbox<br/>show tool calls"]
-  end
-  subgraph MEMORY["Long-term memory"]
-    QUIET["Conversation stays quiet"]
-    PROMOTE["Extract and store<br/>durable facts"]
-    RECALL["Next Conversation<br/>recalls relevant facts"]
-  end
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
   DATA --> SELECT
   SELECT --> PUB
-  PUB --> SHARED
-  PUB --> SCOPED
-  ID --> SCOPED
-  SHARED --> TRACE
-  SCOPED --> TRACE
-  TRACE --> QUIET
-  QUIET --> PROMOTE
-  PROMOTE --> RECALL
+  PUB --> TOOLS
+  TOOLS --> TRACE
 `}
 />
 
@@ -47,8 +30,14 @@ Die Veröffentlichung steuert, welche Entity-Tools vorhanden sind. Die Werte der
 Datensätze bleiben live, sodass ein späterer CSV-Import die Antworten ohne eine
 weitere Veröffentlichung ändern kann.
 
-Identitätsfilter werden auf dem Server angewendet. Ein Modell kann weder die
-Identität eines anderen Besuchers auswählen noch den Filter entfernen.
+Eine auf Benutzerebene beschränkte Entität benötigt einen verifizierten
+Identitätsanspruch. Der Server fügt diesen Filter hinzu, nachdem er die
+Tool-Eingabe validiert hat, sodass ein Modell ihn weder entfernen noch einen
+anderen Besucher benennen kann.
+
+Das Langzeitgedächtnis ist eine separate Funktion mit einem eigenen
+Lebenszyklus. Es ist nicht von Entitäten abhängig. Siehe
+[Langzeitgedächtnis](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />

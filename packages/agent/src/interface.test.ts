@@ -100,9 +100,13 @@ describe("runtime public interface", () => {
       "PROVIDER_NAMES",
       "TEMPLATE_VARIABLES",
       "canEmbedWithConnection",
+      // Flattens a rendered component to text for the Inbox export (generative UI).
+      "componentPartText",
       "consumeTurnStream",
       "decodeRuntimeEvents",
       "foldTraceEvent",
+      // The Reply Component shape rules, shared with the chat clients.
+      "normalizeTable",
     ]);
   });
 

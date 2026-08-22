@@ -1,6 +1,6 @@
 ---
 title: Files and text
-description: Upload a file or add text to an Assistant Knowledge Collection.
+description: Upload a file or add text, and choose which Assistants answer from it.
 ---
 
 ## Upload a file
@@ -31,3 +31,16 @@ Use a stable Source name. The name can appear in Visitor citations.
 Delete the old Source before you rely on a replacement. Then confirm that the new Source is **Ready** and produces correct citations.
 
 Source deletion removes its Concepts from the active Knowledge graph and search index.
+
+## Remove compared to delete
+
+A file Source can answer for more than one Assistant. The Assistant editor therefore offers two operations.
+
+- **Remove from this Assistant** deletes one link. The other Assistants keep the file.
+- **Delete** removes the Source for every linked Assistant. The confirmation names each one.
+
+When only this Assistant answers from the file, the editor deletes it directly.
+
+## Give the Visitor the original file
+
+Turn on **Direct access** in the [Library](/knowledge/library) to let the Assistant attach the original file to its citation. The setting applies to one Assistant link, and it is off by default.

@@ -5,8 +5,12 @@ description: Add Sources that the Assistant can search and cite.
 
 Sources belong to the Organization, and a Knowledge Collection stores them with the Concepts
 produced during ingestion. An Assistant searches a Source only after you link that Source to
-the Assistant. Link a Source from the Library, or add it inside the Assistant, which links it
-for you.
+the Assistant. Link a Source from the [Library](/knowledge/library), or add it inside the
+Assistant, which links it for you.
+
+Because a Source can answer for several Assistants, removing it from one Assistant and deleting it
+for the Organization are different operations. Deleting an Assistant leaves the Organization
+Sources in place. It removes only that Assistant's links.
 
 ## Available Source types
 
@@ -26,6 +30,11 @@ Ciele extracts Source content and creates searchable Concepts. The runtime resol
 | Failed | Ingestion did not complete. Review the error and retry the operation. |
 
 Do not test a new Source before its status is **Ready**.
+
+## Direct access
+
+A file Source can hand the Visitor the original file beside the citation. This is the **Direct
+access** setting on one Assistant link, and it is off by default. Set it in the Library.
 
 ## Retrieval
 

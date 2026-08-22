@@ -370,17 +370,6 @@ export async function updatePersonalAiSubscriptionsAllowedAction(
   );
 }
 
-export async function joinDemoOrgAction() {
-  await requireSession();
-  if (isSupabaseConfigured()) {
-    const supabase = await createSupabaseServerClient();
-    const { error } = await supabase.rpc("join_demo_org");
-    if (error) throw error;
-  }
-  revalidatePath("/", "layout");
-  redirect("/");
-}
-
 // --- Members & invites --------------------------------------------------------
 
 /**
@@ -1007,7 +996,9 @@ export async function testOpenAiCompatibleConnectionAction(input: {
   chatModel: string;
   embeddingModel?: string;
 }): Promise<OpenAiCompatibleTestResult> {
-  await requireMember();
+  // Same capability as saving the connection: this probe makes the server issue
+  // a request to a caller-chosen host, which is not a read-only ability.
+  await requireMember("manageMembers");
   return testOpenAiCompatibleConnection({
     baseUrl: input.baseUrl.trim(),
     apiKey: input.apiKey?.trim() || null,
@@ -1448,7 +1439,7 @@ export async function downloadKnowledgeOriginalAction(
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.storage
     .from(KNOWLEDGE_ORIGINALS_BUCKET)
-    .createSignedUrl(source.originalObjectPath, 600);
+    .createSignedUrl(source.originalObjectPath, 600, { download: true });
   if (error) return { url: null };
   return { url: data?.signedUrl ?? null };
 }

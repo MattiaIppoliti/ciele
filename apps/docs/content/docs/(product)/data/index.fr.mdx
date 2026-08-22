@@ -1,45 +1,28 @@
 ---
 title: Données et mémoire
-description: Basez vos réponses sur des enregistrements structurés et mémorisez les visiteurs connectés au fil des conversations.
+description: Basez les réponses sur des enregistrements structurés et mémorisez les visiteurs connectés au fil des conversations.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Brain, Database } from 'lucide-react';
 
-Ciele peut combiner les enregistrements de l'organisation avec des faits
-durables concernant les visiteurs connectés. Ces fonctionnalités utilisent une
-identité vérifiée et restent sous le contrôle de l'Organisation.
+Ciele peut combiner les enregistrements de l'organisation avec des informations
+durables sur les visiteurs connectés. Ces fonctionnalités utilisent une identité
+vérifiée et restent sous le contrôle de l'Organisation.
 
 <Mermaid
-  title="Comment les données structurées et la mémoire à long terme parviennent à un Assistant"
+  title="Les enregistrements ne deviennent des outils que lorsque vous publiez"
   chart={`
 flowchart TB
-  subgraph SETUP["Admin setup"]
-    ID["Entra subject<br/>optional identity claim"]
-    DATA["Entity schema<br/>CSV Records"]
-    SELECT["Select Entity<br/>in Tools & Skills"]
-  end
-  PUB["Publish the tool set"]
-  subgraph TURN["Signed-in Widget turn"]
-    SHARED["Shared lookup<br/>or text search"]
-    SCOPED["User-scoped lookup<br/>server identity filter"]
-    TRACE["Thinking and Inbox<br/>show tool calls"]
-  end
-  subgraph MEMORY["Long-term memory"]
-    QUIET["Conversation stays quiet"]
-    PROMOTE["Extract and store<br/>durable facts"]
-    RECALL["Next Conversation<br/>recalls relevant facts"]
-  end
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
   DATA --> SELECT
   SELECT --> PUB
-  PUB --> SHARED
-  PUB --> SCOPED
-  ID --> SCOPED
-  SHARED --> TRACE
-  SCOPED --> TRACE
-  TRACE --> QUIET
-  QUIET --> PROMOTE
-  PROMOTE --> RECALL
+  PUB --> TOOLS
+  TOOLS --> TRACE
 `}
 />
 
@@ -47,8 +30,13 @@ La Publication contrôle quels outils d'Entité existent. Les valeurs des
 enregistrements restent actives, de sorte qu'une importation CSV ultérieure peut
 modifier les réponses sans qu'une autre publication soit nécessaire.
 
-Les filtres d'identité sont appliqués sur le serveur. Un modèle ne peut pas
-sélectionner l'identité d'un autre Visiteur ni supprimer le filtre.
+Une entité au niveau de l'utilisateur nécessite une revendication d'identité
+vérifiée. Le serveur ajoute ce filtre après avoir validé l'entrée de l'outil, de
+sorte qu'un modèle ne peut ni le supprimer ni nommer un autre Visiteur.
+
+La mémoire à long terme est une fonctionnalité distincte avec son propre cycle
+de vie. Elle ne dépend pas des Entités. Voir
+[Mémoire à long terme](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
@@ -57,11 +45,11 @@ sélectionner l'identité d'un autre Visiteur ni supprimer le filtre.
 
 ## Deux types de mémoire
 
-**Session memory** appartient à une seule conversation. Elle ne suit pas un
+**Session memory** appartient à une seule Conversation. Elle ne suit pas un
 Visiteur dans une nouvelle Conversation.
 
 **Long-term memory** appartient à un sujet SSO vérifié au sein d'une
-organisation. Il peut prendre en charge les Conversations ultérieures lorsque
+Organisation. Il peut prendre en charge les Conversations ultérieures lorsque
 l'Organisation l'active.
 
 <Callout title="Signed-in Visitors only">

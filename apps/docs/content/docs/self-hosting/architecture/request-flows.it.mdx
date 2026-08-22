@@ -5,20 +5,21 @@ description: Traccia le richieste di amministratore, API, widget e MCP attravers
 
 ## Operazione dell'amministratore
 
-```mermaid
-sequenceDiagram
-  actor Admin
-  participant Web as Next.js console
-  participant Auth as Session and capability check
-  participant Ops as Shared operation
-  participant Db as Organization data
-  Admin->>Web: Submit configured action
-  Web->>Auth: Resolve member and Role
-  Auth->>Ops: Provide validated context
-  Ops->>Db: Read or mutate tenant data
-  Db-->>Web: Return result
-  Web-->>Admin: Refresh affected view
-```
+<Mermaid
+  title="Un'azione della console supera il controllo del ruolo prima di raggiungere qualsiasi dato"
+  chart={`
+flowchart TB
+  ADMIN["Member submits an action"]
+  AUTH["Resolve the session, member, and Role"]
+  OPS["Shared operation validates input"]
+  DB[("Organization data")]
+  VIEW["Affected view refreshes"]
+  ADMIN --> AUTH
+  AUTH --> OPS
+  OPS --> DB
+  DB --> VIEW
+`}
+/>
 
 Le azioni del server risolvono la sessione del membro prima di chiamare
 un'operazione condivisa. La sicurezza a livello di riga del database rimane
@@ -47,8 +48,8 @@ ogni richiesta accettata.
 
 L'embed carica la configurazione attiva della Pubblicazione. Il percorso della
 chat conserva il turno del Visitatore e chiama il runtime del Turno di
-Conversazione.
+conversazione.
 
-Il runtime seleziona un Flow, esegue le azioni, trasmette in streaming gli
-eventi di risposta e memorizza le parti di risposta. Il widget visualizza le
-stesse parti strutturate.
+Il runtime seleziona un Flow, esegue le azioni, trasmette gli eventi di risposta
+e memorizza le parti di risposta. Il widget visualizza le stesse parti
+strutturate.

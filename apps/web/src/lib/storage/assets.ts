@@ -122,21 +122,32 @@ export const KNOWLEDGE_ORIGINALS_BUCKET = "knowledge-originals";
 export const KNOWLEDGE_ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
 
 /**
- * Extensions the ingestion extractors can re-read (`runtime/extract.ts`):
- * PDF and DOCX have dedicated parsers, everything else is decoded as text.
+ * Extensions the ingestion extractors can re-read (`runtime/extract.ts`), each
+ * mapped to the Content-Type the stored object gets: PDF and DOCX have dedicated
+ * parsers, everything else is decoded as text.
+ *
+ * One map, not a set plus a lookup, so the two can never disagree: the accepted
+ * set below is its key list. The type comes from the validated extension and
+ * never from the uploader's `File.type`, because Storage replays the stored type
+ * on a signed-URL GET, so a part named `notes.txt` that declared
+ * `Content-Type: text/html` used to render as markup instead of being shown.
  */
-const KNOWLEDGE_FILE_EXTENSIONS = new Set([
-  "pdf",
-  "docx",
-  "txt",
-  "text",
-  "md",
-  "markdown",
-  "csv",
-  "tsv",
-  "json",
-  "log",
-]);
+const KNOWLEDGE_FILE_CONTENT_TYPES: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  text: "text/plain",
+  md: "text/plain",
+  markdown: "text/plain",
+  csv: "text/csv",
+  tsv: "text/tab-separated-values",
+  json: "application/json",
+  log: "text/plain",
+};
+
+const KNOWLEDGE_FILE_EXTENSIONS = new Set(
+  Object.keys(KNOWLEDGE_FILE_CONTENT_TYPES)
+);
 
 export function knowledgeFileExtension(filename: string): string | null {
   const parts = filename.toLowerCase().split(".");
@@ -188,7 +199,10 @@ export async function uploadKnowledgeOriginal(
     .from(KNOWLEDGE_ORIGINALS_BUCKET)
     .upload(path, input.file, {
       cacheControl: "0",
-      contentType: input.file.type || "application/octet-stream",
+      contentType:
+        KNOWLEDGE_FILE_CONTENT_TYPES[
+          knowledgeFileExtension(input.file.name) ?? ""
+        ] ?? "application/octet-stream",
       upsert: false,
     });
   if (error) throw error;

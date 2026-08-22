@@ -28,3 +28,11 @@ Deliberately close to `js.configs.recommended` + `typescript-eslint`'s recommend
 coverage on shared code, not a style debate, anything the formatter or `tsc` already decides is
 left alone. Two adjustments: `_`-prefixed identifiers are allowed unused (adapter methods that must
 match a signature), and tests may use `any` and non-null assertions.
+
+## Why this package declares `typescript`
+
+It never imports it. The devDependency exists so pnpm resolves `typescript-eslint`'s `typescript`
+peer from *this* manifest, to the 6.0 API republish, rather than walking up to a consumer workspace
+and matching the TypeScript 7 alias by package name. typescript-eslint throws at module load on
+7.x, so without that key `pnpm lint` dies with `Cannot read properties of undefined (reading 'Cjs')`
+in `typescript-estree`. See the two-TypeScripts bullet in the root [`CLAUDE.md`](../../CLAUDE.md).

@@ -1,6 +1,8 @@
 import type { TurnStep, TurnTerminalStatus } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import type { RuntimeEvent } from "./types";
+import { parsePartialJson } from "./partial-json";
+import { stripNonProps } from "./reply-components";
 
 /**
  * The RuntimeEvent wire contract's consumer side (one JSON event per line,
@@ -109,6 +111,34 @@ function foldThought(
  * The running/done transition lives here rather than in the clients so the panel
  * contents and the persisted trace can never disagree about what the agent did.
  */
+/**
+ * The projection of a RuntimeEvent that is safe to send to a chat client.
+ *
+ * `tool-end` carries two tiers (see its type): `result`, safe for any audience,
+ * and `operatorResult`, which may hold an upstream response body or an absolute
+ * internal URL. The widget chat route returns the event stream verbatim to an
+ * anonymous caller, so the operator tier is dropped here. Call this on the way
+ * out, after {@link foldTraceEvent} has taken what the stored trace needs.
+ */
+/**
+ * Which tier the stored trace keeps: the operator record when the tool declared
+ * one, otherwise the shown record. Never a leak, because `turn.ts` strips
+ * `operatorResult` on the way to a client; this only keeps the stored copy whole.
+ */
+function storedResult(
+  event: Extract<RuntimeEvent, { type: "tool-end" }>
+): Record<string, unknown> | undefined {
+  return event.operatorResult ?? event.result;
+}
+
+export function publicRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
+  if (event.type !== "tool-end" || event.operatorResult === undefined) {
+    return event;
+  }
+  const { operatorResult: _operatorResult, ...rest } = event;
+  return rest;
+}
+
 export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace {
   switch (event.type) {
     case "flow":
@@ -154,7 +184,13 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
         iterationLimit: event.iterationLimit ?? trace.iterationLimit,
       };
     }
-    case "tool-end":
+    case "tool-end": {
+      // The operator tier when the tool declared one: this fold is what turn.ts
+      // persists and the Inbox card renders, so it takes the undiminished
+      // record. A live client never receives `operatorResult` (turn.ts strips
+      // it), so folding it here cannot leak, it only keeps the stored copy
+      // complete.
+      const stored = storedResult(event);
       return {
         ...trace,
         steps: trace.steps.map((step) =>
@@ -163,7 +199,7 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
                 ...step,
                 status: event.ok ? "done" : "error",
                 detail: event.summary,
-                ...(event.result ? { result: event.result } : {}),
+                ...(stored ? { result: stored } : {}),
                 durationMs: event.durationMs,
               }
             : step
@@ -177,6 +213,7 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             ? (event.result.status as TurnTerminalStatus)
             : trace.terminal,
       };
+    }
     case "thought-delta":
       // Live reasoning (#584): deltas grow the newest running thought step in
       // place, so the panel streams the text exactly where the finalized step
@@ -201,6 +238,82 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
     default:
       return trace;
   }
+}
+
+/**
+ * Where a component part for `callId` sits, or -1. Components are the only
+ * parts a client rewrites in place, and the tool-call id is what identifies
+ * one across the provisional render and the validated part that replaces it.
+ */
+function componentIndex(parts: readonly ChatReplyPart[], callId: string): number {
+  return parts.findIndex(
+    (part) => part.type === "component" && part.callId === callId
+  );
+}
+
+/**
+ * Appends a part, except a component that is already on screen as a
+ * provisional render: that one is replaced, so the validated props supersede
+ * whatever the streamed arguments last parsed to and `pending` clears.
+ */
+export function appendOrReplacePart(
+  parts: readonly ChatReplyPart[],
+  part: ChatReplyPart
+): ChatReplyPart[] {
+  if (part.type !== "component") return [...parts, part];
+  const at = componentIndex(parts, part.callId);
+  if (at < 0) return [...parts, part];
+  return parts.map((existing, index) => (index === at ? part : existing));
+}
+
+/**
+ * Rewrites a provisional component's props from the arguments streamed so far.
+ * A no-op once the validated part has landed (`pending` cleared), so a late
+ * delta can never walk back a finished component.
+ */
+export function updatePendingComponent(
+  parts: ChatReplyPart[],
+  callId: string,
+  props: Record<string, unknown>
+): ChatReplyPart[] {
+  const at = componentIndex(parts, callId);
+  if (at < 0) return parts;
+  const existing = parts[at];
+  // Returning the SAME array on a no-op, not a copy: deltas arrive per token
+  // and most of them change nothing the parse can use, so a fresh array would
+  // re-render the whole reply for every one of them.
+  if (existing.type !== "component" || !existing.pending) return parts;
+  return parts.map((part, index) =>
+    index === at ? { ...existing, props } : part
+  );
+}
+
+/**
+ * Drops provisional components that never became real ones: the one for
+ * `callId`, or every one still pending when no id is given. Leaving a skeleton
+ * up would promise a component that is not coming.
+ *
+ * The per-call case is a call that never reached its tool: the AI SDK validates
+ * arguments against the input schema before execute, so a malformed or over-cap
+ * payload runs no tool at all. `gather-phase.ts` turns that `tool-error` chunk
+ * into a `tool-end`, which is what identifies the dead call.
+ *
+ * The sweep-everything case covers the ways a turn ends with no such signal: a
+ * model that abandons a call it started writing, an aborted fetch, a dropped
+ * connection.
+ */
+export function dropPendingComponents(
+  parts: readonly ChatReplyPart[],
+  callId?: string
+): ChatReplyPart[] {
+  return parts.filter(
+    (part) =>
+      !(
+        part.type === "component" &&
+        part.pending &&
+        (callId === undefined || part.callId === callId)
+      )
+  );
 }
 
 /** The turn state both chat UIs render while a reply streams in. */
@@ -256,64 +369,149 @@ export async function consumeTurnStream<T extends TurnView>(
   const errorText =
     options.errorText ?? (() => "Something went wrong, please try again.");
   let streamAction = "search_knowledge";
+  // Argument JSON accumulated per render-only call. Live-client state, which is
+  // why it lives here rather than in the fold: the persisted trace takes its
+  // component from the validated `part`, never from a partial parse.
+  const streamingProps = new Map<string, string>();
 
-  for await (const event of decodeRuntimeEvents(body)) {
-    // The shared fold first, for every event, then the streaming-only extras.
-    update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
-    switch (event.type) {
-      case "turn":
-        onStart?.({ conversationId: event.conversationId });
-        break;
-      case "thought":
-        // The reasoning moved into the Thinking panel, so the bubble resets.
-        update((view) => ({ ...view, streamingText: null }));
-        break;
-      case "part":
-        update((view) => ({ ...view, parts: [...view.parts, event.part] }));
-        break;
-      case "text-start":
-        streamAction = event.action;
-        update((view) => ({ ...view, streamingText: "" }));
-        break;
-      case "text-delta":
-        update((view) => ({
-          ...view,
-          streamingText: (view.streamingText ?? "") + event.delta,
-        }));
-        break;
-      case "text-end":
-        update((view) => ({
-          ...view,
-          parts: [
-            ...view.parts,
-            {
-              type: "text",
-              action: streamAction,
-              text: view.streamingText ?? "",
-            } as ChatReplyPart,
-          ],
-          streamingText: null,
-        }));
-        break;
-      case "done":
-        onDone?.({
-          conversationId: event.conversationId,
-          messageId: event.messageId,
-        });
-        break;
-      case "error":
-        update((view) => ({
-          ...view,
-          parts: [
-            ...view.parts,
-            {
-              type: "text",
-              action: "fallback",
-              text: errorText(event.message),
-            } as ChatReplyPart,
-          ],
-        }));
-        break;
+  // Wrapped so NOTHING provisional outlives this consumer, whichever way it
+  // returns. `done` and `error` sweep on their own below, but an aborted fetch
+  // or a dropped connection throws straight out of the iterator, and the
+  // widget's catch swallows that, so a skeleton left behind would pulse in the
+  // transcript for the rest of the session.
+  try {
+    for await (const event of decodeRuntimeEvents(body)) {
+      // The shared fold first, for every event, then the streaming-only extras.
+      update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
+      switch (event.type) {
+        case "turn":
+          onStart?.({ conversationId: event.conversationId });
+          break;
+        case "thought":
+          // The reasoning moved into the Thinking panel, so the bubble resets.
+          update((view) => ({ ...view, streamingText: null }));
+          break;
+        case "part":
+          update((view) => ({
+            ...view,
+            parts: appendOrReplacePart(view.parts, event.part),
+          }));
+          break;
+        case "tool-input-start": {
+          // The component goes up empty and grows. Props arrive as argument
+          // deltas, which some providers never send (see the event's docs), so
+          // this may be the only frame before the validated part lands.
+          streamingProps.set(event.callId, "");
+          const skeleton: ChatReplyPart = {
+            type: "component",
+            action: "search_knowledge",
+            name: event.name,
+            props: {},
+            callId: event.callId,
+            pending: true,
+          };
+          update((view) => ({
+            ...view,
+            parts: appendOrReplacePart(view.parts, skeleton),
+          }));
+          break;
+        }
+        case "tool-input-delta": {
+          const text = (streamingProps.get(event.callId) ?? "") + event.delta;
+          streamingProps.set(event.callId, text);
+          const props = parsePartialJson(text);
+          // Nothing coherent yet: keep the last render rather than blanking it.
+          if (!props || typeof props !== "object" || Array.isArray(props)) break;
+          update((view) => ({
+            ...view,
+            parts: updatePendingComponent(
+              view.parts,
+              event.callId,
+              // The Simplified-thinking line rides the same argument JSON, and it
+              // is narration, not a prop.
+              stripNonProps(props as Record<string, unknown>)
+            ),
+          }));
+          break;
+        }
+        case "tool-end":
+          // Either the render tool ran and emitted its part (swapped in by the
+          // `part` case above), or the call died before reaching the tool and
+          // `gather-phase` reported it here. Anything still pending is not
+          // arriving.
+          if (streamingProps.has(event.callId)) {
+            streamingProps.delete(event.callId);
+            update((view) => ({
+              ...view,
+              parts: dropPendingComponents(view.parts, event.callId),
+            }));
+          }
+          break;
+        case "text-start":
+          streamAction = event.action;
+          update((view) => ({ ...view, streamingText: "" }));
+          break;
+        case "text-delta":
+          update((view) => ({
+            ...view,
+            streamingText: (view.streamingText ?? "") + event.delta,
+          }));
+          break;
+        case "text-end":
+          update((view) => ({
+            ...view,
+            parts: [
+              ...view.parts,
+              {
+                type: "text",
+                action: streamAction,
+                text: view.streamingText ?? "",
+              } as ChatReplyPart,
+            ],
+            streamingText: null,
+          }));
+          break;
+        case "done":
+          // Backstop: schema validation runs before execute, so a rejected
+          // payload yields no tool-end to clean up after. Nothing is still
+          // arriving once the turn is done.
+          if (streamingProps.size > 0) {
+            streamingProps.clear();
+            update((view) => ({
+              ...view,
+              parts: dropPendingComponents(view.parts),
+            }));
+          }
+          onDone?.({
+            conversationId: event.conversationId,
+            messageId: event.messageId,
+          });
+          break;
+        case "error":
+          // Same backstop as `done`: the turn is over, so nothing still pending
+          // is going to arrive, and the fallback goes where the component was.
+          streamingProps.clear();
+          update((view) => ({
+            ...view,
+            parts: [
+              ...dropPendingComponents(view.parts),
+              {
+                type: "text",
+                action: "fallback",
+                text: errorText(event.message),
+              } as ChatReplyPart,
+            ],
+          }));
+          break;
+      }
+    }
+  } finally {
+    if (streamingProps.size > 0) {
+      streamingProps.clear();
+      update((view) => ({
+        ...view,
+        parts: dropPendingComponents(view.parts),
+      }));
     }
   }
 }

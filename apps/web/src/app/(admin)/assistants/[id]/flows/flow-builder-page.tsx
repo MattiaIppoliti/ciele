@@ -1,3 +1,4 @@
+import { redactFlowsSecrets } from "@agent-hub/core";
 import { notFound } from "next/navigation";
 import { FlowBuilder } from "@/components/assistant/flow-builder";
 import { requirePageMember } from "@/lib/authz";
@@ -16,7 +17,7 @@ export async function FlowBuilderPage({
   if (!assistant) notFound();
 
   const [flows, assistants, trust, helpDesks, collections] = await Promise.all([
-    db.listFlows(assistantId),
+    db.listFlows(assistantId).then(redactFlowsSecrets),
     reads.assistants(),
     db.listFlowTrust(assistantId),
     db.listHelpDesks(assistant.organizationId),

@@ -4889,6 +4889,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("entity_sync_runs")
         .insert({
           id: shortId(),
+          // Same reason as `memories` below: `now()` resolves to the same
+          // instant for runs recorded back to back, and `id` is random, so the
+          // newest-first listing needs an explicitly monotonic stamp to order
+          // by. Postgres' clock would otherwise decide the contract by coin flip.
+          finished_at: new Date(monotonicNow()).toISOString(),
           entity_id: entityId,
           status: run.status,
           upserted: run.upserted,

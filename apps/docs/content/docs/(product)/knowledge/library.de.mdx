@@ -1,0 +1,90 @@
+---
+title: Bibliothek
+description: Verwalten Sie die Quellen der Organisation und wählen Sie aus, welche Assistenten aus jeder Quelle antworten.
+---
+
+**Library** ist die Wissensansicht der Organisation. Sie listet alle Quellen
+auf, die die Organisation besitzt, und zwar für alle Assistenten. Öffnen Sie sie
+über die Hauptnavigation.
+
+Ein Assistent durchsucht eine Quelle nur, wenn eine Verknüpfung beide verbindet.
+In der Bibliothek erstellen und ändern Sie diese Verknüpfungen.
+
+## Registerkarten
+
+| Registerkarte | Inhalt |
+| --- | --- |
+| Websites | Website- und Seitenquellen. |
+| Dateien | Hochgeladene Dateien und eingefügter Text. |
+| FAQs | Kuratierte Frage-Antwort-Paare. |
+
+Jede Registerkarte zeigt einen Statuspunkt an. Der Punkt zeigt den schlechtesten
+Status auf der Registerkarte an. Ein Fehler hat Vorrang vor der Verarbeitung,
+und die Verarbeitung hat Vorrang vor „Bereit“.
+
+## Eine Quelle finden
+
+Verwenden Sie das Suchfeld für den Quellennamen. Verwenden Sie die Filter, um
+die Liste nach Status oder nach verknüpftem Assistenten einzuschränken. Jeder
+Filter wird in der Seitenadresse gespeichert, sodass Sie die gefilterte Ansicht
+teilen können.
+
+## Verknüpfte Assistenten
+
+In der Spalte **Linked assistants** wird jeder Assistent benannt, der von der
+Quelle antwortet.
+
+1. Öffnen Sie das Zeilenmenü „Source“.
+2. Wählen Sie **Manage assistants**.
+3. Wählen Sie jeden Assistenten aus oder deaktivieren Sie ihn.
+4. Speichern Sie die Auswahl.
+
+Die gespeicherte Auswahl ersetzt den vorherigen Link-Satz. Ein Assistent, den
+Sie deaktivieren, durchsucht die Quelle nicht mehr. Die Quelle und ihre Konzepte
+bleiben in der Organisation.
+
+## Direkter Zugriff
+
+**Direct access** gilt für Datei-Quellen. Wenn diese Option für einen Link
+aktiviert ist, kann der Assistent dem Besucher die Originaldatei mit der
+Zitierung aushändigen. Wenn diese Option deaktiviert ist, zitiert der Assistent
+die Datei, übergibt sie jedoch nicht.
+
+Der direkte Zugriff ist eine Eigenschaft eines Links. Legen Sie sie pro
+Assistenten fest, nicht pro Quelle. Die Standardeinstellung ist „Aus“.
+
+## Fügen Sie eine Quelle aus der Bibliothek hinzu
+
+1. Wählen Sie die gewünschte Registerkarte aus.
+2. Wählen Sie die Aktion „Hinzufügen“ für diesen Quelltyp aus.
+3. Geben Sie den Quellinhalt ein oder wählen Sie die Datei aus.
+4. Wählen Sie die zu verknüpfenden Assistenten aus.
+5. Starten Sie die Aufnahme.
+
+Eine hier hinzugefügte Quelle benötigt mindestens einen verknüpften Assistenten.
+Nichts durchsucht eine nicht verknüpfte Quelle.
+
+## Entfernen im Vergleich zu Löschen
+
+Die Bibliothek und der Assistant-Editor bieten zwei verschiedene Aktionen.
+
+| Vorgang | Wirkung |
+| --- | --- |
+| Aus diesem Assistenten entfernen | Löscht eine Verknüpfung. Bei anderen Assistenten bleibt die Quelle erhalten. |
+| Löschen | Löscht die Quelle und ihre Konzepte für jeden verknüpften Assistenten. |
+
+Wenn eine Quelle mit mehr als einem Assistenten verknüpft ist, bietet der
+Assistenten-Editor zunächst das Entfernen an. In der Bestätigung zum Löschen
+wird jeder Assistent genannt, der das Wissen verliert.
+
+Wenn nur ein Assistent verknüpft ist, löscht der Editor die Quelle direkt.
+
+## Geteiltes Wissen im Assistant-Editor
+
+Im Abschnitt Assistant **Knowledge** werden die Quellen aufgelistet, die
+innerhalb dieses Assistenten hinzugefügt wurden. Ein **Shared knowledge**-Feld
+darunter listet die aus der Bibliothek verknüpften Organisationsquellen auf.
+
+Zusammen bilden die beiden Listen die gesamte Suchreichweite des Assistenten.
+Verwenden Sie **Open in Library**, um einen Link oder dessen Direktzugriff zu
+ändern.

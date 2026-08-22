@@ -80,7 +80,10 @@ assistant enables (`assistants.tools.builtIns`) plus, when the assistant has an
 these replaced the per-endpoint custom HTTP tools, which no longer exist).
 Built-ins: `searchKnowledge` (always on),
 `calculator`, `remember` (session memory), `fetchUrl` (opt-in; private hosts
-blocked). Every spec is wrapped by `instrument()`, which emits the
+blocked), and `renderTable` (opt-in), the render catalogue's only entry: a tool
+with no `execute`, whose whole effect is the **Reply Component** it shows the
+Visitor, with its arguments streamed to the client so the component builds up
+rather than appearing finished. Every spec is wrapped by `instrument()`, which emits the
 `tool-start`/`tool-end` lifecycle events and contains errors, a throwing
 tool returns `{error}` to the model and never aborts the turn.
 

@@ -11,7 +11,12 @@ import type {
   FlowTrigger,
   FlowTriggerSettings,
 } from "@agent-hub/core";
-import { actionAllowedForTrigger } from "@agent-hub/core";
+import {
+  actionAllowedForTrigger,
+  mergeFlowSecrets,
+  redactFlowSecrets,
+  redactFlowsSecrets,
+} from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
 
@@ -99,7 +104,7 @@ export const listFlowsOp = defineOperation({
   entities: () => [],
   run: async (ctx, { assistantId }) => {
     await requireAssistant(ctx, assistantId);
-    return ctx.db.listFlows(assistantId);
+    return redactFlowsSecrets(await ctx.db.listFlows(assistantId));
   },
 });
 
@@ -108,7 +113,7 @@ export const getFlowOp = defineOperation({
   capability: "member",
   input: z.object({ id: z.string().min(1) }),
   entities: () => [],
-  run: (ctx, { id }) => requireFlow(ctx, id),
+  run: async (ctx, { id }) => redactFlowSecrets(await requireFlow(ctx, id)),
 });
 
 export const createFlowOp = defineOperation({
@@ -119,7 +124,7 @@ export const createFlowOp = defineOperation({
   run: async (ctx, { assistantId, input }) => {
     await requireAssistant(ctx, assistantId);
     assertTriggerActions(input.trigger ?? "message", input.actions);
-    return ctx.db.createFlow(assistantId, input);
+    return redactFlowSecrets(await ctx.db.createFlow(assistantId, input));
   },
 });
 
@@ -140,7 +145,21 @@ export const updateFlowOp = defineOperation({
         patch.actions ?? stored.actions
       );
     }
-    return ctx.db.updateFlow(id, patch);
+    // `stored` came back redacted-free from the Db, but the *caller's* copy did
+    // not: reads project the api_request credentials out, so an editor that
+    // round-trips the settings blob sends them back blank. Restore them rather
+    // than letting a save erase a credential the caller was never given.
+    const merged =
+      patch.actionSettings === undefined
+        ? patch
+        : {
+            ...patch,
+            actionSettings: mergeFlowSecrets(
+              patch.actionSettings,
+              stored.actionSettings
+            ),
+          };
+    return redactFlowSecrets(await ctx.db.updateFlow(id, merged));
   },
 });
 
@@ -174,6 +193,8 @@ export const reorderFlowsOp = defineOperation({
   run: async (ctx, { assistantId, orderedIds }) => {
     await requireAssistant(ctx, assistantId);
     await ctx.db.reorderFlows(assistantId, orderedIds);
-    return ctx.db.listFlows(assistantId);
+    // Redacted like every other read here: the ops layer is the seam that
+    // decides this, so a caller never has to know which op it went through.
+    return redactFlowsSecrets(await ctx.db.listFlows(assistantId));
   },
 });

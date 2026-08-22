@@ -26,6 +26,18 @@ const PUBLIC_PATHS = [
   // so they must NOT be bounced to the admin /login (the flow has its own
   // sealed-cookie session; see lib/sso).
   /^\/api\/sso\//,
+  // The typed REST API and the hosted MCP endpoint authenticate themselves with
+  // an org API key (`Authorization: Bearer ciele_sk_…`) and carry no browser
+  // cookies, so the /login bounce below turned every `ciele` CLI and MCP request
+  // into a 307 against a real deployment. `resolveApiKeyContext` is the whole
+  // gate: it hashes the bearer secret, refuses a revoked key, and hands back an
+  // org-pinned Db, so nothing here relies on the session middleware.
+  //
+  // Path-precise on purpose: a blanket `/^\/api\//` would also unbounce the cron
+  // routes, whose gate is a shared secret, and any future cookie-authenticated
+  // API route.
+  /^\/api\/v1(?:\/|$)/,
+  /^\/api\/mcp(?:\/|$)/,
   /^\/api\/local-connector\/relay\/exchange$/,
   // The paired connector polls for inference jobs with its own bearer token
   // (no browser cookies); the route authenticates the device itself.

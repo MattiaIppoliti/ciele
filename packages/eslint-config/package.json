@@ -16,5 +16,8 @@
   },
   "scripts": {
     "lint": "eslint"
+  },
+  "devDependencies": {
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }

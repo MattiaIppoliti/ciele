@@ -27,7 +27,8 @@ import {
 const ORG = "00000000-0000-0000-0000-000000000001";
 
 /** Map the shared TS fixtures onto the harness's DB-row seed. Each channel
- *  (OrgWebsiteSource) becomes a knowledge_collection + a website source. */
+ *  (OrgWebsiteSource) becomes a website Source in the org's Collection, linked
+ *  to the Assistant that answers from it (#733). */
 function seedFor(
   conversations: InboxConversation[],
   messages: InsightsMessage[]
@@ -35,12 +36,11 @@ function seedFor(
   return {
     organizationId: ORG,
     assistants: ASSISTANTS.map((a) => ({ id: a.id, title: a.title })),
-    collections: CHANNELS.map((ch) => ({ id: `kc-${ch.id}`, assistantId: ch.assistantId })),
     sources: CHANNELS.map((ch) => ({
       id: ch.id,
-      collectionId: `kc-${ch.id}`,
       name: ch.name,
       url: ch.url,
+      assistantId: ch.assistantId,
     })),
     conversations: conversations.map((c) => ({
       id: c.id,

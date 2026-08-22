@@ -1,13 +1,13 @@
 ---
 title: Archivos y texto
-description: Sube un archivo o añade texto a una colección de conocimientos del Asistente.
+description: Sube un archivo o añade texto y elige qué Asistentes responden a partir de él.
 ---
 
 ## Sube un archivo
 
 1. Abre el Asistente.
 2. Selecciona **Knowledge**.
-3. Añade una fuente de archivo.
+3. Añade un archivo de origen.
 4. Selecciona el archivo.
 5. Inicia la ingesta.
 6. Espera hasta que el estado de la Fuente sea **Ready**.
@@ -30,10 +30,29 @@ separado.
 Utiliza un nombre de fuente estable. El nombre puede aparecer en las citas de
 los visitantes.
 
-## Reemplaza el contenido obsoleto
+## Sustituye el contenido obsoleto
 
 Elimina la Fuente antigua antes de confiar en una sustituta. A continuación,
 confirma que la nueva Fuente está **Ready** y genera citas correctas.
 
 Al eliminar una fuente, se eliminan sus conceptos del grafo de conocimiento
 activo y del índice de búsqueda.
+
+## Eliminar frente a borrar
+
+Una fuente de archivo puede responder por más de un asistente. Por lo tanto, el
+editor de Asistentes ofrece dos operaciones.
+
+- **Remove from this Assistant** elimina un enlace. Los demás Asistentes
+  conservan el archivo.
+- **Delete** elimina la Fuente de cada Asistente vinculado. La confirmación
+  nombra a cada uno.
+
+Cuando solo este Asistente responde desde el archivo, el editor lo elimina
+directamente.
+
+## Entrega el archivo original al visitante
+
+Activa **Direct access** en la [Biblioteca](/knowledge/library) para que el
+Asistente adjunte el archivo original a su cita. La configuración se aplica a un
+enlace de Asistente y está desactivada de forma predeterminada.

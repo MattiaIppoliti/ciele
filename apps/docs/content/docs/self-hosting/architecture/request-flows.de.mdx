@@ -5,22 +5,23 @@ description: Verfolgen Sie Administrator-, API-, Widget- und MCP-Anfragen über 
 
 ## Administratorvorgang
 
-```mermaid
-sequenceDiagram
-  actor Admin
-  participant Web as Next.js console
-  participant Auth as Session and capability check
-  participant Ops as Shared operation
-  participant Db as Organization data
-  Admin->>Web: Submit configured action
-  Web->>Auth: Resolve member and Role
-  Auth->>Ops: Provide validated context
-  Ops->>Db: Read or mutate tenant data
-  Db-->>Web: Return result
-  Web-->>Admin: Refresh affected view
-```
+<Mermaid
+  title="Eine Konsolenaktion besteht die Rollenprüfung, bevor sie auf Daten zugreift"
+  chart={`
+flowchart TB
+  ADMIN["Member submits an action"]
+  AUTH["Resolve the session, member, and Role"]
+  OPS["Shared operation validates input"]
+  DB[("Organization data")]
+  VIEW["Affected view refreshes"]
+  ADMIN --> AUTH
+  AUTH --> OPS
+  OPS --> DB
+  DB --> VIEW
+`}
+/>
 
-Serveraktionen lösen die Mitgliedersitzung auf, bevor sie eine freigegebene
+Server-Aktionen lösen die Mitgliedersitzung auf, bevor sie eine freigegebene
 Operation aufrufen. Die Sicherheit auf Datenbankzeilenebene bleibt Teil der
 Konsolendatengrenze.
 
@@ -31,7 +32,7 @@ validiert die Eingabe, bevor sie dieselbe Operation wie die Konsole aufruft.
 
 Die API verwendet einen an die Organisation gebundenen Datenbank-Wrapper. Der
 Wrapper ersetzt die Argumente der Organisation und prüft die Inhaberschaft für
-den Zugriff auf Basis von Identifikatoren.
+den Zugriff auf Basis von Kennungen.
 
 ## CLI und MCP
 
@@ -45,7 +46,7 @@ akzeptierte Anforderung.
 ## Widget-Zug
 
 Das Embed lädt die aktive Publication-Konfiguration. Die Chat-Route speichert
-den Besucherzug und ruft die Laufzeitumgebung für den Gesprächszug auf.
+den Besucher-Turn und ruft die Conversation-Turn-Laufzeit auf.
 
 Die Laufzeit wählt einen Flow aus, führt Aktionen aus, streamt
 Antwort-Ereignisse und speichert Antwortteile. Das Widget rendert dieselben

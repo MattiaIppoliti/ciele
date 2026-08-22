@@ -4694,7 +4694,13 @@ export const mockDb: Db = {
   async listEntitySyncRuns(entityId, limit = 20) {
     return [...getStore().entitySyncRuns.values()]
       .filter((r) => r.entityId === entityId)
-      .sort((a, b) => (a.finishedAt > b.finishedAt ? -1 : 1))
+      // Newest first, `id` breaking a tie, matching the adapter's
+      // `finished_at desc, id desc`. The stamps are monotonic, so the
+      // tiebreaker never fires here; it keeps the two sorts one rule.
+      .sort(
+        (a, b) =>
+          b.finishedAt.localeCompare(a.finishedAt) || b.id.localeCompare(a.id)
+      )
       .slice(0, limit);
   },
 

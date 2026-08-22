@@ -14,18 +14,20 @@ flowchart TB
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
-  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> CONTEXT
-  CONTEXT --> ACTIONS
+  CLASSIFY --> ACTIONS
   ACTIONS --> PARTS
 `}
 />
+
+Las acciones leen como entradas la identidad verificada, los registros de
+entidad y la memoria a largo plazo. No son etapas del enrutador, por lo que no
+aparecen en la imagen.
 
 `messageFlowCandidates` proporciona candidatos a ambos motores de enrutamiento.
 Este límite evita que las condiciones objetivas produzcan resultados de
@@ -51,10 +53,10 @@ En el primer turno de una nueva conversación, el entorno de ejecución puede
 inyectar hasta cinco recuerdos relevantes a largo plazo. Una herramienta de
 búsqueda de memoria integrada se encarga de la recuperación posterior.
 
-Ambas rutas de memoria requieren el conmutador Organización y un sujeto SSO
+Ambas rutas de memoria requieren el conmutador Organization y un sujeto SSO
 verificado.
 
-## Atajo de cortesía
+## Acceso directo de cortesía
 
 El flujo de interacción básico integrado puede gestionar un breve mensaje de
 cortesía antes de la clasificación de intenciones. Un flujo personalizado
@@ -66,8 +68,8 @@ que contenga una solicitud de información.
 ## Ruta proactiva
 
 La incrustación informa sobre la carga de la página, el tiempo de permanencia y
-los eventos de apertura del chat. El servidor valida el desencadenante
-configurado y el estado de entrega.
+los eventos de apertura del chat. El servidor valida el disparador configurado y
+el estado de entrega.
 
 Un flujo proactivo contiene una acción de notificación y ninguna condición. La
 acción emite el contenido configurado sin una llamada al modelo.
@@ -86,5 +88,5 @@ compatibles.
 Handover carga un Asistente de destino publicado en la misma Organización.
 Ejecuta el mensaje del visitante a través de ese destino una vez.
 
-La ejecución de destino ignora otro traspaso. Esta regla evita una cadena
-ilimitada de Asistentes.
+La ejecución de destino ignora otro traspaso. Esta regla evita una cadena de
+Asistentes ilimitada.

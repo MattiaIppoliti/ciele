@@ -16,8 +16,10 @@ its host are ports in `src/host.ts`, registered once at startup (apps/web does i
   job-ledger row and cron drains it, so an unregistered host costs first-response latency, never
   work. apps/web registers Next's `after()`.
 - `allowRelaxedEgress()`, default: **false** (strict: no plain HTTP, no loopback for
-  tenant-configured outbound requests). apps/web registers `VERCEL_ENV !== "production"` so dev and
-  preview can hit local mocks.
+  tenant-configured outbound requests). apps/web relaxes it for `next dev` and for Vercel
+  preview/development only. It is tested **positively**: `VERCEL_ENV` is unset everywhere that is
+  not Vercel, so the old `VERCEL_ENV !== "production"` read an absent variable as a dev signal and
+  relaxed the policy on every self-host, Docker and Desktop install.
 
 ## Commands
 
@@ -37,6 +39,15 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 - `scheduled.ts`: one function per cron tick (`sweepDueRecrawls`, `finalizeDueCrawls`); the cron
   endpoints in apps/web are auth-and-serialize adapters over these.
 - `tools.ts` / `catalog.ts` / `models.ts`, tool registry and the provider/model catalog.
+- `render-tools.ts`, the render catalogue: tools whose whole effect is the **Reply Component** they
+  show the Visitor. `instrument` dispatches on the spec shape, so a render tool gets the same
+  lifecycle, panel row and Simplified-thinking narration as any other, and their arguments stream to
+  the client as `tool-input-delta` so the component materializes.
+  `reply-components.ts` (client-safe) is the **one** normalizer, the caps and the squaring rule that
+  the zod schema, the part builder, the Inbox export and the live client's provisional render all
+  share; three copies of that rule had already diverged once. `partial-json.ts` (client-safe, zero
+  imports) parses the streamed accumulation into props; `component-text.ts` flattens a component
+  back to text for the Inbox export.
 - `local-subscriptions.ts` / `local-subscription-model.ts`, provider CLIs as an inference backend
   (ADR-0015), published through the `./local-providers` barrel.
 - `egress.ts`, `trust.ts`, `redact.ts`, `pinned-fetch.ts`, the outbound-request guardrails.

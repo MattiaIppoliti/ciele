@@ -1,6 +1,6 @@
 ---
 title: Architettura
-description: Comprendere gli attuali componenti open source e i loro limiti di runtime.
+description: Comprendere i componenti open source attuali e i loro limiti di runtime.
 ---
 
 Ciele è un monorepo TypeScript con un'applicazione prodotto Next.js, pacchetti
@@ -8,23 +8,28 @@ condivisi, Postgres e worker opzionali.
 
 ## Limiti principali
 
-```mermaid
+<Mermaid
+  title="Ogni richiesta raggiunge Postgres attraverso lo stesso livello di accesso ai dati"
+  chart={`
 flowchart TB
-  UI["Administrator console and widget"]
+  UI["Console and widget"]
   API["Server actions and API v1"]
   OPS["Shared operations"]
   RUNTIME["Flow and agent runtime"]
-  DB["Database access"]
+  DB["Data access"]
   PG[("Postgres and storage")]
-  WORKERS["Optional workers"]
   UI --> API
   API --> OPS
   API --> RUNTIME
   OPS --> DB
   RUNTIME --> DB
   DB --> PG
-  RUNTIME --> WORKERS
-```
+`}
+/>
+
+I worker opzionali vengono eseguiti parallelamente al runtime per il crawling e
+la creazione di grafi. Leggono lo stesso database e rimangono disattivati per
+impostazione predefinita. Vedi [Background workers](/self-hosting/workers).
 
 Il router Flow rimane autorevole. Un modello può classificare l'intento,
 generare azioni selezionate e chiamare strumenti registrati.
@@ -38,11 +43,11 @@ di uscita dalla rete.
 - La [mappa del repository](/self-hosting/architecture/repository-map) individua
   la proprietà del codice.
 - [Request flows](/self-hosting/architecture/request-flows) tiene traccia delle
-  richieste provenienti da console, API e widget.
+  richieste di console, API e widget.
 - [Chat runtime](/self-hosting/architecture/chat-runtime) spiega i trigger, il
   routing e le azioni.
-- [Agentic model](/self-hosting/architecture/agentic-model) spiega l'esecuzione
-  del modello e dello strumento.
+- Il [modello agentico](/self-hosting/architecture/agentic-model) spiega
+  l'esecuzione del modello e dello strumento.
 - [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) spiega
   l'acquisizione e il recupero.
 - [Data model](/self-hosting/architecture/data-model) spiega le relazioni tra

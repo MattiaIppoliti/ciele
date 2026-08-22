@@ -1,29 +1,45 @@
 ---
 title: Connect AI clients
-description: Connect supported AI clients to the local Ciele MCP server.
+description: Connect supported AI clients to the hosted or local Ciele MCP server.
 ---
 
-The Ciele MCP server uses the local `stdio` transport. The client must start the server as a child process.
+The Ciele MCP server has two transports. Both register the same tools.
+
+- The **hosted endpoint** is `POST /api/mcp` on your deployment. Any client that accepts a remote MCP URL can use it.
+- The **local server** is a `stdio` process that the client starts as a child process.
+
+Prefer the hosted endpoint. It needs no checkout, no Node.js on the client machine, and no path to keep current.
 
 This page reflects client documentation checked on August 6, 2026. Client interfaces and configuration formats can change.
 
 ## Compatibility
 
-| Client | Direct connection | Configuration |
-| --- | :---: | --- |
-| Claude Code | Yes | Local `stdio` server |
-| Codex CLI, Codex app, and Codex IDE extension | Yes | Shared Codex MCP configuration |
-| ChatGPT desktop app | Yes | Shared local Codex MCP configuration |
-| Cursor | Yes | Local `stdio` server |
-| OpenCode | Yes | Local MCP server |
-| GitHub Copilot in VS Code | Yes | Local `stdio` server |
-| GitHub Copilot CLI | Yes | Local `stdio` server |
-| ChatGPT web | No direct connection | ChatGPT requires a remote MCP endpoint. |
-| Pi | No built-in procedure | Use the Ciele CLI or install a reviewed Pi extension. |
+| Client | Hosted endpoint | Local `stdio` |
+| --- | :---: | :---: |
+| Claude Code | Yes | Yes |
+| Codex CLI, Codex app, and Codex IDE extension | Yes | Yes |
+| ChatGPT desktop app | Yes | Yes |
+| Cursor | Yes | Yes |
+| OpenCode | Yes | Yes |
+| GitHub Copilot in VS Code | Yes | Yes |
+| GitHub Copilot CLI | Yes | Yes |
+| ChatGPT web | Yes | No local process |
+| Pi | No built-in procedure | No built-in procedure |
 
-The current Ciele server does not provide a remote HTTP transport. Therefore, ChatGPT web cannot connect to it directly.
+## Connect to the hosted endpoint
 
-## Prepare the connection
+1. Create a viewer [API key](/developers/api-keys).
+2. Give the client the endpoint URL for your deployment.
+3. Configure the `Authorization` header as `Bearer <key>`.
+
+```bash
+claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
+  --header "Authorization: Bearer ciele_sk_..."
+```
+
+The hosted endpoint has no read-only switch. Use a Viewer key when the agent must not change data.
+
+## Prepare a local connection
 
 1. Install Node.js 22.6 or later.
 2. Clone the Ciele repository.
@@ -45,7 +61,7 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Open `/mcp` in Claude Code. Confirm that the `ciele` server shows seven tools.
+Open `/mcp` in Claude Code. Confirm that the `ciele` server shows fourteen tools.
 
 See the [Claude Code MCP guide](https://docs.anthropic.com/en/docs/claude-code/mcp) for client options and configuration scopes.
 
@@ -198,7 +214,7 @@ Identify duplicate or unclear Flow names. Do not change data.
 Use this prompt to review Knowledge ingestion:
 
 ```text
-List the Knowledge Collections for Assistant <assistant-id>.
+List the Sources linked to Assistant <assistant-id>.
 List each Source and its ingestion status.
 Report Sources that are not ready. Do not retry or delete a Source.
 ```
@@ -206,7 +222,7 @@ Report Sources that are not ready. Do not retry or delete a Source.
 Use this prompt after you enable write access:
 
 ```text
-Create one FAQ in Collection <collection-id>.
+Create one FAQ for Assistant <assistant-id>.
 Question: "When does enrollment close?"
 Answer: "Enrollment closes on <date>."
 Show the proposed tool input and ask for approval before the call.
@@ -223,10 +239,8 @@ Summarize the current live version. Do not publish or unpublish anything.
 Read the proposed tool input before you approve it. API Roles and MCP read-only mode are independent controls.
 </Callout>
 
-## Unsupported direct connections
+## Clients without a local process
 
-ChatGPT web requires a remote MCP endpoint. The current Ciele MCP server provides only local `stdio`.
+ChatGPT web cannot start a local `stdio` server. Point it at the hosted endpoint instead. The deployment must be reachable from the public internet, which a local Ciele Desktop stack is not.
 
-Pi does not include a built-in MCP connection procedure. Pi extensions can add MCP support, but Ciele does not ship or test such an extension.
-
-For both clients, use `ciele ... --json` through an approved shell workflow. You can also call the [HTTP API](/developers/api) directly.
+Pi does not include a built-in MCP connection procedure. Pi extensions can add MCP support, but Ciele does not ship or test such an extension. Use `ciele ... --json` through an approved shell workflow, or call the [HTTP API](/developers/api) directly.

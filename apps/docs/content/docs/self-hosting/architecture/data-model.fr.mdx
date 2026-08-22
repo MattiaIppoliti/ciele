@@ -1,6 +1,6 @@
 ---
 title: Modèle de données
-description: Comprenez les relations entre le locataire principal, la configuration, la connaissance et la conversation.
+description: Comprenez les relations entre le locataire principal, la configuration, les connaissances et les conversations.
 ---
 
 ## Propriété du locataire
@@ -16,21 +16,16 @@ les alertes et les enregistrements d'utilisation.
 ## Configuration de l'assistant
 
 <Mermaid
-  title="Relations entre le locataire principal et l'exécution"
+  title="Un Assistant est propriétaire de son routage et de ses instantanés"
   chart={`
-erDiagram
-  ORGANIZATION ||--o{ ASSISTANT : owns
-  ASSISTANT ||--o{ FLOW : routes
-  ASSISTANT ||--o{ PUBLICATION : snapshots
-  ASSISTANT ||--o{ COLLECTION : knows
-  COLLECTION ||--o{ SOURCE : contains
-  SOURCE ||--o{ CONCEPT : produces
-  ASSISTANT ||--o{ CONVERSATION : serves
-  CONVERSATION ||--o{ MESSAGE : stores
-  ORGANIZATION ||--o{ ENTITY : defines
-  ENTITY ||--o{ RECORD : contains
-  ORGANIZATION ||--o{ MEMORY : isolates
-  CONVERSATION ||--o{ MEMORY : originates
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
 `}
 />
 
@@ -50,21 +45,50 @@ Les Entités partagées exposent les données communes de l'Organisation. Les
 Entités à portée utilisateur désignent un attribut d'identité pour le filtrage
 lié au serveur.
 
+## Propriété des connaissances
+
+<Mermaid
+  title="C'est un lien, et non une Collection, qui détermine ce qu'un Assistant recherche"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+La connaissance appartient à l'Organisation. Une Collection est un conteneur, et
+non un propriétaire, et elle ne décide pas quel Assistant répond à partir d'une
+Source.
+
+C'est le lien Assistant-Source qui le fait. La récupération lit l'ensemble des
+liens, de sorte qu'une source non liée ne répond à personne. Le lien permet
+également un accès direct par Assistant.
+
+La suppression d'un Assistant supprime ses liens et laisse chaque Source en
+place.
+
 ## Données de conversation
 
 Une Conversation appartient à l'Assistant qui la sert et suit une session
-Visiteur. Les messages stockent des éléments typés pour le texte, les citations,
-les boutons, les traces et d'autres réponses.
+Visiteur. Les messages stockent les éléments saisis pour le texte, les
+citations, les boutons, les traces et les autres réponses.
 
-L'état de la session enregistre également la livraison proactive de
-notifications. Une Notification ne crée pas de message Visiteur.
+L'état de la session enregistre également la livraison de notifications
+proactives. Une notification ne crée pas de message visiteur.
 
 Les mémoires à long terme appartiennent à une organisation et à un sujet SSO
 vérifié. Elles stockent un fait durable, l'intégration, les horodatages et la
 provenance de la conversation source.
 
-Le runtime limite chaque sujet à 200 mémoires. La suppression retire un fait de
-l'injection future d'invites et des recherches dans la mémoire.
+Le moteur d'exécution limite chaque sujet à 200 mémoires. La suppression retire
+un fait de l'injection future d'invites et des recherches dans la mémoire.
 
 ## Identifiants programmatiques
 

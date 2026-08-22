@@ -91,6 +91,11 @@ function integrationAuthHeaders(
   return { authorization: `Basic ${encoded}` };
 }
 
+/** Non-empty path segments, so a collapse shows up as a smaller count. */
+function countPathSegments(path: string): number {
+  return path.split("/").filter(Boolean).length;
+}
+
 /**
  * Joins the configured base URL and a catalogue-validated relative path, then
  * re-asserts that the result stayed inside the base. The second check is
@@ -120,6 +125,16 @@ export function resolveIntegrationUrl(
   if (url.origin !== base.origin) return { ok: false, code: "escapes_base" };
   const prefix = basePath === "" ? "/" : `${basePath}/`;
   if (!url.pathname.startsWith(prefix) && url.pathname !== basePath) {
+    return { ok: false, code: "escapes_base" };
+  }
+  // Nothing may collapse on the way through the parser. A dot segment in any
+  // spelling (`..`, `%2e%2e`, `.%2e`) shortens the path, so an unchanged
+  // segment count proves the URL we send is the one the catalogue approved.
+  // Counting rather than string-comparing keeps a legitimately
+  // percent-encoded parameter value from being refused here.
+  const expectedSegments =
+    countPathSegments(basePath) + countPathSegments(path);
+  if (countPathSegments(url.pathname) !== expectedSegments) {
     return { ok: false, code: "escapes_base" };
   }
   return { ok: true, url };
@@ -186,16 +201,21 @@ export async function queryApiEndpoint(
 
   // 1. The catalogue decides, before a URL exists.
   let requestedPath = request.path;
-  const endpoints = integration.endpoints.map((endpoint) => {
+  const endpoints = integration.endpoints.flatMap((endpoint) => {
     let path = endpoint.path;
     for (const param of endpoint.params ?? []) {
       if (param.value === undefined || param.in !== "path") continue;
       const value = pinnedValue(param.value, identity);
-      if (value === null) continue;
+      // An unresolvable pin makes this endpoint uncallable, never
+      // model-fillable: leaving `{name}` in the template would hand the model
+      // the very value the pin exists to take away from it. Dropping only this
+      // endpoint (rather than refusing outright) keeps one broken pin from
+      // disabling the unrelated entries the loop still has to walk.
+      if (value === null) return [];
       path = path.replace(`{${param.name}}`, encodeURIComponent(value));
     }
     if (requestedPath === endpoint.path) requestedPath = path;
-    return { ...endpoint, path };
+    return [{ ...endpoint, path }];
   });
   const match = resolveCatalogPath(endpoints, requestedPath, request.method);
   if (!match.ok) return refuse(match.reason);

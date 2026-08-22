@@ -324,6 +324,22 @@ describe("messageContent", () => {
 
   it("skips parts with nothing to say and tolerates malformed ones", () => {
     expect(messageContent([])).toBe("");
+  });
+
+  it("flattens a rendered component into the answer's Content", () => {
+    // Generative UI: the answer refers to the table, so the export has to carry
+    // the table. Joined with the same `...` the narration lines use.
+    const content = messageContent([
+      {
+        type: "component",
+        action: "search_knowledge",
+        name: "table",
+        callId: "call-1",
+        props: { columns: ["Piano", "Prezzo"], rows: [["Pro", "29"]] },
+      },
+      { type: "text", action: "search_knowledge", text: "Come vedi in tabella." },
+    ]);
+    expect(content).toBe("Piano | Prezzo\nPro | 29...Come vedi in tabella.");
     expect(
       messageContent([
         null,

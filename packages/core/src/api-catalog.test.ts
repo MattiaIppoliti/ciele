@@ -169,3 +169,42 @@ describe("apiEndpointDetail", () => {
     ]);
   });
 });
+
+describe("percent-encoded dot segments", () => {
+  const endpoints = [
+    {
+      id: "e1",
+      name: "One record",
+      method: "GET" as const,
+      path: "/{collection}/{id}",
+      purpose: "Look up one record",
+    },
+  ];
+
+  /**
+   * The WHATWG URL parser counts `%2e` as a dot when it collapses `..`, so a
+   * literal-only check let `/%2e%2e/users` match a placeholder here and then
+   * collapse to an undescribed path in `new URL()`. The catalogue is the
+   * allowlist, and the org's sealed credential rides on the request, so a path
+   * it never described must not survive this function.
+   */
+  it.each([
+    "/%2e%2e/users",
+    "/%2E%2E/admin",
+    "/.%2e/internal",
+    "/%2e./internal",
+    "/%2e%2e",
+  ])("refuses %s as traversal", (path) => {
+    const result = resolveCatalogPath(endpoints, path, "GET");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toBe("traversal");
+  });
+
+  it("still matches an ordinary two-segment path", () => {
+    const result = resolveCatalogPath(endpoints, "/tickets/8317", "GET");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.pathParams).toEqual({ collection: "tickets", id: "8317" });
+    }
+  });
+});

@@ -19,6 +19,14 @@ import type {
 /** How the model is asked to write a path parameter in a catalogue path. */
 const PATH_PARAM_RE = /^\{([A-Za-z_][A-Za-z0-9_]*)\}$/;
 
+/**
+ * A dot segment, however it is spelled. The WHATWG URL parser treats `%2e` as a
+ * dot when it collapses `..` segments, so a literal-only check leaves
+ * `/%2e%2e/users` looking like an ordinary segment here and like a traversal to
+ * `new URL()` later, which is how an undescribed path used to reach the network.
+ */
+const DOT_SEGMENT_RE = /^(?:\.|%2e){1,2}$/i;
+
 /** Why a model-supplied path was refused. Each maps to a message the model reads. */
 export type CatalogPathRejection =
   | "empty"
@@ -103,7 +111,7 @@ export function resolveCatalogPath(
     return { ok: false, reason: "absolute" };
   }
   const segments = splitPath(withoutQuery);
-  if (segments.some((segment) => segment === "." || segment === "..")) {
+  if (segments.some((segment) => DOT_SEGMENT_RE.test(segment))) {
     return { ok: false, reason: "traversal" };
   }
   // A `{placeholder}` still in the path means the model described the endpoint
@@ -125,7 +133,7 @@ export function resolveCatalogPath(
         // A substituted value is ONE segment: a percent-encoded slash or a dot
         // segment hiding inside it would otherwise reach a path the catalogue
         // never described.
-        if (!value || /%2f/i.test(value)) {
+        if (!value || /%2f/i.test(value) || DOT_SEGMENT_RE.test(value)) {
           matched = false;
           break;
         }

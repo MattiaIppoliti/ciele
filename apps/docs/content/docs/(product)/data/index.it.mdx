@@ -6,49 +6,37 @@ description: Basa le risposte su Record strutturati e ricorda i Visitatori che h
 import { Cards, Card } from 'fumadocs-ui/components/card';
 import { Brain, Database } from 'lucide-react';
 
-Ciele può combinare i Record dell'Organizzazione con informazioni durature sui
+Ciele può combinare i Record dell'Organizzazione con informazioni permanenti sui
 Visitatori che hanno effettuato l'accesso. Queste funzionalità utilizzano
 l'identità verificata e rimangono sotto il controllo dell'Organizzazione.
 
 <Mermaid
-  title="Come i dati strutturati e la memoria a lungo termine raggiungono un Assistente"
+  title="I record diventano strumenti solo quando li pubblichi"
   chart={`
 flowchart TB
-  subgraph SETUP["Admin setup"]
-    ID["Entra subject<br/>optional identity claim"]
-    DATA["Entity schema<br/>CSV Records"]
-    SELECT["Select Entity<br/>in Tools & Skills"]
-  end
-  PUB["Publish the tool set"]
-  subgraph TURN["Signed-in Widget turn"]
-    SHARED["Shared lookup<br/>or text search"]
-    SCOPED["User-scoped lookup<br/>server identity filter"]
-    TRACE["Thinking and Inbox<br/>show tool calls"]
-  end
-  subgraph MEMORY["Long-term memory"]
-    QUIET["Conversation stays quiet"]
-    PROMOTE["Extract and store<br/>durable facts"]
-    RECALL["Next Conversation<br/>recalls relevant facts"]
-  end
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
   DATA --> SELECT
   SELECT --> PUB
-  PUB --> SHARED
-  PUB --> SCOPED
-  ID --> SCOPED
-  SHARED --> TRACE
-  SCOPED --> TRACE
-  TRACE --> QUIET
-  QUIET --> PROMOTE
-  PROMOTE --> RECALL
+  PUB --> TOOLS
+  TOOLS --> TRACE
 `}
 />
 
 La Pubblicazione controlla quali strumenti di Entità esistono. I valori dei
-record rimangono attivi, quindi una successiva importazione CSV può modificare
+Record rimangono attivi, quindi una successiva importazione CSV può modificare
 le risposte senza un'altra Pubblicazione.
 
-I filtri di identità vengono applicati sul server. Un modello non può
-selezionare l'identità di un altro Visitatore né rimuovere il filtro.
+Un'Entità con ambito utente necessita di un claim di identità verificato. Il
+server aggiunge quel filtro dopo aver convalidato l'input dello strumento,
+quindi un modello non può né rimuoverlo né nominare un altro Visitatore.
+
+La memoria a lungo termine è una funzionalità separata con un proprio ciclo di
+vita. Non dipende dalle Entità. Vedi
+[Memoria a lungo termine](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />

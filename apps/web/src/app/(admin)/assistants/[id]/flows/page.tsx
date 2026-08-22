@@ -1,3 +1,4 @@
+import { redactFlowsSecrets } from "@agent-hub/core";
 import { notFound } from "next/navigation";
 import { FlowsList } from "@/components/assistant/flows-list";
 import { requirePageMember } from "@/lib/authz";
@@ -12,7 +13,7 @@ export default async function FlowsPage({
   const { db } = await requirePageMember();
   if (!(await getAssistantCached(id))) notFound();
   const [flows, trust] = await Promise.all([
-    db.listFlows(id),
+    db.listFlows(id).then(redactFlowsSecrets),
     db.listFlowTrust(id),
   ]);
 

@@ -13,6 +13,13 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // TS 7 defaults `types` to []; the @types this workspace depends on are named here.
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "mdx"
+    ],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

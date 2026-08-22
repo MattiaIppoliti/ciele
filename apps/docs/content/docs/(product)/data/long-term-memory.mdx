@@ -33,26 +33,24 @@ One signed-in Visitor can hold up to 200 memories. New writes remove the oldest 
   chart={`
 flowchart TB
   TURN["Signed-in Conversation"]
-  QUIET["15 minutes without a new message"]
-  JOB["Durable promote_memories job"]
-  GATE["Check toggle, subject, model, and budget"]
-  STORE["Extract, embed, deduplicate, and store"]
-  NEXT["First turn of a later Conversation"]
-  PROMPT["Inject up to five relevant memories"]
-  TOOL["searchMemories handles later recall"]
+  QUIET["15 quiet minutes"]
+  JOB["promote_memories job"]
+  STORE["Extract, deduplicate, and store"]
+  NEXT["A later Conversation opens"]
+  PROMPT["Up to five memories join the prompt"]
   TURN --> QUIET
   QUIET --> JOB
-  JOB --> GATE
-  GATE --> STORE
+  JOB --> STORE
   STORE --> NEXT
   NEXT --> PROMPT
-  PROMPT --> TOOL
 `}
 />
 
 A promotion job waits until the Conversation stays quiet for 15 minutes. A newer message supersedes an older pending job.
 
-The first turn of a later Conversation can receive up to five relevant memories. The runtime can search the same subject's memories later.
+Before it stores anything the job checks four things: the Organization toggle, the SSO subject, an available model, and the budget. Any one of them can stop the promotion.
+
+Only the first turn of a later Conversation receives memories this way. After that the runtime reaches them through the `searchMemories` tool.
 
 Recall never crosses an Organization or SSO subject boundary.
 

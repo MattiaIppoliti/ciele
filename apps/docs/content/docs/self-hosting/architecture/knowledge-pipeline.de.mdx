@@ -5,52 +5,64 @@ description: Verfolgen Sie eine Quelle von der Aufnahme bis zu einer zitierten A
 
 ## Aufnahme
 
-```mermaid
+<Mermaid
+  title="Eine Quelle wird zu durchsuchbaren Concepts, bevor sie als Ready gemeldet wird"
+  chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
-  EXTRACT["Extract normalized content"]
+  EXTRACT["Extract the content"]
   CONCEPT["Create OKF Concepts"]
-  INDEX["Store lexical and vector indexes"]
-  GRAPH["Update optional graph data"]
-  READY["Set Source status to Ready"]
+  INDEX["Index for search"]
+  GRAPH["Update the graph"]
+  READY["Status becomes Ready"]
   SOURCE --> EXTRACT
   EXTRACT --> CONCEPT
   CONCEPT --> INDEX
   CONCEPT --> GRAPH
   INDEX --> READY
   GRAPH --> READY
-```
+`}
+/>
 
 Knowledge verwendet Concepts im Open Knowledge Format (OKF). Ein Concept enthält
 einen Verweis auf seine ursprüngliche Source.
 
-Durch die Aufnahme von FAQs wird ein kuratiertes Konzept mit Herkunft von Frage
-und Antwort erstellt. Bei der Aufnahme von Dateien und Websites bleibt das
+Durch die Aufnahme von FAQs wird ein kuratiertes Concept mit Frage- und
+Antwort-Herkunft erstellt. Bei der Aufnahme von Dateien und Websites bleibt das
 ursprüngliche Source-Objekt gegebenenfalls erhalten.
 
 ## Abruf
 
 Die Laufzeitumgebung kann Concepts über Vektorsuche und lexikalisches Fallback
 abrufen. Im Graph-Modus kann die Navigation über indizierte Concept-Beziehungen
-erweitert werden.
+hinzugefügt werden.
+
+Jeder Pfad wird durch die Links vom Assistenten zur Quelle begrenzt. Ein Treffer
+von einer Quelle, die nicht mit dem anfragenden Assistenten verknüpft ist, wird
+sowohl im Graph-Pfad als auch im Vektor-Pfad verworfen.
 
 Ein Kontexthinweis kann den Abruf auf eine relevante Sammlung oder einen
-kursähnlichen Kontext beschränken, wenn die Laufzeit einen solchen bereitstellt.
+kursähnlichen Kontext beschränken, wenn die Laufzeitumgebung einen solchen
+bereitstellt.
 
 Deep Search verbessert die Wissensnavigation innerhalb der Grenzen der
 Laufzeitumgebung. Es werden keine Abfragen im öffentlichen Web durchgeführt.
 
 ## Zitatauflösung
 
-Die endgültige Antwort zitiert benannte Quellen, keine undurchsichtigen
-Suchabschnitte. Zitierkennungen verweisen über das Konzept auf die ursprüngliche
+Die endgültige Antwort zitiert benannte Quellen, nicht undurchsichtige
+Suchblöcke. Zitierkennungen verweisen über das Konzept auf die ursprüngliche
 Quelle.
 
 Der Besucher kann nach der Antwort die Quellen-Ansicht öffnen. Der Posteingang
 speichert dieselben Zitierteile zusammen mit der Konversation.
 
-## Löschen und erneutes Crawlen
+## Löschen und erneutes Durchforsten
 
-Durch das Löschen einer Quelle werden zugehörige Konzepte aus dem aktiven
-Graphen und den Suchdaten entfernt. Das erneute Durchforsten der Website startet
-die Extraktion und Indizierung für diese Quelle neu.
+Durch das Löschen einer Quelle werden zugehörige Konzepte für jeden verknüpften
+Assistenten aus dem aktiven Graphen und den Suchdaten entfernt. Durch das
+Entfernen eines Links wird nichts zurückgezogen. Es verhindert, dass ein
+Assistent die Quelle erreicht.
+
+Ein erneutes Durchforsten der Website startet die Extraktion und Indizierung für
+diese Quelle neu.

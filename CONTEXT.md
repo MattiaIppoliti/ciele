@@ -286,6 +286,19 @@ window returns the total length plus the next offset so a long document is walke
 silently cut.
 _Avoid_: pagination (that's rows), chunking (that's the embedding layer).
 
+**Reply Component**:
+A typed component an Assistant may render inside a reply, chosen by the model from a **closed**
+catalogue the chat clients ship and filled from the tool call's own arguments (validated, squared
+and capped before it exists). The model never supplies markup: a reply renders in an iframe on
+somebody else's page. Two rules bound the catalogue. Nothing grades a Reply Component, the answer
+verifier reads text, so an entry must *arrange* what the turn retrieved and never compute a new
+claim. And an entry must earn its place against markdown, which already renders tables in answer
+text, so it has to carry something text cannot: today, rows the Visitor can tap to ask a follow-up.
+Streamed as it is written, then persisted with the answer, so the Inbox transcript shows what the
+Visitor saw.
+_Avoid_: generative UI (the technique, not the thing), widget (that's the whole chat surface),
+card, block
+
 **Turn Trace**:
 The persisted, structured form of a Conversation Turn's Thinking Steps, reasoning thoughts and
 tool calls folded from runtime events by one shared function, stored on the assistant message

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ProgressLine } from "@/components/chat/progress-line";
+import { ComponentReplyPart } from "@/components/chat/component-part";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -346,6 +347,11 @@ function BotMessageView({
           }
           if (part.type === "iframe") {
             return <IframeReplyPart key={j} part={part} />;
+          }
+          if (part.type === "component") {
+            return (
+              <ComponentReplyPart key={j} part={part} onAsk={onSend} />
+            );
           }
           if (part.type === "follow_ups") {
             return (

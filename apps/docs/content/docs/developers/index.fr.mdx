@@ -9,7 +9,11 @@ Ciele propose trois interfaces pour l'administration programmatique. Chaque
 interface utilise les mêmes opérations et les mêmes vérifications de rôle que la
 console d'administration.
 
+Pour trouver l'opération correspondant à un contrôle de la console, ouvrez le
+[Developer Panel](/developers/developer-panel) sur cette page.
+
 <Cards>
+  <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
   <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
   <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
   <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
@@ -21,13 +25,13 @@ console d'administration.
 Les trois interfaces nécessitent une clé API d'organisation. Le rôle attribué
 contrôle les opérations que la clé peut utiliser.
 
-```mermaid
+<Mermaid
+  title="Trois clients, une API, un ensemble d'opérations"
+  chart={`
 flowchart TB
-  subgraph Clients
-    CLI["Ciele CLI"]
-    MCP["Ciele MCP server"]
-    HTTP["HTTP client"]
-  end
+  CLI["Ciele CLI"]
+  MCP["Ciele MCP server"]
+  HTTP["HTTP client"]
   API["Ciele API v1"]
   OPS["Shared operations"]
   DB[("Organization data")]
@@ -36,7 +40,8 @@ flowchart TB
   HTTP --> API
   API --> OPS
   OPS --> DB
-```
+`}
+/>
 
 Le service hébergé utilise `https://platform.ciele.app` par défaut. Une
 installation auto-hébergée utilise sa propre origine publique.
@@ -47,8 +52,8 @@ Create a viewer key for read operations. Create a higher-role key only when the 
 
 ## Domaines disponibles
 
-L'API actuelle inclut les Assistants, les Flux, la Connaissance, la publication,
-les conversations de la boîte de réception et les Améliorations.
+L'API actuelle comprend les Assistants, les Flux, la Connaissance, la
+publication, les conversations de la boîte de réception et les Améliorations.
 
 L'API n'expose pas toutes les fonctions de la console. Par exemple, le
 téléchargement d'avatar et la création d'amélioration restent réservés à la

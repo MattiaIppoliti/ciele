@@ -1,9 +1,9 @@
 ---
 title: FAQ
-description: Ajoutez des paires de questions-réponses approuvées à une collection de connaissances.
+description: Ajoutez des paires de questions-réponses approuvées pour un ou plusieurs Assistants.
 ---
 
-Une FAQ contient une question et une réponse sélectionnée. Utilisez les FAQ pour
+Une FAQ stocke une question et une réponse sélectionnée. Utilisez les FAQ pour
 le contenu qui nécessite une réponse exacte et approuvée.
 
 ## Ajoutez une FAQ
@@ -24,13 +24,14 @@ question,answer
 When does enrollment close?,Enrollment closes on October 31.
 ```
 
-Importez le fichier dans la collection requise. Corrigez les lignes qui ne
-contiennent pas les deux valeurs.
+Importez le fichier depuis l'Assistant ou depuis l'onglet FAQ de la
+[Bibliothèque](/knowledge/library) lorsque plusieurs Assistants ont besoin des
+mêmes paires. Corrigez les lignes qui ne contiennent pas les deux valeurs.
 
 ## Utilisez une réponse rapide FAQ
 
 Une réponse rapide FAQ renvoie la réponse sélectionnée telle quelle. Elle
 n'effectue aucun appel au modèle de chat et inclut la citation de la source FAQ.
 
-Utilisez une réponse rapide **Send Text** lorsque le texte doit plutôt entrer
-dans le routeur Flow normal.
+Utilisez une réponse rapide **Send Text** lorsque le texte doit plutôt être
+acheminé vers le routeur Flow normal.

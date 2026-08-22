@@ -3,7 +3,7 @@ title: Datenmodell
 description: Verstehen Sie die Beziehungen zwischen Hauptmandant, Konfiguration, Wissen und Konversation.
 ---
 
-## Tenant-Besitz
+## Mandantenbesitz
 
 Eine Organisation ist der primäre Mandant. Mitglieder treten einer Organisation
 mit einer Rolle bei.
@@ -15,21 +15,16 @@ Verbesserungen, Ziele, Warnungen und Nutzungsdatensätze.
 ## Konfiguration des Assistenten
 
 <Mermaid
-  title="Die Beziehungen zwischen Hauptmandant und Laufzeit"
+  title="Ein Assistant ist für sein Routing und seine Snapshots verantwortlich"
   chart={`
-erDiagram
-  ORGANIZATION ||--o{ ASSISTANT : owns
-  ASSISTANT ||--o{ FLOW : routes
-  ASSISTANT ||--o{ PUBLICATION : snapshots
-  ASSISTANT ||--o{ COLLECTION : knows
-  COLLECTION ||--o{ SOURCE : contains
-  SOURCE ||--o{ CONCEPT : produces
-  ASSISTANT ||--o{ CONVERSATION : serves
-  CONVERSATION ||--o{ MESSAGE : stores
-  ORGANIZATION ||--o{ ENTITY : defines
-  ENTITY ||--o{ RECORD : contains
-  ORGANIZATION ||--o{ MEMORY : isolates
-  CONVERSATION ||--o{ MEMORY : originates
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
 `}
 />
 
@@ -44,25 +39,55 @@ Ein Assistant wählt Entity-Schemata für seine nächste Veröffentlichung aus. 
 Schema-Snapshot steuert die generierten Tools, während jede Abfrage die
 aktuellen Datensätze ausliest.
 
-Gemeinsam genutzte Entitäten stellen allgemeine Organisationsdaten bereit.
-Entitäten im Benutzerbereich benennen ein Identitätsattribut für die
+Gemeinsam genutzte Entitäten stellen allgemeine Organisationsdaten zur
+Verfügung. Entitäten im Benutzerbereich benennen ein Identitätsattribut für die
 servergebundene Filterung.
+
+## Wissensbesitz
+
+<Mermaid
+  title="Ein Link, nicht eine Collection, bestimmt, was ein Assistant sucht"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+Das Wissen gehört der Organisation. Eine Collection ist ein Container, kein
+Eigentümer, und sie entscheidet nicht, welcher Assistant aus einer Source
+antwortet.
+
+Die Verknüpfung zwischen Assistant und Quelle bestimmt dies. Retrieval liest den
+Link-Satz, sodass eine nicht verknüpfte Quelle niemandem antwortet. Die
+Verknüpfung ermöglicht zudem den direkten Zugriff für jeden einzelnen
+Assistenten.
+
+Wenn Sie einen Assistenten löschen, werden seine Verknüpfungen aufgehoben, aber
+alle Quellen bleiben erhalten.
 
 ## Gesprächsdaten
 
 Eine Konversation gehört zum bedienenden Assistenten und verfolgt eine
-Besuchersitzung. In Messages werden typisierte Teile für Text, Zitate,
+Besuchersitzung. In Messages werden eingegebene Teile für Text, Zitate,
 Schaltflächen, Traces und andere Antworten gespeichert.
 
-Der Sitzungsstatus zeichnet auch die Zustellung proaktiver Benachrichtigungen
-auf. Eine Benachrichtigung erstellt keine Besuchernachricht.
+Der Sitzungsstatus zeichnet auch die proaktive Zustellung von Benachrichtigungen
+auf. Eine Benachrichtigung erzeugt keine Besuchernachricht.
 
 Langzeit-Speicher gehören zu einer Organisation und zu einem verifizierten
-SSO-Subjekt. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
+SSO-Benutzer. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
 Zeitstempel und die Herkunft der Quell-Konversation.
 
 Die Laufzeit begrenzt jedes Subjekt auf 200 Speicher. Durch das Löschen wird ein
-Fakt aus der zukünftigen Prompt-Einfügung und aus Speichersuchen entfernt.
+Fakt aus zukünftiger Prompt-Injektion und Speichersuchen entfernt.
 
 ## Programmatische Anmeldeinformationen
 
@@ -77,4 +102,4 @@ Zeilenebene. Pfade für Service-Rollen müssen eine explizite Organisationsgrenz
 hinzufügen.
 
 API v1 verwendet die Organisation, die aus dem API-Schlüssel aufgelöst wurde.
-Eine vom Aufrufer ausgewählte Organisation wird nicht als Autorität akzeptiert.
+Sie akzeptiert keine vom Aufrufer ausgewählte Organisation als Autorität.

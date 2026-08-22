@@ -3,9 +3,42 @@ title: Ciele MCP server
 description: Give an MCP client controlled access to Ciele administration operations.
 ---
 
-The Ciele Model Context Protocol (MCP) server is a local `stdio` process. It calls the Ciele API through the typed client.
+The Ciele Model Context Protocol (MCP) server exposes the administration operations to an AI agent. It has two transports, and both register the same tools.
 
-## Requirements
+- The **hosted endpoint** is `POST /api/mcp` on your deployment. Use it for a client that connects over HTTP.
+- The **local server** is a `stdio` process that you start from a repository checkout.
+
+Every tool call reaches the Organization through `/api/v1`, so an operation has one execution path whichever transport asked for it.
+
+## Hosted endpoint
+
+Each Ciele deployment serves the endpoint at its own origin. This includes the hosted service, a Docker self-host, and the local stack of Ciele Desktop. The endpoint needs no configuration.
+
+```text
+https://ciele.example.edu/api/mcp
+```
+
+Authenticate with an [Organization API key](/developers/api-keys) in the `Authorization` header:
+
+```text
+Authorization: Bearer ciele_sk_...
+```
+
+An unknown or absent key is refused with `401` before any tool is listed.
+
+<Callout title="The key Role is the permission boundary">
+The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+</Callout>
+
+## Protocol revisions
+
+The server speaks the `2026-07-28` revision and the 2025 revisions. It decides the revision from the opening exchange, so a client that has not moved to `2026-07-28` still works.
+
+The `2026-07-28` revision removed protocol sessions. Each request is self-contained, so the hosted endpoint needs no sticky routing and no session store.
+
+## Local `stdio` server
+
+### Requirements
 
 - Use Node.js 22.6 or later.
 - Clone the Ciele repository.
@@ -18,15 +51,20 @@ Start this program from the repository:
 node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-## Environment variables
+### Environment variables
 
 | Variable | Requirement | Purpose |
 | --- | --- | --- |
 | `CIELE_API_KEY` | Required | Authenticates the Organization. |
 | `CIELE_BASE_URL` | Optional | Selects a self-hosted origin. |
 | `CIELE_MCP_READ_ONLY` | Optional | Refuses mutation actions when the value is `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Optional | Refuses 2025-revision clients when the value is `1`. |
 
 The read-only check occurs inside the MCP process. A refused mutation does not make an API request.
+
+<Callout type="warn" title="These variables apply to the local server only">
+A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+</Callout>
 
 <Callout title="Recommended first connection">
 Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
@@ -51,11 +89,11 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_organization` | Manage Organization settings, Members, Invites, and API keys. |
 | `manage_integrations` | Manage Assistant API integrations and model providers. |
 
-The server currently registers fourteen tools. Each domain tool uses an `action` field for its operations.
+The server registers fourteen tools. Each domain tool uses an `action` field for its operations.
 
 Read-only mode classifies each action. It permits list, read, status, query, and export actions while refusing mutations.
 
-The MCP server does not provide a remote HTTP transport. See [AI clients](/developers/ai-clients) for compatibility information.
+See [AI clients](/developers/ai-clients) for the configuration of each supported client.
 
 ## Check the connection
 

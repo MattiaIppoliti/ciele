@@ -132,10 +132,13 @@ Commands:
 
   collections list <assistantId>
   sources list <collectionId>
+  sources list-org [--kinds <a,b>] [--status <s>] [--assistant <id>] [--q <text>] [--page] [--pageSize]
   sources get <id>                                Poll status until it settles
   sources add-text <collectionId> (--text <t> | --file <path>) [--name]
   sources add-url <collectionId> --url <url>
   sources add-file <collectionId> --file <path>
+  sources link <id> --assistants <a,b,…>          Empty list removes every link
+  sources direct-access <id> <on|off> --assistant <assistantId>
   sources delete <id> --yes
   sources recrawl <id>
   faqs add <collectionId> --question <q> --answer <a>

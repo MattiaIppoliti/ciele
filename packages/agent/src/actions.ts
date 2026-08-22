@@ -2,7 +2,7 @@ import { generateObject, streamText } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Assistant, FlowAction, FlowActionSettings } from "@agent-hub/core";
-import { DEFAULT_BASIC_REPLY } from "@agent-hub/core";
+import { DEFAULT_BASIC_REPLY, externalLinkUrl } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { buildToolset } from "./tools";
 import { createApiResponseStore } from "./api-catalog-tools";
@@ -209,7 +209,12 @@ const showButton: ActionHandler = async ({ flow, emit, templateContext }) => {
     action: "show_button",
     label: settings.label?.trim() || "Open link",
     buttonType: "external_link",
-    url: settings.url,
+    // Normalised like the iframe action twelve lines below, for the same reason
+    // and one more: the builder stores a bare host, and a stored `javascript:`
+    // or `data:` URL must never reach a link or a `window.open`. React's own
+    // href sanitiser covers the anchor sinks; the widget's quick-reply handler
+    // opens the value directly, so the scheme is settled here instead.
+    url: externalLinkUrl(settings.url),
     showIcon: settings.showIcon ?? (settings.type ? false : true),
     icon: settings.icon ?? "message",
   };
@@ -404,6 +409,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
       terminal,
       writeTimeStyle,
       narrate,
+      showPart,
     }) =>
       buildToolset({
         assistant,
@@ -424,6 +430,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
         terminal,
         writeTimeStyle,
         narrate,
+        showPart,
         emit,
         signal,
       }),

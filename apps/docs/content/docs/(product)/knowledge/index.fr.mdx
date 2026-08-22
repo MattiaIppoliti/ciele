@@ -6,8 +6,14 @@ description: Ajoutez des sources que l'assistant peut interroger et citer.
 Les sources appartiennent à l'organisation, et une collection de connaissances
 les stocke avec les concepts produits lors de l'ingestion. Un Assistant effectue
 une recherche dans une Source uniquement après que vous ayez associé cette
-Source à l'Assistant. Associez une source depuis la bibliothèque ou ajoutez-la
-dans l'assistant, qui l'associera pour vous.
+Source à l'Assistant. Associez une Source depuis la
+[Bibliothèque](/knowledge/library), ou ajoutez-la dans l'Assistant, qui
+l'associera pour vous.
+
+Étant donné qu'une Source peut répondre pour plusieurs Assistants, la supprimer
+d'un Assistant et la supprimer pour l'Organisation sont des opérations
+différentes. La suppression d'un Assistant laisse les Sources de l'Organisation
+en place. Seuls les liens de cet Assistant sont supprimés.
 
 ## Types de sources disponibles
 
@@ -24,16 +30,22 @@ moteur d'exécution résout les citations en les renvoyant à des Sources nommé
 | État | Signification |
 | --- | --- |
 | En cours de traitement | Ciele extrait et indexe la Source. |
-| Prêt | La Source est disponible pour la recherche de connaissances. |
+| Prête | La Source est disponible pour la recherche de connaissances. |
 | Échec | L'ingestion n'a pas abouti. Examinez l'erreur et réessayez l'opération. |
 
 Ne testez pas une nouvelle Source tant que son statut n'est pas **Ready**.
 
+## Accès direct
+
+Une Source de type fichier peut fournir au Visiteur le fichier original en plus
+de la citation. Il s'agit du paramètre **Direct access** sur un lien Assistant,
+et il est désactivé par défaut. Définissez-le dans la Bibliothèque.
+
 ## Récupération
 
-Search knowledge peut utiliser la recherche vectorielle, le repli lexical et la
-navigation dans le graphe de connaissances. Le moteur Knowledge sélectionné
-contrôle le chemin principal.
+La recherche de connaissances peut utiliser la recherche vectorielle, le repli
+lexical et la navigation dans le graphe de connaissances. Le moteur Knowledge
+sélectionné contrôle le chemin principal.
 
-La recherche approfondie permet davantage d'itérations basées uniquement sur la
-connaissance. Elle n'effectue pas de recherche sur le Web ouvert.
+La recherche approfondie permet davantage d'itérations basées uniquement sur les
+connaissances. Elle n'effectue pas de recherche sur le Web ouvert.

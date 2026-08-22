@@ -1,0 +1,78 @@
+---
+title: Library
+description: Manage the Organization Sources and choose which Assistants answer from each one.
+---
+
+**Library** is the Organization view of Knowledge. It lists every Source the Organization owns,
+across all Assistants. Open it from the main navigation.
+
+An Assistant searches a Source only when a link connects the two. The Library is where you create
+and change those links.
+
+## Tabs
+
+| Tab | Contents |
+| --- | --- |
+| Websites | Website and page Sources. |
+| Files | Uploaded files and pasted text. |
+| FAQs | Curated question and answer pairs. |
+
+Each tab shows a status dot. The dot reports the worst status in the tab. An error takes priority
+over processing, and processing takes priority over ready.
+
+## Find a Source
+
+Use the search box for the Source name. Use the filters to restrict the list by status or by linked
+Assistant. Each filter is stored in the page address, so you can share the filtered view.
+
+## Linked assistants
+
+The **Linked assistants** column names every Assistant that answers from the Source.
+
+1. Open the Source row menu.
+2. Select **Manage assistants**.
+3. Select or clear each Assistant.
+4. Save the selection.
+
+The saved selection replaces the previous link set. An Assistant you clear stops searching the
+Source. The Source and its Concepts remain in the Organization.
+
+## Direct access
+
+**Direct access** applies to file Sources. When it is on for one link, the Assistant can give the
+Visitor the original file with the citation. When it is off, the Assistant cites the file but does
+not hand it over.
+
+Direct access is a property of one link. Set it per Assistant, not per Source. The default is off.
+
+## Add a Source from the Library
+
+1. Select the required tab.
+2. Select the add action for that Source type.
+3. Enter the Source content or select the file.
+4. Select the Assistants to link.
+5. Start ingestion.
+
+A Source added here needs at least one linked Assistant. Nothing searches an unlinked Source.
+
+## Remove compared to delete
+
+The Library and the Assistant editor offer two different operations.
+
+| Operation | Effect |
+| --- | --- |
+| Remove from this Assistant | Deletes one link. Other Assistants keep the Source. |
+| Delete | Deletes the Source and its Concepts for every linked Assistant. |
+
+When a Source is linked to more than one Assistant, the Assistant editor offers the removal first.
+The delete confirmation names every Assistant that loses the knowledge.
+
+When only one Assistant is linked, the editor deletes the Source directly.
+
+## Shared knowledge in the Assistant editor
+
+The Assistant **Knowledge** section lists the Sources added inside that Assistant. A **Shared
+knowledge** panel below it lists the Organization Sources linked from the Library.
+
+Together the two lists are the full search reach of the Assistant. Use **Open in Library** to change
+a link or its Direct access.

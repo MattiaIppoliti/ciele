@@ -36,9 +36,20 @@ import { buildTemplateContext } from "./template";
 import { createTurnSession } from "./session";
 import { enqueueMemoryPromotionJob } from "./jobs";
 import { MEMORY_RECALL_LIMIT } from "./memories";
-import { EMPTY_TURN_TRACE, foldTraceEvent, type TurnTrace } from "./stream";
+import {
+  EMPTY_TURN_TRACE,
+  foldTraceEvent,
+  publicRuntimeEvent,
+  type TurnTrace,
+} from "./stream";
 import { prepareTraceForStorage } from "./trace";
 import { recordProviderHealth } from "./health";
+import { createDocumentReaderFactory } from "./knowledge-document-reader";
+import {
+  handoverTarget,
+  mergeHandoverContinuation,
+  runHandoverContinuation,
+} from "./handover";
 import { checkOrgBudget } from "./budget-gate";
 import {
   getEnterpriseCapabilities,
@@ -46,7 +57,6 @@ import {
   type UsageOutcome,
 } from "./ee";
 import { resolveChatModel, type KeyResolution } from "./models";
-import type { KnowledgeDocument } from "./types";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
 
@@ -586,38 +596,13 @@ export async function streamConversationTurn(
   }
   /**
    * The windowed knowledge reader (spec #559): a search returns the matching
-   * chunk, this returns the whole document behind it so the model can walk it by
-   * character range.
-   *
-   * The assistant's own Collections are the boundary. The widget's Db is
-   * service-role (it bypasses RLS by design), so an id the model produced is
-   * checked against this assistant's Collections before anything is read, a
-   * Visitor's turn must never be able to read another tenant's Concept by
-   * guessing an id. The Collection list is loaded at most once, and only if the
-   * model actually reads.
+   * chunk, this returns the whole document behind it so the model can walk it
+   * by character range. The widget's Db is service-role (it bypasses RLS by
+   * design), so the tenancy check on a model-supplied id is what keeps a
+   * Visitor's turn inside its own Assistant, see
+   * knowledge-document-reader.ts.
    */
-  const documentReaderFor = (assistantId: string) => {
-    let collectionIds: Set<string> | null = null;
-    return async (id: string): Promise<KnowledgeDocument | null> => {
-      const documentId = id.trim();
-      if (!documentId) return null;
-      if (collectionIds === null) {
-        const collections = await db.listCollections(assistantId);
-        collectionIds = new Set(collections.map((c) => c.id));
-      }
-      const concept = await db.getConcept(documentId);
-      if (!concept || !collectionIds.has(concept.collectionId)) return null;
-      const source = concept.sourceId
-        ? await db.getSource(concept.sourceId).catch(() => null)
-        : null;
-      return {
-        id: concept.id,
-        title: concept.frontmatter.title || concept.path,
-        sourceName: source?.name ?? null,
-        text: concept.body,
-      };
-    };
-  };
+  const documentReaderFor = createDocumentReaderFactory(db);
   const readKnowledgeDocument = documentReaderFor(assistant.id);
 
   // Tau-style session: the conversation's persistent state bag, exposed to
@@ -705,7 +690,13 @@ export async function streamConversationTurn(
           }
         }
         trace = foldTraceEvent(trace, event);
-        controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+        // The fold above has already taken the operator tier for the stored
+        // trace, so strip it before the event goes on the wire: this stream is
+        // returned verbatim to an anonymous widget caller, and `operatorResult`
+        // is the tier that is not safe to show one.
+        controller.enqueue(
+          encoder.encode(JSON.stringify(publicRuntimeEvent(event)) + "\n")
+        );
       };
       emit({ type: "turn", conversationId });
       /**
@@ -858,7 +849,7 @@ export async function streamConversationTurn(
             }
           }
         }
-        const result = await runAssistantChat({
+        let result = await runAssistantChat({
           assistant,
           platformPrompt,
           flows: input.flows,
@@ -923,73 +914,31 @@ export async function streamConversationTurn(
         if (signal.aborted) {
           throw new DOMException("Conversation turn aborted", "AbortError");
         }
-        // Handover continuation (#314): run the same message once inside the
-        // target Assistant's latest Publication (one hop, the continuation's
-        // own handover signal is ignored). Same-org guard: a flow can never
-        // hand a Visitor to another tenant's assistant. Unpublished target or
-        // any failure keeps the acknowledgement already streamed.
-        if (result.handoverTo && result.handoverTo !== assistant.id) {
-          try {
-            const publication = await db.getLatestPublication(
-              result.handoverTo
-            );
-            const targetConfig = publication?.config;
-            if (
-              targetConfig &&
-              targetConfig.assistant.organizationId === input.organizationId
-            ) {
-              const target: Assistant = {
-                ...targetConfig.assistant,
-                createdAt: publication.createdAt,
-                updatedAt: publication.createdAt,
-              };
-              // Same factory as the live turn, so the continuation honors the
-              // TARGET assistant's Knowledge Engine choice instead of silently
-              // running a vector-only path production never uses elsewhere.
-              const targetSearch: KnowledgeSearcher = buildKnowledgeSearcher({
-                db,
-                connections: input.connections,
-                assistant: target,
-                collectionId: null,
-                conversationId,
-              });
-              const continuation = await runAssistantChat({
-                assistant: target,
-                platformPrompt,
-                flows: targetConfig.flows,
-                connections: input.connections,
-                message,
-                history,
-                searchKnowledge: targetSearch,
-                // The continuation runs inside the target Assistant, so it gets
-                // the target's own integration and document boundary, never
-                // the originating assistant's.
-                readKnowledgeDocument: documentReaderFor(target.id),
-                apiIntegration: await db
-                  .getApiIntegration(target.id)
-                  .catch(() => null),
-                collectionId: null,
-                session,
-                alreadyClarified,
-                skills: targetConfig.skills ?? [],
-                // A handover does not move the visitor off the page they are
-                // on: the target assistant's flows gate on the same facts.
-                routing: {
-                  url: conversation.metadata.launchUrl,
-                  now: new Date(),
-                },
-                emit,
-                signal,
-                keyResolution: input.keyResolution,
-              });
-              result.parts.push(...continuation.parts);
-              result.effects.push(...continuation.effects);
-              result.usage.push(...continuation.usage);
-              result.flowName = `${result.flowName} → ${target.title}: ${continuation.flowName}`;
-            }
-          } catch (error) {
-            if (signal.aborted) throw error;
-            console.error("[runtime] handover continuation failed:", error);
+        // Handover continuation (#314): the same message, run once more
+        // inside the target Assistant's Publication. One hop, same
+        // Organization only, and any failure keeps the acknowledgement
+        // already streamed (handover.ts).
+        const handoverTo = handoverTarget(result, assistant.id);
+        if (handoverTo) {
+          const continuation = await runHandoverContinuation({
+            db,
+            connections: input.connections,
+            platformPrompt,
+            targetId: handoverTo,
+            organizationId: input.organizationId,
+            message,
+            history,
+            conversationId,
+            launchUrl: conversation.metadata.launchUrl,
+            session,
+            alreadyClarified,
+            readKnowledgeDocumentFor: documentReaderFor,
+            emit,
+            signal,
+            keyResolution: input.keyResolution,
+          });
+          if (continuation) {
+            result = mergeHandoverContinuation(result, continuation);
           }
         }
         const usage = summarizeTurnUsage(result.usage);

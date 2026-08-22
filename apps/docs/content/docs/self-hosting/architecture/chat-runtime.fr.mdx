@@ -1,12 +1,12 @@
 ---
 title: Exécution du chat
-description: Comprendre l'envoi actuel du déclencheur, le routage du flux, les conditions et les actions ordonnées.
+description: Comprendre le déclenchement actuel, le routage du flux, les conditions et les actions ordonnées.
 ---
 
 ## Chemin du message
 
 <Mermaid
-  title="Comment un message Visiteur parvient aux éléments de réponse stockés"
+  title="Comment un message d'un visiteur parvient aux éléments de réponse stockés"
   chart={`
 flowchart TB
   MSG["Visitor message"]
@@ -14,22 +14,24 @@ flowchart TB
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
-  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> CONTEXT
-  CONTEXT --> ACTIONS
+  CLASSIFY --> ACTIONS
   ACTIONS --> PARTS
 `}
 />
 
+L'identité vérifiée, les enregistrements d'entité et la mémoire à long terme
+sont des entrées que les actions lisent. Ce ne sont pas des étapes du routeur,
+c'est pourquoi l'illustration ne les inclut pas.
+
 `messageFlowCandidates` fournit des candidats aux deux moteurs de routage. Cette
-limite empêche les conditions objectives de produire des résultats de routage
-différents.
+limite empêche que des conditions objectives ne produisent des résultats de
+routage différents.
 
 Le contexte de la conversation fournit des exemples sémantiques à la
 classification. Il ne fonctionne pas comme une porte booléenne indépendante.
@@ -49,15 +51,15 @@ l'outil. Le modèle ne peut ni l'omettre ni le remplacer.
 
 Au premier tour d'une nouvelle conversation, le moteur d'exécution peut injecter
 jusqu'à cinq souvenirs à long terme pertinents. Un outil de recherche intégré
-dans la mémoire permet le rappel ultérieur.
+dans la mémoire permet de récupérer ultérieurement les informations.
 
-Les deux chemins de mémoire nécessitent l'activation de l'option Organisation et
+Les deux chemins de mémoire nécessitent l'activation de l'option Organization et
 un sujet SSO vérifié.
 
 ## Raccourci de courtoisie
 
 Le flux d'interaction de base intégré peut gérer un court message de courtoisie
-avant la classification de l'intention. Un flux personnalisé éligible antérieur
+avant la classification d'intention. Un flux personnalisé éligible antérieur
 reste prioritaire.
 
 Le raccourci ne s'active pas après une question de l'Assistant ou pour un
@@ -74,7 +76,7 @@ L'action émet le contenu configuré sans appel de modèle.
 
 ## Exécution de l'action
 
-Les actions sont exécutées dans l'ordre enregistré. Chaque action renvoie des
+Les actions s'exécutent dans l'ordre enregistré. Chaque action renvoie des
 éléments de réponse structurés ou un effet silencieux.
 
 Le travail génératif reste à l'intérieur de la Réponse de base, de la Recherche
@@ -84,7 +86,7 @@ charge.
 ## Transfert
 
 Handover charge un Assistant cible publié dans la même Organisation. Il exécute
-le message du visiteur via cette cible une seule fois.
+une fois le message du visiteur via cet assistant cible.
 
-L'exécution de la cible ignore un autre transfert. Cette règle empêche la
-création d'une chaîne illimitée d'assistants.
+L'exécution cible ignore un autre transfert. Cette règle empêche la création
+d'une chaîne d'assistants illimitée.

@@ -3,7 +3,7 @@ title: Ciele Desktop
 description: Download one app and either sign in to your organization or run a complete Ciele on your machine.
 ---
 
-Ciele Desktop is a macOS application that opens on a choice.
+Ciele Desktop is a macOS and Windows application that opens on a choice.
 
 - **Sign in to your organization**: the app opens your organization's console in
   a window of its own, with a session that survives restarts. The address is
@@ -18,9 +18,8 @@ actually do with Ciele happens in the product UI you already know, the app adds
 a window around it, not a second interface.
 
 <Callout type="warn" title="Beta">
-The macOS build is unsigned, which means one extra step the first time you open
-it (below) and no automatic updates. Windows and Linux builds are not part of
-the beta.
+Both builds are unsigned. That means one extra step the first time you open the
+app (below) and no automatic updates. Linux is not part of the beta.
 </Callout>
 
 ## Which path to pick
@@ -41,7 +40,11 @@ the public can reach.
 
 ## Install
 
-1. Download the `.zip` from the [latest release](https://github.com/MattiaIppoliti/ciele/releases/latest).
+Both downloads are on the [latest release](https://github.com/MattiaIppoliti/ciele/releases/latest).
+
+### macOS
+
+1. Download the `.zip` for your processor.
 2. Unzip it and move **Ciele.app** to your Applications folder.
 3. **Right-click (or Control-click) Ciele.app and choose Open**, then **Open**
    again in the dialog.
@@ -50,14 +53,24 @@ That third step matters. The beta is unsigned, so double-clicking it the usual
 way stays blocked by macOS until you have opened it once this way. You only
 have to do it once.
 
+### Windows
+
+1. Download the `Setup.exe` installer.
+2. Run it. SmartScreen says "Windows protected your PC" because the beta is
+   unsigned. Select **More info**, then **Run anyway**.
+
+If the download itself is blocked, right-click the file, open **Properties**,
+and check **Unblock**.
+
 ## Signing in to your organization
 
 Choose **Sign in** on the welcome screen. The app loads your organization's
 console and remembers the session, so later launches go straight there.
 
-To point the app at a self-hosted server instead, open **Settings** (the control
-icon on the welcome screen, or `⌘,`) and change the server
-address. Anything `http://` or `https://` works. The app keeps the origin and
+To point the app at a self-hosted server instead, open **Settings** and change
+the server address. Reach it from the control icon on the welcome screen, or
+with `⌘,` on macOS and `Ctrl+,` on Windows. Anything `http://` or `https://`
+works. The app keeps the origin and
 drops any path you paste with it.
 
 **Sign out** clears the app's stored session for that server: cookies, cache and
@@ -76,9 +89,11 @@ opens the next one. A green check means the step worked, not that it finished.
 ### 1. Docker Desktop
 
 The wizard checks that Docker Desktop is installed *and* running. Those are
-different problems with different fixes, and it says which one you have. If it
-is missing, the download link is right there. Install or start Docker Desktop,
-then press **Try again**. The check re-runs in place.
+different problems with different fixes, and it says which one you have. Each
+failure carries its own walkthrough, written for someone who has never
+installed developer tooling. The install link points at the page for your
+platform. Install or start Docker Desktop, then press **Try again**. The check
+re-runs in place.
 
 ### 2. Data folder and secrets
 
@@ -147,14 +162,14 @@ stack. It runs detached, on purpose.
 | Generated configuration and secrets | The app's data folder (shown on the stack screen) | App updates |
 
 Back up the database the same way any self-host does, see
-[Database](/self-hosting/database). Deleting Ciele.app removes neither the
+[Database](/self-hosting/database). Uninstalling the app removes neither the
 volumes nor the stack.
 
 ### Updating
 
 The app checks for a newer release on launch and shows a dismissible notice
-with a download link. There is no automatic update: macOS will not
-auto-update an unsigned app.
+with a download link. There is no automatic update, because neither platform
+auto-updates an unsigned app.
 
 Updating the app is what rolls your local stack forward. Each build pins the
 container images matching its own version, so the next setup or start pulls
@@ -175,9 +190,11 @@ That deletes the local database and uploaded files. The next time you choose
 ## Troubleshooting
 
 **"Docker Desktop is not installed" when it is.** An app launched from the Dock
-does not inherit your shell's `PATH`. Ciele therefore looks for the Docker CLI
-where Docker Desktop and Homebrew install it. It will not find a Docker you
-installed anywhere else. A symlink into `/usr/local/bin` fixes that.
+or the Start menu does not inherit your shell's `PATH`. Ciele therefore looks
+for the Docker CLI where Docker Desktop installs it. On macOS that is the
+Homebrew and `/usr/local/bin` locations. On Windows it is Program Files and the
+per-user Programs folder. It will not find a Docker you installed anywhere
+else. On macOS, a symlink into `/usr/local/bin` fixes that.
 
 **The stack sits on "Starting".** Postgres may still be initialising on a first
 run. Give it a minute, then press **Check again**. If it stays there, open the
@@ -201,6 +218,10 @@ the setting.
 **macOS says the app is damaged or cannot be opened.** That is Gatekeeper on an
 unsigned app. Right-click Ciele.app, choose **Open**, then **Open** again.
 Double-clicking will not offer that option.
+
+**Windows blocks the installer.** That is SmartScreen on an unsigned app.
+Select **More info**, then **Run anyway**. If the file was blocked at download,
+unblock it first from its **Properties**.
 
 ## What the desktop app is not
 

@@ -25,6 +25,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^5",
     "clsx": "^2.1.1",
     "electron": "^43.3.0",
@@ -38,7 +39,7 @@
     "react-use-measure": "^2.1.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^7",
     "vitest": "^4.1.9"
   }

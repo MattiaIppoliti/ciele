@@ -37,8 +37,9 @@ export function FeatureContent({ feature }: { feature: FeatureEntry }) {
           <FeaturePoints feature={feature} />
         </div>
 
-        {/* The coda has no frame: the cards fade out on their own, and a
-            border round them would put back the edge the fade removes. */}
+        {/* The coda gets no shell round its picture: the kanban dissolves at
+            its own edges, and the widget preview already is a bordered card,
+            the one the product draws. */}
         {feature.coda && (
           <section className="mt-24 overflow-hidden">
             {/* Title on the left, the sentence that qualifies it on the right,

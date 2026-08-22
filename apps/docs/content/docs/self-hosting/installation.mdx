@@ -35,6 +35,12 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 The installer never deletes anything: if the target directory exists and is not
 a Ciele checkout, it stops and tells you.
 
+On a Mac without Docker, the installer does not stop at an error. It opens
+[Ciele Desktop](/self-hosting/desktop), downloading the release first when the
+app is absent. The guided setup there links Docker Desktop and starts the same
+stack this page describes. On Linux the installer refuses, because there is no
+desktop app to hand the work to.
+
 ## Bootstrap the stack
 
 To perform the same steps by hand:

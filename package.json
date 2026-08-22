@@ -9,12 +9,16 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
+    "verify": "pnpm verify:mirror && turbo run typecheck test lint build && turbo boundaries && node deploy/compose.test.mjs",
+    "verify:mirror": "T=$(mktemp -d) && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts assemble \"$T\" --root \"$PWD\" && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts check \"$T\" --skip-build",
+    "verify:desktop": "pnpm --filter @ciele/desktop package:mac && pnpm --filter @ciele/desktop test:e2e",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:status": "supabase status",
     "check:licenses": "node scripts/check-dependency-licenses.mjs",
-    "mirror:gate": "pnpm --filter @agent-hub/mirror-gate gate"
+    "mirror:gate": "pnpm --filter @agent-hub/mirror-gate gate",
+    "actions:burn": "node scripts/actions-burn.mjs"
   },
   "devDependencies": {
     "supabase": "^2.109.1",

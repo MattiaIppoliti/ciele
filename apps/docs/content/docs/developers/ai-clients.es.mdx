@@ -1,32 +1,51 @@
 ---
 title: Conectar clientes de IA
-description: Conecta los clientes de IA compatibles al servidor local Ciele MCP.
+description: Conecta los clientes de IA compatibles al servidor Ciele MCP alojado o local.
 ---
 
-El servidor Ciele MCP utiliza el transporte local `stdio`. El cliente debe
-iniciar el servidor como un proceso hijo.
+El servidor Ciele MCP tiene dos transportes. Ambos registran las mismas
+herramientas.
+
+- El **punto de conexión alojado** es `POST /api/mcp` en tu implementación.
+  Cualquier cliente que acepte una URL de MCP remota puede usarla.
+- El **servidor local** es un proceso `stdio` que el cliente inicia como proceso
+  secundario.
+
+Utiliza preferentemente el punto de conexión alojado. No necesita comprobación,
+ni Node.js en el equipo cliente, ni una ruta para mantenerse actualizado.
 
 Esta página refleja la documentación del cliente revisada el 6 de agosto de
 2026. Las interfaces de cliente y los formatos de configuración pueden cambiar.
 
 ## Compatibilidad
 
-| Cliente | Conexión directa | Configuración |
-| --- | :---: | --- |
-| Claude Code | Sí | Servidor `stdio` local |
-| Codex CLI, aplicación Codex y extensión Codex IDE | Sí | Configuración compartida de Codex MCP |
-| Aplicación de escritorio ChatGPT | Sí | Configuración local compartida de Codex MCP |
-| Cursor | Sí | Servidor `stdio` local |
-| OpenCode | Sí | Servidor MCP local |
-| GitHub Copilot en VS Code | Sí | Servidor `stdio` local |
-| GitHub Copilot CLI | Sí | Servidor `stdio` local |
-| ChatGPT web | Sin conexión directa | ChatGPT requiere un punto de conexión MCP remoto. |
-| Pi | Sin procedimiento integrado | Utiliza la CLI de Ciele o instala una extensión revisada de Pi. |
+| Cliente | Punto de conexión alojado | Local `stdio` |
+| --- | :---: | :---: |
+| Claude Code | Sí | Sí |
+| Codex CLI, aplicación Codex y extensión Codex IDE | Sí | Sí |
+| Aplicación de escritorio ChatGPT | Sí | Sí |
+| Cursor | Sí | Sí |
+| OpenCode | Sí | Sí |
+| GitHub Copilot en VS Code | Sí | Sí |
+| GitHub Copilot CLI | Sí | Sí |
+| ChatGPT web | Sí | Sin proceso local |
+| Pi | Sin procedimiento integrado | Sin procedimiento integrado |
 
-El servidor actual de Ciele no proporciona un transporte HTTP remoto. Por lo
-tanto, ChatGPT web no puede conectarse a él directamente.
+## Conéctate al punto de conexión alojado
 
-## Prepara la conexión
+1. Crea una [clave de API](/developers/api-keys) de visor.
+2. Proporciona al cliente la URL del punto de conexión de tu implementación.
+3. Configura el encabezado `Authorization` como `Bearer <key>`.
+
+```bash
+claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
+  --header "Authorization: Bearer ciele_sk_..."
+```
+
+El punto de conexión alojado no tiene un conmutador de solo lectura. Utiliza una
+clave de visor cuando el agente no deba modificar los datos.
+
+## Prepara una conexión local
 
 1. Instala Node.js 22.6 o una versión posterior.
 2. Clona el repositorio de Ciele.
@@ -48,12 +67,12 @@ claude mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Abre `/mcp` en Claude Code. Confirma que el servidor `ciele` muestra siete
+Abre `/mcp` en Claude Code. Confirma que el servidor `ciele` muestra catorce
 herramientas.
 
 Consulta la
-[guía de Claude Code MCP](https://docs.anthropic.com/en/docs/claude-code/mcp)
-para conocer las opciones del cliente y los ámbitos de configuración.
+[guía de MCP de Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp)
+para conocer las opciones de cliente y los ámbitos de configuración.
 
 ## Codex y ChatGPT para escritorio
 
@@ -87,7 +106,7 @@ CIELE_MCP_READ_ONLY = "1"
 Ejecuta `codex mcp list` o abre `/mcp` para comprobar la conexión.
 
 Consulta la [guía de Codex MCP](https://learn.chatgpt.com/docs/extend/mcp) para
-conocer la configuración actual del cliente.
+ver la configuración actual del cliente.
 
 ## Cursor
 
@@ -209,7 +228,7 @@ Call ciele_identity. Show the deployment version, available domains,
 Organization ID, and Role. Do not change data.
 ```
 
-Utiliza esta indicación para revisar a los Asistentes:
+Utiliza esta indicación para revisar los Asistentes:
 
 ```text
 List all Ciele Assistants. For each Assistant, list its enabled Flows.
@@ -219,7 +238,7 @@ Identify duplicate or unclear Flow names. Do not change data.
 Utiliza esta indicación para revisar la ingesta de conocimiento:
 
 ```text
-List the Knowledge Collections for Assistant <assistant-id>.
+List the Sources linked to Assistant <assistant-id>.
 List each Source and its ingestion status.
 Report Sources that are not ready. Do not retry or delete a Source.
 ```
@@ -227,7 +246,7 @@ Report Sources that are not ready. Do not retry or delete a Source.
 Utiliza esta indicación después de habilitar el acceso de escritura:
 
 ```text
-Create one FAQ in Collection <collection-id>.
+Create one FAQ for Assistant <assistant-id>.
 Question: "When does enrollment close?"
 Answer: "Enrollment closes on <date>."
 Show the proposed tool input and ask for approval before the call.
@@ -244,15 +263,13 @@ Summarize the current live version. Do not publish or unpublish anything.
 Read the proposed tool input before you approve it. API Roles and MCP read-only mode are independent controls.
 </Callout>
 
-## Conexiones directas no admitidas
+## Clientes sin proceso local
 
-ChatGPT web requiere un punto de conexión MCP remoto. El servidor MCP actual de
-Ciele solo proporciona `stdio` locales.
+ChatGPT web no puede iniciar un servidor `stdio` local. En su lugar, apúntalo al
+punto de conexión alojado. La implementación debe ser accesible desde la
+Internet pública, lo que no es posible con una pila local de Ciele Desktop.
 
 Pi no incluye un procedimiento de conexión MCP integrado. Las extensiones de Pi
-pueden añadir compatibilidad con MCP, pero Ciele no distribuye ni prueba ninguna
-extensión de este tipo.
-
-Para ambos clientes, utiliza `ciele ... --json` a través de un flujo de trabajo
-de shell aprobado. También puedes llamar directamente a la
-[HTTP API](/developers/api).
+pueden añadir compatibilidad con MCP, pero Ciele no distribuye ni prueba dicha
+extensión. Utiliza `ciele ... --json` a través de un flujo de trabajo de shell
+aprobado o llama directamente a la [HTTP API](/developers/api).

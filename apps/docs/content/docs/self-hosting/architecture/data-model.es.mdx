@@ -1,6 +1,6 @@
 ---
 title: Modelo de datos
-description: Comprende las relaciones principales entre el inquilino, la configuración, el conocimiento y la conversación.
+description: Comprende las relaciones entre el inquilino principal, la configuración, el conocimiento y la conversación.
 ---
 
 ## Propiedad del inquilino
@@ -15,21 +15,16 @@ Habilidades, Mejoras, Objetivos, Alertas y registros de uso.
 ## Configuración del asistente
 
 <Mermaid
-  title="El inquilino principal y las relaciones del tiempo de ejecución"
+  title="Un Asistente es propietario de su enrutamiento y de sus instantáneas"
   chart={`
-erDiagram
-  ORGANIZATION ||--o{ ASSISTANT : owns
-  ASSISTANT ||--o{ FLOW : routes
-  ASSISTANT ||--o{ PUBLICATION : snapshots
-  ASSISTANT ||--o{ COLLECTION : knows
-  COLLECTION ||--o{ SOURCE : contains
-  SOURCE ||--o{ CONCEPT : produces
-  ASSISTANT ||--o{ CONVERSATION : serves
-  CONVERSATION ||--o{ MESSAGE : stores
-  ORGANIZATION ||--o{ ENTITY : defines
-  ENTITY ||--o{ RECORD : contains
-  ORGANIZATION ||--o{ MEMORY : isolates
-  CONVERSATION ||--o{ MEMORY : originates
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
 `}
 />
 
@@ -49,21 +44,49 @@ Las Entidades compartidas exponen datos comunes de la Organización. Las
 Entidades con ámbito de usuario nombran un atributo de identidad para el
 filtrado vinculado al servidor.
 
+## Propiedad del conocimiento
+
+<Mermaid
+  title="Un enlace, no una Colección, decide qué busca un Asistente"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+El conocimiento pertenece a la Organización. Una Collection es un contenedor, no
+un propietario, y no decide qué Assistant responde desde una Source.
+
+El enlace de Asistente a Fuente es el que lo hace. La recuperación lee el
+conjunto de enlaces, por lo que una fuente no enlazada no responde a nadie. El
+enlace también incluye acceso directo por asistente.
+
+Al eliminar un Asistente, se eliminan sus enlaces y todas las Fuentes permanecen
+en su lugar.
+
 ## Datos de la conversación
 
 Una Conversación pertenece al Asistente que la atiende y realiza un seguimiento
-de una sesión de Visitante. Los mensajes almacenan partes tipificadas para
-texto, citas, botones, seguimientos y otras respuestas.
+de una sesión de Visitante. Los mensajes almacenan partes escritas para texto,
+citas, botones, seguimientos y otras respuestas.
 
-El estado de la sesión también registra la entrega de notificaciones proactivas.
+El estado de la sesión también registra la entrega proactiva de notificaciones.
 Una notificación no crea un mensaje de visitante.
 
 Las memorias a largo plazo pertenecen a una organización y a un sujeto SSO
 verificado. Almacenan un hecho duradero, la incrustación, las marcas de tiempo y
 la procedencia de la conversación de origen.
 
-El tiempo de ejecución limita cada sujeto a 200 memorias. Al eliminarlo, se
-retira un hecho de futuras inyecciones de indicaciones y búsquedas en la
+El tiempo de ejecución limita cada tema a 200 memorias. Al eliminarlo, se
+elimina un hecho de futuras inyecciones de indicaciones y búsquedas en la
 memoria.
 
 ## Credenciales programáticas
@@ -78,5 +101,5 @@ El acceso autenticado a la consola utiliza seguridad a nivel de fila cuando
 corresponde. Las rutas de los roles de servicio deben añadir un límite explícito
 de organización.
 
-La API v1 utiliza la organización resuelta a partir de la clave de API. No
+La API v1 utiliza la organización resuelta a partir de la clave de la API. No
 acepta como autoridad una organización seleccionada por el llamante.

@@ -1,0 +1,47 @@
+---
+title: Developer Panel
+description: Read the CLI, cURL, and MCP snippet for the console page you have open.
+---
+
+The Developer Panel shows the programmatic equivalent of the console page you are looking at. It lists the operations of that page as ready snippets, with the ids of the page already in them.
+
+Use it to move a manual task into a script, or to learn which API operation is behind a console control.
+
+## Open the panel
+
+Select the button in the top bar. Its label names the domain of the page, for example **Flows API**. You can also press `D`.
+
+The panel opens in the right rail and stays open when you move to another page.
+
+An Assistant editor uses the same rail for the live Preview. Only one of the two is visible at a time.
+
+<Callout title="No button means no API">
+The button is absent when the page has no API operations. Insights and the Style setup section show none. The absence is correct information, not a defect.
+</Callout>
+
+## Read a snippet
+
+Each operation has three tabs.
+
+| Tab | Contents |
+| --- | --- |
+| CLI | The `ciele` command for the operation. |
+| cURL | The HTTP request, with the origin of your own deployment. |
+| MCP | The tool name and the `action` arguments for an AI client. |
+
+Two badges can appear beside an operation:
+
+- The **Role** badge names the lowest Role an API key needs. It is derived from the guard the API enforces.
+- The **Idempotent** badge marks a request that is safe to retry with an `Idempotency-Key` header.
+
+## Request bodies are shapes
+
+A cURL body shows typed placeholders, not example values, and it stops at two levels of nesting.
+
+This is deliberate. A plausible invented value is dangerous, because somebody pastes it into a real Organization. Read the [API reference](/developers/api) for the complete contract of a field.
+
+## Before a snippet runs
+
+Every snippet needs an [Organization API key](/developers/api-keys). The panel says so when the Organization has none.
+
+Only an Owner or an Admin can create a key. The panel names the required Role when your own Role cannot.

@@ -27,6 +27,30 @@ function verdictModel(verdict: "pass" | "fail", reason = "checked") {
   }) as unknown as LanguageModel;
 }
 
+/**
+ * Same verdict model, but it keeps every prompt it was handed. Asserting on
+ * what the grader was *shown* is the only way to lock an exclusion: a fixture
+ * that merely fails for some other reason proves nothing about what was read.
+ */
+function capturingVerdictModel(seen: string[], verdict: "pass" | "fail" = "pass") {
+  return new MockLanguageModelV3({
+    doGenerate: async (options: { prompt: unknown }) => {
+      seen.push(JSON.stringify(options.prompt));
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify({ verdict, reason: "checked" }) },
+        ],
+        finishReason: { unified: "stop" as const, raw: "stop" },
+        usage: {
+          inputTokens: { total: 8, noCache: 8, cacheRead: undefined, cacheWrite: undefined },
+          outputTokens: { total: 4, text: 4, reasoning: undefined },
+        },
+        warnings: [],
+      };
+    },
+  }) as unknown as LanguageModel;
+}
+
 async function answered(input: {
   parts: ChatReplyPart[];
   question?: string;
@@ -127,6 +151,66 @@ describe("runDueAnswerVerifications", () => {
     );
     expect(result.verified).toBeGreaterThanOrEqual(1);
     expect(result.failed).toBeGreaterThanOrEqual(1);
+  });
+
+  it("grades the written answer only: a Reply Component's props are not read", async () => {
+    // Locked as a DECISION, not left as an omission. The answer is grounded, so
+    // the grader really runs, and the assertion is on what it was SHOWN: the
+    // written answer and the cited Concept, never the component's cells. Join
+    // component text into `verifyOne`'s answer and this fails.
+    const collection = await db.createCollection(
+      (await db.createAssistant(DEMO_ORG.id, { title: "Plans" })).id,
+      { name: "KB", description: "" }
+    );
+    const concept = await db.createConcept({
+      collectionId: collection.id,
+      sourceId: null,
+      path: "plans.md",
+      frontmatter: { type: "FAQ", title: "Plans", description: "", timestamp: "" },
+      body: "The Pro plan costs 29 a month.",
+    });
+    await answered({
+      question: "Which plans are there?",
+      parts: [
+        generativeText("The plans are in the table."),
+        {
+          type: "component",
+          action: "search_knowledge",
+          name: "table",
+          callId: "call-1",
+          props: {
+            columns: ["Plan", "Price"],
+            rows: [["Pro", "MARKER_CELL_ONLY_IN_PROPS"]],
+          },
+        },
+        {
+          type: "sources",
+          action: "search_knowledge",
+          sources: [
+            {
+              conceptId: concept.id,
+              conceptTitle: "Plans",
+              collectionName: "KB",
+              sourceName: null,
+              url: null,
+            },
+          ],
+        },
+      ],
+    });
+
+    const prompts: string[] = [];
+    const result = await runDueAnswerVerifications(
+      { db },
+      { model: capturingVerdictModel(prompts) }
+    );
+    expect(result.verified).toBeGreaterThanOrEqual(1);
+    // The grader ran, on the written answer and the cited Concept.
+    const shown = prompts.join("\n");
+    expect(shown).toContain("The plans are in the table.");
+    expect(shown).toContain("The Pro plan costs 29 a month.");
+    // And never saw a cell.
+    expect(shown).not.toContain("MARKER_CELL_ONLY_IN_PROPS");
   });
 
   it("never returns verbatim or fallback-only messages as candidates", async () => {

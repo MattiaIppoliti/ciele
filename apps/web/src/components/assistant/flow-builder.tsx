@@ -1212,7 +1212,7 @@ function ApiRequestConfig({
             type="password"
             value={auth.token ?? ""}
             onChange={(e) => onChange({ auth: { type: "bearer", token: e.target.value } })}
-            placeholder="Token"
+            placeholder={auth.hasToken ? "Saved: type to replace" : "Token"}
             className="bg-background"
             autoComplete="off"
           />
@@ -1233,7 +1233,7 @@ function ApiRequestConfig({
               onChange={(e) =>
                 onChange({ auth: { type: "api_key", header: auth.header, key: e.target.value } })
               }
-              placeholder="Key"
+              placeholder={auth.hasKey ? "Saved: type to replace" : "Key"}
               className="bg-background"
               autoComplete="off"
             />
@@ -1259,7 +1259,7 @@ function ApiRequestConfig({
                   auth: { type: "basic", username: auth.username, password: e.target.value },
                 })
               }
-              placeholder="Password"
+              placeholder={auth.hasPassword ? "Saved: type to replace" : "Password"}
               className="bg-background"
               autoComplete="off"
             />

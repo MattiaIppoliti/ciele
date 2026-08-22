@@ -5,40 +5,48 @@ description: Traccia una Fonte dall'ingestione a una risposta citata dell'Assist
 
 ## Acquisizione
 
-```mermaid
+<Mermaid
+  title="Una Fonte diventa un Concept ricercabile prima di segnalarsi come Pronta"
+  chart={`
 flowchart TB
   SOURCE["Website, file, text, or FAQ"]
-  EXTRACT["Extract normalized content"]
+  EXTRACT["Extract the content"]
   CONCEPT["Create OKF Concepts"]
-  INDEX["Store lexical and vector indexes"]
-  GRAPH["Update optional graph data"]
-  READY["Set Source status to Ready"]
+  INDEX["Index for search"]
+  GRAPH["Update the graph"]
+  READY["Status becomes Ready"]
   SOURCE --> EXTRACT
   EXTRACT --> CONCEPT
   CONCEPT --> INDEX
   CONCEPT --> GRAPH
   INDEX --> READY
   GRAPH --> READY
-```
+`}
+/>
 
-Knowledge utilizza i Concept in Open Knowledge Format (OKF). Un Concept mantiene
+Knowledge utilizza Concepts in Open Knowledge Format (OKF). Un Concept mantiene
 un riferimento alla sua Source originale.
 
-L'importazione delle FAQ crea un Concept curato con provenienza di domanda e
-risposta. L'importazione di file e siti web conserva l'oggetto Source originale,
+L'ingestione delle FAQ crea un Concept curato con provenienza da domanda e
+risposta. L'ingestione di file e siti web conserva l'oggetto Source originale,
 ove applicabile.
 
 ## Recupero
 
 Il runtime può recuperare i Concept tramite ricerca vettoriale e fallback
-lessicale. La modalità Grafico può aggiungere la navigazione attraverso le
-relazioni dei Concetti indicizzati.
+lessicale. La modalità grafo può aggiungere la navigazione attraverso le
+relazioni dei Concept indicizzati.
 
-Un suggerimento di contesto può limitare il recupero a una raccolta pertinente o
-a un contesto simile a un corso, quando il runtime ne fornisce uno.
+Ogni percorso è delimitato dai collegamenti tra Assistente e Sorgente. Un
+risultato proveniente da una Fonte che non è collegata all'Assistente che
+effettua la query viene scartato, sia nel percorso del grafo che in quello
+vettoriale.
 
-La Deep Search aumenta il lavoro di navigazione nella Knowledge all'interno dei
-limiti del runtime. Non esegue query sul web pubblico.
+Un Suggerimento di contesto può limitare il recupero a una Raccolta pertinente o
+a un contesto simile a un corso quando il runtime ne fornisce uno.
+
+Deep Search aumenta il lavoro di navigazione della Conoscenza entro i limiti del
+runtime. Non esegue query sul web pubblico.
 
 ## Risoluzione delle citazioni
 
@@ -46,11 +54,15 @@ La risposta finale cita fonti nominate, non frammenti di ricerca opachi. Gli
 identificatori di citazione rimandano, attraverso il Concetto, alla sua Fonte
 originale.
 
-Dopo la risposta, il Visitatore può aprire la schermata delle Fonti. La Posta in
+Il Visitatore può aprire la schermata delle Fonti dopo la risposta. La Posta in
 arrivo memorizza le stesse parti della citazione insieme alla Conversazione.
 
 ## Eliminazione e nuova scansione
 
 L'eliminazione della fonte rimuove i Concept correlati dal grafo attivo e dai
-dati di ricerca. La nuova scansione del sito web riavvia l'estrazione e
-l'indicizzazione per quella Fonte.
+dati di ricerca per ogni Assistente collegato. La rimozione di un collegamento
+non comporta la rimozione di alcun elemento. Impedisce a un Assistente di
+raggiungere la Sorgente.
+
+La nuova scansione del sito web riavvia l'estrazione e l'indicizzazione per
+quella Fonte.

@@ -33,8 +33,8 @@ solo dall'Assistente. Molte Conversazioni non producono fatti duraturi.
 Ogni ricordo memorizzato mantiene il riferimento alla Conversazione di origine.
 I fatti esattamente duplicati vengono rimossi durante la memorizzazione.
 
-Un Visitatore che ha effettuato l'accesso può conservare fino a 200 ricordi. Una
-volta raggiunto tale limite, le nuove scritture rimuovono i fatti più vecchi.
+Un Visitatore che ha effettuato l'accesso può conservare fino a 200 ricordi. Le
+nuove scritture rimuovono i fatti più vecchi una volta raggiunto tale limite.
 
 ## Promozione e richiamo
 
@@ -43,43 +43,43 @@ volta raggiunto tale limite, le nuove scritture rimuovono i fatti più vecchi.
   chart={`
 flowchart TB
   TURN["Signed-in Conversation"]
-  QUIET["15 minutes without a new message"]
-  JOB["Durable promote_memories job"]
-  GATE["Check toggle, subject, model, and budget"]
-  STORE["Extract, embed, deduplicate, and store"]
-  NEXT["First turn of a later Conversation"]
-  PROMPT["Inject up to five relevant memories"]
-  TOOL["searchMemories handles later recall"]
+  QUIET["15 quiet minutes"]
+  JOB["promote_memories job"]
+  STORE["Extract, deduplicate, and store"]
+  NEXT["A later Conversation opens"]
+  PROMPT["Up to five memories join the prompt"]
   TURN --> QUIET
   QUIET --> JOB
-  JOB --> GATE
-  GATE --> STORE
+  JOB --> STORE
   STORE --> NEXT
   NEXT --> PROMPT
-  PROMPT --> TOOL
 `}
 />
 
 Un job di promozione attende che la Conversazione rimanga inattiva per 15
-minuti. Un messaggio più recente sostituisce un lavoro in sospeso più vecchio.
+minuti. Un messaggio più recente sostituisce un vecchio lavoro in sospeso.
 
-Il primo turno di una Conversazione successiva può ricevere fino a cinque
-ricordi pertinenti. Il runtime può cercare in seguito nelle memorie dello stesso
-soggetto.
+Prima di memorizzare qualsiasi cosa, il job verifica quattro aspetti:
+l'attivazione/disattivazione dell'organizzazione, il soggetto SSO, la
+disponibilità di un modello e il budget. Ognuno di questi elementi può
+interrompere la promozione.
 
-Il richiamo non supera mai il confine di un'Organizzazione o di un soggetto SSO.
+Solo il primo turno di una Conversazione successiva riceve i ricordi in questo
+modo. Dopodiché, il runtime li raggiunge tramite lo strumento `searchMemories`.
 
-## Consenti a un Visitatore di ispezionare ed eliminare le memorie
+Recall non supera mai i confini di un'Organizzazione o di un soggetto SSO.
+
+## Consenti a un Visitatore di ispezionare ed eliminare i ricordi
 
 Un Visitatore che ha effettuato l'accesso può aprire il pannello della
-cronologia dei Widget. La cartella **Memory** appare quando la memoria a lungo
+cronologia del Widget. La cartella **Memory** appare quando la memoria a lungo
 termine è abilitata.
 
 La cartella elenca i fatti ricordati per quel Visitatore. Seleziona il comando
 di eliminazione accanto a un fatto per dimenticarlo.
 
-L'eliminazione rimuove il fatto dal richiamo futuro tramite prompt e dalle
-ricerche in memoria.
+L'eliminazione rimuove il fatto dal richiamo futuro del prompt e dalle ricerche
+in memoria.
 
 ## Gestisci una richiesta di cancellazione
 

@@ -63,7 +63,7 @@ enregistrée. L'origine hébergée est la valeur par défaut finale.
 
 ## Utiliser la sortie d'automatisation
 
-Ajoutez `--json` à une commande pour obtenir une sortie lisible par machine.
+Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
 
 | Code de sortie | Signification |
 | --- | --- |
@@ -75,7 +75,7 @@ Ajoutez `--json` à une commande pour obtenir une sortie lisible par machine.
 `ciele doctor` vérifie la découverte de l'API, la compatibilité de l'API, la
 clé, son rôle et son organisation.
 
-## Commandes Assistant et Knowledge
+## Commandes d'assistant et de connaissances
 
 ```bash
 ciele assistants list --all
@@ -88,7 +88,27 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
-## Commandes Opérations et Organisation
+### Liens de la source
+
+Une Source répond pour les Assistants qui lui sont liés. Ces commandes lisent et
+modifient les liens.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` répertorie toutes les Sources détenues par l'Organisation,
+pour l'ensemble des Assistants.
+
+`sources link` remplace l'ensemble de liens. Une liste vide supprime tous les
+liens et la Source cesse de répondre.
+
+`sources direct-access` décide si cet Assistant peut fournir le fichier original
+à un Visiteur.
+
+## Commandes d'opérations et d'organisation
 
 ```bash
 ciele conversations list --assistant <assistant-id>

@@ -17,16 +17,12 @@ const AssistantPreviewDemo = dynamic(
 
 export function PreviewCoda() {
   return (
-    <div
-      className="mx-auto h-[640px] w-full overflow-hidden"
-      /* Same dissolve as the feature window above: the widget is a view onto
-         a conversation that keeps going, so it fades out instead of ending
-         on its own border. */
-      style={{
-        maskImage: "linear-gradient(to bottom, black 78%, transparent 100%)",
-        WebkitMaskImage: "linear-gradient(to bottom, black 78%, transparent 100%)",
-      }}
-    >
+    /* 640px is the height the launcher gives the floating widget, so the
+       conversation gets exactly the room it has in production. No foot mask
+       here, unlike the shots above: those are windows onto a screen that
+       keeps going, this is the whole chat surface, and fading it out would
+       cut the composer and the AI disclaimer off its bottom edge. */
+    <div className="mx-auto h-[640px] w-full">
       <AssistantPreviewDemo
         className="bg-transparent px-0 pt-0 sm:px-0 sm:pt-0"
         cardClassName="max-w-none"

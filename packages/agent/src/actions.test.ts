@@ -715,6 +715,23 @@ describe("handover", () => {
 });
 
 describe("buildSystemPrompt (prompt layering)", () => {
+  it("lifts the no-addressing-the-user ban for the render catalogue, when enabled", () => {
+    // The gather phase forbids prose addressed to the user, and a component
+    // plainly addresses them. Without saying a tool call is not prose, a model
+    // reading that ban strictly would never call the tool at all.
+    const assistant = makeAssistant({ tools: { builtIns: { renderTable: true } } });
+    const gather = buildSystemPrompt("P", assistant, makeFlow(), {
+      phase: "gather",
+    });
+    expect(gather).toContain("renderTable");
+    expect(gather).toContain("a tool call is not prose");
+    expect(gather).toContain("only facts you retrieved");
+    // Write phase has no tools, so the permission has no business being there.
+    expect(
+      buildSystemPrompt("P", assistant, makeFlow(), { phase: "write" })
+    ).not.toContain("renderTable");
+  });
+
   it("puts the platform layer first, above the assistant's answering style", () => {
     // The style only appears in the WRITE phase, see the late-binding block
     // below for why it is absent while the model is choosing tools.
@@ -746,6 +763,8 @@ describe("buildSystemPrompt (prompt layering)", () => {
     expect(gather).toContain("readyToAnswer exactly once");
     // The gather phase must not let the model address the user at all.
     expect(gather).toContain("Do NOT write anything addressed to the user");
+    // ...and says nothing about a catalogue the assistant has not enabled.
+    expect(gather).not.toContain("renderTable");
 
     const write = buildSystemPrompt("P", assistant, makeFlow(), {
       phase: "write",

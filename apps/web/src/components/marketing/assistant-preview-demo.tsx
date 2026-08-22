@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Headphones } from "lucide-react";
 import type { TurnPhase, TurnStep } from "@agent-hub/agent/client";
+import { DEFAULT_AI_DISCLAIMER } from "@agent-hub/core";
 import {
   Message,
   MessageBubble,
@@ -298,8 +300,14 @@ export function AssistantPreviewDemo({
       )}
     >
       <div
+        /* The chat surface, class for class what the editor's Preview panel
+           draws (preview-panel.tsx): a filled `bg-card` pane at `rounded-xl`
+           with a hairline border and no shadow. It used to be `bg-background`
+           under a `shadow-xl`, which on the marketing page's own background
+           left the border as the only edge, so the widget read as an outlined
+           rectangle rather than the raised surface it is in the product. */
         className={cn(
-          "bg-background flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border shadow-xl shadow-black/10 dark:shadow-black/40",
+          "bg-card flex w-full max-w-sm flex-col overflow-hidden rounded-xl border",
           cardClassName
         )}
       >
@@ -318,18 +326,21 @@ export function AssistantPreviewDemo({
           className="min-h-0 flex-1"
           busy={pending}
           navigation="rail"
-          viewportClassName="px-4 py-4"
+          viewportClassName="px-4 py-5"
           contentClassName="space-y-4"
         >
           <ChatMarkdown text={WELCOME} className="text-[15px]" />
 
-          {/* Quick replies (typed starter buttons) */}
+          {/* Quick replies (typed starter buttons). Both carry the brand
+              outline the widget gives every typed button; an escalation one
+              also carries the headphones, same as widget-chat.tsx. */}
           <div className="space-y-2 pt-1">
             <span className="border-primary text-primary flex w-full items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-center text-[15px] font-medium">
               Billing & invoices
             </span>
-            <span className="text-foreground block w-full rounded-lg bg-foreground/10 px-4 py-2.5 text-center text-[15px]">
+            <span className="border-primary text-primary flex w-full items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-center text-[15px] font-medium">
               Talk to a human
+              <Headphones className="size-3.5 shrink-0" />
             </span>
           </div>
 
@@ -393,7 +404,16 @@ export function AssistantPreviewDemo({
           </Message>
         </MessageScroller>
 
+        {/* Composer foot, the widget's own: the standing escalation button
+            above the input and the AI disclaimer under it. Both ship in every
+            assistant that hasn't turned them off, so a picture without them
+            is a picture of a widget nobody runs. */}
         <div className="px-4 pb-4">
+          <div className="flex justify-center pb-3">
+            <span className="bg-muted rounded-xl border px-5 py-2.5 text-sm font-semibold">
+              Contact support
+            </span>
+          </div>
           <PromptInput
             value=""
             onValueChange={noop}
@@ -402,9 +422,12 @@ export function AssistantPreviewDemo({
             onStop={noop}
             minRows={1}
             maxRows={3}
-            placeholder="Ask anything…"
+            placeholder="Ask Acme Assistant..."
             aria-label="Preview composer"
           />
+          <p className="text-muted-foreground mt-3 text-xs leading-snug">
+            {DEFAULT_AI_DISCLAIMER}
+          </p>
         </div>
       </div>
     </div>

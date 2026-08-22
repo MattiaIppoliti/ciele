@@ -4,10 +4,17 @@ description: Fügen Sie Quellen hinzu, die der Assistent durchsuchen und zitiere
 ---
 
 Quellen gehören zur Organisation, und eine Wissenssammlung speichert sie
-zusammen mit den Konzepten, die während der Erfassung erstellt wurden. Ein
-Assistent durchsucht eine Quelle erst, nachdem Sie diese Quelle mit dem
-Assistenten verknüpft haben. Verknüpfen Sie eine Quelle aus der Bibliothek oder
-fügen Sie sie innerhalb des Assistenten hinzu, der sie dann für Sie verknüpft.
+zusammen mit den während der Erfassung erstellten Konzepten. Ein Assistent
+durchsucht eine Quelle erst, nachdem Sie diese Quelle mit dem Assistenten
+verknüpft haben. Verknüpfen Sie eine Quelle aus der
+[Bibliothek](/knowledge/library) oder fügen Sie sie innerhalb des Assistenten
+hinzu, der sie dann für Sie verknüpft.
+
+Da eine Quelle für mehrere Assistenten antworten kann, sind das Entfernen aus
+einem Assistenten und das Löschen für die Organisation unterschiedliche
+Vorgänge. Wenn Sie einen Assistenten löschen, bleiben die Quellen der
+Organisation erhalten. Es werden nur die Verknüpfungen dieses Assistenten
+entfernt.
 
 ## Verfügbare Quellentypen
 
@@ -23,17 +30,24 @@ Laufzeit löst Zitate auf benannte Quellen zurück.
 
 | Status | Bedeutung |
 | --- | --- |
-| Wird verarbeitet | Ciele extrahiert und indiziert die Quelle. |
+| Wird verarbeitet | Ciele extrahiert die Quelle und indiziert sie. |
 | Bereit | Die Quelle steht für die Wissenssuche zur Verfügung. |
 | Fehlgeschlagen | Die Aufnahme wurde nicht abgeschlossen. Überprüfen Sie den Fehler und wiederholen Sie den Vorgang. |
 
 Testen Sie eine neue Quelle erst, wenn ihr Status **Ready** lautet.
 
+## Direkter Zugriff
+
+Eine Datei-Quelle kann dem Besucher neben der Zitation auch die Originaldatei
+zur Verfügung stellen. Dies ist die Einstellung **Direct access** für einen
+Assistant-Link und sie ist standardmäßig deaktiviert. Legen Sie dies in der
+Bibliothek fest.
+
 ## Abruf
 
-Search Knowledge kann Vektorsuche, lexikalisches Fallback und Navigation im
-Wissensgraphen nutzen. Die ausgewählte Knowledge-Engine steuert den primären
-Pfad.
+Search Knowledge kann Vektorsuche, lexikalisches Fallback und
+Wissensgraph-Navigation verwenden. Die ausgewählte Knowledge-Engine steuert den
+primären Pfad.
 
 Deep Search ermöglicht mehr reine Knowledge-Iterationen. Es durchsucht nicht das
 offene Web.

@@ -178,10 +178,23 @@ flag per item:
 
 Both the widget (`WidgetChat`) and the admin `PreviewPanel` consume the **same ndjson event stream**
 (`RuntimeEvent`, `packages/agent/src/types.ts`): `turn` → `flow` → (`notice` | `thought` |
-`tool-start`/`tool-end`)* → (`text-start`/`text-delta`*/`text-end`) and/or `part`* → `done` | `error`.
+`tool-input-start`/`tool-input-delta` | `tool-start`/`tool-end`)* →
+(`text-start`/`text-delta`*/`text-end`) and/or `part`* → `done` | `error`.
 Those middle events are the visible **Thinking Steps**, folded into `TurnStep[]` by the one shared
 fold; `part` events carry non-text reply parts (help-desk button, follow-ups, button, iframe, sources,
-and the Simplified-thinking `progress` narration). The early `turn`
+a **Reply Component**, and the Simplified-thinking `progress` narration).
+The `tool-input-*` pair is the one exception to "the fold owns what the client shows": it carries a
+render-only tool's arguments as they are written (AG-UI's `TOOL_CALL_ARGS` shape), and *only* for the
+render catalogue, so a Reply Component materializes instead of appearing finished. The fold ignores
+both events, because the persisted trace takes its component from the validated `part`, never from a
+partial parse; the accumulation lives in `consumeTurnStream` and is capped and narrowed by the same
+`normalizeTable` the server ran. Some providers never send argument deltas (Google needs
+`streamFunctionCallArguments`), so progressive rendering is the enhancement and the component
+appearing whole is the floor. Nothing pending survives the consumer: a payload the AI SDK rejects runs no tool
+at all, so the gather phase turns that `tool-error` into the `tool-end` that
+clears the skeleton, and `consumeTurnStream` sweeps in a `finally` for the ways a
+turn ends with no signal (an abandoned call, an aborted fetch, a dropped
+connection, all of which the widget's catch swallows). The early `turn`
 event exposes the resolved conversation id before generation, allowing Preview to steer an active
 turn without forking a new conversation. Both clients
 decode and fold the stream through one client-safe module, **`consumeTurnStream`**
@@ -426,7 +439,8 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   on, grounding is an ADR-0002 invariant, and it is the one spec deliberately *not* routed through
   `instrument`: its lifecycle, coverage verdict and budget accounting live in the shared search-pass
   primitive so seeded and model-driven passes cannot drift), `remember` (default on), `fetchUrl`
-  (default **off**, egress is opt-in). `instrument()` gives every other tool its
+  (default **off**, egress is opt-in), `renderTable` (default **off**, the render catalogue's
+  only entry, see below). `instrument()` gives every other tool its
   `tool-start`/`tool-end` events, duration, and **error containment**: a throwing tool returns
   `{error}` to the model and never aborts the turn.
 - **The API catalogue integration** (`api-catalog-tools.ts` + `api-integration.ts`, spec #559):
@@ -443,6 +457,18 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
   tools it replaced (`CustomToolConfig` / `customToolSpec`) were deleted in the contract step. A
   pre-existing `assistants.tools.custom` key is read by nothing and deliberately left in place, the
   runtime ignores it rather than a migration destroying a self-hoster's stored configuration.
+- **The render catalogue** (`render-tools.ts` + `reply-components.ts`): tools with no `execute` at
+  all, whose whole effect is the **Reply Component** they put in front of the Visitor. `instrument()`
+  dispatches on the spec shape (`instrumentRender` vs `instrumentAction`) so a render tool still gets
+  the full `tool-start`/`tool-end` lifecycle, its panel row and its Simplified-thinking narration; the
+  part is emitted *and* handed to a turn-owned collector, so the component persists with the answer
+  and the Inbox transcript shows what the Visitor saw. The catalogue is **closed** and its props are
+  zod-validated, because a reply renders in an iframe on somebody else's page and model-authored
+  markup would be an injection surface. Two invariants bound what may join it: nothing grades a
+  component (`verifier.ts` reads text, and `verifier.test.ts` locks that as a decision), so an entry
+  must *arrange* retrieved data rather than compute a claim; and an entry must earn its place against
+  markdown, which already renders GFM tables on all three surfaces, so `renderTable` carries per-row
+  follow-up prompts, which markdown cannot.
 - **Windowed reads** (`windowed-read.ts`): `readApiResponse(handle, from, to)` over a per-turn,
   in-memory response store and `readKnowledgeSource(sourceId, from, to)` over a whole knowledge
   document share one primitive. Each window carries the payload's **total length** and the next
@@ -735,8 +761,8 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   fallback and a graph engine selector, Publications, Inbox, Insights overview, Improvements,
   Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
 - **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` always on, `remember` on,
-  `fetchUrl` opt-in, plus the API catalogue triad and the two windowed readers when an integration
-  and a document reader are wired), generated Entity tools with server-bound identity filters,
+  `fetchUrl` and the render catalogue's `renderTable` opt-in, plus the API catalogue triad and the two
+  windowed readers when an integration and a document reader are wired), generated Entity tools with server-bound identity filters,
   opt-in SSO long-term-memory promotion and recall, org Skills layered into the prompt and
   snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
   search budget. **[target]** an MCP tool *provider*, the registry seam exists, the client does not.
@@ -745,8 +771,8 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   runtime behavior so far.
 - **Editions**: one codebase; `packages/agent/src/ee.ts` is the single edition-gating registry and OSS ships
   inert no-op defaults (metering allows every call, billing reports no subscription). The public
-  mirror simply omits the enterprise tree, and every merge to `main` auto-cuts a release
-  (`.github/workflows/auto-release.yml` → `oss-release.yml`).
+  mirror simply omits the enterprise tree, and a nightly cron auto-cuts a release out of whatever
+  landed that day (`.github/workflows/auto-release.yml` → `oss-release.yml`).
 - **Tests**: offline Vitest suites, ~120 colocated `*.test.ts` files across `apps/web` and
   `packages/` (plus the `deploy/` compose contract): see the coverage list in §1 (`pnpm test`).
 - **Ingestion**: extraction behind the `EXTRACTORS` registry (cheerio HTML→text, PDF, DOCX, plain

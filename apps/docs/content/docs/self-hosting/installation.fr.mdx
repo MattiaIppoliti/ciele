@@ -13,8 +13,8 @@ Desktop. This page is the server path.
 
 - Installez Git.
 - Installez Docker avec Docker Compose.
-- Réservez suffisamment d'espace disque pour les images, Postgres et les
-  fichiers importés.
+- Réservez un espace disque suffisant pour les images, Postgres et les fichiers
+  importés.
 - Réservez davantage de mémoire lorsque vous activez les workers optionnels.
 
 ## Une seule commande
@@ -38,6 +38,13 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 Le programme d'installation ne supprime jamais rien : si le répertoire cible
 existe et n'est pas une copie de Ciele, il s'arrête et vous en informe.
 
+Sur un Mac sans Docker, le programme d'installation ne s'arrête pas en cas
+d'erreur. Il ouvre [Ciele Desktop](/self-hosting/desktop) et télécharge d'abord
+la version de la release lorsque l'application est absente. La configuration
+guidée qui s'y trouve relie Docker Desktop et lance la même pile que celle
+décrite sur cette page. Sous Linux, le programme d'installation refuse, car il
+n'y a pas d'application de bureau à laquelle confier le travail.
+
 ## Amorcer la pile
 
 Pour effectuer les mêmes étapes manuellement :
@@ -48,16 +55,17 @@ cd ciele
 ./deploy/bootstrap.sh
 ```
 
-Le script génère les secrets requis dans `deploy/.env`. Il construit ensuite les
+Le script génère les secrets requis dans `deploy/.env`. Il crée ensuite les
 profils par défaut et les lance.
 
 Ouvrez [http://localhost:3000](http://localhost:3000) une fois que les services
-sont opérationnels. Le premier compte devient le propriétaire de l'organisation.
+sont en bon état. Le premier compte créé en premier devient le propriétaire de
+l'organisation.
 
 Utilisez `./deploy/bootstrap.sh --seed` pour ajouter du contenu de démonstration
 nettoyé.
 
-## Exécutez les images publiées au lieu de les compiler
+## Exécutez des images publiées au lieu de les compiler
 
 La compilation de `app`, `migrate` et `cron` à partir du répertoire de travail
 prend beaucoup de temps et nécessite le dépôt complet. Chaque version publie
@@ -102,7 +110,7 @@ restart alone keeps the previous value.
 | `workers` | Non | Services de récupération de graphes et d'exploration avec rendu JavaScript. |
 | `studio` | Non | Interface d'administration de la base de données. |
 
-## Inspecter la pile
+## Inspectez la pile
 
 ```bash
 docker compose -f deploy/docker-compose.yml ps

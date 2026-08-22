@@ -3,31 +3,31 @@ title: Ciele Desktop
 description: Scarica un'app e accedi alla tua organizzazione oppure esegui una versione completa di Ciele sul tuo computer.
 ---
 
-Ciele Desktop è un'applicazione per macOS che si apre in base a una scelta.
+Ciele Desktop è un'applicazione per macOS e Windows che si apre in base a una
+scelta.
 
 - **Sign in to your organization**: l'app apre la console della tua
   organizzazione in una finestra separata, con una sessione che sopravvive ai
   riavvii. L'indirizzo è configurabile, quindi lo stesso percorso raggiunge
-  anche una Ciele auto-ospitata sul tuo server.
+  anche una Ciele self-hosted sul tuo server.
 - **Use locally (self-host)**: una configurazione guidata installa un Ciele
   completo su questo computer: database, migrazioni, attività pianificate e
   tutto il resto. Non serve alcun terminale e Docker Desktop è l'unica cosa che
   devi installare tu.
 
-Entrambi possono coesistere e puoi passare da uno all'altro in qualsiasi
+Entrambi possono coesistere e puoi passare dall'uno all'altro in qualsiasi
 momento. Tutto ciò che fai effettivamente con Ciele avviene nell'interfaccia
 utente del prodotto che già conosci: l'app aggiunge una finestra intorno ad
 essa, non una seconda interfaccia.
 
 <Callout type="warn" title="Beta">
-The macOS build is unsigned, which means one extra step the first time you open
-it (below) and no automatic updates. Windows and Linux builds are not part of
-the beta.
+Both builds are unsigned. That means one extra step the first time you open the
+app (below) and no automatic updates. Linux is not part of the beta.
 </Callout>
 
 ## Quale percorso scegliere
 
-| | Accedi | Usa in locale |
+| | Accedi | Usa localmente |
 | --- | --- | --- |
 | Hai un account Ciele o un server | Sì | |
 | Vuoi valutare il prodotto | | Sì |
@@ -38,31 +38,45 @@ the beta.
 
 Il percorso locale è un vero Ciele, non una demo: gli stessi container, le
 stesse migrazioni, gli stessi job pianificati che esegue il server self-host.
-Non è invece destinato a servire un widget di produzione al pubblico, che
-necessita di un indirizzo raggiungibile dal pubblico.
+Non è invece pensato per mettere a disposizione del pubblico un widget di
+produzione, che necessita di un indirizzo raggiungibile dal pubblico.
 
 ## Installa
 
-1. Scarica il `.zip` dalla
-   [versione più recente](https://github.com/MattiaIppoliti/ciele/releases/latest).
+Entrambi i download sono disponibili nella
+[versione più recente](https://github.com/MattiaIppoliti/ciele/releases/latest).
+
+### macOS
+
+1. Scarica il `.zip` per il tuo processore.
 2. Decomprimilo e sposta **Ciele.app** nella cartella Applicazioni.
 3. **Right-click (or Control-click) Ciele.app and choose Open**, quindi **Open**
    di nuovo nella finestra di dialogo.
 
-Quel terzo passaggio è importante. La versione beta non è firmata, quindi il
+Il terzo passaggio è importante. La versione beta non è firmata, quindi il
 doppio clic sul file nel modo consueto rimane bloccato da macOS finché non lo
 apri una volta in questo modo. Devi farlo solo una volta.
+
+### Windows
+
+1. Scarica il programma di installazione di `Setup.exe`.
+2. Eseguilo. SmartScreen dice "Windows ha protetto il tuo PC" perché la beta non
+   è firmata. Seleziona **More info**, quindi **Run anyway**.
+
+Se il download stesso è bloccato, fai clic con il pulsante destro del mouse sul
+file, apri **Properties** e seleziona **Unblock**.
 
 ## Accedi alla tua organizzazione
 
 Scegli **Sign in** nella schermata di benvenuto. L'app carica la console della
-tua organizzazione e memorizza la sessione, quindi ai successivi avvii accederai
-direttamente a essa.
+tua organizzazione e memorizza la sessione, così che i successivi avvii ti
+portino direttamente lì.
 
-Per indirizzare invece l'app a un server self-hosted, apri **Settings** (l'icona
-di controllo nella schermata di benvenuto, oppure `⌘,`) e modifica l'indirizzo
-del server. Qualsiasi cosa `http://` o `https://` funziona. L'app mantiene
-l'origine e rimuove qualsiasi percorso tu possa incollare con essa.
+Per indirizzare invece l'app a un server self-hosted, apri **Settings** e
+modifica l'indirizzo del server. Puoi accedervi dall'icona di controllo nella
+schermata di benvenuto oppure con `⌘,` su macOS e `Ctrl+,` su Windows. Qualsiasi
+cosa `http://` o `https://` funziona. L'app mantiene l'origine e rilascia
+qualsiasi percorso tu incolli con essa.
 
 **Sign out** cancella la sessione memorizzata dall'app per quel server: cookie,
 cache e tutto il resto. Chiude più della semplice finestra. Su un computer
@@ -83,8 +97,10 @@ passaggio ha funzionato, non che è stato completato.
 
 La procedura guidata verifica che Docker Desktop sia installato *e* in
 esecuzione. Si tratta di problemi diversi con soluzioni diverse, e ti dice quale
-hai. Se manca, il link per il download è proprio lì. Installa o avvia Docker
-Desktop, quindi premi **Try again**. Il controllo viene rieseguito sul posto.
+hai. Ogni errore ha la sua procedura dettagliata, scritta per chi non ha mai
+installato strumenti per sviluppatori. Il link di installazione rimanda alla
+pagina della tua piattaforma. Installa o avvia Docker Desktop, quindi premi
+**Try again**. Il controllo viene rieseguito sul posto.
 
 ### 2. Cartella dei dati e segreti
 
@@ -99,8 +115,8 @@ Nuovi segreti ti impedirebbero di accedervi.
 
 Esegue il pull delle immagini del container pubblicate per questa versione
 dell'app. Questo è il passaggio più lento alla prima esecuzione. Non viene
-compilato nulla dal codice sorgente, per questo l'installazione richiede il
-tempo di una pausa caffè e non un intero pomeriggio.
+compilato nulla partendo dal codice sorgente, per questo l'installazione
+richiede il tempo di una pausa caffè e non un intero pomeriggio.
 
 ### 4. Avvia lo stack
 
@@ -121,7 +137,7 @@ vuoto ma funzionante.
 
 ### 7. Collega un modello di IA (facoltativo)
 
-Punta Ciele a qualsiasi server compatibile con OpenAI o a un provider in
+Indirizza Ciele a qualsiasi server compatibile con OpenAI o a un provider in
 hosting. Per [Ollama](https://ollama.com) su questa macchina, l'indirizzo è
 `http://host.docker.internal:11434/v1`: all'interno di un container, `localhost`
 è il container.
@@ -130,9 +146,9 @@ Puoi saltare questo passaggio. Senza un modello, gli assistenti rispondono
 utilizzando il motore di ricerca per parole chiave integrato e la ricerca nella
 Knowledge Base si basa sulla corrispondenza lessicale. Tutto il resto funziona.
 
-Quando un passaggio fallisce, indica cosa è andato storto e conserva i relativi
-log in **Show details**. **Try again** riprende da quel passaggio invece di
-ricominciare da capo.
+Quando un passaggio fallisce, indica cosa non ha funzionato e conserva i
+relativi log **Show details**. **Try again** riprende da quel passaggio invece
+di ricominciare da capo.
 
 Una volta completata la configurazione, **Open Ciele** carica la console locale.
 Il primo account che crei è il proprietario dell'organizzazione. I lanci
@@ -150,22 +166,22 @@ stack. Viene eseguito in modo distaccato, di proposito.
 
 ### Dove risiedono i tuoi dati
 
-| Cosa | Dove | Durata |
+| Cosa | Dove | Sopravvive |
 | --- | --- | --- |
 | Assistenti, conversazioni, conoscenza | Volumi Docker (`ciele_postgres-data`) | Riavvii e aggiornamenti dell'app |
 | File caricati | Volume Docker (`ciele_storage-data`) | Riavvii e aggiornamenti dell'app |
 | Configurazione e segreti generati | La cartella dei dati dell'app (mostrata nella schermata dello stack) | Aggiornamenti dell'app |
 
-Esegui il backup del database come faresti con qualsiasi self-hosting, vedi
-[Database](/self-hosting/database). Eliminando Ciele.app non rimuovi né i volumi
-né lo stack.
+Esegui il backup del database come faresti con qualsiasi self-host; consulta
+[Database](/self-hosting/database). La disinstallazione dell'app non rimuove né
+i volumi né lo stack.
 
 ### Aggiornamento in corso
 
-All'avvio, l'app verifica la presenza di una versione più recente e mostra un
-avviso ignorabile con un link per il download. Non è previsto alcun
-aggiornamento automatico: macOS non aggiornerà automaticamente un'app non
-firmata.
+All'avvio, l'app verifica la disponibilità di una versione più recente e mostra
+un avviso ignorabile con un link per il download. Non è previsto alcun
+aggiornamento automatico, perché nessuna delle due piattaforme aggiorna
+automaticamente un'app non firmata.
 
 L'aggiornamento dell'app è ciò che fa avanzare il tuo stack locale. Ogni build
 fissa le immagini del container corrispondenti alla propria versione, quindi la
@@ -174,7 +190,7 @@ le migrazioni. I tuoi dati rimangono dove sono.
 
 ### Ricominciare da capo
 
-Per ripristinare l'installazione locale, interrompi lo stack dalla schermata di
+Per ripristinare l'installazione locale, arresta lo stack dalla schermata di
 stato e rimuovi i volumi del progetto Compose con Docker Desktop oppure da un
 terminale:
 
@@ -187,20 +203,22 @@ volta che scegli **Use locally**, la procedura guidata riparte dall'inizio.
 
 ## Risoluzione dei problemi
 
-**"Docker Desktop non è installato" quando invece lo è.** Un'app avviata dal
-Dock non eredita il `PATH` della tua shell. Ciele quindi cerca la CLI di Docker
-dove Docker Desktop e Homebrew la installano. Non troverà un Docker che hai
-installato da nessun'altra parte. Un collegamento simbolico a `/usr/local/bin`
-risolve il problema.
+**"Docker Desktop non è installato" quando in realtà lo è.** Un'app avviata dal
+Dock o dal menu Start non eredita il `PATH` della tua shell. Ciele cerca quindi
+la CLI di Docker nel percorso in cui Docker Desktop la installa. Su macOS si
+tratta delle directory Homebrew e `/usr/local/bin`. Su Windows si tratta della
+cartella Programmi e della cartella Programmi per utente. Non troverà un Docker
+che hai installato da nessun'altra parte. Su macOS, un collegamento simbolico a
+`/usr/local/bin` risolve il problema.
 
 **The stack sits on "Starting".** Postgres potrebbe essere ancora in fase di
-inizializzazione alla prima esecuzione. Attendi un minuto, poi premi **Check
+inizializzazione alla prima esecuzione. Attendi un minuto, quindi premi **Check
 again**. Se rimane in quella posizione, apri i log da Docker Desktop. Un
 container che continua a riavviarsi di solito ha poca memoria.
 
 **"Impossibile scaricare le immagini."** Il pull non è riuscito a raggiungere il
-registro. Controlla la tua connessione o il proxy e premi **Try again**. Non è
-stato eseguito nulla a valle, quindi non c'è nulla da annullare.
+registro. Controlla la connessione o il proxy e premi **Try again**. Non è stato
+eseguito nulla a valle, quindi non c'è nulla da annullare.
 
 **Assistants answer, but they ignore my knowledge.** Nessun modello di embedding
 è configurato, quindi il recupero ricade sulla corrispondenza delle parole
@@ -213,14 +231,18 @@ errore di battitura restituisce "that address does not exist". Un server spento
 restituisce il messaggio "nothing is listening". Un indirizzo che risponde senza
 essere Ciele lo dice. **Change address** ti porta direttamente all'impostazione.
 
-**macOS dice che l'app è danneggiata o non può essere aperta.** Questo è
+**macOS dice che l'app è danneggiata o non può essere aperta.** Si tratta di
 Gatekeeper su un'app non firmata. Fai clic con il pulsante destro del mouse su
-Ciele.app, scegli **Open**, quindi **Open** di nuovo. Facendo doppio clic non
-vedrai questa opzione.
+Ciele.app, scegli **Open**, quindi **Open** di nuovo. Facendo doppio clic, non
+verrà visualizzata questa opzione.
+
+**Windows blocks the installer.** Si tratta di SmartScreen su un'app non
+firmata. Seleziona **More info**, quindi **Run anyway**. Se il file è stato
+bloccato al download, sbloccalo prima dalla sua **Properties**.
 
 ## Cosa non è l'app desktop
 
-- Non supporta i widget di produzione. I widget locali servono per il test e
+- Non supporta widget di produzione. I widget locali servono per il test e
   l'anteprima. Per la pubblicazione a visitatori reali è necessario un server
   raggiungibile.
 - Non è firmata né autenticata e non si aggiorna automaticamente.

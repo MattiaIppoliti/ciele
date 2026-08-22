@@ -9,7 +9,11 @@ Ciele offre tre interfacce per l'amministrazione programmatica. Ogni interfaccia
 utilizza le stesse operazioni e gli stessi controlli dei ruoli della console di
 amministrazione.
 
+Per trovare l'operazione corrispondente a un comando della console, apri il
+[Pannello sviluppatore](/developers/developer-panel) in quella pagina.
+
 <Cards>
+  <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
   <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
   <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
   <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
@@ -21,13 +25,13 @@ amministrazione.
 Tutte e tre le interfacce richiedono una chiave API dell'organizzazione. Il
 ruolo assegnato controlla le operazioni che la chiave può eseguire.
 
-```mermaid
+<Mermaid
+  title="Tre client, un'API, un set di operazioni"
+  chart={`
 flowchart TB
-  subgraph Clients
-    CLI["Ciele CLI"]
-    MCP["Ciele MCP server"]
-    HTTP["HTTP client"]
-  end
+  CLI["Ciele CLI"]
+  MCP["Ciele MCP server"]
+  HTTP["HTTP client"]
   API["Ciele API v1"]
   OPS["Shared operations"]
   DB[("Organization data")]
@@ -36,7 +40,8 @@ flowchart TB
   HTTP --> API
   API --> OPS
   OPS --> DB
-```
+`}
+/>
 
 Il servizio in hosting utilizza `https://platform.ciele.app` per impostazione
 predefinita. Un'installazione self-hosted utilizza la propria origine pubblica.
@@ -47,7 +52,7 @@ Create a viewer key for read operations. Create a higher-role key only when the 
 
 ## Domini disponibili
 
-L'API attuale include Assistenti, Flussi, Knowledge, pubblicazione,
+L'API attuale include Assistenti, Flussi, Conoscenza, pubblicazione,
 conversazioni in Posta in arrivo e Miglioramenti.
 
 L'API non espone tutte le funzioni della console. Ad esempio, il caricamento

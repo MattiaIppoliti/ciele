@@ -3,10 +3,57 @@ title: Server Ciele MCP
 description: Concedi a un client MCP l'accesso controllato alle operazioni di amministrazione di Ciele.
 ---
 
-Il server Ciele Model Context Protocol (MCP) è un processo `stdio` locale.
-Chiama l'API Ciele tramite il client di tipo.
+Il server Ciele Model Context Protocol (MCP) espone le operazioni di
+amministrazione a un agente IA. Dispone di due trasporti, ed entrambi registrano
+gli stessi strumenti.
 
-## Requisiti
+- L'**endpoint ospitato** è `POST /api/mcp` sulla tua distribuzione. Usalo per
+  un client che si connette tramite HTTP.
+- Il **server locale** è un processo `stdio` che avvii da un checkout del
+  repository.
+
+Ogni chiamata dello strumento raggiunge l'Organizzazione tramite `/api/v1`,
+quindi un'operazione ha un unico percorso di esecuzione, indipendentemente dal
+trasporto richiesto.
+
+## Endpoint in hosting
+
+Ogni distribuzione Ciele serve l'endpoint alla propria origine. Ciò include il
+servizio in hosting, un self-host Docker e lo stack locale di Ciele Desktop.
+L'endpoint non necessita di configurazione.
+
+```text
+https://ciele.example.edu/api/mcp
+```
+
+Effettua l'autenticazione con una
+[chiave API dell'organizzazione](/developers/api-keys) nell'intestazione
+`Authorization`:
+
+```text
+Authorization: Bearer ciele_sk_...
+```
+
+Una chiave sconosciuta o assente viene rifiutata con `401` prima che venga
+elencato qualsiasi strumento.
+
+<Callout title="The key Role is the permission boundary">
+The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+</Callout>
+
+## Revisioni del protocollo
+
+Il server supporta la revisione `2026-07-28` e le revisioni 2025. Decide la
+revisione in base allo scambio iniziale, quindi un client che non è passato a
+`2026-07-28` funziona comunque.
+
+La revisione `2026-07-28` ha rimosso le sessioni di protocollo. Ogni richiesta è
+autonoma, quindi l'endpoint ospitato non necessita di routing persistente né di
+un archivio di sessione.
+
+## Server `stdio` locale
+
+### Requisiti
 
 - Utilizza Node.js 22.6 o versioni successive.
 - Clona il repository Ciele.
@@ -19,16 +66,21 @@ Avvia questo programma dal repository:
 node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-## Variabili di ambiente
+### Variabili di ambiente
 
 | Variabile | Requisito | Scopo |
 | --- | --- | --- |
 | `CIELE_API_KEY` | Obbligatoria | Autentica l'organizzazione. |
 | `CIELE_BASE_URL` | Opzionale | Seleziona un'origine self-hosted. |
 | `CIELE_MCP_READ_ONLY` | Opzionale | Rifiuta le azioni di modifica quando il valore è `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Opzionale | Rifiuta i client della revisione 2025 quando il valore è `1`. |
 
 Il controllo di sola lettura avviene all'interno del processo MCP. Una modifica
 rifiutata non genera una richiesta API.
+
+<Callout type="warn" title="These variables apply to the local server only">
+A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+</Callout>
 
 <Callout title="Recommended first connection">
 Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
@@ -46,23 +98,23 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `read_inbox` | Elenca, leggi, esporta, metti in evidenza, annota, valuta o elimina le Conversazioni. |
 | `manage_improvements` | Elenca, leggi o aggiorna i Miglioramenti. |
 | `manage_entities` | Gestisci le entità dell'organizzazione e i record tipizzati. |
-| `manage_memories` | Controlla le impostazioni ed esegui la cancellazione della memoria con ambito. |
+| `manage_memories` | Ispeziona le impostazioni ed esegui la cancellazione della memoria con ambito. |
 | `manage_sso` | Gestisci le richieste di identità e la connessione SSO dell'organizzazione. |
-| `manage_help_desks` | Gestisci gli help desk, i canali, gli ordini e ServiceNow. |
+| `manage_help_desks` | Gestisci gli Help Desk, i canali, l'ordinamento e ServiceNow. |
 | `manage_configuration` | Gestisci le competenze, la selezione delle competenze dell'assistente, gli obiettivi e gli avvisi. |
 | `manage_organization` | Gestisci le impostazioni dell'organizzazione, i membri, gli inviti e le chiavi API. |
 | `manage_integrations` | Gestisci le integrazioni API dell'Assistente e i fornitori di modelli. |
 
-Al momento, il server registra quattordici strumenti. Ogni strumento di dominio
-utilizza un campo `action` per le sue operazioni.
+Il server registra quattordici strumenti. Ogni strumento di dominio utilizza un
+campo `action` per le sue operazioni.
 
 La modalità di sola lettura classifica ogni azione. Consente le azioni di
 elenco, lettura, stato, query ed esportazione, ma rifiuta le mutazioni.
 
-Il server MCP non fornisce un trasporto HTTP remoto. Consulta
-[AI clients](/developers/ai-clients) per informazioni sulla compatibilità.
+Vedi [Client IA](/developers/ai-clients) per la configurazione di ciascun client
+supportato.
 
-## Controlla la connessione
+## Verifica la connessione
 
 Chiedi al client di chiamare `ciele_identity`. Conferma l'ID organizzazione, il
 ruolo, la versione API e l'elenco dei domini previsti.

@@ -6,8 +6,13 @@ description: Añade Fuentes que el Asistente pueda consultar y citar.
 Las fuentes pertenecen a la organización y una colección de conocimiento las
 almacena junto con los conceptos generados durante la ingesta. Un Asistente
 busca en una Fuente solo después de que tú vincules esa Fuente al Asistente.
-Vincula una Fuente desde la Biblioteca o añádela dentro del Asistente, que la
-vinculará por ti.
+Vincula una Fuente desde la [Biblioteca](/knowledge/library) o añádela dentro
+del Asistente, que la vinculará por ti.
+
+Dado que una Fuente puede responder a varios Asistentes, eliminarla de un
+Asistente y eliminarla para la Organización son operaciones diferentes. Al
+eliminar un Asistente, las Fuentes de la Organización permanecen intactas. Solo
+elimina los enlaces de ese Asistente.
 
 ## Tipos de fuentes disponibles
 
@@ -16,9 +21,8 @@ vinculará por ti.
 - Texto pegado
 - Preguntas frecuentes seleccionadas
 
-Ciele extrae el contenido de la Fuente y crea Conceptos en los que se puede
-buscar. El tiempo de ejecución resuelve las citas y las vincula a las Fuentes
-con nombre.
+Ciele extrae el contenido de la Fuente y crea Conceptos que se pueden buscar. El
+motor de ejecución resuelve las citas y las vincula a Fuentes con nombre.
 
 ## Estado de la fuente
 
@@ -30,11 +34,17 @@ con nombre.
 
 No pruebes una nueva Fuente antes de que su estado sea **Ready**.
 
+## Acceso directo
+
+Una fuente de archivo puede entregar al visitante el archivo original junto con
+la cita. Esta es la configuración **Direct access** en un enlace de Asistente y
+está desactivada de forma predeterminada. Configúralo en la Biblioteca.
+
 ## Recuperación
 
-Search Knowledge puede usar búsqueda vectorial, reserva léxica y navegación por
-el grafo de conocimiento. El motor de conocimiento seleccionado controla la ruta
-principal.
+Search Knowledge puede usar la búsqueda vectorial, la reserva léxica y la
+navegación por el grafo de conocimiento. El motor de conocimiento seleccionado
+controla la ruta principal.
 
 Deep Search permite más iteraciones solo de conocimiento. No busca en la web
 abierta.

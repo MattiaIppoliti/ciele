@@ -8,7 +8,7 @@ import type {
   Provider,
   QuickReplyButton,
 } from "@agent-hub/core";
-import { sortFlows } from "@agent-hub/core";
+import { externalLinkUrl, sortFlows } from "@agent-hub/core";
 import { OperationError, defineOperation } from "./operation";
 
 /**
@@ -33,7 +33,21 @@ export const assistantPatchSchema = z
     welcomeMessage: z.string().max(10000),
     aiDisclaimer: z.string().max(1000),
     suggestedQuestions: z.array(z.string().max(500)).max(50),
-    quickReplies: z.custom<QuickReplyButton[]>(Array.isArray),
+    // Shape-trusted like the other structured config, with one exception: an
+    // `external_link` quick reply's URL is opened by the widget with
+    // `window.open`, so its scheme is normalised here rather than trusted. A
+    // stored `javascript:` value would otherwise reach that call directly, with
+    // no framework sanitiser in between (the Flow `show_button` action applies
+    // the same rule at render time).
+    quickReplies: z
+      .custom<QuickReplyButton[]>(Array.isArray)
+      .transform((buttons) =>
+        buttons.map((button) =>
+          button.type === "external_link" && button.url
+            ? { ...button, url: externalLinkUrl(button.url) }
+            : button
+        )
+      ),
     answeringStyle: z.string().max(10000),
     simplifiedThinking: z.boolean(),
     chatLauncherEnabled: z.boolean(),

@@ -150,11 +150,21 @@ export interface ApiRequestJsonPath {
 /** How the API request action authenticates against the configured endpoint. */
 export type ApiRequestAuthType = "none" | "bearer" | "api_key" | "basic";
 
+/**
+ * The `has*` flags carry "a secret is stored" to a surface that must not receive
+ * the secret itself; `redactFlowSecrets` sets them and drops the value. They are
+ * derived on read, never persisted.
+ */
 export type ApiRequestAuth =
   | { type: "none" }
-  | { type: "bearer"; token?: string }
-  | { type: "api_key"; header?: string; key?: string }
-  | { type: "basic"; username?: string; password?: string };
+  | { type: "bearer"; token?: string; hasToken?: boolean }
+  | { type: "api_key"; header?: string; key?: string; hasKey?: boolean }
+  | {
+      type: "basic";
+      username?: string;
+      password?: string;
+      hasPassword?: boolean;
+    };
 
 /**
  * How often a Notification may reach the same Visitor.
@@ -310,7 +320,13 @@ export interface FlowActionSettings {
 export type BuiltInToolName =
   | "searchKnowledge"
   | "fetchUrl"
-  | "remember";
+  | "remember"
+  /**
+   * The render catalogue's table (generative UI). Gated here like any other
+   * built-in, so it travels in the Publication snapshot and a published widget
+   * only renders components the assistant was published with.
+   */
+  | "renderTable";
 
 /**
  * Per-assistant tool configuration (assistants.tools jsonb).

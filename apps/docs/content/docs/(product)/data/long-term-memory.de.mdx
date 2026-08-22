@@ -4,11 +4,11 @@ description: Speichert dauerhafte Fakten für angemeldete Besucher und löscht s
 ---
 
 Das Langzeitgedächtnis überträgt dauerhafte Fakten in spätere Konversationen.
-Dies funktioniert nur für Besucher, die über das SSO-Gate des Widgets angemeldet
+Sie funktioniert nur für Besucher, die über das SSO-Gate des Widgets angemeldet
 sind.
 
 Die Funktion ist standardmäßig deaktiviert. Anonyme Besucher erzeugen oder rufen
-niemals Langzeitgedächtnisse ab.
+niemals Langzeitgedächtnisse hervor.
 
 ## Langzeitgedächtnis aktivieren
 
@@ -31,9 +31,8 @@ Der Extraktor vermeidet einmalige Anfragen, Fragen, Vermutungen und Aussagen,
 die nur vom Assistenten gemacht werden. Viele Gespräche führen zu keinen
 dauerhaften Fakten.
 
-Jede gespeicherte Erinnerung behält den Verweis auf ihre ursprüngliche
-Konversation. Exakte Duplikate von Fakten werden während der Speicherung
-entfernt.
+Jede gespeicherte Erinnerung behält den Verweis auf die zugrundeliegende
+Konversation. Exakte doppelte Fakten werden während der Speicherung entfernt.
 
 Ein angemeldeter Besucher kann bis zu 200 Erinnerungen speichern. Neue
 Schreibvorgänge entfernen die ältesten Fakten, sobald diese Grenze erreicht ist.
@@ -45,32 +44,31 @@ Schreibvorgänge entfernen die ältesten Fakten, sobald diese Grenze erreicht is
   chart={`
 flowchart TB
   TURN["Signed-in Conversation"]
-  QUIET["15 minutes without a new message"]
-  JOB["Durable promote_memories job"]
-  GATE["Check toggle, subject, model, and budget"]
-  STORE["Extract, embed, deduplicate, and store"]
-  NEXT["First turn of a later Conversation"]
-  PROMPT["Inject up to five relevant memories"]
-  TOOL["searchMemories handles later recall"]
+  QUIET["15 quiet minutes"]
+  JOB["promote_memories job"]
+  STORE["Extract, deduplicate, and store"]
+  NEXT["A later Conversation opens"]
+  PROMPT["Up to five memories join the prompt"]
   TURN --> QUIET
   QUIET --> JOB
-  JOB --> GATE
-  GATE --> STORE
+  JOB --> STORE
   STORE --> NEXT
   NEXT --> PROMPT
-  PROMPT --> TOOL
 `}
 />
 
 Ein Heraufstufungsauftrag wartet, bis die Konversation 15 Minuten lang ruhig
-bleibt. Eine neuere Nachricht ersetzt einen älteren ausstehenden Auftrag.
+bleibt. Eine neuere Nachricht ersetzt einen älteren ausstehenden Job.
 
-Der erste Beitrag einer späteren Konversation kann bis zu fünf relevante
-Erinnerungen erhalten. Die Laufzeitumgebung kann später die Erinnerungen
-desselben Subjekts durchsuchen.
+Bevor der Job etwas speichert, prüft er vier Dinge: den Schalter „Organization“,
+den SSO-Benutzer, ein verfügbares Modell und das Budget. Jede dieser Bedingungen
+kann die Beförderung stoppen.
+
+Nur der erste Beitrag einer späteren Konversation erhält auf diese Weise
+Erinnerungen. Danach erreicht die Laufzeit sie über das Tool `searchMemories`.
 
 Recall überschreitet niemals die Grenzen einer Organisation oder eines
-SSO-Benutzers.
+SSO-Subjekts.
 
 ## Ermöglichen Sie einem Besucher, Erinnerungen einzusehen und zu löschen
 
@@ -86,7 +84,7 @@ Speichersuchen entfernt.
 ## Bearbeitung einer Löschanfrage
 
 1. Öffnen Sie **Settings**.
-2. Wählen Sie **AI Providers**.
+2. Wählen Sie **AI Providers** aus.
 3. Suchen Sie nach **Remembered users**.
 4. Suchen Sie nach Benutzer-ID oder Identitätsanspruch.
 5. Überprüfen Sie die gespeicherten Fakten.

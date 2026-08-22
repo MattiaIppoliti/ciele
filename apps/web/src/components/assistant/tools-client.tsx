@@ -62,6 +62,13 @@ const BUILT_INS: Array<{
     defaultOn: true,
   },
   {
+    name: "renderTable",
+    title: "Show a table",
+    description:
+      "Lets the assistant lay retrieved facts out as a table when the answer compares things across the same few attributes, and give a row a follow-up question the visitor can tap. It arranges what it found; it never computes values. Off by default.",
+    defaultOn: false,
+  },
+  {
     name: "fetchUrl",
     title: "Fetch URL",
     description:

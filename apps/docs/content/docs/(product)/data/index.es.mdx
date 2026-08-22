@@ -11,35 +11,18 @@ los Visitantes que han iniciado sesión. Estas funciones utilizan la identidad
 verificada y permanecen bajo el control de la Organización.
 
 <Mermaid
-  title="Cómo los datos estructurados y la memoria a largo plazo llegan a un Asistente"
+  title="Los registros se convierten en herramientas solo cuando publicas"
   chart={`
 flowchart TB
-  subgraph SETUP["Admin setup"]
-    ID["Entra subject<br/>optional identity claim"]
-    DATA["Entity schema<br/>CSV Records"]
-    SELECT["Select Entity<br/>in Tools & Skills"]
-  end
-  PUB["Publish the tool set"]
-  subgraph TURN["Signed-in Widget turn"]
-    SHARED["Shared lookup<br/>or text search"]
-    SCOPED["User-scoped lookup<br/>server identity filter"]
-    TRACE["Thinking and Inbox<br/>show tool calls"]
-  end
-  subgraph MEMORY["Long-term memory"]
-    QUIET["Conversation stays quiet"]
-    PROMOTE["Extract and store<br/>durable facts"]
-    RECALL["Next Conversation<br/>recalls relevant facts"]
-  end
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
   DATA --> SELECT
   SELECT --> PUB
-  PUB --> SHARED
-  PUB --> SCOPED
-  ID --> SCOPED
-  SHARED --> TRACE
-  SCOPED --> TRACE
-  TRACE --> QUIET
-  QUIET --> PROMOTE
-  PROMOTE --> RECALL
+  PUB --> TOOLS
+  TOOLS --> TRACE
 `}
 />
 
@@ -47,8 +30,14 @@ La Publicación controla qué herramientas de Entidad existen. Los valores de lo
 registros permanecen activos, por lo que una importación posterior de CSV puede
 cambiar las respuestas sin necesidad de otra publicación.
 
-Los filtros de identidad se aplican en el servidor. Un modelo no puede
-seleccionar la identidad de otro Visitante ni eliminar el filtro.
+Una Entidad con ámbito de usuario necesita una notificación de identidad
+verificada. El servidor añade ese filtro después de validar la entrada de la
+herramienta, por lo que un modelo no puede eliminarlo ni nombrar a otro
+Visitante.
+
+La memoria a largo plazo es una función independiente con su propio ciclo de
+vida. No depende de las Entidades. Consulta
+[Memoria a largo plazo](/data/long-term-memory).
 
 <Cards>
   <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { RuntimeEvent } from "./types";
 import {
+  appendOrReplacePart,
   consumeTurnStream,
   decodeRuntimeEvents,
+  dropPendingComponents,
+  foldTraceEvent,
+  updatePendingComponent,
+  EMPTY_TURN_TRACE,
   type TurnView,
 } from "./stream";
 
@@ -55,40 +60,58 @@ describe("decodeRuntimeEvents", () => {
   });
 });
 
-describe("consumeTurnStream", () => {
-  async function runTurn(
-    events: RuntimeEvent[],
-    options: { errorText?: (m: string) => string } = {}
-  ) {
-    let view: TurnView = {
-      flowName: null,
-      steps: [],
-      parts: [],
-      streamingText: null,
-      phase: "running",
-      searchCount: 0,
-      iteration: null,
-      iterationLimit: null,
-      terminal: null,
-    };
-    let done: { conversationId: string; messageId: string | null } | null =
-      null;
-    let startedConversationId: string | null = null;
-    await consumeTurnStream(bodyFromChunks([ndjson(events)]), {
-      update: (fn) => {
-        view = fn(view);
-      },
-      onDone: (d) => {
-        done = d;
-      },
-      onStart: ({ conversationId }) => {
-        startedConversationId = conversationId;
-      },
-      ...options,
-    });
-    return { view, done, startedConversationId };
-  }
+/** Drives a whole turn through the consumer and returns what a client would hold. */
+async function runTurn(
+  events: RuntimeEvent[],
+  options: { errorText?: (m: string) => string } = {}
+) {
+  let view: TurnView = {
+    flowName: null,
+    steps: [],
+    parts: [],
+    streamingText: null,
+    phase: "running",
+    searchCount: 0,
+    iteration: null,
+    iterationLimit: null,
+    terminal: null,
+  };
+  let done: { conversationId: string; messageId: string | null } | null =
+    null;
+  let startedConversationId: string | null = null;
+  const views: TurnView[] = [];
+  await consumeTurnStream(bodyFromChunks([ndjson(events)]), {
+    update: (fn) => {
+      view = fn(view);
+      views.push(view);
+    },
+    onDone: (d) => {
+      done = d;
+    },
+    onStart: ({ conversationId }) => {
+      startedConversationId = conversationId;
+    },
+    ...options,
+  });
+  return { view, views, done, startedConversationId };
+}
 
+/**
+ * The last provisional component any snapshot held. A pending component never
+ * survives the consumer (it is swept when the turn ends, however it ends), so
+ * the growing render can only be observed mid-stream.
+ */
+function lastPendingComponent(views: readonly TurnView[]) {
+  for (let i = views.length - 1; i >= 0; i -= 1) {
+    const part = views[i].parts.find(
+      (candidate) => candidate.type === "component" && candidate.pending
+    );
+    if (part) return part as Extract<typeof part, { type: "component" }>;
+  }
+  return undefined;
+}
+
+describe("consumeTurnStream", () => {
   it("exposes the conversation id before generation completes so a turn can be steered", async () => {
     const result = await runTurn([
       { type: "turn", conversationId: "c-early" },
@@ -359,5 +382,267 @@ describe("consumeTurnStream", () => {
       errorText: (m) => `⚠️ ${m}`,
     });
     expect(view.parts[0]).toMatchObject({ text: "⚠️ boom" });
+  });
+});
+
+/**
+ * Progressive component rendering: a render-only tool's arguments ARE its
+ * component's props, so the client grows the component from the argument
+ * deltas and replaces it with the validated part. The invariant under test is
+ * that the two never coexist and the streamed one never survives.
+ */
+describe("streamed component props", () => {
+  const props = { title: "Piani", columns: ["Piano"], rows: [["Pro"]] };
+  const finished: RuntimeEvent = {
+    type: "part",
+    part: {
+      type: "component",
+      action: "search_knowledge",
+      name: "table",
+      callId: "t9",
+      props,
+    },
+  };
+
+  it("opens an empty component, then grows it from the deltas", async () => {
+    const raw = JSON.stringify(props);
+    const { views } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: raw.slice(0, 18) },
+      { type: "tool-input-delta", callId: "t9", delta: raw.slice(18) },
+    ]);
+    expect(lastPendingComponent(views)).toMatchObject({
+      type: "component",
+      name: "table",
+      callId: "t9",
+      pending: true,
+      props,
+    });
+  });
+
+  it("holds the last good parse while a fragment is incoherent", async () => {
+    const { views } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"title":"Piani"' },
+      // A dangling key: nothing new to show, and blanking would be worse.
+      { type: "tool-input-delta", callId: "t9", delta: ',"colu' },
+    ]);
+    expect(lastPendingComponent(views)).toMatchObject({
+      props: { title: "Piani" },
+    });
+  });
+
+  it("replaces the provisional render in place, and clears pending", async () => {
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"title":"Pia' },
+      finished,
+      { type: "tool-end", callId: "t9", tool: "renderTable", ok: true, durationMs: 2 },
+    ]);
+    expect(view.parts).toHaveLength(1);
+    expect(view.parts[0]).toEqual({
+      type: "component",
+      action: "search_knowledge",
+      name: "table",
+      callId: "t9",
+      props,
+    });
+  });
+
+  it("renders whole when the provider never streams arguments", async () => {
+    // Google needs `streamFunctionCallArguments` to send them at all, so this
+    // is the floor the feature degrades to, not an edge case.
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      finished,
+      { type: "tool-end", callId: "t9", tool: "renderTable", ok: true, durationMs: 2 },
+    ]);
+    expect(view.parts).toHaveLength(1);
+    expect(view.parts[0]).not.toHaveProperty("pending");
+  });
+
+  it("strands nothing when the arguments never reach the tool", async () => {
+    // Schema validation runs before execute, so an over-cap or malformed
+    // payload emits neither tool-start nor tool-end. Without a sweep the
+    // skeleton stayed on screen for the rest of the turn, never persisted.
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"columns":["A"]' },
+      { type: "text-start", action: "search_knowledge" },
+      { type: "text-delta", delta: "Ecco la risposta." },
+      { type: "text-end" },
+      { type: "done", conversationId: "c1", messageId: "m1" },
+    ]);
+    expect(view.parts.map((part) => part.type)).toEqual(["text"]);
+  });
+
+  it("never leaves a pending component in the view it returns", async () => {
+    // The contract the three tests above have to read history for: whatever the
+    // stream did, the consumer hands back no half-built component.
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"columns":["A"]' },
+    ]);
+    expect(view.parts).toEqual([]);
+  });
+
+  it("strands nothing when the stream is aborted mid-component", async () => {
+    // The widget's catch swallows an abort, so a skeleton left behind would
+    // pulse in the transcript for the rest of the session. No `done`, no
+    // `error`: the iterator just throws.
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            ndjson([
+              { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+              { type: "tool-input-delta", callId: "t9", delta: '{"columns":["A"]' },
+            ])
+          )
+        );
+        controller.error(new Error("aborted"));
+      },
+    });
+    let view: TurnView = {
+      flowName: null,
+      steps: [],
+      parts: [],
+      streamingText: null,
+      phase: "running",
+      searchCount: 0,
+      iteration: null,
+      iterationLimit: null,
+      terminal: null,
+    };
+    await expect(
+      consumeTurnStream(body, {
+        update: (fn) => {
+          view = fn(view);
+        },
+      })
+    ).rejects.toThrow("aborted");
+    expect(view.parts).toEqual([]);
+  });
+
+  it("strands nothing when the turn ends on an error", async () => {
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"columns":["A"]' },
+      { type: "error", message: "boom" },
+    ]);
+    expect(view.parts.map((part) => part.type)).toEqual(["text"]);
+  });
+
+  it("keeps a settled component when the turn ends", async () => {
+    // The sweep must take the skeletons and nothing else.
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      finished,
+      { type: "tool-end", callId: "t9", tool: "renderTable", ok: true, durationMs: 2 },
+      { type: "done", conversationId: "c1", messageId: "m1" },
+    ]);
+    expect(view.parts).toHaveLength(1);
+    expect(view.parts[0]).toMatchObject({ type: "component", props });
+  });
+
+  it("keeps the Simplified-thinking line out of the props", async () => {
+    // `progress` rides the same argument JSON the deltas carry.
+    const { views } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      {
+        type: "tool-input-delta",
+        callId: "t9",
+        delta: '{"progress":"Sto preparando…","columns":["A"]}',
+      },
+    ]);
+    const pendingPart = lastPendingComponent(views);
+    expect(pendingPart).toMatchObject({ props: { columns: ["A"] } });
+    expect(pendingPart?.props).not.toHaveProperty("progress");
+  });
+
+  it("drops the skeleton when the render tool refused the arguments", async () => {
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"columns":[' },
+      { type: "tool-end", callId: "t9", tool: "renderTable", ok: false, durationMs: 2 },
+    ]);
+    expect(view.parts).toEqual([]);
+  });
+
+  it("keeps the component ahead of the answer text it refers to", async () => {
+    const { view } = await runTurn([
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      finished,
+      { type: "tool-end", callId: "t9", tool: "renderTable", ok: true, durationMs: 2 },
+      { type: "text-start", action: "search_knowledge" },
+      { type: "text-delta", delta: "Come vedi in tabella…" },
+      { type: "text-end" },
+    ]);
+    expect(view.parts.map((part) => part.type)).toEqual(["component", "text"]);
+  });
+
+  it("leaves the persisted trace alone: argument deltas are not steps", () => {
+    // The stored trace takes its component from the validated part; a partial
+    // parse must never reach it, so the fold ignores both events outright.
+    const trace = [
+      { type: "tool-input-start", callId: "t9", tool: "renderTable", name: "table" },
+      { type: "tool-input-delta", callId: "t9", delta: '{"title":"x"}' },
+    ].reduce<typeof EMPTY_TURN_TRACE>(
+      (acc, event) => foldTraceEvent(acc, event as RuntimeEvent),
+      EMPTY_TURN_TRACE
+    );
+    expect(trace).toEqual(EMPTY_TURN_TRACE);
+  });
+});
+
+/** The part-list rewrites, on their own: components are the only parts a client edits. */
+describe("component part helpers", () => {
+  const pending = {
+    type: "component" as const,
+    action: "search_knowledge" as const,
+    name: "table" as const,
+    callId: "t1",
+    props: { columns: ["A"] },
+    pending: true,
+  };
+  const text = { type: "text" as const, action: "search_knowledge" as const, text: "hi" };
+
+  it("appends a part with no provisional twin", () => {
+    expect(appendOrReplacePart([text], pending)).toEqual([text, pending]);
+  });
+
+  it("replaces by call id rather than appending a duplicate", () => {
+    const final = { ...pending, pending: undefined, props: { columns: ["A", "B"] } };
+    expect(appendOrReplacePart([text, pending], final)).toEqual([text, final]);
+  });
+
+  it("appends a component from a different call", () => {
+    const other = { ...pending, callId: "t2" };
+    expect(appendOrReplacePart([pending], other)).toHaveLength(2);
+  });
+
+  it("will not rewrite props once the validated part has landed", () => {
+    const settled = { ...pending, pending: undefined };
+    expect(updatePendingComponent([settled], "t1", { columns: ["Z"] })).toEqual([
+      settled,
+    ]);
+  });
+
+  it("drops only the pending component for that call", () => {
+    const settled = { ...pending, callId: "t2", pending: undefined };
+    expect(dropPendingComponents([text, pending, settled], "t1")).toEqual([
+      text,
+      settled,
+    ]);
+  });
+
+  it("drops every pending component when given no call id", () => {
+    const other = { ...pending, callId: "t2" };
+    const settled = { ...pending, callId: "t3", pending: undefined };
+    expect(dropPendingComponents([text, pending, other, settled])).toEqual([
+      text,
+      settled,
+    ]);
   });
 });

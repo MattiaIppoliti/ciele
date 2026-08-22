@@ -259,7 +259,14 @@ const queryApiSpec: RuntimeToolSpec = {
     });
     const window = readWindow(body, 0, QUERY_INLINE_CHARS);
 
-    ctx.recordResult?.({
+    // Two tiers. The operator record keeps the upstream body and the absolute
+    // URL; the Visitor's copy keeps neither. A published widget streams tool
+    // events straight to an anonymous caller, so a response body here would put
+    // whatever the org's API returned (other people's records, a credential the
+    // upstream echoed into an error) into that caller's browser, and the
+    // absolute URL would name the internal host that citations deliberately
+    // withhold (see the `sourceForEndpoint` note above).
+    const operatorRecord = {
       endpoint: outcome.endpoint?.name ?? "endpoint",
       method: outcome.endpoint?.method ?? "GET",
       path: outcome.requestUrl ?? String(input.path ?? ""),
@@ -267,6 +274,14 @@ const queryApiSpec: RuntimeToolSpec = {
       ok: outcome.ok,
       response: window.content,
       totalLength: body.length,
+    };
+    ctx.recordResult?.(operatorRecord, {
+      endpoint: operatorRecord.endpoint,
+      method: operatorRecord.method,
+      path: String(input.path ?? ""),
+      status: operatorRecord.status,
+      ok: operatorRecord.ok,
+      totalLength: operatorRecord.totalLength,
     });
 
     // A queried endpoint is a citable Source, the reference platform shows a

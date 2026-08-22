@@ -77,6 +77,19 @@ export {
 } from "./flow-conditions";
 export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
 
+// One rule for an admin-typed outbound link's scheme, shared by the Flow
+// `show_button` action and the quick-reply editor (the widget opens the latter
+// with `window.open`, which has no sanitiser in front of it).
+export { externalLinkUrl } from "./external-link";
+
+// A Flow's `api_request` credentials live in plain jsonb, so every read surface
+// projects them out and every write puts the stored value back (#758).
+export {
+  mergeFlowSecrets,
+  redactFlowSecrets,
+  redactFlowsSecrets,
+} from "./flow-secrets";
+
 // Basic Interaction's deterministic tier (#566): recognise conversational
 // courtesy with no model call, and pick the Flow that answers it.
 export { basicInteractionFlow, isCourtesyOnly } from "./basic-interaction";

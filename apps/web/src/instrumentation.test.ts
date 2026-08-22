@@ -49,19 +49,36 @@ describe("instrumentation register()", () => {
     ]);
   });
 
-  it("relaxes egress only outside Vercel production", async () => {
-    const previous = process.env.VERCEL_ENV;
+  it("relaxes egress for dev and Vercel preview, never for a production build", async () => {
+    const previousVercel = process.env.VERCEL_ENV;
+    const previousNode = process.env.NODE_ENV;
+    const setNodeEnv = (value: string) => {
+      // NODE_ENV is readonly in the Next types; the test owns the process.
+      (process.env as Record<string, string>).NODE_ENV = value;
+    };
     try {
       await register();
       const [ports] = mocks.registerRuntimeHost.mock.calls[0]!;
 
+      setNodeEnv("production");
       process.env.VERCEL_ENV = "production";
       expect(ports.allowRelaxedEgress()).toBe(false);
       process.env.VERCEL_ENV = "preview";
       expect(ports.allowRelaxedEgress()).toBe(true);
+
+      // The case that actually ships, and the one the old `!== "production"`
+      // test got backwards: VERCEL_ENV is unset on every non-Vercel host, so a
+      // self-host, Docker or Desktop install must still be strict.
+      delete process.env.VERCEL_ENV;
+      expect(ports.allowRelaxedEgress()).toBe(false);
+
+      // `next dev` keeps the carve-out for local plain-HTTP mocks.
+      setNodeEnv("development");
+      expect(ports.allowRelaxedEgress()).toBe(true);
     } finally {
-      if (previous === undefined) delete process.env.VERCEL_ENV;
-      else process.env.VERCEL_ENV = previous;
+      if (previousVercel === undefined) delete process.env.VERCEL_ENV;
+      else process.env.VERCEL_ENV = previousVercel;
+      setNodeEnv(previousNode ?? "test");
     }
   });
 

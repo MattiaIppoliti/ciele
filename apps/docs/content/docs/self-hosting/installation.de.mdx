@@ -13,14 +13,14 @@ Desktop. This page is the server path.
 
 - Installieren Sie Git.
 - Installieren Sie Docker mit Docker Compose.
-- Reservieren Sie ausreichend Speicherplatz für Bilder, Postgres und
-  hochgeladene Dateien.
+- Reservieren Sie ausreichend Speicherplatz auf der Festplatte für Bilder,
+  Postgres und hochgeladene Dateien.
 - Reservieren Sie mehr Speicher, wenn Sie die optionalen Worker aktivieren.
 
 ## Ein Befehl
 
 Das Installationsprogramm führt jeden Schritt im nächsten Abschnitt aus: Es
-überprüft die Voraussetzungen, holt den Quellcode in `./ciele` und führt
+überprüft die Voraussetzungen, ruft den Quellcode in `./ciele` ab und führt
 `bootstrap.sh` aus.
 
 ```bash
@@ -38,6 +38,13 @@ curl -fsSL https://ciele.app/install.sh | sh -s -- --seed
 Das Installationsprogramm löscht niemals etwas: Wenn das Zielverzeichnis
 existiert und kein Ciele-Checkout ist, stoppt es und informiert Sie darüber.
 
+Auf einem Mac ohne Docker stoppt das Installationsprogramm nicht bei einem
+Fehler. Es öffnet [Ciele Desktop](/self-hosting/desktop) und lädt zuerst die
+Release-Version herunter, wenn die App nicht vorhanden ist. Die geführte
+Einrichtung dort verbindet Docker Desktop und startet denselben Stack, der auf
+dieser Seite beschrieben wird. Unter Linux lehnt das Installationsprogramm ab,
+da es keine Desktop-App gibt, an die die Arbeit übergeben werden kann.
+
 ## Bootstrappen Sie den Stack
 
 So führen Sie dieselben Schritte manuell aus:
@@ -49,7 +56,7 @@ cd ciele
 ```
 
 Das Skript generiert die erforderlichen Secrets in `deploy/.env`. Anschließend
-baut es die Standardprofile und startet sie.
+erstellt und startet es die Standardprofile.
 
 Öffnen Sie [http://localhost:3000](http://localhost:3000), sobald die Dienste
 fehlerfrei laufen. Das erste Konto wird zum Eigentümer der Organisation.
@@ -76,8 +83,8 @@ CIELE_IMAGE_TAG=v0.4.0
 ```
 
 Da sich beide in `deploy/.env` befinden, bleibt ein späterer
-`docker compose up -d` in diesem Verzeichnis im Image-Modus. Deaktivieren Sie
-beide Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
+`docker compose up -d` in diesem Verzeichnis im Image-Modus. Löschen Sie beide
+Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
 `CIELE_IMAGE_REGISTRY` so ein, dass ein Mirror oder Ihr eigener Rebuild
 verwendet wird.
 
@@ -98,9 +105,9 @@ restart alone keeps the previous value.
 | `db` | Ja | Postgres, pgvector, Authentifizierung, Daten-API, Speicher und Gateway. |
 | `migrate` | Ja | Ausstehende Migrationen und erforderliche Speicher-Buckets. |
 | `app` | Ja | Administratorkonsole, Widget-Runtime und API v1. |
-| `cron` | Ja | Geplante Anwendungsaufträge. |
+| `cron` | Ja | Geplante Anwendungsjobs. |
 | `workers` | Nein | Dienste zum Abrufen von Graphen und zum Crawlen mit JavaScript-Rendering. |
-| `studio` | Nein | Datenbank-Administrationsschnittstelle. |
+| `studio` | Nein | Schnittstelle zur Datenbankverwaltung. |
 
 ## Überprüfen Sie den Stack
 

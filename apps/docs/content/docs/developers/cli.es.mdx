@@ -88,6 +88,26 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
+### Enlaces de fuente
+
+Una Fuente responde por los Asistentes vinculados a ella. Estos comandos leen y
+modifican los enlaces.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` enumera todas las Fuentes que posee la Organización, en todos
+los Asistentes.
+
+`sources link` reemplaza el conjunto de enlaces. Una lista vacía elimina todos
+los enlaces y la Fuente deja de responder.
+
+`sources direct-access` decide si ese Asistente puede proporcionar el archivo
+original a un Visitante.
+
 ## Comandos de Operaciones y Organización
 
 ```bash

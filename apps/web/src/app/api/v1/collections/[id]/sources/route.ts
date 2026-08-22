@@ -5,7 +5,7 @@ import { apiError } from "@/lib/api-v1/http";
 import { idempotencyScope, withIdempotency } from "@/lib/api-v1/idempotency";
 import { sourceResource } from "@/lib/api-v1/resources";
 import { runApiOperation } from "@/lib/api-v1/run";
-import { resolveApiKeyContext } from "@/lib/api-v1/auth";
+import { requireApiCapability, resolveApiKeyContext } from "@/lib/api-v1/auth";
 import {
   uploadKnowledgeOriginal,
   validateKnowledgeFile,
@@ -39,6 +39,17 @@ export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
   const scope = await idempotencyScope(request, `POST /collections/${id}/sources`);
   return withIdempotency(request, scope, async () => {
+    // Authorize BEFORE any side effect. Extraction fetches a caller-supplied URL
+    // and the multipart branch writes an object to storage, and both used to run
+    // ahead of `addSourceOp`, which is where the `edit` check lives: a key of any
+    // role, or no key at all, could make the server fetch a URL and read back the
+    // status. The op re-checks the capability and the Collection's tenancy; this
+    // is the gate for the work the surface does on its own.
+    const auth = await resolveApiKeyContext(request);
+    if (auth instanceof Response) return auth;
+    const forbidden = requireApiCapability(auth, "edit");
+    if (forbidden) return forbidden;
+
     const contentType = request.headers.get("content-type") ?? "";
 
     let name: string;
@@ -80,12 +91,9 @@ export async function POST(request: Request, { params }: Params) {
         rawText = extracted.text;
 
         if (isSupabaseConfigured() && isSupabaseServiceConfigured()) {
-          // Need the org for the storage prefix: resolve the key up front.
-          const ctx = await resolveApiKeyContext(request);
-          if (ctx instanceof Response) return ctx;
           const stored = await uploadKnowledgeOriginal(
             createSupabaseServiceClient(),
-            { organizationId: ctx.organizationId, file }
+            { organizationId: auth.organizationId, file }
           );
           originalObjectPath = stored.path;
         }

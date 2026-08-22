@@ -3,10 +3,11 @@ title: Ciele Desktop
 description: Téléchargez une application et connectez-vous à votre organisation ou exécutez une version complète de Ciele sur votre ordinateur.
 ---
 
-Ciele Desktop est une application macOS qui s'ouvre selon votre choix.
+Ciele Desktop est une application macOS et Windows qui s'ouvre selon votre
+choix.
 
 - **Sign in to your organization** : l'application ouvre la console de votre
-  organisation dans une fenêtre dédiée, avec une session qui survit aux
+  organisation dans une fenêtre dédiée, avec une session qui persiste après les
   redémarrages. L'adresse est configurable, de sorte que le même chemin d'accès
   permet également d'accéder à un Ciele auto-hébergé sur votre propre serveur.
 - **Use locally (self-host)** : une configuration guidée met en place un Ciele
@@ -14,18 +15,17 @@ Ciele Desktop est une application macOS qui s'ouvre selon votre choix.
   tout le reste. Aucun terminal n'est nécessaire, et Docker Desktop est le seul
   élément que vous installez vous-même.
 
-Les deux peuvent coexister, et vous pouvez basculer entre eux à tout moment.
-Toutes vos actions avec Ciele se déroulent dans l'interface utilisateur du
-produit que vous connaissez déjà ; l'application ajoute une fenêtre autour de
+Les deux peuvent coexister, et vous pouvez basculer de l'un à l'autre à tout
+moment. Toutes vos actions avec Ciele se déroulent dans l'interface utilisateur
+du produit que vous connaissez déjà ; l'application ajoute une fenêtre autour de
 celle-ci, et non une seconde interface.
 
 <Callout type="warn" title="Beta">
-The macOS build is unsigned, which means one extra step the first time you open
-it (below) and no automatic updates. Windows and Linux builds are not part of
-the beta.
+Both builds are unsigned. That means one extra step the first time you open the
+app (below) and no automatic updates. Linux is not part of the beta.
 </Callout>
 
-## Quel chemin choisir ?
+## Quel chemin choisir
 
 | | Se connecter | Utiliser localement |
 | --- | --- | --- |
@@ -41,10 +41,14 @@ les mêmes migrations, les mêmes tâches planifiées que celles exécutées par
 serveur auto-hébergé. Il n'est pas conçu pour diffuser un widget de production
 au public, qui nécessite une adresse accessible au public.
 
-## Installer
+## Installation
 
-1. Téléchargez le `.zip` à partir de la
-   [dernière version](https://github.com/MattiaIppoliti/ciele/releases/latest).
+Les deux téléchargements se trouvent dans la
+[dernière version](https://github.com/MattiaIppoliti/ciele/releases/latest).
+
+### macOS
+
+1. Téléchargez le `.zip` pour votre processeur.
 2. Décompressez-le et déplacez **Ciele.app** dans votre dossier Applications.
 3. **Right-click (or Control-click) Ciele.app and choose Open**, puis **Open** à
    nouveau dans la boîte de dialogue.
@@ -53,6 +57,16 @@ Cette troisième étape est importante. La version bêta n'est pas signée ; par
 conséquent, macOS bloque le double-clic habituel jusqu'à ce que vous l'ayez
 ouverte une fois de cette manière. Vous n'avez à le faire qu'une seule fois.
 
+### Windows
+
+1. Téléchargez le programme d'installation `Setup.exe`.
+2. Exécutez-le. SmartScreen indique « Windows a protégé votre PC » car la
+   version bêta n'est pas signée. Sélectionnez **More info**, puis **Run
+   anyway**.
+
+Si le téléchargement lui-même est bloqué, faites un clic droit sur le fichier,
+ouvrez **Properties** et cochez **Unblock**.
+
 ## Connexion à votre organisation
 
 Choisissez **Sign in** sur l'écran d'accueil. L'application charge la console de
@@ -60,19 +74,19 @@ votre organisation et mémorise la session, de sorte que les lancements
 ultérieurs y accèdent directement.
 
 Pour diriger l'application vers un serveur auto-hébergé à la place, ouvrez
-**Settings** (l'icône de contrôle sur l'écran d'accueil, ou `⌘,`) et modifiez
-l'adresse du serveur. Tout ce qui est `http://` ou `https://` fonctionne.
-L'application conserve l'origine et supprime tout chemin d'accès que vous collez
-avec.
+**Settings** et modifiez l'adresse du serveur. Accédez-y depuis l'icône de
+contrôle sur l'écran d'accueil, ou avec `⌘,` sur macOS et `Ctrl+,` sur Windows.
+Tout ce qui est `http://` ou `https://` fonctionne. L'application conserve
+l'origine et supprime tout chemin d'accès que vous collez avec elle.
 
-**Sign out** efface la session stockée de l'application pour ce serveur :
-cookies, cache et tout le reste. Elle ferme plus que la fenêtre. Sur un
+**Sign out** efface la session stockée par l'application pour ce serveur :
+cookies, cache et tout le reste. Cela ferme plus que la fenêtre. Sur un
 ordinateur partagé, c'est ce qu'il faut faire.
 
 Si l'adresse ne se charge pas, l'application l'indique sur son propre écran.
-Elle affiche l'adresse qu'elle a essayée, ce qui a mal fonctionné et des boutons
-pour réessayer ou corriger. Vous ne tombez jamais sur une page d'erreur de
-navigateur dans une fenêtre sans barre d'adresse.
+Elle affiche l'adresse qu'elle a essayée, ce qui a mal fonctionné, ainsi que des
+boutons pour réessayer ou corriger. Vous ne tombez jamais sur une page d'erreur
+de navigateur dans une fenêtre sans barre d'adresse.
 
 ## Configuration d'un Ciele local
 
@@ -84,9 +98,11 @@ non qu'elle est terminée.
 
 L'assistant vérifie que Docker Desktop est installé *et* en cours d'exécution.
 Il s'agit de problèmes différents, avec des solutions différentes, et
-l'assistant vous indique celui que vous rencontrez. S'il est manquant, le lien
-de téléchargement se trouve juste là. Installez ou lancez Docker Desktop, puis
-appuyez sur **Try again**. La vérification est réexécutée sur place.
+l'assistant indique celui que vous rencontrez. Chaque échec est accompagné d'un
+guide pas à pas spécifique, rédigé pour une personne qui n'a jamais installé
+d'outils de développement. Le lien d'installation renvoie à la page de votre
+plateforme. Installez ou lancez Docker Desktop, puis appuyez sur **Try again**.
+La vérification est réexécutée sur place.
 
 ### 2. Dossier de données et secrets
 
@@ -132,16 +148,16 @@ l'adresse est `http://host.docker.internal:11434/v1` : à l'intérieur d'un
 conteneur, `localhost` est le conteneur.
 
 Vous pouvez ignorer cette étape. Sans modèle, les assistants répondent à partir
-du moteur de mots-clés intégré et la recherche de connaissances se base sur la
-correspondance lexicale. Tout le reste fonctionne.
+du moteur de mots-clés intégré et la recherche dans la base de connaissances se
+contente d'une correspondance lexicale. Tout le reste fonctionne.
 
 Lorsqu'une étape échoue, le système indique ce qui a échoué et conserve ses
-journaux dans **Show details**. **Try again** reprend à partir de cette étape au
-lieu de recommencer depuis le début.
+journaux **Show details**. **Try again** reprend à partir de cette étape au lieu
+de recommencer depuis le début.
 
 Une fois la configuration terminée, **Open Ciele** charge la console locale. Le
 premier compte que vous créez est propriétaire de l'organisation. Les lancements
-ultérieurs ignorent entièrement l'assistant.
+ultérieurs ignorent complètement l'assistant.
 
 ## Deuxième jour
 
@@ -155,27 +171,27 @@ n'arrête pas la pile. Il s'exécute en mode détaché, intentionnellement.
 
 ### Où se trouvent vos données
 
-| Quoi | Où | Durée de vie |
+| Quoi | Où | Survit |
 | --- | --- | --- |
 | Assistants, conversations, connaissances | Volumes Docker (`ciele_postgres-data`) | Redémarrages et mises à jour de l'application |
 | Fichiers téléchargés | Volume Docker (`ciele_storage-data`) | Redémarrages et mises à jour de l'application |
 | Configuration générée et secrets | Le dossier de données de l'application (affiché sur l'écran de la pile) | Mises à jour de l'application |
 
-Sauvegardez la base de données de la même manière que pour tout auto-hébergement
-; voir [Base de données](/self-hosting/database). La suppression de Ciele.app ne
-supprime ni les volumes ni la pile.
+Sauvegardez la base de données de la même manière que pour tout
+auto-hébergement, voir [Base de données](/self-hosting/database). La
+désinstallation de l'application ne supprime ni les volumes ni la pile.
 
 ### Mise à jour
 
 L'application vérifie la disponibilité d'une version plus récente au lancement
 et affiche une notification masquable avec un lien de téléchargement. Il n'y a
-pas de mise à jour automatique : macOS ne mettra pas à jour automatiquement une
-application non signée.
+pas de mise à jour automatique, car aucune plateforme ne met à jour
+automatiquement une application non signée.
 
-La mise à jour de l'application fait progresser votre pile locale. Chaque
-compilation fixe les images de conteneur correspondant à sa propre version, de
-sorte que la prochaine configuration ou le prochain démarrage les récupère et
-réexécute les migrations. Vos données restent là où elles sont.
+La mise à jour de l'application fait progresser votre pile locale. Chaque build
+fixe les images de conteneur correspondant à sa propre version, de sorte que la
+prochaine configuration ou le prochain démarrage les récupère et réexécute les
+migrations. Vos données restent à leur emplacement.
 
 ### Recommencer
 
@@ -194,10 +210,13 @@ le début.
 ## Dépannage
 
 **« Docker Desktop n'est pas installé » alors qu'il l'est.** Une application
-lancée depuis le Dock n'hérite pas du `PATH` de votre shell. Ciele recherche
-donc la CLI Docker à l'emplacement où Docker Desktop et Homebrew l'installent.
-Il ne trouvera pas un Docker que vous auriez installé ailleurs. Un lien
-symbolique vers `/usr/local/bin` résout ce problème.
+lancée depuis le Dock ou le menu Démarrer n'hérite pas du `PATH` de votre shell.
+Ciele recherche donc la CLI Docker à l'emplacement où Docker Desktop l'installe.
+Sur macOS, il s'agit des emplacements Homebrew et `/usr/local/bin`. Sous
+Windows, il s'agit du dossier Program Files et du dossier Program individuel de
+chaque utilisateur. Il ne trouvera pas un Docker que vous avez installé
+ailleurs. Sur macOS, un lien symbolique vers `/usr/local/bin` résout ce
+problème.
 
 **The stack sits on "Starting".** Postgres est peut-être encore en cours
 d'initialisation lors de la première exécution. Patientez une minute, puis
@@ -215,22 +234,27 @@ n'est configuré ; la récupération se fait donc par correspondance de mots-cl�
 Ajoutez un modèle d'intégration dans
 [Configuration](/self-hosting/configuration).
 
-**« Ciele n'a pas chargé » lors de la connexion.** L'adresse indiquée dans les
-paramètres ne dessert pas Ciele. L'écran indique ce qui a mal fonctionné. Une
-faute de frappe génère le message « cette adresse n'existe pas ». Un serveur
-éteint renvoie le message « nothing is listening ». Une adresse qui répond sans
-être Ciele l'indique. **Change address** vous amène directement au paramètre.
+**« Ciele ne s'est pas chargé » lors de la connexion.** L'adresse indiquée dans
+les paramètres ne dessert pas Ciele. L'écran indique ce qui a mal fonctionné.
+Une faute de frappe génère le message « cette adresse n'existe pas ». Un serveur
+hors service renvoie le message « nothing is listening ». Une adresse qui répond
+sans être Ciele l'indique. **Change address** vous amène directement au
+paramètre.
 
 **macOS indique que l'application est endommagée ou ne peut pas être ouverte.**
 Il s'agit de Gatekeeper sur une application non signée. Effectuez un clic droit
 sur Ciele.app, choisissez **Open**, puis **Open** à nouveau. Un double-clic ne
-proposera pas cette option.
+vous proposera pas cette option.
+
+**Windows blocks the installer.** Il s'agit de SmartScreen sur une application
+non signée. Sélectionnez **More info**, puis **Run anyway**. Si le fichier a été
+bloqué au téléchargement, débloquez-le d'abord depuis son **Properties**.
 
 ## Ce que l'application de bureau n'est pas
 
-- Elle ne prend pas en charge les widgets de production. Les widgets locaux sont
-  destinés aux tests et à la prévisualisation. La publication pour de vrais
-  visiteurs nécessite un serveur accessible.
+- Elle ne fournit pas de widgets de production. Les widgets locaux sont destinés
+  aux tests et à la prévisualisation. La publication à destination de visiteurs
+  réels nécessite un serveur accessible.
 - Elle n'est ni signée ni notariée, et elle ne se met pas à jour
   automatiquement.
 - Elle exécute uniquement les profils par défaut. Les workers optionnels lourds

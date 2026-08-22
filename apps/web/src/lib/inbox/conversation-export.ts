@@ -1,6 +1,7 @@
 import type { InboxConversation, StoredMessage } from "@agent-hub/core";
 import { serializeAgenticTrace } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
+import { componentPartText } from "@agent-hub/agent/client";
 
 /**
  * The Inbox JSON export, at reference parity (#561): one object per Conversation
@@ -131,6 +132,11 @@ export function messageContent(content: readonly unknown[]): string {
       chunks.push([title, part.content.trim()].filter(Boolean).join("\n"));
     } else if (part.type === "clarify") {
       if (part.question.trim()) chunks.push(part.question.trim());
+    } else if (part.type === "component") {
+      // A rendered component is content: flattened, an export consumer sees the
+      // rows rather than prose referring to a table that is not there.
+      const text = componentPartText(part);
+      if (text) chunks.push(text);
     } else if (part.type === "sources") {
       for (const source of part.sources) {
         // `Collection - SourceName`, following the reference's

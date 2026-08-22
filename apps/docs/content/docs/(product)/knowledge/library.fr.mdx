@@ -1,0 +1,91 @@
+---
+title: Bibliothèque
+description: Gérez les sources de l'organisation et choisissez les assistants qui répondent à partir de chacune d'entre elles.
+---
+
+**Library** est la vue de la Connaissance de l'Organisation. Elle répertorie
+toutes les sources détenues par l'organisation, pour l'ensemble des assistants.
+Ouvrez-la depuis la navigation principale.
+
+Un Assistant effectue une recherche dans une Source uniquement lorsqu'un lien
+relie les deux. La Bibliothèque est l'endroit où vous créez et modifiez ces
+liens.
+
+## Onglets
+
+| Onglet | Contenu |
+| --- | --- |
+| Sites Web | Sources de sites Web et de pages. |
+| Fichiers | Fichiers importés et texte collé. |
+| FAQ | Paires de questions-réponses sélectionnées. |
+
+Chaque onglet affiche un point d'état. Le point indique le pire état de
+l'onglet. Une erreur a priorité sur le traitement, et le traitement a priorité
+sur le statut prêt.
+
+## Trouver une source
+
+Utilisez le champ de recherche pour trouver le nom de la source. Utilisez les
+filtres pour restreindre la liste en fonction du statut ou de l'assistant
+associé. Chaque filtre est stocké dans l'adresse de la page, ce qui vous permet
+de partager la vue filtrée.
+
+## Assistants liés
+
+La colonne **Linked assistants** répertorie tous les Assistants qui répondent
+depuis la Source.
+
+1. Ouvrez le menu de la ligne Source.
+2. Sélectionnez **Manage assistants**.
+3. Sélectionnez ou désélectionnez chaque Assistant.
+4. Enregistrez la sélection.
+
+La sélection enregistrée remplace l'ensemble de liens précédent. Un Assistant
+que vous désélectionnez cesse d'effectuer des recherches dans la Source. La
+Source et ses Concepts restent dans l'Organisation.
+
+## Accès direct
+
+**Direct access** s'applique aux Sources de type fichier. Lorsqu'il est activé
+pour un lien, l'Assistant peut remettre au Visiteur le fichier original avec la
+citation. Lorsqu'il est désactivé, l'Assistant cite le fichier mais ne le remet
+pas.
+
+L'accès direct est une propriété d'un lien. Définissez-la par Assistant, et non
+par Source. La valeur par défaut est désactivée.
+
+## Ajouter une source depuis la bibliothèque
+
+1. Sélectionnez l'onglet requis.
+2. Sélectionnez l'action « Ajouter » pour ce type de source.
+3. Saisissez le contenu de la source ou sélectionnez le fichier.
+4. Sélectionnez les Assistants à lier.
+5. Lancez l'ingestion.
+
+Une Source ajoutée ici doit être liée à au moins un Assistant. Rien n'effectue
+de recherche dans une Source non liée.
+
+## Supprimer par opposition à effacer
+
+La Bibliothèque et l'éditeur d'Assistant proposent deux opérations différentes.
+
+| Opération | Effet |
+| --- | --- |
+| Supprimer de cet Assistant | Supprime un lien. Les autres Assistants conservent la Source. |
+| Supprimer | Supprime la Source et ses Concepts pour chaque Assistant lié. |
+
+Lorsqu'une Source est liée à plusieurs Assistants, l'éditeur d'Assistant propose
+d'abord la suppression. La confirmation de suppression indique chaque Assistant
+qui perd la connaissance.
+
+Lorsqu'un seul Assistant est lié, l'éditeur supprime directement la Source.
+
+## Connaissances partagées dans l'éditeur d'Assistant
+
+La section **Knowledge** de l'Assistant répertorie les Sources ajoutées à cet
+Assistant. Un panneau **Shared knowledge** situé en dessous répertorie les
+sources de l'organisation liées depuis la bibliothèque.
+
+Ensemble, ces deux listes constituent l'ensemble du périmètre de recherche de
+l'Assistant. Utilisez **Open in Library** pour modifier un lien ou son accès
+direct.

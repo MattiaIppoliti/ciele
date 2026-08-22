@@ -1,6 +1,6 @@
 ---
 title: File e testo
-description: Carica un file o aggiungi del testo a una raccolta di conoscenze dell'Assistente.
+description: Carica un file o aggiungi del testo e scegli quali Assistenti risponderanno in base a ciò.
 ---
 
 ## Carica un file
@@ -17,13 +17,13 @@ Ciele memorizza il file originale ed estrae il testo supportato per
 l'ingestione. Lo stato Source mostra se l'estrazione e l'indicizzazione sono
 state completate.
 
-## Aggiungi il testo incollato
+## Aggiungi testo incollato
 
 Utilizza una Fonte di testo per contenuti brevi che non richiedono un file
 separato.
 
-1. Aggiungi una Fonte di testo.
-2. Inserisci un nome opzionale per la Sorgente.
+1. Aggiungi una fonte di testo.
+2. Inserisci un nome opzionale per la fonte.
 3. Incolla il testo.
 4. Avvia l'importazione.
 
@@ -35,5 +35,25 @@ visitatori.
 Elimina la vecchia Fonte prima di fare affidamento su una sostituzione. Quindi
 conferma che la nuova Fonte sia **Ready** e produca citazioni corrette.
 
-L'eliminazione della fonte rimuove i suoi Concetti dal grafo della Conoscenza
+L'eliminazione di una fonte rimuove i suoi concetti dal grafo della conoscenza
 attivo e dall'indice di ricerca.
+
+## Rimuovere rispetto a eliminare
+
+Una Source di file può rispondere per più di un Assistente. L'editor Assistant
+offre quindi due operazioni.
+
+- **Remove from this Assistant** elimina un link. Gli altri Assistenti
+  mantengono il file.
+- **Delete** rimuove la Sorgente per ogni Assistente collegato. La conferma
+  assegna un nome a ciascuno di essi.
+
+Quando solo questo Assistente risponde dal file, l'editor lo elimina
+direttamente.
+
+## Fornisci al Visitatore il file originale
+
+Attiva **Direct access** nella [Libreria](/knowledge/library) per consentire
+all'Assistente di allegare il file originale alla sua citazione. L'impostazione
+si applica a un collegamento all'Assistente ed è disattivata per impostazione
+predefinita.

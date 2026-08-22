@@ -21,7 +21,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .vercel
-.claude/.state/
+**/.claude/.state/
 apps/web/public/connectors/*.pkg
 apps/web/public/connectors/*.exe
 .playwright-mcp/

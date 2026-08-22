@@ -14,18 +14,18 @@ flowchart TB
   GATE["URL and Schedule gates"]
   COURTESY["Basic Interaction check"]
   CLASSIFY["Model classifier or keyword fallback"]
-  CONTEXT["Verified identity, Records, and memory"]
   ACTIONS["Ordered Flow actions"]
   PARTS["Stored and streamed reply parts"]
   MSG --> CAND
   CAND --> GATE
   GATE --> COURTESY
   COURTESY --> CLASSIFY
-  CLASSIFY --> CONTEXT
-  CONTEXT --> ACTIONS
+  CLASSIFY --> ACTIONS
   ACTIONS --> PARTS
 `}
 />
+
+Verified identity, Entity Records, and long-term memory are inputs the actions read. They are not stages of the router, so the picture leaves them out.
 
 `messageFlowCandidates` supplies candidates to both routing engines. This boundary prevents objective conditions from producing different router results.
 

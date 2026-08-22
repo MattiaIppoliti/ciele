@@ -234,13 +234,25 @@ describe("the Inbox card's quadruple", () => {
     ) as Extract<RuntimeEvent, { type: "tool-end" }>;
     expect(end.ok).toBe(true);
     expect(end.summary).toBe("GET /tickets/8317/comments, 200");
-    expect(end.result).toMatchObject({
+    // The card reads the operator tier: body included, absolute URL included.
+    expect(end.operatorResult).toMatchObject({
       endpoint: "Ticket comments",
       method: "GET",
       status: 200,
       ok: true,
       response: '{"items":[]}',
     });
+    // The Visitor's tier carries the same call without the body, and names the
+    // relative path rather than the org's API host.
+    expect(end.result).toMatchObject({
+      endpoint: "Ticket comments",
+      method: "GET",
+      status: 200,
+      ok: true,
+      path: "/tickets/8317/comments",
+    });
+    expect(end.result).not.toHaveProperty("response");
+    expect(JSON.stringify(end.result)).not.toContain("api.example.com");
   });
 
   it("records a real 500 with its body, as a completed call", async () => {
@@ -259,11 +271,13 @@ describe("the Inbox card's quadruple", () => {
     const end = events.find(
       (e) => e.type === "tool-end" && e.tool === "queryApi"
     ) as Extract<RuntimeEvent, { type: "tool-end" }>;
-    expect(end.result).toMatchObject({
+    expect(end.operatorResult).toMatchObject({
       status: 500,
       ok: false,
       response: "<html>Internal Server Error</html>",
     });
+    expect(end.result).toMatchObject({ status: 500, ok: false });
+    expect(end.result).not.toHaveProperty("response");
   });
 
   it("records a refused path as a failed call, with no status to fake", async () => {

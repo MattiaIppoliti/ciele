@@ -5,24 +5,25 @@ description: Realiza un seguimiento de las solicitudes de administrador, API, wi
 
 ## Operación del administrador
 
-```mermaid
-sequenceDiagram
-  actor Admin
-  participant Web as Next.js console
-  participant Auth as Session and capability check
-  participant Ops as Shared operation
-  participant Db as Organization data
-  Admin->>Web: Submit configured action
-  Web->>Auth: Resolve member and Role
-  Auth->>Ops: Provide validated context
-  Ops->>Db: Read or mutate tenant data
-  Db-->>Web: Return result
-  Web-->>Admin: Refresh affected view
-```
+<Mermaid
+  title="Una acción de la consola supera la comprobación de rol antes de llegar a cualquier dato"
+  chart={`
+flowchart TB
+  ADMIN["Member submits an action"]
+  AUTH["Resolve the session, member, and Role"]
+  OPS["Shared operation validates input"]
+  DB[("Organization data")]
+  VIEW["Affected view refreshes"]
+  ADMIN --> AUTH
+  AUTH --> OPS
+  OPS --> DB
+  DB --> VIEW
+`}
+/>
 
 Las acciones del servidor resuelven la sesión del miembro antes de llamar a una
-operación compartida. La seguridad a nivel de fila de la base de datos sigue
-formando parte del límite de datos de la consola.
+operación compartida. La seguridad de la base de datos a nivel de fila sigue
+siendo parte del límite de datos de la consola.
 
 ## Operación de la API
 

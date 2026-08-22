@@ -6,9 +6,28 @@ import type {
   EscalationFormField,
   EscalationHelpDesk,
 } from "@/lib/escalation-desks";
-import { initialEscalationDesk } from "@/lib/escalation-desks";
+import {
+  escalationBack,
+  escalationConfirmed,
+  escalationLoaded,
+  escalationOpenChannel,
+  escalationOpenDesk,
+  escalationScreen,
+  loadingEscalationNav,
+  type EscalationNav,
+} from "@/lib/escalation-navigation";
 import { channelAvailabilityNow } from "@/lib/channel-availability";
 import { ArrowRight, ChevronLeft, LoaderCircle, X } from "lucide-react";
+
+/**
+ * What the widget shows once a channel form is submitted: the confirmation
+ * copy, plus a mailto fallback when the escalation email could not be
+ * delivered and the Visitor has to write in themselves.
+ */
+interface WidgetConfirmation {
+  text: string;
+  mailto?: string | null;
+}
 
 function visitorId(): string {
   const key = "ciele-visitor";
@@ -120,19 +139,12 @@ export function WidgetEscalation({
   onBack: () => void;
   onHide: () => void;
 }) {
-  const [desks, setDesks] = useState<EscalationHelpDesk[] | null>(null);
-  const [activeDesk, setActiveDesk] = useState<EscalationHelpDesk | null>(null);
-  const [activeChannel, setActiveChannel] = useState<EscalationChannel | null>(
-    null
+  const [nav, setNav] = useState<EscalationNav<WidgetConfirmation>>(
+    loadingEscalationNav
   );
+  const { desks, activeDesk, activeChannel, confirmation } = nav;
   const [values, setValues] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [confirmation, setConfirmation] = useState<{
-    text: string;
-    /** Honest fallback when the escalation email could not be delivered. */
-    mailto?: string | null;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -143,30 +155,29 @@ export function WidgetEscalation({
         });
         const data = await response.json();
         const loaded: EscalationHelpDesk[] = data.helpDesks ?? [];
-        setDesks(loaded);
-        setActiveDesk(initialEscalationDesk(loaded, initialHelpDeskId));
+        // A superseded load must not overwrite the one that replaced it.
+        if (!controller.signal.aborted)
+          setNav((current) => escalationLoaded(current, loaded, initialHelpDeskId));
       } catch {
-        if (!controller.signal.aborted) setDesks([]);
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted)
+          setNav((current) => escalationLoaded(current, []));
       }
     }
     void load();
     return () => controller.abort();
   }, [assistantId, initialHelpDeskId]);
 
+  const screen = escalationScreen(nav);
+
   function back() {
-    if (confirmation) {
-      setConfirmation(null);
-      setActiveChannel(null);
-    } else if (activeChannel) setActiveChannel(null);
-    else if (activeDesk && (desks?.length ?? 0) > 1) setActiveDesk(null);
+    const popped = escalationBack(nav);
+    if (popped) setNav(popped);
     else onBack();
   }
 
   function openForm(channel: EscalationChannel) {
     setValues(initialFormValues(channel.form?.fields ?? []));
-    setActiveChannel(channel);
+    setNav((current) => escalationOpenChannel(current, channel));
   }
 
   function recordEscalation(helpDeskId: string) {
@@ -201,22 +212,24 @@ export function WidgetEscalation({
       const data = (await response.json().catch(() => ({}))) as {
         email?: { delivered: boolean; fallbackAddress: string | null };
       };
-      if (data.email && !data.email.delivered) {
-        setConfirmation({
-          text: "We couldn't send your request automatically. Please email the team directly instead.",
-          mailto: data.email.fallbackAddress,
-        });
-      } else {
-        setConfirmation({
-          text:
-            activeChannel.form.confirmationMessage.trim() ||
-            "Thanks! Your request has been sent, our team will get back to you.",
-        });
-      }
+      const confirmation: WidgetConfirmation =
+        data.email && !data.email.delivered
+          ? {
+              text: "We couldn't send your request automatically. Please email the team directly instead.",
+              mailto: data.email.fallbackAddress,
+            }
+          : {
+              text:
+                activeChannel.form.confirmationMessage.trim() ||
+                "Thanks! Your request has been sent, our team will get back to you.",
+            };
+      setNav((current) => escalationConfirmed(current, confirmation));
     } catch {
-      setConfirmation({
-        text: "Something went wrong sending your request. Please try again.",
-      });
+      setNav((current) =>
+        escalationConfirmed(current, {
+          text: "Something went wrong sending your request. Please try again.",
+        })
+      );
     } finally {
       setSubmitting(false);
     }
@@ -240,19 +253,19 @@ export function WidgetEscalation({
         </button>
       </div>
       <div className="flex-1 overflow-y-auto px-5 pb-6">
-        {loading && (
+        {screen === "loading" && (
           <p className="text-muted-foreground flex items-center gap-2 pt-6 text-sm">
             <LoaderCircle className="size-4 animate-spin" /> Loading support options…
           </p>
         )}
-        {!loading && desks?.length === 0 && (
+        {screen === "empty" && (
           <p className="text-muted-foreground pt-6 text-sm">
             No support channels are available right now.
           </p>
         )}
 
         {/* Confirmation after a form submission */}
-        {confirmation && (
+        {screen === "confirmation" && confirmation && (
           <div className="pt-6 text-[15px] leading-relaxed">
             <p>{confirmation.text}</p>
             {confirmation.mailto && (
@@ -267,7 +280,7 @@ export function WidgetEscalation({
         )}
 
         {/* Channel form ("Helpdesk form") */}
-        {!confirmation && activeChannel?.form && (
+        {screen === "form" && activeChannel?.form && (
           <>
             <h2 className="text-2xl leading-snug font-bold">
               {activeChannel.form.title}
@@ -310,7 +323,7 @@ export function WidgetEscalation({
         )}
 
         {/* Desk list */}
-        {!loading && !confirmation && !activeChannel && !activeDesk && (desks?.length ?? 0) > 1 && (
+        {screen === "desks" && (
           <>
             <h2 className="text-2xl leading-snug font-bold">How would you like to contact us?</h2>
             <div className="mt-5 space-y-3">
@@ -318,7 +331,7 @@ export function WidgetEscalation({
                 <button
                   key={desk.id}
                   type="button"
-                  onClick={() => setActiveDesk(desk)}
+                  onClick={() => setNav((current) => escalationOpenDesk(current, desk))}
                   className="bg-muted hover:bg-muted/80 flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors"
                 >
                   <span className="text-base font-bold">{desk.name}</span>
@@ -332,7 +345,7 @@ export function WidgetEscalation({
         )}
 
         {/* Channel list for the chosen desk */}
-        {!loading && !confirmation && !activeChannel && activeDesk && (
+        {screen === "channels" && activeDesk && (
           <>
             <h2 className="text-2xl leading-snug font-bold">
               How would you like to contact {activeDesk.name}?

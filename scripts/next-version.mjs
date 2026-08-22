@@ -1,8 +1,8 @@
 // Next release version from the commits since the last tag.
 //
-// Every merge to main cuts a release (auto-release.yml), so the version has
-// to be derived, never chosen by hand. The rule is Conventional Commits with
-// one pre-1.0 adjustment:
+// A nightly cron cuts a release out of whatever landed on main that day
+// (auto-release.yml), so the version has to be derived, never chosen by hand.
+// The rule is Conventional Commits with one pre-1.0 adjustment:
 //
 //   post-1.0   breaking -> major   feat -> minor   anything else -> patch
 //   pre-1.0    breaking -> minor   feat -> minor   anything else -> patch

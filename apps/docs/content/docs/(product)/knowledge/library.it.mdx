@@ -1,0 +1,89 @@
+---
+title: Libreria
+description: Gestisci le Fonti dell'Organizzazione e scegli quali Assistenti rispondono da ciascuna di esse.
+---
+
+**Library** è la vista della Conoscenza dell'Organizzazione. Elenca tutte le
+Fonti di proprietà dell'Organizzazione, per tutti gli Assistenti. Aprila dalla
+navigazione principale.
+
+Un Assistente cerca in una Fonte solo quando i due sono collegati da un link. La
+Libreria è il luogo in cui crei e modifichi questi collegamenti.
+
+## Schede
+
+| Scheda | Contenuti |
+| --- | --- |
+| Siti web | Sorgenti di siti web e pagine. |
+| File | File caricati e testo incollato. |
+| FAQ | Coppie di domande e risposte selezionate. |
+
+Ogni scheda mostra un punto di stato. Il punto indica lo stato peggiore nella
+scheda. Un errore ha la priorità sullo stato di elaborazione e lo stato di
+elaborazione ha la priorità sullo stato di pronto.
+
+## Trova una fonte
+
+Utilizza la casella di ricerca per il nome della Sorgente. Utilizza i filtri per
+restringere l'elenco in base allo stato o all'Assistente collegato. Ogni filtro
+viene memorizzato nell'indirizzo della pagina, così puoi condividere la
+visualizzazione filtrata.
+
+## Assistenti collegati
+
+La colonna **Linked assistants** indica ogni Assistente che risponde dalla
+Sorgente.
+
+1. Apri il menu della riga Source.
+2. Seleziona **Manage assistants**.
+3. Seleziona o deseleziona ciascun Assistente.
+4. Salva la selezione.
+
+La selezione salvata sostituisce il precedente set di collegamenti. Un
+Assistente che deselezioni smette di cercare nella Fonte. La Fonte e i suoi
+Concetti rimangono nell'Organizzazione.
+
+## Accesso diretto
+
+**Direct access** si applica alle fonti di file. Quando è attivo per un
+collegamento, l'Assistente può fornire al Visitatore il file originale con la
+citazione. Quando è disattivato, l'Assistente cita il file ma non lo consegna.
+
+L'accesso diretto è una proprietà di un singolo link. Impostala per Assistente,
+non per Sorgente. L'impostazione predefinita è disattivata.
+
+## Aggiungi una fonte dalla libreria
+
+1. Seleziona la scheda richiesta.
+2. Seleziona l'azione Aggiungi per quel tipo di sorgente.
+3. Inserisci il contenuto della sorgente o seleziona il file.
+4. Seleziona gli Assistant da collegare.
+5. Avvia l'acquisizione.
+
+Una Fonte aggiunta qui necessita di almeno un Assistente collegato. Nessuna
+ricerca viene eseguita su una Fonte non collegata.
+
+## Rimuovi rispetto a elimina
+
+La Libreria e l'Editor dell'Assistente offrono due operazioni diverse.
+
+| Operazione | Effetto |
+| --- | --- |
+| Rimuovi da questo Assistente | Elimina un collegamento. Le altre Assistenti mantengono la Sorgente. |
+| Elimina | Elimina la Sorgente e i suoi Concetti per ogni Assistente collegato. |
+
+Quando una Fonte è collegata a più di un Assistente, l'editor Assistente propone
+prima la rimozione. La conferma di eliminazione indica ogni Assistente che perde
+la conoscenza.
+
+Quando è collegato un solo Assistente, l'editor elimina direttamente la
+Sorgente.
+
+## Conoscenza condivisa nell'editor dell'Assistant
+
+La sezione **Knowledge** dell'Assistente elenca le Fonti aggiunte all'interno di
+quell'Assistente. Un pannello **Shared knowledge** sottostante elenca le Fonti
+dell'organizzazione collegate dalla Libreria.
+
+Insieme, i due elenchi costituiscono l'intero ambito di ricerca dell'Assistente.
+Usa **Open in Library** per modificare un collegamento o il suo accesso diretto.

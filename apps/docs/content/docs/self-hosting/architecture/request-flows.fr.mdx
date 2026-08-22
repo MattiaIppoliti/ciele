@@ -5,20 +5,21 @@ description: Suivez les requêtes de l'administrateur, de l'API, du widget et du
 
 ## Opération de l'administrateur
 
-```mermaid
-sequenceDiagram
-  actor Admin
-  participant Web as Next.js console
-  participant Auth as Session and capability check
-  participant Ops as Shared operation
-  participant Db as Organization data
-  Admin->>Web: Submit configured action
-  Web->>Auth: Resolve member and Role
-  Auth->>Ops: Provide validated context
-  Ops->>Db: Read or mutate tenant data
-  Db-->>Web: Return result
-  Web-->>Admin: Refresh affected view
-```
+<Mermaid
+  title="Une action de console passe la vérification de rôle avant d'atteindre la moindre donnée"
+  chart={`
+flowchart TB
+  ADMIN["Member submits an action"]
+  AUTH["Resolve the session, member, and Role"]
+  OPS["Shared operation validates input"]
+  DB[("Organization data")]
+  VIEW["Affected view refreshes"]
+  ADMIN --> AUTH
+  AUTH --> OPS
+  OPS --> DB
+  DB --> VIEW
+`}
+/>
 
 Les actions du serveur résolvent la session du membre avant d'appeler une
 opération partagée. La sécurité au niveau des lignes de la base de données reste
@@ -45,8 +46,7 @@ toujours à chaque requête acceptée.
 ## Tour du widget
 
 L'intégration charge la configuration active de la Publication. La route de chat
-conserve le tour du visiteur et appelle le moteur d'exécution du tour de
-conversation.
+conserve le tour du visiteur et appelle le runtime du tour de conversation.
 
 Le runtime sélectionne un flux, exécute des actions, diffuse des événements de
 réponse et stocke les parties de réponse. Le widget affiche les mêmes parties

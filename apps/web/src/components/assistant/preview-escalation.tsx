@@ -4,11 +4,17 @@ import { useEffect, useState } from "react";
 import { ArrowRight, ChevronLeft, LoaderCircle, X } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { listEscalationDesksAction } from "@/app/actions";
-import type {
-  EscalationChannel,
-  EscalationHelpDesk,
-} from "@/lib/escalation-desks";
-import { initialEscalationDesk } from "@/lib/escalation-desks";
+import type { EscalationChannel } from "@/lib/escalation-desks";
+import {
+  escalationBack,
+  escalationConfirmed,
+  escalationLoaded,
+  escalationOpenChannel,
+  escalationOpenDesk,
+  escalationScreen,
+  loadingEscalationNav,
+  type EscalationNav,
+} from "@/lib/escalation-navigation";
 import { channelAvailabilityNow } from "@/lib/channel-availability";
 import {
   EscalationFieldInput,
@@ -33,44 +39,36 @@ export function PreviewEscalation({
   initialHelpDeskId?: string;
   onBack: () => void;
 }) {
-  const [desks, setDesks] = useState<EscalationHelpDesk[] | null>(null);
-  const [activeDesk, setActiveDesk] = useState<EscalationHelpDesk | null>(null);
-  const [activeChannel, setActiveChannel] = useState<EscalationChannel | null>(
-    null
-  );
+  const [nav, setNav] = useState<EscalationNav<string>>(loadingEscalationNav);
+  const { desks, activeDesk, activeChannel, confirmation } = nav;
   const [values, setValues] = useState<Record<string, string>>({});
-  const [confirmation, setConfirmation] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     listEscalationDesksAction(assistantId)
       .then((loaded) => {
         if (cancelled) return;
-        setDesks(loaded);
-        setActiveDesk(initialEscalationDesk(loaded, initialHelpDeskId));
+        setNav((current) => escalationLoaded(current, loaded, initialHelpDeskId));
       })
       .catch(() => {
-        if (!cancelled) setDesks([]);
+        if (!cancelled) setNav((current) => escalationLoaded(current, []));
       });
     return () => {
       cancelled = true;
     };
   }, [assistantId, initialHelpDeskId]);
 
-  const loading = desks === null;
+  const screen = escalationScreen(nav);
 
   function back() {
-    if (confirmation) {
-      setConfirmation(null);
-      setActiveChannel(null);
-    } else if (activeChannel) setActiveChannel(null);
-    else if (activeDesk && (desks?.length ?? 0) > 1) setActiveDesk(null);
+    const popped = escalationBack(nav);
+    if (popped) setNav(popped);
     else onBack();
   }
 
   function openForm(channel: EscalationChannel) {
     setValues(initialFormValues(channel.form?.fields ?? []));
-    setActiveChannel(channel);
+    setNav((current) => escalationOpenChannel(current, channel));
   }
 
   return (
@@ -93,13 +91,13 @@ export function PreviewEscalation({
         </button>
       </div>
       <div className="no-scrollbar flex-1 overflow-y-auto px-5 pb-6">
-        {loading && (
+        {screen === "loading" && (
           <p className="text-muted-foreground flex items-center gap-2 pt-6 text-sm">
             <LoaderCircle className="size-4 animate-spin" /> Loading support
             options…
           </p>
         )}
-        {!loading && desks.length === 0 && (
+        {screen === "empty" && (
           <p className="text-muted-foreground pt-6 text-sm">
             No support channels are available right now. Select help desks
             below and add channels in the Help Desks library.
@@ -107,12 +105,12 @@ export function PreviewEscalation({
         )}
 
         {/* Confirmation after a (simulated) form submission */}
-        {confirmation && (
+        {screen === "confirmation" && confirmation && (
           <p className="pt-6 text-[15px] leading-relaxed">{confirmation}</p>
         )}
 
         {/* Channel form ("Helpdesk form") */}
-        {!confirmation && activeChannel?.form && (
+        {screen === "form" && activeChannel?.form && (
           <>
             <h2 className="text-2xl leading-snug font-bold">
               {activeChannel.form.title}
@@ -121,9 +119,12 @@ export function PreviewEscalation({
               className="mt-5 space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                setConfirmation(
-                  activeChannel.form!.confirmationMessage.trim() ||
-                    "Thanks! Your request has been sent, our team will get back to you."
+                setNav((current) =>
+                  escalationConfirmed(
+                    current,
+                    activeChannel.form!.confirmationMessage.trim() ||
+                      "Thanks! Your request has been sent, our team will get back to you."
+                  )
                 );
               }}
             >
@@ -158,7 +159,7 @@ export function PreviewEscalation({
         )}
 
         {/* Desk list */}
-        {!loading && !confirmation && !activeChannel && !activeDesk && desks.length > 1 && (
+        {screen === "desks" && desks && (
           <>
             <h2 className="text-2xl leading-snug font-bold">
               How would you like to contact us?
@@ -168,7 +169,7 @@ export function PreviewEscalation({
                 <button
                   key={desk.id}
                   type="button"
-                  onClick={() => setActiveDesk(desk)}
+                  onClick={() => setNav((current) => escalationOpenDesk(current, desk))}
                   className="bg-muted/50 hover:bg-muted flex w-full items-center justify-between gap-3 rounded-2xl px-5 py-4 text-left transition-colors"
                 >
                   <span className="text-base font-bold">{desk.name}</span>
@@ -182,7 +183,7 @@ export function PreviewEscalation({
         )}
 
         {/* Channel list for the chosen desk */}
-        {!loading && !confirmation && !activeChannel && activeDesk && (
+        {screen === "channels" && activeDesk && (
           <>
             <h2 className="text-2xl leading-snug font-bold">
               How would you like to contact {activeDesk.name}?

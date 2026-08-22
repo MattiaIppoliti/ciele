@@ -1,35 +1,48 @@
 ---
 title: Formules et facturation
-description: Sélectionnez un forfait géré et vérifiez le compte de facturation Stripe actuel.
+description: Vérifiez l'état de l'abonnement géré et le compte de facturation Stripe.
 ---
 
-Ouvrez **Settings > Billing** dans l'édition gérée. La page affiche l'état
-actuel de l'abonnement et les entrées de catalogue disponibles.
+Ciele est proposé en deux versions. L'édition open source est gratuite et vous
+l'exécutez vous-même. L'édition gérée est Enterprise, et elle est proposée par
+l'équipe commerciale.
 
-## Souscrire ou modifier un abonnement
+Il n'existe pas de grille tarifaire en libre-service. Pour démarrer ou modifier
+un abonnement géré,
+[contactez le service commercial](https://ciele.app/contact/sales). Ciele
+associe l'abonnement convenu à votre organisation.
 
-1. Consultez les limites et le prix de l'abonnement disponible.
-2. Sélectionnez le forfait souhaité.
-3. Effectuez le paiement Stripe lorsque cela vous est demandé.
-4. Revenez sur Ciele.
-5. Confirmez l'état actif de l'abonnement.
+## Activation
 
-Ciele rapproche l'état de facturation avec Stripe. Ne présumez pas qu'une
-redirection réussie du navigateur prouve l'activation de l'abonnement.
+Une nouvelle organisation gérée commence **en attente d'activation**. La console
+est entièrement utilisable dans cet état. Vous pouvez configurer des Assistants,
+ajouter des Connaissances et inviter des membres.
+
+Les assistants ne répondent pas tant que Ciele n'a pas activé l'Organisation.
+L'activation fait suite à l'accord ou à une subvention d'évaluation du
+personnel.
+
+L'attente d'activation n'est pas un verrouillage des données. Toutes vos
+configurations sont conservées.
 
 ## Compte de facturation
 
-Lorsque Stripe renvoie les données, la page peut afficher :
+Ouvrez **Settings > Billing** dans l'édition gérée. Lorsque Stripe renvoie les
+données, la page peut afficher :
 
-- informations sur le renouvellement
-- le récapitulatif de la carte de paiement actuelle
+- l'état actuel de l'abonnement
+- les informations de renouvellement
+- le récapitulatif actuel de la carte de paiement
 - factures
-- actions de changement de forfait
 
 Les champs de facturation peuvent rester absents lorsque Stripe ne les a pas
 fournis.
 
+Ciele rapproche l'état de la facturation avec Stripe. Ne présumez pas qu'une
+redirection réussie du navigateur prouve l'activation de l'abonnement.
+
 ## Édition auto-hébergée
 
-L'édition auto-hébergée n'affiche ni le catalogue des forfaits gérés ni le
-compte d'abonnement.
+L'édition auto-hébergée n'affiche ni l'état de la formule ni le compte
+d'abonnement. Elle ne nécessite aucun abonnement Ciele. Voir
+[Open Source](/self-hosting).

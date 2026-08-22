@@ -9,7 +9,11 @@ Ciele ofrece tres interfaces para la administración programática. Cada interfa
 utiliza las mismas operaciones y comprobaciones de roles que la consola de
 administración.
 
+Para encontrar la operación asociada a un control de la consola, abre el
+[Panel del desarrollador](/developers/developer-panel) en esa página.
+
 <Cards>
+  <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
   <Card title="API" href="/developers/api" description="Call the versioned HTTP API and read its OpenAPI contract." />
   <Card title="CLI" href="/developers/cli" description="Manage an Organization from a terminal or a CI job." />
   <Card title="MCP server" href="/developers/mcp" description="Give supported AI clients controlled access to Ciele operations." />
@@ -19,15 +23,15 @@ administración.
 ## Modelo de conexión común
 
 Las tres interfaces requieren una clave de API de organización. El rol asignado
-controla las operaciones que la clave puede realizar.
+controla las operaciones que la clave puede usar.
 
-```mermaid
+<Mermaid
+  title="Tres clientes, una API, un conjunto de operaciones"
+  chart={`
 flowchart TB
-  subgraph Clients
-    CLI["Ciele CLI"]
-    MCP["Ciele MCP server"]
-    HTTP["HTTP client"]
-  end
+  CLI["Ciele CLI"]
+  MCP["Ciele MCP server"]
+  HTTP["HTTP client"]
   API["Ciele API v1"]
   OPS["Shared operations"]
   DB[("Organization data")]
@@ -36,10 +40,11 @@ flowchart TB
   HTTP --> API
   API --> OPS
   OPS --> DB
-```
+`}
+/>
 
 El servicio alojado utiliza `https://platform.ciele.app` de forma
-predeterminada. Una instalación autoalojada utiliza su propio origen público.
+predeterminada. Una instalación autohospedada utiliza su propio origen público.
 
 <Callout title="Use the minimum Role">
 Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
