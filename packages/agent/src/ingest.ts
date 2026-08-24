@@ -33,7 +33,7 @@ import {
 import { getEnterpriseCapabilities } from "./ee";
 import { getClassifierModel } from "./models";
 import { meterUsage, usageTotals } from "./usage";
-import { validateCrawlTarget } from "./crawl-target";
+import { validateEgressTarget } from "./egress";
 import { redactCrawl4aiSecrets } from "./crawl4ai";
 import { errorClassOf, recordRuntimeEvent } from "./telemetry";
 import { alertKeys, signalHealth } from "./health";
@@ -123,51 +123,50 @@ function slugify(name: string): string {
 }
 
 /**
- * Splits source text into enrichment windows on paragraph boundaries, each at
- * most {@link ENRICH_WINDOW_CHARS}, capped at {@link ENRICH_MAX_WINDOWS}.
- *
- * Unlike {@link chunkMarkdown}, the size limit here is **hard**. A window is a
- * prompt budget, so an oversized paragraph is split mid-text rather than kept
- * whole: PDF extraction routinely returns pages with no blank lines at all, and
- * letting one 100k-char "paragraph" through would blow the very budget the
- * windowing exists to respect.
+ * Packs paragraphs into pieces of at most `cap` chars on paragraph boundaries.
+ * With `splitOversized`, the cap is **hard**: a paragraph longer than the cap
+ * is split mid-text rather than kept whole (PDF extraction routinely returns
+ * pages with no blank lines at all); without it, an oversized paragraph stays
+ * whole and the cap is a soft target.
  */
-export function enrichmentWindows(text: string): string[] {
-  const windows: string[] = [];
+function packParagraphs(
+  text: string,
+  cap: number,
+  splitOversized: boolean
+): string[] {
+  const pieces: string[] = [];
   let current = "";
   const flush = () => {
-    if (current.trim()) windows.push(current.trim());
+    if (current.trim()) pieces.push(current.trim());
     current = "";
   };
   for (const paragraph of text.split(/\n{2,}/)) {
-    if (paragraph.length > ENRICH_WINDOW_CHARS) {
+    if (splitOversized && paragraph.length > cap) {
       flush();
-      for (let i = 0; i < paragraph.length; i += ENRICH_WINDOW_CHARS) {
-        windows.push(paragraph.slice(i, i + ENRICH_WINDOW_CHARS));
+      for (let i = 0; i < paragraph.length; i += cap) {
+        pieces.push(paragraph.slice(i, i + cap));
       }
       continue;
     }
-    if (current && current.length + paragraph.length + 2 > ENRICH_WINDOW_CHARS) flush();
+    if (current && current.length + paragraph.length > cap) flush();
     current += paragraph + "\n\n";
   }
   flush();
-  return windows.filter(Boolean).slice(0, ENRICH_MAX_WINDOWS);
+  return pieces.filter(Boolean);
+}
+
+/**
+ * Splits source text into enrichment windows on paragraph boundaries, each at
+ * most {@link ENRICH_WINDOW_CHARS} (a window is a prompt budget, so the cap is
+ * hard), capped at {@link ENRICH_MAX_WINDOWS}.
+ */
+export function enrichmentWindows(text: string): string[] {
+  return packParagraphs(text, ENRICH_WINDOW_CHARS, true).slice(0, ENRICH_MAX_WINDOWS);
 }
 
 /** Splits markdown into ~1200-char chunks on paragraph boundaries. */
 export function chunkMarkdown(body: string): string[] {
-  const paragraphs = body.split(/\n{2,}/);
-  const chunks: string[] = [];
-  let current = "";
-  for (const paragraph of paragraphs) {
-    if (current.length + paragraph.length > 1200 && current) {
-      chunks.push(current.trim());
-      current = "";
-    }
-    current += paragraph + "\n\n";
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks.filter(Boolean);
+  return packParagraphs(body, 1200, false);
 }
 
 /**
@@ -636,7 +635,7 @@ export async function beginWebsiteCrawl(options: {
     if (!source) throw new Error("Not found");
     const config = source.config;
     if (!config.url) throw new Error("Missing URL in source config");
-    await validateCrawlTarget(config.url);
+    await validateEgressTarget(config.url);
 
     // Resolve once and persist the result so config/env changes cannot reroute
     // an in-flight crawl between its start and finalization. A failed run never

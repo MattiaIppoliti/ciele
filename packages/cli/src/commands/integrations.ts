@@ -19,7 +19,14 @@ export async function apiIntegrations(
     case "get": {
       if (!rest[0]) return usage(deps, "api-integrations get <assistantId>");
       const integration = await client.apiIntegrations.get(rest[0]);
-      emit(JSON.stringify(integration, null, 2), integration);
+      // An Assistant with no integration is the common case, and a bare
+      // `null` reads as a failure rather than an answer.
+      emit(
+        integration
+          ? JSON.stringify(integration, null, 2)
+          : "(none) no API integration configured for this assistant",
+        integration
+      );
       return EXIT.ok;
     }
     case "set": {

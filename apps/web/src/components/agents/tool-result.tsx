@@ -4,11 +4,9 @@
 import {
   Ban,
   Braces,
-  Check,
   ChevronDown,
   CircleCheck,
   CircleX,
-  Copy,
   LoaderCircle,
   RotateCcw,
   SquareTerminal,
@@ -34,6 +32,7 @@ import {
 import { ActionSwapRollText } from "@/components/motion/action-swap-roll";
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
 import { SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
+import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
 export type ToolResultStatus = "running" | "success" | "error" | "cancelled";
@@ -180,8 +179,7 @@ export function ToolResult({
   const contentId = `${baseId}-content`;
   const viewportRef = useRef<HTMLDivElement>(null);
   const previousStatus = useRef(status);
-  const copyTimer = useRef<number | undefined>(undefined);
-  const [copied, setCopied] = useState(false);
+  const [copied, markCopied] = useCopied();
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
   const currentOpen = open ?? internalOpen;
   const running = status === "running";
@@ -213,13 +211,6 @@ export function ToolResult({
     previousStatus.current = status;
   }, [collapseOnComplete, setOpen, status]);
 
-  useEffect(
-    () => () => {
-      if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    },
-    [],
-  );
-
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !currentOpen || !running) return;
@@ -241,10 +232,8 @@ export function ToolResult({
     if (onCopy) await onCopy();
     else if (copyText) await navigator.clipboard?.writeText(copyText);
 
-    setCopied(true);
-    if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    copyTimer.current = window.setTimeout(() => setCopied(false), 1600);
-  }, [copyText, onCopy]);
+    markCopied();
+  }, [copyText, onCopy, markCopied]);
 
   return (
     <div

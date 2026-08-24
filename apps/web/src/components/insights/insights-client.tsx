@@ -11,6 +11,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { escapeCsvField } from "@ciele/ops/csv";
 import { Button } from "@agent-hub/ui";
 import { CalendarRange } from "@/components/ui/calendar";
 import {
@@ -257,7 +258,7 @@ export function InsightsClient({
       });
     } else {
       const headers = Object.keys(rows[0] ?? { date: "" });
-      const escape = (v: unknown) => `"${String(v).replaceAll('"', '""')}"`;
+      const escape = (v: unknown) => escapeCsvField(String(v));
       const csv = [
         headers.join(","),
         ...rows.map((r) =>

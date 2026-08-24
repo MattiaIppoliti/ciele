@@ -7,9 +7,9 @@ const { requestMock } = vi.hoisted(() => ({ requestMock: vi.fn() }));
 vi.mock("node:http", () => ({ request: requestMock }));
 vi.mock("node:https", () => ({ request: requestMock }));
 
-import { fetchPinnedPage } from "./pinned-fetch";
+import { pinnedRequest } from "./pinned-fetch";
 
-describe("fetchPinnedPage", () => {
+describe("pinnedRequest", () => {
   beforeEach(() => requestMock.mockReset());
 
   it("keeps validated address fallbacks while preserving the hostname for TLS", async () => {
@@ -25,7 +25,7 @@ describe("fetchPinnedPage", () => {
     }) as never;
     requestMock.mockReturnValue(request);
 
-    const resultPromise = fetchPinnedPage(
+    const resultPromise = pinnedRequest(
       {
         url: new URL("https://public.example/docs"),
         addresses: [
@@ -33,8 +33,7 @@ describe("fetchPinnedPage", () => {
           "93.184.216.34",
         ],
       },
-      15_000,
-      { accept: "text/html" }
+      { timeoutMs: 15_000, headers: { accept: "text/html" } }
     );
 
     const call = requestMock.mock.calls[0] as unknown[];

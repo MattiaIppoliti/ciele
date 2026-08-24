@@ -9,11 +9,10 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@agent-hub/ui": "workspace:*",
     "@number-flow/react": "^0.5.10",
-    "clsx": "^2.1.1",
     "lucide-react": "^1.23.0",
-    "motion": "^12.23.0",
-    "tailwind-merge": "^3.6.0"
+    "motion": "^12.23.0"
   },
   "peerDependencies": {
     "react": "^19",

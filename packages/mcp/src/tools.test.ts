@@ -11,6 +11,8 @@ interface Captured {
   method: string;
   body?: string;
   formFile?: { name: string; text: string };
+  /** The JSON-encoded `assistantIds` multipart field (PRD #726 links). */
+  formLinks?: string;
 }
 
 function harness(
@@ -30,6 +32,8 @@ function harness(
       if (value instanceof File) {
         captured.formFile = { name: value.name, text: await value.text() };
       }
+      const links = init.body.get("assistantIds");
+      if (typeof links === "string") captured.formLinks = links;
     }
     calls.push(captured);
     const { status = 200, json = {} } = respond(captured);
@@ -99,18 +103,26 @@ describe("ciele MCP tools", () => {
         collectionId: "c1",
         name: "notes.txt",
         fileBase64: Buffer.from("hello").toString("base64"),
+        assistantIds: ["a1"],
       },
       false
     );
     expect(calls[2].formFile).toEqual({ name: "notes.txt", text: "hello" });
+    expect(calls[2].formLinks).toBe('["a1"]');
 
     await callTool(
       tool("manage_knowledge"),
-      { action: "import_faqs", collectionId: "c1", csvText: "question,answer\nQ,A\n" },
+      {
+        action: "import_faqs",
+        collectionId: "c1",
+        csvText: "question,answer\nQ,A\n",
+        assistantIds: ["a1"],
+      },
       false
     );
     expect(calls[3].url).toContain("/collections/c1/faqs/import");
     expect(calls[3].formFile?.name).toBe("faqs.csv");
+    expect(calls[3].formLinks).toBe('["a1"]');
 
     await callTool(tool("publish_assistant"), { action: "publish", assistantId: "a1" }, false);
     expect(calls[4]).toMatchObject({ method: "POST" });

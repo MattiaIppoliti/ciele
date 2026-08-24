@@ -105,7 +105,6 @@ export function fakePorts(options: FakePortOptions = {}): FakePorts {
       ensureDir: async (path) => void dirs.add(path),
       readFile: async (path) => files.get(path) ?? null,
       writeFile: async (path, contents) => void files.set(path, contents),
-      exists: async (path) => files.has(path) || dirs.has(path),
     },
 
     probe: {

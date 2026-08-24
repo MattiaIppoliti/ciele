@@ -93,7 +93,7 @@ export function sortFlows(flows: Flow[]): Flow[] {
   });
 }
 
-export const WEEK_DAYS: WeekDay[] = [
+const WEEK_DAYS: WeekDay[] = [
   "monday",
   "tuesday",
   "wednesday",
@@ -105,11 +105,6 @@ export const WEEK_DAYS: WeekDay[] = [
 
 function defaultDayAvailability(): DayAvailability {
   return { enabled: false, ranges: [] };
-}
-
-/** A fresh 09:00–17:00 window, used when a day is first switched on. */
-export function defaultTimeRange(id: string): TimeRange {
-  return { id, opensHour: 9, opensMinute: 0, closesHour: 17, closesMinute: 0 };
 }
 
 export function defaultChannelAvailability(): ChannelAvailability {

@@ -61,8 +61,6 @@ export interface OperationPorts {
   validateSsoConnection?(
     connection: SsoConnection
   ): Promise<{ ok: true } | { ok: false; error: string }>;
-  /** Reclaim a deleted Collection's derived graph dataset (ADR-0017). */
-  purgeCollectionGraph?(collectionId: string): Promise<void>;
   /** Retire one deleted Concept's graph document (ADR-0017). */
   removeConceptGraph?(collectionId: string, conceptId: string): Promise<void>;
   /** Defer the OKF pipeline (extract→enrich→chunk→embed) to an Ingestion Job. */

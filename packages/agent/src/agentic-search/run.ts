@@ -9,7 +9,6 @@ import type {
   RuntimeEvent,
 } from "../types";
 import type { SearchPass } from "./search-pass";
-import { buildContextFrame, describeContextFrame } from "./query-understanding";
 import {
   MAX_AGENT_ITERATIONS,
   createLoopBudget,
@@ -106,7 +105,7 @@ export function buildSystemPrompt(
     memory?: string[];
     longTermMemory?: string[];
     flowStyle?: FlowStyleContext;
-    /** Pre-rendered context frame for this turn (query-understanding.ts). */
+    /** Pre-rendered retrieval-context block for this turn. */
     retrievalContext?: string;
     /**
      * Which half of the two-phase turn this prompt is for (#558).
@@ -366,19 +365,15 @@ export async function runAgenticSearch(
   // tool selection for the whole loop.
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
 
-  // The live signals retrieval may use, stated for the model rather than
-  // resolved for it: the anchored Knowledge Collection. Deictic follow-ups
-  // ("what about the second one?") are the model's job now; it has the
-  // history, and its own reasoning resolves them (#558). Remembered facts are
-  // NOT part of the frame: the system prompt's two memory blocks (session /
-  // long-term, below) are their single owner, rendering them here too used to
-  // put every fact in the gather prompt twice and erase the session-vs-durable
-  // distinction the two blocks exist to preserve.
-  const frame = buildContextFrame({
-    collectionId,
-    history,
-  });
-  const retrievalContext = describeContextFrame(frame);
+  // The one live retrieval signal the model cannot know on its own: the
+  // anchored Knowledge Collection. It silently narrows every search, so it is
+  // stated; a model that does not know it is scoped cannot tell "the knowledge
+  // base does not have this" from "this collection does not have this".
+  // Deictic follow-ups are the model's job (#558); remembered facts belong to
+  // the system prompt's memory blocks, never here.
+  const retrievalContext = collectionId
+    ? "# Retrieval context for this turn\nEvery knowledge search this turn is scoped to the Knowledge Collection this conversation is anchored to. If something is missing, it may exist elsewhere in the organization's knowledge, say that it is not in this collection rather than that it does not exist."
+    : undefined;
 
   // Simplified thinking (#560): the narration lines the tool phases produce.
   // Everything the gather phase put in front of the Visitor before the answer

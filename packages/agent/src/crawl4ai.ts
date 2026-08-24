@@ -23,6 +23,7 @@
  */
 
 import type { CrawledPage, CrawlOptions } from "./apify";
+import { bearerRequest } from "./bearer-fetch";
 import { redactBearerSecrets, trimTrailingSlash } from "./redact";
 
 /** Same page budget the other providers clamp to. */
@@ -211,11 +212,6 @@ export type Crawl4aiTaskStatus =
   | "FAILED"
   | string;
 
-/** Completed is the only status we ingest from; the rest are running or failed. */
-export function isCrawl4aiSuccess(status: Crawl4aiTaskStatus): boolean {
-  return status.toLowerCase() === "completed";
-}
-
 /** A task is terminal once the worker will do no more work on it. */
 export function isCrawl4aiTerminal(status: Crawl4aiTaskStatus): boolean {
   const normalized = status.toLowerCase();
@@ -255,28 +251,16 @@ export async function startCrawl4ai(
   options: CrawlOptions = {}
 ): Promise<StartedCrawl4ai> {
   const { baseUrl, token } = requireConfig();
-  const job = buildCrawl4aiJob(url, options);
-
-  const response = await fetch(`${baseUrl}${SUBMIT_PATH}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(job),
-    signal: AbortSignal.timeout(30_000),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Crawl4AI job failed to start (${response.status}): ${redactCrawl4aiSecrets(detail).slice(0, 200)}`
-    );
-  }
-
-  const { task_id: taskId } = (await response.json().catch(() => ({}))) as {
-    task_id?: string;
-  };
+  const { task_id: taskId } = await bearerRequest<{ task_id?: string }>(
+    `${baseUrl}${SUBMIT_PATH}`,
+    {
+      token,
+      body: buildCrawl4aiJob(url, options),
+      timeoutMs: 30_000,
+      errorLabel: "Crawl4AI job failed to start",
+      redact: redactCrawl4aiSecrets,
+    }
+  );
   if (!taskId) {
     throw new Error("Crawl4AI job started but returned no task id");
   }
@@ -303,17 +287,12 @@ function taskResults(body: Crawl4aiTaskBody): Crawl4aiPageResult[] {
 /** Reads an async task's current status (and its pages once completed). */
 export async function getCrawl4aiTask(taskId: string): Promise<Crawl4aiTaskState> {
   const { baseUrl, token } = requireConfig();
-  const response = await fetch(`${baseUrl}${taskPath(taskId)}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(60_000),
+  const body = await bearerRequest<Crawl4aiTaskBody>(`${baseUrl}${taskPath(taskId)}`, {
+    token,
+    timeoutMs: 60_000,
+    errorLabel: "Crawl4AI task lookup failed",
+    redact: redactCrawl4aiSecrets,
   });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Crawl4AI task lookup failed (${response.status}): ${redactCrawl4aiSecrets(detail).slice(0, 200)}`
-    );
-  }
-  const body = (await response.json().catch(() => ({}))) as Crawl4aiTaskBody;
   return {
     status: (body.status ?? "PROCESSING") as Crawl4aiTaskStatus,
     results: taskResults(body),

@@ -6,8 +6,6 @@ import type {
   AnswerVerdictInput,
   ApiIntegration,
   Assistant,
-  AssistantAccessEntry,
-  AssistantAccessRole,
   AssistantGoal,
   AssistantInput,
   AssistantPatch,
@@ -142,11 +140,6 @@ interface MockStore {
   helpDesks: Map<string, HelpDesk>;
   supportChannels: Map<string, SupportChannel>;
   members: Map<string, Member>;
-  /** `${assistantId}:${userId}` → per-assistant role override (PRD #296). */
-  assistantAccess: Map<
-    string,
-    { assistantId: string; userId: string; role: AssistantAccessRole; grantedAt: string; grantedBy: string | null }
-  >;
   invites: Map<string, Invite>;
   /** Org API keys (#618); the mock keeps the hash alongside for later verify. */
   apiKeys: Map<string, OrgApiKey & { secretHash: string }>;
@@ -402,7 +395,6 @@ function emptyStore(): MockStore {
     members: new Map(
       [DEMO_MEMBER, ...DEMO_TEAMMATES].map((m) => [m.userId, m] as const)
     ),
-    assistantAccess: new Map(),
     invites: new Map(),
     apiKeys: new Map(),
     connections: new Map(),
@@ -590,6 +582,83 @@ function earliestLinkedAssistantId(store: MockStore, sourceId: string): string {
           a.createdAt.localeCompare(b.createdAt) ||
           a.assistantId.localeCompare(b.assistantId)
       )[0]?.assistantId ?? ""
+  );
+}
+
+/**
+ * Insights inputs for the in-memory adapter only. Production aggregates
+ * these org-side in the `get_insights_overview` SQL RPC, so they are not on
+ * the `Db` seam; exported for `insights-adapter.test.ts` (the oracle parity
+ * check).
+ */
+export function listMockInsightsMessages(organizationId: string) {
+  const store = getStore();
+  const orgConversations = new Set(
+    [...store.conversations.values()]
+      .filter(
+        (c) =>
+          store.assistants.get(c.assistantId)?.organizationId ===
+          organizationId
+      )
+      .map((c) => c.id)
+  );
+  return [...store.messages.values()]
+    .filter((m) => orgConversations.has(m.conversationId))
+    .map((m) => ({
+      conversationId: m.conversationId,
+      role: m.role,
+      feedback: m.feedback,
+      createdAt: m.createdAt,
+      proactive: isProactiveMessage(m.content),
+    }));
+}
+
+/** See {@link listMockInsightsMessages}: mock-only Insights input. */
+export function listMockWebsiteSources(organizationId: string) {
+  const store = getStore();
+  return [...store.sources.values()].flatMap((source) => {
+    if (source.kind !== "website") return [];
+    const collection = store.collections.get(source.collectionId);
+    if (collection?.organizationId !== organizationId) return [];
+    return [
+      {
+        id: source.id,
+        assistantId: earliestLinkedAssistantId(store, source.id),
+        name: source.name,
+        url: source.config.url ?? "",
+      },
+    ];
+  });
+}
+
+/**
+ * The claim RPC's due set: published assistants in opted-in orgs whose last
+ * compost run predates `dueBefore`, oldest-run first. Private to
+ * `claimDueCompostAssistants`, claiming is the only way to consume it.
+ */
+function listDueCompostAssistants(
+  store: MockStore,
+  dueBefore: string
+): DueCompostAssistant[] {
+  const due: DueCompostAssistant[] = [];
+  for (const assistant of store.assistants.values()) {
+    if (store.compostOptOut.has(assistant.organizationId)) continue;
+    const published = [...store.publications.values()].some(
+      (p) => p.assistantId === assistant.id
+    );
+    if (!published) continue;
+    const lastRun = store.compostRuns
+      .filter((r) => r.assistantId === assistant.id)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (lastRun && lastRun.createdAt >= dueBefore) continue;
+    due.push({
+      assistantId: assistant.id,
+      organizationId: assistant.organizationId,
+      lastRunAt: lastRun?.createdAt ?? null,
+    });
+  }
+  return due.sort((a, b) =>
+    (a.lastRunAt ?? "").localeCompare(b.lastRunAt ?? "")
   );
 }
 
@@ -1430,6 +1499,16 @@ const globalForMock = globalThis as unknown as { __agentHubMock?: MockStore };
  * added to `MockStore` is backfilled below without anyone remembering to. */
 const STORE_FIELDS = Object.keys(emptyStore()) as (keyof MockStore)[];
 
+/**
+ * Throw the store away so the next read re-seeds the demo data. The store is
+ * process-global on purpose (it has to survive dev-server HMR), which makes it
+ * shared state for any test that mutates through `mockDb`; this is how such a
+ * test gets isolation without reaching for that global itself.
+ */
+export function resetMockStore(): void {
+  globalForMock.__agentHubMock = createStore();
+}
+
 function getStore(): MockStore {
   globalForMock.__agentHubMock ??= createStore();
   const store = globalForMock.__agentHubMock;
@@ -1832,12 +1911,7 @@ export const mockDb: Db = {
   },
 
   async removeMember(_orgId, userId) {
-    const store = getStore();
-    store.members.delete(userId);
-    // Mirrors the DB trigger: leaving the org clears per-assistant overrides.
-    for (const [key, a] of store.assistantAccess) {
-      if (a.userId === userId) store.assistantAccess.delete(key);
-    }
+    getStore().members.delete(userId);
   },
 
   async listInvites() {
@@ -1984,49 +2058,9 @@ export const mockDb: Db = {
     for (const [fid, f] of store.flows) {
       if (f.assistantId === id) store.flows.delete(fid);
     }
-    for (const [key, a] of store.assistantAccess) {
-      if (a.assistantId === id) store.assistantAccess.delete(key);
-    }
     for (const [key, link] of store.assistantSources) {
       if (link.assistantId === id) store.assistantSources.delete(key);
     }
-  },
-
-  // --- Assistant access overrides (PRD #296) -----------------------------
-
-  async listAssistantAccess(assistantId) {
-    const store = getStore();
-    return [...store.assistantAccess.values()]
-      .filter((a) => a.assistantId === assistantId)
-      .sort((a, b) => a.grantedAt.localeCompare(b.grantedAt))
-      .map((a) => {
-        const member = store.members.get(a.userId);
-        return {
-          userId: a.userId,
-          email: member?.email ?? "",
-          username: member?.username ?? null,
-          firstName: member?.firstName ?? null,
-          lastName: member?.lastName ?? null,
-          avatarUrl: member?.avatarUrl ?? null,
-          role: a.role,
-          grantedAt: a.grantedAt,
-          grantedBy: a.grantedBy,
-        } satisfies AssistantAccessEntry;
-      });
-  },
-
-  async setAssistantAccess(assistantId, userId, role) {
-    getStore().assistantAccess.set(`${assistantId}:${userId}`, {
-      assistantId,
-      userId,
-      role,
-      grantedAt: new Date().toISOString(),
-      grantedBy: DEMO_MEMBER.userId,
-    });
-  },
-
-  async clearAssistantAccess(assistantId, userId) {
-    getStore().assistantAccess.delete(`${assistantId}:${userId}`);
   },
 
   async listFlows(assistantId) {
@@ -3198,28 +3232,6 @@ export const mockDb: Db = {
     return cleared;
   },
 
-  async listInsightsMessages(organizationId) {
-    const store = getStore();
-    const orgConversations = new Set(
-      [...store.conversations.values()]
-        .filter(
-          (c) =>
-            store.assistants.get(c.assistantId)?.organizationId ===
-            organizationId
-        )
-        .map((c) => c.id)
-    );
-    return [...store.messages.values()]
-      .filter((m) => orgConversations.has(m.conversationId))
-      .map((m) => ({
-        conversationId: m.conversationId,
-        role: m.role,
-        feedback: m.feedback,
-        createdAt: m.createdAt,
-        proactive: isProactiveMessage(m.content),
-      }));
-  },
-
   // --- Improvements ---------------------------------------------------
 
   async listImprovements(organizationId) {
@@ -3581,31 +3593,18 @@ export const mockDb: Db = {
       });
   },
 
-  async listWebsiteSources(organizationId) {
-    const store = getStore();
-    return [...store.sources.values()].flatMap((source) => {
-      if (source.kind !== "website") return [];
-      const collection = store.collections.get(source.collectionId);
-      if (collection?.organizationId !== organizationId) return [];
-      return [
-        {
-          id: source.id,
-          assistantId: earliestLinkedAssistantId(store, source.id),
-          name: source.name,
-          url: source.config.url ?? "",
-        },
-      ];
-    });
-  },
-
   async getInsightsOverview(organizationId, filters) {
-    const [conversations, messages, assistants, channels] = await Promise.all([
+    const [conversations, assistants] = await Promise.all([
       mockDb.listInboxConversations(organizationId),
-      mockDb.listInsightsMessages(organizationId),
       mockDb.listAssistants(organizationId),
-      mockDb.listWebsiteSources(organizationId),
     ]);
-    return computeInsightsOverview(conversations, messages, assistants, channels, filters);
+    return computeInsightsOverview(
+      conversations,
+      listMockInsightsMessages(organizationId),
+      assistants,
+      listMockWebsiteSources(organizationId),
+      filters
+    );
   },
 
   // --- Alerts -----------------------------------------------------------
@@ -4174,37 +4173,11 @@ export const mockDb: Db = {
 
   // --- Compost loop -----------------------------------------------------------
 
-  async listDueCompostAssistants({ dueBefore, limit }) {
-    const store = getStore();
-    const due: DueCompostAssistant[] = [];
-    for (const assistant of store.assistants.values()) {
-      if (store.compostOptOut.has(assistant.organizationId)) continue;
-      const published = [...store.publications.values()].some(
-        (p) => p.assistantId === assistant.id
-      );
-      if (!published) continue;
-      const lastRun = store.compostRuns
-        .filter((r) => r.assistantId === assistant.id)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-      if (lastRun && lastRun.createdAt >= dueBefore) continue;
-      due.push({
-        assistantId: assistant.id,
-        organizationId: assistant.organizationId,
-        lastRunAt: lastRun?.createdAt ?? null,
-      });
-    }
-    return due
-      .sort((a, b) => (a.lastRunAt ?? "").localeCompare(b.lastRunAt ?? ""))
-      .slice(0, limit);
-  },
-
   async claimDueCompostAssistants({ dueBefore, staleBefore, limit }) {
     const store = getStore();
     // The due set minus any assistant with a fresh claim (a stale claim is
     // re-claimable), then stamp the claim at window start.
-    const due = (
-      await this.listDueCompostAssistants({ dueBefore, limit: 1_000 })
-    )
+    const due = listDueCompostAssistants(store, dueBefore)
       .filter((d) => {
         const claim = store.compostClaims.get(d.assistantId);
         return claim === undefined || claim < staleBefore;

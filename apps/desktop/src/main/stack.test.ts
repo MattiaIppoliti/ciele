@@ -111,7 +111,7 @@ describe("start and stop", () => {
     expect(mid.busy).toBe(true);
     await starting;
 
-    expect(controller.status().health).toBe("running");
+    expect((await controller.refresh()).health).toBe("running");
   });
 
   it("runs everything against the bundled definition and the generated env", async () => {

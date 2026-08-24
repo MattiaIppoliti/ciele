@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { bridge, navigate } from "../lib/bridge";
-import { setupBridge } from "../lib/setup-bridge";
 import { Button, Field, Input } from "../components/ui";
 import { WizardShell } from "../components/wizard-shell";
 import type { SetupSnapshot } from "../../shared/setup-ipc";
@@ -143,8 +142,8 @@ export function WizardScreen(): ReactNode {
   const previousView = useRef(0);
 
   useEffect(() => {
-    void setupBridge().getSnapshot().then(setSnapshot);
-    return setupBridge().onSnapshot(setSnapshot);
+    void bridge().setup.getSnapshot().then(setSnapshot);
+    return bridge().setup.onSnapshot(setSnapshot);
   }, []);
 
   // Kick the required chain off as soon as the screen is up. There is nothing
@@ -153,7 +152,7 @@ export function WizardScreen(): ReactNode {
   useEffect(() => {
     if (snapshot && !snapshot.running && snapshot.currentIndex === 0) {
       const first = snapshot.steps[0];
-      if (first?.status === "pending") void setupBridge().run();
+      if (first?.status === "pending") void bridge().setup.run();
     }
   }, [snapshot]);
 
@@ -174,8 +173,8 @@ export function WizardScreen(): ReactNode {
 
   const submit = () =>
     act(async () => {
-      if (step.fields.length > 0) await setupBridge().setInput(step.id, values);
-      await setupBridge().run();
+      if (step.fields.length > 0) await bridge().setup.setInput(step.id, values);
+      await bridge().setup.run();
     });
 
   return (
@@ -213,7 +212,7 @@ export function WizardScreen(): ReactNode {
                 </Button>
               ) : null}
               {isLive && step.optional && !snapshot.running && !snapshot.complete ? (
-                <Button variant="ghost" onClick={() => void act(() => setupBridge().skip())}>
+                <Button variant="ghost" onClick={() => void act(() => bridge().setup.skip())}>
                   Skip
                 </Button>
               ) : null}
@@ -236,7 +235,7 @@ export function WizardScreen(): ReactNode {
                   {step.optional ? (
                     <Button
                       variant="secondary"
-                      onClick={() => void act(() => setupBridge().revisit(step.id))}
+                      onClick={() => void act(() => bridge().setup.revisit(step.id))}
                       data-testid="revisit"
                     >
                       {step.status === "skipped" ? "Do this step" : "Change this"}
@@ -257,7 +256,7 @@ export function WizardScreen(): ReactNode {
                 </Button>
               ) : step.status === "failed" ? (
                 <Button
-                  onClick={() => void act(() => setupBridge().retry())}
+                  onClick={() => void act(() => bridge().setup.retry())}
                   data-testid="retry"
                 >
                   Try again

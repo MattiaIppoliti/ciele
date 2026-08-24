@@ -299,8 +299,8 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: sourceBody,
     multipart: ["file"],
     idempotent: true,
-    cli: "ciele sources add-url {collectionId} --url https://example.com/help",
-    mcp: '{"action":"add_url","collectionId":"{collectionId}","url":"https://example.com/help"}',
+    cli: "ciele sources add-url {collectionId} --url https://example.com/help --assistants {assistantId}",
+    mcp: '{"action":"add_url","collectionId":"{collectionId}","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
   },
   {
     method: "post",
@@ -310,8 +310,8 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     summary: "Add one FAQ",
     body: faqBody,
     idempotent: true,
-    cli: 'ciele faqs add {collectionId} --question "How do I reset my password?" --answer "Use the reset link on the sign-in page."',
-    mcp: '{"action":"add_faq","collectionId":"{collectionId}","question":"How do I reset my password?","answer":"Use the reset link on the sign-in page."}',
+    cli: 'ciele faqs add {collectionId} --question "How do I reset my password?" --answer "Use the reset link on the sign-in page." --assistants {assistantId}',
+    mcp: '{"action":"add_faq","collectionId":"{collectionId}","question":"How do I reset my password?","answer":"Use the reset link on the sign-in page.","assistantIds":["{assistantId}"]}',
   },
   {
     method: "post",
@@ -320,8 +320,8 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     capability: "edit",
     summary: "Bulk FAQ import (CSV)",
     multipart: ["file"],
-    cli: "ciele faqs import {collectionId} --file faqs.csv",
-    mcp: '{"action":"import_faqs","collectionId":"{collectionId}","csvText":"question,answer\\n…"}',
+    cli: "ciele faqs import {collectionId} --file faqs.csv --assistants {assistantId}",
+    mcp: '{"action":"import_faqs","collectionId":"{collectionId}","csvText":"question,answer\\n…","assistantIds":["{assistantId}"]}',
   },
   {
     method: "get",
@@ -399,8 +399,8 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     capability: "edit",
     summary: "Org-level bulk FAQ import (CSV)",
     multipart: ["file"],
-    cli: "ciele faqs import-org --file faqs.csv",
-    mcp: '{"action":"import_org_faqs","csvText":"question,answer\\n…"}',
+    cli: "ciele faqs import-org --file faqs.csv --assistants {assistantId}",
+    mcp: '{"action":"import_org_faqs","csvText":"question,answer\\n…","assistantIds":["{assistantId}"]}',
   },
   {
     method: "get",
@@ -570,7 +570,7 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     summary: "Create an Entity",
     body: entityInputSchema,
     cli: "ciele entities create --file entity.json",
-    mcp: '{"action":"create","entity":{"name":"Product"}}',
+    mcp: '{"action":"create","entity":{"name":"Product","scope":"shared","keyAttribute":"sku","attributes":[{"key":"sku","label":"SKU","type":"text"}]}}',
   },
   {
     method: "get",

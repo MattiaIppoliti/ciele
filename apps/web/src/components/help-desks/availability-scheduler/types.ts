@@ -46,10 +46,7 @@ export function fromMinutes(minutes: number): { hour: number; minute: number } {
   return { hour: Math.floor(minutes / 60) % 24, minute: minutes % 60 };
 }
 
-let counter = 0;
-
-/** Stable-enough client id for a range row (never persisted as meaningful). */
+/** Client id for a range row (never persisted as meaningful). */
 export function rangeId(): string {
-  counter += 1;
-  return `r${counter}-${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }

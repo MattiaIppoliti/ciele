@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   ApiRequestAuthType,
@@ -157,7 +157,7 @@ const BUTTON_TEMPLATE_FIELDS = [
 ];
 
 function localId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 /**

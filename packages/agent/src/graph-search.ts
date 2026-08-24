@@ -62,25 +62,21 @@ export async function hydrateGraphProvenance(
   const concepts = await Promise.all(
     entries.map((entry) => db.getConcept(entry.conceptId as string))
   );
-  const collectionCache = new Map<string, ReturnType<Db["getCollection"]>>();
-  const getCollection = (id: string) => {
-    let pending = collectionCache.get(id);
-    if (!pending) {
-      pending = db.getCollection(id);
-      collectionCache.set(id, pending);
-    }
-    return pending;
+  // Memoized per id: hydrated results usually share one Collection and a
+  // handful of Sources.
+  const memo = <V>(load: (id: string) => V) => {
+    const cache = new Map<string, V>();
+    return (id: string): V => {
+      let pending = cache.get(id);
+      if (pending === undefined) {
+        pending = load(id);
+        cache.set(id, pending);
+      }
+      return pending;
+    };
   };
-  // Memoized per Source: hydrated results usually share a handful of Sources.
-  const linkCache = new Map<string, ReturnType<Db["listSourceAssistantLinks"]>>();
-  const getLinks = (sourceId: string) => {
-    let pending = linkCache.get(sourceId);
-    if (!pending) {
-      pending = db.listSourceAssistantLinks(sourceId);
-      linkCache.set(sourceId, pending);
-    }
-    return pending;
-  };
+  const getCollection = memo((id) => db.getCollection(id));
+  const getLinks = memo((sourceId) => db.listSourceAssistantLinks(sourceId));
   const hydrated = await Promise.all(
     concepts.map(async (concept, i) => {
       if (!concept) return null;

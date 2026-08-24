@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const PUBLIC_ASSETS_BUCKET = "public-assets";
-export const ASSISTANT_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const PUBLIC_ASSETS_BUCKET = "public-assets";
+const ASSISTANT_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 
-export type PublicAvatarKind = "assistant" | "organization" | "profile";
+type PublicAvatarKind = "assistant" | "organization" | "profile";
 
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/gif": "gif",
@@ -12,7 +12,7 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
 };
 
-export function extensionForPublicImage(mimeType: string): string | null {
+function extensionForPublicImage(mimeType: string): string | null {
   return IMAGE_EXTENSIONS[mimeType.toLowerCase()] ?? null;
 }
 
@@ -29,24 +29,7 @@ export function validatePublicImageFile(file: {
   return { ok: true };
 }
 
-export function decodePublicImageDataUrl(
-  dataUrl: string
-): { mimeType: string; bytes: Uint8Array } {
-  const match = /^data:([^;,]+);base64,(.+)$/i.exec(dataUrl.trim());
-  if (!match) throw new Error("Expected a base64 image data URL");
-
-  const mimeType = match[1].toLowerCase();
-  if (!extensionForPublicImage(mimeType)) {
-    throw new Error("Choose a PNG, JPEG, GIF, or WebP image");
-  }
-
-  const bytes = Uint8Array.from(Buffer.from(match[2].replace(/\s/g, ""), "base64"));
-  const validation = validatePublicImageFile({ type: mimeType, size: bytes.byteLength });
-  if (!validation.ok) throw new Error(validation.error);
-  return { mimeType, bytes };
-}
-
-export function publicAvatarPath(input: {
+function publicAvatarPath(input: {
   organizationId: string;
   kind: PublicAvatarKind;
   mimeType: string;
@@ -90,27 +73,6 @@ export async function uploadPublicImageAsset(
   return { path, publicUrl: data.publicUrl };
 }
 
-export async function uploadPublicImageDataUrl(
-  client: SupabaseClient,
-  input: {
-    organizationId: string;
-    kind: PublicAvatarKind;
-    dataUrl: string;
-    id?: string;
-  }
-): Promise<{ path: string; publicUrl: string }> {
-  const decoded = decodePublicImageDataUrl(input.dataUrl);
-  const arrayBuffer = new ArrayBuffer(decoded.bytes.byteLength);
-  new Uint8Array(arrayBuffer).set(decoded.bytes);
-  const blob = new Blob([arrayBuffer], { type: decoded.mimeType });
-  return uploadPublicImageAsset(client, {
-    organizationId: input.organizationId,
-    kind: input.kind,
-    file: blob,
-    id: input.id,
-  });
-}
-
 /**
  * Knowledge-file originals, the uploaded binary retained so a Source can be
  * re-ingested (extract → enrich → chunk → embed) after the pipeline improves,
@@ -119,7 +81,7 @@ export async function uploadPublicImageDataUrl(
  * keep one org's objects unreadable to another (see the storage migration).
  */
 export const KNOWLEDGE_ORIGINALS_BUCKET = "knowledge-originals";
-export const KNOWLEDGE_ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
+const KNOWLEDGE_ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
 
 /**
  * Extensions the ingestion extractors can re-read (`runtime/extract.ts`), each
@@ -149,7 +111,7 @@ const KNOWLEDGE_FILE_EXTENSIONS = new Set(
   Object.keys(KNOWLEDGE_FILE_CONTENT_TYPES)
 );
 
-export function knowledgeFileExtension(filename: string): string | null {
+function knowledgeFileExtension(filename: string): string | null {
   const parts = filename.toLowerCase().split(".");
   const ext = parts.length > 1 ? parts[parts.length - 1] : "";
   return KNOWLEDGE_FILE_EXTENSIONS.has(ext) ? ext : null;
@@ -171,7 +133,7 @@ export function validateKnowledgeFile(file: {
   return { ok: true };
 }
 
-export function knowledgeOriginalPath(input: {
+function knowledgeOriginalPath(input: {
   organizationId: string;
   filename: string;
   id?: string;

@@ -12,6 +12,8 @@ interface Captured {
   method: string;
   body?: string;
   formFile?: { field: string; name: string; text: string };
+  /** Non-file multipart fields, e.g. the JSON-encoded `assistantIds`. */
+  formFields?: Record<string, string>;
 }
 
 function harness(
@@ -29,9 +31,12 @@ function harness(
       body: typeof init?.body === "string" ? init.body : undefined,
     };
     if (init?.body instanceof FormData) {
-      const [field, value] = [...init.body.entries()][0];
-      if (value instanceof File) {
-        captured.formFile = { field, name: value.name, text: await value.text() };
+      for (const [field, value] of init.body.entries()) {
+        if (value instanceof File) {
+          captured.formFile ??= { field, name: value.name, text: await value.text() };
+        } else {
+          captured.formFields = { ...captured.formFields, [field]: value };
+        }
       }
     }
     calls.push(captured);
@@ -96,19 +101,28 @@ describe("knowledge commands", () => {
       json: { id: "s1", status: "processing" },
     }));
 
-    await runCli(["sources", "add-text", "c1", "--file", textPath], deps);
+    await runCli(
+      ["sources", "add-text", "c1", "--file", textPath, "--assistants", "a1"],
+      deps
+    );
     expect(JSON.parse(calls[0].body!)).toEqual({
       kind: "text",
       name: "handbook.txt",
       text: "Tuition is due in October.",
+      assistantIds: ["a1"],
     });
 
-    await runCli(["sources", "add-file", "c1", "--file", textPath], deps);
+    await runCli(
+      ["sources", "add-file", "c1", "--file", textPath, "--assistants", "a1,a2"],
+      deps
+    );
     expect(calls[1].formFile).toMatchObject({
       field: "file",
       name: "handbook.txt",
       text: "Tuition is due in October.",
     });
+    // Multipart carries no arrays, so the links travel as a JSON field.
+    expect(calls[1].formFields).toEqual({ assistantIds: '["a1","a2"]' });
   });
 
   it("faqs import streams the local CSV as multipart", async () => {
@@ -118,11 +132,43 @@ describe("knowledge commands", () => {
     const { deps, calls, out } = harness(() => ({
       json: { imported: 1, skipped: [] },
     }));
-    const code = await runCli(["faqs", "import", "c1", "--file", csv], deps);
+    const code = await runCli(
+      ["faqs", "import", "c1", "--file", csv, "--assistants", "a1"],
+      deps
+    );
     expect(code).toBe(EXIT.ok);
     expect(calls[0].url).toContain("/collections/c1/faqs/import");
     expect(calls[0].formFile?.name).toBe("faqs.csv");
+    expect(calls[0].formFields).toEqual({ assistantIds: '["a1"]' });
     expect(out[0]).toContain("Imported 1");
+  });
+
+  /**
+   * PRD #726 made the Assistant links mandatory server-side. Every add asks
+   * for them up front rather than spending a round trip on a request the
+   * operations layer is going to refuse.
+   */
+  it("every knowledge add refuses without --assistants, before the network", async () => {
+    const dir = tmp();
+    const path = join(dir, "faqs.csv");
+    writeFileSync(path, "question,answer\nQ1,A1\n");
+    const { deps, calls } = harness();
+
+    const attempts: string[][] = [
+      ["sources", "add-text", "c1", "--text", "body"],
+      ["sources", "add-url", "c1", "--url", "https://example.com/help"],
+      ["sources", "add-file", "c1", "--file", path],
+      ["faqs", "add", "c1", "--question", "Q", "--answer", "A"],
+      ["faqs", "import", "c1", "--file", path],
+    ];
+    for (const argv of attempts) {
+      expect(await runCli(argv, deps), argv.join(" ")).toBe(EXIT.usage);
+    }
+    // An empty list is not an answer here either (unlike `sources link`).
+    expect(
+      await runCli(["faqs", "add", "c1", "--question", "Q", "--answer", "A", "--assistants", ""], deps)
+    ).toBe(EXIT.usage);
+    expect(calls).toHaveLength(0);
   });
 });
 

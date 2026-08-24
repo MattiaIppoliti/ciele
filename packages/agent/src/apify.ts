@@ -9,6 +9,8 @@
  * Source stuck on `processing` when a serverless function timed out mid-crawl.
  */
 
+import { bearerRequest } from "./bearer-fetch";
+
 export interface CrawledPage {
   url: string;
   title: string;
@@ -135,11 +137,6 @@ export interface CrawlRunState {
   datasetId: string;
 }
 
-/** SUCCEEDED is the only status we ingest from; the rest are still-running or failed. */
-export function isRunSuccess(status: ApifyRunStatus): boolean {
-  return status === "SUCCEEDED";
-}
-
 /** A run is terminal once Apify will do no more work on it. */
 export function isRunTerminal(status: ApifyRunStatus): boolean {
   return (
@@ -158,32 +155,14 @@ export async function startCrawl(
   url: string,
   options: CrawlOptions = {}
 ): Promise<StartedCrawl> {
-  const token = requireToken();
-  const input = buildCrawlInput(url, options);
-
-  const response = await fetch(
-    `https://api.apify.com/v2/acts/${ACTOR}/runs?memory=4096`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(input),
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Apify run failed to start (${response.status}): ${detail.slice(0, 200)}`
-    );
-  }
-
-  const { data } = (await response.json()) as {
+  const { data } = await bearerRequest<{
     data?: { id?: string; defaultDatasetId?: string };
-  };
+  }>(`https://api.apify.com/v2/acts/${ACTOR}/runs?memory=4096`, {
+    token: requireToken(),
+    body: buildCrawlInput(url, options),
+    timeoutMs: 30_000,
+    errorLabel: "Apify run failed to start",
+  });
   if (!data?.id || !data.defaultDatasetId) {
     throw new Error("Apify run started but returned no run/dataset id");
   }
@@ -192,23 +171,13 @@ export async function startCrawl(
 
 /** Reads an async run's current status (and its dataset id). */
 export async function getRunState(runId: string): Promise<CrawlRunState> {
-  const token = requireToken();
-  const response = await fetch(
-    `https://api.apify.com/v2/actor-runs/${runId}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(30_000),
-    }
-  );
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Apify run lookup failed (${response.status}): ${detail.slice(0, 200)}`
-    );
-  }
-  const { data } = (await response.json()) as {
+  const { data } = await bearerRequest<{
     data?: { status?: string; defaultDatasetId?: string };
-  };
+  }>(`https://api.apify.com/v2/actor-runs/${runId}`, {
+    token: requireToken(),
+    timeoutMs: 30_000,
+    errorLabel: "Apify run lookup failed",
+  });
   return {
     status: (data?.status ?? "RUNNING") as ApifyRunStatus,
     datasetId: data?.defaultDatasetId ?? "",
@@ -220,20 +189,13 @@ export async function fetchCrawledPages(
   datasetId: string,
   fallbackUrl: string
 ): Promise<CrawledPage[]> {
-  const token = requireToken();
-  const response = await fetch(
+  const items = await bearerRequest<ApifyItem[]>(
     `https://api.apify.com/v2/datasets/${datasetId}/items?clean=true&format=json`,
     {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(60_000),
+      token: requireToken(),
+      timeoutMs: 60_000,
+      errorLabel: "Apify dataset fetch failed",
     }
   );
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Apify dataset fetch failed (${response.status}): ${detail.slice(0, 200)}`
-    );
-  }
-  const items = (await response.json()) as ApifyItem[];
-  return mapCrawledPages(items, fallbackUrl);
+  return mapCrawledPages(Array.isArray(items) ? items : [], fallbackUrl);
 }

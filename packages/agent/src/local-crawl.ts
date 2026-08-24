@@ -1,11 +1,11 @@
 import * as cheerio from "cheerio";
 import type { CrawledPage, CrawlOptions } from "./apify";
 import {
-  UnsafeCrawlTargetError,
-  validateCrawlTarget,
-  type ValidatedCrawlTarget,
-} from "./crawl-target";
-import { fetchPinnedPage, type PinnedFetchResponse } from "./pinned-fetch";
+  EgressPolicyError,
+  validateEgressTarget,
+  type ValidatedEgressTarget,
+} from "./egress";
+import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 
 /**
  * Built-in Website Source crawler: a same-origin BFS over pinned HTTP + cheerio.
@@ -36,24 +36,24 @@ async function fetchCrawlPage(
 ): Promise<{ response: PinnedFetchResponse; finalUrl: string }> {
   let currentUrl = rawUrl;
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-    const validated = await validateCrawlTarget(currentUrl);
+    const validated = await validateEgressTarget(currentUrl);
     if (validated.url.origin !== expectedOrigin) {
-      throw new UnsafeCrawlTargetError(
-        "Local crawls cannot follow a cross-origin redirect"
+      throw new EgressPolicyError(
+        "Local crawls cannot follow a cross-origin redirect",
+        "redirect"
       );
     }
-    const pinnedTarget: ValidatedCrawlTarget = {
+    const pinnedTarget: ValidatedEgressTarget = {
       url: validated.url,
       addresses: pinnedAddresses,
     };
-    const response = await fetchPinnedPage(
-      pinnedTarget,
+    const response = await pinnedRequest(pinnedTarget, {
       timeoutMs,
-      {
+      headers: {
         "user-agent": USER_AGENT,
         accept: "text/html,application/xhtml+xml",
-      }
-    );
+      },
+    });
     if (response.status < 300 || response.status >= 400) {
       return { response, finalUrl: validated.url.toString() };
     }
@@ -146,7 +146,7 @@ export async function localCrawl(
 ): Promise<CrawledPage[]> {
   const maxPages = Math.min(options.maxPages ?? 20, LOCAL_CRAWL_MAX_PAGES);
   const timeoutMs = (options.pageTimeoutSecs ?? 15) * 1000;
-  const initialTarget = await validateCrawlTarget(startUrl);
+  const initialTarget = await validateEgressTarget(startUrl);
   const origin = initialTarget.url.origin;
   const deadline = Date.now() + LOCAL_TOTAL_TIMEOUT_MS;
 
@@ -189,7 +189,7 @@ export async function localCrawl(
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     } catch (error) {
-      if (error instanceof UnsafeCrawlTargetError) throw error;
+      if (error instanceof EgressPolicyError) throw error;
       // Unreachable page: skip it; the crawl continues.
     }
   }

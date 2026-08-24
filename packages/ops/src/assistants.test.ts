@@ -116,10 +116,7 @@ describe("assistants operations", () => {
   });
 
   it("delete leaves org-owned knowledge and its graph datasets intact (PRD #726)", async () => {
-    const purged: string[] = [];
-    const withPort = ctx({
-      ports: { purgeCollectionGraph: async (id) => void purged.push(id) },
-    });
+    const withPort = ctx();
     const assistant = await createAssistantOp.run(withPort, { title: "Doomed" });
     const collection = await getMockDb().createCollection(assistant.id, {
       name: "notes",
@@ -132,7 +129,6 @@ describe("assistants operations", () => {
     await getMockDb().setSourceAssistantLinks(source.id, [assistant.id]);
     await deleteAssistantOp.run(withPort, { id: assistant.id });
     // Knowledge is org-owned: only the links die with the assistant.
-    expect(purged).toEqual([]);
     expect(await getMockDb().getCollection(collection.id)).not.toBeNull();
     expect(await getMockDb().listSourceAssistantLinks(source.id)).toEqual([]);
   });

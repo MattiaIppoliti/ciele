@@ -39,6 +39,24 @@ function needObject(args: Record<string, unknown>, key: string): Record<string, 
   return value as Record<string, unknown>;
 }
 
+/**
+ * The Assistants an added knowledge item links to (PRD #726). A Collection has
+ * no owner, so these links are the only reach and the server refuses an empty
+ * set; refusing here instead spends no round trip and tells the agent what to
+ * send. `set_links` deliberately does not use this: there an empty array means
+ * "remove every link".
+ */
+function needLinkTargets(args: Record<string, unknown>): string[] {
+  const value = args.assistantIds;
+  const ids = Array.isArray(value) ? value.map(String).filter(Boolean) : [];
+  if (ids.length === 0) {
+    throw new ToolInputError(
+      '"assistantIds" is required for this action: name at least one Assistant to link this knowledge to'
+    );
+  }
+  return ids;
+}
+
 const READ_ACTIONS = new Set([
   "list",
   "get",
@@ -169,7 +187,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_knowledge",
       description:
-        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources (text, url, or a file passed as base64), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level with links), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs).",
+        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources (text, url, or a file passed as base64), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
       schema: {
         action: z.enum([
           "list_collections",
@@ -202,7 +220,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
         assistantIds: z
           .array(z.string())
           .optional()
-          .describe("Linked assistants (set_links/add_org_faq/import_org_faqs)"),
+          .describe(
+            "Linked assistants. Required by every add (add_text/add_url/add_file/add_faq/import_faqs/add_org_faq/import_org_faqs); for set_links it is the replacement set, where an empty array removes every link"
+          ),
         directAccess: z.boolean().optional().describe("set_direct_access"),
         kinds: z.array(z.string()).optional().describe("Kind filter (list_org_sources)"),
         status: z.string().optional().describe("Status filter (list_org_sources)"),
@@ -221,17 +241,20 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.knowledge.addTextSource(need(args, "collectionId"), {
               name: args.name as string | undefined,
               text: need(args, "text"),
+              assistantIds: needLinkTargets(args),
             });
           case "add_url":
             return client.knowledge.addUrlSource(
               need(args, "collectionId"),
-              need(args, "url")
+              need(args, "url"),
+              needLinkTargets(args)
             );
           case "add_file": {
             const bytes = Buffer.from(need(args, "fileBase64"), "base64");
             return client.knowledge.addFileSource(
               need(args, "collectionId"),
-              new File([bytes], (args.name as string) || "upload.bin")
+              new File([bytes], (args.name as string) || "upload.bin"),
+              needLinkTargets(args)
             );
           }
           case "delete_source":
@@ -243,11 +266,13 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.knowledge.addFaq(need(args, "collectionId"), {
               question: need(args, "question"),
               answer: need(args, "answer"),
+              assistantIds: needLinkTargets(args),
             });
           case "import_faqs":
             return client.knowledge.importFaqs(
               need(args, "collectionId"),
-              new File([need(args, "csvText")], "faqs.csv", { type: "text/csv" })
+              new File([need(args, "csvText")], "faqs.csv", { type: "text/csv" }),
+              needLinkTargets(args)
             );
           case "list_org_sources":
             return client.knowledge.orgSources({
@@ -271,12 +296,12 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.knowledge.addOrgFaq({
               question: need(args, "question"),
               answer: need(args, "answer"),
-              assistantIds: (args.assistantIds as string[] | undefined) ?? [],
+              assistantIds: needLinkTargets(args),
             });
           case "import_org_faqs":
             return client.knowledge.importOrgFaqs(
               new File([need(args, "csvText")], "faqs.csv", { type: "text/csv" }),
-              (args.assistantIds as string[] | undefined) ?? []
+              needLinkTargets(args)
             );
           case "export_faqs":
             return { csv: await client.knowledge.exportOrgFaqs() };

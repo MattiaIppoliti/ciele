@@ -21,7 +21,7 @@ import { helpDesks } from "./commands/help-desks.ts";
 import { alerts, goals, skills } from "./commands/configuration.ts";
 import { apiKeys, invites, members, organization } from "./commands/organization.ts";
 import { apiIntegrations, providers } from "./commands/integrations.ts";
-import type { CommandContext } from "./commands/shared.ts";
+import { str, type CommandContext } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
 const COMMAND_GROUPS: Record<
@@ -82,6 +82,10 @@ interface Parsed {
   flags: Record<string, string | boolean>;
 }
 
+// Deliberately not node:util's parseArgs: that one refuses option values
+// starting with a dash ("--value -1" errors as ambiguous), which the
+// documented `messages feedback <id> --value <-1|0|1>` form needs, and its
+// required flag table for our ~36 flags would be longer than this parser.
 function parseArgs(argv: string[]): Parsed {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
@@ -134,15 +138,21 @@ Commands:
   sources list <collectionId>
   sources list-org [--kinds <a,b>] [--status <s>] [--assistant <id>] [--q <text>] [--page] [--pageSize]
   sources get <id>                                Poll status until it settles
-  sources add-text <collectionId> (--text <t> | --file <path>) [--name]
-  sources add-url <collectionId> --url <url>
-  sources add-file <collectionId> --file <path>
+  sources add-text <collectionId> (--text <t> | --file <path>) --assistants <a,b,…> [--name]
+  sources add-url <collectionId> --url <url> --assistants <a,b,…>
+  sources add-file <collectionId> --file <path> --assistants <a,b,…>
   sources link <id> --assistants <a,b,…>          Empty list removes every link
   sources direct-access <id> <on|off> --assistant <assistantId>
   sources delete <id> --yes
   sources recrawl <id>
-  faqs add <collectionId> --question <q> --answer <a>
-  faqs import <collectionId> --file <faqs.csv>
+  faqs add <collectionId> --question <q> --answer <a> --assistants <a,b,…>
+  faqs import <collectionId> --file <faqs.csv> --assistants <a,b,…>
+  faqs add-org --question <q> --answer <a> --assistants <a,b,…>
+  faqs import-org --file <faqs.csv> --assistants <a,b,…>
+  faqs export                                     Every FAQ as CSV on stdout
+
+  Adding knowledge always names the Assistants it reaches: a Collection has no
+  owner, so --assistants is the link set, and an empty one is refused.
 
   publish status|create <assistantId>
   publish remove <assistantId> --yes
@@ -173,6 +183,9 @@ Commands:
   sso status
   sso identity <claim|none>                      Configure verified SSO claim
   sso validate                                   Revalidate stored credentials
+  sso connection                                 The stored IdP connection
+  sso connect --file <connection.json>
+  sso disconnect --yes
 
   help-desks list|get|create|update|delete
   help-desks add-channel|update-channel|delete-channel <deskId> [...]
@@ -192,15 +205,22 @@ Commands:
   providers list|create-api-key|create-compatible|create-federated|delete|set-embedding
 
 Global options:
+  --version            Print the CLI version
   --json               Machine-readable output
   --api-key <key>      Override the stored/env credential
   --base-url <url>     Target deployment (self-host friendly)
 
 Environment: CIELE_API_KEY, CIELE_BASE_URL (both beat the config file).`;
 
-function str(flag: string | boolean | undefined): string | undefined {
-  return typeof flag === "string" ? flag : undefined;
-}
+/**
+ * The published version, inlined by `scripts/build.mjs` from package.json. A
+ * bundle cannot read its own package.json, and running the sources directly
+ * (`bin/ciele.mjs`, type-stripped) never goes through the build, so the
+ * unbundled path says `dev`, the same word `doctor` prints for a dev server.
+ */
+declare const __CIELE_VERSION__: string | undefined;
+const VERSION =
+  typeof __CIELE_VERSION__ === "string" ? __CIELE_VERSION__ : "dev";
 
 export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
   const { positional, flags } = parseArgs(argv);
@@ -221,6 +241,11 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
   const [noun, verb, ...rest] = positional;
 
   try {
+    if (flags.version === true) {
+      emit(`ciele ${VERSION}`, { version: VERSION });
+      return EXIT.ok;
+    }
+
     if (!noun || noun === "help" || flags.help === true) {
       deps.stdout(USAGE);
       return EXIT.ok;

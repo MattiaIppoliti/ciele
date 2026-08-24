@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@agent-hub/ui";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   TONE_STROKE,

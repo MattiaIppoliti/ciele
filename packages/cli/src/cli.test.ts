@@ -190,6 +190,45 @@ describe("ciele CLI", () => {
     expect(out[0]).toContain("Usage: ciele");
   });
 
+  it("--version answers with a version instead of the whole help", async () => {
+    const { deps, calls, out } = harness();
+    expect(await runCli(["--version"], deps)).toBe(EXIT.ok);
+    expect(calls).toHaveLength(0);
+    // `dev` running from sources; the published bundle inlines package.json's.
+    expect(out[0]).toMatch(/^ciele (dev|\d+\.\d+\.\d+)$/);
+    expect(out[0]).not.toContain("Usage: ciele");
+
+    const { deps: jsonDeps, out: jsonOut } = harness();
+    expect(await runCli(["--version", "--json"], jsonDeps)).toBe(EXIT.ok);
+    expect(JSON.parse(jsonOut[0])).toHaveProperty("version");
+  });
+
+  it("an empty list reads as (none), never as a blank line", async () => {
+    const { deps, out } = harness(({ url }) =>
+      url.includes("/entities")
+        ? { json: { entityIds: [] } }
+        : { json: { data: [] } }
+    );
+    const key = ["--api-key", "ciele_sk_test"];
+    expect(await runCli(["assistants", "get-entities", "a1", ...key], deps)).toBe(EXIT.ok);
+    expect(out[0]).toBe("(none)");
+    expect(await runCli(["assistants", "get-skills", "a1", ...key], deps)).toBe(EXIT.ok);
+    expect(out[1]).toBe("(none)");
+  });
+
+  it("api-integrations get says there is none instead of printing null", async () => {
+    const { deps, out } = harness(() => ({ json: null }));
+    const key = ["--api-key", "ciele_sk_test"];
+    expect(await runCli(["api-integrations", "get", "a1", ...key], deps)).toBe(EXIT.ok);
+    expect(out[0]).toContain("(none)");
+    expect(out[0]).not.toBe("null");
+
+    // `--json` still answers the raw contract, null included.
+    const { deps: jsonDeps, out: jsonOut } = harness(() => ({ json: null }));
+    await runCli(["api-integrations", "get", "a1", "--json", ...key], jsonDeps);
+    expect(jsonOut[0]).toBe("null");
+  });
+
   it("doctor verifies the deployment contract and authenticated identity", async () => {
     const { deps, calls, out } = harness(({ url }) =>
       url.endsWith("/meta")

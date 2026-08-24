@@ -10,7 +10,7 @@ import {
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "./cn"
-import { Button, buttonVariants } from "./button"
+import { Button, buttonClasses } from "./button"
 
 function Calendar({
   className,
@@ -55,12 +55,12 @@ function Calendar({
           defaultClassNames.nav
         ),
         button_previous: cn(
-          buttonVariants({ variant: buttonVariant }),
+          buttonClasses(buttonVariant),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_previous
         ),
         button_next: cn(
-          buttonVariants({ variant: buttonVariant }),
+          buttonClasses(buttonVariant),
           "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
           defaultClassNames.button_next
         ),
@@ -219,4 +219,4 @@ function CalendarDayButton({
   )
 }
 
-export { Calendar, CalendarDayButton }
+export { Calendar }

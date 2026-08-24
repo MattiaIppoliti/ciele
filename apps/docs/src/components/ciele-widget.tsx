@@ -70,7 +70,6 @@ export function CieleWidget() {
     defaultWidth: 400,
     minWidth: 320,
     maxWidth: 900,
-    anchor: 'right',
   });
 
   // Widget messages: close collapses the drawer, fullscreen expands it to

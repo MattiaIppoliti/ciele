@@ -7,7 +7,6 @@ import {
   fetchCrawledPages,
   getRunState,
   isApifyConfigured,
-  isRunSuccess,
   isRunTerminal,
   startCrawl,
   type CrawledPage,
@@ -18,7 +17,6 @@ import { LOCAL_CRAWL_MAX_PAGES, LOCAL_CRAWL_RUN, localCrawl } from "./local-craw
 import {
   getCrawl4aiTask,
   isCrawl4aiConfigured,
-  isCrawl4aiSuccess,
   isCrawl4aiTerminal,
   mapCrawl4aiPages,
   startCrawl4ai,
@@ -53,7 +51,7 @@ const apifyAdapter: WebsiteCrawlerAdapter = {
   async poll({ runId, datasetId, url }) {
     const run = await getRunState(runId);
     if (!isRunTerminal(run.status)) return { status: "processing" };
-    if (!isRunSuccess(run.status)) {
+    if (run.status !== "SUCCEEDED") {
       return { status: "failed", message: `Crawl ${run.status.toLowerCase()}` };
     }
     return {
@@ -68,7 +66,7 @@ const crawl4aiAdapter: WebsiteCrawlerAdapter = {
   async poll({ runId, url }) {
     const task = await getCrawl4aiTask(runId);
     if (!isCrawl4aiTerminal(task.status)) return { status: "processing" };
-    if (!isCrawl4aiSuccess(task.status)) {
+    if (task.status.toLowerCase() !== "completed") {
       return {
         status: "failed",
         message: task.error

@@ -50,11 +50,9 @@ export { matchFlow, messageFlowCandidates } from "./engine";
 export {
   DEFAULT_DWELL_SECONDS,
   actionAllowedForTrigger,
-  flowDwellSeconds,
   isProactiveTrigger,
   needsVisitorDeliveryHistory,
   notificationDelivery,
-  notificationDeliveryRule,
   proactiveDwellSeconds,
   proactiveFlowCandidates,
   proactiveTriggers,
@@ -69,11 +67,8 @@ export type {
 // plus the completeness rule the Flow Builder validates against so the editor
 // and the runtime cannot disagree about what "configured" means (spec #550).
 export {
-  FLOW_URL_PATTERN_LIMIT,
-  evaluateFlowCondition,
   flowConditionDefect,
   flowConditionsAllowRouting,
-  isObjectiveFlowCondition,
 } from "./flow-conditions";
 export type { FlowConditionDefect, FlowRoutingContext } from "./flow-conditions";
 
@@ -92,7 +87,7 @@ export {
 
 // Basic Interaction's deterministic tier (#566): recognise conversational
 // courtesy with no model call, and pick the Flow that answers it.
-export { basicInteractionFlow, isCourtesyOnly } from "./basic-interaction";
+export { basicInteractionFlow } from "./basic-interaction";
 export type {
   CourtesyHistoryTurn,
   CourtesyRoutingContext,
@@ -107,7 +102,6 @@ export {
   apiCatalogSummary,
   apiEndpointDetail,
   endpointPathParams,
-  endpointQueryParams,
   resolveCatalogPath,
 } from "./api-catalog";
 export type {
@@ -125,7 +119,6 @@ export { computeInsightsOverview, colorizeOverview, isoDay } from "./insights";
 
 // Shipped defaults for a new Assistant and for support-channel availability.
 export {
-  BASIC_INTERACTION_FLOW_NAME,
   DEFAULT_AI_DISCLAIMER,
   DEFAULT_BASIC_REPLY,
   DEFAULT_FLOWS,

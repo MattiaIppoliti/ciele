@@ -83,10 +83,15 @@ ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
 ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
-ciele sources add-file <collection-id> --file handbook.pdf
+ciele sources add-file <collection-id> --file handbook.pdf --assistants <assistant-id>
 ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
+
+Cada comando que añade conocimiento necesita `--assistants`. Una Colección no
+tiene propietario, por lo que estos enlaces son lo único que pone el
+conocimiento al alcance de un Asistente. Los comandos son `sources add-text`,
+`sources add-url`, `sources add-file`, `faqs add` y `faqs import`.
 
 ### Enlaces de fuente
 

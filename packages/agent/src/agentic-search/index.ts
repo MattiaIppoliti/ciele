@@ -11,8 +11,7 @@
  *  - the search-pass primitive ({@link runSearchPass}), the ONLY writer of
  *    the per-turn search-pass ledger (#204), with the one budget gate;
  *  - the pure, model-free policies the loop consults: coverage scoring,
- *    reformulation, the best-effort caveat, query understanding over the
- *    turn's context frame, and the clarify decision.
+ *    reformulation, the best-effort caveat, and the clarify decision.
  */
 
 // The retrieval turn: one entrypoint, plus the Sources projection the
@@ -40,10 +39,6 @@ export type {
   SearchPassOutcome,
   SearchPassRuntime,
 } from "./search-pass";
-
-// The turn's context frame: the live retrieval signals, stated for the model.
-export { buildContextFrame, describeContextFrame } from "./query-understanding";
-export type { ContextFrame } from "./query-understanding";
 
 // The terminal declaration: the model says it is done, and in what state (#558).
 export {

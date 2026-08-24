@@ -60,7 +60,6 @@ describe("ordering", () => {
     await engine.run();
 
     expect(seen).toBe("/data/.env");
-    expect(engine.bag()).toEqual({ envPath: "/data/.env" });
   });
 });
 
@@ -309,7 +308,6 @@ describe("subscription and reset", () => {
 
     expect(snapshot.steps[0]!.status).toBe("pending");
     expect(snapshot.complete).toBe(false);
-    expect(engine.bag()).toEqual({});
   });
 
   it("ignores a second run while one is in flight", async () => {

@@ -27,9 +27,10 @@
  */
 
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, readdir, stat } from 'node:fs/promises';
+import { glob, readFile, writeFile, stat } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { parseArgs } from 'node:util';
 import { AccessKey, Translator } from '@translated/lara';
 import { fromBlocks, textsOf, toBlocks, validate } from './mdx-blocks.mjs';
 
@@ -127,28 +128,32 @@ const INSTRUCTIONS = [
 const MAX_STRINGS_PER_CALL = 24;
 const MAX_CHARS_PER_CALL = 6000;
 
-function parseArgs(argv) {
-  const args = { langs: null, only: null, ui: false, force: false, dry: false };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--lang') args.langs = argv[++i]?.split(',').map((l) => l.trim());
-    else if (arg === '--only') args.only = argv[++i];
-    else if (arg === '--ui') args.ui = true;
-    else if (arg === '--force') args.force = true;
-    else if (arg === '--dry') args.dry = true;
-    else throw new Error(`Unknown flag: ${arg}`);
-  }
-  return args;
+function parseFlags(argv) {
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      lang: { type: 'string' },
+      only: { type: 'string' },
+      ui: { type: 'boolean', default: false },
+      force: { type: 'boolean', default: false },
+      dry: { type: 'boolean', default: false },
+    },
+  });
+  return {
+    langs: values.lang ? values.lang.split(',').map((l) => l.trim()) : null,
+    only: values.only ?? null,
+    ui: values.ui,
+    force: values.force,
+    dry: values.dry,
+  };
 }
 
 const hash = (value) => createHash('sha256').update(value).digest('hex').slice(0, 16);
 
 async function walk(dir) {
   const out = [];
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...(await walk(full)));
-    else out.push(full);
+  for await (const entry of glob('**/*', { cwd: dir, withFileTypes: true })) {
+    if (entry.isFile()) out.push(path.join(entry.parentPath, entry.name));
   }
   return out;
 }
@@ -408,7 +413,7 @@ ${body}
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseFlags(process.argv.slice(2));
   const targets = (args.langs ?? Object.keys(LOCALES).filter((l) => l !== SOURCE_LOCALE)).filter(
     (locale) => {
       if (LOCALES[locale]) return true;

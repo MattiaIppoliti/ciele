@@ -7,8 +7,6 @@
 import { ArrowLeft, ExternalLink, Play, RotateCw, Square } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { bridge, navigate } from "../lib/bridge";
-import { stackBridge } from "../lib/stack-bridge";
-import { setupBridge } from "../lib/setup-bridge";
 import { Button, Card, TitleBar } from "../components/ui";
 import { cn } from "../lib/cn";
 import type { StackHealth, StackStatus } from "../../shared/stack";
@@ -40,8 +38,8 @@ export function StackScreen(): ReactNode {
   const [status, setStatus] = useState<StackStatus | null>(null);
 
   useEffect(() => {
-    void stackBridge().status().then(setStatus);
-    return stackBridge().onStatus(setStatus);
+    void bridge().stack.status().then(setStatus);
+    return bridge().stack.onStatus(setStatus);
   }, []);
 
   if (!status) return <div className="h-full" />;
@@ -75,7 +73,7 @@ export function StackScreen(): ReactNode {
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <Button
               disabled={status.busy || status.health === "running"}
-              onClick={() => void stackBridge().start()}
+              onClick={() => void bridge().stack.start()}
             >
               <Play className="size-4" />
               Start
@@ -83,12 +81,12 @@ export function StackScreen(): ReactNode {
             <Button
               variant="secondary"
               disabled={status.busy || status.health === "stopped"}
-              onClick={() => void stackBridge().stop()}
+              onClick={() => void bridge().stack.stop()}
             >
               <Square className="size-4" />
               Stop
             </Button>
-            <Button variant="ghost" onClick={() => void stackBridge().status()}>
+            <Button variant="ghost" onClick={() => void bridge().stack.status()}>
               <RotateCw className="size-4" />
               Check again
             </Button>
@@ -137,7 +135,7 @@ export function StackScreen(): ReactNode {
             variant="secondary"
             className="self-start"
             data-testid="reset-setup"
-            onClick={() => void setupBridge().reset()}
+            onClick={() => void bridge().setup.reset()}
           >
             Run setup again
           </Button>

@@ -12,8 +12,6 @@ import type {
   ApiIntegration,
   ApiIntegrationAuthType,
   Assistant,
-  AssistantAccessEntry,
-  AssistantAccessRole,
   AssistantGoal,
   AssistantPatch,
   AssistantTools,
@@ -311,15 +309,9 @@ interface MemoryRow {
   created_at: string;
 }
 
+// Purely mechanical snake→camel; the generic key rewriter is the mapper.
 function toMemory(row: MemoryRow): Memory {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    subjectId: row.subject_id,
-    text: row.text,
-    conversationId: row.conversation_id ?? null,
-    createdAt: row.created_at,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as Memory;
 }
 
 interface EntityRecordRow {
@@ -525,16 +517,7 @@ interface FlowTrustRow {
 }
 
 function toFlowTrust(row: FlowTrustRow): FlowTrust {
-  return {
-    assistantId: row.assistant_id,
-    flowId: row.flow_id,
-    organizationId: row.organization_id,
-    runs: row.runs,
-    passes: row.passes,
-    tier: row.tier,
-    previousTier: row.previous_tier,
-    computedAt: row.computed_at,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as FlowTrust;
 }
 
 interface FlowTrustEventRow {
@@ -549,31 +532,11 @@ interface FlowTrustEventRow {
 }
 
 function toFlowTrustEvent(row: FlowTrustEventRow): FlowTrustEvent {
-  return {
-    organizationId: row.organization_id,
-    assistantId: row.assistant_id,
-    flowId: row.flow_id,
-    fromTier: row.from_tier,
-    toTier: row.to_tier,
-    runs: row.runs,
-    passes: row.passes,
-    createdAt: row.created_at,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as FlowTrustEvent;
 }
 
 function toAlert(row: AlertRow): Alert {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    type: row.type,
-    title: row.title,
-    detail: row.detail,
-    status: row.status,
-    sourceKey: row.source_key,
-    detectedAt: row.detected_at,
-    resolvedAt: row.resolved_at,
-    resolvedBy: row.resolved_by,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as Alert;
 }
 
 function toConnection(
@@ -596,17 +559,7 @@ function toConnection(
 }
 
 function toSsoConnection(row: SsoConnectionRow): SsoConnection {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    provider: row.provider,
-    config: row.config,
-    encryptedSecret: row.encrypted_secret,
-    validationStatus: row.validation_status,
-    validatedAt: row.validated_at,
-    connectedAt: row.connected_at,
-    updatedAt: row.updated_at,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as SsoConnection;
 }
 
 interface ApiIntegrationRow {
@@ -783,14 +736,7 @@ function toExportJob(row: Record<string, unknown>): ExportJob {
 }
 
 function toInvite(row: InviteRow): Invite {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    email: row.email,
-    role: row.role,
-    token: row.token,
-    createdAt: row.created_at,
-  };
+  return rowToDomain(row as unknown as Record<string, unknown>) as unknown as Invite;
 }
 
 function toOrgApiKey(row: OrgApiKeyRow): OrgApiKey {
@@ -1326,63 +1272,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async deleteAssistant(id) {
       const { error } = await client.from("assistants").delete().eq("id", id);
-      if (error) throw error;
-    },
-
-    // --- Assistant access overrides (PRD #296) ---------------------------
-
-    async listAssistantAccess(assistantId) {
-      // Same one-query profiles embed as listMembers (dual FK, see the
-      // assistant_access migration).
-      const { data, error } = await client
-        .from("assistant_access")
-        .select(
-          "user_id, role, granted_at, granted_by, profiles(email, username, first_name, last_name, avatar_url)"
-        )
-        .eq("assistant_id", assistantId)
-        .order("granted_at", { ascending: true });
-      if (error) throw error;
-      const rows = data as unknown as Array<{
-        user_id: string;
-        role: AssistantAccessRole;
-        granted_at: string;
-        granted_by: string | null;
-        profiles: {
-          email: string;
-          username: string | null;
-          first_name: string | null;
-          last_name: string | null;
-          avatar_url: string | null;
-        } | null;
-      }>;
-      return rows.map((r) => ({
-        userId: r.user_id,
-        email: r.profiles?.email ?? "",
-        username: r.profiles?.username ?? null,
-        firstName: r.profiles?.first_name ?? null,
-        lastName: r.profiles?.last_name ?? null,
-        avatarUrl: r.profiles?.avatar_url ?? null,
-        role: r.role,
-        grantedAt: r.granted_at,
-        grantedBy: r.granted_by,
-      })) satisfies AssistantAccessEntry[];
-    },
-
-    async setAssistantAccess(assistantId, userId, role) {
-      // granted_at/granted_by are stamped by a DB trigger on every write.
-      const { error } = await client.from("assistant_access").upsert(
-        { assistant_id: assistantId, user_id: userId, role },
-        { onConflict: "assistant_id,user_id" }
-      );
-      if (error) throw error;
-    },
-
-    async clearAssistantAccess(assistantId, userId) {
-      const { error } = await client
-        .from("assistant_access")
-        .delete()
-        .eq("assistant_id", assistantId)
-        .eq("user_id", userId);
       if (error) throw error;
     },
 
@@ -3001,29 +2890,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as number) ?? 0;
     },
 
-    async listInsightsMessages(organizationId) {
-      const { data, error } = await client
-        .from("messages")
-        .select(
-          "conversation_id, role, feedback, created_at, proactive, conversations!inner(assistants!inner(organization_id))"
-        )
-        .eq("conversations.assistants.organization_id", organizationId);
-      if (error) throw error;
-      type Row = Pick<
-        MessageRow,
-        "conversation_id" | "role" | "feedback" | "created_at"
-      > & { proactive: boolean | null };
-      return (data as unknown as Row[]).map((row) => ({
-        conversationId: row.conversation_id,
-        role: row.role,
-        feedback: row.feedback,
-        createdAt: row.created_at,
-        // Derived by the database (a stored generated column), so it cannot drift
-        // from the content it describes.
-        proactive: row.proactive === true,
-      }));
-    },
-
     // --- Improvements -------------------------------------------------
 
     async listImprovements(organizationId) {
@@ -3553,53 +3419,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .eq("source_id", sourceId)
         .eq("assistant_id", assistantId);
       if (error) throw error;
-    },
-
-    async listWebsiteSources(organizationId) {
-      const { data, error } = await client
-        .from("sources")
-        .select(
-          "id, name, config, knowledge_collections!inner(organization_id)"
-        )
-        .eq("kind", "website")
-        .eq("knowledge_collections.organization_id", organizationId);
-      if (error) throw error;
-      type Row = {
-        id: string;
-        name: string;
-        config: { url?: string } | null;
-      };
-      const rows = data as unknown as Row[];
-      if (rows.length === 0) return [];
-      // The reporting assistant is the Source's earliest link ("" when an
-      // admin unlinked everything).
-      const { data: linkRows, error: linkError } = await client
-        .from("assistant_sources")
-        .select("assistant_id, source_id, created_at")
-        .in(
-          "source_id",
-          rows.map((r) => r.id)
-        );
-      if (linkError) throw linkError;
-      const firstLink = new Map<string, { assistantId: string; at: string }>();
-      for (const link of linkRows as Array<{
-        assistant_id: string;
-        source_id: string;
-        created_at: string;
-      }>) {
-        const current = firstLink.get(link.source_id);
-        if (!current || link.created_at < current.at)
-          firstLink.set(link.source_id, {
-            assistantId: link.assistant_id,
-            at: link.created_at,
-          });
-      }
-      return rows.map((row) => ({
-        id: row.id,
-        assistantId: firstLink.get(row.id)?.assistantId ?? "",
-        name: row.name,
-        url: row.config?.url ?? "",
-      }));
     },
 
     async getInsightsOverview(organizationId, filters) {
@@ -4249,23 +4068,6 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     },
 
     // --- Compost loop ----------------------------------------------------------
-
-    async listDueCompostAssistants({ dueBefore, limit }) {
-      const { data, error } = await client.rpc("list_due_compost_assistants", {
-        p_due_before: dueBefore,
-        p_limit: limit,
-      });
-      if (error) throw error;
-      return ((data ?? []) as {
-        assistant_id: string;
-        organization_id: string;
-        last_run_at: string | null;
-      }[]).map((row) => ({
-        assistantId: row.assistant_id,
-        organizationId: row.organization_id,
-        lastRunAt: row.last_run_at,
-      }));
-    },
 
     async claimDueCompostAssistants({ dueBefore, staleBefore, limit }) {
       const { data, error } = await client.rpc("claim_due_compost_assistants", {

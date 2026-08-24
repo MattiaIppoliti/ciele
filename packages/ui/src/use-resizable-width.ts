@@ -18,14 +18,12 @@ export function useResizableWidth({
   defaultWidth,
   minWidth,
   maxWidth,
-  anchor = "right",
   initialResizing = false,
   overdrag,
 }: {
   defaultWidth: number;
   minWidth: number;
   maxWidth: number;
-  anchor?: "left" | "right";
   /** Mount already mid-drag (e.g. the panel was opened by dragging a collapsed rail). */
   initialResizing?: boolean;
   /**
@@ -77,10 +75,7 @@ export function useResizableWidth({
         return;
       }
       const rect = containerRef.current?.getBoundingClientRect();
-      const next =
-        anchor === "right"
-          ? (rect?.right ?? window.innerWidth) - e.clientX
-          : e.clientX - (rect?.left ?? 0);
+      const next = (rect?.right ?? window.innerWidth) - e.clientX;
       setWidth(Math.min(maxWidth, Math.max(lowerBound, next)));
     };
     document.body.style.cursor = "col-resize";
@@ -93,7 +88,7 @@ export function useResizableWidth({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", endResize);
     };
-  }, [resizing, anchor, minWidth, maxWidth, defaultWidth]);
+  }, [resizing, minWidth, maxWidth, defaultWidth]);
 
   /** 0 at the rail, 1 from minWidth up, drives the content fade during overdrag. */
   const fade = overdrag

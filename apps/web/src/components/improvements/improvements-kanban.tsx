@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import type { ImprovementListItem } from "@agent-hub/core";
 import { CalendarClock, MessageSquare } from "lucide-react";
 import { Badge, Card, CardContent, cn } from "@agent-hub/ui";

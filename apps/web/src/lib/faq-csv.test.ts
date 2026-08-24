@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { parseCsv } from "@ciele/ops/csv";
 import {
   FAQ_ANSWER_MAX,
   FAQ_IMPORT_MAX_ROWS,
-  parseCsv,
   parseFaqCsv,
   serializeFaqCsv,
 } from "./faq-csv";

@@ -15,6 +15,7 @@ import { createHmac } from "node:crypto";
 import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { parseEnv } from "node:util";
 import path from "node:path";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -378,15 +379,7 @@ try {
     cwd: tmp,
     stdio: "pipe",
   });
-  const env = Object.fromEntries(
-    readFileSync(path.join(tmp, ".env"), "utf8")
-      .split("\n")
-      .filter((line) => /^[A-Z]/.test(line))
-      .map((line) => {
-        const eq = line.indexOf("=");
-        return [line.slice(0, eq), line.slice(eq + 1)];
-      })
-  );
+  const env = parseEnv(readFileSync(path.join(tmp, ".env"), "utf8"));
 
   check("bootstrap --env-only writes a complete .env", () => {
     for (const key of [

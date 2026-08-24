@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { EXIT } from "../index.ts";
-import { table } from "../output.ts";
+import { lines, table } from "../output.ts";
 import { str, usage, type CommandContext } from "./shared.ts";
 
 const ASSISTANT_COLUMNS = [
@@ -90,7 +90,7 @@ export async function assistants(
     case "get-entities": {
       if (!rest[0]) return usage(deps, "assistants get-entities <id>");
       const selection = await client.assistants.entities(rest[0]);
-      emit(selection.entityIds.join("\n"), selection);
+      emit(lines(selection.entityIds), selection);
       return EXIT.ok;
     }
     case "set-entities": {
@@ -108,7 +108,7 @@ export async function assistants(
     case "get-skills": {
       if (!rest[0]) return usage(deps, "assistants get-skills <id>");
       const result = await client.assistants.skills(rest[0]);
-      emit(result.data.map((skill) => skill.id).join("\n"), result);
+      emit(lines(result.data.map((skill) => skill.id)), result);
       return EXIT.ok;
     }
     case "set-skills": {

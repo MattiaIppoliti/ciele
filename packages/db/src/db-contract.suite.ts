@@ -42,13 +42,6 @@ export interface DbContractContext {
    * seed it for real; the mock only needs a non-matching id.
    */
   foreignOrganizationId: string;
-  /**
-   * Optional: hand back the user id of a Member of `organizationId` other
-   * than the caller (creating one if needed), for cases that exercise
-   * member-scoped rows (e.g. assistant-access cascades). Adapters that
-   * can't seed extra members omit it and those cases self-skip.
-   */
-  seedOrgMember?: () => Promise<string>;
   /** Optional cleanup after the suite (drop seeded org, close clients). */
   teardown?: () => Promise<void> | void;
 }
@@ -315,58 +308,6 @@ export function describeDbContract(
           })
         ).toEqual([]);
         await pinned.setMemoryEnabled(ctx.organizationId, false);
-      });
-    });
-
-    describe("assistant access overrides", () => {
-      it("set â†’ list â†’ clear round-trips an override with audit stamps", async () => {
-        const assistant = await newAssistant();
-        expect(await db.listAssistantAccess(assistant.id)).toHaveLength(0);
-
-        await db.setAssistantAccess(assistant.id, ctx.userId, "denied");
-        let entries = await db.listAssistantAccess(assistant.id);
-        expect(entries).toHaveLength(1);
-        expect(entries[0]).toMatchObject({ userId: ctx.userId, role: "denied" });
-        // Audit stamps are set server-side on every write.
-        expect(entries[0].grantedAt).toBeTruthy();
-        expect(entries[0].grantedBy).toBe(ctx.userId);
-        // Profile data rides along (same join contract as listMembers).
-        expect(entries[0].email).toBeTruthy();
-
-        // Setting again is an upsert: same member stays a single row.
-        await db.setAssistantAccess(assistant.id, ctx.userId, "editor");
-        entries = await db.listAssistantAccess(assistant.id);
-        expect(entries).toHaveLength(1);
-        expect(entries[0].role).toBe("editor");
-
-        // Clear = back to "System Role": the row disappears.
-        await db.clearAssistantAccess(assistant.id, ctx.userId);
-        expect(await db.listAssistantAccess(assistant.id)).toHaveLength(0);
-      });
-
-      it("scopes overrides to their assistant", async () => {
-        const a = await newAssistant();
-        const b = await newAssistant();
-        await db.setAssistantAccess(a.id, ctx.userId, "admin");
-        expect(await db.listAssistantAccess(b.id)).toHaveLength(0);
-        await db.clearAssistantAccess(a.id, ctx.userId);
-      });
-
-      it("deleting the assistant deletes its overrides", async () => {
-        const assistant = await newAssistant();
-        await db.setAssistantAccess(assistant.id, ctx.userId, "viewer");
-        await db.deleteAssistant(assistant.id);
-        expect(await db.listAssistantAccess(assistant.id)).toHaveLength(0);
-      });
-
-      it("removing a member from the org clears their overrides", async () => {
-        if (!ctx.seedOrgMember) return; // adapter can't seed a second member
-        const memberId = await ctx.seedOrgMember();
-        const assistant = await newAssistant();
-        await db.setAssistantAccess(assistant.id, memberId, "admin");
-        expect(await db.listAssistantAccess(assistant.id)).toHaveLength(1);
-        await db.removeMember(ctx.organizationId, memberId);
-        expect(await db.listAssistantAccess(assistant.id)).toHaveLength(0);
       });
     });
 

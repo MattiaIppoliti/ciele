@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import {

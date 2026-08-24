@@ -22,11 +22,12 @@ import type {
  * only. The parity tests assert the assembled overview equals these pieces.
  */
 
-/** Local-date yyyy-mm-dd (toISOString would shift the day near midnight). */
+/**
+ * Local-date yyyy-mm-dd (toISOString would shift the day near midnight).
+ * sv-SE is the locale whose date format IS yyyy-mm-dd.
+ */
 export function isoDay(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  return date.toLocaleDateString("sv-SE");
 }
 
 /** Hostname without a leading www., or "" when the URL is missing/invalid. */
@@ -47,7 +48,7 @@ function mondayOf(date: Date): Date {
 }
 
 function yearMonth(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  return isoDay(date).slice(0, 7);
 }
 
 function round1(n: number): number {

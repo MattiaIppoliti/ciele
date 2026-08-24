@@ -754,29 +754,6 @@ export interface OrgApiKeyInput {
   createdBy: string;
 }
 
-/**
- * A Member's per-assistant role override ("Manage access", PRD #296).
- * No row means "System Role": the Member's org Role applies. 'denied' hides
- * the Assistant and its data from that Member entirely. Org owners and
- * platform superusers are exempt, overrides never apply to them.
- */
-export type AssistantAccessRole = "denied" | "viewer" | "editor" | "admin";
-
-/** An override row joined with the member's profile (mirrors Member). */
-export interface AssistantAccessEntry {
-  userId: string;
-  email: string;
-  username: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  avatarUrl: string | null;
-  role: AssistantAccessRole;
-  /** Last time this override was set (stamped server-side). */
-  grantedAt: string;
-  /** Who set it (stamped server-side; null for pre-audit rows). */
-  grantedBy: string | null;
-}
-
 export type Provider = "anthropic" | "openai" | "google" | "openai_compatible";
 export type ProviderConnectionProvider = Provider | "azure_openai";
 export type ProviderConnectionType =

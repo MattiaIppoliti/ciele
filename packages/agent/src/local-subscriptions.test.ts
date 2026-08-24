@@ -1,19 +1,14 @@
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   connectedLocalSubscriptionProviders,
-  executableVariants,
   isLocalSubscriptionDirectEnabled,
   isLoopbackHost,
-  localSubscriptionCliEnvironment,
   localSubscriptionCommand,
-  localSubscriptionInvocation,
-  npmShimEntrypoint,
   parseClaudeLoginStatus,
   parseCodexLoginStatus,
-  resolveExecutableCandidate,
 } from "./local-subscriptions";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -70,90 +65,6 @@ describe("localSubscriptionCommand", () => {
     vi.stubEnv("CODEX_CLI_PATH", undefined);
     vi.stubEnv("PATH", dir);
     expect(localSubscriptionCommand("openai")).toBe("codex");
-  });
-});
-
-describe("localSubscriptionCommand on Windows", () => {
-  it("resolves the runnable .exe variant to an absolute path", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-win-"));
-    writeFileSync(join(dir, "claude"), "#!/bin/sh\n"); // npm's POSIX shim
-    writeFileSync(join(dir, "claude.exe"), "MZ");
-    vi.stubEnv("CLAUDE_CLI_PATH", undefined);
-    vi.stubEnv("PATH", dir);
-    expect(localSubscriptionCommand("anthropic", "win32")).toBe(
-      join(dir, "claude.exe")
-    );
-  });
-
-  it("resolves an npm .cmd shim to the JS entrypoint it launches", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-shim-"));
-    const entrypoint = join(dir, "node_modules", "@openai", "codex", "bin");
-    mkdirSync(entrypoint, { recursive: true });
-    writeFileSync(join(entrypoint, "codex.js"), "#!/usr/bin/env node\n");
-    writeFileSync(
-      join(dir, "codex.cmd"),
-      '"%_prog%"  "%dp0%\\node_modules\\@openai\\codex\\bin\\codex.js" %*\n'
-    );
-    vi.stubEnv("CODEX_CLI_PATH", undefined);
-    vi.stubEnv("PATH", dir);
-    expect(localSubscriptionCommand("openai", "win32")).toBe(
-      join(entrypoint, "codex.js")
-    );
-  });
-
-  it("skips shell-only shims rather than executing them", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-ps1-"));
-    writeFileSync(join(dir, "codex.ps1"), "#!/usr/bin/env pwsh\n");
-    expect(resolveExecutableCandidate(join(dir, "codex.ps1"), "win32")).toBeNull();
-    expect(executableVariants(join(dir, "codex"), "win32")).toEqual([
-      join(dir, "codex.exe"),
-      join(dir, "codex.cmd"),
-    ]);
-    expect(executableVariants("/usr/local/bin/codex", "darwin")).toEqual([
-      "/usr/local/bin/codex",
-    ]);
-  });
-
-  it("refuses a shim entrypoint that escapes the shim directory", () => {
-    const dir = mkdtempSync(join(tmpdir(), "ciele-cli-escape-"));
-    writeFileSync(
-      join(dir, "codex.cmd"),
-      '"%_prog%"  "%dp0%\\node_modules\\..\\..\\evil.js" %*\n'
-    );
-    expect(npmShimEntrypoint(join(dir, "codex.cmd"), "win32")).toBeNull();
-  });
-});
-
-describe("localSubscriptionInvocation", () => {
-  it("keeps the POSIX env launcher so a bare command resolves on PATH", () => {
-    expect(localSubscriptionInvocation("codex", ["login"], "darwin")).toEqual({
-      command: "/usr/bin/env",
-      args: ["codex", "login"],
-    });
-  });
-
-  it("spawns a Windows executable directly; there is no /usr/bin/env", () => {
-    expect(
-      localSubscriptionInvocation("C:\\bin\\claude.exe", ["auth"], "win32")
-    ).toEqual({ command: "C:\\bin\\claude.exe", args: ["auth"] });
-  });
-
-  it("runs a resolved JS entrypoint under this process's Node", () => {
-    expect(
-      localSubscriptionInvocation("C:\\bin\\codex.js", ["exec"], "win32")
-    ).toEqual({ command: process.execPath, args: ["C:\\bin\\codex.js", "exec"] });
-  });
-});
-
-describe("localSubscriptionCliEnvironment", () => {
-  it("forwards the Windows variables the CLIs need to run at all", () => {
-    vi.stubEnv("USERPROFILE", "C:\\Users\\member");
-    vi.stubEnv("LOCALAPPDATA", "C:\\Users\\member\\AppData\\Local");
-    vi.stubEnv("SystemRoot", "C:\\Windows");
-    const environment = localSubscriptionCliEnvironment();
-    expect(environment.USERPROFILE).toBe("C:\\Users\\member");
-    expect(environment.LOCALAPPDATA).toBe("C:\\Users\\member\\AppData\\Local");
-    expect(environment.SystemRoot).toBe("C:\\Windows");
   });
 });
 

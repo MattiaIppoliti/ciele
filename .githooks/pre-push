@@ -1,0 +1,24 @@
+#!/bin/sh
+# Pre-push gate: everything CI's `verify` job runs, locally.
+#
+# It exists because GitHub Actions is not reliably available on this repo (a $0
+# spending limit refuses jobs outright, see CLAUDE.md), so "CI will catch it" is
+# not a thing you can lean on. Turbo caches, so an unchanged tree costs seconds;
+# the slow runs are the ones that changed a lot, which is when you want it.
+#
+# Enable once per clone (git config is deliberately local, hooks are not
+# auto-installed by design):
+#
+#   git config core.hooksPath .githooks
+#
+# Bypass a single push with `git push --no-verify`.
+set -e
+
+# Install first, exactly as CI does. Without this the gate is actively
+# misleading: rebase onto a commit that moved the dependency graph, and every
+# workspace fails against the node_modules you already had. `--frozen-lockfile`
+# also makes a package.json edited without its lockfile a push-time error
+# instead of a CI-time one.
+pnpm install --frozen-lockfile
+
+exec pnpm verify

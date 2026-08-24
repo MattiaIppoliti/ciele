@@ -4,8 +4,11 @@
  * question then answer, matching the reference platform's contract:
  * questions ≤1000 chars, answers ≤20000, file ≤10MB.
  *
- * Pure functions, client- and server-safe.
+ * Pure functions, client- and server-safe (the CSV reader/writer pair comes
+ * from `@ciele/ops/csv`, a zero-dependency module, not the ops barrel).
  */
+
+import { escapeCsvField, parseCsv } from "@ciele/ops/csv";
 
 export const FAQ_QUESTION_MAX = 1000;
 export const FAQ_ANSWER_MAX = 20000;
@@ -22,58 +25,6 @@ export interface FaqCsvResult {
   rows: FaqRow[];
   /** 1-based line report for every skipped record, e.g. "row 4: answer exceeds 20000 characters". */
   skipped: string[];
-}
-
-/**
- * RFC-4180-ish CSV record reader: handles quoted fields, escaped quotes (""),
- * embedded commas/newlines, and CRLF. Returns raw records (arrays of fields).
- */
-export function parseCsv(text: string): string[][] {
-  const records: string[][] = [];
-  let field = "";
-  let record: string[] = [];
-  let inQuotes = false;
-
-  const pushField = () => {
-    record.push(field);
-    field = "";
-  };
-  const pushRecord = () => {
-    pushField();
-    records.push(record);
-    record = [];
-  };
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        field += ch;
-      }
-    } else if (ch === '"') {
-      inQuotes = true;
-    } else if (ch === ",") {
-      pushField();
-    } else if (ch === "\n") {
-      pushRecord();
-    } else if (ch === "\r") {
-      if (text[i + 1] === "\n") i++;
-      pushRecord();
-    } else {
-      field += ch;
-    }
-  }
-  if (field !== "" || record.length > 0) pushRecord();
-
-  // Drop records that are entirely empty (trailing newlines etc.).
-  return records.filter((r) => r.some((f) => f.trim() !== ""));
 }
 
 /** True when a first record looks like a header ("question","answer"), so it can be skipped. */
@@ -122,10 +73,6 @@ export function parseFaqCsv(text: string): FaqCsvResult {
   });
 
   return { rows, skipped };
-}
-
-function escapeCsvField(value: string): string {
-  return /[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 /** Serializes FAQs for the Export button, same two-column shape Import expects. */

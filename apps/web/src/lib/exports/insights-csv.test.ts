@@ -27,9 +27,9 @@ describe("insightsOverviewToCsv", () => {
       })
     );
     expect(csv.split("\n")).toEqual([
-      '"date","Conversations","AI answers"',
-      '"2026-07-01","3","2"',
-      '"2026-07-02","5","4"',
+      "date,Conversations,AI answers",
+      "2026-07-01,3,2",
+      "2026-07-02,5,4",
     ]);
   });
 
@@ -42,6 +42,6 @@ describe("insightsOverviewToCsv", () => {
         ] as InsightsOverview["chart"]["series"],
       })
     );
-    expect(csv.split("\n")).toEqual(['"date","Odd ""key"""', '"2026-07-01","0"']);
+    expect(csv.split("\n")).toEqual(['date,"Odd ""key"""', "2026-07-01,0"]);
   });
 });

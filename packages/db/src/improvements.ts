@@ -26,17 +26,7 @@ export interface RaiseImprovementInput {
   createdBy?: string | null;
 }
 
-export async function raiseImprovement(
-  db: Db,
-  organizationId: string,
-  input: RaiseImprovementInput
-): Promise<Improvement>;
-export async function raiseImprovement(
-  db: Db,
-  organizationId: string,
-  input: RaiseImprovementInput,
-  options: { swallowErrors: boolean }
-): Promise<Improvement | null>;
+/** Null only with `swallowErrors`; otherwise a failure throws. */
 export async function raiseImprovement(
   db: Db,
   organizationId: string,
@@ -121,6 +111,7 @@ export async function raiseOrAttachImprovement(
       messageId: input.messageId,
       createdBy: input.createdBy,
     });
+    if (!improvement) return null; // unreachable: no swallowErrors above
     return { improvement, attached: false };
   } catch (error) {
     if (options.swallowErrors) {

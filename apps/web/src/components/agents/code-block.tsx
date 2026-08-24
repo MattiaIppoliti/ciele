@@ -9,11 +9,9 @@ import { motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import {
   type AgentCodeLanguage,
@@ -21,6 +19,7 @@ import {
   useAgentCodeTokens,
 } from "@/components/agents/agent-code";
 import { SPRING_PRESS } from "@/lib/ease";
+import { useCopied } from "@/lib/hooks/use-copied";
 import { cn } from "@/lib/utils";
 
 export type CodeBlockStatus = "streaming" | "complete";
@@ -54,8 +53,7 @@ export function CodeBlock({
 }: CodeBlockProps) {
   const reduce = useReducedMotion() ?? false;
   const viewportRef = useRef<HTMLDivElement>(null);
-  const copyTimer = useRef<number | undefined>(undefined);
-  const [copied, setCopied] = useState(false);
+  const [copied, markCopied] = useCopied();
   const streaming = status === "streaming";
   const tokens = useAgentCodeTokens(code, language);
   const highlighted = useMemo(
@@ -68,13 +66,6 @@ export function CodeBlock({
     lines.push({ content, offset });
     offset += content.length + 1;
   }
-
-  useEffect(
-    () => () => {
-      if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    },
-    [],
-  );
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -98,10 +89,8 @@ export function CodeBlock({
     if (onCopy) await onCopy();
     else await navigator.clipboard?.writeText(code);
 
-    setCopied(true);
-    if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    copyTimer.current = window.setTimeout(() => setCopied(false), 1600);
-  }, [code, onCopy]);
+    markCopied();
+  }, [code, onCopy, markCopied]);
 
   return (
     <div

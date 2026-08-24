@@ -186,20 +186,6 @@ export async function createSupabaseContractContext(): Promise<DbContractContext
     userId,
     missingOrganizationId: randomUUID(),
     foreignOrganizationId,
-    // Seeds a real editor-role member (auth user + membership row) so
-    // member-scoped cases run against actual referential integrity.
-    seedOrgMember: async () => {
-      const memberId = await signUpUser(
-        pg,
-        `member-${randomUUID().slice(0, 8)}@contract-test.edu`
-      );
-      await pg.query(
-        `insert into public.organization_members (organization_id, user_id, role)
-         values ($1, $2, 'editor')`,
-        [organizationId, memberId]
-      );
-      return memberId;
-    },
     teardown: () => pg.close(),
   };
 }

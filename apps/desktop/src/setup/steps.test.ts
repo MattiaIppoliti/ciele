@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createSetupEngine } from "./engine";
 import { parseEnvFile } from "./secrets";
-import { BAG, SETUP_STEPS } from "./steps";
+import { SETUP_STEPS } from "./steps";
 import { fakePorts, type FakePortOptions, type FakePorts } from "./testing/fake-ports";
 import { FAKE_ENV_TEMPLATE as ENV_TEMPLATE } from "./testing/env-template";
 import type { SetupConfig } from "./ports";
@@ -359,12 +359,6 @@ describe("the step list itself", () => {
 
   it("marks as optional exactly the steps a working install can do without", () => {
     expect(SETUP_STEPS.filter((s) => s.optional).map((s) => s.id)).toEqual(["seed", "model"]);
-  });
-
-  it("leaves the env path in the bag for the host to use afterwards", async () => {
-    const { engine } = harness();
-    await engine.run();
-    expect(engine.bag()[BAG.envPath]).toBe("/data/.env");
   });
 
   it("every required step is reached without a single decision from the user", async () => {

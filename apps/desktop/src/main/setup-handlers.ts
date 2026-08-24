@@ -34,7 +34,7 @@ export interface SetupHost {
  * app and are versioned with it, so the stack a given build sets up is the one
  * that build was tested against. In development they are read from the repo.
  */
-export function deployDir(): string {
+function deployDir(): string {
   return app.isPackaged
     ? path.join(process.resourcesPath, "deploy")
     : path.join(app.getAppPath(), "..", "..", "deploy");
@@ -65,7 +65,7 @@ export function setupConfig(): SetupConfig {
   };
 }
 
-export function portsFor(host: SetupHost): SetupPorts {
+function portsFor(host: SetupHost): SetupPorts {
   const config = setupConfig();
   if (!host.fakePorts) return createRealPorts(config);
   // `--fake-ports`: the same scripted fakes the engine's tests use, so the

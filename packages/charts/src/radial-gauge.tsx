@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "./cn";
+import { cn } from "@agent-hub/ui";
 import { gaugeRingGeometry, ringDash } from "./gauge";
 
 /**

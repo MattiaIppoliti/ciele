@@ -51,7 +51,6 @@ import {
   type EscalationHelpDesk,
 } from "@/lib/escalation-desks";
 import {
-  backfillCollectionToGraph,
   beginWebsiteCrawl,
   embedConcept,
   enqueueDraftProposalJob,
@@ -142,7 +141,6 @@ import {
   deleteApiIntegrationOp,
   deleteProviderConnectionOp,
   disconnectSsoConnectionOp,
-  getApiIntegrationOp,
   setApiIntegrationOp,
   setEmbeddingConnectionOp,
   setSsoConnectionOp,
@@ -543,8 +541,8 @@ export async function uploadAssistantAvatarAction(
 }
 
 export async function deleteAssistantAction(id: string) {
-  // Cascade + per-Collection graph purge live in the operation (#620); the
-  // graph enqueue rides the `purgeCollectionGraph` port `runOperation` wires.
+  // Cascade lives in the operation (#620); knowledge is org-owned, so only
+  // the assistant's links die with it (PRD #726).
   await runOperation(deleteAssistantOp, { id });
 }
 
@@ -829,12 +827,6 @@ export interface ApiIntegrationView {
   endpoints: ApiEndpointSpec[];
 }
 
-export async function getApiIntegrationAction(
-  assistantId: string,
-): Promise<ApiIntegrationView | null> {
-  return runOperation(getApiIntegrationOp, { assistantId });
-}
-
 /**
  * Saves the assistant's one API integration. The credential is sealed here and
  * only here, the browser posts it in the clear over TLS exactly once, the same
@@ -907,21 +899,6 @@ export async function createProviderConnectionAction(
     displayName,
   });
   return result.error ? { error: result.error } : {};
-}
-
-/** Legacy compatibility path: hosted subscription connections are retired. */
-export async function createSubscriptionConnectionAction(
-  _provider: Provider,
-  _token: string,
-  _displayName?: string,
-): Promise<{ error?: string }> {
-  void _provider;
-  void _token;
-  void _displayName;
-  return {
-    error:
-      "Hosted Claude and ChatGPT subscription connections are retired. Use an API key or keyless enterprise auth.",
-  };
 }
 
 export async function createGoogleVertexFederatedConnectionAction(input: {
@@ -1053,39 +1030,6 @@ async function ingestNewSource(
     sourceUrl,
     originalObjectPath,
   });
-}
-
-export async function addTextSourceAction(
-  assistantId: string,
-  collectionId: string,
-  name: string,
-  text: string,
-) {
-  const extracted = await extractSourceText({ kind: "text", name, text });
-  await ingestNewSource(
-    assistantId,
-    collectionId,
-    extracted.name,
-    "text",
-    extracted.text,
-  );
-}
-
-export async function addUrlSourceAction(
-  assistantId: string,
-  collectionId: string,
-  url: string,
-) {
-  const extracted = await extractSourceText({ kind: "url", url });
-  await ingestNewSource(
-    assistantId,
-    collectionId,
-    extracted.name,
-    "url",
-    extracted.text,
-    undefined,
-    url,
-  );
 }
 
 /**
@@ -1790,25 +1734,6 @@ export async function deleteConceptAction(
   );
 }
 
-/**
- * Backfills a Knowledge Collection into its derived Knowledge Graph, the
- * on-demand counterpart to the automatic per-Concept sync (used to seed a
- * Collection that predates the graph, or to reconcile after an outage).
- * Idempotent; inert without a graph worker.
- */
-export async function backfillCollectionGraphAction(
-  assistantId: string,
-  collectionId: string,
-): Promise<{ enqueued: number }> {
-  return orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => backfillCollectionToGraph(collectionId, { db }),
-  );
-}
-
 // --- Conversations (preview history) ----------------------------------------------------
 
 export async function listConversationsAction(
@@ -1906,13 +1831,6 @@ export async function listImprovementsAction(): Promise<ImprovementListItem[]> {
   return db.listImprovements(session.organization.id);
 }
 
-export async function listImprovementMessagesAction(
-  improvementId: string,
-): Promise<ImprovementAssociation[]> {
-  const { db } = await requireMember();
-  return db.listImprovementMessages(improvementId);
-}
-
 /**
  * The three reads the Improvement detail page does, in one round trip, so the
  * Improvements drawer renders the same screen without a navigation.
@@ -1968,6 +1886,8 @@ export async function createImprovementFromMessageAction(
         createdBy: session.userId,
         messageId,
       });
+      // Null only under swallowErrors, which this call does not pass.
+      if (!improvement) throw new Error("Failed to raise the Improvement");
       // Flagging an answer for improvement is a thumbs-down: if it was
       // graph-served, score it 1 with the flag text so the graph demotes its
       // material (#389). Fail-soft / inert without a worker.
@@ -2315,16 +2235,6 @@ export async function saveEntitySyncConfigAction(
         mapping: input.mapping,
       });
       return {};
-    }
-  );
-}
-
-export async function deleteEntitySyncConfigAction(entityId: string): Promise<void> {
-  await orgMutation(
-    { capability: "edit", entities: [{ kind: "dataEntities" }] },
-    async ({ db, session }) => {
-      await requireOrgEntity(db, session.organization.id, entityId);
-      await db.deleteEntitySyncConfig(entityId);
     }
   );
 }

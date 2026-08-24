@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 vi.mock("./pinned-fetch", () => ({
   pinnedRequest: vi.fn(),
-  fetchPinnedPage: vi.fn(),
 }));
 
 import { lookup } from "node:dns/promises";

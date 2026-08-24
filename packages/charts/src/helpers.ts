@@ -1,4 +1,4 @@
-import type { DotChartDataPoint, DotPalette, DotSection } from "./types";
+import type { DotPalette, DotSection } from "./types";
 
 export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -43,12 +43,6 @@ export function interpolateHeight(
     (normalized[lowerIndex] ?? 0) * (1 - interp) +
       (normalized[upperIndex] ?? 0) * interp,
   );
-}
-
-export function skeletonHeight(columnIndex: number, rows: number): number {
-  const rand = Math.sin(columnIndex * 12.9898) * 43758.5453;
-  const frac = rand - Math.floor(rand);
-  return Math.round(frac * rows * 0.6 + rows * 0.2);
 }
 
 /**
@@ -124,11 +118,6 @@ export function toDenseDailySeries(
     out.push({ day, value: byDay.get(day) ?? 0 });
   }
   return out;
-}
-
-/** Sum of a dot-chart series' values. */
-export function seriesTotal(points: readonly DotChartDataPoint[]): number {
-  return points.reduce((acc, p) => acc + p.value, 0);
 }
 
 /**

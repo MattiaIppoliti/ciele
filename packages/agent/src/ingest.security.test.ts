@@ -12,13 +12,13 @@ vi.mock("./crawl4ai", async (importOriginal) => ({
 }));
 
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
-vi.mock("./pinned-fetch", () => ({ fetchPinnedPage: vi.fn() }));
+vi.mock("./pinned-fetch", () => ({ pinnedRequest: vi.fn() }));
 
 import { lookup } from "node:dns/promises";
 import { startCrawl } from "./apify";
 import { startCrawl4ai } from "./crawl4ai";
 import { beginWebsiteCrawl, finalizeWebsiteCrawl } from "./ingest";
-import { fetchPinnedPage } from "./pinned-fetch";
+import { pinnedRequest } from "./pinned-fetch";
 
 function pageResponse(
   text: string,
@@ -32,7 +32,7 @@ describe("Website Source crawl target safety", () => {
   const startCrawlMock = vi.mocked(startCrawl);
   const startCrawl4aiMock = vi.mocked(startCrawl4ai);
   const lookupMock = vi.mocked(lookup);
-  const fetchMock = vi.mocked(fetchPinnedPage);
+  const fetchMock = vi.mocked(pinnedRequest);
 
   beforeEach(() => {
     startCrawlMock.mockReset();

@@ -2,121 +2,101 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  ASSISTANT_AVATAR_MAX_BYTES,
-  decodePublicImageDataUrl,
-  extensionForPublicImage,
-  KNOWLEDGE_ORIGINAL_MAX_BYTES,
-  knowledgeFileExtension,
-  knowledgeOriginalPath,
-  publicAvatarPath,
+  uploadKnowledgeOriginal,
+  uploadPublicImageAsset,
   validateKnowledgeFile,
   validatePublicImageFile,
 } from "./assets";
 
-describe("public asset helpers", () => {
-  it("maps only safe browser image MIME types to extensions", () => {
-    expect(extensionForPublicImage("image/png")).toBe("png");
-    expect(extensionForPublicImage("image/jpeg")).toBe("jpg");
-    expect(extensionForPublicImage("image/webp")).toBe("webp");
-    expect(extensionForPublicImage("image/gif")).toBe("gif");
-    expect(extensionForPublicImage("image/svg+xml")).toBeNull();
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const ORIGINAL_MAX_BYTES = 25 * 1024 * 1024;
+
+/** Captures upload paths; the storage layer itself is not under test. */
+function fakeClient(uploads: Array<{ bucket: string; path: string }>) {
+  return {
+    storage: {
+      from: (bucket: string) => ({
+        upload: async (path: string) => {
+          uploads.push({ bucket, path });
+          return { error: null };
+        },
+        getPublicUrl: (path: string) => ({
+          data: { publicUrl: `https://cdn.test/${path}` },
+        }),
+      }),
+    },
+  } as unknown as SupabaseClient;
+}
+
+describe("public asset uploads", () => {
+  it("builds tenant-scoped avatar paths with no user filename, per kind", async () => {
+    const uploads: Array<{ bucket: string; path: string }> = [];
+    const client = fakeClient(uploads);
+    const cases = [
+      { kind: "assistant", type: "image/png", id: "asset_123", ext: "png" },
+      { kind: "organization", type: "image/jpeg", id: "logo_1", ext: "jpg" },
+      { kind: "profile", type: "image/webp", id: "photo_1", ext: "webp" },
+    ] as const;
+    for (const c of cases) {
+      const { path, publicUrl } = await uploadPublicImageAsset(client, {
+        organizationId: "org_123",
+        kind: c.kind,
+        file: new Blob(["x"], { type: c.type }),
+        id: c.id,
+      });
+      expect(path).toBe(`org/org_123/avatars/${c.kind}/${c.id}.${c.ext}`);
+      expect(publicUrl).toBe(`https://cdn.test/${path}`);
+    }
+    expect(uploads.map((u) => u.bucket)).toEqual([
+      "public-assets",
+      "public-assets",
+      "public-assets",
+    ]);
   });
 
-  it("builds tenant-scoped avatar paths with no user filename", () => {
+  it("validates image type and size (only safe browser image MIME types)", () => {
     expect(
-      publicAvatarPath({
-        organizationId: "org_123",
-        kind: "assistant",
-        mimeType: "image/png",
-        id: "asset_123",
-      })
-    ).toBe("org/org_123/avatars/assistant/asset_123.png");
-  });
-
-  it("scopes organization logo and profile photo paths under the org prefix", () => {
-    expect(
-      publicAvatarPath({
-        organizationId: "org_123",
-        kind: "organization",
-        mimeType: "image/jpeg",
-        id: "logo_1",
-      })
-    ).toBe("org/org_123/avatars/organization/logo_1.jpg");
-    expect(
-      publicAvatarPath({
-        organizationId: "org_123",
-        kind: "profile",
-        mimeType: "image/webp",
-        id: "photo_1",
-      })
-    ).toBe("org/org_123/avatars/profile/photo_1.webp");
-  });
-
-  it("validates image type and size", () => {
-    expect(
-      validatePublicImageFile({
-        type: "image/png",
-        size: ASSISTANT_AVATAR_MAX_BYTES,
-      })
+      validatePublicImageFile({ type: "image/png", size: AVATAR_MAX_BYTES })
     ).toEqual({ ok: true });
+    expect(validatePublicImageFile({ type: "image/gif", size: 100 })).toEqual({
+      ok: true,
+    });
     expect(
-      validatePublicImageFile({
-        type: "image/svg+xml",
-        size: 100,
-      })
+      validatePublicImageFile({ type: "image/svg+xml", size: 100 })
     ).toEqual({ ok: false, error: "Choose a PNG, JPEG, GIF, or WebP image" });
     expect(
-      validatePublicImageFile({
-        type: "image/png",
-        size: ASSISTANT_AVATAR_MAX_BYTES + 1,
-      })
+      validatePublicImageFile({ type: "image/png", size: AVATAR_MAX_BYTES + 1 })
     ).toEqual({
       ok: false,
       error: "Image is too large - the maximum supported size is 2 MB",
     });
   });
-
-  it("decodes supported legacy base64 data URLs", () => {
-    const decoded = decodePublicImageDataUrl("data:image/png;base64,aGVsbG8=");
-    expect(decoded.mimeType).toBe("image/png");
-    expect(Buffer.from(decoded.bytes).toString("utf8")).toBe("hello");
-  });
-
-  it("rejects legacy data URLs that are not safe image assets", () => {
-    expect(() => decodePublicImageDataUrl("https://example.edu/avatar.png")).toThrow(
-      "Expected a base64 image data URL"
-    );
-    expect(() =>
-      decodePublicImageDataUrl("data:image/svg+xml;base64,PHN2Zy8+")
-    ).toThrow("Choose a PNG, JPEG, GIF, or WebP image");
-  });
 });
 
-describe("knowledge original helpers", () => {
-  it("classifies only extractor-supported file types (PDF/DOCX/text)", () => {
-    expect(knowledgeFileExtension("Syllabus.PDF")).toBe("pdf");
-    expect(knowledgeFileExtension("notes.docx")).toBe("docx");
-    expect(knowledgeFileExtension("readme.md")).toBe("md");
-    expect(knowledgeFileExtension("data.csv")).toBe("csv");
-    expect(knowledgeFileExtension("logo.png")).toBeNull();
-    expect(knowledgeFileExtension("archive.zip")).toBeNull();
-    expect(knowledgeFileExtension("noextension")).toBeNull();
+describe("knowledge original uploads", () => {
+  it("builds tenant-scoped original paths with no user filename", async () => {
+    const uploads: Array<{ bucket: string; path: string }> = [];
+    const { path } = await uploadKnowledgeOriginal(fakeClient(uploads), {
+      organizationId: "org_123",
+      file: new File(["x"], "Course Handbook.PDF"),
+      id: "obj_123",
+    });
+    expect(path).toBe("org/org_123/knowledge/obj_123.pdf");
+    expect(uploads[0].bucket).toBe("knowledge-originals");
   });
 
-  it("builds tenant-scoped original paths with no user filename", () => {
-    expect(
-      knowledgeOriginalPath({
-        organizationId: "org_123",
-        filename: "Course Handbook.pdf",
-        id: "obj_123",
-      })
-    ).toBe("org/org_123/knowledge/obj_123.pdf");
-  });
-
-  it("enforces type and size limits at upload", () => {
+  it("enforces type and size limits at upload (PDF/DOCX/text only)", () => {
     expect(validateKnowledgeFile({ name: "a.pdf", size: 10 })).toEqual({ ok: true });
+    expect(validateKnowledgeFile({ name: "notes.docx", size: 10 })).toEqual({ ok: true });
+    expect(validateKnowledgeFile({ name: "readme.md", size: 10 })).toEqual({ ok: true });
+    expect(validateKnowledgeFile({ name: "data.csv", size: 10 })).toEqual({ ok: true });
     expect(validateKnowledgeFile({ name: "a.png", size: 10 })).toEqual({
+      ok: false,
+      error: "Upload a PDF, Word (.docx), Markdown, or text file",
+    });
+    expect(validateKnowledgeFile({ name: "noextension", size: 10 })).toEqual({
       ok: false,
       error: "Upload a PDF, Word (.docx), Markdown, or text file",
     });
@@ -125,7 +105,7 @@ describe("knowledge original helpers", () => {
       error: "The file is empty",
     });
     expect(
-      validateKnowledgeFile({ name: "a.pdf", size: KNOWLEDGE_ORIGINAL_MAX_BYTES + 1 })
+      validateKnowledgeFile({ name: "a.pdf", size: ORIGINAL_MAX_BYTES + 1 })
     ).toEqual({
       ok: false,
       error: "File is too large - the maximum supported size is 25 MB",

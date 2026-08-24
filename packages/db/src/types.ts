@@ -22,8 +22,6 @@ import type {
   ApiIntegration,
   ApiIntegrationInput,
   Assistant,
-  AssistantAccessEntry,
-  AssistantAccessRole,
   AssistantGoal,
   AssistantInput,
   AssistantPatch,
@@ -70,7 +68,6 @@ import type {
   ImprovementProposalStatus,
   InboxConversation,
   InsightsFilter,
-  InsightsMessage,
   InsightsOverview,
   Invite,
   KnowledgeCollection,
@@ -90,7 +87,6 @@ import type {
   OrgFaqEntry,
   OrgKnowledgeSourceFilter,
   OrgKnowledgeSourcePage,
-  OrgWebsiteSource,
   Organization,
   OrganizationPatch,
   Profile,
@@ -201,18 +197,6 @@ export interface Db {
   ): Promise<Assistant>;
   updateAssistant(id: string, patch: AssistantPatch): Promise<Assistant>;
   deleteAssistant(id: string): Promise<void>;
-
-  // Per-assistant access overrides ("Manage access", PRD #296).
-  // Reads/writes are org-Admin+ (RLS-enforced); a per-assistant admin
-  // override never grants access management.
-  listAssistantAccess(assistantId: string): Promise<AssistantAccessEntry[]>;
-  setAssistantAccess(
-    assistantId: string,
-    userId: string,
-    role: AssistantAccessRole
-  ): Promise<void>;
-  /** Back to "System Role" (removes the override row). */
-  clearAssistantAccess(assistantId: string, userId: string): Promise<void>;
 
   // Flows
   listFlows(assistantId: string): Promise<Flow[]>;
@@ -645,10 +629,6 @@ export interface Db {
   clearExpiredTraces(organizationId: string, cutoffIso: string): Promise<number>;
 
   // Insights (org-wide analytics)
-  /** All messages across the organization's assistants, trimmed for metrics. */
-  listInsightsMessages(organizationId: string): Promise<InsightsMessage[]>;
-  /** Crawled website sources across the organization. */
-  listWebsiteSources(organizationId: string): Promise<OrgWebsiteSource[]>;
   /**
    * Bounded Insights Overview (KPI cards + time series + breakdowns),
    * aggregated org-side by an RLS-safe SQL function in production and computed
@@ -855,11 +835,6 @@ export interface Db {
   ): Promise<FlowTrustEvent[]>;
 
   // Compost loop (weekly exhaust → proposed Improvements)
-  /** Published assistants in opted-in orgs whose last compost run predates dueBefore. */
-  listDueCompostAssistants(input: {
-    dueBefore: string;
-    limit: number;
-  }): Promise<DueCompostAssistant[]>;
   /**
    * Atomically claims due assistants for a compost pass (cross-org, service
    * role): stamps a per-assistant claim at window start so a second tick in the

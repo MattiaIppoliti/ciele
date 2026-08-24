@@ -25,6 +25,7 @@
  */
 
 import type { Provider } from "@agent-hub/core";
+import { bearerRequest } from "./bearer-fetch";
 import { redactBearerSecrets, trimTrailingSlash } from "./redact";
 
 /** Prefix for cognee dataset names so every Ciele collection is namespaced and
@@ -74,9 +75,8 @@ function requireConfig(): { baseUrl: string; token: string } {
 }
 
 /**
- * A single request to the worker. Centralizes the Bearer auth (never in the
- * body or the returned value), the JSON envelope, the timeout, and the
- * redaction of any error detail. Returns the parsed JSON body on success.
+ * A single request to the worker: the shared bearer JSON request with the
+ * worker's base URL, token, and secret redaction applied.
  */
 async function workerRequest<T>(
   path: string,
@@ -84,22 +84,13 @@ async function workerRequest<T>(
   timeoutMs: number
 ): Promise<T> {
   const { baseUrl, token } = requireConfig();
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMs),
+  return bearerRequest<T>(`${baseUrl}${path}`, {
+    token,
+    body,
+    timeoutMs,
+    errorLabel: `Graph worker ${path} failed`,
+    redact: redactGraphWorkerSecrets,
   });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Graph worker ${path} failed (${response.status}): ${redactGraphWorkerSecrets(detail).slice(0, 200)}`
-    );
-  }
-  return (await response.json().catch(() => ({}))) as T;
 }
 
 /**

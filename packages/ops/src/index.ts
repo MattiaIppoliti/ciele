@@ -10,6 +10,7 @@
  */
 
 export type { MutatedEntity } from "./entities";
+export { escapeCsvField, parseCsv } from "./csv";
 export {
   OperationError,
   defineOperation,
@@ -152,7 +153,6 @@ export {
   deleteApiIntegrationOp,
   deleteProviderConnectionOp,
   disconnectSsoConnectionOp,
-  federatedProviderInputSchema,
   getApiIntegrationOp,
   getSsoConnectionOp,
   listProviderConnectionsOp,

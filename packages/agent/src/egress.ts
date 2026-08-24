@@ -1,4 +1,4 @@
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
 
@@ -10,7 +10,7 @@ import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
  * (`pinned-fetch.ts`) and re-validating every redirect hop.
  *
  * Policy: docs/audits/api-request-egress-policy.md (issue #173). Consumers:
- * the website crawler (via `crawl-target.ts`), knowledge URL extraction
+ * the website crawlers (`local-crawl.ts`, `ingest.ts`), knowledge URL extraction
  * (`extract.ts`), the `fetchUrl` built-in (`tools.ts`), the API catalogue's
  * query tool (`api-integration.ts`, which validates the path against the
  * catalogue *before* reaching this gate, #559) and the `api_request` Flow
@@ -42,77 +42,34 @@ export interface EgressPolicy {
   allowLoopback?: boolean;
 }
 
-function ipv4Octets(address: string): number[] | null {
-  if (isIP(address) !== 4) return null;
-  return address.split(".").map(Number);
-}
-
-function isBlockedIpv4(address: string, allowLoopback: boolean): boolean {
-  const octets = ipv4Octets(address);
-  if (!octets) return false;
-  const [a, b] = octets;
-  return (
-    a === 0 ||
-    a === 10 ||
-    (a === 127 && !allowLoopback) ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    a >= 224
-  );
-}
-
-function ipv6Words(address: string): number[] | null {
-  let normalized = address.toLowerCase().split("%")[0];
-  if (normalized.includes(".")) {
-    const separator = normalized.lastIndexOf(":");
-    const octets = ipv4Octets(normalized.slice(separator + 1));
-    if (!octets) return null;
-    normalized = `${normalized.slice(0, separator)}:${(
-      (octets[0] << 8) |
-      octets[1]
-    ).toString(16)}:${((octets[2] << 8) | octets[3]).toString(16)}`;
+/**
+ * Private/internal ranges as a `net.BlockList`; a v4-mapped IPv6 address
+ * (`::ffff:10.1.2.3`) matches the IPv4 subnet rules directly, so no manual
+ * unwrapping is needed. Loopback ranges are only added on the strict list.
+ */
+function buildBlockList(allowLoopback: boolean): BlockList {
+  const list = new BlockList();
+  list.addSubnet("0.0.0.0", 8, "ipv4");
+  list.addSubnet("10.0.0.0", 8, "ipv4");
+  list.addSubnet("100.64.0.0", 10, "ipv4");
+  list.addSubnet("169.254.0.0", 16, "ipv4");
+  list.addSubnet("172.16.0.0", 12, "ipv4");
+  list.addSubnet("192.168.0.0", 16, "ipv4");
+  list.addSubnet("198.18.0.0", 15, "ipv4");
+  list.addSubnet("224.0.0.0", 3, "ipv4");
+  list.addSubnet("::", 128, "ipv6");
+  list.addSubnet("fc00::", 7, "ipv6");
+  list.addSubnet("fe80::", 10, "ipv6");
+  list.addSubnet("ff00::", 8, "ipv6");
+  if (!allowLoopback) {
+    list.addSubnet("127.0.0.0", 8, "ipv4");
+    list.addSubnet("::1", 128, "ipv6");
   }
-
-  const halves = normalized.split("::");
-  if (halves.length > 2) return null;
-  const left = halves[0] ? halves[0].split(":") : [];
-  const right = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
-  const zeroCount = halves.length === 2 ? 8 - left.length - right.length : 0;
-  if (zeroCount < 0 || (halves.length === 1 && left.length !== 8)) return null;
-  const parts = [...left, ...Array(zeroCount).fill("0"), ...right];
-  const words = parts.map((part) => Number.parseInt(part, 16));
-  return words.length === 8 && words.every((word) => Number.isInteger(word) && word >= 0 && word <= 0xffff)
-    ? words
-    : null;
+  return list;
 }
 
-function isBlockedIpv6(address: string, allowLoopback: boolean): boolean {
-  const words = ipv6Words(address);
-  if (!words) return false;
-  const unspecified = words.every((word) => word === 0);
-  const loopback = words.slice(0, 7).every((word) => word === 0) && words[7] === 1;
-  const uniqueLocal = (words[0] & 0xfe00) === 0xfc00;
-  const linkLocal = (words[0] & 0xffc0) === 0xfe80;
-  const multicast = (words[0] & 0xff00) === 0xff00;
-  const ipv4Mapped =
-    words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
-  if (ipv4Mapped) {
-    const mapped = `${words[6] >> 8}.${words[6] & 0xff}.${words[7] >> 8}.${
-      words[7] & 0xff
-    }`;
-    return isBlockedIpv4(mapped, allowLoopback);
-  }
-  return (
-    unspecified ||
-    (loopback && !allowLoopback) ||
-    uniqueLocal ||
-    linkLocal ||
-    multicast
-  );
-}
+const strictBlockList = buildBlockList(false);
+const loopbackAllowedBlockList = buildBlockList(true);
 
 function normalizedHostname(hostname: string): string {
   return hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
@@ -130,10 +87,11 @@ function isBlockedHostname(hostname: string, allowLoopback: boolean): boolean {
 }
 
 function isBlockedAddress(address: string, allowLoopback: boolean): boolean {
-  return (
-    isBlockedIpv4(address, allowLoopback) ||
-    isBlockedIpv6(address, allowLoopback)
-  );
+  const plain = address.split("%")[0];
+  const family = isIP(plain);
+  if (!family) return false;
+  const list = allowLoopback ? loopbackAllowedBlockList : strictBlockList;
+  return list.check(plain, family === 6 ? "ipv6" : "ipv4");
 }
 
 export interface ValidatedEgressTarget {

@@ -38,6 +38,21 @@ function localFile(path: string, type?: string): File {
   return new File([bytes], basename(path), type ? { type } : undefined);
 }
 
+/**
+ * `--assistants a,b` for the commands that add knowledge: PRD #726 gives a
+ * Collection no owner, so the links are the only reach and the server refuses
+ * an empty set. Undefined when the flag is missing or empty, so the caller
+ * prints usage instead of forwarding a request that cannot succeed.
+ * `sources link` parses the flag itself, there an empty list legitimately
+ * means "remove every link".
+ */
+function linkTargets(
+  flags: Record<string, string | boolean>
+): string[] | undefined {
+  const ids = (str(flags.assistants) ?? "").split(",").filter(Boolean);
+  return ids.length > 0 ? ids : undefined;
+}
+
 export async function collections(
   verb: string | undefined,
   ctx: CommandContext
@@ -72,34 +87,48 @@ export async function sources(
     case "add-text": {
       const text = str(flags.text);
       const file = str(flags.file);
-      if (!rest[0] || (!text && !file)) {
+      const assistants = linkTargets(flags);
+      if (!rest[0] || (!text && !file) || !assistants) {
         return usage(
           deps,
-          "sources add-text <collectionId> (--text <t> | --file <path>) [--name <n>]"
+          "sources add-text <collectionId> (--text <t> | --file <path>) --assistants <a,b,…> [--name <n>]"
         );
       }
       const source = await client.knowledge.addTextSource(rest[0], {
         name: str(flags.name) ?? (file ? basename(file) : undefined),
         text: text ?? readFileSync(file!, "utf8"),
+        assistantIds: assistants,
       });
       emit(`Created source ${source.id} (${source.status})`, source);
       return EXIT.ok;
     }
     case "add-url": {
       const url = str(flags.url) ?? rest[1];
-      if (!rest[0] || !url) {
-        return usage(deps, "sources add-url <collectionId> --url <url>");
+      const assistants = linkTargets(flags);
+      if (!rest[0] || !url || !assistants) {
+        return usage(
+          deps,
+          "sources add-url <collectionId> --url <url> --assistants <a,b,…>"
+        );
       }
-      const source = await client.knowledge.addUrlSource(rest[0], url);
+      const source = await client.knowledge.addUrlSource(rest[0], url, assistants);
       emit(`Created source ${source.id} (${source.status})`, source);
       return EXIT.ok;
     }
     case "add-file": {
       const file = str(flags.file);
-      if (!rest[0] || !file) {
-        return usage(deps, "sources add-file <collectionId> --file <path>");
+      const assistants = linkTargets(flags);
+      if (!rest[0] || !file || !assistants) {
+        return usage(
+          deps,
+          "sources add-file <collectionId> --file <path> --assistants <a,b,…>"
+        );
       }
-      const source = await client.knowledge.addFileSource(rest[0], localFile(file));
+      const source = await client.knowledge.addFileSource(
+        rest[0],
+        localFile(file),
+        assistants
+      );
       emit(`Created source ${source.id} (${source.status})`, source);
       return EXIT.ok;
     }
@@ -186,21 +215,34 @@ export async function faqs(
     case "add": {
       const question = str(flags.question);
       const answer = str(flags.answer);
-      if (!rest[0] || !question || !answer) {
-        return usage(deps, "faqs add <collectionId> --question <q> --answer <a>");
+      const assistants = linkTargets(flags);
+      if (!rest[0] || !question || !answer || !assistants) {
+        return usage(
+          deps,
+          "faqs add <collectionId> --question <q> --answer <a> --assistants <a,b,…>"
+        );
       }
-      const faq = await client.knowledge.addFaq(rest[0], { question, answer });
+      const faq = await client.knowledge.addFaq(rest[0], {
+        question,
+        answer,
+        assistantIds: assistants,
+      });
       emit(`Created FAQ ${faq.id} ("${faq.question}")`, faq);
       return EXIT.ok;
     }
     case "import": {
       const file = str(flags.file);
-      if (!rest[0] || !file) {
-        return usage(deps, "faqs import <collectionId> --file <faqs.csv>");
+      const assistants = linkTargets(flags);
+      if (!rest[0] || !file || !assistants) {
+        return usage(
+          deps,
+          "faqs import <collectionId> --file <faqs.csv> --assistants <a,b,…>"
+        );
       }
       const result = await client.knowledge.importFaqs(
         rest[0],
-        localFile(file, "text/csv")
+        localFile(file, "text/csv"),
+        assistants
       );
       const skipped =
         result.skipped.length > 0 ? `, skipped: ${result.skipped.join("; ")}` : "";

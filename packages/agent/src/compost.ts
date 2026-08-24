@@ -272,6 +272,8 @@ async function landProposal(
     title: `[${proposal.kind.replace("_", " ")}] ${proposal.title}`,
     messageId: evidence[0]?.messageId ?? null,
   });
+  // Null only under swallowErrors, which this call does not pass.
+  if (!improvement) return 0;
   await db.updateImprovement(improvement.id, {
     description: `${proposal.rationale}\n\n---\n\nProposed draft:\n\n${proposal.draft}`,
     tags: [COMPOST_PROPOSAL_TAG],

@@ -18,6 +18,14 @@ import type { Db } from "./types";
  *   resolved to their owning row first and refused (`cross_org`) when it
  *   belongs to another Organization. A route can therefore never leak or
  *   mutate another tenant's rows by forwarding unvalidated input.
+ *
+ * Id-addressed methods come in exactly two behaviors, each a resolver-keyed
+ * table below:
+ * - `GUARDED_METHODS` ("resolve owner → throw"): the id is resolved to its
+ *   owning Organization and a foreign or missing row throws `cross_org`.
+ * - `NULL_READ_METHODS` ("post-check read → null"): single-row reads where a
+ *   foreign row reads as absent, not as an error, the API surface must not
+ *   disclose that the id exists elsewhere.
  */
 
 /** Methods whose first parameter is an organizationId, pinned on call. */
@@ -44,6 +52,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listApiKeys",
   "createApiKey",
   "listOrgKnowledgeSources",
+  "listOrgFaqs",
   "getOrCreateOrgLibraryCollection",
   "clearSsoConnection",
   "listProviderConnections",
@@ -53,104 +62,206 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
 ]);
 
 /**
- * Methods whose first parameter is an assistantId, guarded by resolving the
- * Assistant and checking its Organization before delegating.
+ * Resolves the Organization that owns the row an id addresses; null when the
+ * row (or anything on its ownership chain) does not exist.
  */
-const ASSISTANT_SCOPED_METHODS = new Set<keyof Db>([
-  "listFlows",
-  "createFlow",
-  "reorderFlows",
-  "listCollections",
-  "listAssistantSkills",
-  "setAssistantSkills",
-  "createPublication",
-  "deletePublications",
-  "getLatestPublication",
-  "listAssistantGoals",
-  "createAssistantGoal",
-  "getApiIntegration",
-  "deleteApiIntegration",
-]);
+type OwnerResolver = (
+  inner: Db,
+  id: string,
+  organizationId: string
+) => Promise<string | null>;
 
-/** Assistant-id-addressed mutations, same guard as above (single id arg). */
-const ASSISTANT_ID_METHODS = new Set<keyof Db>([
-  "updateAssistant",
-  "deleteAssistant",
-]);
+const assistantOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getAssistant(id))?.organizationId ?? null;
+
+const flowOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const flow = await inner.getFlow(id);
+  return flow ? assistantOwner(inner, flow.assistantId, organizationId) : null;
+};
 
 /**
- * Methods whose first parameter is a flowId, guarded by resolving
- * flow → assistant → organization.
+ * Collection ownership (PRD #726 contract): Collections are org-owned, so
+ * the `organization_id` stamp is the whole check.
  */
-const FLOW_SCOPED_METHODS = new Set<keyof Db>(["updateFlow", "deleteFlow"]);
+const collectionOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getCollection(id))?.organizationId ?? null;
+
+const sourceOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const source = await inner.getSource(id);
+  return source
+    ? collectionOwner(inner, source.collectionId, organizationId)
+    : null;
+};
+
+const conversationOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const conversation = await inner.getConversation(id);
+  return conversation
+    ? assistantOwner(inner, conversation.assistantId, organizationId)
+    : null;
+};
+
+/** messageId → conversation → assistant → organization. */
+const messageOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const conversation = await inner.getConversationForMessage(id);
+  return conversation
+    ? assistantOwner(inner, conversation.assistantId, organizationId)
+    : null;
+};
+
+const helpDeskOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getHelpDesk(id))?.organizationId ?? null;
+
+/** Improvements carry their organizationId directly: one resolve (#625). */
+const improvementOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getImprovement(id))?.organizationId ?? null;
+
+const memoryOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getMemory(id))?.organizationId ?? null;
+
+const publicationOwner: OwnerResolver = async (inner, id, organizationId) => {
+  const publication = await inner.getPublication(id);
+  return publication
+    ? assistantOwner(inner, publication.assistantId, organizationId)
+    : null;
+};
+
+const skillOwner: OwnerResolver = async (inner, id) =>
+  (await inner.table("skills").get(id))?.organizationId ?? null;
+
+const entityOwner: OwnerResolver = async (inner, id) =>
+  (await inner.table("entities").get(id))?.organizationId ?? null;
+
+/** Rows only reachable by membership in an org-scoped list. */
+const inviteOwner: OwnerResolver = async (inner, id, organizationId) =>
+  (await inner.listInvites(organizationId)).some((invite) => invite.id === id)
+    ? organizationId
+    : null;
+
+const apiKeyOwner: OwnerResolver = async (inner, id, organizationId) =>
+  (await inner.listApiKeys(organizationId)).some((key) => key.id === id)
+    ? organizationId
+    : null;
+
+const providerConnectionOwner: OwnerResolver = async (
+  inner,
+  id,
+  organizationId
+) =>
+  (await inner.listProviderConnections(organizationId)).some(
+    (connection) => connection.id === id
+  )
+    ? organizationId
+    : null;
+
+const alertOwner: OwnerResolver = async (inner, id, organizationId) =>
+  (await inner.listAlerts(organizationId)).some((alert) => alert.id === id)
+    ? organizationId
+    : null;
+
+const supportChannelOwner: OwnerResolver = async (
+  inner,
+  id,
+  organizationId
+) => {
+  for (const desk of await inner.listHelpDesks(organizationId)) {
+    const channels = await inner.listSupportChannels(desk.id);
+    if (channels.some((channel) => channel.id === id)) return organizationId;
+  }
+  return null;
+};
+
+const goalOwner: OwnerResolver = async (inner, id, organizationId) => {
+  for (const assistant of await inner.listAssistants(organizationId)) {
+    const goals = await inner.listAssistantGoals(assistant.id);
+    if (goals.some((goal) => goal.id === id)) return organizationId;
+  }
+  return null;
+};
 
 /**
- * Methods whose first parameter is a collectionId, guarded by resolving
- * collection → assistant → organization (#622).
+ * "Resolve owner → throw" family: the first argument is an id whose owning
+ * Organization must be the pinned one, otherwise `cross_org`.
  */
-const COLLECTION_SCOPED_METHODS = new Set<keyof Db>([
-  "listSources",
-  "listConcepts",
-]);
+const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
+  // assistantId-addressed
+  listFlows: assistantOwner,
+  createFlow: assistantOwner,
+  reorderFlows: assistantOwner,
+  listCollections: assistantOwner,
+  listAssistantSkills: assistantOwner,
+  setAssistantSkills: assistantOwner,
+  createPublication: assistantOwner,
+  deletePublications: assistantOwner,
+  getLatestPublication: assistantOwner,
+  listAssistantGoals: assistantOwner,
+  createAssistantGoal: assistantOwner,
+  getApiIntegration: assistantOwner,
+  deleteApiIntegration: assistantOwner,
+  updateAssistant: assistantOwner,
+  deleteAssistant: assistantOwner,
+  // flow → assistant → organization
+  updateFlow: flowOwner,
+  deleteFlow: flowOwner,
+  // collection → organization (#622)
+  listSources: collectionOwner,
+  listConcepts: collectionOwner,
+  // source → collection → organization (#622). The link mutations (#726)
+  // get an extra assistant-side check in their dedicated branch below.
+  deleteSource: sourceOwner,
+  listSourceAssistantLinks: sourceOwner,
+  // conversation → assistant → organization (#624)
+  listMessages: conversationOwner,
+  setConversationPinned: conversationOwner,
+  updateConversationMetadata: conversationOwner,
+  deleteConversation: conversationOwner,
+  setMessageFeedback: messageOwner,
+  // improvements (#625)
+  updateImprovement: improvementOwner,
+  listImprovementMessages: improvementOwner,
+  getImprovementProposal: improvementOwner,
+  // generic-table rows
+  upsertEntityRecords: entityOwner,
+  listEntityRecords: entityOwner,
+  countEntityRecords: entityOwner,
+  queryEntityRecords: entityOwner,
+  deleteSkill: skillOwner,
+  // help desks + support channels
+  updateHelpDesk: helpDeskOwner,
+  deleteHelpDesk: helpDeskOwner,
+  listSupportChannels: helpDeskOwner,
+  createSupportChannel: helpDeskOwner,
+  reorderSupportChannels: helpDeskOwner,
+  setTicketingIntegration: helpDeskOwner,
+  clearTicketingIntegration: helpDeskOwner,
+  updateSupportChannel: supportChannelOwner,
+  deleteSupportChannel: supportChannelOwner,
+  // goals
+  updateAssistantGoal: goalOwner,
+  deleteAssistantGoal: goalOwner,
+  // rows found by membership in an org-scoped list
+  revokeInvite: inviteOwner,
+  revokeApiKey: apiKeyOwner,
+  deleteProviderConnection: providerConnectionOwner,
+  resolveAlert: alertOwner,
+  deleteMemory: memoryOwner,
+};
 
 /**
- * Source-id-addressed methods, guarded source → collection → org (#622).
- * The link mutations (#726) validate their assistant ids in the ops layer
- * (requireLinkTargets), so the guard here only needs the source's tenancy.
+ * "Post-check read → null" family: single-row reads where a foreign (or
+ * broken-chain) row reads as absent rather than erroring.
  */
-const SOURCE_ID_METHODS = new Set<keyof Db>([
-  "deleteSource",
-  "listSourceAssistantLinks",
-  "setSourceAssistantLinks",
-  "setSourceDirectAccess",
-]);
-
-/**
- * Methods whose first parameter is a conversationId, guarded by resolving
- * conversation → assistant → organization (#624).
- */
-const CONVERSATION_SCOPED_METHODS = new Set<keyof Db>([
-  "listMessages",
-  "setConversationPinned",
-  "updateConversationMetadata",
-  "deleteConversation",
-]);
-
-const MESSAGE_SCOPED_METHODS = new Set<keyof Db>(["setMessageFeedback"]);
-
-/**
- * Methods whose first parameter is an improvementId, Improvements carry
- * their organizationId directly, so the guard is one resolve (#625).
- */
-const IMPROVEMENT_SCOPED_METHODS = new Set<keyof Db>([
-  "updateImprovement",
-  "listImprovementMessages",
-  "getImprovementProposal",
-]);
-
-const ENTITY_SCOPED_METHODS = new Set<keyof Db>([
-  "upsertEntityRecords",
-  "listEntityRecords",
-  "countEntityRecords",
-  "queryEntityRecords",
-]);
-
-const HELP_DESK_SCOPED_METHODS = new Set<keyof Db>([
-  "updateHelpDesk",
-  "deleteHelpDesk",
-  "listSupportChannels",
-  "createSupportChannel",
-  "reorderSupportChannels",
-  "setTicketingIntegration",
-  "clearTicketingIntegration",
-]);
-
-const SUPPORT_CHANNEL_SCOPED_METHODS = new Set<keyof Db>([
-  "updateSupportChannel",
-  "deleteSupportChannel",
-]);
-
-const SKILL_SCOPED_METHODS = new Set<keyof Db>(["deleteSkill"]);
+const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
+  getAssistant: assistantOwner,
+  getFlow: flowOwner,
+  getCollection: collectionOwner,
+  getSource: sourceOwner,
+  getConversation: conversationOwner,
+  getConversationForMessage: messageOwner,
+  getPublication: publicationOwner,
+  getHelpDesk: helpDeskOwner,
+  getImprovement: improvementOwner,
+  getMemory: memoryOwner,
+};
 
 /**
  * Tables exposed through the generic accessor over the API-key surface.
@@ -202,11 +313,6 @@ function pinTableAccessor<
   } as T;
 }
 
-const GOAL_SCOPED_METHODS = new Set<keyof Db>([
-  "updateAssistantGoal",
-  "deleteAssistantGoal",
-]);
-
 export type OrgPinnedDbErrorReason = "not_exposed" | "cross_org";
 
 export class OrgPinnedDbError extends Error {
@@ -228,23 +334,12 @@ export class OrgPinnedDbError extends Error {
  * allow-lists throws, and every id argument is resolved before it is trusted.
  */
 export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
-  async function assertAssistantOwned(method: string, assistantId: unknown) {
-    const assistant = await inner.getAssistant(String(assistantId));
-    if (!assistant || assistant.organizationId !== organizationId) {
-      throw new OrgPinnedDbError(method, "cross_org");
-    }
-  }
-
-  /**
-   * Collection ownership (PRD #726 contract): Collections are org-owned, so
-   * the `organization_id` stamp is the whole check.
-   */
-  async function assertCollectionOwned(
+  async function assertOwner(
     method: string,
-    collectionId: unknown
-  ): Promise<void> {
-    const collection = await inner.getCollection(String(collectionId));
-    if (!collection || collection.organizationId !== organizationId) {
+    resolver: OwnerResolver,
+    id: unknown
+  ) {
+    if ((await resolver(inner, String(id), organizationId)) !== organizationId) {
       throw new OrgPinnedDbError(method, "cross_org");
     }
   }
@@ -285,18 +380,6 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         };
       }
 
-      if (method === "getFlow") {
-        // Post-check read like getAssistant: foreign rows read as absent.
-        return async (...args: unknown[]) => {
-          const flow = await inner.getFlow(String(args[0]));
-          if (!flow) return null;
-          const assistant = await inner.getAssistant(flow.assistantId);
-          return assistant && assistant.organizationId === organizationId
-            ? flow
-            : null;
-        };
-      }
-
       if (method === "listOrganizations") {
         return async () =>
           (await inner.listOrganizations()).filter(
@@ -304,221 +387,11 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
           );
       }
 
-      if (method === "revokeInvite") {
-        return async (...args: unknown[]) => {
-          const owned = (await inner.listInvites(organizationId)).some(
-            (invite) => invite.id === String(args[0])
-          );
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
-          return call(...args);
-        };
-      }
-
-      if (method === "revokeApiKey") {
-        return async (...args: unknown[]) => {
-          const owned = (await inner.listApiKeys(organizationId)).some(
-            (key) => key.id === String(args[0])
-          );
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
-          return call(...args);
-        };
-      }
-
       if (method === "setApiIntegration") {
         return async (...args: unknown[]) => {
           const input = args[0] as { assistantId?: unknown; organizationId?: unknown };
-          await assertAssistantOwned(String(prop), input.assistantId);
+          await assertOwner(String(prop), assistantOwner, input.assistantId);
           return call({ ...input, organizationId });
-        };
-      }
-
-      if (method === "deleteProviderConnection") {
-        return async (...args: unknown[]) => {
-          const owned = (await inner.listProviderConnections(organizationId)).some(
-            (connection) => connection.id === String(args[0])
-          );
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
-          return call(...args);
-        };
-      }
-
-      if (method === "getAssistant") {
-        // Post-check read: a foreign row reads as absent, not as an error,
-        // the API surface must not disclose that the id exists elsewhere.
-        return async (...args: unknown[]) => {
-          const assistant = await inner.getAssistant(String(args[0]));
-          return assistant && assistant.organizationId === organizationId
-            ? assistant
-            : null;
-        };
-      }
-
-      if (method === "getConversationForMessage") {
-        return async (...args: unknown[]) => {
-          const conversation = await inner.getConversationForMessage(String(args[0]));
-          if (!conversation) return null;
-          const assistant = await inner.getAssistant(conversation.assistantId);
-          return assistant && assistant.organizationId === organizationId
-            ? conversation
-            : null;
-        };
-      }
-
-      if (MESSAGE_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const conversation = await inner.getConversationForMessage(String(args[0]));
-          if (!conversation) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertAssistantOwned(String(prop), conversation.assistantId);
-          return call(...args);
-        };
-      }
-
-      if (method === "getHelpDesk") {
-        return async (...args: unknown[]) => {
-          const desk = await inner.getHelpDesk(String(args[0]));
-          return desk && desk.organizationId === organizationId ? desk : null;
-        };
-      }
-
-      if (HELP_DESK_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const desk = await inner.getHelpDesk(String(args[0]));
-          if (!desk || desk.organizationId !== organizationId) {
-            throw new OrgPinnedDbError(String(prop), "cross_org");
-          }
-          return call(...args);
-        };
-      }
-
-      if (SUPPORT_CHANNEL_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const channelId = String(args[0]);
-          const desks = await inner.listHelpDesks(organizationId);
-          let owned = false;
-          for (const desk of desks) {
-            const channels = await inner.listSupportChannels(desk.id);
-            if (channels.some((channel) => channel.id === channelId)) {
-              owned = true;
-              break;
-            }
-          }
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
-          return call(...args);
-        };
-      }
-
-      if (SKILL_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const skill = await inner.table("skills").get(String(args[0]));
-          if (!skill || skill.organizationId !== organizationId) {
-            throw new OrgPinnedDbError(String(prop), "cross_org");
-          }
-          return call(...args);
-        };
-      }
-
-      if (GOAL_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const goalId = String(args[0]);
-          const assistants = await inner.listAssistants(organizationId);
-          for (const assistant of assistants) {
-            const goals = await inner.listAssistantGoals(assistant.id);
-            if (goals.some((goal) => goal.id === goalId)) return call(...args);
-          }
-          throw new OrgPinnedDbError(String(prop), "cross_org");
-        };
-      }
-
-      if (method === "resolveAlert") {
-        return async (...args: unknown[]) => {
-          const owned = (await inner.listAlerts(organizationId)).some(
-            (alert) => alert.id === String(args[0])
-          );
-          if (!owned) throw new OrgPinnedDbError(String(prop), "cross_org");
-          return call(...args);
-        };
-      }
-      if (ENTITY_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const entity = await inner.table("entities").get(String(args[0]));
-          if (!entity || entity.organizationId !== organizationId) {
-            throw new OrgPinnedDbError(String(prop), "cross_org");
-          }
-          return call(...args);
-        };
-      }
-
-      if (method === "deleteMemory") {
-        return async (...args: unknown[]) => {
-          const memory = await inner.getMemory(String(args[0]));
-          if (!memory || memory.organizationId !== organizationId) {
-            throw new OrgPinnedDbError(String(prop), "cross_org");
-          }
-          return call(...args);
-        };
-      }
-
-      if (method === "getMemory") {
-        return async (...args: unknown[]) => {
-          const memory = await inner.getMemory(String(args[0]));
-          return memory && memory.organizationId === organizationId ? memory : null;
-        };
-      }
-
-      if (
-        ASSISTANT_SCOPED_METHODS.has(method) ||
-        ASSISTANT_ID_METHODS.has(method)
-      ) {
-        return async (...args: unknown[]) => {
-          await assertAssistantOwned(String(prop), args[0]);
-          return call(...args);
-        };
-      }
-
-      if (FLOW_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const flow = await inner.getFlow(String(args[0]));
-          if (!flow) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertAssistantOwned(String(prop), flow.assistantId);
-          return call(...args);
-        };
-      }
-
-      if (method === "getCollection") {
-        return async (...args: unknown[]) => {
-          const collection = await inner.getCollection(String(args[0]));
-          if (!collection) return null;
-          return collection.organizationId === organizationId
-            ? collection
-            : null;
-        };
-      }
-
-      if (COLLECTION_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          await assertCollectionOwned(String(prop), args[0]);
-          return call(...args);
-        };
-      }
-
-      if (method === "getSource") {
-        return async (...args: unknown[]) => {
-          const source = await inner.getSource(String(args[0]));
-          if (!source) return null;
-          try {
-            await assertCollectionOwned(String(prop), source.collectionId);
-          } catch {
-            return null;
-          }
-          return source;
-        };
-      }
-
-      if (method === "createSource") {
-        return async (...args: unknown[]) => {
-          const input = args[0] as { collectionId?: unknown };
-          await assertCollectionOwned(String(prop), input?.collectionId);
-          return call(...args);
         };
       }
 
@@ -530,85 +403,39 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
         method === "setSourceDirectAccess"
       ) {
         return async (...args: unknown[]) => {
-          const source = await inner.getSource(String(args[0]));
-          if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertCollectionOwned(String(prop), source.collectionId);
+          await assertOwner(String(prop), sourceOwner, args[0]);
           const assistantIds =
             method === "setSourceAssistantLinks"
               ? (args[1] as string[])
               : [String(args[1])];
           for (const assistantId of assistantIds) {
-            await assertAssistantOwned(String(prop), assistantId);
+            await assertOwner(String(prop), assistantOwner, assistantId);
           }
           return call(...args);
         };
       }
 
-      if (method === "listSourceAssistantLinks") {
+      if (method === "createSource") {
         return async (...args: unknown[]) => {
-          const source = await inner.getSource(String(args[0]));
-          if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertCollectionOwned(String(prop), source.collectionId);
+          const input = args[0] as { collectionId?: unknown };
+          await assertOwner(String(prop), collectionOwner, input?.collectionId);
           return call(...args);
         };
       }
 
-      if (SOURCE_ID_METHODS.has(method)) {
+      const guard = GUARDED_METHODS[method];
+      if (guard) {
         return async (...args: unknown[]) => {
-          const source = await inner.getSource(String(args[0]));
-          if (!source) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertCollectionOwned(String(prop), source.collectionId);
+          await assertOwner(String(prop), guard, args[0]);
           return call(...args);
         };
       }
 
-      if (method === "getConversation") {
+      const readOwner = NULL_READ_METHODS[method];
+      if (readOwner) {
         return async (...args: unknown[]) => {
-          const conversation = await inner.getConversation(String(args[0]));
-          if (!conversation) return null;
-          const assistant = await inner.getAssistant(conversation.assistantId);
-          return assistant && assistant.organizationId === organizationId
-            ? conversation
-            : null;
-        };
-      }
-
-      if (CONVERSATION_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const conversation = await inner.getConversation(String(args[0]));
-          if (!conversation) throw new OrgPinnedDbError(String(prop), "cross_org");
-          await assertAssistantOwned(String(prop), conversation.assistantId);
-          return call(...args);
-        };
-      }
-
-      if (method === "getPublication") {
-        return async (...args: unknown[]) => {
-          const publication = await inner.getPublication(String(args[0]));
-          if (!publication) return null;
-          const assistant = await inner.getAssistant(publication.assistantId);
-          return assistant && assistant.organizationId === organizationId
-            ? publication
-            : null;
-        };
-      }
-
-      if (method === "getImprovement") {
-        return async (...args: unknown[]) => {
-          const improvement = await inner.getImprovement(String(args[0]));
-          return improvement && improvement.organizationId === organizationId
-            ? improvement
-            : null;
-        };
-      }
-
-      if (IMPROVEMENT_SCOPED_METHODS.has(method)) {
-        return async (...args: unknown[]) => {
-          const improvement = await inner.getImprovement(String(args[0]));
-          if (!improvement || improvement.organizationId !== organizationId) {
-            throw new OrgPinnedDbError(String(prop), "cross_org");
-          }
-          return call(...args);
+          const owner = await readOwner(inner, String(args[0]), organizationId);
+          return owner === organizationId ? call(...args) : null;
         };
       }
 

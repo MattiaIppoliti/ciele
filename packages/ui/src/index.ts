@@ -13,8 +13,9 @@
  * each app's components/ui and can be promoted here once reconciled.
  */
 export { cn } from "./cn";
-export * from "./badge";
-export * from "./button";
+export { Badge } from "./badge";
+// buttonClasses stays internal to the calendar's nav buttons.
+export { Button } from "./button";
 export * from "./calendar";
 export * from "./card";
 export * from "./copy-feedback";
@@ -26,4 +27,6 @@ export * from "./popover";
 export * from "./progressive-blur";
 export * from "./separator";
 export * from "./skeleton";
-export * from "./tooltip";
+// Tooltip/TooltipTrigger/TooltipContent stay internal to Hint; the apps only
+// mount the provider.
+export { TooltipProvider } from "./tooltip";

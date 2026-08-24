@@ -9,9 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useId,
-  useRef,
   useState,
 } from "react";
 import {
@@ -20,6 +18,7 @@ import {
   CitationStack,
 } from "@/components/agents/citations";
 import { AgentDisclosure } from "@/components/agents/agent-disclosure";
+import { useCopied } from "@/lib/hooks/use-copied";
 import { EASE_OUT, SPRING_PRESS, SPRING_SWAP } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
@@ -107,12 +106,11 @@ export function StreamingResponse({
 }: StreamingResponseProps) {
   const reduce = useReducedMotion() ?? false;
   const baseId = useId();
-  const [copied, setCopied] = useState(false);
+  const [copied, markCopied] = useCopied();
   const [internalFeedback, setInternalFeedback] =
     useState<StreamingResponseFeedback>(defaultFeedback);
   const [internalSourcesOpen, setInternalSourcesOpen] =
     useState(defaultSourcesOpen);
-  const copyTimer = useRef<number | undefined>(undefined);
   const currentFeedback = feedback ?? internalFeedback;
   const currentSourcesOpen = sourcesOpen ?? internalSourcesOpen;
   const streaming = status === "streaming";
@@ -125,21 +123,12 @@ export function StreamingResponse({
   const resolvedSourcePrefix =
     sourceIdPrefix ?? `response-source-${baseId.replace(/:/g, "")}`;
 
-  useEffect(
-    () => () => {
-      if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    },
-    [],
-  );
-
   const handleCopy = useCallback(async () => {
     if (onCopy) await onCopy();
     else if (copyText) await navigator.clipboard?.writeText(copyText);
 
-    setCopied(true);
-    if (copyTimer.current) window.clearTimeout(copyTimer.current);
-    copyTimer.current = window.setTimeout(() => setCopied(false), 1600);
-  }, [copyText, onCopy]);
+    markCopied();
+  }, [copyText, onCopy, markCopied]);
 
   const setFeedback = (next: Exclude<StreamingResponseFeedback, null>) => {
     const value = currentFeedback === next ? null : next;

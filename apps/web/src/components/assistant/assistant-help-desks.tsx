@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useRef, useState, useTransition } from "react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import type { HelpDesk, HelpDeskSettings } from "@agent-hub/core";
 import { Search } from "lucide-react";
 import { toast } from "@/lib/toast";

@@ -19,7 +19,8 @@ consuming app's plain-TS module (app vitest configs only pick up `.test.ts`, not
   `./use-resizable-width`). Adding one without the entry breaks the consumer's build.
 - `sideEffects: false`: keep modules pure so app bundles can tree-shake.
 - React is a **peer** dependency. Never add `react`/`react-dom` to `dependencies` here.
-- Styling: Tailwind v4 + `cva` variants + the local `cn()` from `src/cn.ts`.
+- Styling: Tailwind v4 + plain `Record<Variant, string>` class maps + the local `cn()` from
+  `src/cn.ts` (no `cva`).
 
 ## Before adding a component
 

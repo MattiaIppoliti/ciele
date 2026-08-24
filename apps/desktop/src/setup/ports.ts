@@ -36,7 +36,6 @@ export interface FsPort {
   /** null when the file does not exist, absence is not an error here. */
   readFile(path: string): Promise<string | null>;
   writeFile(path: string, contents: string, options?: { mode?: number }): Promise<void>;
-  exists(path: string): Promise<boolean>;
 }
 
 export interface ProbeResponse {

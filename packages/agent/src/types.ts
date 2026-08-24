@@ -406,8 +406,8 @@ export interface ActionContext {
   /**
    * Active Knowledge Collection anchor for this conversation, or null when the
    * turn is assistant-wide. A live retrieval signal (see the #53 audit): it
-   * both scopes `searchKnowledge` upstream and seeds the Agentic Search context
-   * frame (query-understanding.ts). Undefined in contexts that don't set it.
+   * both scopes `searchKnowledge` upstream and is stated to the Agentic Search
+   * model as retrieval context. Undefined in contexts that don't set it.
    */
   collectionId?: string | null;
   /**

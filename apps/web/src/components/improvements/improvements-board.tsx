@@ -1,6 +1,6 @@
 "use client";
 
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
 import {

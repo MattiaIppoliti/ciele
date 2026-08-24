@@ -255,19 +255,6 @@ export function resolveProviderCredential(
     : null;
 }
 
-/**
- * Compatibility wrapper for callers that still only need a static API key
- * string. New runtime paths should prefer `resolveProviderCredential`.
- */
-export function resolveProviderKey(
-  provider: Provider,
-  connections: ProviderConnection[],
-  resolution: KeyResolution = {}
-): string | null {
-  const credential = resolveProviderCredential(provider, connections, resolution);
-  return credential && "apiKey" in credential ? credential.apiKey : null;
-}
-
 export function providerAvailability(
   connections: ProviderConnection[]
 ): Record<Provider, { platform: boolean; byok: boolean; federated: boolean }> {
@@ -336,21 +323,6 @@ function buildModel(
       return createGoogleGenerativeAI({ apiKey: credential.apiKey })(modelId);
   }
   throw new Error(`Unsupported ${provider} credential: ${credential.kind}`);
-}
-
-/** Chat model for an assistant, or null when no credential is configured. */
-export function getChatModel(
-  provider: Provider,
-  modelId: string,
-  connections: ProviderConnection[],
-  resolution: KeyResolution = {}
-): LanguageModel | null {
-  const credential = resolveProviderCredential(
-    provider,
-    connections,
-    resolution
-  );
-  return credential ? buildModel(provider, modelId, credential) : null;
 }
 
 /**

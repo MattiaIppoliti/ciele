@@ -15,7 +15,6 @@ import type { SetupConfig, SetupPorts } from "../setup/ports";
 const POLL_INTERVAL_MS = 5_000;
 
 export interface StackController {
-  status(): StackStatus;
   refresh(): Promise<StackStatus>;
   start(): Promise<StackStatus>;
   stop(): Promise<StackStatus>;
@@ -69,7 +68,6 @@ export function createStackController(
   }
 
   return {
-    status: () => current,
     refresh,
     async start() {
       set({ busy: true, error: null });

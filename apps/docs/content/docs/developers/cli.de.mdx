@@ -4,7 +4,7 @@ description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten J
 ---
 
 Der Befehl `ciele` verwendet dieselben API-Operationen wie die
-Administratorkonsole. Die CLI unterstützt den gehosteten Dienst sowie selbst
+Administratorkonsole. Die CLI unterstützt den gehosteten Dienst und selbst
 gehostete Installationen.
 
 ## Anforderungen
@@ -23,8 +23,8 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Das Tarball enthält seine Laufzeitabhängigkeiten. Der Befehl installed benötigt
-das Repository nicht mehr.
+Das Tar-Archiv enthält seine Laufzeitabhängigkeiten. Der Befehl installed
+benötigt das Repository nicht mehr.
 
 Nachdem `@ciele/cli` in npm veröffentlicht wurde, installiert
 `npm install --global @ciele/cli` dasselbe Artefakt.
@@ -64,7 +64,7 @@ Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
 den gespeicherten Ursprung. Der gehostete Ursprung ist die letzte
 Standardeinstellung.
 
-## Automatisierungs-Ausgabe verwenden
+## Automatisierungsausgabe verwenden
 
 Fügen Sie `--json` zu einem Befehl hinzu, um eine maschinenlesbare Ausgabe zu
 erhalten.
@@ -87,14 +87,19 @@ ciele assistants update <assistant-id> --file assistant-patch.json
 ciele flows list <assistant-id>
 ciele flows update <flow-id> --file flow-patch.json
 ciele collections list <assistant-id>
-ciele sources add-file <collection-id> --file handbook.pdf
+ciele sources add-file <collection-id> --file handbook.pdf --assistants <assistant-id>
 ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
-### Quell-Links
+Jeder Befehl, der Wissen hinzufügt, benötigt `--assistants`. Eine Collection hat
+keinen Besitzer, daher sind diese Links das Einzige, was das Wissen für einen
+Assistant zugänglich macht. Die Befehle lauten `sources add-text`,
+`sources add-url`, `sources add-file`, `faqs add` und `faqs import`.
 
-Eine Source antwortet für die mit ihr verknüpften Assistants. Diese Befehle
+### Quelllinks
+
+Eine Quelle antwortet für die mit ihr verknüpften Assistenten. Diese Befehle
 lesen und ändern die Links.
 
 ```bash
@@ -103,8 +108,8 @@ ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
 ciele sources direct-access <source-id> on --assistant <assistant-id>
 ```
 
-`sources list-org` listet jede Quelle auf, die der Organisation gehört, und zwar
-für alle Assistenten.
+`sources list-org` listet jede Quelle auf, die die Organisation besitzt, und
+zwar für alle Assistenten.
 
 `sources link` ersetzt den Link-Satz. Eine leere Liste entfernt jeden Link, und
 die Quelle antwortet nicht mehr.
@@ -133,14 +138,14 @@ ciele providers list
 ciele sso connection
 ```
 
-Befehle, die Daten löschen, erfordern `--yes`. Der Standard-Verhaltensablauf
-kann nicht gelöscht werden.
+Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltensablauf kann
+nicht gelöscht werden.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
 Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
 einen Patch akzeptiert.
 
-## Beispiel für einen CI-Check
+## Beispiel für eine CI-Prüfung
 
 ```bash
 export CIELE_API_KEY="ciele_sk_..."

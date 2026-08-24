@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { glob, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,14 +7,9 @@ const docsRoot = path.resolve(here, "../content/docs");
 const localeSuffix = /\.(it|es|fr|de)\.mdx$/;
 
 async function englishPages(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
-  for (const entry of entries) {
-    const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await englishPages(target)));
-    if (entry.isFile() && entry.name.endsWith(".mdx") && !localeSuffix.test(entry.name)) {
-      files.push(target);
-    }
+  for await (const file of glob("**/*.mdx", { cwd: directory })) {
+    if (!localeSuffix.test(file)) files.push(path.join(directory, file));
   }
   return files;
 }

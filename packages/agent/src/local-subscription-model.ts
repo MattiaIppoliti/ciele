@@ -15,7 +15,6 @@ import type {
 import {
   localSubscriptionCliEnvironment,
   localSubscriptionCommand,
-  localSubscriptionInvocation,
   type LocalSubscriptionProvider,
 } from "./local-subscriptions";
 
@@ -40,34 +39,34 @@ export type LocalCliRunner = (
   invocation: LocalCliInvocation
 ) => Promise<LocalCliResult>;
 
-export interface LocalCommandInvocation {
+interface LocalCommandInvocation {
   command: string;
   args: string[];
   stdin: string;
   signal?: AbortSignal;
 }
 
-export interface LocalCommandResult {
+interface LocalCommandResult {
   code: number;
   stdout: string;
   stderr: string;
 }
 
-export type LocalCommandExecutor = (
+/** Test-only injection seam on `createLocalCliRunner`; production uses the default. */
+type LocalCommandExecutor = (
   invocation: LocalCommandInvocation
 ) => Promise<LocalCommandResult>;
 
 const MAX_CLI_OUTPUT = 4 * 1024 * 1024;
 
-export const executeLocalCommand: LocalCommandExecutor = ({
+const executeLocalCommand: LocalCommandExecutor = ({
   command,
   args,
   stdin,
   signal,
 }) =>
   new Promise((resolve, reject) => {
-    const invocation = localSubscriptionInvocation(command, args);
-    const child = spawn(invocation.command, invocation.args, {
+    const child = spawn(command, args, {
       env: localSubscriptionCliEnvironment(),
       stdio: ["pipe", "pipe", "pipe"],
       signal,

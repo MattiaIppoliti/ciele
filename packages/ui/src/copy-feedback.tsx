@@ -1,11 +1,19 @@
 "use client";
 
-// Icon data, not components: morphicons samples these paths and springs
-// between them, so the copy mark reshapes into the check.
-import { Check as CheckData, Copy as CopyData } from "lucide";
 import { MorphIcon } from "morphicons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
+
+// Icon data, not components: morphicons samples these paths and springs
+// between them, so the copy mark reshapes into the check. Inlined from
+// lucide's Check/Copy IconNodes (lucide-react only ships components, which
+// MorphIcon cannot sample) so we don't carry the whole data package for
+// two glyphs.
+const CheckData = [["path", { d: "M20 6 9 17l-5-5" }]] as const;
+const CopyData = [
+  ["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }],
+  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }],
+] as const;
 
 const DEFAULT_RESET_DELAY = 1_500;
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCrawlInput,
-  isRunSuccess,
   isRunTerminal,
   mapCrawledPages,
 } from "./apify";
@@ -96,13 +95,6 @@ describe("mapCrawledPages", () => {
 });
 
 describe("run status classification", () => {
-  it("treats only SUCCEEDED as a successful run", () => {
-    expect(isRunSuccess("SUCCEEDED")).toBe(true);
-    for (const s of ["RUNNING", "READY", "FAILED", "ABORTED", "TIMED-OUT"]) {
-      expect(isRunSuccess(s)).toBe(false);
-    }
-  });
-
   it("marks finished runs terminal and in-flight runs non-terminal", () => {
     for (const s of ["SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"]) {
       expect(isRunTerminal(s)).toBe(true);

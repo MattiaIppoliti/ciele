@@ -9,7 +9,6 @@ import type {
 vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 vi.mock("./pinned-fetch", () => ({
   pinnedRequest: vi.fn(),
-  fetchPinnedPage: vi.fn(),
 }));
 
 import { lookup } from "node:dns/promises";

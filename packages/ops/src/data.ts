@@ -8,6 +8,7 @@ import type {
   Memory,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { parseCsv } from "./csv";
 import { OperationError, defineOperation } from "./operation";
 
 const attributeSchema = z.object({
@@ -284,27 +285,6 @@ export const queryEntityRecordsOp = defineOperation({
     return { data: await ctx.db.queryEntityRecords(entityId, query) };
   },
 });
-
-function parseCsv(text: string): string[][] {
-  const records: string[][] = [];
-  let field = "";
-  let row: string[] = [];
-  let quoted = false;
-  const push = () => { row.push(field); field = ""; };
-  const end = () => { push(); if (row.some((v) => v.trim())) records.push(row); row = []; };
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted && char === '"' && text[i + 1] === '"') { field += '"'; i++; }
-    else if (char === '"') quoted = !quoted;
-    else if (!quoted && char === ",") push();
-    else if (!quoted && (char === "\n" || char === "\r")) {
-      if (char === "\r" && text[i + 1] === "\n") i++;
-      end();
-    } else field += char;
-  }
-  if (field || row.length) end();
-  return records;
-}
 
 export const ENTITY_CSV_MAX_BYTES = 10 * 1024 * 1024;
 export const ENTITY_IMPORT_MAX_ROWS = 5000;

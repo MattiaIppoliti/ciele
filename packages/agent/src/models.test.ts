@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Provider, ProviderConnection } from "@agent-hub/core";
 import {
-  getChatModel,
   getClassifierModel,
   providerAvailability,
   resolveChatModel,
   resolveProviderCredential,
-  resolveProviderKey,
 } from "./models";
 
 /**
@@ -43,89 +41,6 @@ function connection(
 }
 
 afterEach(() => vi.unstubAllEnvs());
-
-describe("resolveProviderKey", () => {
-  it("prefers a BYOK api_key connection over the platform env key", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", "sk-platform");
-    const key = resolveProviderKey("anthropic", [
-      connection("anthropic", "api_key", "sk-byok"),
-    ]);
-    expect(key).toBe("sk-byok");
-  });
-
-  it("falls back to the platform env key when there is no BYOK connection", () => {
-    vi.stubEnv("OPENAI_API_KEY", "sk-platform-openai");
-    expect(resolveProviderKey("openai", [])).toBe("sk-platform-openai");
-  });
-
-  it("returns null when neither BYOK nor platform key exists", () => {
-    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
-    expect(resolveProviderKey("google", [])).toBeNull();
-  });
-
-  it("never resolves a subscription connection on the default (published) surface", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    const key = resolveProviderKey("anthropic", [
-      connection("anthropic", "subscription", "sk-personal-plan", "member-1"),
-    ]);
-    expect(key).toBeNull();
-  });
-
-  it("does not resolve a Member's own subscription connection in the preview surface", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    const key = resolveProviderKey(
-      "anthropic",
-      [connection("anthropic", "subscription", "sk-personal-plan", "member-1")],
-      { surface: "preview", memberId: "member-1" }
-    );
-    expect(key).toBeNull();
-  });
-
-  it("does not resolve another Member's subscription connection in preview", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    const key = resolveProviderKey(
-      "anthropic",
-      [connection("anthropic", "subscription", "sk-personal-plan", "member-1")],
-      { surface: "preview", memberId: "member-2" }
-    );
-    expect(key).toBeNull();
-  });
-
-  it("prefers BYOK over a retired Member subscription in preview", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    const key = resolveProviderKey(
-      "anthropic",
-      [
-        connection("anthropic", "api_key", "sk-byok"),
-        connection("anthropic", "subscription", "sk-personal-plan", "member-1"),
-      ],
-      { surface: "preview", memberId: "member-1" }
-    );
-    expect(key).toBe("sk-byok");
-  });
-
-  it("ignores a BYOK connection for a different provider", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    const key = resolveProviderKey("anthropic", [
-      connection("openai", "api_key", "sk-openai-byok"),
-    ]);
-    expect(key).toBeNull();
-  });
-
-  it("does not return a string key for Google Vertex federated auth", () => {
-    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
-    const key = resolveProviderKey("google", [
-      connection("google", "federated", null, "member-1", {
-        kind: "google_vertex",
-        projectId: "demo-project",
-        location: "europe-west4",
-        workloadIdentityAudience:
-          "//iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/ciele/providers/vercel",
-      }),
-    ]);
-    expect(key).toBeNull();
-  });
-});
 
 describe("resolveProviderCredential", () => {
   it("returns the BYOK credential capability before platform fallback", () => {
@@ -234,18 +149,6 @@ describe("providerAvailability", () => {
       byok: false,
       federated: true,
     });
-  });
-});
-
-describe("getChatModel", () => {
-  it("returns a model when a key resolves, null otherwise", () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
-    expect(
-      getChatModel("anthropic", "claude-opus-4-8", [
-        connection("anthropic", "api_key", "sk-byok"),
-      ])
-    ).not.toBeNull();
-    expect(getChatModel("anthropic", "claude-opus-4-8", [])).toBeNull();
   });
 });
 

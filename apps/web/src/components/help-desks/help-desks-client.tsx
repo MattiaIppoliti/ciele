@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { HelpDesk } from "@agent-hub/core";
 import { Plus } from "lucide-react";

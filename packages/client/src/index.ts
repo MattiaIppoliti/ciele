@@ -186,7 +186,7 @@ export class CieleClient {
   private async request<T>(
     method: string,
     path: string,
-    options: RequestOptions = {}
+    options: RequestOptions & { parseText?: boolean } = {}
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}/api/v1${path}`);
     for (const [key, value] of Object.entries(options.query ?? {})) {
@@ -216,28 +216,14 @@ export class CieleClient {
         envelope?.error?.message ?? `HTTP ${response.status}`
       );
     }
+    if (options.parseText) return (await response.text()) as T;
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
 
   /** Like `request`, for endpoints that answer raw text (e.g. CSV exports). */
-  private async requestText(path: string): Promise<string> {
-    const url = new URL(`${this.baseUrl}/api/v1${path}`);
-    const response = await this.fetchImpl(url.toString(), {
-      method: "GET",
-      headers: { authorization: `Bearer ${this.apiKey}` },
-    });
-    if (!response.ok) {
-      const envelope = (await response
-        .json()
-        .catch(() => null)) as { error?: { code?: string; message?: string } } | null;
-      throw new CieleApiError(
-        response.status,
-        envelope?.error?.code ?? "unknown",
-        envelope?.error?.message ?? `HTTP ${response.status}`
-      );
-    }
-    return response.text();
+  private requestText(path: string): Promise<string> {
+    return this.request<string>("GET", path, { parseText: true });
   }
 
   /**
@@ -319,21 +305,37 @@ export class CieleClient {
       this.request("GET", `/assistants/${assistantId}/collections`),
     sources: (collectionId: string): Promise<{ data: ApiSource[] }> =>
       this.request("GET", `/collections/${collectionId}/sources`),
+    /**
+     * PRD #726: knowledge reaches Assistants only through explicit links, so
+     * every add names them and the endpoint refuses an empty set. Required
+     * here rather than optional, so a caller that forgets fails to compile
+     * instead of failing at runtime on every call.
+     */
     addTextSource: (
       collectionId: string,
-      input: { name?: string; text: string }
+      input: { name?: string; text: string; assistantIds: string[] }
     ): Promise<ApiSource> =>
       this.request("POST", `/collections/${collectionId}/sources`, {
         body: { kind: "text", ...input },
       }),
-    addUrlSource: (collectionId: string, url: string): Promise<ApiSource> =>
+    addUrlSource: (
+      collectionId: string,
+      url: string,
+      assistantIds: string[]
+    ): Promise<ApiSource> =>
       this.request("POST", `/collections/${collectionId}/sources`, {
-        body: { kind: "url", url },
+        body: { kind: "url", url, assistantIds },
       }),
     /** Multipart file upload; pass a File/Blob (Node 20+ has both). */
-    addFileSource: (collectionId: string, file: File): Promise<ApiSource> => {
+    addFileSource: (
+      collectionId: string,
+      file: File,
+      assistantIds: string[]
+    ): Promise<ApiSource> => {
       const form = new FormData();
       form.set("file", file);
+      // The route parses this field as JSON (multipart carries no arrays).
+      form.set("assistantIds", JSON.stringify(assistantIds));
       return this.request("POST", `/collections/${collectionId}/sources`, { form });
     },
     getSource: (id: string): Promise<ApiSource> =>
@@ -344,15 +346,17 @@ export class CieleClient {
       this.request("POST", `/sources/${id}/recrawl`),
     addFaq: (
       collectionId: string,
-      input: { question: string; answer: string }
+      input: { question: string; answer: string; assistantIds: string[] }
     ): Promise<{ id: string; question: string; answer: string; path: string }> =>
       this.request("POST", `/collections/${collectionId}/faqs`, { body: input }),
     importFaqs: (
       collectionId: string,
-      csv: File
+      csv: File,
+      assistantIds: string[]
     ): Promise<{ imported: number; skipped: string[] }> => {
       const form = new FormData();
       form.set("file", csv);
+      form.set("assistantIds", JSON.stringify(assistantIds));
       return this.request("POST", `/collections/${collectionId}/faqs/import`, {
         form,
       });

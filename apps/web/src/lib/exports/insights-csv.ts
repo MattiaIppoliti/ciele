@@ -1,8 +1,7 @@
+import { escapeCsvField } from "@ciele/ops/csv";
 import type { InsightsOverview } from "@/lib/insights/report";
 
-function escapeCsv(value: unknown): string {
-  return `"${String(value).replaceAll('"', '""')}"`;
-}
+const escapeCsv = (value: unknown): string => escapeCsvField(String(value));
 
 /**
  * Renders an Insights Overview as the same per-day, per-series CSV the

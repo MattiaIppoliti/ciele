@@ -6,8 +6,6 @@ import {
   normalizeValues,
   percentChange,
   resolveSectionPalette,
-  seriesTotal,
-  skeletonHeight,
   toDenseDailySeries,
 } from "./helpers";
 import type { DotPalette, DotSection } from "./types";
@@ -63,17 +61,6 @@ describe("resolveSectionPalette", () => {
   it("falls back when no sections are provided", () => {
     expect(resolveSectionPalette(3, 10, undefined, FALLBACK)).toBe(FALLBACK);
     expect(resolveSectionPalette(3, 10, [], FALLBACK)).toBe(FALLBACK);
-  });
-});
-
-describe("skeletonHeight", () => {
-  it("is deterministic and within the row bounds", () => {
-    for (let i = 0; i < 50; i++) {
-      const h = skeletonHeight(i, 10);
-      expect(h).toBe(skeletonHeight(i, 10));
-      expect(h).toBeGreaterThanOrEqual(0);
-      expect(h).toBeLessThanOrEqual(10);
-    }
   });
 });
 
@@ -134,11 +121,7 @@ describe("toDenseDailySeries", () => {
   });
 });
 
-describe("seriesTotal / percentChange", () => {
-  it("sums point values", () => {
-    expect(seriesTotal([{ value: 1 }, { value: 2.5 }])).toBe(3.5);
-  });
-
+describe("percentChange", () => {
   it("computes rounded percent change", () => {
     expect(percentChange(150, 100)).toBe(50);
     expect(percentChange(90, 100)).toBe(-10);

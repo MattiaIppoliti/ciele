@@ -68,29 +68,14 @@ function wallClock(value: string | undefined): string | null {
  * `channelAvailabilityNow` makes.
  */
 function wallClockInZone(now: Date, timezone: string): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const local = () =>
-    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  // sv-SE is the locale whose Date format IS "YYYY-MM-DD HH:MM:SS".
+  const local = () => now.toLocaleString("sv-SE").replace(" ", "T").slice(0, 16);
   if (!timezone.trim()) return local();
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    }).formatToParts(now);
-    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-    const year = get("year");
-    const month = get("month");
-    const day = get("day");
-    // "24" can come back at midnight with hour12: false.
-    const hour = pad(Number(get("hour")) % 24);
-    const minute = get("minute");
-    if (!year || !month || !day || !minute) return local();
-    return `${year}-${month}-${day}T${hour}:${minute}`;
+    return now
+      .toLocaleString("sv-SE", { timeZone: timezone })
+      .replace(" ", "T")
+      .slice(0, 16);
   } catch {
     return local();
   }

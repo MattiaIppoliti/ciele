@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronUp, MessageCircle, Plus, Search, X } from "lucide-react";
 import { cn } from "@agent-hub/ui";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { formatDay } from "@/lib/format";
 import { fuzzyFilter } from "@/lib/fuzzy";
 

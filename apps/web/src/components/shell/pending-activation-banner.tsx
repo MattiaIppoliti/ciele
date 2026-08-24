@@ -1,5 +1,5 @@
 import { Clock } from "lucide-react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { selfServeTiers } from "@/lib/plan-pricing";
 

@@ -25,8 +25,7 @@ import { cn } from "@/lib/utils";
    one scripted conversation through the real widget components, quick
    replies, the Thinking panel with its plan and tool calls, Simplified-
    thinking progress lines, a streamed markdown answer with citations, and
-   the follow-up questions, looping while it is on screen. The same script
-   the dev showcase runs (/dev/chat-showcase), retold with neutral copy.
+   the follow-up questions, looping while it is on screen.
 
    Pure fixture data through the real components; nothing here talks to the
    runtime. Inert: a picture that moves, not a widget you can type into.

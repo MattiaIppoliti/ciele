@@ -2,7 +2,7 @@
 
 // Client component: AnimatedIcon takes lucide component references as props,
 // which a Server Component cannot serialize across the RSC boundary.
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import type { Assistant, Flow, KnowledgeCollection, Publication } from "@agent-hub/core";
 import {
   BookOpen,

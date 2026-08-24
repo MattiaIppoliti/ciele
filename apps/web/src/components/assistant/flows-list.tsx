@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useRef, useState, useTransition, type PointerEvent } from "react";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import type { Flow, FlowTrust } from "@agent-hub/core";
 import {
   GripVertical,

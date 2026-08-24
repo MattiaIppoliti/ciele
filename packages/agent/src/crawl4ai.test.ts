@@ -3,7 +3,6 @@ import {
   buildCrawl4aiJob,
   getCrawl4aiTask,
   isCrawl4aiConfigured,
-  isCrawl4aiSuccess,
   isCrawl4aiTerminal,
   mapCrawl4aiPages,
   redactCrawl4aiSecrets,
@@ -192,14 +191,6 @@ describe("redactCrawl4aiSecrets", () => {
 });
 
 describe("task status classification", () => {
-  it("treats only completed as a successful task (case-insensitive)", () => {
-    expect(isCrawl4aiSuccess("completed")).toBe(true);
-    expect(isCrawl4aiSuccess("COMPLETED")).toBe(true);
-    for (const s of ["pending", "processing", "failed"]) {
-      expect(isCrawl4aiSuccess(s)).toBe(false);
-    }
-  });
-
   it("marks finished tasks terminal and in-flight tasks non-terminal", () => {
     for (const s of ["completed", "COMPLETED", "failed", "FAILED"]) {
       expect(isCrawl4aiTerminal(s)).toBe(true);
@@ -284,7 +275,7 @@ describe("worker HTTP calls", () => {
 
     const task = await getCrawl4aiTask("task-123");
 
-    expect(isCrawl4aiSuccess(task.status)).toBe(true);
+    expect(task.status).toBe("completed");
     expect(task.results).toHaveLength(1);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://crawler.internal/crawl/job/task-123");

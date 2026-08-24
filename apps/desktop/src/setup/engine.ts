@@ -54,8 +54,6 @@ export interface SetupEngine {
   setInput(stepId: string, values: Record<string, string>): SetupSnapshot;
   /** Back to a clean first run. */
   reset(): SetupSnapshot;
-  /** What the steps have accumulated. The host reads it after completion. */
-  bag(): Readonly<SetupBag>;
 }
 
 export interface CreateSetupEngineOptions {
@@ -232,7 +230,6 @@ export function createSetupEngine({
 
   return {
     snapshot,
-    bag: () => ({ ...bag }),
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

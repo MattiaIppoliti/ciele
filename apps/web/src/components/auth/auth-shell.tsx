@@ -1,7 +1,7 @@
 import { AuthChatbotPanel } from "@/components/auth/auth-chatbot-panel";
 import { AuthGrid } from "@/components/auth/auth-grid";
 import { GhostMark } from "@/components/auth/ghost-mark";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 
 export function AuthShell({
   title,

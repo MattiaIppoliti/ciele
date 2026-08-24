@@ -4,9 +4,9 @@ import { extractPage, globToRegExp, localCrawl } from "./local-crawl";
 vi.mock("node:dns/promises", () => ({
   lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
 }));
-vi.mock("./pinned-fetch", () => ({ fetchPinnedPage: vi.fn() }));
+vi.mock("./pinned-fetch", () => ({ pinnedRequest: vi.fn() }));
 
-import { fetchPinnedPage } from "./pinned-fetch";
+import { pinnedRequest } from "./pinned-fetch";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -70,7 +70,7 @@ describe("localCrawl", () => {
   it("stops at its total wall-clock deadline", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
-    const fetchMock = vi.mocked(fetchPinnedPage).mockImplementation(async () => {
+    const fetchMock = vi.mocked(pinnedRequest).mockImplementation(async () => {
       vi.setSystemTime(new Date("2026-01-01T00:05:00.000Z"));
       return {
         status: 200,

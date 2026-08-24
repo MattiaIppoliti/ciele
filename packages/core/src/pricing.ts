@@ -155,8 +155,8 @@ export type MeteredUnit =
  * Credits consumed by the given metered work, the single conversion every
  * consumer of this package shares (cap enforcement and the org Usage page), so
  * the two can never disagree about what something cost. The staff console
- * cannot share it: that app deliberately does not use this package (see
- * its own CLAUDE.md) and prices through its own service-role reads.
+ * prices through this function too; only its plan allowances stay local,
+ * since it reads usage through its own service-role queries.
  *
  * Credits stay fractional on purpose: one answer on the default models is
  * around a quarter of a credit, and rounding at this layer would meter it as

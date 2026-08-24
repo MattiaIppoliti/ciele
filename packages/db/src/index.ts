@@ -21,22 +21,9 @@ import type { Db } from "./types";
 // The seam itself.
 export type { Db } from "./types";
 
-// The generic typed table accessor (ADR-0016 stage 1): the escape hatch the
-// ~125 plain-CRUD passthroughs migrate onto.
-export type {
-  DbTableAccessor,
-  DbTableInsert,
-  DbTableListOptions,
-  DbTableMap,
-  DbTableName,
-  DbTableRow,
-  DbTableUpdate,
-} from "./table-access";
-
 // Raising an Improvement is one policy over the seam, so it lives with the
 // seam rather than in the domain package: it takes a `Db`.
 export {
-  IMPROVEMENT_TITLE_MAX,
   findOpenImprovementForConversation,
   raiseImprovement,
   raiseOrAttachImprovement,
@@ -71,3 +58,10 @@ export function createDb(client: SupabaseClient): Db {
 export function getMockDb(): Db {
   return mockDb;
 }
+
+/**
+ * Re-seed the demo store. Tests that mutate through `getMockDb` share one
+ * process-global store; call this between cases that must not see each
+ * other's writes.
+ */
+export { resetMockStore as resetMockDb } from "./mock";

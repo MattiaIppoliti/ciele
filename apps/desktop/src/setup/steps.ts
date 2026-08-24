@@ -15,8 +15,6 @@ import type { SetupStep, StepContext } from "./types";
 /** Keys the steps leave in the bag for each other. */
 export const BAG = {
   envPath: "envPath",
-  seeded: "seeded",
-  modelConfigured: "modelConfigured",
 } as const;
 
 /** Health endpoint the stack's gateway serves once the database layer is up. */
@@ -222,7 +220,6 @@ export const seedStep: SetupStep = {
       ["run", "--rm", "-e", "LOAD_DEMO_SEED=1", "migrate"],
       "The demo content could not be loaded. Skipping it leaves a working, empty Ciele.",
     );
-    context.bag[BAG.seeded] = "1";
   },
   async verify({ ports, config }) {
     // The seed run exiting 0 only means the script ran; whether anything landed
@@ -290,7 +287,6 @@ export const modelStep: SetupStep = {
     // Never logged: the key is in that file and nowhere else.
     context.log("Restarting Ciele with the new model settings…");
     await runCompose(context, ["up", "-d", "app"], "Ciele did not restart.");
-    context.bag[BAG.modelConfigured] = "1";
   },
   async verify({ ports, config }) {
     const response = await ports.probe.get(config.appUrl);

@@ -129,7 +129,7 @@ export const FIELD_TYPE_ORDER: ChannelFieldType[] = [
 ];
 
 function fieldId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 /** Starter form per channel kind, mirrored in the create step's summary. */

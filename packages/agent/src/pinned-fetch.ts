@@ -126,12 +126,3 @@ export async function pinnedRequest(
     request.end();
   });
 }
-
-/** GET a crawl page with the crawler's 5 MiB cap (see `pinnedRequest`). */
-export async function fetchPinnedPage(
-  target: ValidatedEgressTarget,
-  timeoutMs: number,
-  headers: Record<string, string>
-): Promise<PinnedFetchResponse> {
-  return pinnedRequest(target, { timeoutMs, headers });
-}

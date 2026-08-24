@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@agent-hub/ui";
-import { Link } from "@/components/ui/link";
+import Link from "next/link";
 import type { ActivationState, SubscriptionState } from "@agent-hub/agent";
 
 /**

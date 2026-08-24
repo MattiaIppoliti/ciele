@@ -60,8 +60,6 @@ export function webOperationPorts(
           : null,
       });
     },
-    purgeCollectionGraph: (collectionId) =>
-      enqueueGraphSyncJob({ op: "purge", collectionId }, { db }),
     removeConceptGraph: (collectionId, conceptId) =>
       enqueueGraphSyncJob({ op: "remove", collectionId, conceptId }, { db }),
     enqueueIngest: (job) =>

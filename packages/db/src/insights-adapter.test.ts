@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { computeInsightsOverview, type InsightsFilter } from "@agent-hub/core";
 import { DEMO_ORG, getMockDb } from "./index";
+import { listMockInsightsMessages, listMockWebsiteSources } from "./mock";
 
 /**
  * The in-memory Db adapter agrees with the oracle.
@@ -27,12 +28,12 @@ describe("Db.getInsightsOverview (mock adapter)", () => {
   };
 
   it("matches the oracle computed over the same org rows", async () => {
-    const [conversations, messages, assistants, channels] = await Promise.all([
+    const [conversations, assistants] = await Promise.all([
       db.listInboxConversations(DEMO_ORG.id),
-      db.listInsightsMessages(DEMO_ORG.id),
       db.listAssistants(DEMO_ORG.id),
-      db.listWebsiteSources(DEMO_ORG.id),
     ]);
+    const messages = listMockInsightsMessages(DEMO_ORG.id);
+    const channels = listMockWebsiteSources(DEMO_ORG.id);
     const expected = computeInsightsOverview(
       conversations,
       messages,

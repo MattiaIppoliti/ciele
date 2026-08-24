@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ENTITY_IMPORT_MAX_ROWS, parseEntityCsv } from "./entity-csv";
+import { ENTITY_IMPORT_MAX_ROWS, parseEntityCsv } from "./data";
 
 const entity = {
   keyAttribute: "order_id",

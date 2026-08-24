@@ -1,3 +1,12 @@
+/**
+ * One value per line, and the same `(none)` the tables print when there are
+ * none: an empty answer should read the same whichever command gave it, and a
+ * blank line reads as a bug.
+ */
+export function lines(values: readonly string[]): string {
+  return values.length === 0 ? "(none)" : values.join("\n");
+}
+
 /** Plain column formatting, human default; `--json` bypasses this. */
 export function table(
   rows: ReadonlyArray<object>,

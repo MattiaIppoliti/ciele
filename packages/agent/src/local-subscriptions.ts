@@ -1,12 +1,7 @@
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import {
-  accessSync,
-  constants as fsConstants,
-  readFileSync,
-  statSync,
-} from "node:fs";
+import { accessSync, constants as fsConstants, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, extname, join, resolve, sep } from "node:path";
+import { delimiter, join } from "node:path";
 
 export type LocalSubscriptionProvider = "openai" | "anthropic";
 
@@ -128,25 +123,14 @@ export function isLocalSubscriptionProvider(
  * (the ChatGPT app ships `codex` in its Resources; the retired Codex app did
  * the same), and GUI-launched dev servers often miss Homebrew/npm bin dirs.
  */
-function fallbackCommandPaths(
-  provider: LocalSubscriptionProvider,
-  platform: NodeJS.Platform = process.platform
-): string[] {
+function fallbackCommandPaths(provider: LocalSubscriptionProvider): string[] {
   const home = homedir();
-  const windows = [
-    process.env.LOCALAPPDATA ? join(process.env.LOCALAPPDATA, "Programs") : "",
-    process.env.APPDATA ? join(process.env.APPDATA, "npm") : "",
-  ].filter(Boolean);
   if (provider === "openai") {
     return [
-      ...(platform === "win32"
-        ? windows.map((dir) => join(dir, "codex"))
-        : [
-            "/Applications/ChatGPT.app/Contents/Resources/codex",
-            "/Applications/Codex.app/Contents/Resources/codex",
-            "/opt/homebrew/bin/codex",
-            "/usr/local/bin/codex",
-          ]),
+      "/Applications/ChatGPT.app/Contents/Resources/codex",
+      "/Applications/Codex.app/Contents/Resources/codex",
+      "/opt/homebrew/bin/codex",
+      "/usr/local/bin/codex",
       join(home, ".local", "bin", "codex"),
       join(home, ".npm-global", "bin", "codex"),
     ];
@@ -154,27 +138,15 @@ function fallbackCommandPaths(
   return [
     join(home, ".local", "bin", "claude"),
     join(home, ".claude", "local", "claude"),
-    ...(platform === "win32"
-      ? windows.map((dir) => join(dir, "claude"))
-      : [
-          "/opt/homebrew/bin/claude",
-          "/usr/local/bin/claude",
-          join(home, ".npm-global", "bin", "claude"),
-        ]),
+    "/opt/homebrew/bin/claude",
+    "/usr/local/bin/claude",
+    join(home, ".npm-global", "bin", "claude"),
   ];
 }
 
-function isExecutableFile(
-  candidate: string,
-  platform: NodeJS.Platform = process.platform
-): boolean {
+function isExecutableFile(candidate: string): boolean {
   try {
-    // Windows has no executable bit: presence plus a runnable extension is the
-    // only signal available (X_OK degrades to F_OK there anyway).
-    accessSync(
-      candidate,
-      platform === "win32" ? fsConstants.F_OK : fsConstants.X_OK
-    );
+    accessSync(candidate, fsConstants.X_OK);
     return statSync(candidate).isFile();
   } catch {
     // Missing, dangling symlink, or not executable.
@@ -182,120 +154,23 @@ function isExecutableFile(
   }
 }
 
-/**
- * npm writes an extensionless POSIX shim next to its `.cmd` twin; only the
- * suffixed variants are runnable on Windows.
- */
-export function executableVariants(
-  path: string,
-  platform: NodeJS.Platform = process.platform
-): string[] {
-  if (platform !== "win32" || extname(path)) return [path];
-  return [`${path}.exe`, `${path}.cmd`];
-}
-
-/**
- * The JS entrypoint an npm `.cmd` shim launches. Running the shim itself needs
- * a shell (`cmd.exe /c`), which we refuse: the entrypoint runs under this
- * process's own Node binary instead, with no interpolation surface.
- */
-export function npmShimEntrypoint(
-  shimPath: string,
-  // Shims only exist on Windows, so the entrypoint is judged by Windows rules
-  // (presence, no exec bit) even when the caller runs elsewhere, otherwise the
-  // same fixture resolves on a developer's Windows box and not in Linux CI.
-  platform: NodeJS.Platform = process.platform
-): string | null {
-  try {
-    const source = readFileSync(shimPath, "utf8");
-    const match = source.match(
-      /%dp0%[\\/]+([^"\r\n]+?\.(?:cjs|mjs|js))(?=["\s])/i
-    );
-    if (!match) return null;
-    const relativePath = match[1].replace(/[\\/]+/g, sep);
-    if (!relativePath.toLowerCase().startsWith(`node_modules${sep}`)) {
-      return null;
-    }
-    const root = resolve(dirname(shimPath));
-    const entrypoint = resolve(root, relativePath);
-    if (!entrypoint.toLowerCase().startsWith(`${root.toLowerCase()}${sep}`)) {
-      return null;
-    }
-    return isExecutableFile(entrypoint, platform) ? entrypoint : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Narrows a candidate to something spawnable without a shell. `.ps1`/`.bat`
- * need one, so they are rejected rather than executed through a policy bypass.
- */
-export function resolveExecutableCandidate(
-  path: string,
-  platform: NodeJS.Platform = process.platform
-): string | null {
-  if (!isExecutableFile(path, platform)) return null;
-  if (platform !== "win32") return path;
-  if (/\.cmd$/i.test(path)) return npmShimEntrypoint(path, platform);
-  return /\.(?:bat|ps1)$/i.test(path) ? null : path;
-}
-
-function resolveOnPath(
-  command: string,
-  platform: NodeJS.Platform
-): string | null {
-  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
-    if (!dir) continue;
-    for (const candidate of executableVariants(join(dir, command), platform)) {
-      const resolved = resolveExecutableCandidate(candidate, platform);
-      if (resolved) return platform === "win32" ? resolved : command;
-    }
-  }
-  return null;
+function isOnPath(command: string): boolean {
+  return (process.env.PATH ?? "")
+    .split(delimiter)
+    .some((dir) => dir && isExecutableFile(join(dir, command)));
 }
 
 export function localSubscriptionCommand(
-  provider: LocalSubscriptionProvider,
-  platform: NodeJS.Platform = process.platform
+  provider: LocalSubscriptionProvider
 ): string {
   const config = LOCAL_SUBSCRIPTION_PROVIDERS[provider];
   const override = process.env[config.commandEnv]?.trim();
-  if (override) {
-    if (platform !== "win32") return override;
-    for (const candidate of executableVariants(override, platform)) {
-      const resolved = resolveExecutableCandidate(candidate, platform);
-      if (resolved) return resolved;
-    }
-    return override;
-  }
-  const onPath = resolveOnPath(config.defaultCommand, platform);
-  if (onPath) return onPath;
-  for (const candidate of fallbackCommandPaths(provider, platform).flatMap(
-    (path) => executableVariants(path, platform)
-  )) {
-    const resolved = resolveExecutableCandidate(candidate, platform);
-    if (resolved) return resolved;
+  if (override) return override;
+  if (isOnPath(config.defaultCommand)) return config.defaultCommand;
+  for (const candidate of fallbackCommandPaths(provider)) {
+    if (isExecutableFile(candidate)) return candidate;
   }
   return config.defaultCommand;
-}
-
-/**
- * How to spawn a resolved CLI without a shell. POSIX keeps `/usr/bin/env` so a
- * bare command still resolves through the sanitized PATH; Windows has no such
- * launcher, and an npm shim resolves to a JS entrypoint run under this Node.
- */
-export function localSubscriptionInvocation(
-  command: string,
-  args: string[],
-  platform: NodeJS.Platform = process.platform
-): { command: string; args: string[] } {
-  if (platform !== "win32") {
-    return { command: EXECUTABLE_LAUNCHER, args: [command, ...args] };
-  }
-  return /\.(?:cjs|mjs|js)$/i.test(command)
-    ? { command: process.execPath, args: [command, ...args] }
-    : { command, args };
 }
 
 export function localSubscriptionCliEnvironment(): NodeJS.ProcessEnv {
@@ -316,21 +191,6 @@ export function localSubscriptionCliEnvironment(): NodeJS.ProcessEnv {
     "DISPLAY",
     "WAYLAND_DISPLAY",
     "SSH_AUTH_SOCK",
-    // Windows equivalents: without these the CLI cannot find its own config
-    // directory, its temp dir, or the system DLLs it links against.
-    "USERPROFILE",
-    "PATHEXT",
-    "APPDATA",
-    "LOCALAPPDATA",
-    "PROGRAMDATA",
-    "SystemRoot",
-    "SystemDrive",
-    "WINDIR",
-    "ComSpec",
-    "TEMP",
-    "TMP",
-    "NUMBER_OF_PROCESSORS",
-    "PROCESSOR_ARCHITECTURE",
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "NO_PROXY",
@@ -350,8 +210,6 @@ export function localSubscriptionCliEnvironment(): NodeJS.ProcessEnv {
   return environment;
 }
 
-const EXECUTABLE_LAUNCHER = "/usr/bin/env";
-
 interface CommandResult {
   stdout: string;
   stderr: string;
@@ -364,11 +222,10 @@ function runCommand(
   args: string[],
   timeout = 5_000
 ): Promise<CommandResult> {
-  const invocation = localSubscriptionInvocation(command, args);
   return new Promise((resolve) => {
     execFile(
-      invocation.command,
-      invocation.args,
+      command,
+      args,
       {
         encoding: "utf8",
         env: localSubscriptionCliEnvironment(),
@@ -510,8 +367,7 @@ export async function startLocalSubscriptionLogin(
   const args = LOCAL_SUBSCRIPTION_PROVIDERS[provider].loginArgs;
   processState.lastError.delete(provider);
 
-  const invocation = localSubscriptionInvocation(command, args);
-  const child = spawn(invocation.command, invocation.args, {
+  const child = spawn(command, args, {
     env: localSubscriptionCliEnvironment(),
     stdio: ["ignore", "pipe", "pipe"],
   });

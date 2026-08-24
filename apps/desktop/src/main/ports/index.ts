@@ -23,11 +23,6 @@ export function createRealPorts(config: SetupConfig): SetupPorts {
       readFile: (file) => fs.readFile(file, "utf8").catch(() => null),
       writeFile: (file, contents, options) =>
         fs.writeFile(file, contents, { encoding: "utf8", mode: options?.mode }),
-      exists: (target) =>
-        fs
-          .access(target)
-          .then(() => true)
-          .catch(() => false),
     },
 
     probe: {

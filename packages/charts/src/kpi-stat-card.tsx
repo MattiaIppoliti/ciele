@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
-import { cn } from "./cn";
+import { cn } from "@agent-hub/ui";
 import type { TrendDirection } from "./types";
 
 /**

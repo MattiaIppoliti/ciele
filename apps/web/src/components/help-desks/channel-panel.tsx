@@ -92,7 +92,7 @@ function tabsForKind(kind: ChannelKind): Array<{ key: EditTab; label: string }> 
 }
 
 function rid(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return crypto.randomUUID();
 }
 
 const AUTH_TYPE_LABELS: Record<ApiAuthType, string> = {
