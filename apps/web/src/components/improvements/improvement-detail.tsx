@@ -23,14 +23,14 @@ import {
   Pencil,
   Plus,
   Search,
+  SquareArrowOutUpRight,
   Trash2,
   X,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
-import { toast } from "@/lib/toast";
+import { ProjectDialog } from "@/components/projects/project-dialog";
 import {
   acceptImprovementProposalAction,
-  createProjectAction,
   deleteImprovementAction,
   dismissImprovementProposalAction,
   unlinkImprovementMessageAction,
@@ -163,8 +163,10 @@ export function ImprovementDetail({
   const [createdProjects, setCreatedProjects] = useState<
     { id: string; name: string }[]
   >([]);
-  const [creatingProject, setCreatingProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
+  /** The Project view, open on a new Project (`null`) or on the attached one. */
+  const [projectDialog, setProjectDialog] = useState<{
+    projectId: string | null;
+  } | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -225,31 +227,6 @@ export function ImprovementDetail({
   function changeProject(next: string | null) {
     setProjectId(next);
     persist({ projectId: next });
-  }
-  /**
-   * Filing this Improvement under a project that does not exist yet, without
-   * leaving the item to go and make one: the create returns the id, and the
-   * same call that adds it attaches it.
-   */
-  function createAndAttachProject() {
-    const name = newProjectName.trim();
-    if (!name) return;
-    startTransition(async () => {
-      try {
-        const project = await createProjectAction({ name });
-        setCreatedProjects((prev) => [
-          ...prev,
-          { id: project.id, name: project.name },
-        ]);
-        setNewProjectName("");
-        setCreatingProject(false);
-        changeProject(project.id);
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Could not create the project"
-        );
-      }
-    });
   }
   function addTag() {
     const t = tagInput.trim();
@@ -760,55 +737,30 @@ export function ImprovementDetail({
                     </PopoverClose>
                   ))}
                 </div>
-                {/* Kept out of the list and behind its own disclosure, so
-                    "file this under something new" never sits one stray click
-                    away from "file this under Atlas". */}
+                {/* Kept out of the list and behind a rule, so "file this under
+                    something new" never sits one stray click away from "file
+                    this under Atlas". It opens the Project view rather than a
+                    name field, because a project worth creating here is worth
+                    saying what it is about. */}
                 <div className="mt-1 border-t pt-1">
-                  {creatingProject ? (
-                    <div className="space-y-2 p-1.5">
-                      <Input
-                        autoFocus
-                        value={newProjectName}
-                        placeholder="Project name"
-                        onChange={(e) =>
-                          setNewProjectName(e.target.value.slice(0, 120))
-                        }
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            createAndAttachProject();
-                          }
-                          if (e.key === "Escape") setCreatingProject(false);
-                        }}
-                        className="h-9"
-                      />
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setCreatingProject(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          disabled={!newProjectName.trim()}
-                          onClick={createAndAttachProject}
-                        >
-                          Create
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setCreatingProject(true)}
+                  {projectId && (
+                    <PopoverClose
+                      render={<button type="button" />}
+                      onClick={() => setProjectDialog({ projectId })}
                       className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                     >
-                      <Plus className="size-3.5" />
-                      Create new project...
-                    </button>
+                      <SquareArrowOutUpRight className="size-3.5" />
+                      Open {projectName}
+                    </PopoverClose>
                   )}
+                  <PopoverClose
+                    render={<button type="button" />}
+                    onClick={() => setProjectDialog({ projectId: null })}
+                    className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+                  >
+                    <Plus className="size-3.5" />
+                    Create new project...
+                  </PopoverClose>
                 </div>
               </PopoverContent>
             </Popover>
@@ -840,6 +792,23 @@ export function ImprovementDetail({
           </FieldPill>
         </aside>
       </div>
+
+      {projectDialog && (
+        <ProjectDialog
+          open
+          projectId={projectDialog.projectId}
+          onClose={() => setProjectDialog(null)}
+          onCreated={(project) => {
+            setCreatedProjects((prev) => [...prev, project]);
+            changeProject(project.id);
+          }}
+          onDeleted={(deletedId) => {
+            // The row is already detached server-side (`on delete set null`);
+            // this is the same fact on screen.
+            if (projectId === deletedId) setProjectId(null);
+          }}
+        />
+      )}
 
       <ImproveAnswerDialog
         messageId={relinkMessageId}
