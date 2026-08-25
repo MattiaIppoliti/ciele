@@ -28,7 +28,7 @@ import {
   type ChatMsg,
 } from "@/components/chat/chat-thread";
 import { MessageScroller } from "@/components/agents/message";
-import { PromptInput } from "@/components/agents/prompt-input";
+import { GroupComposer } from "@/components/teammates/group-composer";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { rosterAvatarSeed, teammateAvatarSeed } from "@/lib/avatar";
 import {
@@ -48,14 +48,17 @@ import {
 } from "@/app/(admin)/teammates/channels/actions";
 
 /**
- * A Teammate channel (#778): the 1:1 chat's transcript with more than two
- * people in it.
+ * A Teammate group (#778, "channel" in the code): the 1:1 chat's transcript
+ * with more than two people in it.
  *
- * The transcript component is the shared one (`ChatThread`), so a channel gets
- * the same bubbles, Thinking panel, tool cards and Concept → Source citations a
- * private chat has. What a group adds is exactly two things: a name and a face
- * above each bubble, and a roster to manage. Everything else that looks
- * channel-specific here (the mention hint, the cap notice) is copy.
+ * The transcript and composer are the shared preview/widget chat pieces
+ * (`ChatThread`, `PromptInput` via `GroupComposer`), so a group gets the same
+ * bubbles, Thinking panel, tool cards, Concept → Source citations and composer
+ * pulse a private chat has. What a group adds is exactly three things: a name
+ * and a face above each bubble, a roster to manage, and the `@` picker.
+ * Everything else that looks group-specific here (the mention hint, the cap
+ * notice) is copy. The code keeps the channel vocabulary (routes, actions,
+ * types); only what a Member reads says "group".
  */
 
 export interface AddableTeammate {
@@ -216,6 +219,16 @@ export function ChannelWorkspace({
   const members = roster.filter((entry) => entry.kind === "member");
   const seatedTeammates = roster.filter((entry) => entry.kind === "teammate");
 
+  // Who the @ picker offers: everybody here but the writer, wearing the same
+  // face the header strip resolves for them.
+  const mentionTargets = roster
+    .filter((entry) => entry.id !== currentUserId)
+    .map((entry) => ({
+      ...entry,
+      avatarSeed: rosterAvatarSeed(entry, teammates),
+      title: teammates.find((teammate) => teammate.id === entry.id)?.title,
+    }));
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
@@ -295,10 +308,10 @@ export function ChannelWorkspace({
         </MessageScroller>
 
         <div className="space-y-1.5 px-4 pb-4">
-          <PromptInput
+          <GroupComposer
+            targets={mentionTargets}
             onSubmit={(value) => void send(value)}
-            minRows={1}
-            maxRows={6}
+            pending={pending}
             placeholder={
               seatedTeammates.length > 0
                 ? `Message #${channel.name}, or @${seatedTeammates[0].name}...`
@@ -370,7 +383,7 @@ function AddDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add to the channel</DialogTitle>
+          <DialogTitle>Add to the group</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           <section className="space-y-2">
@@ -405,7 +418,7 @@ function AddDialog({
                         add(
                           () =>
                             addChannelTeammatesAction(channelId, [teammate.id]),
-                          `${teammate.name} is in the channel`
+                          `${teammate.name} is in the group`
                         )
                       }
                     >
@@ -487,7 +500,7 @@ function ChannelSettingsDialog({
         else router.refresh();
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not save the channel"
+          error instanceof Error ? error.message : "Could not save the group"
         );
       }
     });
@@ -497,7 +510,7 @@ function ChannelSettingsDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Channel settings</DialogTitle>
+          <DialogTitle>Group settings</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           <div className="space-y-2">
@@ -539,7 +552,7 @@ function ChannelSettingsDialog({
                     projectId: projectId || null,
                   });
                 },
-                "Channel saved"
+                "Group saved"
               )
             }
           >
@@ -572,7 +585,7 @@ function ChannelSettingsDialog({
                           entry.kind === "member"
                             ? removeChannelMemberAction(channel.id, entry.id)
                             : removeChannelTeammateAction(channel.id, entry.id),
-                        `${entry.name} left the channel`,
+                        `${entry.name} left the group`,
                         entry.id === currentUserId ? "/teammates" : undefined
                       )
                     }
@@ -586,7 +599,7 @@ function ChannelSettingsDialog({
 
           <section className="space-y-2 border-t pt-4">
             <p className="text-muted-foreground text-xs">
-              Closing the channel deletes the thread for everybody in it,
+              Closing the group deletes the thread for everybody in it,
               including its transcript.
             </p>
             <Button
@@ -595,12 +608,12 @@ function ChannelSettingsDialog({
               onClick={() =>
                 run(
                   () => deleteChannelAction(channel.id),
-                  "Channel closed",
+                  "Group closed",
                   "/teammates"
                 )
               }
             >
-              <Trash2 className="size-4" /> Close channel
+              <Trash2 className="size-4" /> Close group
             </Button>
           </section>
         </div>

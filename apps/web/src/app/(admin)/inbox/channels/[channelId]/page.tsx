@@ -45,7 +45,7 @@ export default async function InboxChannelPage({
           className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
         >
           <ArrowLeft className="size-4" />
-          Channels
+          Groups
         </Link>
         <div className="ml-2 flex min-w-0 items-center gap-2">
           <Hash className="text-muted-foreground size-4 shrink-0" />
