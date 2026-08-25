@@ -71,3 +71,22 @@ export function personAvatarSeed(person: {
 }): string | null {
   return person.userId?.trim() || person.email?.trim() || null;
 }
+
+/**
+ * A channel roster entry's seed, resolved against the Teammates in the channel.
+ *
+ * The entry itself carries only an id and a name, so a Teammate that picked an
+ * `avatarSeed` needs the Teammate row to find it. Without this the two places a
+ * roster is drawn disagreed: the header strip looked the seed up, the "Who is
+ * here" panel seeded from the id, and one Teammate wore two faces on the same
+ * screen. A Member has no seed to look up and is its own id, per
+ * `personAvatarSeed`.
+ */
+export function rosterAvatarSeed(
+  entry: { id: string; kind: "member" | "teammate" },
+  teammates: { id: string; avatarSeed?: string | null }[],
+): string {
+  if (entry.kind !== "teammate") return entry.id;
+  const teammate = teammates.find((t) => t.id === entry.id);
+  return teammate ? teammateAvatarSeed(teammate) : entry.id;
+}

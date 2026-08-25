@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   generatedAvatar,
   personAvatarSeed,
+  rosterAvatarSeed,
   teammateAvatarSeed,
 } from "./avatar";
 
@@ -77,5 +78,39 @@ describe("personAvatarSeed", () => {
     const one = personAvatarSeed({ userId: "u-1" });
     const two = personAvatarSeed({ userId: "u-2" });
     expect(generatedAvatar(one!)).not.toBe(generatedAvatar(two!));
+  });
+});
+
+describe("rosterAvatarSeed", () => {
+  const teammates = [{ id: "t-1", avatarSeed: "chief" }];
+
+  it("gives a seated Teammate the same face the roster header draws", () => {
+    // The two roster surfaces disagreed: one looked the seed up, the other
+    // seeded from the id, so one Teammate wore two faces on one screen.
+    expect(rosterAvatarSeed({ id: "t-1", kind: "teammate" }, teammates)).toBe(
+      "chief"
+    );
+  });
+
+  it("falls back to the id for a Teammate that picked no seed", () => {
+    expect(
+      rosterAvatarSeed({ id: "t-2", kind: "teammate" }, [
+        { id: "t-2", avatarSeed: null },
+      ])
+    ).toBe("t-2");
+  });
+
+  it("seeds a Member from its user id, which is the person seed", () => {
+    expect(rosterAvatarSeed({ id: "u-1", kind: "member" }, teammates)).toBe(
+      "u-1"
+    );
+  });
+
+  it("falls back to the id for a Teammate no longer in the list", () => {
+    // The roster and the Teammate list are two fetches; a removal between them
+    // must still draw a face rather than throw.
+    expect(rosterAvatarSeed({ id: "t-9", kind: "teammate" }, teammates)).toBe(
+      "t-9"
+    );
   });
 });

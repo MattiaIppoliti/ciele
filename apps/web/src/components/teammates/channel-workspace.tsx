@@ -30,6 +30,7 @@ import {
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { rosterAvatarSeed, teammateAvatarSeed } from "@/lib/avatar";
 import {
   channelChatMessages,
   channelMessageText,
@@ -248,12 +249,7 @@ export function ChannelWorkspace({
                 {/* The margin rides the avatar itself rather than a wrapper,
                     so the overlap stays on the sized element. */}
                 <GeneratedAvatar
-                  seed={
-                    entry.kind === "teammate"
-                      ? (teammates.find((t) => t.id === entry.id)?.avatarSeed?.trim() ||
-                        entry.id)
-                      : entry.id
-                  }
+                  seed={rosterAvatarSeed(entry, teammates)}
                   size="size-7"
                   className="ring-background -ml-2 block ring-2 first:ml-0"
                 />
@@ -329,6 +325,7 @@ export function ChannelWorkspace({
           open={settingsOpen}
           channel={channel}
           roster={roster}
+          teammates={teammates}
           projects={projects}
           currentUserId={currentUserId}
           onClose={() => setSettingsOpen(false)}
@@ -387,7 +384,7 @@ function AddDialog({
                 {teammates.map((teammate) => (
                   <li key={teammate.id} className="flex items-center gap-3">
                     <GeneratedAvatar
-                      seed={teammate.avatarSeed || teammate.id}
+                      seed={teammateAvatarSeed(teammate)}
                       size="size-8"
                     />
                     <div className="min-w-0 flex-1">
@@ -462,6 +459,7 @@ function ChannelSettingsDialog({
   open,
   channel,
   roster,
+  teammates,
   projects,
   currentUserId,
   onClose,
@@ -469,6 +467,8 @@ function ChannelSettingsDialog({
   open: boolean;
   channel: TeammateChannel;
   roster: ChannelRosterEntry[];
+  /** Only to resolve a seated Teammate's avatar seed. */
+  teammates: Teammate[];
   projects: { id: string; name: string }[];
   currentUserId: string;
   onClose: () => void;
@@ -551,7 +551,10 @@ function ChannelSettingsDialog({
             <ul className="space-y-1">
               {roster.map((entry) => (
                 <li key={entry.id} className="flex items-center gap-3">
-                  <GeneratedAvatar seed={entry.id} size="size-7" />
+                  <GeneratedAvatar
+                    seed={rosterAvatarSeed(entry, teammates)}
+                    size="size-7"
+                  />
                   <p className="min-w-0 flex-1 truncate text-sm">
                     {entry.name}
                     {entry.id === currentUserId && (
