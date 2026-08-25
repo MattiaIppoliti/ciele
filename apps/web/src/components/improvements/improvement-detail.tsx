@@ -19,7 +19,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Pencil,
   Plus,
   Search,
   SquareArrowOutUpRight,
@@ -114,6 +113,14 @@ function FieldPill({
   );
 }
 
+/**
+ * Title and description edit in place, the way they read: no border, no box,
+ * no edit button. The hover and focus tint is the only affordance, and it is
+ * what says "these words are the field" without drawing a form around them.
+ */
+const INLINE_FIELD =
+  "resize-none rounded-md border-0 bg-transparent px-2 -mx-2 shadow-none transition-colors hover:bg-muted/40 focus-visible:bg-muted/40 focus-visible:ring-0 disabled:cursor-default disabled:bg-transparent disabled:opacity-100";
+
 const PILL =
   "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-muted disabled:opacity-60";
 
@@ -148,7 +155,6 @@ export function ImprovementDetail({
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
   const [title, setTitle] = useState(improvement.title);
-  const [editingTitle, setEditingTitle] = useState(false);
   const [description, setDescription] = useState(improvement.description);
   const [status, setStatus] = useState(improvement.status);
   const [priority, setPriority] = useState(improvement.priority);
@@ -199,7 +205,6 @@ export function ImprovementDetail({
   }
 
   function saveTitle() {
-    setEditingTitle(false);
     const trimmed = title.trim();
     if (trimmed && trimmed !== improvement.title) persist({ title: trimmed });
     else setTitle(improvement.title);
@@ -288,44 +293,40 @@ export function ImprovementDetail({
         )}
 
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded-md border px-1.5 py-0.5 font-mono text-sm ${improvementKeyClass(status)}`}
-              >
-                {key}
-              </span>
-              {editingTitle ? (
-                <Input
-                  autoFocus
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={saveTitle}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveTitle();
-                    if (e.key === "Escape") {
-                      setTitle(improvement.title);
-                      setEditingTitle(false);
-                    }
-                  }}
-                  className="h-9 w-72 text-lg font-bold"
-                />
-              ) : (
-                <>
-                  <h1 className="truncate text-xl font-bold">{title}</h1>
-                  {canEdit && (
-                    <button
-                      type="button"
-                      aria-label="Edit title"
-                      onClick={() => setEditingTitle(true)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="size-4" />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+          <div className="min-w-0 flex-1">
+            <span
+              className={`inline-block rounded-md border px-1.5 py-0.5 font-mono text-sm ${improvementKeyClass(status)}`}
+            >
+              {key}
+            </span>
+            {/* The title is the field, not a label with a pencil beside it:
+                click the words and type. Auto-grows, so a long title wraps
+                instead of scrolling out of its own box. */}
+            {canEdit ? (
+              <Textarea
+                value={title}
+                rows={1}
+                aria-label="Improvement title"
+                placeholder="Improvement title"
+                onChange={(e) => setTitle(e.target.value.slice(0, 300))}
+                onBlur={saveTitle}
+                onKeyDown={(e) => {
+                  // Enter commits rather than opening a second line: this is a
+                  // title, and blurring is what every other field here saves on.
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    e.currentTarget.blur();
+                  }
+                  if (e.key === "Escape") {
+                    setTitle(improvement.title);
+                    e.currentTarget.blur();
+                  }
+                }}
+                className={INLINE_FIELD + " mt-1 min-h-0 text-xl font-bold md:text-xl"}
+              />
+            ) : (
+              <h1 className="mt-1 text-xl font-bold">{title}</h1>
+            )}
             <p className="text-muted-foreground mt-1 text-xs">
               Created by {memberDisplayName(createdByEmail)} on{" "}
               {formatDateTime(improvement.createdAt)}
@@ -360,17 +361,18 @@ export function ImprovementDetail({
       <div className="@4xl:grid-cols-[1fr_320px] grid flex-1 gap-6 border-t px-6 py-5">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
-          <section>
-            <h2 className="mb-2 font-semibold">Description</h2>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={saveDescription}
-              disabled={!canEdit}
-              placeholder="Describe the issue and the fix…"
-              className="min-h-28"
-            />
-          </section>
+          {/* Straight under the title and in the same hand: a description is
+              the issue in prose, not a form field about it. */}
+          <Textarea
+            value={description}
+            rows={3}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={saveDescription}
+            disabled={!canEdit}
+            aria-label="Description"
+            placeholder="Add a description, or what the fix should be..."
+            className={INLINE_FIELD + " min-h-20 text-base md:text-sm"}
+          />
 
           <SuggestedFix
             improvementId={improvement.id}
