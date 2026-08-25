@@ -39,7 +39,7 @@ export function ChannelTranscript({
   if (rendered.length === 0) {
     return (
       <p className="text-muted-foreground py-10 text-center text-sm">
-        Nothing has been said in this channel yet.
+        Nothing has been said in this group yet.
       </p>
     );
   }

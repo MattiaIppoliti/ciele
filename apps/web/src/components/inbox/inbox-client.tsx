@@ -609,7 +609,7 @@ export function InboxClient({
             href="/inbox/channels"
             className="text-muted-foreground hover:text-foreground text-sm"
           >
-            Channels
+            Groups
           </Link>
         )}
         {/* On a phone the search field takes the whole second row and the two

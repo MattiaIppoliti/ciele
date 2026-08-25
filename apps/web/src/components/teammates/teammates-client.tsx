@@ -23,7 +23,7 @@ export interface CollectionOption {
   name: string;
 }
 
-/** One channel row on the roster (#778). */
+/** One group ("channel" in the code) row on the roster (#778). */
 export interface ChannelRow {
   id: string;
   name: string;
@@ -251,7 +251,7 @@ function CreateChannelDialog({
 
   function handleCreate() {
     if (!name.trim()) {
-      toast.error("Your channel needs a name");
+      toast.error("Your group needs a name");
       return;
     }
     startTransition(async () => {
@@ -265,7 +265,7 @@ function CreateChannelDialog({
         router.push(`/teammates/channels/${channel.id}`);
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Could not open the channel"
+          error instanceof Error ? error.message : "Could not open the group"
         );
       }
     });
@@ -275,7 +275,7 @@ function CreateChannelDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl">New channel</DialogTitle>
+          <DialogTitle className="text-xl">New group</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           <div className="space-y-2">
@@ -292,7 +292,7 @@ function CreateChannelDialog({
             <Label>Teammates</Label>
             {teammates.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No teammates yet. Create one first, or open the channel and add
+                No teammates yet. Create one first, or open the group and add
                 it later.
               </p>
             ) : (
@@ -347,7 +347,7 @@ function CreateChannelDialog({
             disabled={isPending || !name.trim()}
             onClick={handleCreate}
           >
-            {isPending ? "Opening..." : "Open channel"}
+            {isPending ? "Opening..." : "Open group"}
           </Button>
         </div>
       </DialogContent>
@@ -407,13 +407,13 @@ export function TeammatesClient({
       <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
         <h1 className="text-2xl font-bold tracking-tight">Teammates</h1>
         <div className="ml-auto flex items-center gap-2">
-          {/* No capability gate: any Member may open a channel (#776). */}
+          {/* No capability gate: any Member may open a group (#776). */}
           <Button
             variant="outline"
             className="h-10 rounded-lg px-4 font-semibold"
             onClick={() => setChannelOpen(true)}
           >
-            New channel
+            New group
           </Button>
           {canEdit && (
             <Button
@@ -426,12 +426,12 @@ export function TeammatesClient({
         </div>
       </header>
 
-      {/* Channels first: a thread with unread messages in it is what a Member
+      {/* Groups first: a thread with unread messages in it is what a Member
           came back for, and the teammate cards are always where they were. */}
       {channels.length > 0 && (
         <div className="space-y-2 border-t px-6 py-4">
           <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Channels
+            Groups
           </p>
           <ul className="space-y-1">
             {channels.map((channel) => (
