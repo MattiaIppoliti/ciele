@@ -435,10 +435,12 @@ version: [`apps/docs` → Architecture → The agentic model](../apps/docs/conte
 - **Tool registry** (`tools.ts`): a tool is a spec (name, description, zod input schema, step label,
   `execute`); `buildToolset(ctx)` assembles the turn's AI-SDK ToolSet from the built-ins the
   assistant enables (`assistants.tools.builtIns`) plus, when one is registered, the API catalogue
-  triad below. Built-ins: `searchKnowledge` (always
-  on, grounding is an ADR-0002 invariant, and it is the one spec deliberately *not* routed through
-  `instrument`: its lifecycle, coverage verdict and budget accounting live in the shared search-pass
-  primitive so seeded and model-driven passes cannot drift), `remember` (default on), `fetchUrl`
+  triad below. Built-ins: `searchKnowledge` (on
+  for every Assistant turn, grounding is an ADR-0002 invariant, and it is the one spec deliberately
+  *not* routed through `instrument`: its lifecycle, coverage verdict and budget accounting live in
+  the shared search-pass primitive so seeded and model-driven passes cannot drift; the **one**
+  exception is a Teammate whose Knowledge Scope is empty, #768, where no search tool is registered
+  at all rather than one that always answers "nothing found"), `remember` (default on), `fetchUrl`
   (default **off**, egress is opt-in), `renderTable` (default **off**, the render catalogue's
   only entry, see below). `instrument()` gives every other tool its
   `tool-start`/`tool-end` events, duration, and **error containment**: a throwing tool returns
@@ -760,12 +762,46 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   Agentic Search + streaming), OKF knowledge (text/url/file/website/FAQ) with pgvector + lexical
   fallback and a graph engine selector, Publications, Inbox, Insights overview, Improvements,
   Alerts, provider connections (platform + BYOK + federated + OpenAI-compatible), 4-role RBAC + RLS.
-- **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` always on, `remember` on,
-  `fetchUrl` and the render catalogue's `renderTable` opt-in, plus the API catalogue triad and the two
-  windowed readers when an integration and a document reader are wired), generated Entity tools with server-bound identity filters,
+- **Agentic layer** (§5.4): per-turn tool registry (`searchKnowledge` on unless a Teammate has an
+  empty Knowledge Scope, `remember` on, `fetchUrl` and the render catalogue's `renderTable` opt-in,
+  plus the API catalogue triad and the two windowed readers when an integration and a document
+  reader are wired; a Teammate turn adds its granted-action tools, the two memory writes and, with
+  colleagues to name, `referToTeammate`), generated Entity tools with server-bound identity filters,
   opt-in SSO long-term-memory promotion and recall, org Skills layered into the prompt and
   snapshotted into Publications, turn sessions with a `remember` memory layer, and the bounded
   search budget. **[target]** an MCP tool *provider*, the registry seam exists, the client does not.
+- **AI Teammates** (spec #767, effort 1): the Assistant's internal sibling, org-level agents Members
+  chat with in a Teammates section. A Teammate is configuration over the same chat runtime, so there
+  is no second engine: a persona prompt layer, a Knowledge Scope of Library Collections, action
+  grants, and a three-layer document memory (User / Agent / Project), projected onto the runtime's
+  `Assistant` shape by `teammateRuntimeAssistant`. What runs today: the entity with visibility +
+  soft delete + per-Member roster hiding, scoped chat with citations, grant rows with a capability
+  ceiling and an explicit approval-bypass (the one ADR-0017 relaxation), granted domains as tools
+  that leave a card in the transcript, the three memory layers with history and revert, Projects,
+  Routines on an hourly cron (`/api/cron/run-routines`) with a failure Alert that auto-resolves, and
+  1:1 referral handoff cards. Teammate turns run on org Provider Connections, or the Member's own
+  personal subscription for their own attended turns (ADR-0007 as amended), never on somebody else's
+  and never unattended. Teammate conversations are excluded from the Insights Visitor population.
+- **Teammate channels** (spec #778, effort 2): a named thread holding N Members and N Teammates, its
+  own entity owning its own messages, because a Conversation is single-subject by construction and a
+  roster on it would make the widget, Inbox, Insights and export reads each ask whether a row is a
+  group. What runs today: channel CRUD and roster (any Member opens one; the creator or an admin
+  renames, removes and closes it), mention-only activation resolved against the roster (which is what
+  makes the channel the perimeter, an outside name is ordinary text), autonomous agent-to-agent
+  chains capped at 10 turns and 2 per Teammate by pure functions in `core` counted from the
+  transcript, a `system` marker in the thread when a cap or a failed turn stops one, the shared
+  transcript component with per-author rendering, a 0..1 Project binding that is both shared context
+  and where the decision-writing tool points, unread badges with mention-only highlighting, and
+  Owner/Admin oversight at `/inbox/channels` behind a `manageMembers` operation. `streamChannelChain`
+  reuses the 1:1 turn (persona, Knowledge Scope search, granted actions, memory layers) with the two
+  #776 departures: the User memory layer is the chain-starter's only, and the Project layer can be two
+  documents. Chains run on org Provider Connections only, and the same budget/activation/plan gates a
+  Conversation Turn applies are read once per chain. The domain rides the same registry discipline as
+  the rest: nine `/api/v1` routes, `ciele channels …`, the `manage_channels` MCP tool, and a
+  Developer Panel claim. Posting is the one thing with no machine route, because a message starts a
+  chain of model turns; the pinned Db enforces it rather than a comment. **[target]** Routines
+  posting into a channel, and a channel export (the message-level JSON export assumes a
+  single-subject Conversation).
 - **Quality loop** (§5.5): standing goals, the independent answer verifier, per-flow trust tiers, and
   the weekly compost pass, all on one nightly cron. `watch`-tier escalation is the only tier-driven
   runtime behavior so far.

@@ -109,6 +109,17 @@ test('validate rejects a lost link target and a mangled fence', () => {
   assert.ok(validate(source, ['See [docs](/docs).', '```sh', 'pnpm i'].join('\n')).length > 0);
 });
 
+test('validate rejects a leftover translator tag marker', () => {
+  // Lara protects inline formatting with numbered tags and restores them on the
+  // way back. One that comes back unrestored is `{{1` in the middle of a
+  // sentence, and MDX reads `{` as an expression: the Spanish Teammates page
+  // shipped that and broke the site build.
+  const source = 'An admin can change this with the **switch**.';
+  const mangled = 'Un administrador puede cambiarlo con el {{1{{1**switch**.';
+  assert.deepEqual(validate(source, source), []);
+  assert.ok(validate(source, mangled).length > 0);
+});
+
 test('a CRLF document parses like an LF one', () => {
   // A Windows checkout hands the parser CRLF. A carriage return left on a line
   // used to hide the frontmatter fence from `indexOf('---')`, so the whole page

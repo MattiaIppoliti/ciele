@@ -13,7 +13,7 @@ registrieren dieselben Tools.
   Repository-Checkout heraus starten.
 
 Jeder Tool-Aufruf erreicht die Organisation über `/api/v1`, sodass eine
-Operation einen Ausführungspfad hat, unabhängig davon, welcher Transport ihn
+Operation nur einen Ausführungspfad hat, unabhängig davon, welcher Transport ihn
 angefordert hat.
 
 ## Gehosteter Endpunkt
@@ -27,7 +27,7 @@ https://ciele.example.edu/api/mcp
 ```
 
 Authentifizieren Sie sich mit einem [Organization API key](/developers/api-keys)
-im Header `Authorization`:
+im `Authorization`-Header:
 
 ```text
 Authorization: Bearer ciele_sk_...
@@ -46,9 +46,9 @@ Der Server spricht die Revision `2026-07-28` und die Revisionen 2025. Er
 entscheidet die Revision anhand des Eröffnungsaustauschs, sodass ein Client, der
 nicht auf `2026-07-28` umgestellt hat, weiterhin funktioniert.
 
-In der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede
-Anforderung ist in sich geschlossen, sodass der gehostete Endpunkt weder Sticky
-Routing noch einen Session-Store benötigt.
+In der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede Anfrage
+ist in sich geschlossen, sodass der gehostete Endpunkt weder Sticky Routing noch
+einen Session Store benötigt.
 
 ## Lokaler `stdio`-Server
 
@@ -100,11 +100,13 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_memories` | Überprüfen Sie die Einstellungen und führen Sie eine bereichsbezogene Speicherlöschung durch. |
 | `manage_sso` | Verwalten Sie Identitätsansprüche und die SSO-Verbindung der Organisation. |
 | `manage_help_desks` | Verwalten Sie Helpdesks, Kanäle, Bestellungen und ServiceNow. |
+| `manage_teammates` | Verwalten Sie KI-Teamkollegen und lesen Sie Ihre eigenen Teamkollegen-Gespräche. |
+| `manage_channels` | Lesen und gestalten Sie die Teamkollegen-Kanäle, in denen Sie sich befinden. |
 | `manage_configuration` | Verwalten Sie Skills, die Auswahl von Assistant Skills, Ziele und Warnungen. |
 | `manage_organization` | Verwalten Sie Organisationseinstellungen, Mitglieder, Einladungen und API-Schlüssel. |
-| `manage_integrations` | Verwalten Sie Assistant-API-Integrationen und Modellanbieter. |
+| `manage_integrations` | Verwalten Sie API-Integrationen für Assistenten und Modellanbieter. |
 
-Der Server registriert vierzehn Tools. Jedes Domänen-Tool verwendet ein
+Der Server registriert sechzehn Tools. Jedes Domänen-Tool verwendet ein
 `action`-Feld für seine Operationen.
 
 Der schreibgeschützte Modus klassifiziert jede Aktion. Er erlaubt die Aktionen
@@ -115,8 +117,8 @@ unter [AI-Clients](/developers/ai-clients).
 
 ## Überprüfen Sie die Verbindung
 
-Bitten Sie den Client, `ciele_identity` aufzurufen. Bestätigen Sie die erwartete
-Organisations-ID, die Rolle, die API-Version und die Domänenliste.
+Bitten Sie den Kunden, `ciele_identity` anzurufen. Bestätigen Sie die erwartete
+Organisations-ID, die Rolle, die API-Version und die Domain-Liste.
 
 Die Repository-Testsuite startet auch den eigentlichen `stdio`-Prozess. Sie
 überprüft die Initialisierung, die Tool-Erkennung und einen authentifizierten

@@ -27,6 +27,7 @@ function conversation(over: Partial<Conversation> = {}): Conversation {
   return {
     id: "conv1",
     assistantId: "a1",
+    teammateId: null,
     subjectType: "visitor",
     subjectId: "v1",
     collectionId: "col1",

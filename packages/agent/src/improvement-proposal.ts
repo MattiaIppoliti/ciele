@@ -71,7 +71,11 @@ async function gatherContext(
     db.getConversationForMessage(messageId),
   ]);
   if (!improvement || !conversation) return null;
-  const assistant = await db.getAssistant(conversation.assistantId);
+  // A Suggested Fix improves an Assistant's knowledge, so a Teammate
+  // Conversation (no Assistant, #768) has nothing here to draft against.
+  const assistant = conversation.assistantId
+    ? await db.getAssistant(conversation.assistantId)
+    : null;
   if (!assistant) return null;
 
   const messages = await db.listMessages(conversation.id);

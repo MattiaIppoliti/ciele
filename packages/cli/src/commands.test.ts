@@ -192,6 +192,106 @@ describe("publish commands", () => {
   });
 });
 
+describe("teammates commands", () => {
+  it("builds the persona requests, and refuses to retire one without --yes", async () => {
+    const { deps, calls, err } = harness(({ method }) =>
+      method === "DELETE" ? { status: 204 } : { json: { id: "tm1", name: "Nora" } }
+    );
+    await runCli(
+      ["teammates", "create", "--name", "Nora", "--title", "Support Copywriter"],
+      deps
+    );
+    expect(calls[0].method).toBe("POST");
+    expect(JSON.parse(calls[0].body!)).toMatchObject({
+      name: "Nora",
+      title: "Support Copywriter",
+    });
+
+    await runCli(["teammates", "update", "tm1", "--role", "You draft notes."], deps);
+    expect(calls[1].method).toBe("PATCH");
+    expect(JSON.parse(calls[1].body!)).toEqual({ roleDescription: "You draft notes." });
+
+    // A soft delete is still a delete: it needs saying out loud.
+    expect(await runCli(["teammates", "delete", "tm1"], deps)).toBe(EXIT.usage);
+    expect(err.join(" ")).toContain("--yes");
+    expect(calls).toHaveLength(2);
+    await runCli(["teammates", "delete", "tm1", "--yes"], deps);
+    expect(calls[2].method).toBe("DELETE");
+    expect(calls[2].url).toContain("/teammates/tm1");
+  });
+
+  it("reads the key holder's own thread and one conversation in it", async () => {
+    const { deps, calls } = harness(() => ({ json: { data: [] } }));
+    await runCli(["teammates", "conversations", "tm1"], deps);
+    expect(calls[0].url).toContain("/teammates/tm1/conversations");
+    await runCli(["teammates", "conversation", "tm1", "c1"], deps);
+    expect(calls[1].url).toContain("/teammates/tm1/conversations/c1");
+  });
+});
+
+describe("channels commands", () => {
+  it("opens a channel from flags and shapes its roster by id", async () => {
+    const { deps, calls } = harness(({ method }) =>
+      method === "DELETE" || method === "POST"
+        ? { status: 204 }
+        : { json: { id: "ch1", name: "Launch week" } }
+    );
+    await runCli(
+      [
+        "channels",
+        "create",
+        "--name",
+        "Launch week",
+        "--teammates",
+        "tm1,tm2",
+        "--members",
+        "u1",
+      ],
+      deps
+    );
+    expect(calls[0].method).toBe("POST");
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      name: "Launch week",
+      teammateIds: ["tm1", "tm2"],
+      memberIds: ["u1"],
+      projectId: undefined,
+    });
+
+    await runCli(["channels", "add-member", "ch1", "u2", "u3"], deps);
+    expect(JSON.parse(calls[1].body!)).toEqual({ userIds: ["u2", "u3"] });
+    expect(calls[1].url).toContain("/channels/ch1/members");
+
+    await runCli(["channels", "remove-teammate", "ch1", "tm2"], deps);
+    expect(calls[2].method).toBe("DELETE");
+    expect(calls[2].url).toContain("/channels/ch1/teammates/tm2");
+  });
+
+  it("unbinds a Project with --project none, and closing needs --yes", async () => {
+    const { deps, calls, err } = harness(({ method }) =>
+      method === "DELETE" ? { status: 204 } : { json: { id: "ch1" } }
+    );
+    await runCli(["channels", "update", "ch1", "--project", "none"], deps);
+    // `none` is an absence, and an empty string would be a name.
+    expect(JSON.parse(calls[0].body!)).toEqual({ projectId: null });
+
+    // Closing a channel takes its transcript with it, unlike retiring a
+    // Teammate, which keeps one.
+    expect(await runCli(["channels", "delete", "ch1"], deps)).toBe(EXIT.usage);
+    expect(err.join(" ")).toContain("--yes");
+    await runCli(["channels", "delete", "ch1", "--yes"], deps);
+    expect(calls[1].method).toBe("DELETE");
+  });
+
+  it("has no verb for sending a message", async () => {
+    const { deps, calls } = harness();
+    // A message starts a chain of model turns, which runs in the console.
+    expect(await runCli(["channels", "post", "ch1", "hello"], deps)).toBe(
+      EXIT.usage
+    );
+    expect(calls).toEqual([]);
+  });
+});
+
 describe("conversations commands", () => {
   it("list forwards filters; export --out writes the records to disk", async () => {
     const dir = tmp();

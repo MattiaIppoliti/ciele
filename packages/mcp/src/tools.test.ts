@@ -63,6 +63,9 @@ describe("ciele MCP tools", () => {
     expect([...tools.keys()].sort()).toEqual([
       "ciele_identity",
       "manage_assistants",
+      // Teammate channels (#778): the group threads, read and shaped. No post
+      // action, because a message starts a chain of model turns.
+      "manage_channels",
       "manage_configuration",
       "manage_entities",
       "manage_flows",
@@ -73,6 +76,7 @@ describe("ciele MCP tools", () => {
       "manage_memories",
       "manage_organization",
       "manage_sso",
+      "manage_teammates",
       "publish_assistant",
       "read_inbox",
     ]);

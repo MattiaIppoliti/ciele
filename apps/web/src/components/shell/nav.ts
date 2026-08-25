@@ -2,10 +2,12 @@ import {
   Archive,
   Bell,
   BookText,
+  Bot,
   ChartLine,
   CircleHelp,
   Compass,
   FlaskConical,
+  FolderKanban,
   LayoutGrid,
   Lock,
   MessageCircle,
@@ -73,6 +75,31 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     apiDomains: ["help-desks"],
   },
   { label: "Inbox", icon: Archive, href: "/inbox", apiDomains: ["inbox"] },
+  // The org's internal AI colleagues (#768).
+  {
+    label: "Teammates",
+    icon: Bot,
+    href: "/teammates",
+    // Two domains, because the page renders two rosters: the Teammates and the
+    // channels they share with the team (#778). A channel page nests under this
+    // prefix, so it answers with both as well.
+    apiDomains: ["teammates", "channels"],
+  },
+  {
+    // Beside Teammates, because a Project is only ever read by one (#771).
+    //
+    // #767 specifies "a top-level Teammates nav entry" and says nothing about
+    // where Projects lives. A Project is a first-class entity Editors create
+    // and edit (#771), the decisions document is human-written as often as
+    // agent-written, and the only alternative was burying it inside a
+    // Teammate's settings dialog, where a team's decisions are not.
+    //
+    // No `apiDomains`: the domain has no /api/v1 routes yet, and claiming one
+    // it cannot present would fail the Developer Panel's catalogue test.
+    label: "Projects",
+    icon: FolderKanban,
+    href: "/projects",
+  },
   {
     label: "Improvements",
     icon: FlaskConical,

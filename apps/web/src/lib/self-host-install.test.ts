@@ -146,7 +146,13 @@ describe("the bootstrap.sh contract", () => {
     // If this ever stops being true, bootstrap.sh has become pipe-safe and this
     // whole module is redundant; that is a deliberate decision, not a silent
     // drift, so it should break here.
-    expect(bootstrap).toContain('cd "$(cd "$(dirname "$0")" && pwd)"');
+    //
+    // It reads `$0` and cds to that directory. #782 split that into resolving
+    // `$SELF` first (so `--help` can print its own header after the cd) and
+    // then cding to its dirname, which is the same dependency on `$0` expressed
+    // in two lines; the assertion follows the property, not the spelling.
+    expect(bootstrap).toContain('$(cd "$(dirname "$0")" && pwd)');
+    expect(bootstrap).toMatch(/^cd "\$\(dirname "\$SELF"\)"$/m);
     expect(bootstrap).toContain(".env.example");
   });
 

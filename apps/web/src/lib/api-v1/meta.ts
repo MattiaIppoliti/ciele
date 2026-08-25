@@ -16,6 +16,8 @@ export const API_V1_DOMAINS = [
   "memories",
   "sso",
   "help-desks",
+  "teammates",
+  "channels",
   "skills",
   "goals",
   "alerts",

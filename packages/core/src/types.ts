@@ -1225,6 +1225,410 @@ export interface Publication {
   createdAt: string;
 }
 
+/** Who may see a Teammate on the roster: everyone, or its owner and admins. */
+export type TeammateVisibility = "org" | "private";
+
+/**
+ * An **AI Teammate** (spec #767): the Assistant's internal sibling. Same chat
+ * runtime, same knowledge, same citations, but it answers Members inside the
+ * console instead of Visitors on a website, so it has no Publication, no
+ * Flows, no widget and no escalation.
+ *
+ * Everything that makes one distinct is configuration over the runtime: the
+ * persona (name + title + Standing Role) becomes a prompt layer, and the
+ * Knowledge Scope becomes the set of Collections its search may reach.
+ */
+export interface Teammate {
+  id: string;
+  organizationId: string;
+  /** What Members call it: the roster card, the chat title, the persona's name. */
+  name: string;
+  /** Job title under the name ("Support Copywriter"). Empty is allowed. */
+  title: string;
+  /** The Standing Role, in the organization's own words. */
+  roleDescription: string;
+  /** Seed for the generated avatar; empty falls back to the id. */
+  avatarSeed: string;
+  /** The Member who created it. Keeps edit rights even on a private Teammate. */
+  ownerId: string;
+  /** Members who may edit it besides the owner and the organization's admins. */
+  editorIds: string[];
+  visibility: TeammateVisibility;
+  /**
+   * Knowledge Scope: the Library Collections this Teammate may search. Empty is
+   * a real configuration (pure persona), not a missing one, see
+   * `teammateSearchesKnowledge` in `teammate.ts`.
+   */
+  collectionIds: string[];
+  modelProvider: Provider;
+  modelId: string;
+  /**
+   * The ceiling on what any granted operation may do (#770). Grants say *which*
+   * domains a Teammate acts in; this says how far inside them, and it is a
+   * separate knob because the two are set by different people for different
+   * reasons: an owner adds the improvements domain because the Teammate's job
+   * needs it, an admin lowers the ceiling to `member` because they want to
+   * watch it read before they let it write.
+   *
+   * Deliberately not the full `Role` ladder: no Teammate manages members, mints
+   * API keys or changes roles, so those rungs do not exist here at all rather
+   * than existing and being refused.
+   */
+  capabilityCeiling: TeammateCapabilityCeiling;
+  /**
+   * Whether this Teammate may accept its own Suggested Fixes (#770), the one
+   * explicit relaxation of ADR-0017's "a Member must accept" invariant. False
+   * by default and never implied by any domain grant: writing knowledge without
+   * a human in the loop is a decision an admin makes on purpose, per Teammate.
+   */
+  approvalBypass: boolean;
+  /**
+   * The Project this Teammate is attached to, or null (#771). At most one:
+   * a Teammate that read three projects' decisions every turn would be
+   * answering from a blend of contexts nobody asked it to combine.
+   */
+  projectId: string | null;
+  /** Soft-delete tombstone (#767): past Conversations stay readable. */
+  deletedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * A domain a Teammate may act in (#770). The vocabulary is closed: a grant row
+ * naming something not here is not a weaker grant, it is a typo, and the check
+ * constraint says so.
+ *
+ * Three to start, the ones the spec's stories need. A fourth costs one entry
+ * here, one row in the action catalogue, and the check constraint, which is the
+ * point of keeping the mapping data rather than code.
+ */
+export type TeammateGrantDomain = "improvements" | "knowledge" | "inbox";
+
+export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
+  "improvements",
+  "knowledge",
+  "inbox",
+];
+
+/** How far inside a granted domain a Teammate may go. */
+export type TeammateCapabilityCeiling = "member" | "edit" | "publish";
+
+export const TEAMMATE_CAPABILITY_CEILINGS: readonly TeammateCapabilityCeiling[] = [
+  "member",
+  "edit",
+  "publish",
+];
+
+/**
+ * One granted domain (#770). **The row is the grant**: there is no `enabled`
+ * column, because a disabled grant and an absent one mean the same thing to the
+ * runtime and only one of them can be misread. Revoking deletes the row.
+ */
+export interface TeammateGrant {
+  id: string;
+  organizationId: string;
+  teammateId: string;
+  domain: TeammateGrantDomain;
+  /** The admin who granted it; null once their account is gone. */
+  grantedBy: string | null;
+  createdAt: string;
+}
+
+/**
+ * One Member keeping one Teammate off their own roster (#767, story 10).
+ *
+ * A row means hidden. Like a grant row it holds no mutable state, so unhiding
+ * is a delete rather than a flag: "hidden = false" and "no row" would be two
+ * ways to say the same thing, and only one of them can be misread.
+ *
+ * Not a state of the Teammate. It answers everybody else unchanged, it is still
+ * a referral target, and this Member can still open it by URL; what changes is
+ * one list.
+ */
+export interface TeammateRosterHidden {
+  id: string;
+  organizationId: string;
+  teammateId: string;
+  /** Whose roster it is off. */
+  userId: string;
+  createdAt: string;
+}
+
+/**
+ * The tag every automatically filed Improvement carries (#767, story 16), so a
+ * Member can filter the board down to what a Teammate raised. Exactly one
+ * string, in the domain rather than at the call site: a board filter and a
+ * writer that disagree by a character produce a filter that matches nothing.
+ */
+export const AUTO_IMPROVEMENT_LABEL = "auto-filed";
+
+/** How often a Routine runs (#772). Presets, deliberately not a cron string. */
+export type RoutineCadence = "daily" | "weekly" | "monthly";
+
+/** Whether the last unattended run worked. */
+export type RoutineRunStatus = "ok" | "failed";
+
+/**
+ * A **Routine** (#772): a standing instruction plus a cadence, run unattended.
+ *
+ * `lastRunAt` is both the claim lease and the cadence anchor, which is what
+ * makes "once per window even with a drifting cron tick" one field rather than
+ * two that can disagree.
+ */
+export interface TeammateRoutine {
+  id: string;
+  organizationId: string;
+  teammateId: string;
+  /** What to do, read as the user message of the unattended turn. */
+  instruction: string;
+  cadence: RoutineCadence;
+  /** Preferred hour, UTC. Cadence says how often, this says when in the day. */
+  hour: number;
+  enabled: boolean;
+  /** Whose standing instruction it is; the runs land in their thread. */
+  createdBy: string | null;
+  lastRunAt: string | null;
+  lastStatus: RoutineRunStatus | null;
+  lastDetail: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeammateRoutineInput {
+  organizationId: string;
+  teammateId: string;
+  instruction: string;
+  cadence: RoutineCadence;
+  hour?: number;
+  createdBy?: string | null;
+}
+
+export type TeammateRoutinePatch = Partial<
+  Pick<TeammateRoutine, "instruction" | "cadence" | "hour" | "enabled">
+>;
+
+/**
+ * A **Project** (#771): the durable home for decisions that belong to the work
+ * rather than to one conversation. Lightweight on purpose, a name, a
+ * description, an archived flag, and one document; everything richer (per-
+ * project Improvements, per-project conversations) is out of scope in #767.
+ */
+export interface Project {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  /** Archived keeps the decisions readable and stops them reaching a prompt. */
+  archived: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectInput {
+  organizationId: string;
+  name: string;
+  description?: string;
+  createdBy?: string | null;
+}
+
+export type ProjectPatch = Partial<
+  Pick<Project, "name" | "description" | "archived">
+>;
+
+/**
+ * Which of the three memory layers a document is (#771). Derived from which
+ * owner the row carries, never stored beside them: a column that can disagree
+ * with the ids is a column that eventually will.
+ */
+export type MemoryDocumentScope = "user" | "agent" | "project";
+
+/**
+ * One memory document: markdown, injected whole into the prompt, size-capped.
+ *
+ * Deliberately not the embedding-recall `Memory` the widget keeps for Visitors.
+ * That answers "what do I half-remember about this person"; this is a document
+ * you read in full or not at all, because retrieving the top-k sentences of
+ * your team's own conventions would be worse than reading none of them.
+ */
+export interface MemoryDocument {
+  id: string;
+  organizationId: string;
+  /** Exactly one of the three is set; `scope` says which. */
+  memberId: string | null;
+  teammateId: string | null;
+  projectId: string | null;
+  scope: MemoryDocumentScope;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Who a document belongs to, as the one argument every read and write takes. */
+export type MemoryDocumentOwner =
+  | { scope: "user"; memberId: string }
+  | { scope: "agent"; teammateId: string }
+  | { scope: "project"; projectId: string };
+
+/**
+ * One write, kept forever. `bodyBefore` is the document as it stood *before*
+ * this write, which is what makes reverting a restore rather than a
+ * reconstruction (#767, story 19).
+ */
+export interface MemoryDocumentEntry {
+  id: string;
+  organizationId: string;
+  documentId: string;
+  /** The Teammate that wrote it; null when a Member edited it themselves. */
+  teammateId: string | null;
+  /** The Member it is attributed to: the editor, or whoever the Teammate answered. */
+  authorId: string | null;
+  /** What the writer said it was doing, in its own words. */
+  note: string;
+  bodyBefore: string;
+  createdAt: string;
+}
+
+/**
+ * A **Teammate channel** (#778): a named thread holding N Members and N
+ * Teammates, where anyone present can @mention a Teammate and get its reply in
+ * the same transcript.
+ *
+ * Its own entity, owning its own messages, rather than a `Conversation` that
+ * grew participants. A Conversation is single-subject by construction (#768's
+ * exclusive-or check), and the widget, the Inbox, Insights and the message-level
+ * export all read it that way; teaching it a roster would have made every one of
+ * those reads ask "and is this one a group?".
+ */
+export interface TeammateChannel {
+  id: string;
+  organizationId: string;
+  name: string;
+  /**
+   * The bound Project (0..1), whose decisions document is shared context for
+   * every Teammate turn in here, and where a Teammate writes what the channel
+   * settles (#776).
+   */
+  projectId: string | null;
+  /** Who opened it. Keeps the roster and the name theirs to change. */
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeammateChannelInput {
+  organizationId: string;
+  name: string;
+  projectId?: string | null;
+  createdBy?: string | null;
+}
+
+export type TeammateChannelPatch = Partial<
+  Pick<TeammateChannel, "name" | "projectId">
+>;
+
+/**
+ * One seat in a channel: a Member or a Teammate, never both.
+ *
+ * Two nullable owners under an exclusive-or check, the shape `conversations`
+ * (#768) and `memory_documents` (#771) already take, rather than two tables
+ * that would answer "who is in this channel" twice. `lastReadAt` is a Member's
+ * own read marker and stays null on a Teammate row: an agent has no unreads.
+ */
+export interface TeammateChannelParticipant {
+  id: string;
+  organizationId: string;
+  channelId: string;
+  userId: string | null;
+  teammateId: string | null;
+  addedBy: string | null;
+  lastReadAt: string | null;
+  createdAt: string;
+}
+
+export interface TeammateChannelParticipantInput {
+  organizationId: string;
+  channelId: string;
+  userId?: string | null;
+  teammateId?: string | null;
+  addedBy?: string | null;
+}
+
+/**
+ * Who wrote a channel message. `system` is the runtime speaking as itself: the
+ * chain-cap marker, which has to be in the transcript rather than in a toast,
+ * because "the fan-out stopped here" is part of the record of what happened.
+ */
+export type ChannelAuthorType = "member" | "teammate" | "system";
+
+/**
+ * One message in a channel transcript.
+ *
+ * `content` is the same `ChatReplyPart[]` vocabulary a Conversation message
+ * carries, so the console renders a channel with the transcript component the
+ * 1:1 chat already uses, citations and tool cards included (#778, story 17).
+ */
+export interface ChannelMessage {
+  id: string;
+  organizationId: string;
+  channelId: string;
+  authorType: ChannelAuthorType;
+  authorUserId: string | null;
+  authorTeammateId: string | null;
+  content: unknown[];
+  /** The Teammates this message addressed, resolved against the roster. */
+  mentions: string[];
+  /**
+   * The chain this message belongs to: the id of the human message that started
+   * it. Null on that human message itself, which is what makes "everything one
+   * message triggered" a single `where chain_id = ?` rather than a walk.
+   */
+  chainId: string | null;
+  /** How the answer was reached, as in a Conversation message; null otherwise. */
+  trace: StoredTurnTrace | null;
+  createdAt: string;
+}
+
+/** What creating a Teammate requires; everything else takes a column default. */
+export interface TeammateInput {
+  organizationId: string;
+  ownerId: string;
+  name: string;
+  title?: string;
+  roleDescription?: string;
+  avatarSeed?: string;
+  visibility?: TeammateVisibility;
+  collectionIds?: string[];
+}
+
+export type TeammatePatch = Partial<
+  Pick<
+    Teammate,
+    | "name"
+    | "title"
+    | "roleDescription"
+    | "avatarSeed"
+    | "visibility"
+    | "collectionIds"
+    | "editorIds"
+    | "modelProvider"
+    | "modelId"
+    | "projectId"
+    | "deletedAt"
+  >
+>;
+
+/**
+ * The two fields an Editor may not touch (#770). Kept out of `TeammatePatch`
+ * rather than merely out of its zod schema: the grants surface is admin-only,
+ * and a colleague who may rename a Teammate must not be able to raise its
+ * ceiling or hand it approval-bypass in the same write.
+ */
+export type TeammateGovernancePatch = Partial<
+  Pick<Teammate, "capabilityCeiling" | "approvalBypass">
+>;
+
 /**
  * An org-owned grouping of Sources (PRD #726). Collections stopped belonging
  * to an Assistant at the contract migration: "an Assistant's collections" is
@@ -1251,6 +1655,7 @@ export type BackgroundJobKind =
   | "graph_sync_concept"
   | "draft_improvement_proposal"
   | "promote_memories"
+  | "distill_agent_memory"
   | "sync_entity_records";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
@@ -1519,6 +1924,29 @@ export type ConversationSubject = "member" | "visitor" | "sso";
 
 /** Best-effort session context captured when a conversation starts. */
 export interface ConversationMetadata {
+  /**
+   * Set when this Conversation is an unattended Routine run (#772). A run is
+   * an ordinary Teammate Conversation in every way the runtime cares about, so
+   * what makes it a run is a fact about where it came from, not a column.
+   */
+  routineId?: string;
+  /** The routine's one-line name, so the thread can label the run. */
+  routineName?: string;
+  /**
+   * Set when this Conversation began as a referral from another Teammate
+   * (#773): where it came from, who sent it, and what they said. The summary
+   * is read as standing context on the first turn, never as a message, because
+   * it is neither the Member's words nor this Teammate's.
+   */
+  referredFromConversationId?: string;
+  referredFromTeammateName?: string;
+  referralSummary?: string;
+  /**
+   * The continuations opened from referral cards in this Conversation, so the
+   * origin points forward and the handoff is a link rather than a coincidence
+   * of timing.
+   */
+  referredTo?: { conversationId: string; teammateId: string; teammateName: string }[];
   userName?: string;
   userEmail?: string;
   userRole?: string;
@@ -1570,7 +1998,14 @@ export interface ConversationMetadata {
 
 export interface Conversation {
   id: string;
-  assistantId: string;
+  /**
+   * The Assistant this Conversation belongs to, or null on a Teammate one.
+   * Exactly one of `assistantId` / `teammateId` is set (#768); the database
+   * check constraint is what makes that an invariant rather than a habit.
+   */
+  assistantId: string | null;
+  /** The AI Teammate this Conversation belongs to, or null on an Assistant one. */
+  teammateId: string | null;
   subjectType: ConversationSubject;
   subjectId: string;
   collectionId: string | null;
@@ -1992,6 +2427,13 @@ export type AlertType =
   | "crawl"
   | "provider"
   | "ingestion"
+  /**
+   * A knowledge-configuration problem that no retry fixes, today an AI
+   * Teammate whose Knowledge Scope names a Collection somebody deleted (#769).
+   * Distinct from `ingestion`, which is a pipeline failure: this one waits for
+   * a person to decide what the scope should say instead.
+   */
+  | "knowledge"
   | "system";
 
 export type AlertStatus = "active" | "resolved";
@@ -2036,7 +2478,9 @@ export type AiUsageStage =
   | "improvement_proposal"
   | "graph_search"
   | "graph_cognify"
-  | "memory_extract";
+  | "memory_extract"
+  /** Distilling one Teammate turn into its Agent memory layer (#771). */
+  | "agent_memory";
 
 /**
  * Which credential answered a metered model call, the platform env key
@@ -2323,7 +2767,12 @@ export type RuntimeEventKind =
 export type RuntimeEventStatus = "started" | "succeeded" | "failed";
 
 /** Which traffic surface produced a chat-turn event. */
-export type RuntimeEventSurface = "preview" | "widget";
+/**
+ * Which traffic produced a runtime event. `teammate` is internal staff chat
+ * (#768): it is neither a Visitor on the widget nor an admin testing in the
+ * Preview, and folding it into either would misattribute internal usage.
+ */
+export type RuntimeEventSurface = "preview" | "widget" | "teammate";
 
 /**
  * One runtime telemetry event: an attributed record of a runtime boundary

@@ -7,6 +7,8 @@ import type {
   Role,
   SsoConnection,
   Provider,
+  TeammateCapabilityCeiling,
+  TeammateGrantDomain,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { ZodType } from "zod";
@@ -29,10 +31,28 @@ import type { MutatedEntity } from "./entities";
 /** Who an operation runs as, resolved by the calling surface. */
 export interface OperationContext {
   organizationId: string;
-  /** The acting Member's user id; empty string for an API-key caller. */
+  /**
+   * The acting Member's user id.
+   *
+   * Not a way to tell a human from a machine: an API-key call carries the
+   * key's **creator** (`actorUserId: key.createdBy`), so this is a member id on
+   * both paths and is empty only where a surface has nobody to name. An
+   * operation that must behave differently for a key needs a different signal,
+   * not this one.
+   */
   userId: string;
   /** Already-authorized Role, capability was checked by the caller. */
   role: Role;
+  /**
+   * Set when this run is an AI Teammate acting inside a turn (#770).
+   *
+   * Its presence changes who the operation runs *as*, not who asked. Capability
+   * comes from the Teammate's grants and ceiling; `role` above stays the
+   * invoking Member's and is no longer the gate, which is why a Viewer can ask
+   * a granted Teammate to move a board item and it moves. `userId` also stays
+   * the Member's, so every mutation still records the human who asked.
+   */
+  teammate?: TeammateActor;
   /**
    * The surface's Db: RLS-scoped (web session) or org-pinned (API key).
    * Operations never construct a Db and never widen what it can reach.
@@ -47,6 +67,27 @@ export interface OperationContext {
    * the demo/mock deployment stays correct unwired.
    */
   ports?: OperationPorts;
+}
+
+/**
+ * The acting Teammate, resolved by the calling surface from its row and its
+ * grant rows. A plain value rather than the `Teammate` type: the operations
+ * layer needs what it may do, not its avatar seed.
+ */
+export interface TeammateActor {
+  id: string;
+  /** Shown on the transcript card and in refusals, so the model can say who. */
+  name: string;
+  ceiling: TeammateCapabilityCeiling;
+  /** Domains with a grant row. Absence is refusal; there is no default. */
+  grants: readonly TeammateGrantDomain[];
+  approvalBypass: boolean;
+  /**
+   * The Project it is attached to, or null (#771). Carried on the actor rather
+   * than passed per call, so the Project-decision tool takes no target: the
+   * model names what to write, never where.
+   */
+  projectId?: string | null;
 }
 
 export interface OperationPorts {

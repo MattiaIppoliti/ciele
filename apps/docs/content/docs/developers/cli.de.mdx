@@ -4,7 +4,7 @@ description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten J
 ---
 
 Der Befehl `ciele` verwendet dieselben API-Operationen wie die
-Administratorkonsole. Die CLI unterstützt den gehosteten Dienst und selbst
+Administratorkonsole. Die CLI unterstützt den gehosteten Dienst sowie selbst
 gehostete Installationen.
 
 ## Anforderungen
@@ -23,8 +23,8 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Das Tar-Archiv enthält seine Laufzeitabhängigkeiten. Der Befehl installed
-benötigt das Repository nicht mehr.
+Das Tarball enthält seine Laufzeitabhängigkeiten. Der Befehl installed benötigt
+das Repository nicht mehr.
 
 Nachdem `@ciele/cli` in npm veröffentlicht wurde, installiert
 `npm install --global @ciele/cli` dasselbe Artefakt.
@@ -94,7 +94,7 @@ ciele publish status <assistant-id>
 
 Jeder Befehl, der Wissen hinzufügt, benötigt `--assistants`. Eine Collection hat
 keinen Besitzer, daher sind diese Links das Einzige, was das Wissen für einen
-Assistant zugänglich macht. Die Befehle lauten `sources add-text`,
+Assistant zugänglich macht. Die Befehle sind `sources add-text`,
 `sources add-url`, `sources add-file`, `faqs add` und `faqs import`.
 
 ### Quelllinks
@@ -117,7 +117,7 @@ die Quelle antwortet nicht mehr.
 `sources direct-access` entscheidet, ob dieser eine Assistant einem Besucher die
 Originaldatei geben kann.
 
-## Befehle für Vorgänge und Organisationen
+## Befehle für Vorgänge und Organisation
 
 ```bash
 ciele conversations list --assistant <assistant-id>
@@ -127,6 +127,8 @@ ciele improvements list
 ciele entities list
 ciele memories subjects
 ciele help-desks list
+ciele teammates list
+ciele channels list
 ciele skills list
 ciele goals list <assistant-id>
 ciele alerts list
@@ -138,8 +140,8 @@ ciele providers list
 ciele sso connection
 ```
 
-Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltensablauf kann
-nicht gelöscht werden.
+Befehle, die Daten löschen, erfordern `--yes`. Der Standard-Verhaltensablauf
+kann nicht gelöscht werden.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
 Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
@@ -153,5 +155,5 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Speichern Sie alle Werte im CI-Secret-Store. Schreiben Sie keinen Schlüssel in
-eine Workflow-Datei.
+Speichern Sie alle Werte im CI-Secret-Speicher für CI. Schreiben Sie keinen
+Schlüssel in eine Workflow-Datei.

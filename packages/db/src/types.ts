@@ -66,6 +66,13 @@ import type {
   ImprovementProposal,
   ImprovementProposalPayload,
   ImprovementProposalStatus,
+  ChannelAuthorType,
+  ChannelMessage,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
+  RoutineRunStatus,
+  TeammateRoutine,
   InboxConversation,
   InsightsFilter,
   InsightsOverview,
@@ -309,6 +316,13 @@ export interface Db {
    */
   listCollections(assistantId: string): Promise<KnowledgeCollection[]>;
   /**
+   * Every Collection the Organization owns, oldest first. Unlike
+   * `listCollections`, membership is not derived from an Assistant's links:
+   * this is the Library as a whole, which is what a picker choosing a
+   * Teammate's Knowledge Scope has to offer (#768).
+   */
+  listOrgCollections(organizationId: string): Promise<KnowledgeCollection[]>;
+  /**
    * The per-org "Knowledge Library" default collection hub-created items land
    * in (PRD #726), deterministic per organization, created on first use (the
    * backfill migration seeds it for orgs that existed then).
@@ -508,6 +522,19 @@ export interface Db {
     query: { embedding: number[] | null; text: string; limit?: number }
   ): Promise<KnowledgeSearchResult[]>;
 
+  /**
+   * The Teammate half of retrieval (#768): the same hybrid search, scoped by a
+   * set of Knowledge Collections in one Organization instead of by an
+   * Assistant's linked Sources. An empty `collectionIds` returns nothing and
+   * makes no query, the caller that wanted everything has to say which
+   * Collections it means.
+   */
+  searchCollectionChunks(
+    organizationId: string,
+    collectionIds: string[],
+    query: { embedding: number[] | null; text: string; limit?: number }
+  ): Promise<KnowledgeSearchResult[]>;
+
   // --- Org-level knowledge hub (PRD #726) -----------------------------------
   /**
    * One hub-table page of the Organization's Sources: per-kind tabs via
@@ -563,8 +590,14 @@ export interface Db {
   getPublication(id: string): Promise<Publication | null>;
 
   // Conversations & messages
+  /**
+   * Exactly one owner: `assistantId` for widget/Preview traffic, `teammateId`
+   * for a Teammate chat (#768). Passing both, or neither, is a caller bug the
+   * database refuses through its check constraint.
+   */
   createConversation(input: {
-    assistantId: string;
+    assistantId?: string | null;
+    teammateId?: string | null;
     subjectType: ConversationSubject;
     subjectId: string;
     collectionId?: string | null;
@@ -576,6 +609,58 @@ export interface Db {
     subjectType: ConversationSubject,
     subjectId: string
   ): Promise<Conversation[]>;
+  /**
+   * One Member's thread history with one Teammate, newest first. Separate from
+   * `listConversations` because the owner is a different column, not because
+   * the read differs: a Teammate only ever talks to Members, so the subject
+   * type is implied.
+   */
+  listTeammateConversations(
+    teammateId: string,
+    subjectId: string
+  ): Promise<Conversation[]>;
+  /**
+   * Append one message to a Teammate channel's transcript (#778).
+   *
+   * A behavioural method rather than a `table()` entry for one reason: the
+   * transcript has an order, and two messages written in the same millisecond
+   * (a reply and the chain-cap marker behind it) must read back in the order
+   * they were written. Both implementations therefore guarantee a strictly
+   * increasing `createdAt` per channel, which is what makes the generic
+   * accessor's single-key sort insufficient here.
+   */
+  appendChannelMessage(input: {
+    organizationId: string;
+    channelId: string;
+    authorType: ChannelAuthorType;
+    authorUserId?: string | null;
+    authorTeammateId?: string | null;
+    content: unknown[];
+    /** Everybody the message addressed: Members and Teammates alike. */
+    mentions?: string[];
+    /** The human message this belongs to; null on that message itself. */
+    chainId?: string | null;
+    trace?: StoredTurnTrace | null;
+  }): Promise<ChannelMessage>;
+  /**
+   * The channel's most recent messages, oldest-first, capped (default 100).
+   * Oldest-first because the caller renders a transcript, not a feed.
+   */
+  listChannelMessages(
+    channelId: string,
+    limit?: number
+  ): Promise<ChannelMessage[]>;
+  /**
+   * Every message one human message set off, oldest-first.
+   *
+   * Separate from the transcript read because the caps are counted from it: a
+   * chain has to be accounted exactly, and slicing it out of "the last N
+   * messages" would silently under-count on a busy channel.
+   */
+  listChannelChainMessages(
+    channelId: string,
+    chainId: string
+  ): Promise<ChannelMessage[]>;
   /** All conversations across the organization's assistants (Inbox). */
   listInboxConversations(organizationId: string): Promise<InboxConversation[]>;
   getConversation(id: string): Promise<Conversation | null>;
@@ -650,6 +735,13 @@ export interface Db {
   deleteImprovement(id: string): Promise<void>;
   /** The Suggested Fix drafted for an improvement, or null. */
   getImprovementProposal(improvementId: string): Promise<ImprovementProposal | null>;
+  /**
+   * The same row addressed by its own id. Exists because a proposal is
+   * *updated* by proposal id, and the org-pinned view (which stands in for RLS
+   * when the caller has no usable session, #770) has to answer "whose is this?"
+   * before it lets that update through.
+   */
+  getImprovementProposalById(id: string): Promise<ImprovementProposal | null>;
   /** Creates (or replaces) the draft Suggested Fix for an improvement. */
   createImprovementProposal(input: {
     improvementId: string;
@@ -665,6 +757,80 @@ export interface Db {
       acceptedConceptId?: string | null;
     }
   ): Promise<ImprovementProposal>;
+  // Routines (#772). The CRUD rides `table("teammateRoutines")`; these two do
+  // not, because a lease and a run record are not mechanical column writes.
+  /**
+   * Enabled routines that *might* be due (cross-org, service role): last run
+   * absent or older than the loosest cadence window. The exact per-routine
+   * rule is `isRoutineDue` in the domain package, applied by the caller, so
+   * the schedule is written once rather than once per adapter.
+   */
+  listDueRoutineCandidates(input: {
+    before: string;
+    limit: number;
+  }): Promise<TeammateRoutine[]>;
+  /**
+   * Compare-and-set the lease: stamps `lastRunAt` only if it still holds the
+   * value the caller read, and returns null when another tick got there first.
+   * That is what keeps two overlapping cron ticks from running one routine
+   * twice, without a separate lock table.
+   */
+  claimTeammateRoutine(
+    id: string,
+    expectedLastRunAt: string | null,
+    now: string
+  ): Promise<TeammateRoutine | null>;
+  /** Records how a run ended. Touches only the outcome columns. */
+  recordTeammateRoutineRun(
+    id: string,
+    input: { status: RoutineRunStatus; detail: string }
+  ): Promise<void>;
+
+  // Memory documents (#771): the three prompt-injected layers and their
+  // history. Behavioural rather than a mapped table, because a write is an
+  // upsert plus an append plus a size cap, and a revert reads the history back.
+  /**
+   * One layer's document, or null when nobody has written it yet. Absent is a
+   * real state, not an error: it is what every Member and every Teammate starts
+   * with, and it injects nothing.
+   */
+  getMemoryDocument(
+    organizationId: string,
+    owner: MemoryDocumentOwner
+  ): Promise<MemoryDocument | null>;
+  /**
+   * Replace a layer's body and record who did it.
+   *
+   * One method rather than create + update + log, because the three must not
+   * come apart: a body that changed with no history entry is exactly the write
+   * a Member could not audit or revert. Creates the document on first write.
+   */
+  writeMemoryDocument(input: {
+    organizationId: string;
+    owner: MemoryDocumentOwner;
+    body: string;
+    /** What the writer says it did, kept on the history entry. */
+    note?: string;
+    /** The Teammate that wrote it; null when a Member edited it themselves. */
+    teammateId?: string | null;
+    /** The Member it is attributed to. */
+    authorId?: string | null;
+  }): Promise<MemoryDocument>;
+  /** The write history, newest first. */
+  listMemoryDocumentEntries(
+    documentId: string,
+    limit?: number
+  ): Promise<MemoryDocumentEntry[]>;
+  /**
+   * Restore the body as it stood before one entry, and record *that* as a new
+   * entry. History is append-only: undoing a write is another write, so the
+   * record still shows both.
+   */
+  revertMemoryDocument(input: {
+    entryId: string;
+    authorId?: string | null;
+  }): Promise<MemoryDocument>;
+
   /** Flagged answers (+ conversation context) attached to an improvement. */
   listImprovementMessages(improvementId: string): Promise<ImprovementAssociation[]>;
   linkImprovementMessage(improvementId: string, messageId: string): Promise<void>;

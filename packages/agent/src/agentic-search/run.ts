@@ -101,9 +101,28 @@ export function buildSystemPrompt(
   assistant: Assistant,
   flow: Flow,
   context?: {
+    /**
+     * An AI Teammate's persona (#768). Present, it REPLACES the website-widget
+     * identity lines: a colleague is not a visitor, and telling the model it is
+     * embedded in a public site is the fastest way to make it answer like one.
+     */
+    persona?: string;
+    /**
+     * Whether this turn has a knowledge-search tool at all. False for a
+     * pure-persona Teammate (empty Knowledge Scope), which must not be told to
+     * ground itself in a knowledge base it cannot reach.
+     */
+    canSearchKnowledge?: boolean;
     skills?: SkillSnapshot[];
     memory?: string[];
     longTermMemory?: string[];
+    /**
+     * An AI Teammate's three memory documents, already rendered and capped by
+     * `memoryPromptSections` (#771). Pre-rendered rather than passed raw
+     * because *which* layers a turn has, and what each heading tells the model
+     * about how far to trust it, is a domain rule, not a prompt-assembly one.
+     */
+    memoryDocuments?: readonly string[];
     flowStyle?: FlowStyleContext;
     /** Pre-rendered retrieval-context block for this turn. */
     retrievalContext?: string;
@@ -130,13 +149,19 @@ export function buildSystemPrompt(
   const phase = context?.phase ?? "gather";
   const answeringStyle = resolveAnsweringStyle(assistant, flowStyle);
 
+  const persona = context?.persona?.trim();
+  const canSearchKnowledge = context?.canSearchKnowledge ?? true;
+
   return [
     "# Platform instructions (immutable, highest precedence)",
     platformPrompt,
     "",
-    "# Assistant configuration (set by the organization)",
-    `You are ${assistant.nickname || assistant.title}, an AI assistant embedded in an organization's website.`,
-    assistant.description && `About you: ${assistant.description}`,
+    persona
+      ? "# Who you are (set by the organization)"
+      : "# Assistant configuration (set by the organization)",
+    persona ??
+      `You are ${assistant.nickname || assistant.title}, an AI assistant embedded in an organization's website.`,
+    persona ? undefined : assistant.description && `About you: ${assistant.description}`,
     // The style rides the terminal tool's result in the gather phase, so it is
     // stated here only when the model is actually writing.
     phase === "write" && answeringStyle
@@ -149,6 +174,9 @@ export function buildSystemPrompt(
           ...skills.map((s) => `## Skill: ${s.name}\n${s.prompt.trim()}`),
         ]
       : []),
+    // Standing context before per-conversation context: who the colleague is
+    // and what the team decided outrank what was said ten messages ago.
+    ...(context?.memoryDocuments ?? []).flatMap((section) => ["", section]),
     ...(memory.length > 0
       ? [
           "",
@@ -176,9 +204,19 @@ export function buildSystemPrompt(
           // Thinking panel, so the model narrates every step of the loop in
           // the Visitor's language, the reference's [Thinking:] cadence.
           "Think out loud as you go; this is REQUIRED, not optional: NEVER emit a tool call without first writing one or two short sentences of reasoning in the user's own language, saying what you have learned so far and what you will do next. That includes your FIRST tool call and the final readyToAnswer call. The user watches this reasoning stream in a side panel while they wait, so keep it presentable; it is still reasoning, not the answer.",
-          "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts, one call costs one iteration however many queries it carries.",
-          "If a search comes back thin, search again with different wording; you do not need permission to reformulate.",
-          "The knowledge base is often written in a different language than the user's message. When the user writes in another language, include translated variants (English plus the organization's likely language) among the queries of the SAME call, retrieval matches the document's own words, so a query in the wrong language finds nothing even when the answer is there.",
+          canSearchKnowledge
+            ? "Ground yourself in the knowledge base: call searchKnowledge before answering anything that depends on organization-specific facts. Pass several queries in one call when the question has several parts, one call costs one iteration however many queries it carries."
+            : // No searcher was wired for this turn (a Teammate with an empty
+              // Knowledge Scope, #768). Telling it to search anyway makes it
+              // hunt for a tool that is not there, or invent what it would
+              // have found.
+              "You have NO knowledge base this turn and no tool that can look anything up. Answer from what the user tells you and from general knowledge, and say plainly when something would need a source you do not have.",
+          canSearchKnowledge
+            ? "If a search comes back thin, search again with different wording; you do not need permission to reformulate."
+            : undefined,
+          canSearchKnowledge
+            ? "The knowledge base is often written in a different language than the user's message. When the user writes in another language, include translated variants (English plus the organization's likely language) among the queries of the SAME call, retrieval matches the document's own words, so a query in the wrong language finds nothing even when the answer is there."
+            : undefined,
           "You MUST finish by calling readyToAnswer exactly once, with the status that matches what you found. You will then get a second phase in which to write, and its instructions arrive on that tool's result.",
           context?.alreadyClarified
             ? "This conversation has ALREADY asked the visitor to clarify once. Do not ask again, answer as best you can from what you find and say plainly what you could not determine."
@@ -243,6 +281,10 @@ export interface AgenticSearchTurnInput {
   assistant: Assistant;
   /** The immutable platform (Ciele) system-prompt layer. */
   platformPrompt: string;
+  /** An AI Teammate's persona layer (#768); absent on Assistant turns. */
+  persona?: string;
+  /** Its three memory documents, rendered (#771); absent on Assistant turns. */
+  memoryDocuments?: readonly string[];
   flow: Flow;
   message: string;
   history: HistoryMessage[];
@@ -323,6 +365,8 @@ export async function runAgenticSearch(
   const {
     assistant,
     platformPrompt,
+    persona,
+    memoryDocuments,
     flow,
     message,
     history,
@@ -417,6 +461,9 @@ export async function runAgenticSearch(
   const gather = await runGatherPhase({
     chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
+      persona,
+      memoryDocuments,
+      canSearchKnowledge: Boolean(input.searchKnowledge),
       skills,
       memory: session.memory(),
       longTermMemory,
@@ -463,6 +510,9 @@ export async function runAgenticSearch(
   const write = await runWritePhase({
     chatModel,
     system: buildSystemPrompt(platformPrompt, assistant, flow, {
+      persona,
+      memoryDocuments,
+      canSearchKnowledge: Boolean(input.searchKnowledge),
       skills,
       memory: session.memory(),
       longTermMemory,

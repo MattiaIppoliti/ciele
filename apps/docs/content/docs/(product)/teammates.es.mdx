@@ -1,0 +1,448 @@
+---
+title: Compañeros de equipo de IA
+description: Crea un compañero interno de IA que responda a tu equipo a partir del conocimiento que ya has seleccionado.
+---
+
+Un **AI Teammate** es un compañero de IA con el que tus miembros chatean dentro
+de Ciele. Utiliza el mismo motor de respuestas que tu Asistente. Responde a tu
+equipo, no a tus visitantes.
+
+Un Teammate no tiene publicación, ni widget, ni Help Desk. Nada de lo
+relacionado con él llega a tu sitio web.
+
+<Mermaid
+  title="El mismo motor, dos públicos"
+  chart={`
+flowchart TB
+  KNOW["Knowledge Collections in the Library"]
+  ASSIST["Assistant, published as a widget"]
+  TEAM["AI Teammate, inside the console"]
+  VISITOR["Visitor on your website"]
+  MEMBER["Member of your Organization"]
+  KNOW --> ASSIST
+  KNOW --> TEAM
+  ASSIST --> VISITOR
+  TEAM --> MEMBER
+`}
+/>
+
+## Crea un Teammate
+
+Abre **Teammates** y selecciona **New teammate**. Necesitas el rol de Editor o
+uno superior.
+
+Cada Teammate tiene tres partes.
+
+- **Name and title.** El nombre inicia cada chat. El título indica lo que hace
+  el Teammate.
+- **Standing role.** Escribe para qué sirve el Teammate con tus propias
+  palabras. Descríbelo como si lo hicieras con un compañero.
+- **Knowledge.** Selecciona las colecciones de conocimiento en las que el
+  Teammate puede buscar.
+
+El rol Permanente se aplica al siguiente mensaje. Un Teammate no tiene ninguna
+publicación, por lo que nunca publicas un cambio.
+
+### El avatar
+
+Ciele dibuja el avatar. Cada Teammate recibe una figura generada a partir de su
+identidad. Tiene el mismo aspecto en la lista, en el encabezado del chat y en
+una transcripción, y no tienes que subir nada.
+
+El dibujo es determinista, no aleatorio: el mismo Teammate siempre tiene la
+misma cara. Establece el **Avatar seed** en **Configure** para obtener uno
+diferente; la cara seguirá siendo la misma aunque cambies el nombre.
+
+Los miembros funcionan de la misma manera. Cualquier persona que no haya subido
+una foto recibe una figura generada. Aparece en la lista de miembros, en la
+barra lateral y junto a una mejora que se les ha asignado. Así, una fila se
+reconoce de un vistazo, y una foto real siempre es mejor que la figura generada.
+
+## Ámbito de conocimiento
+
+Un compañero de equipo busca solo en las colecciones de conocimiento que tú
+selecciones. Las respuestas citan un Concepto y su Fuente, exactamente como el
+widget.
+
+Una selección vacía es una configuración válida. Entonces, el Teammate responde
+únicamente desde su rol Estándar. No tiene ninguna herramienta de búsqueda y lo
+indica cuando una pregunta necesita una Fuente.
+
+Si eliminas una colección en la que un Teammate sigue buscando, Ciele crea una
+alerta del tipo **Knowledge**. El Teammate sigue respondiendo desde su rol y no
+encuentra nada en la colección eliminada. Abre **Configure** y elimina la
+colección de su conocimiento para borrar la alerta.
+
+<Callout title="Same Knowledge, no copy">
+A Teammate reads the Library. It does not hold a separate copy. New content in a selected
+Collection is available in the next message.
+</Callout>
+
+## Quién puede ver a un Teammate
+
+La visibilidad tiene dos valores.
+
+- **The whole organization.** Todos los miembros ven al Teammate en la lista.
+- **Only me and admins.** Lo ven el propietario, los miembros que el propietario
+  designa como editores y los administradores de la organización.
+
+El propietario, los editores designados y los administradores pueden cambiar la
+configuración. Un miembro con el rol de Visor puede chatear con un Compañero de
+equipo, pero no puede crear uno ni modificarlo.
+
+### Oculta uno de tu propia lista
+
+Una lista larga es un problema que debe resolver otra persona, por lo que cada
+miembro puede acortar la suya. Selecciona el icono del ojo en la tarjeta de un
+Teammate para eliminarlo de tu lista.
+
+Esto no cambia nada para nadie más. El Teammate sigue respondiendo a tus
+compañeros, se te puede seguir sugiriendo como recomendación y puedes seguir
+abriéndolo desde un enlace. Solo tu lista se acorta. Abre **Hidden from your
+roster** en la parte inferior de la página para volver a añadir uno.
+
+<Callout title="Hiding is not deleting">
+Deleting a Teammate retires it for the whole organization. Hiding shortens one list, and only yours.
+</Callout>
+
+## Qué puede hacer un Teammate
+
+Un nuevo Teammate solo puede hablar. Responde preguntas y no cambia nada.
+
+Para que pueda actuar, un **administrador** le concede uno o más dominios. Una
+concesión es una fila. Si no hay ninguna fila, significa que no tiene permiso y
+el Teammate ni siquiera ve la herramienta.
+
+| Dominio | Lo que permite la concesión |
+| --- | --- |
+| **Improvements** | Leer el panel, mover elementos y redactar Sugerencias de corrección para las respuestas marcadas. |
+| **Knowledge** | Leer la Biblioteca y añadir o corregir preguntas frecuentes. Nunca elimina una Fuente. |
+| **Inbox** | Lee las conversaciones de los visitantes y fíjalas. Nunca elimina ninguna. |
+
+Abre **Configure** para configurar los permisos. Solo un administrador ve los
+controles. Todos los demás miembros ven una frase que indica lo que el Teammate
+puede hacer. Las personas que trabajan con un agente conocen sus permisos.
+
+### Hasta dónde puede llegar
+
+Cada Teammate tiene un límite que se aplica a todos sus permisos.
+
+- **Read only.** Puede ver todo lo que has concedido. No cambia nada de eso.
+- **Read and change.** El valor predeterminado. Puede modificar cosas dentro de
+  los dominios que hayas concedido.
+- **Read, change and publish.** Reservado para acciones futuras. Actualmente no
+  permite nada más.
+
+Un Teammate nunca gestiona miembros, claves de API ni roles. Esos permisos no
+existen para un Teammate.
+
+### Aceptar una corrección sugerida
+
+Un Teammate con el permiso **Improvements** puede redactar una Suggested Fix.
+Una persona debe aceptarla. La corrección se convierte en conocimiento solo
+después de eso.
+
+Un administrador puede cambiar esto para un Teammate con el control **Let it
+accept its own Suggested Fixes**. El control requiere los permisos
+**Improvements** y **Knowledge**. Está desactivado de forma predeterminada.
+
+Con el control activado, una corrección que el Teammate redacte se convierte en
+una pregunta frecuente en tu Knowledge, y nadie la revisa primero. Ciele
+registra al compañero de equipo como autor. A continuación, el Concepto muestra
+el nivel de confianza confirmado por la máquina, no revisado por una persona.
+
+<Callout type="warn" title="Read this before you turn it on">
+A Teammate that accepts its own fixes writes to your Knowledge with no human review.
+</Callout>
+
+### La transcripción es el registro
+
+Cada acción se muestra en la conversación como una tarjeta. La tarjeta indica la
+operación y el elemento que ha cambiado. Ciele registra al miembro que hizo la
+solicitud, no al Teammate, en el cambio en sí.
+
+## Lo que recuerda un Teammate
+
+Un Teammate lee tres documentos al comienzo de cada mensaje. Cada uno es breve y
+puedes leer y modificar los tres.
+
+| Documento | De quién se trata | Quién puede modificarlo |
+| --- | --- | --- |
+| **Your profile** | Tú. Un documento, compartido con todos los Teammates con los que hables. | Tú y los Teammates con los que hablas. |
+| **What it has learned** | Las notas del Teammate sobre cómo hacer su trabajo. | El propietario y los editores del Teammate. |
+| **Decisions** | Lo que tu equipo ha acordado. | Miembros con el rol de Editor o superior. |
+
+Cada documento tiene un límite de 4000 caracteres. Un Teammate lee todo el
+documento, por lo que uno vacío no cuesta nada y no aporta nada.
+
+### Tu perfil
+
+Abre **Settings** y luego **Memory**. Este documento indica cómo trabajas: tu
+zona horaria, las palabras que usas, qué quieres abreviado y qué quieres por
+extenso.
+
+Un Teammate lo actualiza cuando aprende algo sobre ti. Cada cambio aparece en la
+lista **History** con el nombre del Teammate que lo realizó y la fecha.
+Selecciona **Undo this change** para que el documento vuelva a su estado
+original. Nadie más puede leer este documento, ni siquiera un administrador.
+
+### Lo que ha aprendido
+
+Al final de una conversación, un Teammate decide si ha aprendido algo duradero
+sobre su trabajo. La mayoría de las conversaciones no aportan nada y, por lo
+tanto, el Teammate no escribe nada. Cuando escribe, añade una línea con una
+fecha.
+
+Un hecho duradero es una convención que utiliza tu organización, un nombre que
+le habéis dado a algo o una corrección que ha hecho un compañero. No es lo que
+habéis hablado hoy.
+
+Abre **Configure** en el Teammate para leer estas notas. Elimina una línea que
+sea incorrecta. Teammate lee cada mensaje de este documento, por lo que una
+línea incorrecta sigue siendo incorrecta hasta que la corrijas.
+
+### Proyectos
+
+Un **Project** es un nombre, una descripción y un documento de decisiones. Abre
+**Projects** para crear uno. Necesitas el rol de Editor o uno superior.
+
+Asigna un Teammate a un proyecto en **Configure**. Un Teammate lee como máximo
+un proyecto. A partir del siguiente mensaje, responde a «qué decidimos» del
+documento del proyecto y puede añadir una decisión por sí mismo. Cada entrada se
+muestra como una tarjeta en la conversación.
+
+Selecciona **Archive** para detener un proyecto. Las decisiones siguen siendo
+legibles y los Teammates asignados dejan de leerlas. Selecciona el icono de
+eliminar para borrar el proyecto y sus decisiones. Archivar es la opción más
+segura, porque conserva el registro.
+
+## Remisión a otro compañero de equipo
+
+Un Teammate responde desde su propio rol y sus propios conocimientos. Cuando tu
+pregunta es para un compañero, lo indica y muestra una tarjeta con:
+
+- el nombre del otro Teammate,
+- una frase explicando por qué ese,
+- un resumen de tu conversación, para que no tengas que repetirte.
+
+Selecciona **Continue with …** en la tarjeta. Ciele abre un chat con ese
+compañero de equipo y le proporciona el resumen. Las dos conversaciones
+mantienen un enlace entre sí.
+
+El otro Teammate responde a partir de **su** conocimiento y **sus** permisos. No
+obtiene el conocimiento ni los permisos del Teammate que te recomendó.
+
+<Callout title="A referral is an offer, not a handover">
+The other Teammate does not speak in the first conversation, and nothing
+happens until you select the card. You stay in control of the handoff.
+</Callout>
+
+Un Teammate hace referencia únicamente a los Teammates que toda la organización
+puede ver. Nunca nombra a un Teammate privado y no muestra ninguna tarjeta
+cuando no hay otro Teammate que sugerir.
+
+## Canales
+
+Un **canal** es un hilo para varios miembros y varios Teammates. Utiliza un
+canal cuando un trabajo requiera más de un especialista.
+
+Abre **Teammates** y selecciona **New channel**. Ponle un nombre al canal y
+luego añade a los Teammates y a las personas que quieras. Cualquier miembro
+puede abrir un canal. No necesitas el rol de Editor.
+
+Un canal funciona por invitación. Solo las personas que están en el canal pueden
+verlo. Un compañero que no esté en el canal no puede abrirlo y no lo ve en la
+lista.
+
+### Pregunta a un compañero de equipo en un canal
+
+Escribe `@` y el nombre de un compañero de equipo. Ese compañero de equipo
+responde en el hilo.
+
+Un compañero de equipo responde solo cuando alguien lo menciona. Un compañero de
+equipo al que nadie nombra permanece en silencio. No hay ningún respondedor
+predeterminado.
+
+Un Teammate puede nombrar a otro Teammate en su respuesta. Entonces, ese
+Teammate responde por su cuenta, en el mismo hilo. Una pregunta puede llegar a
+todo el equipo y tú lees un solo hilo.
+
+Un Teammate solo puede nombrar a los Teammates del canal. No puede contactar con
+un compañero de equipo fuera del canal ni con un asistente.
+
+### Dónde se detiene una cadena
+
+Una **cadena** es todo lo que inicia un mensaje. Una cadena tiene dos límites:
+
+| Límite | Valor |
+| --- | --- |
+| Respuestas de un Teammate a partir de un mensaje | 10 |
+| Respuestas de un compañero de equipo | 2 |
+
+La cadena se detiene cuando alcanza un límite. A continuación, el hilo muestra
+una línea que explica el motivo. Envía otro mensaje para continuar.
+
+<Callout title="Why there is a limit">
+Two Teammates can answer each other. The limits make sure that they stop, and that one question
+costs you one conversation.
+</Callout>
+
+### Cada Teammate conserva sus propios permisos
+
+Cada Teammate responde con su propio rol, su propio ámbito de conocimiento y sus
+propios permisos. Un canal no otorga más permisos a ningún Teammate.
+
+Ciele registra al miembro que envió el primer mensaje como la persona que hizo
+la pregunta. Cada cambio que un Teammate realiza en la cadena se registra a
+nombre de ese miembro.
+
+Un Teammate solo lee el perfil de ese miembro. No lee el perfil de las otras
+personas del canal.
+
+### Asigna un proyecto a un canal
+
+Un canal puede usar un **Project**. Selecciona el icono de configuración en el
+canal y, a continuación, elige el Proyecto. A continuación, cada Teammate del
+canal lee el documento de decisiones de ese Proyecto y escribe en él las
+decisiones del canal.
+
+### Mensajes nuevos
+
+La lista muestra los canales con mensajes nuevos. Ciele marca un canal con
+**Mentioned you** solo cuando un mensaje te menciona. Los mensajes entre
+compañeros de equipo no lo marcan.
+
+### Lee un canal como propietario o administrador
+
+Un propietario o un administrador puede leer todos los canales de la
+organización, incluso un canal en el que no esté. Abre **Inbox** y, a
+continuación, **Channels**.
+
+Los canales son internos. No aparecen en la lista de conversaciones de los
+visitantes ni en Insights.
+
+## Rutinas
+
+Una **rutina** es una instrucción permanente que un Teammate lleva a cabo por sí
+mismo. Abre **Configure** y selecciona **Add** en **Routines**. Un Teammate
+puede tener 5.
+
+Cada rutina tiene una instrucción y una programación. La programación es un
+valor preestablecido:
+
+| Cadencia | Cuándo se ejecuta |
+| --- | --- |
+| **Every day** | Cada día, a la hora que elijas. |
+| **Every Monday** | Todos los lunes, a la hora que elijas. |
+| **The 1st of each month** | El primer día del mes, a la hora que elijas. |
+
+La hora es UTC. Ciele ejecuta cada rutina una vez por período. Si la
+programación se retrasa, la rutina se ejecuta de todos modos una vez y no se
+ejecuta dos veces para ponerse al día.
+
+<Callout title="The hour depends on your scheduler">
+A self-hosted Ciele checks for due routines every hour, and runs each one at the
+hour you chose. On Vercel, the Hobby plan permits one check each day. All
+routines then run at that daily check, and the hour you chose is approximate.
+The Pro plan removes the limit.
+</Callout>
+
+<Callout title="A routine acts on its grants, and on nothing more">
+An unattended run has no member behind it. The Teammate uses only the domains
+you granted it, at the ceiling you set. A routine on a Teammate with no grants
+can read and answer, and change nothing.
+</Callout>
+
+### Cada ejecución es una conversación
+
+Cada ejecución añade una conversación al hilo de la persona que creó la rutina.
+La tarjeta en la parte superior de la lista dice **Routine**, por lo que puedes
+ver qué trabajo no se ha atendido. Cada acción se muestra como una tarjeta,
+igual que en un chat.
+
+### Cuando falla una ejecución
+
+Una ejecución fallida crea un **Alert**. La alerta indica qué rutina ha fallado
+y por qué. La siguiente ejecución correcta la borra. Un fallo silencioso es el
+riesgo del trabajo desatendido, por lo que Ciele hace que el fallo sea evidente.
+
+Si eliminas al Teammate, sus rutinas se detienen. Esto no es un error y no
+genera ninguna alerta.
+
+### Clasifica los comentarios de los visitantes
+
+La rutina más útil analiza las respuestas que tus visitantes han calificado
+negativamente y archiva los nuevos problemas en el panel **Improvements**.
+
+Concede al Teammate el permiso **Improvements** y, a continuación, añade una
+rutina como esta:
+
+> Cada mañana, clasifica los «no me gusta» del día anterior y archiva lo nuevo.
+
+Cada ejecución:
+
+- lee las conversaciones con un pulgar hacia abajo del último día,
+- adjunta la respuesta a una mejora que ya está abierta para esa conversación,
+  en lugar de crear una segunda,
+- crea un máximo de 5 nuevas mejoras,
+- añade la etiqueta `auto-filed` a cada elemento nuevo para que puedas filtrar
+  el tablero.
+
+El límite de 5 se aplica solo a los elementos nuevos. Un problema que ya conoces
+siempre recibe la nueva evidencia.
+
+## Conversaciones
+
+Cada miembro tiene un hilo privado con cada compañero de equipo. Selecciona
+**View history** en el encabezado del chat para abrir una conversación anterior.
+
+Las conversaciones con los compañeros de equipo no aparecen en la bandeja de
+entrada, ya que esta es la cola para las conversaciones con los visitantes.
+Tampoco aparecen en Insights, porque el uso interno no debe modificar las
+métricas de tu widget. Los canales están en la bandeja de entrada, en su propia
+lista, para un propietario o un administrador.
+
+## Automatización
+
+El dominio `teammates` está disponible para la CLI, el servidor MCP y la API.
+Una clave de API actúa como el miembro que la creó, por lo que ve a los mismos
+compañeros de equipo que ve ese miembro.
+
+```bash
+ciele teammates list
+ciele teammates create --name "Nora" --title "Support Copywriter"
+```
+
+Los canales tienen su propio dominio `channels`. Puedes leer un canal, abrir uno
+y cambiar quién está en él:
+
+```bash
+ciele channels list
+ciele channels create --name "Launch week" --teammates <teammate-id>
+ciele channels add-member <channel-id> <user-id>
+```
+
+No hay ningún comando para enviar un mensaje a un canal. Un mensaje inicia una
+cadena de respuestas de compañeros de equipo, y la cadena se ejecuta en la
+consola, donde puedes verla.
+
+## Qué proveedor de IA responde
+
+Un Teammate utiliza las conexiones de proveedores de la Organización, al igual
+que tu Asistente.
+
+Si tu organización permite suscripciones personales de IA y has vinculado tu
+propio dispositivo, tus propios chats con un Teammate pueden usar tu
+suscripción. Esto solo se aplica a tus chats. Un compañero que chatea con el
+mismo Teammate utiliza las conexiones de la Organización.
+
+Un canal siempre utiliza las conexiones de la Organización. Un canal tiene
+varias personas, por lo que no es de uso personal.
+
+## Eliminar a un Teammate
+
+Selecciona **Configure** y, a continuación, **Delete teammate**. El Teammate
+abandona todas las listas y nadie puede volver a chatear con él.
+
+Podrás seguir leyendo tus conversaciones anteriores con él. El registro del
+trabajo permanece.

@@ -30,6 +30,8 @@ import type { Db } from "./types";
 
 /** Methods whose first parameter is an organizationId, pinned on call. */
 const ORG_SCOPED_METHODS = new Set<keyof Db>([
+  // Filing an Improvement from an unattended triage run (#772).
+  "createImprovement",
   "listAssistants",
   "createAssistant",
   "listInboxConversations",
@@ -93,18 +95,53 @@ const sourceOwner: OwnerResolver = async (inner, id, organizationId) => {
     : null;
 };
 
-const conversationOwner: OwnerResolver = async (inner, id, organizationId) => {
+/**
+ * conversationId → owner → organization.
+ *
+ * A Conversation is owned by an Assistant **or** by a Teammate (#768), never
+ * both, so ownership is whichever of the two the row points at. A row pointing
+ * at neither resolves to null and is unreachable through this view, rather than
+ * quietly visible to every tenant.
+ */
+/**
+ * proposalId → organization. A Suggested Fix carries its own stamp, so this is
+ * one read rather than a walk through the Improvement the caller named.
+ */
+const improvementProposalOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getImprovementProposalById(id))?.organizationId ?? null;
+
+const conversationOwnerOf: OwnerResolver = async (
+  inner,
+  id,
+  organizationId
+) => {
   const conversation = await inner.getConversation(id);
-  return conversation
-    ? assistantOwner(inner, conversation.assistantId, organizationId)
-    : null;
+  if (!conversation) return null;
+  return conversationRowOwner(inner, conversation, organizationId);
 };
 
-/** messageId → conversation → assistant → organization. */
+async function conversationRowOwner(
+  inner: Db,
+  conversation: { assistantId: string | null; teammateId: string | null },
+  organizationId: string
+): Promise<string | null> {
+  if (conversation.assistantId) {
+    return assistantOwner(inner, conversation.assistantId, organizationId);
+  }
+  if (conversation.teammateId) {
+    const teammate = await inner.table("teammates").get(conversation.teammateId);
+    return teammate?.organizationId ?? null;
+  }
+  return null;
+}
+
+const conversationOwner = conversationOwnerOf;
+
+/** messageId → conversation → its owner → organization. */
 const messageOwner: OwnerResolver = async (inner, id, organizationId) => {
   const conversation = await inner.getConversationForMessage(id);
   return conversation
-    ? assistantOwner(inner, conversation.assistantId, organizationId)
+    ? conversationRowOwner(inner, conversation, organizationId)
     : null;
 };
 
@@ -127,6 +164,17 @@ const publicationOwner: OwnerResolver = async (inner, id, organizationId) => {
 
 const skillOwner: OwnerResolver = async (inner, id) =>
   (await inner.table("skills").get(id))?.organizationId ?? null;
+
+/**
+ * teammateId → organization (#768). The row carries the stamp, so this is one
+ * read rather than a walk.
+ */
+const teammateOwner: OwnerResolver = async (inner, id) =>
+  (await inner.table("teammates").get(id))?.organizationId ?? null;
+
+/** channelId → organization (#778). Same shape: the row is stamped. */
+const channelOwner: OwnerResolver = async (inner, id) =>
+  (await inner.table("teammateChannels").get(id))?.organizationId ?? null;
 
 const entityOwner: OwnerResolver = async (inner, id) =>
   (await inner.table("entities").get(id))?.organizationId ?? null;
@@ -209,14 +257,31 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   // get an extra assistant-side check in their dedicated branch below.
   deleteSource: sourceOwner,
   listSourceAssistantLinks: sourceOwner,
+  // teammate → organization (#768). Without this the Teammates domain's thread
+  // reads are unreachable over a key, which is how they shipped: the drift
+  // tests check that the CLI, the MCP tool and the route agree about a name,
+  // and none of them calls the operation, so a Db surface nobody exposed
+  // failed at runtime and nowhere else.
+  listTeammateConversations: teammateOwner,
+  // channel → organization (#778): the transcript reads. `appendChannelMessage`
+  // is deliberately absent, and that absence is the reason posting into a
+  // channel has no /api/v1 route: a message starts a chain, and a chain is a
+  // streamed, model-driven thing rather than a request/response one.
+  listChannelMessages: channelOwner,
+  listChannelChainMessages: channelOwner,
   // conversation → assistant → organization (#624)
   listMessages: conversationOwner,
+  // The feedback-triage template's dedup walk (#772).
+  listConversationImprovementLinks: conversationOwner,
   setConversationPinned: conversationOwner,
   updateConversationMetadata: conversationOwner,
   deleteConversation: conversationOwner,
   setMessageFeedback: messageOwner,
   // improvements (#625)
   updateImprovement: improvementOwner,
+  linkImprovementMessage: improvementOwner,
+  // Addressed by the proposal's own id, not by its Improvement's.
+  updateImprovementProposal: improvementProposalOwner,
   listImprovementMessages: improvementOwner,
   getImprovementProposal: improvementOwner,
   // generic-table rows
@@ -260,6 +325,7 @@ const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   getPublication: publicationOwner,
   getHelpDesk: helpDeskOwner,
   getImprovement: improvementOwner,
+  getImprovementProposalById: improvementProposalOwner,
   getMemory: memoryOwner,
 };
 
@@ -270,7 +336,19 @@ const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
  * set in the same PR as the route that needs it (fail-closed like the method
  * lists above).
  */
-const PINNED_TABLES = new Set(["entities", "skills"] as const);
+const PINNED_TABLES = new Set([
+  "entities",
+  "skills",
+  "projects",
+  // AI Teammates (#768) and their channels (#778). Every row carries an
+  // `organizationId` stamp, which is what the pinning below relies on.
+  // `teammateGrants`, `teammateRoutines` and `teammateRosterHidden` stay out:
+  // no /api/v1 route reaches them, and fail-closed means a table earns its
+  // exposure from a route, not from being adjacent to one.
+  "teammates",
+  "teammateChannels",
+  "teammateChannelParticipants",
+] as const);
 type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
 
 /**
@@ -412,6 +490,36 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
             await assertOwner(String(prop), assistantOwner, assistantId);
           }
           return call(...args);
+        };
+      }
+
+      /**
+       * A Teammate's own memory write (#771). The Organization arrives inside
+       * the input object rather than as the first argument, so it is stamped
+       * the way `listMemories` is, and a forged one in the payload cannot place
+       * a document in another tenant.
+       *
+       * Only the write is here. Reading a document, its history and reverting
+       * one are console operations on the Member's own session, so they stay
+       * behind RLS and earn no exposure they do not need.
+       */
+      if (method === "writeMemoryDocument") {
+        return (...args: unknown[]) =>
+          call({ ...((args[0] ?? {}) as object), organizationId });
+      }
+
+      /**
+       * A Suggested Fix is created against an Improvement, and its own
+       * `organizationId` arrives inside the input object rather than as the
+       * first argument. Resolve the Improvement, then stamp the org, so a
+       * forged organizationId in the payload cannot place a proposal in
+       * somebody else's tenant.
+       */
+      if (method === "createImprovementProposal") {
+        return async (...args: unknown[]) => {
+          const input = (args[0] ?? {}) as { improvementId?: unknown };
+          await assertOwner(String(prop), improvementOwner, input.improvementId);
+          return call({ ...(args[0] as object), organizationId });
         };
       }
 

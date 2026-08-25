@@ -16,7 +16,12 @@ async function requireConversation(
 ): Promise<Conversation> {
   const conversation = await ctx.db.getConversation(id);
   if (!conversation) throw new OperationError("not_found", "Conversation not found");
-  const assistant = await ctx.db.getAssistant(conversation.assistantId);
+  // The Inbox is the customer queue: a Teammate Conversation has no Assistant
+  // and is not reachable here at all (#768), it is read from the Teammate's
+  // own thread by the Member who had it.
+  const assistant = conversation.assistantId
+    ? await ctx.db.getAssistant(conversation.assistantId)
+    : null;
   if (!assistant || assistant.organizationId !== ctx.organizationId) {
     throw new OperationError("not_found", "Conversation not found");
   }
@@ -129,7 +134,11 @@ export const setMessageFeedbackOp = defineOperation({
   run: async (ctx, { messageId, feedback }) => {
     const conversation = await ctx.db.getConversationForMessage(messageId);
     if (!conversation) throw new OperationError("not_found", "Message not found");
-    const assistant = await ctx.db.getAssistant(conversation.assistantId);
+    // No Assistant means a Teammate Conversation, which the Inbox does not
+    // hold (#768); the read below then refuses it like any foreign row.
+    const assistant = conversation.assistantId
+      ? await ctx.db.getAssistant(conversation.assistantId)
+      : null;
     if (!assistant || assistant.organizationId !== ctx.organizationId) {
       throw new OperationError("not_found", "Message not found");
     }

@@ -11,6 +11,7 @@ function conversation(over: Partial<InboxConversation> = {}): InboxConversation 
   return {
     id: "c1",
     assistantId: "a1",
+    teammateId: null,
     subjectType: "visitor",
     subjectId: "v1",
     collectionId: null,

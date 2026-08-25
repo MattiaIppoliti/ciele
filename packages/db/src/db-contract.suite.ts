@@ -1046,6 +1046,14 @@ export function describeDbContract(
         expect(fetched?.id).toBe(redrafted.id);
         expect(fetched?.payload.draftAnswer).toBe("Updated.");
 
+        // Addressed by its own id too (#770): the org-pinned view has to
+        // answer "whose is this proposal?" before it lets an update through,
+        // and it holds the proposal id, not the Improvement's.
+        const byId = await db.getImprovementProposalById(redrafted.id);
+        expect(byId?.id).toBe(redrafted.id);
+        expect(byId?.organizationId).toBe(ctx.organizationId);
+        expect(await db.getImprovementProposalById("no-such-proposal")).toBeNull();
+
         const accepted = await db.updateImprovementProposal(redrafted.id, {
           status: "accepted",
           acceptedConceptId: "concept-99",
@@ -1059,6 +1067,335 @@ export function describeDbContract(
         });
         expect(dismissed.status).toBe("dismissed");
         expect(dismissed.dismissReason).toBe("Not a real gap");
+      });
+    });
+
+    describe("memory documents & Projects (#771)", () => {
+      const projects = () => db.table("projects");
+      const newProject = (over: Record<string, unknown> = {}) =>
+        projects().insert({
+          organizationId: ctx.organizationId,
+          name: "Atlas",
+          ...over,
+        });
+
+      it("creates a Project from a name alone, live and unarchived", async () => {
+        const project = await newProject();
+        expect(project.organizationId).toBe(ctx.organizationId);
+        expect(project.description).toBe("");
+        expect(project.archived).toBe(false);
+      });
+
+      it("archives without deleting: the row and its decisions stay", async () => {
+        const project = await newProject();
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "project", projectId: project.id },
+          body: "We ship on Thursdays.",
+        });
+        const archived = await projects().update(project.id, { archived: true });
+        expect(archived.archived).toBe(true);
+        // Whether an archived Project reaches a prompt is the runtime's rule
+        // (`projectInjects`); the document itself is still readable here.
+        const doc = await db.getMemoryDocument(ctx.organizationId, {
+          scope: "project",
+          projectId: project.id,
+        });
+        expect(doc?.body).toBe("We ship on Thursdays.");
+      });
+
+      it("has no document until something writes one", async () => {
+        // The state every Member and every Teammate starts in, and it injects
+        // nothing. Absent is a real answer, not an error.
+        expect(
+          await db.getMemoryDocument(ctx.organizationId, {
+            scope: "user",
+            memberId: ctx.userId,
+          })
+        ).toBeNull();
+      });
+
+      it("writes each layer against its own owner, and keeps them apart", async () => {
+        const teammate = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Nora",
+        });
+        const project = await newProject({ name: "Beacon" });
+
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "user", memberId: ctx.userId },
+          body: "Prefers short answers.",
+        });
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "agent", teammateId: teammate.id },
+          body: "- 2026-08-01: the docs call it a Collection, not a folder",
+        });
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "project", projectId: project.id },
+          body: "We ship on Thursdays.",
+        });
+
+        const user = await db.getMemoryDocument(ctx.organizationId, {
+          scope: "user",
+          memberId: ctx.userId,
+        });
+        const agent = await db.getMemoryDocument(ctx.organizationId, {
+          scope: "agent",
+          teammateId: teammate.id,
+        });
+        const projectDoc = await db.getMemoryDocument(ctx.organizationId, {
+          scope: "project",
+          projectId: project.id,
+        });
+        expect(user?.scope).toBe("user");
+        expect(user?.body).toBe("Prefers short answers.");
+        expect(agent?.scope).toBe("agent");
+        expect(projectDoc?.scope).toBe("project");
+        // Exactly one owner column set on each, the exclusive-or check's whole
+        // point: the scope cannot disagree with the ids.
+        expect([user!.memberId, user!.teammateId, user!.projectId].filter(Boolean))
+          .toHaveLength(1);
+      });
+
+      it("rewrites in place rather than accumulating documents", async () => {
+        const owner = { scope: "user" as const, memberId: ctx.userId };
+        const first = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "First.",
+        });
+        const second = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "Second.",
+        });
+        expect(second.id).toBe(first.id);
+        expect(second.body).toBe("Second.");
+      });
+
+      it("records who wrote what, and keeps the body it replaced", async () => {
+        // An Agent-layer document, so the case owns its own history: the User
+        // layer is keyed on the one member this suite runs as, and every test
+        // that writes it appends to the same list.
+        const nora = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Nora",
+        });
+        const owner = { scope: "agent" as const, teammateId: nora.id };
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "Prefers short answers.",
+          authorId: ctx.userId,
+        });
+        const doc = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "Prefers short answers. Works in CET.",
+          note: "Added their timezone",
+          teammateId: nora.id,
+          authorId: ctx.userId,
+        });
+
+        const entries = await db.listMemoryDocumentEntries(doc.id);
+        expect(entries).toHaveLength(2);
+        // Newest first, and the newest carries who/when/what plus the body it
+        // replaced, which is what makes the next test a restore.
+        expect(entries[0].note).toBe("Added their timezone");
+        expect(entries[0].teammateId).toBe(nora.id);
+        expect(entries[0].authorId).toBe(ctx.userId);
+        expect(entries[0].bodyBefore).toBe("Prefers short answers.");
+        // The first write replaced nothing.
+        expect(entries[1].bodyBefore).toBe("");
+      });
+
+      it("reverts to the body an entry replaced, and records the revert too", async () => {
+        const reverter = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Reverter",
+        });
+        const owner = { scope: "agent" as const, teammateId: reverter.id };
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "Trustworthy.",
+        });
+        const doc = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner,
+          body: "Something the teammate got wrong.",
+          note: "A bad write",
+        });
+
+        const [latest] = await db.listMemoryDocumentEntries(doc.id);
+        const reverted = await db.revertMemoryDocument({
+          entryId: latest.id,
+          authorId: ctx.userId,
+        });
+        expect(reverted.body).toBe("Trustworthy.");
+
+        // Append-only: undoing a write is another write, so the history shows
+        // both rather than a hole where the bad one used to be.
+        const entries = await db.listMemoryDocumentEntries(doc.id);
+        expect(entries).toHaveLength(3);
+        expect(entries[0].note).toContain("Revert");
+        expect(entries[0].bodyBefore).toBe("Something the teammate got wrong.");
+      });
+
+      it("caps a write at the injection limit, so stored is what is injected", async () => {
+        const doc = await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "user", memberId: ctx.userId },
+          body: "x".repeat(20_000),
+        });
+        expect(doc.body.length).toBeLessThanOrEqual(4_000);
+      });
+
+      it("deleting a Project takes its decisions with it", async () => {
+        const project = await newProject({ name: "Doomed" });
+        await db.writeMemoryDocument({
+          organizationId: ctx.organizationId,
+          owner: { scope: "project", projectId: project.id },
+          body: "Decisions nobody will need.",
+        });
+        await projects().delete(project.id);
+        expect(
+          await db.getMemoryDocument(ctx.organizationId, {
+            scope: "project",
+            projectId: project.id,
+          })
+        ).toBeNull();
+      });
+
+      it("attaches a Teammate to at most one Project, and detaches on delete", async () => {
+        const project = await newProject({ name: "Attached" });
+        const teammate = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Nora",
+        });
+        expect(teammate.projectId).toBeNull();
+
+        const attached = await db
+          .table("teammates")
+          .update(teammate.id, { projectId: project.id });
+        expect(attached.projectId).toBe(project.id);
+
+        // Deleting the Project detaches rather than cascading: losing a project
+        // must not take the Teammate that read it.
+        await projects().delete(project.id);
+        expect((await db.table("teammates").get(teammate.id))?.projectId).toBeNull();
+      });
+    });
+
+    describe("Routines (#772)", () => {
+      const routines = () => db.table("teammateRoutines");
+      const newRoutine = async (over: Record<string, unknown> = {}) => {
+        const teammate = await db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Nora",
+        });
+        return routines().insert({
+          organizationId: ctx.organizationId,
+          teammateId: teammate.id,
+          instruction: "Triage yesterday's visitor feedback.",
+          cadence: "daily",
+          createdBy: ctx.userId,
+          ...over,
+        });
+      };
+
+      it("creates one enabled, at the default hour, never run", async () => {
+        const routine = await newRoutine();
+        expect(routine.cadence).toBe("daily");
+        expect(routine.hour).toBe(8);
+        expect(routine.enabled).toBe(true);
+        expect(routine.lastRunAt).toBeNull();
+        expect(routine.lastStatus).toBeNull();
+      });
+
+      it("over-fetches only enabled routines whose last run is old enough", async () => {
+        const fresh = await newRoutine();
+        const ran = await newRoutine({ instruction: "Recently run." });
+        const off = await newRoutine({ instruction: "Disabled.", enabled: false });
+        await routines().update(off.id, { enabled: false });
+        await db.claimTeammateRoutine(ran.id, null, "2026-08-20T08:00:00.000Z");
+
+        const due = await db.listDueRoutineCandidates({
+          before: "2026-08-20T00:00:00.000Z",
+          limit: 50,
+        });
+        const ids = due.map((routine) => routine.id);
+        // Never run: a candidate, because the exact rule is the caller's.
+        expect(ids).toContain(fresh.id);
+        // Ran after the cutoff, and disabled: neither is a candidate.
+        expect(ids).not.toContain(ran.id);
+        expect(ids).not.toContain(off.id);
+      });
+
+      it("claims once: a second tick on the same lease gets nothing", async () => {
+        const routine = await newRoutine();
+        const first = await db.claimTeammateRoutine(
+          routine.id,
+          null,
+          "2026-08-20T08:00:00.000Z"
+        );
+        expect(first?.lastRunAt).toBe("2026-08-20T08:00:00.000Z");
+
+        // The losing tick read the same `null` and gets refused, which is what
+        // keeps two overlapping cron runs from running one routine twice.
+        const second = await db.claimTeammateRoutine(
+          routine.id,
+          null,
+          "2026-08-20T08:00:01.000Z"
+        );
+        expect(second).toBeNull();
+        expect((await routines().get(routine.id))?.lastRunAt).toBe(
+          "2026-08-20T08:00:00.000Z"
+        );
+      });
+
+      it("claims again on the next window, from the value it now holds", async () => {
+        const routine = await newRoutine();
+        await db.claimTeammateRoutine(routine.id, null, "2026-08-20T08:00:00.000Z");
+        const next = await db.claimTeammateRoutine(
+          routine.id,
+          "2026-08-20T08:00:00.000Z",
+          "2026-08-21T08:00:00.000Z"
+        );
+        expect(next?.lastRunAt).toBe("2026-08-21T08:00:00.000Z");
+      });
+
+      it("records an outcome without touching what somebody edited mid-run", async () => {
+        const routine = await newRoutine();
+        await db.claimTeammateRoutine(routine.id, null, "2026-08-20T08:00:00.000Z");
+        // The author rewrote the instruction while the run was in flight.
+        await routines().update(routine.id, { instruction: "Rewritten." });
+        await db.recordTeammateRoutineRun(routine.id, {
+          status: "failed",
+          detail: "No provider credential",
+        });
+
+        const after = await routines().get(routine.id);
+        expect(after?.lastStatus).toBe("failed");
+        expect(after?.lastDetail).toBe("No provider credential");
+        // The run record wrote outcome columns only; it did not put the old
+        // instruction back.
+        expect(after?.instruction).toBe("Rewritten.");
+        expect(after?.lastRunAt).toBe("2026-08-20T08:00:00.000Z");
+      });
+
+      it("goes with the Teammate it belongs to", async () => {
+        const routine = await newRoutine();
+        await db.table("teammates").delete(routine.teammateId);
+        expect(await routines().get(routine.id)).toBeNull();
       });
     });
 
@@ -2120,6 +2457,26 @@ export function describeDbContract(
         return { assistant, collection, source };
       };
 
+      it("lists every Collection the Organization owns, linked or not (#768)", async () => {
+        // `listCollections` answers "what does this Assistant search"; the
+        // Library as a whole is a different question, and the Teammate scope
+        // picker asks that one.
+        const { collection } = await newKnowledgeFixture("file", "Hub Listing");
+        const assistant = await newAssistant();
+        const unlinked = await db.createCollection(assistant.id, {
+          name: "Nothing links here",
+        });
+
+        const all = await db.listOrgCollections(ctx.organizationId);
+        expect(all.map((c) => c.id)).toEqual(
+          expect.arrayContaining([collection.id, unlinked.id])
+        );
+        expect(await db.listCollections(assistant.id)).toEqual([]);
+        expect(
+          await db.listOrgCollections(ctx.missingOrganizationId)
+        ).toEqual([]);
+      });
+
       it("gets-or-creates the per-org Knowledge Library exactly once", async () => {
         const first = await db.getOrCreateOrgLibraryCollection(
           ctx.organizationId
@@ -3057,6 +3414,7 @@ export function describeDbContract(
           graph_search: true,
           graph_cognify: true,
           memory_extract: true,
+          agent_memory: true,
         };
         const stages = Object.keys(allStages) as AiUsageStage[];
         await db.recordAiUsage(
@@ -3352,6 +3710,20 @@ export function describeDbContract(
         expect(opus).toMatchObject({ provider: "anthropic", units: 0 });
       });
 
+      it("accepts a Teammate turn as its own surface (#768)", async () => {
+        // The column carries a check constraint, so a surface the migration
+        // did not widen is rejected by the database, not by a type.
+        await expect(
+          db.recordRuntimeEvent({
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            kind: "chat_turn",
+            status: "succeeded",
+            surface: "teammate",
+          })
+        ).resolves.toBeUndefined();
+      });
+
       it("reports a completed crawl as pages, attributed to the crawler", async () => {
         const apifyPages = async () =>
           (await db.getOrgUsageDaily(ctx.organizationId, 1))
@@ -3609,6 +3981,18 @@ export function describeDbContract(
     });
 
     describe("alerts (dedup by sourceKey)", () => {
+      it("accepts the knowledge type a dangling Teammate scope raises (#769)", async () => {
+        // The column carries a check constraint, so an Alert type the migration
+        // did not widen is refused by the database, not by the type system.
+        const raised = await db.raiseAlert(ctx.organizationId, {
+          type: "knowledge",
+          title: "Deleted collection still in a teammate's knowledge",
+          detail: "Nora searches a collection that no longer exists.",
+          sourceKey: `teammate-scope:${shortId()}`,
+        });
+        expect(raised.type).toBe("knowledge");
+      });
+
       it("refreshes the active alert with the same sourceKey instead of duplicating", async () => {
         const sourceKey = `contract-alert:${shortId()}`;
         const activeBefore = await db.countActiveAlerts(ctx.organizationId);
@@ -4177,6 +4561,521 @@ export function describeDbContract(
           limit: 1000,
         });
         expect(optedBackIn.some((d) => d.assistantId === assistant.id)).toBe(true);
+      });
+    });
+
+    describe("AI Teammates (#768)", () => {
+      const teammates = () => db.table("teammates");
+      const newTeammate = (over: Record<string, unknown> = {}) =>
+        teammates().insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name: "Nora",
+          ...over,
+        });
+
+      it("creates one from a name alone, with the shipped defaults", async () => {
+        const teammate = await newTeammate();
+        expect(teammate.organizationId).toBe(ctx.organizationId);
+        expect(teammate.ownerId).toBe(ctx.userId);
+        expect(teammate.title).toBe("");
+        expect(teammate.roleDescription).toBe("");
+        // Visible to the team and searching nothing: the two defaults a Member
+        // is most likely to leave alone.
+        expect(teammate.visibility).toBe("org");
+        expect(teammate.collectionIds).toEqual([]);
+        expect(teammate.editorIds).toEqual([]);
+        expect(teammate.modelProvider).toBe("anthropic");
+        expect(teammate.deletedAt).toBeNull();
+      });
+
+      it("keeps the persona, the scope and the editors through a patch", async () => {
+        const teammate = await newTeammate({ name: "Draft" });
+        const updated = await teammates().update(teammate.id, {
+          name: "Nora",
+          title: "Support Copywriter",
+          roleDescription: "You draft replies from our docs.",
+          visibility: "private",
+          collectionIds: ["col-a", "col-b"],
+          editorIds: ["member-2"],
+        });
+        expect(updated.name).toBe("Nora");
+        expect(updated.collectionIds).toEqual(["col-a", "col-b"]);
+        expect(updated.editorIds).toEqual(["member-2"]);
+        expect(updated.visibility).toBe("private");
+        // A patch that names no scope leaves the stored one alone.
+        const again = await teammates().update(teammate.id, { title: "Editor" });
+        expect(again.collectionIds).toEqual(["col-a", "col-b"]);
+      });
+
+      it("soft-deletes: the row stays, and so do its Conversations", async () => {
+        const teammate = await newTeammate();
+        const conversation = await db.createConversation({
+          teammateId: teammate.id,
+          subjectType: "member",
+          subjectId: ctx.userId,
+          title: "before the tombstone",
+        });
+        await db.appendMessage({
+          conversationId: conversation.id,
+          role: "user",
+          content: [{ type: "text", text: "hello" }],
+        });
+
+        const tombstoned = await teammates().update(teammate.id, {
+          deletedAt: new Date().toISOString(),
+        });
+        expect(tombstoned.deletedAt).toBeTruthy();
+        expect(await teammates().get(teammate.id)).not.toBeNull();
+        const stored = await db.getConversation(conversation.id);
+        expect(stored?.title).toBe("before the tombstone");
+        expect(
+          (await db.listMessages(conversation.id)).map((m) => m.role)
+        ).toEqual(["user"]);
+      });
+
+      it("ships with the shipped governance: edit ceiling, no bypass", async () => {
+        const teammate = await newTeammate();
+        // The two defaults that decide what a brand-new Teammate may do. Both
+        // are deliberately the conservative half: it may write inside a domain
+        // somebody granted it, and it may not approve its own knowledge edits.
+        expect(teammate.capabilityCeiling).toBe("edit");
+        expect(teammate.approvalBypass).toBe(false);
+      });
+
+      it("carries the ceiling and the bypass through a governance patch", async () => {
+        const teammate = await newTeammate();
+        const lowered = await teammates().update(teammate.id, {
+          capabilityCeiling: "member",
+        });
+        expect(lowered.capabilityCeiling).toBe("member");
+        // Untouched by a patch that does not name it: the bypass is a separate
+        // decision from the ceiling, and lowering one must not clear the other.
+        expect(lowered.approvalBypass).toBe(false);
+
+        const trusted = await teammates().update(teammate.id, {
+          approvalBypass: true,
+        });
+        expect(trusted.approvalBypass).toBe(true);
+        expect(trusted.capabilityCeiling).toBe("member");
+      });
+
+      it("grants: the row is the grant, and revoking deletes it", async () => {
+        const grants = () => db.table("teammateGrants");
+        const teammate = await newTeammate();
+        const granted = await grants().insert({
+          organizationId: ctx.organizationId,
+          teammateId: teammate.id,
+          domain: "improvements",
+          grantedBy: ctx.userId,
+        });
+        expect(granted.domain).toBe("improvements");
+        expect(granted.grantedBy).toBe(ctx.userId);
+
+        const held = await grants().list({ teammateId: teammate.id });
+        expect(held.map((g) => g.domain)).toEqual(["improvements"]);
+
+        await grants().delete(granted.id);
+        expect(await grants().list({ teammateId: teammate.id })).toEqual([]);
+      });
+
+      it("grants: a second Teammate's rows are not this one's", async () => {
+        const grants = () => db.table("teammateGrants");
+        const [mine, theirs] = await Promise.all([
+          newTeammate({ name: "Mine" }),
+          newTeammate({ name: "Theirs" }),
+        ]);
+        await grants().insert({
+          organizationId: ctx.organizationId,
+          teammateId: mine.id,
+          domain: "knowledge",
+        });
+        await grants().insert({
+          organizationId: ctx.organizationId,
+          teammateId: theirs.id,
+          domain: "inbox",
+        });
+        expect(
+          (await grants().list({ teammateId: mine.id })).map((g) => g.domain)
+        ).toEqual(["knowledge"]);
+        expect(
+          (await grants().list({ teammateId: theirs.id })).map((g) => g.domain)
+        ).toEqual(["inbox"]);
+      });
+
+      it("hiding: one Member's roster, and nobody else's", async () => {
+        const hidden = () => db.table("teammateRosterHidden");
+        const teammate = await newTeammate();
+        const row = await hidden().insert({
+          organizationId: ctx.organizationId,
+          teammateId: teammate.id,
+          userId: ctx.userId,
+        });
+        expect(row.teammateId).toBe(teammate.id);
+        expect(row.userId).toBe(ctx.userId);
+
+        expect(
+          (await hidden().list({ userId: ctx.userId })).map((r) => r.teammateId)
+        ).toEqual([teammate.id]);
+        // The Teammate itself is untouched: hiding is a fact about a list.
+        expect((await teammates().get(teammate.id))?.deletedAt).toBeNull();
+
+        // Unhiding is a delete, because the row is the whole fact.
+        await hidden().delete(row.id);
+        expect(await hidden().list({ userId: ctx.userId })).toEqual([]);
+      });
+
+      it("hiding: deleting the Teammate takes the hidden rows with it", async () => {
+        const hidden = () => db.table("teammateRosterHidden");
+        const teammate = await newTeammate();
+        await hidden().insert({
+          organizationId: ctx.organizationId,
+          teammateId: teammate.id,
+          userId: ctx.userId,
+        });
+        await teammates().delete(teammate.id);
+        expect(await hidden().list({ teammateId: teammate.id })).toEqual([]);
+      });
+
+      it("grants: deleting the Teammate takes its grants with it", async () => {
+        const grants = () => db.table("teammateGrants");
+        const teammate = await newTeammate();
+        await grants().insert({
+          organizationId: ctx.organizationId,
+          teammateId: teammate.id,
+          domain: "improvements",
+        });
+        // A hard delete, not the soft-delete tombstone: a Teammate row that is
+        // gone must not leave capabilities pointing at nothing.
+        await teammates().delete(teammate.id);
+        expect(await grants().list({ teammateId: teammate.id })).toEqual([]);
+      });
+
+      it("owns its Conversations, and they stay out of the Inbox", async () => {
+        const assistant = await newAssistant();
+        const teammate = await newTeammate();
+        const internal = await db.createConversation({
+          teammateId: teammate.id,
+          subjectType: "member",
+          subjectId: ctx.userId,
+          title: "internal",
+        });
+        const customerFacing = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-teammate-case",
+          title: "customer",
+        });
+
+        expect(internal.assistantId).toBeNull();
+        expect(internal.teammateId).toBe(teammate.id);
+        expect(customerFacing.teammateId).toBeNull();
+
+        const thread = await db.listTeammateConversations(
+          teammate.id,
+          ctx.userId
+        );
+        expect(thread.map((c) => c.id)).toEqual([internal.id]);
+        // Another Member's thread with the same Teammate is not this one.
+        expect(
+          await db.listTeammateConversations(teammate.id, "someone-else")
+        ).toEqual([]);
+
+        // The Inbox is the customer queue: internal chat never joins it.
+        const inbox = await db.listInboxConversations(ctx.organizationId);
+        expect(inbox.map((c) => c.id)).toContain(customerFacing.id);
+        expect(inbox.map((c) => c.id)).not.toContain(internal.id);
+      });
+
+      it("searches exactly the Collections in the Knowledge Scope", async () => {
+        const assistant = await newAssistant();
+        const seedCollection = async (name: string, content: string) => {
+          const collection = await db.createCollection(assistant.id, { name });
+          const source = await db.createSource({
+            collectionId: collection.id,
+            name: `${name} source`,
+            kind: "text",
+          });
+          const concept = await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path: `${name}/topic.md`,
+            frontmatter: { type: "Note", title: name },
+            body: content,
+          });
+          await db.saveChunks([
+            {
+              conceptId: concept.id,
+              collectionId: collection.id,
+              sourceId: source.id,
+              content,
+              embedding: null,
+            },
+          ]);
+          return collection;
+        };
+        const inScope = await seedCollection(
+          "Scoped",
+          "Refunds are processed within five working days."
+        );
+        const outOfScope = await seedCollection(
+          "Unscoped",
+          "Refunds require a manager signature."
+        );
+
+        const hits = await db.searchCollectionChunks(
+          ctx.organizationId,
+          [inScope.id],
+          { embedding: null, text: "how long do refunds take" }
+        );
+        expect(hits.length).toBeGreaterThan(0);
+        expect(hits.every((h) => h.collectionId === inScope.id)).toBe(true);
+        expect(hits[0].conceptTitle).toBe("Scoped");
+        // The citation resolves to a Concept and its Source, exactly like an
+        // Assistant search (ADR-0002).
+        expect(hits[0].sourceName).toBe("Scoped source");
+
+        // An empty scope is "nothing", never "everything".
+        expect(
+          await db.searchCollectionChunks(ctx.organizationId, [], {
+            embedding: null,
+            text: "refunds",
+          })
+        ).toEqual([]);
+        // Another Organization asking for this Collection gets nothing.
+        expect(
+          await db.searchCollectionChunks(
+            ctx.missingOrganizationId,
+            [inScope.id, outOfScope.id],
+            { embedding: null, text: "refunds" }
+          )
+        ).toEqual([]);
+      });
+    });
+
+    describe("Teammate channels (#778)", () => {
+      const channels = () => db.table("teammateChannels");
+      const seats = () => db.table("teammateChannelParticipants");
+      const newChannel = (over: Record<string, unknown> = {}) =>
+        channels().insert({
+          organizationId: ctx.organizationId,
+          name: "Launch week",
+          createdBy: ctx.userId,
+          ...over,
+        });
+      const newTeammateFor = (name = "Sam") =>
+        db.table("teammates").insert({
+          organizationId: ctx.organizationId,
+          ownerId: ctx.userId,
+          name,
+        });
+      /** The creator's own seat: the first thing every real channel gets. */
+      const seatMember = (channelId: string, userId = ctx.userId) =>
+        seats().insert({
+          organizationId: ctx.organizationId,
+          channelId,
+          userId,
+          addedBy: ctx.userId,
+        });
+
+      it("creates one from a name, bound to no Project", async () => {
+        const channel = await newChannel();
+        expect(channel.organizationId).toBe(ctx.organizationId);
+        expect(channel.name).toBe("Launch week");
+        expect(channel.createdBy).toBe(ctx.userId);
+        expect(channel.projectId).toBeNull();
+      });
+
+      it("seats Members and Teammates in one roster, in the order added", async () => {
+        const channel = await newChannel();
+        const teammate = await newTeammateFor();
+        const member = await seatMember(channel.id);
+        const agent = await seats().insert({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          teammateId: teammate.id,
+          addedBy: ctx.userId,
+        });
+        expect(member.teammateId).toBeNull();
+        expect(member.lastReadAt).toBeNull();
+        expect(agent.userId).toBeNull();
+
+        const roster = await seats().list({ channelId: channel.id });
+        expect(roster.map((row) => row.id)).toEqual([member.id, agent.id]);
+      });
+
+      it("moves a Member's own read marker and nothing else", async () => {
+        const channel = await newChannel();
+        const seat = await seatMember(channel.id);
+        const marked = await seats().update(seat.id, {
+          lastReadAt: "2026-08-24T10:00:00.000Z",
+        });
+        expect(marked.lastReadAt).toBe("2026-08-24T10:00:00.000Z");
+        expect(marked.userId).toBe(ctx.userId);
+      });
+
+      it("reads the transcript back in the order it was written", async () => {
+        const channel = await newChannel();
+        await seatMember(channel.id);
+        const teammate = await newTeammateFor();
+        const opening = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "member",
+          authorUserId: ctx.userId,
+          content: [{ type: "text", text: "@Sam what broke?" }],
+          mentions: [teammate.id],
+        });
+        // Written in the same millisecond as the reply on a fast machine: the
+        // per-channel order is what the contract promises, not the clock.
+        const reply = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "teammate",
+          authorTeammateId: teammate.id,
+          content: [{ type: "text", text: "The crawl did." }],
+          chainId: opening.id,
+        });
+        const marker = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "system",
+          content: [{ type: "text", text: "Chain cap reached" }],
+          chainId: opening.id,
+        });
+
+        expect(opening.chainId).toBeNull();
+        expect(opening.mentions).toEqual([teammate.id]);
+        expect(reply.authorUserId).toBeNull();
+        expect(marker.authorTeammateId).toBeNull();
+
+        const transcript = await db.listChannelMessages(channel.id);
+        expect(transcript.map((m) => m.id)).toEqual([
+          opening.id,
+          reply.id,
+          marker.id,
+        ]);
+        // The roster sorts by activity, so the channel row moved with it.
+        const moved = await channels().get(channel.id);
+        expect(moved!.updatedAt >= channel.updatedAt).toBe(true);
+      });
+
+      it("reads the last N messages, not the first N", async () => {
+        const channel = await newChannel({ name: "Long" });
+        await seatMember(channel.id);
+        const written = [];
+        for (const text of ["one", "two", "three"]) {
+          written.push(
+            await db.appendChannelMessage({
+              organizationId: ctx.organizationId,
+              channelId: channel.id,
+              authorType: "member",
+              authorUserId: ctx.userId,
+              content: [{ type: "text", text }],
+            })
+          );
+        }
+        const tail = await db.listChannelMessages(channel.id, 2);
+        expect(tail.map((m) => m.id)).toEqual([written[1].id, written[2].id]);
+      });
+
+      it("reads exactly one chain, which is how the caps are counted", async () => {
+        const channel = await newChannel({ name: "Two chains" });
+        await seatMember(channel.id);
+        const teammate = await newTeammateFor();
+        const first = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "member",
+          authorUserId: ctx.userId,
+          content: [{ type: "text", text: "first" }],
+        });
+        const firstReply = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "teammate",
+          authorTeammateId: teammate.id,
+          content: [{ type: "text", text: "answering the first" }],
+          chainId: first.id,
+        });
+        const second = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "member",
+          authorUserId: ctx.userId,
+          content: [{ type: "text", text: "second" }],
+        });
+        await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "teammate",
+          authorTeammateId: teammate.id,
+          content: [{ type: "text", text: "answering the second" }],
+          chainId: second.id,
+        });
+
+        const chain = await db.listChannelChainMessages(channel.id, first.id);
+        expect(chain.map((m) => m.id)).toEqual([firstReply.id]);
+      });
+
+      it("deleting the channel takes its roster and its transcript", async () => {
+        const channel = await newChannel({ name: "Doomed" });
+        const seat = await seatMember(channel.id);
+        await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "member",
+          authorUserId: ctx.userId,
+          content: [{ type: "text", text: "hello" }],
+        });
+
+        await channels().delete(channel.id);
+        expect(await seats().get(seat.id)).toBeNull();
+        expect(await db.listChannelMessages(channel.id)).toEqual([]);
+      });
+
+      it("deleting a Teammate takes its seat and leaves the thread's history", async () => {
+        const channel = await newChannel({ name: "Survivors" });
+        await seatMember(channel.id);
+        const teammate = await newTeammateFor("Gone");
+        const seat = await seats().insert({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          teammateId: teammate.id,
+        });
+        const said = await db.appendChannelMessage({
+          organizationId: ctx.organizationId,
+          channelId: channel.id,
+          authorType: "teammate",
+          authorTeammateId: teammate.id,
+          content: [{ type: "text", text: "I was here" }],
+        });
+
+        await db.table("teammates").delete(teammate.id);
+        expect(await seats().get(seat.id)).toBeNull();
+        const transcript = await db.listChannelMessages(channel.id);
+        const kept = transcript.find((m) => m.id === said.id);
+        // The message stays, the author reference does not: a hard delete must
+        // not rewrite what the channel said.
+        expect(kept).toBeDefined();
+        expect(kept!.authorTeammateId).toBeNull();
+      });
+
+      it("deleting the bound Project unbinds the channel instead of deleting it", async () => {
+        const project = await db.table("projects").insert({
+          organizationId: ctx.organizationId,
+          name: "Migration",
+        });
+        const channel = await newChannel({
+          name: "Bound",
+          projectId: project.id,
+        });
+        expect(channel.projectId).toBe(project.id);
+
+        await db.table("projects").delete(project.id);
+        const after = await channels().get(channel.id);
+        expect(after).not.toBeNull();
+        expect(after!.projectId).toBeNull();
       });
     });
 

@@ -26,6 +26,12 @@ export const alertKeys = {
   /** Daily AI budget ceiling, per organization. */
   budget: (organizationId: string) => `budget:${organizationId}`,
   /**
+   * One unattended Routine's health (#772). Per routine, not per Teammate: a
+   * Teammate with a broken nightly triage and a working weekly digest should
+   * show one banner, and it should clear when that one starts working again.
+   */
+  routine: (routineId: string) => `routine:${routineId}`,
+  /**
    * Plan-cap ladder (EE metering enforcement, #442/#507): one key per
    * (organization, metered resource, window), so a scraping warning and an AI
    * block are separate banners that resolve independently. The single-key

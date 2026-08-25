@@ -15,6 +15,11 @@ Each Alert contains its type, title, detail, detection time, and current status.
 
 Goal expectation failures create Alerts. Other monitored operations can also create an Alert when their current implementation reports a failure.
 
+An Alert of the **Knowledge** type reports a configuration problem, not a failure. Ciele creates one
+when you delete a Knowledge Collection that an AI Teammate still searches. The Alert names the
+Teammates that point at the deleted collection. It clears when the last of them removes the
+collection from its knowledge.
+
 ## Resolve an Alert
 
 1. Open the Alert.

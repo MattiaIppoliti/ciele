@@ -18,8 +18,8 @@ trasporto richiesto.
 
 ## Endpoint in hosting
 
-Ogni distribuzione Ciele serve l'endpoint alla propria origine. Ciò include il
-servizio in hosting, un self-host Docker e lo stack locale di Ciele Desktop.
+Ogni distribuzione Ciele serve l'endpoint presso la propria origine. Ciò include
+il servizio in hosting, un self-host Docker e lo stack locale di Ciele Desktop.
 L'endpoint non necessita di configurazione.
 
 ```text
@@ -55,7 +55,7 @@ un archivio di sessione.
 
 ### Requisiti
 
-- Utilizza Node.js 22.6 o versioni successive.
+- Utilizza Node.js 22.6 o una versione successiva.
 - Clona il repository Ciele.
 - Crea una [chiave API dell'organizzazione](/developers/api-keys).
 - Utilizza un client MCP in grado di avviare un server `stdio` locale.
@@ -101,24 +101,26 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_memories` | Ispeziona le impostazioni ed esegui la cancellazione della memoria con ambito. |
 | `manage_sso` | Gestisci le richieste di identità e la connessione SSO dell'organizzazione. |
 | `manage_help_desks` | Gestisci gli Help Desk, i canali, l'ordinamento e ServiceNow. |
+| `manage_teammates` | Gestisci i colleghi IA e leggi le tue conversazioni con i colleghi. |
+| `manage_channels` | Leggi e modella i canali dei colleghi di cui fai parte. |
 | `manage_configuration` | Gestisci le competenze, la selezione delle competenze dell'assistente, gli obiettivi e gli avvisi. |
 | `manage_organization` | Gestisci le impostazioni dell'organizzazione, i membri, gli inviti e le chiavi API. |
 | `manage_integrations` | Gestisci le integrazioni API dell'Assistente e i fornitori di modelli. |
 
-Il server registra quattordici strumenti. Ogni strumento di dominio utilizza un
-campo `action` per le sue operazioni.
+Il server registra sedici strumenti. Ogni strumento di dominio utilizza un campo
+`action` per le sue operazioni.
 
 La modalità di sola lettura classifica ogni azione. Consente le azioni di
 elenco, lettura, stato, query ed esportazione, ma rifiuta le mutazioni.
 
-Vedi [Client IA](/developers/ai-clients) per la configurazione di ciascun client
-supportato.
+Consulta [AI clients](/developers/ai-clients) per la configurazione di ciascun
+client supportato.
 
-## Verifica la connessione
+## Controlla la connessione
 
-Chiedi al client di chiamare `ciele_identity`. Conferma l'ID organizzazione, il
+Chiedi al cliente di chiamare `ciele_identity`. Conferma l'ID organizzazione, il
 ruolo, la versione API e l'elenco dei domini previsti.
 
-La suite di test del repository avvia anche il processo `stdio` vero e proprio.
-Verifica l'inizializzazione, il rilevamento degli strumenti e una chiamata API
+La suite di test del repository avvia anche il vero processo `stdio`. Verifica
+l'inizializzazione, il rilevamento degli strumenti e una chiamata API
 autenticata.

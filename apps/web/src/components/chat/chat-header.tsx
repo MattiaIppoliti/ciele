@@ -19,11 +19,15 @@ import {
 
 /**
  * The chat surface header: ONE component shared by the assistant editor's
- * live Preview panel and the production widget, so the two can never drift
- * apart (the preview exists to show exactly what production renders).
+ * live Preview panel, the production widget and the Teammate chat, so they can
+ * never drift apart (the preview exists to show exactly what production
+ * renders).
  *
  * Behavior differences (what "close" means, how fullscreen is realized) are
- * injected by the host through callbacks; everything visual lives here.
+ * injected by the host through callbacks; everything visual lives here. A
+ * callback the host omits takes its control with it: the Teammate chat fills a
+ * route of its own, so there is nothing to close and nothing to expand into,
+ * and rendering dead buttons would be worse than rendering none (#768).
  */
 export function ChatHeader({
   nickname,
@@ -41,10 +45,10 @@ export function ChatHeader({
   historyOpen: boolean;
   onToggleHistory: () => void;
   onNewChat: () => void;
-  onClose: () => void;
-  fullscreen: boolean;
-  onToggleFullscreen: () => void;
-  onSendFeedback: () => void;
+  onClose?: () => void;
+  fullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  onSendFeedback?: () => void;
 }) {
   // Icons use the theme foreground token (via `text-primary`) rather than the
   // brand color: a dark brand color is invisible on the dark-mode surface, so
@@ -99,6 +103,7 @@ export function ChatHeader({
           </Button>
         </Hint>
       )}
+      {(onSendFeedback || onToggleFullscreen) && (
       <DropdownMenu>
         <Hint label="More options">
           <DropdownMenuTrigger
@@ -110,32 +115,39 @@ export function ChatHeader({
           </DropdownMenuTrigger>
         </Hint>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuItem onClick={onSendFeedback}>
-            <MessageSquareText className="size-4" /> Send feedback
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onToggleFullscreen}>
-            {fullscreen ? (
-              <>
-                <Minimize2 className="size-4" /> Exit full screen
-              </>
-            ) : (
-              <>
-                <Maximize2 className="size-4" /> Open full screen
-              </>
-            )}
-          </DropdownMenuItem>
+          {onSendFeedback && (
+            <DropdownMenuItem onClick={onSendFeedback}>
+              <MessageSquareText className="size-4" /> Send feedback
+            </DropdownMenuItem>
+          )}
+          {onToggleFullscreen && (
+            <DropdownMenuItem onClick={onToggleFullscreen}>
+              {fullscreen ? (
+                <>
+                  <Minimize2 className="size-4" /> Exit full screen
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="size-4" /> Open full screen
+                </>
+              )}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <Hint label="Close chat">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Close chat"
-          onClick={onClose}
-        >
-          <X className="text-primary size-4" />
-        </Button>
-      </Hint>
+      )}
+      {onClose && (
+        <Hint label="Close chat">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Close chat"
+            onClick={onClose}
+          >
+            <X className="text-primary size-4" />
+          </Button>
+        </Hint>
+      )}
     </div>
   );
 }

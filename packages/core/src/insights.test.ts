@@ -334,7 +334,7 @@ describe("computeInsightsOverview parity with pure KPI functions", () => {
         computeBreakdown(
           filtered,
           range,
-          (c) => c.assistantId,
+          (c) => c.assistantId ?? "",
           (id) => assistantTitle.get(id) ?? id
         )
       );

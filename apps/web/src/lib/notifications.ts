@@ -42,6 +42,9 @@ const ALERT_STATUS: Record<Alert["type"], NotificationStatus> = {
   provider: "error",
   crawl: "warning",
   ingestion: "warning",
+  // A dangling Knowledge Scope answers nothing, but it breaks no pipeline and
+  // no credential: it waits for a person to decide what the scope should say.
+  knowledge: "warning",
   system: "warning",
 };
 
@@ -50,6 +53,7 @@ const ALERT_TAGS: Record<Alert["type"], string> = {
   provider: "AI Provider",
   crawl: "Crawl",
   ingestion: "Ingestion",
+  knowledge: "Knowledge",
   system: "System",
 };
 

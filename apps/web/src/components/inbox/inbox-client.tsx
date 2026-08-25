@@ -383,12 +383,19 @@ export function InboxClient({
   assistants,
   canEdit = false,
   canViewReasoning = false,
+  canOverseeChannels = false,
 }: {
   conversations: InboxConversation[];
   assistants: AssistantOption[];
   canEdit?: boolean;
   /** Admins and above see the model's own reasoning in the trace (#557). */
   canViewReasoning?: boolean;
+  /**
+   * Owners and Admins also oversee the internal group threads (#778, story 15).
+   * Their own surface rather than a filter here: a channel has no subject and no
+   * Assistant, so it would be two empty columns in this table.
+   */
+  canOverseeChannels?: boolean;
 }) {
   const searchParams = useSearchParams();
   // Deep link from an improvement's "View message in conversation context".
@@ -597,6 +604,14 @@ export function InboxClient({
       {/* Header */}
       <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
+        {canOverseeChannels && (
+          <Link
+            href="/inbox/channels"
+            className="text-muted-foreground hover:text-foreground text-sm"
+          >
+            Channels
+          </Link>
+        )}
         {/* On a phone the search field takes the whole second row and the two
             menus sit beside it; from `sm` up the group returns to one row
             pinned right. */}

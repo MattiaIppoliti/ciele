@@ -1,48 +1,70 @@
 ---
-title: Processus d'arrière-plan
+title: Processus de fond
 description: Activez les services optionnels de récupération de graphes et d'analyse avec rendu JavaScript.
 ---
 
-La pile par défaut ne démarre pas le profil `workers`. La recherche et
-l'ingestion de sites Web se poursuivent avec des capacités réduites.
+La pile par défaut ne démarre pas les workers. La recherche et l'ingestion de
+sites Web se poursuivent avec des capacités réduites.
 
 Sans le worker graphique, Knowledge utilise la recherche vectorielle et
 lexicale. Sans Crawl4AI, Ciele utilise son robot d'indexation Fetch intégré.
 
-## Activez le profil
+Les workers sont un fichier Compose distinct,
+`deploy/docker-compose.workers.yml`. La pile ne lit ce fichier que lorsque
+`COMPOSE_FILE` le répertorie.
 
-Définissez ces valeurs dans `deploy/.env` :
+## Activez les workers
 
-```dotenv
-COMPOSE_PROFILES=db,migrate,app,cron,workers
-GRAPH_WORKER_API_TOKEN=<generated-token>
-GRAPH_LLM_API_KEY=<provider-key>
-CRAWL4AI_API_TOKEN=<generated-token>
-CRAWL4AI_SECRET_KEY=<generated-token>
-```
-
-Ensuite, démarrez la pile :
+Exécutez le script de démarrage avec l'option `--workers` :
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d
+./deploy/bootstrap.sh --workers
 ```
 
-Les deux workers optionnels peuvent nécessiter environ 8 GiB de mémoire. Mesurez
+Le script ajoute le fichier à `COMPOSE_FILE` dans `deploy/.env`. Il génère
+également trois des quatre identifiants :
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+GRAPH_WORKER_API_TOKEN=<generated>
+CRAWL4AI_API_TOKEN=<generated>
+CRAWL4AI_SECRET_KEY=<generated>
+```
+
+Le worker graphique a également besoin d'une clé pour son propre fournisseur de
+modèles. Le script ne peut pas générer cette clé. Définissez `GRAPH_LLM_API_KEY`
+dans `deploy/.env`, puis exécutez à nouveau la commande.
+
+L'option `--workers` et l'option `--images` sont indépendantes. Aucune des deux
+options ne désactive l'autre.
+
+Les deux workers peuvent nécessiter environ 8 GiB de mémoire. Mesurez
 l'utilisation réelle sur l'hôte que vous avez sélectionné.
 
 ## Vérifiez l'état du worker
 
+Incluez le fichier workers dans chaque commande :
+
 ```bash
-docker compose -f deploy/docker-compose.yml ps
-docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
 ```
 
-N'exposez pas les ports ou les jetons des workers au réseau public.
+N'exposez pas les ports ou les jetons des processus de travail au réseau public.
+
+## Désactivez les workers
+
+Supprimez `docker-compose.workers.yml` de `COMPOSE_FILE` dans `deploy/.env`.
+Supprimez ensuite les deux conteneurs :
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+```
 
 ## Tâches de mémoire à long terme
 
-La mémoire à long terme utilise le registre de tâches durable intégré. Le profil
-optionnel `workers` n'est pas requis.
+La mémoire à long terme utilise le registre de tâches durable intégré. Elle ne
+requiert pas les workers optionnels.
 
 Chaque tour connecté planifie une tâche `promote_memories` après une fenêtre de
 repos de 15 minutes. Le profil `cron` achemine ces tâches via le chemin planifié

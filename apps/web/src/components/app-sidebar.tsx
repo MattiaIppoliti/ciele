@@ -639,7 +639,12 @@ function SidebarContent({
       >
         {!collapsed && (
           <>
-            <UserAvatar avatarUrl={profile?.avatarUrl} size="size-8" />
+            <UserAvatar
+              avatarUrl={profile?.avatarUrl}
+              userId={profile?.userId}
+              email={email}
+              size="size-8"
+            />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">
                 {profileDisplayName(profile, email)}
@@ -669,7 +674,12 @@ function SidebarContent({
             }
           >
             {collapsed ? (
-              <UserAvatar avatarUrl={profile?.avatarUrl} size="size-9" />
+              <UserAvatar
+                avatarUrl={profile?.avatarUrl}
+                userId={profile?.userId}
+                email={email}
+                size="size-9"
+              />
             ) : (
               <Ellipsis className="size-4" />
             )}

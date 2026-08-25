@@ -399,6 +399,165 @@ describe("streamConversationTurn", () => {
   });
 });
 
+describe("streamConversationTurn (AI Teammates, #768)", () => {
+  async function teammateFixture(collectionIds: string[] = []) {
+    return db.table("teammates").insert({
+      organizationId: DEMO_ORG.id,
+      ownerId: "member-1",
+      name: "Nora",
+      title: "Support Copywriter",
+      roleDescription: "You answer colleagues from our internal docs.",
+      collectionIds,
+    });
+  }
+
+  /** A Collection with one searchable chunk, and the id to scope a Teammate to. */
+  async function seedCollection(name: string, content: string) {
+    const host = await db.createAssistant(DEMO_ORG.id, { title: `${name} host` });
+    const collection = await db.createCollection(host.id, { name });
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name: `${name} source`,
+      kind: "text",
+    });
+    const concept = await db.createConcept({
+      collectionId: collection.id,
+      sourceId: source.id,
+      path: `${name}/topic.md`,
+      frontmatter: { type: "Note", title: name },
+      body: content,
+    });
+    await db.saveChunks([
+      {
+        conceptId: concept.id,
+        collectionId: collection.id,
+        sourceId: source.id,
+        content,
+        embedding: null,
+      },
+    ]);
+    return collection;
+  }
+
+  async function runTeammateTurn(
+    teammate: Awaited<ReturnType<typeof teammateFixture>>,
+    over: { message?: string; conversationId?: string | null; db?: Db } = {}
+  ): Promise<RuntimeEvent[]> {
+    const stream = await streamConversationTurn({
+      db: over.db ?? db,
+      teammate,
+      flows: [],
+      connections: [],
+      organizationId: DEMO_ORG.id,
+      subjectType: "member",
+      subjectId: "member-1",
+      conversationId: over.conversationId ?? null,
+      message: over.message ?? "what do we tell people about refunds?",
+      signal: new AbortController().signal,
+    });
+    const text = await new Response(stream).text();
+    return text
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as RuntimeEvent);
+  }
+
+  it("gives the Conversation to the Teammate and to no Assistant", async () => {
+    const teammate = await teammateFixture();
+    const { conversationId } = doneEvent(await runTeammateTurn(teammate));
+    const conversation = await db.getConversation(conversationId);
+    expect(conversation?.teammateId).toBe(teammate.id);
+    expect(conversation?.assistantId).toBeNull();
+    // Member-subject, which is what keeps internal chat out of the Visitor
+    // population in Insights (#764) without a second exclusion rule.
+    expect(conversation?.subjectType).toBe("member");
+  });
+
+  it("continues its own thread and refuses another Teammate's", async () => {
+    const nora = await teammateFixture();
+    const other = await teammateFixture();
+    const first = doneEvent(await runTeammateTurn(nora));
+    const same = doneEvent(
+      await runTeammateTurn(nora, { conversationId: first.conversationId })
+    );
+    expect(same.conversationId).toBe(first.conversationId);
+    const crossed = doneEvent(
+      await runTeammateTurn(other, { conversationId: first.conversationId })
+    );
+    expect(crossed.conversationId).not.toBe(first.conversationId);
+  });
+
+  it("searches exactly the Collections in scope and cites them", async () => {
+    const inScope = await seedCollection(
+      "Refund policy",
+      "Refunds are processed within five working days."
+    );
+    await seedCollection(
+      "Unscoped policy",
+      "Refunds require a manager signature."
+    );
+    const teammate = await teammateFixture([inScope.id]);
+
+    const searched: Array<{ organizationId: string; collectionIds: string[] }> = [];
+    const spyDb: Db = {
+      ...db,
+      async searchCollectionChunks(organizationId, collectionIds, query) {
+        searched.push({ organizationId, collectionIds });
+        return db.searchCollectionChunks(organizationId, collectionIds, query);
+      },
+    };
+
+    const events = await runTeammateTurn(teammate, { db: spyDb });
+    expect(searched).toEqual([
+      { organizationId: DEMO_ORG.id, collectionIds: [inScope.id] },
+    ]);
+    const sources = events.flatMap((e) =>
+      e.type === "part" && e.part.type === "sources" ? e.part.sources : []
+    );
+    expect(sources.map((s) => s.collectionName)).toEqual(["Refund policy"]);
+  });
+
+  it("registers no search at all for an empty Knowledge Scope", async () => {
+    const teammate = await teammateFixture();
+    let searchCalls = 0;
+    const spyDb: Db = {
+      ...db,
+      async searchCollectionChunks(organizationId, collectionIds, query) {
+        searchCalls += 1;
+        return db.searchCollectionChunks(organizationId, collectionIds, query);
+      },
+    };
+    const events = await runTeammateTurn(teammate, { db: spyDb });
+    expect(searchCalls).toBe(0);
+    // Nothing was searched, so nothing claims to have been: no tool row in the
+    // Thinking panel, and no "I couldn't find it in the knowledge base".
+    expect(events.some((e) => e.type === "tool-start")).toBe(false);
+    const reply = events
+      .filter((e) => e.type === "part" && e.part.type === "text")
+      .map((e) => (e.type === "part" && e.part.type === "text" ? e.part.text : ""))
+      .join(" ");
+    expect(reply).not.toMatch(/knowledge base/i);
+  });
+
+  it("attributes telemetry to the Organization and to no Assistant", async () => {
+    const teammate = await teammateFixture();
+    const events: RuntimeEventInput[] = [];
+    const spyDb: Db = {
+      ...db,
+      async recordRuntimeEvent(event) {
+        events.push(event);
+        return db.recordRuntimeEvent(event);
+      },
+    };
+    await runTeammateTurn(teammate, { db: spyDb });
+    expect(events).toHaveLength(1);
+    expect(events[0].organizationId).toBe(DEMO_ORG.id);
+    // The Teammate's id is not an Assistant id: writing it into a column that
+    // references `assistants` would be a dangling reference.
+    expect(events[0].assistantId).toBeNull();
+  });
+});
+
 describe("long-term memory gate (#664)", () => {
   const queuedPromotionJobs = () =>
     db.claimBackgroundJobs({

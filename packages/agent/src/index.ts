@@ -30,6 +30,29 @@ export type { RuntimeHost } from "./host";
 // Conversation Turn: the one entrypoint for answering a user message.
 export { streamConversationTurn, NDJSON_HEADERS } from "./turn";
 export type { ConversationTurnInput } from "./turn";
+// Teammate channels (#778): everything one human message sets off in a group
+// thread. One entrypoint, streaming the same events a 1:1 turn does with an
+// envelope saying who is speaking; the caps live in `@agent-hub/core` so they
+// can be asserted without a model.
+export { streamChannelChain, CHANNEL_NDJSON_HEADERS } from "./channel-turn";
+export type {
+  ChannelChainInput,
+  ChannelTurnRequest,
+  ChannelTurnResult,
+  ChannelTurnRunner,
+} from "./channel-turn";
+export type { ChannelEvent } from "./types";
+// The Agent memory layer's writer (#771): distils one turn into a durable
+// learning. Exported for the cron drain's sake, like the other job entrypoints.
+export { distillAgentLearning } from "./agent-learnings";
+// Unattended Routine runs (#772). Public because the cron tick composes it and
+// the host wires the grant-resolving port; nothing else should reach it.
+export { runDueRoutines } from "./routine-runner";
+export type { RoutineRunReport, RoutineRunnerDeps } from "./routine-runner";
+// The AI Teammate action port (#770): the host hands the turn a list of things
+// this Teammate may do, and the runtime turns each into a tool with a
+// transcript card. The runtime never learns that operations exist.
+export type { TeammateActionOutcome, TeammateActionTool } from "./types";
 
 // Per-request session metadata (UA/IP/locale) for a chat request.
 export { sessionMetadata } from "./session-meta";

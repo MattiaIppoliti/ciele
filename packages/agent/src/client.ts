@@ -11,6 +11,11 @@
 
 // Parse the NDJSON turn stream the chat routes emit into view state.
 export { consumeTurnStream, decodeRuntimeEvents } from "./stream";
+// The channel chain's consumer (#778): the same turn events, plus the envelope
+// that says which Teammate they belong to. One renderer, one fold, two surfaces.
+export { consumeChannelStream } from "./stream";
+export type { ConsumeChannelOptions } from "./stream";
+export type { ChannelEvent } from "./types";
 // The single fold from wire events to Thinking Steps, shared by the live chat
 // clients and by turn.ts (which persists what it folds) so the Inbox shows what
 // the visitor watched happen. `EMPTY_TURN_TRACE` seeds a fold.

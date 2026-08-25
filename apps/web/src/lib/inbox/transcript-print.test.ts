@@ -11,6 +11,7 @@ import { escapeHtml, transcriptDocument } from "./transcript-print";
 const conversation: InboxConversation = {
   id: "c-1",
   assistantId: "as-1",
+  teammateId: null,
   subjectType: "visitor",
   subjectId: "v-1",
   collectionId: null,

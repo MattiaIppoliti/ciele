@@ -6,6 +6,7 @@
 #   ./deploy/bootstrap.sh --env-only   just write deploy/.env, start nothing
 #   ./deploy/bootstrap.sh --images vX.Y.Z
 #                                      run published images, no source build
+#   ./deploy/bootstrap.sh --workers    …and the heavy graph + crawler workers
 #
 # Generates every secret the stack needs (Postgres password, JWT secret and
 # the two API keys signed with it, the encryption key, the cron secret),
@@ -17,16 +18,21 @@
 # secrets and edits survive.
 set -euo pipefail
 
-cd "$(cd "$(dirname "$0")" && pwd)"
+# Resolved before the cd, or a relative $0 (./deploy/bootstrap.sh --help)
+# no longer names this file once we are inside deploy/.
+SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+cd "$(dirname "$SELF")"
 
 ENV_FILE=".env"
 SEED=0
 ENV_ONLY=0
 IMAGE_TAG=""
+WORKERS=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --seed) SEED=1 ;;
     --env-only) ENV_ONLY=1 ;;
+    --workers) WORKERS=1 ;;
     --images)
       shift
       IMAGE_TAG="${1:-}"
@@ -37,7 +43,9 @@ while [ $# -gt 0 ]; do
       ;;
     --images=*) IMAGE_TAG="${1#--images=}" ;;
     -h | --help)
-      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+      # The header block, however long it is: a line range drifts every time
+      # a flag is added, and silently truncated the last line for a while.
+      awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$SELF"
       exit 0
       ;;
     *)
@@ -133,20 +141,47 @@ else
   echo "Wrote $(grep -c '^[A-Z]' "$ENV_FILE") settings; six secrets generated."
 fi
 
-# --- image mode --------------------------------------------------------------
+# --- overlays ----------------------------------------------------------------
 #
-# Written into .env rather than passed on the command line, so a later bare
-# `docker compose up -d` in this directory keeps running images too, compose
-# reads COMPOSE_FILE from .env itself.
+# Image mode and the workers are both overlay files, and either can be on
+# without the other, so COMPOSE_FILE is composed from what .env already says
+# plus what this run asked for. It goes into .env rather than onto the command
+# line so a later bare `docker compose up -d` in this directory keeps the same
+# shape: compose reads COMPOSE_FILE from .env itself.
+listed() { case ":$1:" in *":$2:"*) return 0 ;; *) return 1 ;; esac; }
+
+configured=$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" | cut -d= -f2- || true)
+overlays="${configured:-docker-compose.yml}"
+overlays_before="$overlays"
+
 if [ -n "$IMAGE_TAG" ]; then
-  replace_var COMPOSE_FILE "docker-compose.yml:docker-compose.images.yml"
+  listed "$overlays" docker-compose.images.yml ||
+    overlays="$overlays:docker-compose.images.yml"
   replace_var CIELE_IMAGE_TAG "$IMAGE_TAG"
   echo "Image mode: app, migrate and cron will be pulled at $IMAGE_TAG (no source build)."
 fi
 
-# The overlay is on when .env says so, whether this run set it or a previous
-# one did. Every compose invocation below has to agree with that, and the
-# explicit `-f` flags would otherwise override what .env asked for.
+if [ "$WORKERS" = "1" ]; then
+  listed "$overlays" docker-compose.workers.yml ||
+    overlays="$overlays:docker-compose.workers.yml"
+  # Three of the four worker credentials are shared secrets this stack invents
+  # for itself, so generate them the same way as the rest. The fourth, the
+  # graph worker's LLM key, is an account of yours and cannot be minted here.
+  set_var GRAPH_WORKER_API_TOKEN "$(random_secret)"
+  set_var CRAWL4AI_API_TOKEN "$(random_secret)"
+  set_var CRAWL4AI_SECRET_KEY "$(random_secret)"
+  echo "Workers: the graph worker and the crawler are on (budget ~8 GiB of RAM)."
+  if ! grep -q '^GRAPH_LLM_API_KEY=.' "$ENV_FILE"; then
+    echo "GRAPH_LLM_API_KEY is empty in $PWD/$ENV_FILE; the graph worker cannot start without it." >&2
+    [ "$ENV_ONLY" = "1" ] || exit 2
+  fi
+fi
+
+[ "$overlays" = "$overlays_before" ] || replace_var COMPOSE_FILE "$overlays"
+
+# Which overlays are on is whatever .env says, whether this run set them or a
+# previous one did. Every compose invocation below has to agree with that, and
+# the explicit `-f` flags would otherwise override what .env asked for.
 compose_files() {
   local configured
   configured=$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || true)

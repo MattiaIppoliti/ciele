@@ -272,6 +272,7 @@ const iframe: ActionHandler = async ({ flow, emit }) => {
 const searchKnowledgeHandler: ActionHandler = async ({
   assistant,
   platformPrompt,
+  persona,
   flow,
   message,
   history,
@@ -280,6 +281,9 @@ const searchKnowledgeHandler: ActionHandler = async ({
   searchKnowledge,
   readKnowledgeDocument,
   apiIntegration,
+  teammateActions,
+  memoryDocuments,
+  referralCandidates,
   session,
   skills,
   longTermMemory,
@@ -311,6 +315,19 @@ const searchKnowledgeHandler: ActionHandler = async ({
       }
     : undefined;
   if (!chatModel) {
+    if (!searchKnowledge) {
+      // Nothing to search AND no model to answer from: a scopeless AI Teammate
+      // (#768) on a deployment with no provider credential. Reporting a search
+      // that never ran, and a knowledge base that does not exist, would be two
+      // lies in one reply.
+      const textPart: ChatReplyPart = {
+        type: "text",
+        action: "search_knowledge",
+        text: "I have no knowledge to search and no AI provider is configured, so I can't answer that yet.",
+      };
+      emit({ type: "part", part: textPart });
+      return { parts: [textPart] };
+    }
     // The deterministic path searches for real, so it reports a real tool call
     // rather than a phase label: same panel row, same ×N counter, same icon as
     // the model-driven search it stands in for (#560).
@@ -323,7 +340,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
       label: `Searching knowledge for “${message.slice(0, 60)}”`,
       input: { queries: [message] },
     });
-    const results = searchKnowledge ? await searchKnowledge(message) : [];
+    const results = await searchKnowledge(message);
     emit({
       type: "tool-end",
       callId,
@@ -387,9 +404,17 @@ const searchKnowledgeHandler: ActionHandler = async ({
   // (#206); this adapter only wires the tool registry in and applies flow
   // policy to the outcome below.
   const apiResponses = createApiResponseStore();
+  /**
+   * Referral cards emitted during the turn (#773). Collected here rather than
+   * returned by the tool, because a tool's return value goes to the model and
+   * a part goes to the transcript; the card is the second kind.
+   */
+  const referralParts: ChatReplyPart[] = [];
   const outcome = await runAgenticSearch({
     assistant,
     platformPrompt,
+    persona,
+    memoryDocuments,
     flow,
     message,
     history,
@@ -421,6 +446,15 @@ const searchKnowledgeHandler: ActionHandler = async ({
         toolSubject,
         readKnowledgeDocument,
         apiIntegration,
+        teammateActions,
+        referralCandidates,
+        // The referral card goes into the reply like any other part, so it is
+        // persisted, exported and rendered by the machinery that already
+        // handles parts rather than by a second path for one card.
+        emitPart: (part) => {
+          emit({ type: "part", part });
+          referralParts.push(part);
+        },
         // One response store per turn: a windowed-read handle must survive
         // across the turn's model calls (the toolset itself is built once).
         apiResponses,
@@ -440,9 +474,14 @@ const searchKnowledgeHandler: ActionHandler = async ({
     previewSurface,
   });
   // Terminal turns (clarify, refusal, truncation) take no flow policy on top.
-  if (outcome.terminal) return { parts: outcome.parts };
+  // The referral card still rides along: a turn that ended in a clarify after
+  // referring should keep the card, or the Member is told to go somewhere and
+  // then shown no way to get there.
+  if (outcome.terminal) {
+    return { parts: [...outcome.parts, ...referralParts] };
+  }
 
-  const parts = [...outcome.parts];
+  const parts = [...outcome.parts, ...referralParts];
   // Builder toggle: offer escalation when nothing grounded the answer.
   if (searchSettings?.escalatePrompt && !outcome.grounded) {
     const recommended = (await recommendHelpDesk?.()) ?? null;

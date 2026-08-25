@@ -132,6 +132,32 @@ describe("orgMutation", () => {
     [{ kind: "improvement", id: "IMP_1" }, [["/improvements/IMP_1", undefined]]],
     [{ kind: "inbox" }, [["/inbox", undefined]]],
     [{ kind: "assistantEditor", assistantId: "as_1" }, [["/assistants/as_1", undefined]]],
+    // A channel change reaches the roster it shares with the Teammates, and one
+    // channel's own page. Both are concrete paths, so neither needs a type
+    // (#778).
+    [{ kind: "channelList" }, [["/teammates", undefined]]],
+    [
+      { kind: "channel", id: "ch_1" },
+      [["/teammates/channels/ch_1", undefined]],
+    ],
+    // A Project change reaches the page that renders every Project, and every
+    // Teammate page, which renders the live ones. The bracketed path is how
+    // Next names a dynamic route for all of its params, and it only works with
+    // the explicit "page" type.
+    [
+      { kind: "projectList" },
+      [
+        ["/projects", undefined],
+        ["/teammates/[teammateId]", "page"],
+      ],
+    ],
+    [
+      { kind: "project", id: "prj_1" },
+      [
+        ["/projects", undefined],
+        ["/teammates/[teammateId]", "page"],
+      ],
+    ],
   ] as const)("maps %o to its route(s)", async (entity, expectedCalls) => {
     await orgMutation({ capability: "edit", entities: [entity] }, async () => null);
     expect(revalidatePathMock.mock.calls).toEqual(expectedCalls);
@@ -148,6 +174,22 @@ describe("orgMutation", () => {
     expect(revalidatePathMock.mock.calls).toEqual([
       ["/help-desks", undefined],
       ["/help-desks/hd_1", undefined],
+    ]);
+  });
+
+  it("dedupes the Project pair down to the routes they share", async () => {
+    // What `projects.update` declares: one Project changed, and so did the set
+    // of them. Both map to the same two routes, and each is revalidated once.
+    await orgMutation(
+      {
+        capability: "edit",
+        entities: [{ kind: "project", id: "prj_1" }, { kind: "projectList" }],
+      },
+      async () => null
+    );
+    expect(revalidatePathMock.mock.calls).toEqual([
+      ["/projects", undefined],
+      ["/teammates/[teammateId]", "page"],
     ]);
   });
 

@@ -30,9 +30,16 @@ export interface SeedAssistant {
   id: string;
   title: string;
 }
+export interface SeedTeammate {
+  id: string;
+  name: string;
+}
 export interface SeedConversation {
   id: string;
-  assistantId: string;
+  /** Null on a Teammate Conversation, which has no Assistant (#768). */
+  assistantId: string | null;
+  /** Set instead of `assistantId` for internal Teammate chat (#768). */
+  teammateId?: string | null;
   /** Defaults to "visitor"; "member" rows must be excluded (#668). */
   subjectType?: string;
   subjectId: string;
@@ -63,6 +70,7 @@ export interface SeedWebsiteSource {
 export interface InsightsSeed {
   organizationId: string;
   assistants: SeedAssistant[];
+  teammates?: SeedTeammate[];
   conversations: SeedConversation[];
   messages: SeedMessage[];
   sources?: SeedWebsiteSource[];
@@ -97,6 +105,7 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
          public.assistant_sources,
          public.sources,
          public.knowledge_collections,
+         public.teammates,
          public.assistants,
          public.organizations
        cascade;`
@@ -109,6 +118,14 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
       await db.query(
         "insert into public.assistants (id, organization_id, title) values ($1, $2, $3)",
         [a.id, seed.organizationId, a.title]
+      );
+    }
+    for (const t of seed.teammates ?? []) {
+      // No owner: the harness seeds no auth.users rows, and ownership is not
+      // an input to any Insights aggregate.
+      await db.query(
+        "insert into public.teammates (id, organization_id, name) values ($1, $2, $3)",
+        [t.id, seed.organizationId, t.name]
       );
     }
     if (seed.sources?.length) {
@@ -131,10 +148,11 @@ export async function createInsightsHarness(): Promise<InsightsHarness> {
     }
     for (const c of seed.conversations) {
       await db.query(
-        "insert into public.conversations (id, assistant_id, subject_type, subject_id, created_at, metadata) values ($1, $2, $3, $4, $5, $6)",
+        "insert into public.conversations (id, assistant_id, teammate_id, subject_type, subject_id, created_at, metadata) values ($1, $2, $3, $4, $5, $6, $7)",
         [
           c.id,
           c.assistantId,
+          c.teammateId ?? null,
           c.subjectType ?? "visitor",
           c.subjectId,
           c.createdAt,

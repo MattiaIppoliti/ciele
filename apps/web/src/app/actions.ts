@@ -43,7 +43,12 @@ import {
   sealSecret,
   thrownMessage,
 } from "@agent-hub/core";
-import { isSupabaseConfigured, raiseImprovement, type Db } from "@agent-hub/db";
+import {
+  isSupabaseConfigured,
+  raiseDanglingCollectionAlert,
+  raiseImprovement,
+  type Db,
+} from "@agent-hub/db";
 
 import { SSO_GATE_COOKIE, isGateValidForOrg } from "@/lib/sso";
 import {
@@ -75,6 +80,8 @@ import { requireMember, requireSession } from "@/lib/authz";
 import { orgMutation } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
+  acceptSuggestedFixOp,
+  dismissSuggestedFixOp,
   addSourceOp,
   createAssistantOp,
   createFaqOp,
@@ -150,7 +157,6 @@ import {
   setMessageFeedbackOp,
   validateSsoIdentityOp,
 } from "@ciele/ops";
-import { persistFaqConcept } from "@/lib/op-ports";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
@@ -561,9 +567,23 @@ export async function deleteCollectionAction(
       capability: "edit",
       entities: [{ kind: "assistantEditor", assistantId }],
     },
-    async ({ db }) => {
+    async ({ db, organizationId }) => {
+      // Read the name before the row is gone: the Alert below has to say which
+      // Collection disappeared, and after the delete nobody can look it up.
+      const collection = await db.getCollection(collectionId);
       await db.deleteCollection(collectionId);
       await enqueueGraphSyncJob({ op: "purge", collectionId }, { db });
+      // A Teammate's Knowledge Scope is a list of ids, not a foreign key, so
+      // this delete can leave one searching something that is gone (#769).
+      // Deleting a Collection has no operation yet, so this is the only path;
+      // move the raise into it when `knowledge.collections.delete` lands, or
+      // /api/v1 and the CLI will delete a Collection and raise nothing.
+      await raiseDanglingCollectionAlert(
+        db,
+        organizationId,
+        collectionId,
+        collection?.name ?? collectionId
+      );
     },
   );
 }
@@ -1909,82 +1929,20 @@ export async function createImprovementFromMessageAction(
 }
 
 /**
- * Accept a Suggested Fix (#390): create the drafted FAQ as a real OKF Concept
- * (the normal persistConcept path → re-embeds + graph fan-out), record the
- * created Concept on the proposal, and advance the Improvement to In Review.
+ * Accept a Suggested Fix (#390): write the drafted FAQ as a real OKF Concept,
+ * record it on the proposal, and advance the Improvement to In Review.
+ *
+ * The behaviour lives in `acceptSuggestedFixOp` because a Teammate with
+ * approval-bypass reaches the same accept from a chat turn (#770), and a second
+ * copy of "what accepting means" is exactly the thing the ADR-0017 amendment
+ * cannot afford. The operation stamps a human actor here (no Teammate on the
+ * context) and an agent actor there, which is what keeps the OKF trust tier
+ * honest about who signed off.
  */
 export async function acceptImprovementProposalAction(
   improvementId: string,
 ): Promise<void> {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "improvement", id: improvementId }, { kind: "inbox" }],
-    },
-    async ({ db, session }) => {
-      const proposal = await db.getImprovementProposal(improvementId);
-      if (!proposal || proposal.status !== "draft") {
-        throw new Error("No draft Suggested Fix to accept");
-      }
-      const { targetAssistantId, targetCollectionId } = proposal.payload;
-      // A FAQ needs a Collection; fall back to the assistant's first one when the
-      // flagged conversation was unanchored.
-      const collectionId =
-        targetCollectionId ??
-        (await db.listCollections(targetAssistantId))[0]?.id ??
-        null;
-      if (!collectionId) {
-        throw new Error(
-          "The assistant has no Knowledge Collection to add the FAQ to",
-        );
-      }
-      // The drafter's provenance, resolved to OKF v0.2 (§5.1): each Concept the
-      // draft drew on becomes a bundle-relative `sources` entry, so the new FAQ
-      // records its derivation instead of losing it at accept time. Concepts
-      // deleted since the draft are dropped rather than pointing nowhere.
-      const draftedFrom = (
-        await Promise.all(
-          proposal.payload.sources.map(async (s) => {
-            const cited = await db.getConcept(s.conceptId).catch(() => null);
-            return cited
-              ? {
-                  id: s.conceptId,
-                  resource: `/${cited.path}`,
-                  title: s.conceptTitle,
-                }
-              : null;
-          }),
-        )
-      ).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-      const at = new Date().toISOString();
-      const concept = await persistFaqConcept({
-        db,
-        organizationId: session.organization.id,
-        assistantId: targetAssistantId,
-        collectionId,
-        question: proposal.payload.draftQuestion,
-        answer: proposal.payload.draftAnswer,
-        // Agent-drafted, then confirmed by the person who clicked accept, the
-        // one place the platform produces a `human-reviewed` trust tier (§5.3).
-        provenance: {
-          generated: {
-            by: okfActor.agent("suggested-fix-drafter", proposal.payload.model),
-            at,
-          },
-          verified: [{ by: okfActor.human(session.userId), at }],
-          ...(draftedFrom.length > 0 ? { sources: draftedFrom } : {}),
-        },
-      });
-      await db.updateImprovementProposal(proposal.id, {
-        status: "accepted",
-        acceptedConceptId: concept.id,
-      });
-      await db.updateImprovement(improvementId, { status: "in_review" });
-      // The new FAQ lands in the target assistant's Knowledge, refresh it too
-      // (orgMutation only revalidates the improvement/inbox entities).
-      revalidatePath(`/assistants/${targetAssistantId}`);
-    },
-  );
+  await runOperation(acceptSuggestedFixOp, { improvementId });
 }
 
 /** Dismiss a Suggested Fix with a reason (#390). Knowledge is never touched. */
@@ -1992,20 +1950,7 @@ export async function dismissImprovementProposalAction(
   improvementId: string,
   reason: string,
 ): Promise<void> {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "improvement", id: improvementId }],
-    },
-    async ({ db }) => {
-      const proposal = await db.getImprovementProposal(improvementId);
-      if (!proposal || proposal.status !== "draft") return;
-      await db.updateImprovementProposal(proposal.id, {
-        status: "dismissed",
-        dismissReason: reason.trim().slice(0, 1000),
-      });
-    },
-  );
+  await runOperation(dismissSuggestedFixOp, { improvementId, reason });
 }
 
 /** "Improve Answer" → Link Existing Improvement (also "Link to a different …"). */

@@ -17,6 +17,7 @@ export {
   type Operation,
   type OperationCapability,
   type OperationContext,
+  type TeammateActor,
 } from "./operation";
 
 // Assistants domain (#620): the extraction pattern later domains follow.
@@ -72,6 +73,52 @@ export {
   unpublishAssistantOp,
 } from "./publish";
 
+// Teammates domain (#768): the org's internal AI colleagues. Ownership and
+// visibility are enforced here, over the domain package's pure rules.
+export {
+  createTeammateOp,
+  deleteTeammateOp,
+  getTeammateOp,
+  hideTeammateOp,
+  listTeammateThreadOp,
+  listTeammatesOp,
+  readTeammateConversationOp,
+  startReferralOp,
+  unhideTeammateOp,
+  teammateInputSchema,
+  teammatePatchSchema,
+  updateTeammateOp,
+} from "./teammates";
+
+// Teammate channels (#778): the group thread as an org resource. Capability is
+// `member` throughout, because opening a thread is not configuring an agent; the
+// visibility rule is membership, and the two oversight reads are the only ones
+// that ignore it (and declare `manageMembers` for saying so).
+export {
+  addChannelMembersOp,
+  addChannelTeammatesOp,
+  channelInputSchema,
+  channelMembersSchema,
+  channelPatchSchema,
+  channelTeammatesSchema,
+  createChannelOp,
+  deleteChannelOp,
+  getChannelOp,
+  listChannelsOp,
+  listOrgChannelsOp,
+  markChannelReadOp,
+  postChannelMessageOp,
+  readOrgChannelOp,
+  removeChannelMemberOp,
+  removeChannelTeammateOp,
+  updateChannelOp,
+} from "./channels";
+export type {
+  ChannelSummary,
+  ChannelView,
+  PostedChannelMessage,
+} from "./channels";
+
 // Inbox domain (#624): read-only conversation review.
 export {
   deleteConversationOp,
@@ -83,13 +130,70 @@ export {
   setMessageFeedbackOp,
 } from "./inbox";
 
-// Improvements domain (#625): list / detail / update.
+// Improvements domain (#625): list / detail / update, plus the Suggested Fix
+// lifecycle (#770), whose accept path is the ADR-0017 amendment's one branch.
 export {
+  acceptSuggestedFixOp,
+  dismissSuggestedFixOp,
+  triageFeedbackOp,
+  type AcceptedSuggestedFix,
+  type FeedbackTriageResult,
   getImprovementOp,
   improvementPatchSchema,
   listImprovementsOp,
+  proposeSuggestedFixOp,
   updateImprovementOp,
 } from "./improvements";
+
+// Routines (#772): recurring unattended runs, governed by the Teammate's own
+// ownership rule and capped at five per Teammate.
+export {
+  createRoutineOp,
+  deleteRoutineOp,
+  listRoutinesOp,
+  routinePatchSchema,
+  updateRoutineOp,
+} from "./routines";
+
+// Teammate action grants (#770): who grants what, and what a granted domain
+// actually lets a Teammate do inside a turn.
+export {
+  listTeammateGrantsOp,
+  readTeammateGrants,
+  setTeammateGrantsOp,
+  type TeammateGovernance,
+} from "./teammate-grants";
+export { writingActor } from "./actor";
+// Memory documents + Projects (#771): the three layers, their history, and
+// the two writes a Teammate performs mid-turn (not grant-gated: acting on the
+// console's domains is #770's rows, remembering is what makes it a colleague).
+export {
+  createProjectOp,
+  deleteProjectOp,
+  getMyMemoryOp,
+  getProjectOp,
+  getTeammateMemoryOp,
+  listProjectsOp,
+  projectPatchSchema,
+  recordProjectDecisionOp,
+  rememberAboutMemberOp,
+  revertMyMemoryOp,
+  updateProjectOp,
+  writeMyMemoryOp,
+  writeProjectDocumentOp,
+  writeTeammateMemoryOp,
+  type MemoryDocumentView,
+} from "./memory";
+
+export {
+  TEAMMATE_ACTION_CATALOG,
+  runTeammateAction,
+  teammateActions,
+  teammateMemoryActions,
+  type CatalogedOperation,
+  type TeammateActionRun,
+  type TeammateActionSpec,
+} from "./teammate-actions";
 
 export type { OperationPorts } from "./operation";
 

@@ -3,12 +3,13 @@ import type { LanguageModel } from "ai";
 import type {
   ApiIntegration,
   Assistant,
+  EntitySnapshot,
   Flow,
   FlowAction,
   FlowRoutingContext,
-  EntitySnapshot,
   Provider,
   ProviderConnection,
+  ReferralCandidate,
   SkillSnapshot,
   TrustTier,
 } from "@agent-hub/core";
@@ -22,6 +23,7 @@ import type { ChatReplyPart } from "./types";
 import type { TurnSession } from "./session";
 import {
   getClassifierModel,
+  isOperatorSurface,
   resolveChatModel,
   type KeyResolution,
   type ProviderCredential,
@@ -40,6 +42,7 @@ import type {
   KnowledgeSearcher,
   RunResult,
   RuntimeEvent,
+  TeammateActionTool,
   UsageEvent,
 } from "./types";
 import { usageTotals } from "./usage";
@@ -296,7 +299,7 @@ export async function runProactiveFlows(options: {
       priorParts: parts,
       emit,
       signal,
-      previewSurface: keyResolution.surface === "preview",
+      previewSurface: isOperatorSurface(keyResolution),
     };
     for (const action of flow.actions) {
       if (signal?.aborted) break;
@@ -339,6 +342,12 @@ export async function runAssistantChat(options: {
   assistant: Assistant;
   /** The immutable platform (Ciele) prompt layer; "" falls back sanely. */
   platformPrompt?: string;
+  /**
+   * The persona layer of an AI Teammate turn (#768): who this agent is and
+   * what its Standing Role says, replacing the "you are a website assistant"
+   * identity lines. Absent on Assistant turns.
+   */
+  persona?: string;
   flows: Flow[];
   connections: ProviderConnection[];
   message: string;
@@ -364,6 +373,15 @@ export async function runAssistantChat(options: {
    * unregistered.
    */
   apiIntegration?: ApiIntegration | null;
+  /**
+   * An AI Teammate's granted actions (#770), already filtered by the host
+   * against its grant rows and its ceiling. Empty registers no action tools.
+   */
+  teammateActions?: readonly TeammateActionTool[];
+  /** Its three memory documents, rendered (#771). Empty injects nothing. */
+  memoryDocuments?: readonly string[];
+  /** Colleagues this Teammate may refer to (#773); empty registers no tool. */
+  referralCandidates?: readonly ReferralCandidate[];
   /**
    * Active Knowledge Collection anchor (see the #53 audit). Scopes retrieval
    * upstream and seeds the Agentic Search context frame; null/absent degrades
@@ -415,6 +433,7 @@ export async function runAssistantChat(options: {
   const {
     assistant,
     platformPrompt = "",
+    persona,
     flows,
     connections,
     message,
@@ -424,6 +443,9 @@ export async function runAssistantChat(options: {
     searchKnowledge,
     readKnowledgeDocument,
     apiIntegration,
+    teammateActions,
+    memoryDocuments,
+    referralCandidates,
     collectionId = null,
     session,
     alreadyClarified = false,
@@ -508,7 +530,7 @@ export async function runAssistantChat(options: {
   if (
     resolved?.usedFallback &&
     !courtesyFlow &&
-    keyResolution.surface === "preview"
+    isOperatorSurface(keyResolution)
   ) {
     emit({
       type: "notice",
@@ -523,7 +545,7 @@ export async function runAssistantChat(options: {
     // organization has no provider credential, add one in Settings → AI" is an
     // instruction to an admin. A Visitor can act on none of it, and it exposes
     // the tenant's configuration state.
-    if (keyResolution.surface === "preview") {
+    if (isOperatorSurface(keyResolution)) {
       emit({
         type: "notice",
         label:
@@ -559,6 +581,7 @@ export async function runAssistantChat(options: {
     const ctx: ActionContext = {
       assistant,
       platformPrompt,
+      persona,
       flow,
       message,
       history,
@@ -576,7 +599,7 @@ export async function runAssistantChat(options: {
       priorParts: parts,
       emit,
       signal,
-      previewSurface: keyResolution.surface === "preview",
+      previewSurface: isOperatorSurface(keyResolution),
       recommendHelpDesk,
     };
 
@@ -667,6 +690,7 @@ export async function runAssistantChat(options: {
   const ctx: ActionContext = {
     assistant,
     platformPrompt,
+    persona,
     flow,
     message,
     history,
@@ -677,6 +701,9 @@ export async function runAssistantChat(options: {
     searchKnowledge,
     readKnowledgeDocument,
     apiIntegration,
+    teammateActions,
+    memoryDocuments,
+    referralCandidates,
     session,
     alreadyClarified,
     skills,
@@ -688,7 +715,7 @@ export async function runAssistantChat(options: {
     priorParts: parts,
     emit,
     signal,
-    previewSurface: keyResolution.surface === "preview",
+    previewSurface: isOperatorSurface(keyResolution),
     recommendHelpDesk,
     // Pre-bound with the turn's resolved chat model so handlers only report
     // token totals. Null-guarded rather than assumed: a courtesy turn reaches
@@ -741,7 +768,7 @@ export async function runAssistantChat(options: {
       }
       // Provider errors (quota, model ids, key hints) are admin diagnostics:
       // show them in Preview, never to widget visitors.
-      const diagnostic = keyResolution.surface === "preview";
+      const diagnostic = isOperatorSurface(keyResolution);
       return {
         type: "text",
         action: "fallback",

@@ -1,0 +1,399 @@
+---
+title: AI Teammates
+description: Create an internal AI colleague that answers your team from the Knowledge you already curated.
+---
+
+An **AI Teammate** is an AI colleague that your members chat with inside Ciele. It uses the same
+answer engine as your Assistant. It answers your team, not your Visitors.
+
+A Teammate has no Publication, no widget, and no Help Desk. Nothing about it reaches your website.
+
+<Mermaid
+  title="The same engine, two audiences"
+  chart={`
+flowchart TB
+  KNOW["Knowledge Collections in the Library"]
+  ASSIST["Assistant, published as a widget"]
+  TEAM["AI Teammate, inside the console"]
+  VISITOR["Visitor on your website"]
+  MEMBER["Member of your Organization"]
+  KNOW --> ASSIST
+  KNOW --> TEAM
+  ASSIST --> VISITOR
+  TEAM --> MEMBER
+`}
+/>
+
+## Create a Teammate
+
+Open **Teammates** and select **New teammate**. You need the Editor role or higher.
+
+Each Teammate has three parts.
+
+- **Name and title.** The name starts every chat. The title says what the Teammate does.
+- **Standing role.** Write what the Teammate is for, in your own words. Brief it like a colleague.
+- **Knowledge.** Select the Knowledge Collections that the Teammate can search.
+
+The Standing role applies to the next message. A Teammate has no Publication, so you never publish
+a change.
+
+### The avatar
+
+Ciele draws the avatar. Each Teammate gets a figure generated from its identity. It looks the same
+on the roster, in the chat header and in a transcript, and you upload nothing.
+
+The drawing is deterministic, not random: the same Teammate always gets the same face. Set the
+**Avatar seed** in **Configure** to get a different one, and the face then survives a rename.
+
+Members work the same way. Anybody who has not uploaded a photo gets a generated figure. It shows
+in the member list, in the sidebar and beside an Improvement they are assigned. A row is then
+recognisable at a glance, and a real photo always wins over the generated figure.
+
+## Knowledge scope
+
+A Teammate searches only the Knowledge Collections that you select. Answers cite a Concept and its
+Source, exactly like the widget.
+
+An empty selection is a valid configuration. The Teammate then answers from its Standing role only.
+It has no search tool at all, and it says so when a question needs a Source.
+
+If you delete a collection that a Teammate still searches, Ciele creates an Alert of the
+**Knowledge** type. The Teammate keeps answering from its role, and it finds nothing in the deleted
+collection. Open **Configure** and remove the collection from its knowledge to clear the Alert.
+
+<Callout title="Same Knowledge, no copy">
+A Teammate reads the Library. It does not hold a separate copy. New content in a selected
+Collection is available in the next message.
+</Callout>
+
+## Who can see a Teammate
+
+Visibility has two values.
+
+- **The whole organization.** Every member sees the Teammate on the roster.
+- **Only me and admins.** The owner, the members that the owner names as editors, and the
+  Organization admins see it.
+
+The owner, the named editors, and the admins can change the configuration. A member with the Viewer
+role can chat with a Teammate, but cannot create or change one.
+
+### Hide one from your own roster
+
+A long roster is somebody else's problem to solve, so each member can shorten their own. Select the
+eye icon on a Teammate card to take it off your list.
+
+This changes nothing for anybody else. The Teammate keeps answering your colleagues, it can still be
+suggested to you as a referral, and you can still open it from a link. Only your roster gets
+shorter. Open **Hidden from your roster** at the bottom of the page to put one back.
+
+<Callout title="Hiding is not deleting">
+Deleting a Teammate retires it for the whole organization. Hiding shortens one list, and only yours.
+</Callout>
+
+## What a Teammate can do
+
+A new Teammate can only talk. It answers questions and it changes nothing.
+
+To let it act, an **admin** grants it one or more domains. A grant is a row. No row means no
+permission, and the Teammate does not even see the tool.
+
+| Domain | What the grant permits |
+| --- | --- |
+| **Improvements** | Read the board, move items, and draft Suggested Fixes for flagged answers. |
+| **Knowledge** | Read the Library, and add or correct FAQs. It never deletes a Source. |
+| **Inbox** | Read Visitor conversations and pin them. It never deletes one. |
+
+Open **Configure** to set the grants. Only an admin sees the controls. Every other member sees one
+sentence that says what the Teammate can do. The permissions of an agent are not a secret from the
+people who work with it.
+
+### How far it can go
+
+Each Teammate has one limit that applies to all of its grants.
+
+- **Read only.** It can look at everything you granted. It changes none of it.
+- **Read and change.** The default. It can change things inside the domains you granted.
+- **Read, change and publish.** Reserved for future actions. Today it permits nothing more.
+
+A Teammate never manages members, API keys, or roles. Those permissions do not exist for a
+Teammate.
+
+### Accept a Suggested Fix
+
+A Teammate with the **Improvements** grant can draft a Suggested Fix. A person must accept it. The fix
+becomes knowledge only after that.
+
+An admin can change this for one Teammate with the **Let it accept its own Suggested Fixes**
+control. The control needs the **Improvements** grant and the **Knowledge** grant. It is off by default.
+
+With the control on, a fix that the Teammate drafts becomes a FAQ in your Knowledge, and nobody
+reviews it first. Ciele records the Teammate as the author. The Concept then shows the
+machine-confirmed trust level, not human-reviewed.
+
+<Callout type="warn" title="Read this before you turn it on">
+A Teammate that accepts its own fixes writes to your Knowledge with no human review.
+</Callout>
+
+### The transcript is the record
+
+Every action shows in the conversation as a card. The card names the operation and the item that
+it changed. Ciele records the member who asked, not the Teammate, on the change itself.
+
+## What a Teammate remembers
+
+A Teammate reads three documents at the start of every message. Each one is
+short, and you can read and change all three.
+
+| Document | Who it is about | Who can change it |
+| --- | --- | --- |
+| **Your profile** | You. One document, shared with every Teammate you talk to. | You, and the Teammates you talk to. |
+| **What it has learned** | The Teammate's own notes about doing its job. | The owner and the editors of the Teammate. |
+| **Decisions** | What your team has settled. | Members with the Editor role or higher. |
+
+Each document has a limit of 4000 characters. A Teammate reads the whole
+document, so an empty one costs nothing and adds nothing.
+
+### Your profile
+
+Open **Settings**, then **Memory**. This document says how you work: your
+timezone, the words you use, what you want short and what you want in full.
+
+A Teammate adds to it when it learns something about you. Every change shows in
+the **History** list with the name of the Teammate that made it and the date.
+Select **Undo this change** to put the document back the way it was. Nobody
+else can read this document, not even an administrator.
+
+### What it has learned
+
+At the end of a conversation, a Teammate decides if it learned something
+durable about its job. Most conversations teach nothing, and the Teammate then
+writes nothing. When it does write, it adds one line, with a date.
+
+A durable fact is a convention your organization uses, a name you have for
+something, or a correction a colleague made. It is not what you discussed
+today.
+
+Open **Configure** on the Teammate to read these notes. Delete a line that is
+wrong. The Teammate reads this document every message, so a wrong line stays
+wrong until you correct it.
+
+### Projects
+
+A **Project** is a name, a description, and one document of decisions. Open
+**Projects** to create one. You need the Editor role or higher.
+
+Attach a Teammate to a project in **Configure**. A Teammate reads at most one
+project. From the next message, it answers "what did we decide" from the
+project document, and it can add a decision itself. Every write shows as a card
+in the conversation.
+
+Select **Archive** to stop a project. The decisions stay readable, and attached
+Teammates stop reading them. Select the delete icon to remove the project and
+its decisions. Archive is the safer choice, because it keeps the record.
+
+## Referral to another Teammate
+
+A Teammate answers from its own role and its own knowledge. When your question
+belongs to a colleague, it says so and shows a card with:
+
+- the name of the other Teammate,
+- one sentence on why that one,
+- a summary of your conversation, so you do not repeat yourself.
+
+Select **Continue with …** on the card. Ciele opens a chat with that Teammate,
+and gives it the summary. The two conversations keep a link to each other.
+
+The other Teammate answers from **its** knowledge and **its** grants. It does
+not get the knowledge or the permissions of the Teammate that referred you.
+
+<Callout title="A referral is an offer, not a handover">
+The other Teammate does not speak in the first conversation, and nothing
+happens until you select the card. You stay in control of the handoff.
+</Callout>
+
+A Teammate refers only to Teammates that the whole organization can see. It
+never names a private Teammate, and it shows no card at all when there is no
+other Teammate to suggest.
+
+## Channels
+
+A **channel** is one thread for several members and several Teammates. Use a channel when a piece
+of work needs more than one specialist.
+
+Open **Teammates** and select **New channel**. Give the channel a name, then add the Teammates and
+the people you want. Every member can open a channel. You do not need the Editor role.
+
+A channel is invite-based. Only the people in the channel can see it. A colleague who is not in the
+channel cannot open it, and does not see it in the roster.
+
+### Ask a Teammate in a channel
+
+Write `@` and the name of a Teammate. That Teammate answers in the thread.
+
+A Teammate answers only when somebody names it. A Teammate that nobody names stays silent. There is
+no default answerer.
+
+A Teammate can name another Teammate in its answer. That Teammate then answers on its own, in the
+same thread. One question can reach the whole team, and you read one thread.
+
+A Teammate can name only the Teammates in the channel. It cannot reach a Teammate outside the
+channel, and it cannot reach an Assistant.
+
+### Where a chain stops
+
+A **chain** is everything that one message starts. A chain has two limits:
+
+| Limit | Value |
+| --- | --- |
+| Teammate answers from one message | 10 |
+| Answers from one Teammate | 2 |
+
+The chain stops at a limit. The thread then shows a line that explains why. Send another message to
+continue.
+
+<Callout title="Why there is a limit">
+Two Teammates can answer each other. The limits make sure that they stop, and that one question
+costs you one conversation.
+</Callout>
+
+### Each Teammate keeps its own permissions
+
+Each Teammate answers with its own role, its own knowledge scope, and its own grants. A channel
+gives no Teammate more permission.
+
+Ciele records the member who sent the first message as the person who asked. Every change that a
+Teammate makes in the chain is recorded against that member.
+
+A Teammate reads the profile of that member only. It does not read the profile of the other people
+in the channel.
+
+### Give a channel a Project
+
+A channel can use one **Project**. Select the settings icon in the channel, then choose the
+Project. Every Teammate in the channel then reads the decisions document of that Project, and
+writes the decisions of the channel back to it.
+
+### New messages
+
+The roster shows the channels with new messages. Ciele marks a channel with **Mentioned you** only
+when a message names you. Messages between Teammates do not mark it.
+
+### Read a channel as an Owner or Admin
+
+An Owner or an Admin can read every channel in the organization, also a channel that they are not
+in. Open **Inbox**, then **Channels**.
+
+Channels are internal. They stay out of the Visitor conversation list, and out of Insights.
+
+## Routines
+
+A **routine** is a standing instruction that a Teammate carries out on its own.
+Open **Configure** and select **Add** under **Routines**. A Teammate can have 5.
+
+Each routine has an instruction and a schedule. The schedule is a preset:
+
+| Cadence | When it runs |
+| --- | --- |
+| **Every day** | Each day, at the hour you choose. |
+| **Every Monday** | Each Monday, at the hour you choose. |
+| **The 1st of each month** | The first day of the month, at the hour you choose. |
+
+The hour is UTC. Ciele runs each routine one time per period. If the schedule
+is late, the routine still runs one time, and it does not run twice to catch up.
+
+<Callout title="The hour depends on your scheduler">
+A self-hosted Ciele checks for due routines every hour, and runs each one at the
+hour you chose. On Vercel, the Hobby plan permits one check each day. All
+routines then run at that daily check, and the hour you chose is approximate.
+The Pro plan removes the limit.
+</Callout>
+
+<Callout title="A routine acts on its grants, and on nothing more">
+An unattended run has no member behind it. The Teammate uses only the domains
+you granted it, at the ceiling you set. A routine on a Teammate with no grants
+can read and answer, and change nothing.
+</Callout>
+
+### Each run is a conversation
+
+Every run adds a conversation to the thread of the person who created the
+routine. The card at the top of the list says **Routine**, so you can see which
+work was unattended. Each action shows as a card, the same as in a chat.
+
+### When a run fails
+
+A failed run creates an **Alert**. The alert says which routine failed and why.
+The next successful run clears it. A quiet failure is the risk with unattended
+work, so Ciele makes the failure loud.
+
+If you delete the Teammate, its routines stop. This is not a failure, and it
+creates no alert.
+
+### Triage visitor feedback
+
+The most useful routine scans the answers your visitors rated down and files
+the new problems on the **Improvements** board.
+
+Give the Teammate the **Improvements** grant, then add a routine like this:
+
+> Every morning, triage yesterday's thumbs-down and file what is new.
+
+Each run:
+
+- reads the conversations with a thumbs-down from the last day,
+- attaches the answer to an improvement that is already open for that
+  conversation, instead of creating a second one,
+- creates a maximum of 5 new improvements,
+- adds the `auto-filed` tag to each new item, so you can filter the board.
+
+The limit of 5 applies to new items only. A problem you already know about
+always gets the new evidence.
+
+## Conversations
+
+Each member has a private thread with each Teammate. Select **View history** in the chat header to
+open an earlier conversation.
+
+Teammate conversations stay out of the Inbox, because the Inbox is the queue for Visitor
+conversations. They also stay out of Insights, because internal use must not change your widget
+metrics. Channels are in the Inbox, in their own list, for an Owner or an Admin.
+
+## Automation
+
+The `teammates` domain is available to the CLI, the MCP server, and the API. An API key acts as
+the Member who created it, so it sees the same Teammates that member sees.
+
+```bash
+ciele teammates list
+ciele teammates create --name "Nora" --title "Support Copywriter"
+```
+
+Channels have a `channels` domain of their own. You can read a channel, open one,
+and change who is in it:
+
+```bash
+ciele channels list
+ciele channels create --name "Launch week" --teammates <teammate-id>
+ciele channels add-member <channel-id> <user-id>
+```
+
+There is no command to send a message into a channel. A message starts a chain of
+teammate replies, and a chain runs in the console, where you can watch it.
+
+## Which AI provider answers
+
+A Teammate uses the Organization's provider connections, like your Assistant.
+
+If your Organization allows personal AI subscriptions and you paired your own device, your own
+chats with a Teammate can use your subscription. This applies to your chats only. A colleague who
+chats with the same Teammate uses the Organization's connections.
+
+A channel always uses the Organization's connections. A channel has several people in it, so it is
+not personal use.
+
+## Delete a Teammate
+
+Select **Configure**, then **Delete teammate**. The Teammate leaves every roster and nobody can
+chat with it again.
+
+Your past conversations with it stay readable. The record of the work remains.

@@ -30,6 +30,7 @@ function check(label, fn) {
 
 const compose = read("docker-compose.yml");
 const imagesOverlay = read("docker-compose.images.yml");
+const workersOverlay = read("docker-compose.workers.yml");
 const envExample = read(".env.example");
 const crontab = read("cron/crontab");
 const vercel = JSON.parse(read("../apps/web/vercel.json"));
@@ -86,29 +87,54 @@ check("every service declares exactly one profile", () => {
   }
 });
 
-check("workers and studio are opt-in, nothing heavy starts by default", () => {
+check("studio is opt-in, nothing heavy starts by default", () => {
   const optIn = Object.entries(profiles)
     .filter(([, list]) => !defaultProfiles.includes(list[0]))
     .map(([service]) => service)
     .sort();
-  assert.deepEqual(optIn, ["crawl4ai", "graph-worker", "meta", "studio"]);
-  for (const service of ["graph-worker", "crawl4ai"]) {
-    assert.deepEqual(profiles[service], ["workers"]);
-  }
+  assert.deepEqual(optIn, ["meta", "studio"]);
   for (const service of ["studio", "meta"]) {
     assert.deepEqual(profiles[service], ["studio"]);
   }
 });
 
+check("the base file names no worker, the overlay is the only way in", () => {
+  // The bug this shape exists to prevent: compose interpolates every service
+  // in a file *before* it filters by profile, so the `:?` guards below, while
+  // they lived in docker-compose.yml, aborted a plain `docker compose up`
+  // over a credential for a container that was never going to start. A
+  // `workers` profile cannot be made safe. A separate file is never parsed.
+  for (const worker of ["graph-worker", "crawl4ai"]) {
+    assert.doesNotMatch(
+      compose,
+      new RegExp(`^ {2}${worker}:$`, "m"),
+      `${worker} is back in docker-compose.yml; its :? guard breaks every default up`
+    );
+  }
+  assert.deepEqual(
+    Object.keys(serviceProfiles(workersOverlay)).sort(),
+    ["crawl4ai", "graph-worker"],
+    "the workers overlay must hold exactly the two workers"
+  );
+  // A profile inside the overlay would keep them off even with the file on,
+  // which is the one thing adding the overlay is supposed to mean.
+  assert.doesNotMatch(
+    workersOverlay,
+    /^ {4}profiles:/m,
+    "the overlay's presence in COMPOSE_FILE is the switch; a profile would be a second one"
+  );
+  // The graph worker's volume came along with it: a named volume used by a
+  // file that does not declare it is a compose error, not a fallback.
+  assert.match(workersOverlay, /^volumes:\n {2}graph-data:$/m);
+  assert.doesNotMatch(compose, /^ {2}graph-data:$/m);
+});
+
 check("a worker cannot start without its credential", () => {
-  // Each worker token uses the `:?` form, so enabling the profile without one
-  // stops compose with a named error instead of starting a worker that listens
-  // unauthenticated on the shared network. `:-` (empty default) would do the
-  // opposite, silently.
-  //
-  // The cost of the `:?` form is that `docker compose config`, which
-  // interpolates every service regardless of profile, needs placeholder
-  // values; the CI job supplies them and separately asserts this guard fires.
+  // Each worker token uses the `:?` form, so turning the overlay on without
+  // one stops compose with a named error instead of starting a worker that
+  // listens unauthenticated on the shared network. `:-` (empty default) would
+  // do the opposite, silently. Living in an overlay is what makes the strict
+  // form affordable: nothing interpolates this file until an operator asks.
   for (const variable of [
     "GRAPH_WORKER_API_TOKEN",
     "GRAPH_LLM_API_KEY",
@@ -117,9 +143,9 @@ check("a worker cannot start without its credential", () => {
   ]) {
     const guarded = new RegExp(`\\$\\{${variable}:\\?[^}]+\\}`);
     assert.match(
-      compose,
+      workersOverlay,
       guarded,
-      `${variable} must use \${${variable}:?message} so the workers profile refuses to start without it`,
+      `${variable} must use \${${variable}:?message} so the workers refuse to start without it`,
     );
   }
 });
@@ -247,23 +273,38 @@ check("the overlay changes nothing but where those services come from", () => {
   }
 });
 
-check(".env.example documents the switch, and leaves it off", () => {
-  assert.match(envExample, /^COMPOSE_FILE=$/m, "COMPOSE_FILE must ship empty, image mode is opt-in");
+check(".env.example documents both switches, and leaves them off", () => {
+  assert.match(
+    envExample,
+    /^COMPOSE_FILE=$/m,
+    "COMPOSE_FILE must ship empty: both overlays are opt-in"
+  );
   assert.match(envExample, /^CIELE_IMAGE_TAG=$/m);
   assert.match(
     envExample,
     /docker-compose\.yml:docker-compose\.images\.yml/,
     ".env.example must show the exact COMPOSE_FILE value that turns image mode on"
   );
+  assert.match(
+    envExample,
+    /docker-compose\.workers\.yml/,
+    ".env.example must name the workers overlay; it is the only way to run them"
+  );
+  // Nothing may promise a `workers` profile any more: it does not exist, and
+  // an operator who writes it into COMPOSE_PROFILES gets silence, not workers.
+  assert.doesNotMatch(
+    envExample,
+    /^COMPOSE_PROFILES=.*workers/m,
+    "the workers are an overlay now, not a profile"
+  );
 });
 
 check("bootstrap --images turns the overlay on and stops forcing a build", () => {
   const bootstrap = read("bootstrap.sh");
-  assert.match(
-    bootstrap,
-    /replace_var COMPOSE_FILE "docker-compose\.yml:docker-compose\.images\.yml"/,
-    "--images must write COMPOSE_FILE so a later bare `docker compose up` stays in image mode"
-  );
+  // COMPOSE_FILE goes into .env, not onto the command line, so a later bare
+  // `docker compose up` stays in image mode. What it composes is asserted for
+  // real further down, by running the script.
+  assert.match(bootstrap, /replace_var COMPOSE_FILE "\$overlays"/);
   assert.match(bootstrap, /replace_var CIELE_IMAGE_TAG/);
   // `up --build` rebuilds from source even with an image pinned, which would
   // defeat the entire mode.
@@ -313,49 +354,87 @@ check("the migrate service waits for the auth and storage schemas", () => {
   assert.match(compose, /WAIT_FOR_SCHEMAS: "auth,storage"/);
 });
 
-check("the scheduler runs exactly the jobs vercel.json schedules", () => {
-  const scheduled = vercel.crons
-    .map((c) => `${c.schedule} ${c.path}`)
-    .sort();
-  const selfHosted = crontab
+/**
+ * Jobs whose schedule is allowed to differ between the two deployments, with
+ * the reason. The *set of jobs* is never allowed to differ: that is the half of
+ * this contract which stops a self-host silently skipping maintenance.
+ *
+ * `run-routines` is hourly on a self-host and daily on Vercel because Vercel's
+ * Hobby plan rejects any schedule that runs more than once a day, and rejects
+ * it by failing the whole deployment. A Routine's preferred hour is therefore
+ * honoured on a self-host and approximate on the hosted plan. Listed here by
+ * name so the exception cannot spread quietly to a second job.
+ */
+const SCHEDULE_EXCEPTIONS = new Set(["/api/cron/run-routines"]);
+
+function cronEntries(text) {
+  return text
     .split("\n")
     .filter((line) => line.trim() && !line.startsWith("#"))
     .map((line) => {
       const [min, hour, dom, mon, dow, ...rest] = line.trim().split(/\s+/);
-      return `${min} ${hour} ${dom} ${mon} ${dow} ${rest[rest.length - 1]}`;
-    })
-    .sort();
+      return {
+        path: rest[rest.length - 1],
+        schedule: `${min} ${hour} ${dom} ${mon} ${dow}`,
+      };
+    });
+}
+
+check("the scheduler runs exactly the jobs vercel.json schedules", () => {
+  const hosted = vercel.crons.map((c) => ({ path: c.path, schedule: c.schedule }));
+  const selfHosted = cronEntries(crontab);
+
   assert.deepEqual(
-    selfHosted,
-    scheduled,
-    "deploy/cron/crontab and vercel.json disagree, a self-host would silently skip or double-run maintenance"
+    selfHosted.map((e) => e.path).sort(),
+    hosted.map((e) => e.path).sort(),
+    "deploy/cron/crontab and vercel.json disagree about which jobs exist, a self-host would silently skip maintenance"
   );
+
+  const hostedByPath = new Map(hosted.map((e) => [e.path, e.schedule]));
+  for (const entry of selfHosted) {
+    if (SCHEDULE_EXCEPTIONS.has(entry.path)) continue;
+    assert.equal(
+      entry.schedule,
+      hostedByPath.get(entry.path),
+      `${entry.path} runs on a different schedule in deploy/cron/crontab than in vercel.json, so a self-host would skip or double-run it`
+    );
+  }
 });
 
-check("bootstrap fills in every generated secret the compose file requires", () => {
+check("every documented schedule exception is still a real job", () => {
+  // An exception for a job nobody schedules any more is a licence waiting to be
+  // reused for something that does not deserve it.
+  const paths = new Set(vercel.crons.map((c) => c.path));
+  for (const path of SCHEDULE_EXCEPTIONS) {
+    assert.ok(paths.has(path), `${path} is exempted but no longer scheduled`);
+  }
+});
+
+check("bootstrap fills in every generated secret the compose files require", () => {
   const bootstrap = read("bootstrap.sh");
-  // Anything the compose file refuses to start without must be generated.
-  const required = [...compose.matchAll(/\$\{([A-Z_]+):\?/g)].map((m) => m[1]);
-  const generated = [...bootstrap.matchAll(/set_var ([A-Z_]+)/g)].map((m) => m[1]);
-  const workersOnly = [
-    "GRAPH_WORKER_API_TOKEN",
-    "GRAPH_LLM_API_KEY",
-    "CRAWL4AI_API_TOKEN",
-    "CRAWL4AI_SECRET_KEY",
-  ];
+  const generated = [...bootstrap.matchAll(/set_var ([A-Z][A-Z0-9_]*)/g)].map((m) => m[1]);
+  // Anything a compose file refuses to start without must be generated, or
+  // the operator meets a `:?` error with no way to satisfy it. The one
+  // exception is an account credential nothing can mint locally: the graph
+  // worker's LLM key. Everything else, including the workers' own shared
+  // secrets, is a random string this stack invents for itself.
+  const cannotBeMinted = ["GRAPH_LLM_API_KEY", "CIELE_IMAGE_TAG"];
+  const required = [compose, workersOverlay, imagesOverlay].flatMap((file) =>
+    [...file.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?/g)].map((m) => m[1])
+  );
   const missing = [...new Set(required)]
-    .filter((key) => !workersOnly.includes(key))
+    .filter((key) => !cannotBeMinted.includes(key))
     .filter((key) => !generated.includes(key));
   assert.deepEqual(
     missing,
     [],
-    `bootstrap.sh does not generate: ${missing.join(", ")}, a default install would fail to start`
+    `bootstrap.sh does not generate: ${missing.join(", ")}, so that install cannot start`
   );
 });
 
 check(".env.example documents every variable bootstrap writes", () => {
   const bootstrap = read("bootstrap.sh");
-  for (const [, key] of bootstrap.matchAll(/set_var ([A-Z_]+)/g)) {
+  for (const [, key] of bootstrap.matchAll(/set_var ([A-Z][A-Z0-9_]*)/g)) {
     assert.match(
       envExample,
       new RegExp(`^${key}=`, "m"),
@@ -447,6 +526,68 @@ try {
   });
 } finally {
   rmSync(tmp, { recursive: true, force: true });
+}
+
+// The two switches compose: `--images` used to write COMPOSE_FILE wholesale,
+// which silently dropped a workers overlay an operator had already turned on.
+// Run the real script rather than reading its source, the value is built by
+// shell string handling that a regex would not catch getting this wrong.
+const tmpOverlays = mkdtempSync(path.join(tmpdir(), "ciele-overlays-"));
+try {
+  copyFileSync(path.join(here, "bootstrap.sh"), path.join(tmpOverlays, "bootstrap.sh"));
+  copyFileSync(path.join(here, ".env.example"), path.join(tmpOverlays, ".env.example"));
+  const run = (...args) =>
+    execFileSync("bash", ["bootstrap.sh", "--env-only", ...args], {
+      cwd: tmpOverlays,
+      stdio: "pipe",
+    });
+  const envNow = () => parseEnv(readFileSync(path.join(tmpOverlays, ".env"), "utf8"));
+
+  check("a default install runs the base file alone", () => {
+    run();
+    assert.equal(envNow().COMPOSE_FILE, "", "no flags must leave every overlay off");
+  });
+
+  check("--workers turns the overlay on and mints the three shared secrets", () => {
+    run("--workers");
+    const env = envNow();
+    assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.workers.yml");
+    const minted = [
+      env.GRAPH_WORKER_API_TOKEN,
+      env.CRAWL4AI_API_TOKEN,
+      env.CRAWL4AI_SECRET_KEY,
+    ];
+    for (const secret of minted) assert.match(secret, /^[0-9a-f]{64}$/);
+    assert.equal(new Set(minted).size, 3, "each worker credential must be its own secret");
+    // The fourth is an account key; bootstrap says so instead of inventing one.
+    assert.equal(env.GRAPH_LLM_API_KEY, "");
+  });
+
+  check("adding --images later keeps the workers overlay on", () => {
+    const before = envNow();
+    run("--images", "v9.9.9");
+    const env = envNow();
+    assert.equal(
+      env.COMPOSE_FILE,
+      "docker-compose.yml:docker-compose.workers.yml:docker-compose.images.yml"
+    );
+    assert.equal(env.CIELE_IMAGE_TAG, "v9.9.9");
+    assert.equal(
+      env.CRAWL4AI_API_TOKEN,
+      before.CRAWL4AI_API_TOKEN,
+      "a second run must never re-mint a secret the workers are already using"
+    );
+  });
+
+  check("asking twice adds nothing twice", () => {
+    run("--workers", "--images", "v9.9.9");
+    assert.equal(
+      envNow().COMPOSE_FILE,
+      "docker-compose.yml:docker-compose.workers.yml:docker-compose.images.yml"
+    );
+  });
+} finally {
+  rmSync(tmpOverlays, { recursive: true, force: true });
 }
 
 console.log(`\n${passed} checks passed.`);

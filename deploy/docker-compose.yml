@@ -10,9 +10,12 @@
 #   migrate   one-shot; applies pending migrations, then the app starts
 #   app       the web app (admin console + widget runtime)
 #   cron      the six scheduled jobs, no Vercel needed
-# and these two stay off until you ask for them:
-#   workers   graph + crawler (heavy: ~8 GiB RAM, browser runtime)
+# and this one stays off until you ask for it:
 #   studio    the database admin UI, a standing privileged surface
+#
+# The heavy workers (graph + crawler, ~8 GiB RAM) are not a profile here: they
+# live in docker-compose.workers.yml, an overlay, because their credential
+# guards would abort a default `up` from inside this file. See that file.
 #
 # The database layer is the Supabase OSS stack trimmed to what Ciele uses:
 # Postgres (with pgvector), GoTrue for auth, PostgREST for the data API, and
@@ -206,7 +209,8 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
-      # Workers profile: set by bootstrap when you enable it.
+      # The heavy workers, if the workers overlay is on. Empty means the
+      # app uses its built-in retrieval and crawler instead.
       GRAPH_WORKER_BASE_URL: ${GRAPH_WORKER_BASE_URL:-}
       GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:-}
       CRAWL4AI_BASE_URL: ${CRAWL4AI_BASE_URL:-}
@@ -227,37 +231,6 @@ services:
     environment:
       APP_URL: http://app:3000
       CRON_SECRET: ${CRON_SECRET}
-
-  # ── workers profile (opt-in, off by default) ──────────────────────────────
-  graph-worker:
-    profiles: [workers]
-    build:
-      context: ../services/graph-worker
-    restart: unless-stopped
-    environment:
-      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN to run the workers profile}
-      LLM_PROVIDER: ${GRAPH_LLM_PROVIDER:-gemini}
-      LLM_MODEL: ${GRAPH_LLM_MODEL:-gemini/gemini-2.0-flash}
-      LLM_API_KEY: ${GRAPH_LLM_API_KEY:?set GRAPH_LLM_API_KEY to run the workers profile}
-      TELEMETRY_DISABLED: "1"
-    volumes:
-      - graph-data:/data
-    mem_limit: 4g
-    cpus: 2
-
-  crawl4ai:
-    profiles: [workers]
-    image: unclecode/crawl4ai:0.9.1
-    restart: unless-stopped
-    environment:
-      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN to run the workers profile}
-      SECRET_KEY: ${CRAWL4AI_SECRET_KEY:?set CRAWL4AI_SECRET_KEY to run the workers profile}
-      CRAWL4AI_HOOKS_ENABLED: "false"
-    volumes:
-      - ../services/crawl4ai-worker/config/crawl4ai.config.yml:/app/config.yml:ro
-    shm_size: "1gb"
-    mem_limit: 4g
-    cpus: 1.5
 
   # ── studio profile (opt-in, off by default) ───────────────────────────────
   # A database admin UI is a standing privileged surface; run it when you need
@@ -299,4 +272,3 @@ services:
 volumes:
   postgres-data:
   storage-data:
-  graph-data:

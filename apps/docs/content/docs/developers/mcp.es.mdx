@@ -9,8 +9,8 @@ las mismas herramientas.
 
 - El **punto de conexión alojado** es `POST /api/mcp` en tu implementación.
   Úsalo para un cliente que se conecte a través de HTTP.
-- El **servidor local** es un proceso `stdio` que inicias desde una copia de
-  trabajo del repositorio.
+- El **servidor local** es un proceso `stdio` que inicias desde una copia del
+  repositorio.
 
 Cada llamada de herramienta llega a la Organización a través de `/api/v1`, por
 lo que una operación tiene una ruta de ejecución, independientemente del
@@ -72,7 +72,7 @@ node <repo>/packages/mcp/bin/ciele-mcp.mjs
 | `CIELE_API_KEY` | Obligatorio | Autentica a la organización. |
 | `CIELE_BASE_URL` | Opcional | Selecciona un origen autoalojado. |
 | `CIELE_MCP_READ_ONLY` | Opcional | Rechaza las acciones de mutación cuando el valor es `1`. |
-| `CIELE_MCP_MODERN_ONLY` | Opcional | Rechaza clientes de la revisión 2025 cuando el valor es `1`. |
+| `CIELE_MCP_MODERN_ONLY` | Opcional | Rechaza a los clientes de la revisión 2025 cuando el valor es `1`. |
 
 La comprobación de solo lectura se realiza dentro del proceso MCP. Una mutación
 rechazada no realiza una solicitud a la API.
@@ -89,7 +89,7 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Herramienta | Operaciones actuales |
 | --- | --- |
-| `ciele_identity` | Leer información sobre la implementación, la organización y los roles. |
+| `ciele_identity` | Leer información de implementación, organización y rol. |
 | `manage_assistants` | Enumerar, leer, crear, actualizar, duplicar o eliminar Asistentes. |
 | `manage_flows` | Enumerar, leer, crear, actualizar, reordenar o eliminar flujos. |
 | `manage_knowledge` | Gestionar colecciones, fuentes y preguntas frecuentes. |
@@ -98,13 +98,15 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_improvements` | Listar, leer o actualizar mejoras. |
 | `manage_entities` | Gestionar entidades de la organización y registros tipificados. |
 | `manage_memories` | Inspecciona la configuración y realiza un borrado de memoria con ámbito. |
-| `manage_sso` | Gestiona las notificaciones de identidad y la conexión SSO de la organización. |
+| `manage_sso` | Gestionar las solicitudes de identidad y la conexión SSO de la organización. |
 | `manage_help_desks` | Gestiona los servicios de asistencia, los canales, los pedidos y ServiceNow. |
+| `manage_teammates` | Gestiona a los compañeros de equipo de IA y lee tus propias conversaciones de compañero de equipo. |
+| `manage_channels` | Lee y configura los canales de compañeros de equipo en los que participas. |
 | `manage_configuration` | Gestiona las habilidades, la selección de habilidades del asistente, los objetivos y las alertas. |
 | `manage_organization` | Gestiona la configuración de la organización, los miembros, las invitaciones y las claves de API. |
 | `manage_integrations` | Gestiona las integraciones de la API del Asistente y los proveedores de modelos. |
 
-El servidor registra catorce herramientas. Cada herramienta de dominio utiliza
+El servidor registra dieciséis herramientas. Cada herramienta de dominio utiliza
 un campo `action` para sus operaciones.
 
 El modo de solo lectura clasifica cada acción. Permite las acciones de listar,
@@ -115,9 +117,9 @@ cada cliente compatible.
 
 ## Comprueba la conexión
 
-Pide al cliente que llame a `ciele_identity`. Confirma el ID de organización, el
-rol, la versión de la API y la lista de dominios esperados.
+Pídele al cliente que llame a `ciele_identity`. Confirma el ID de organización,
+el rol, la versión de la API y la lista de dominios esperados.
 
-El conjunto de pruebas del repositorio también inicia el proceso real de
-`stdio`. Verifica la inicialización, el descubrimiento de herramientas y una
-llamada a la API autenticada.
+La suite de pruebas del repositorio también inicia el proceso real de `stdio`.
+Verifica la inicialización, el descubrimiento de herramientas y una llamada a la
+API autenticada.

@@ -5,8 +5,8 @@ import type {
   KnowledgeCollection,
   Source,
 } from "@agent-hub/core";
-import { okfActor } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
+import { writingActor } from "./actor";
 import { OperationError, defineOperation } from "./operation";
 
 /**
@@ -369,7 +369,7 @@ export const createFaqOp = defineOperation({
       // Hand-authored: writing a FAQ is generation, not verification (§5.2).
       provenance: {
         generated: {
-          by: okfActor.human(ctx.userId || "api-key"),
+          by: writingActor(ctx),
           at: new Date().toISOString(),
         },
       },
@@ -427,7 +427,7 @@ export const importFaqsOp = defineOperation({
         provenance: {
           // Hand-authored content the member supplied in bulk, the person,
           // not the importer, is the author; the CSV is the derivation (§5.1).
-          generated: { by: okfActor.human(ctx.userId || "api-key"), at },
+          generated: { by: writingActor(ctx), at },
           ...(input.fileName
             ? {
                 sources: [
@@ -568,7 +568,7 @@ export const updateOrgFaqOp = defineOperation({
         title: trimmed,
         description: input.answer.slice(0, 140),
         generated: {
-          by: okfActor.human(ctx.userId || "api-key"),
+          by: writingActor(ctx),
           at: new Date().toISOString(),
         },
       },

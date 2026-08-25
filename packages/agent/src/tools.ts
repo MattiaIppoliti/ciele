@@ -5,6 +5,7 @@ import type {
   Assistant,
   EntitySnapshot,
   KnowledgeSearchResult,
+  ReferralCandidate,
 } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
 import type { TurnSession } from "./session";
@@ -15,6 +16,7 @@ import type {
   KnowledgeSearcher,
   MemorySearcher,
   RuntimeEvent,
+  TeammateActionTool,
   ToolSubject,
 } from "./types";
 import { entityToolSpecs } from "./entity-tools";
@@ -76,6 +78,20 @@ export interface ToolRuntimeContext {
    * assistant with no integration should not be told an API exists.
    */
   apiIntegration?: ApiIntegration | null;
+  /**
+   * The AI Teammate's granted actions (#770), already filtered by the host
+   * against its grant rows and its ceiling. Empty registers nothing, which is
+   * the normal state of a Teammate nobody granted anything.
+   */
+  teammateActions?: readonly TeammateActionTool[];
+  /**
+   * The colleagues this Teammate may hand the request to (#773). Empty leaves
+   * the referral tool unregistered, which is the whole gate: an organization
+   * with one Teammate must never be offered a handoff with nowhere to go.
+   */
+  referralCandidates?: readonly ReferralCandidate[];
+  /** Emits the handoff card into the transcript. Bound by the turn. */
+  emitPart?: (part: ChatReplyPart) => void;
   /** Per-turn store of fetched API responses, read in windows by handle. */
   apiResponses?: ApiResponseStore;
   /**
@@ -716,14 +732,156 @@ function instrument(
   return "part" in spec ? instrumentRender(spec, ctx) : instrumentAction(spec, ctx);
 }
 
+/**
+ * How much of an action's result the model gets back inline.
+ *
+ * An operation returns whatever it returns, and `inbox.conversations.list` on a
+ * busy Organization returns a lot of it. Truncating with a visible note beats
+ * both silently sending 200k of JSON into the context and inventing a second
+ * windowed-read protocol for a list the model asked for by name.
+ */
+const ACTION_RESULT_MAX_CHARS = 8_000;
+
+function actionResultForModel(result: unknown): unknown {
+  const json = JSON.stringify(result ?? null);
+  if (!json || json.length <= ACTION_RESULT_MAX_CHARS) return result;
+  return {
+    truncated: true,
+    totalLength: json.length,
+    note: `Only the first ${ACTION_RESULT_MAX_CHARS} characters are shown. Narrow the request if you need the rest.`,
+    preview: json.slice(0, ACTION_RESULT_MAX_CHARS),
+  };
+}
+
+/** `improvements.fix.accept` → `improvements_fix_accept`, a legal tool name. */
+export function teammateActionToolName(operation: string): string {
+  return operation.replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+/** What the transcript card says an action touched: `improvement IMP-3`. */
+function describeEntities(
+  entities: readonly { kind: string; id?: string }[]
+): string {
+  if (entities.length === 0) return "nothing (read only)";
+  return entities
+    .map((entity) => (entity.id ? `${entity.kind} ${entity.id}` : entity.kind))
+    .join(", ");
+}
+
+/**
+ * One granted operation as a runtime tool (#770).
+ *
+ * Routed through `instrument` like every other tool, which is what gives the
+ * action its tool-start/tool-end lifecycle, its Thinking-panel row and its
+ * Simplified-thinking narration for free. The card it records names the
+ * operation and the entity, and both come from the operation's own
+ * declarations rather than a second description the catalogue would have to
+ * keep in step.
+ */
+function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
+  return {
+    name: teammateActionToolName(action.operation),
+    description: action.description,
+    inputSchema: action.inputSchema,
+    label: () => action.label,
+    execute: async (input, ctx) => {
+      const outcome = await action.run(input);
+      ctx.recordResult?.({
+        operation: action.operation,
+        domain: action.domain,
+        entity: describeEntities(outcome.entities),
+      });
+      return actionResultForModel(outcome.result);
+    },
+  };
+}
+
+/**
+ * Referral (#773): hand the request to a colleague, as a card the Member acts
+ * on.
+ *
+ * The model names a target and says why, and writes the summary the target
+ * will read. It does **not** hand over: nothing is invoked, the target never
+ * speaks here, and the conversation continues only if the Member clicks. That
+ * restraint is the ticket's design, not a limitation of it, autonomous
+ * agent-to-agent chains are the channels effort.
+ *
+ * The target id is validated against the candidate list rather than trusted,
+ * because a model that hallucinates an id would otherwise render a card that
+ * goes nowhere, and a model that guessed a *real* private id would disclose it.
+ */
+function referralSpec(candidates: readonly ReferralCandidate[]): RuntimeToolSpec {
+  const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+  return {
+    name: "referToTeammate",
+    description:
+      "Refer this person to another AI teammate who is better placed to help. Use it when the request is outside what you are for or outside what you can look up. It shows them a card; it does not hand the conversation over, and the other teammate does not reply here.",
+    inputSchema: z.object({
+      teammateId: z
+        .string()
+        .describe("The id of the colleague to refer to, from the list you were given."),
+      reason: z
+        .string()
+        .max(300)
+        .describe("One sentence, addressed to the person, on why this colleague."),
+      summary: z
+        .string()
+        .max(1500)
+        .describe(
+          "What the other teammate needs to know to pick this up without the person repeating themselves: what they are trying to do, what has been established, what is still open."
+        ),
+    }),
+    label: () => "Referring to a colleague",
+    summarize: (output) => {
+      const name = (output as { teammateName?: string })?.teammateName;
+      return name ? `Referred to ${name}` : undefined;
+    },
+    async execute(input, ctx) {
+      const target = byId.get(String(input.teammateId ?? ""));
+      if (!target) {
+        // Told plainly, with the list again: a model that picked a name
+        // instead of an id can correct itself in one more call.
+        return {
+          error: `No colleague with that id. You can refer to: ${
+            candidates.map((c) => `${c.name} (${c.id})`).join(", ") || "nobody"
+          }.`,
+        };
+      }
+      const part: ChatReplyPart = {
+        type: "teammate_referral",
+        action: "refer_teammate",
+        teammateId: target.id,
+        teammateName: target.name,
+        reason: String(input.reason ?? "").trim(),
+        summary: String(input.summary ?? "").trim(),
+      };
+      ctx.emitPart?.(part);
+      ctx.recordResult?.({
+        operation: "teammates.refer",
+        entity: `teammate ${target.name}`,
+      });
+      return {
+        referred: true,
+        teammateName: target.name,
+        note: "The card is shown. Tell them briefly that you are handing them on, and stop; do not answer the original question yourself.",
+      };
+    },
+  };
+}
+
 /** Assembles the turn's ToolSet for the agent loop (see module docs above). */
 export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
   const overrides = ctx.assistant.tools?.builtIns ?? {};
-  const toolset: ToolSet = {
-    // Grounding tool: always on (not disableable, ADR-0002); wired straight
-    // to the search-pass primitive rather than through `instrument`.
-    searchKnowledge: searchKnowledgeTool(ctx),
-  };
+  const toolset: ToolSet = {};
+  // Grounding tool: not disableable per assistant (ADR-0002), and wired
+  // straight to the search-pass primitive rather than through `instrument`.
+  // The one case where it is absent is a turn with nothing to search: an AI
+  // Teammate whose Knowledge Scope is empty (#768). A registered searcher that
+  // can only ever return nothing is worse than no tool, the model keeps calling
+  // it and then apologises for finding nothing.
+  if (ctx.searchKnowledge) {
+    toolset.searchKnowledge = searchKnowledgeTool(ctx);
+  }
   if (ctx.searchMemories) {
     toolset[searchMemoriesSpec.name] = instrument(searchMemoriesSpec, ctx);
   }
@@ -776,6 +934,19 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
     for (const spec of API_CATALOG_SPECS) {
       toolset[spec.name] = instrument(spec, ctx);
     }
+  }
+  // Referral (#773). Registered only when there is somebody to refer to, so a
+  // one-Teammate organization is never told the option exists.
+  if (ctx.referralCandidates && ctx.referralCandidates.length > 0) {
+    const spec = referralSpec(ctx.referralCandidates);
+    toolset[spec.name] = instrument(spec, ctx);
+  }
+  // An AI Teammate's granted actions (#770). The host already applied the grant
+  // rows and the ceiling, so an entry here is one the Teammate may run; what is
+  // NOT here is refused by being absent, which is the whole permission model.
+  for (const action of ctx.teammateActions ?? []) {
+    const spec = teammateActionSpec(action);
+    if (!toolset[spec.name]) toolset[spec.name] = instrument(spec, ctx);
   }
   if (ctx.queryEntityRecords) {
     const subject = ctx.toolSubject;

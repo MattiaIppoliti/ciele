@@ -318,5 +318,15 @@ export function validate(source, output) {
     problems.push('literal "undefined" in output');
   }
 
+  // A leftover tag marker from the translator's own inline-tag protection
+  // ("{{1", "{{2"). MDX reads `{` as the start of an expression, so one of
+  // these is not a typo in a sentence, it is a page that fails the build; the
+  // Spanish Teammates page shipped exactly that. Caught here so the translation
+  // is discarded and reported instead of written.
+  const markers = output.match(/\{\{\d/g);
+  if (markers && !/\{\{\d/.test(source)) {
+    problems.push(`leftover translator tag marker: ${markers[0]}`);
+  }
+
   return problems;
 }

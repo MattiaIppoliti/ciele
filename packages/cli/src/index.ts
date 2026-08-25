@@ -18,6 +18,8 @@ import { entities, records } from "./commands/entities.ts";
 import { memories } from "./commands/memories.ts";
 import { sso } from "./commands/sso.ts";
 import { helpDesks } from "./commands/help-desks.ts";
+import { teammates } from "./commands/teammates.ts";
+import { channels } from "./commands/channels.ts";
 import { alerts, goals, skills } from "./commands/configuration.ts";
 import { apiKeys, invites, members, organization } from "./commands/organization.ts";
 import { apiIntegrations, providers } from "./commands/integrations.ts";
@@ -42,6 +44,8 @@ const COMMAND_GROUPS: Record<
   memories,
   sso,
   "help-desks": helpDesks,
+  teammates,
+  channels,
   skills,
   goals,
   alerts,
@@ -192,6 +196,17 @@ Commands:
   help-desks reorder-channels <deskId> --ids <id,id,…>
   help-desks connect-servicenow <deskId> --file <credentials.json>
   help-desks disconnect-ticketing <deskId> --yes
+
+  teammates list|get|create|update|delete
+  teammates create --name <name> [--title <t>] [--role <text>] [--private]
+  teammates update <id> [--name|--title|--role|--collections|--visibility]
+  teammates conversations <id>                   Your own thread with a Teammate
+  teammates conversation <id> <conversationId>
+  channels list|get|create|update|delete
+  channels create --name <name> [--teammates <id,id>] [--members <userId,userId>]
+  channels add-member <id> <userId>              Invite a colleague
+  channels add-teammate <id> <teammateId>        Seat a Teammate
+  channels remove-member|remove-teammate <id> <id>
 
   skills list|create|update|delete
   goals list|create|update|delete <assistantId> [...]

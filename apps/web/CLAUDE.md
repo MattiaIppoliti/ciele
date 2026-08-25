@@ -56,7 +56,7 @@ Per-page CLI/cURL/MCP snippets (#754/#755). Three conventions decide whether it 
 - **One list.** `EndpointSpec` in `src/lib/api-v1/openapi.ts` carries `domain`, `capability`, `cli`
   and `mcp` beside the fields the OpenAPI document already read (the document builder ignores the new
   four). The MCP *tool name* lives on the domain in `src/lib/developer-panel/domains.ts`, because the
-  14 coarse tools map onto the 18 domains many-to-one; only the `action` is per-endpoint. Per-domain
+  16 coarse tools map onto the 19 domains many-to-one; only the `action` is per-endpoint. Per-domain
   copy (titles, agent prompts, docs links) lives there too, so `buildOpenApiDocument` never carries
   UI strings.
 - **Pages declare, they never derive.** `apiDomains` on the `shell/nav.ts` entries, and

@@ -110,13 +110,13 @@ describe("POST /api/mcp", () => {
     });
   });
 
-  it("lists all 14 tools to an authenticated modern client", async () => {
+  it("lists all 16 tools to an authenticated modern client", async () => {
     const secret = await mintKey();
     const response = await mcpRoute(modern(secret, "tools/list"));
 
     expect(response.status).toBe(200);
     const body = await payload(response);
-    expect(body.result.tools).toHaveLength(14);
+    expect(body.result.tools).toHaveLength(16);
     expect(body.result.tools.map((t: { name: string }) => t.name)).toContain(
       "manage_assistants"
     );
@@ -224,6 +224,6 @@ describe("POST /api/mcp", () => {
 
     expect(response.status).toBe(200);
     const body = await payload(response);
-    expect(body.result.tools).toHaveLength(14);
+    expect(body.result.tools).toHaveLength(16);
   });
 });

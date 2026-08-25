@@ -90,6 +90,9 @@ function makeContext(overrides: Partial<ActionContext> = {}) {
     history: [],
     // Pure handlers never touch the model; the generative one is not unit-tested here.
     chatModel: undefined as unknown as LanguageModel,
+    // A turn with no searcher registers no knowledge tool (#768); every case
+    // here is an ordinary Assistant turn, which always has one.
+    searchKnowledge: async () => [],
     session: createTurnSession("conv-1", {}),
     skills: [],
     priorParts: [],

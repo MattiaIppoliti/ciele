@@ -30,7 +30,10 @@ only authentication surface.
 
 The Organization owner must first enable **Allow personal AI subscriptions**.
 After that, every authenticated Member may pair their own device; the capability
-is scoped to that Member and Organization and is used only in Preview.
+is scoped to that Member and Organization. It is used on that Member's own
+internal chat surfaces: the Assistant Preview, and (since #769) their own AI
+Teammate chat turns. See the amendment in
+[ADR-0007](0007-retire-subscriptions-federated-credentials.md).
 
 The direct, same-process development path is available only when all of these
 conditions hold:

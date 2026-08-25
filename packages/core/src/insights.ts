@@ -453,7 +453,11 @@ export function computeInsightsOverview(
     assistantBreakdown: computeBreakdown(
       filtered,
       range,
-      (conversation) => conversation.assistantId,
+      // The population is Visitor traffic, which always belongs to an
+      // Assistant: a Teammate Conversation is member-subject and left the
+      // population in `filterConversations` (#768), so the fallback key is
+      // unreachable rather than a silent "other" bucket.
+      (conversation) => conversation.assistantId ?? "",
       (id) => assistantTitleById.get(id) ?? id
     ),
     channelBreakdown: computeBreakdown(

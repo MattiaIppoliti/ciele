@@ -93,6 +93,120 @@ export type {
   CourtesyRoutingContext,
 } from "./basic-interaction";
 
+// AI Teammates (#768): the persona prompt layer, the empty-scope rule, and who
+// may see or edit one. Pure derivations over the row plus the asking Member, so
+// the ops layer, the runtime and a server component all decide the same way.
+export {
+  canEditTeammate,
+  canViewTeammate,
+  danglingScopeAlertCopy,
+  isTeammateRetired,
+  rosterTeammates,
+  teammateDefaultFlow,
+  teammatePersonaPrompt,
+  teammateRuntimeAssistant,
+  teammateSearchesKnowledge,
+  visibleTeammates,
+} from "./teammate";
+export type { TeammateViewer } from "./teammate";
+
+// Teammate action grants (#770): a grant row is the grant, the ceiling caps
+// every granted domain at once, and approval-bypass is the one explicit
+// relaxation of ADR-0017's human-accept invariant.
+export {
+  DEFAULT_TEAMMATE_CEILING,
+  actionRefusal,
+  ceilingAllowsCapability,
+  grantedDomains,
+  hasGrant,
+  mayAcceptSuggestedFix,
+} from "./teammate-grants";
+export type { TeammateActionDomain } from "./teammate-grants";
+
+// Three-layer document memory + the Project layer (#771): which layer a row
+// is, the injection cap, the prompt sections, and the append rule for an
+// agent's own learnings. Documents injected whole, deliberately not the
+// embedding recall the widget keeps for Visitors.
+export {
+  MEMORY_DOCUMENT_MAX_CHARS,
+  appendAgentLearning,
+  capMemoryDocument,
+  memoryDocumentChanges,
+  memoryDocumentOwner,
+  memoryDocumentScope,
+  memoryPromptSections,
+  projectInjects,
+} from "./memory-documents";
+export type {
+  MemoryDocumentChange,
+  MemoryLayerInput,
+} from "./memory-documents";
+
+// Near-duplicate detection for auto-filed Improvements (#767, story 15): the
+// cross-conversation half of the dedup, lexical rather than embedding-based on
+// purpose (see the module comment).
+export {
+  IMPROVEMENT_DUPLICATE_THRESHOLD,
+  findDuplicateImprovement,
+  titleSimilarity,
+} from "./improvement-dedup";
+
+// Routines (#772): when an unattended run is due, and how its Conversation is
+// marked. The schedule is pure here so both Db implementations and the cron
+// agree, and so "did this already run today" is written once.
+export {
+  ROUTINE_CADENCES,
+  ROUTINE_OVERFETCH_MS,
+  TEAMMATE_ROUTINE_CAP,
+  isRoutineConversation,
+  isRoutineDue,
+  routineConversationMetadata,
+  routineNextRun,
+  routineSlotStart,
+  routineTitle,
+} from "./routines";
+
+// Teammate channels (#778): who is in one, who may change it, which colleagues
+// a message addressed, and when a fan-out has to stop. The mention resolver IS
+// the channel perimeter, and the chain accounting is pure so "the eleventh turn
+// never runs" is assertable without a model.
+export {
+  CHANNEL_CHAIN_TEAMMATE_TURN_CAP,
+  CHANNEL_CHAIN_TURN_CAP,
+  canAddToChannel,
+  canAddTeammateToChannel,
+  canManageChannel,
+  chainCapMarker,
+  chainTurnVerdict,
+  channelMemberIds,
+  channelRoster,
+  channelPromptSection,
+  channelTeammateIds,
+  channelUnread,
+  isChannelMember,
+  memberDisplayName,
+  mentionedTeammateIds,
+  parseChannelMentions,
+} from "./channel";
+export type {
+  ChainCapReason,
+  ChainVerdict,
+  ChannelRosterEntry,
+  ChannelUnread,
+} from "./channel";
+
+// Teammate referral (#773): who a Teammate may hand a request to, and what the
+// colleague on the other end reads when it arrives. Human-mediated by design:
+// the card is an offer, and nothing runs until the Member clicks.
+export {
+  isReferredConversation,
+  referralCandidates,
+  referralContextSection,
+  referralPromptSection,
+  standingContextSections,
+} from "./referral";
+export type { ReferralCandidate } from "./referral";
+
 // The API catalogue (spec #559): what the model is told an API integration can
 // do, and whether a path it produced is one the catalogue describes. The
 // validation is here rather than in the runtime because "is this path

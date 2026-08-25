@@ -109,7 +109,10 @@ function CardVisual({ visual }: { visual: PanelCard["visual"] }) {
   return (
     <span
       aria-hidden
-      className="text-muted-foreground/40 group-hover/card:text-muted-foreground/70 mt-3 block h-20 overflow-hidden duration-300"
+      /* Grows into whatever height the card was stretched to (see
+         `DropdownCard`), with h-20 as the floor. The artwork is a viewBox'd
+         svg, so a taller slot draws it bigger rather than distorting it. */
+      className="text-muted-foreground/40 group-hover/card:text-muted-foreground/70 mt-3 flex min-h-20 flex-1 overflow-hidden duration-300"
     >
       {visual === "stack" ? (
         <svg viewBox="0 0 160 80" className="size-full" fill="none" stroke="currentColor">
@@ -256,7 +259,13 @@ function DropdownCard({ card, onNavigate }: { card: PanelCard; onNavigate: () =>
       target={card.external ? "_blank" : undefined}
       rel={card.external ? "noopener noreferrer" : undefined}
       onClick={onNavigate}
-      className="group/card bg-muted/40 hover:bg-muted/70 relative block w-56 shrink-0 overflow-hidden rounded-2xl border p-4 duration-200"
+      /* Concentric with the panel that holds it: the card fills the panel's
+         inner box (h-full, so its bottom corners sit at the panel's bottom
+         corners instead of stopping short whenever a link column is the taller
+         thing), and its radius is the panel's own rounded-3xl minus that 8px
+         of padding, which is what makes the two curves run parallel instead of
+         one looking pinched inside the other. */
+      className="group/card bg-muted/40 hover:bg-muted/70 relative flex h-full w-56 shrink-0 flex-col overflow-hidden rounded-[calc(var(--radius-3xl)-0.5rem)] border p-4 duration-200"
     >
       <span className="text-muted-foreground text-xs">{card.badge}</span>
       <span className="mt-0.5 block text-sm font-medium">{card.title}</span>

@@ -42,6 +42,7 @@ function row(overrides: Partial<MemberRow> = {}): MemberRow {
     status: "active",
     since: "2026-01-01T00:00:00.000Z",
     isSelf: false,
+    avatarUrl: null,
     ...overrides,
   };
 }

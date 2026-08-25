@@ -33,7 +33,14 @@ export type { MutatedEntity } from "@ciele/ops";
 
 interface Revalidation {
   path: string;
-  scope?: "layout";
+  /**
+   * Next's second argument. Omitted for a concrete path, which is the usual
+   * case. `"layout"` also invalidates everything nested under it. `"page"` is
+   * how a **dynamic** route is named for every one of its params at once
+   * (`/teammates/[teammateId]`); passing a bracketed path without it warns and
+   * does nothing, so the two always travel together.
+   */
+  scope?: "page" | "layout";
 }
 
 /** The single entity→paths table (ADR-0005). One entity may fan out to many routes. */
@@ -77,6 +84,32 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
       return [{ path: "/settings/data" }];
     case "dataAssistant":
       return [{ path: "/data-assistant" }];
+    case "teammateList":
+      return [{ path: "/teammates" }];
+    case "teammate":
+      return [{ path: `/teammates/${entity.id}` }];
+    case "channelList":
+      // The channels share the Teammates roster (#778), so a channel change
+      // refreshes that page and not a list of its own.
+      return [{ path: "/teammates" }];
+    case "channel":
+      // A concrete path, so no `scope`: one channel page, one id.
+      return [{ path: `/teammates/channels/${entity.id}` }];
+    // One entity or the other, but the same two routes: there is no
+    // `/projects/[id]` route to name (`projects/page.tsx` renders every
+    // Project and its decisions on one page), and a Teammate page renders the
+    // live Projects whether one of them changed or the set of them did.
+    case "project":
+    case "projectList":
+      return [
+        { path: "/projects" },
+        // Every Teammate page at once: the Project a Teammate reads is picked
+        // in its Configure dialog, so which Teammates a Project change reaches
+        // is not knowable from the entity.
+        { path: "/teammates/[teammateId]", scope: "page" },
+      ];
+    case "myMemory":
+      return [{ path: "/settings/memory" }];
     case "knowledgeHub":
       // The tab segments render the tables; the layout route carries nothing.
       return [
@@ -96,7 +129,10 @@ export function revalidateEntities(entities: MutatedEntity[]) {
   const seen = new Set<string>();
   for (const entity of entities) {
     for (const { path, scope } of revalidationsFor(entity)) {
-      const key = `${scope ?? "page"}:${path}`;
+      // `scope` is part of the identity, and the empty string stands for
+      // "omitted" rather than a scope name, so an explicit `"page"` on the
+      // same path stays a separate call.
+      const key = `${scope ?? ""}:${path}`;
       if (seen.has(key)) continue;
       seen.add(key);
       revalidatePath(path, scope);

@@ -6,6 +6,7 @@ import {
   Gauge,
   KeyRound,
   Sparkles,
+  Brain,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -72,6 +73,15 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     slug: "profile",
     href: "/settings/profile",
     icon: Fingerprint,
+  },
+  {
+    // Personal scope, not organization: the document is the Member's own and
+    // no admin surface renders it (#771, story 19).
+    label: "Memory",
+    slug: "memory",
+    href: "/settings/memory",
+    icon: Brain,
+    hint: "What your AI teammates remember about you",
   },
 ];
 

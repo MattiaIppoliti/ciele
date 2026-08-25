@@ -177,6 +177,39 @@ describe("resolveChatModel (cross-provider fallback)", () => {
     expect(published).toBeNull();
   });
 
+  it("runs a Member's own Teammate turn on their subscription, and nobody else's (#769)", () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", undefined);
+    vi.stubEnv("OPENAI_API_KEY", undefined);
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", undefined);
+
+    // The owner chatting with their Teammate: same principle as their Preview,
+    // their own device runs their own CLI (ADR-0007 as amended by #769).
+    const own = resolveChatModel("anthropic", "claude-sonnet-5", [], {
+      surface: "teammate",
+      memberId: "member-1",
+      localSubscriptionProviders: ["anthropic"],
+    });
+    expect(own).toMatchObject({ credentialKind: "local_subscription" });
+
+    // A colleague chatting with the same Teammate. The route advertises the
+    // providers of whoever is asking, so there is nothing here to run on, and
+    // the turn falls through to the Organization's connections (none, so null).
+    const colleague = resolveChatModel("anthropic", "claude-sonnet-5", [], {
+      surface: "teammate",
+      memberId: "member-2",
+      localSubscriptionProviders: [],
+    });
+    expect(colleague).toBeNull();
+
+    // An unattended run has no invoking Member at all: never a subscription,
+    // whatever it advertises. This is the Routines boundary (#772).
+    const unattended = resolveChatModel("anthropic", "claude-sonnet-5", [], {
+      surface: "teammate",
+      localSubscriptionProviders: ["anthropic"],
+    });
+    expect(unattended).toBeNull();
+  });
+
   it("uses the configured provider and model when its key resolves", () => {
     vi.stubEnv("ANTHROPIC_API_KEY", undefined);
     const resolved = resolveChatModel("anthropic", "claude-opus-4-8", [

@@ -6,6 +6,10 @@
       "schedule": "0 3 * * *"
     },
     {
+      "path": "/api/cron/run-routines",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/cron/verify-goals",
       "schedule": "0 4 * * *"
     },

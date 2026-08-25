@@ -15,10 +15,16 @@ import { finalizeDueCrawls } from "@agent-hub/agent";
  * poll handles the common tab-open case, this is the closed-tab backstop; bump
  * to a tighter schedule on Pro). Protected by CRON_SECRET (Vercel sends it as a
  * Bearer token); without the secret configured we refuse to run.
+ *
+ * Teammate Routines (#772) used to ride this tick and no longer do: they carry a
+ * preferred hour, and a daily tick ran every one of them at 03:00. They have
+ * their own hourly cron, `/api/cron/run-routines`.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export const GET = withCronAuth(async () =>
-  Response.json(await finalizeDueCrawls({ db: getWidgetDb() }))
+  Response.json(
+    await finalizeDueCrawls({ db: getWidgetDb() })
+  )
 );

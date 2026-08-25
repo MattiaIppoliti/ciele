@@ -33,6 +33,10 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 ## Orientation
 
 - `turn.ts`: `streamConversationTurn`, the single entrypoint for answering a message.
+- `channel-turn.ts`: `streamChannelChain` (#778), everything one message sets off in a Teammate
+  channel. A loop over a queue, not a recursion, because the caps are properties of the chain; the
+  caps and the mention resolver themselves are pure functions in `@agent-hub/core`, so "the eleventh
+  turn never runs" is asserted with an injected `runTurn` and no provider.
 - `engine.ts`: flow routing + action execution; `actions.ts`, the action handler registry.
 - `agentic-search/`, `graph-search.ts`, `embeddings.ts`, retrieval.
 - `ingest.ts` / `extract.ts` / `jobs.ts`, knowledge ingestion and the durable job layer.
@@ -78,8 +82,10 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
   action that never retrieves, so it must never assert a fact about the organization. A new action
   that wants to generate needs an argument for why it is not one of these three.
 - Citations resolve to a Concept → Source, never an opaque chunk (ADR-0002).
-- Published widget traffic runs only on Platform/API-key Provider Connections; Subscription
-  connections are preview-only (ADR-0001).
+- Published widget traffic runs only on Platform/API-key Provider Connections. A Member's own
+  personal subscription runs only on their own internal surfaces, the Assistant Preview and their
+  own Teammate chat turns (ADR-0001, ADR-0007 as amended by #769); `mayUsePersonalSubscription`
+  in `models.ts` is the one predicate that decides it.
 
 ## Tests
 

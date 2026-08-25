@@ -8,6 +8,7 @@ import type {
   ProactiveTriggerContext,
   ProviderConnection,
   SkillSnapshot,
+  Teammate,
   TrustTier,
 } from "@agent-hub/core";
 import {
@@ -15,15 +16,27 @@ import {
   needsVisitorDeliveryHistory,
   notificationDelivery,
   proactiveFlowCandidates,
+  memoryPromptSections,
+  projectInjects,
+  standingContextSections,
+  teammateDefaultFlow,
+  teammatePersonaPrompt,
+  teammateRuntimeAssistant,
+  teammateSearchesKnowledge,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
-import type { ChatReplyPart, MemorySearcher } from "./types";
+import type {
+  ChatReplyPart,
+  MemorySearcher,
+  ReferralCandidate,
+  TeammateActionTool,
+} from "./types";
 import { contactLabel } from "./actions";
 import { meterUsage, summarizeTurnUsage } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
-import { buildKnowledgeSearcher } from "./retrieval";
+import { buildCollectionSearcher, buildKnowledgeSearcher } from "./retrieval";
 import {
   runAssistantChat,
   runProactiveFlows,
@@ -32,9 +45,9 @@ import {
   type RuntimeEvent,
 } from "./engine";
 import { applyEffects } from "./effects";
-import { buildTemplateContext } from "./template";
+import { buildTemplateContext, platformAppOrigin } from "./template";
 import { createTurnSession } from "./session";
-import { enqueueMemoryPromotionJob } from "./jobs";
+import { enqueueAgentMemoryJob, enqueueMemoryPromotionJob } from "./jobs";
 import { MEMORY_RECALL_LIMIT } from "./memories";
 import {
   EMPTY_TURN_TRACE,
@@ -61,18 +74,6 @@ import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
 
 /**
- * Origin of the tenant-facing web app (apps/web) for {{conversation.link}},
- * the Inbox lives under its (admin) route group. Falls back to the known
- * production host when unset.
- */
-function platformAppOrigin(): string {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    "https://platform.ciele.app"
-  );
-}
-
-/**
  * Conversation Turn (see context.md): one user message and everything the
  * runtime does to answer it, get-or-create the Conversation, persist the
  * user message, route through the flow engine, persist the assistant reply
@@ -86,8 +87,36 @@ function platformAppOrigin(): string {
 export interface ConversationTurnInput {
   /** Data access, already scoped by the caller (session db or widget db). */
   db: Db;
-  /** Config the turn runs on, a Publication snapshot or live rows. */
-  assistant: Assistant;
+  /**
+   * Config the turn runs on, a Publication snapshot or live rows. Omitted for a
+   * Teammate turn, where `teammate` is the config (#768).
+   */
+  assistant?: Assistant;
+  /**
+   * The AI Teammate answering this turn, instead of an Assistant (#768).
+   *
+   * It brings three things the Assistant path does not have: the persona prompt
+   * layer, a Knowledge Scope of Collections in place of an Assistant's linked
+   * Sources, and a Conversation owned by the Teammate. Everything else, the
+   * model resolution, the agent loop, the citations, is the same code, which is
+   * the point: the product has one chat runtime, not two.
+   */
+  teammate?: Teammate;
+  /**
+   * The actions this Teammate was granted (#770), resolved by the host from its
+   * grant rows and its ceiling. Each becomes a turn tool with a transcript
+   * card; an empty list (the default, and the state of every ungranted
+   * Teammate) registers nothing, and the turn can only talk.
+   */
+  teammateActions?: readonly TeammateActionTool[];
+  /**
+   * The colleagues this Teammate may refer the Member to (#773), resolved by
+   * the host against the **Member's** visibility rather than the Teammate's:
+   * a card naming something they cannot open is a dead end, and one naming a
+   * private Teammate would disclose it. Empty registers no referral tool.
+   */
+  referralCandidates?: readonly ReferralCandidate[];
+  /** Flows to route on. A Teammate has none; the runtime supplies its default. */
   flows: Flow[];
   /** Attached Skills, a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
@@ -133,9 +162,11 @@ export interface ConversationTurnInput {
   metadata?: ConversationMetadata;
   signal: AbortSignal;
   /**
-   * Surface context for provider resolution. Omit for published widget traffic;
-   * Preview passes `{ surface: "preview", memberId }` for future per-user
-   * mechanisms. Hosted subscription Provider Connections are retired.
+   * Surface context for provider resolution. Omit for published widget traffic.
+   * The two internal surfaces name themselves (`preview`, `teammate`) and carry
+   * the invoking Member, which is what lets that Member's own paired device run
+   * their own turn and nobody else's (ADR-0007 as amended by #769). Hosted
+   * subscription Provider Connections stay retired.
    */
   keyResolution?: KeyResolution;
   /**
@@ -226,7 +257,7 @@ function silentTurn(): ReadableStream<Uint8Array> {
  * messaging visitors unprompted.
  */
 async function streamProactiveTurn(
-  input: ConversationTurnInput & { trigger: FlowTrigger }
+  input: ConversationTurnInput & { assistant: Assistant; trigger: FlowTrigger }
 ): Promise<ReadableStream<Uint8Array>> {
   const { db, assistant, subjectType, subjectId, signal, trigger } = input;
   const turnStart = Date.now();
@@ -430,16 +461,136 @@ async function streamProactiveTurn(
   });
 }
 
+/**
+ * What kind of turn this is, decided once.
+ *
+ * Both kinds run the same engine over the same `Assistant`-shaped config, and
+ * they differ in about a dozen small ways: which column owns the Conversation,
+ * which surface the telemetry names, whether a persona layer exists, whether
+ * flows come from the org or from one built-in, whether knowledge is searched
+ * at all. Written as `teammate ? x : y` at each of those points, the shape of
+ * the difference was invisible and every new one was another ternary in a
+ * thousand-line function; three of them had already drifted into subtly
+ * different conditions.
+ *
+ * So every pure decision about *kind* is taken here. Two places below still
+ * branch on `teammate` because they need the row itself, not a decision about
+ * it: the collection searcher wants its Knowledge Scope, and the memory read
+ * wants its id. Those read a field first and use the row second.
+ */
+interface TurnSubject {
+  /** The runtime config, whichever row it came from. */
+  assistant: Assistant;
+  /** The Teammate, when this is a Teammate turn (#768). */
+  teammate: Teammate | null;
+  /** Telemetry's name for where this turn happened (ADR-0011). */
+  surface: "teammate" | "preview" | "widget";
+  /**
+   * Which Assistant the telemetry and usage rows point at. Null on a Teammate
+   * turn: `assistant.id` is the Teammate's there, and writing it into a column
+   * that references `assistants` is a dangling reference, not an attribution.
+   */
+  attributedAssistantId: string | null;
+  /** Exactly one owner column for a new Conversation (#768). */
+  conversationOwner: { teammateId: string } | { assistantId: string };
+  /** The persona prompt layer, which only a Teammate has. */
+  persona: string | undefined;
+  /**
+   * The flows this turn routes over: the org's for an Assistant, and for a
+   * Teammate the one built-in Default behavior flow, which is exactly the
+   * routing an Assistant with no matching flow already gets.
+   */
+  flows: Flow[];
+  /**
+   * Whether this turn gets a knowledge searcher at all. False only for a
+   * Teammate with an empty Knowledge Scope, which must not be handed a search
+   * that always comes back empty, or it spends the turn calling it.
+   */
+  searchesKnowledge: boolean;
+  /**
+   * Whether the API catalogue triad (#559) can be registered. An integration
+   * belongs to an Assistant, and a Teammate is not one.
+   */
+  hasApiCatalogue: boolean;
+  /**
+   * Whether the windowed document reader is registered. It checks tenancy
+   * through the Assistant's linked Sources, which a Teammate turn has no
+   * equivalent of yet, so a Teammate cites what it searched and reads no
+   * further.
+   */
+  readsKnowledgeDocuments: boolean;
+  /**
+   * Whether per-flow trust tiers are graded. A Teammate's implicit flow has no
+   * ledger and no escalation ramp to offer.
+   */
+  gradesFlowTrust: boolean;
+}
+
+function resolveTurnSubject(input: ConversationTurnInput): TurnSubject {
+  const teammate = input.teammate ?? null;
+  // One config shape for both kinds of turn: a Teammate projects onto it
+  // (`teammateRuntimeAssistant`), an Assistant already is it.
+  const assistant =
+    input.assistant ?? (teammate ? teammateRuntimeAssistant(teammate) : null);
+  if (!assistant) {
+    throw new Error("streamConversationTurn needs an assistant or a teammate");
+  }
+  if (teammate) {
+    return {
+      assistant,
+      teammate,
+      surface: "teammate",
+      attributedAssistantId: null,
+      conversationOwner: { teammateId: teammate.id },
+      persona: teammatePersonaPrompt(teammate),
+      flows: [teammateDefaultFlow(teammate)],
+      searchesKnowledge: teammateSearchesKnowledge(teammate),
+      hasApiCatalogue: false,
+      readsKnowledgeDocuments: false,
+      gradesFlowTrust: false,
+    };
+  }
+  return {
+    assistant,
+    teammate: null,
+    // Internal chat is its own surface, so telemetry can tell staff usage from
+    // a Visitor's and from an admin testing in the Preview (#768).
+    surface: input.keyResolution?.surface === "preview" ? "preview" : "widget",
+    attributedAssistantId: assistant.id,
+    conversationOwner: { assistantId: assistant.id },
+    persona: undefined,
+    flows: input.flows,
+    // Grounding is an ADR-0002 invariant for an Assistant.
+    searchesKnowledge: true,
+    hasApiCatalogue: true,
+    readsKnowledgeDocuments: true,
+    gradesFlowTrust: true,
+  };
+}
+
+/** Whether this Conversation belongs to the thing answering this turn. */
+function ownsConversation(
+  subject: TurnSubject,
+  conversation: { assistantId?: string | null; teammateId?: string | null }
+): boolean {
+  return subject.teammate
+    ? conversation.teammateId === subject.teammate.id
+    : conversation.assistantId === subject.assistant.id;
+}
+
 export async function streamConversationTurn(
   input: ConversationTurnInput
 ): Promise<ReadableStream<Uint8Array>> {
-  const { db, assistant, message, subjectType, subjectId, signal } = input;
+  const { db, message, subjectType, subjectId, signal } = input;
+  const subject = resolveTurnSubject(input);
+  const { assistant, teammate, attributedAssistantId } = subject;
 
   // A proactive trigger takes the same seam but a different path: no
-  // classification, no model, no user message (#541).
+  // classification, no model, no user message (#541). Teammates have no
+  // proactive triggers: nothing fires a page-load event inside the console.
   const trigger = input.trigger ?? "message";
   if (trigger !== "message") {
-    return streamProactiveTurn({ ...input, trigger });
+    return streamProactiveTurn({ ...input, assistant, trigger });
   }
 
   // Runtime telemetry (ADR-0011): one `chat_turn` event per turn, attributed
@@ -447,8 +598,7 @@ export async function streamConversationTurn(
   // calls, and error outcome. Written post-commit and fire-safe, so the sink
   // never breaks or slows a user-visible turn.
   const turnStart = Date.now();
-  const surface =
-    input.keyResolution?.surface === "preview" ? "preview" : "widget";
+  const surface = subject.surface;
 
   const connectionKind = turnConnectionKind(
     assistant,
@@ -521,7 +671,12 @@ export async function streamConversationTurn(
     input.conversationId
       ? db.getConversation(input.conversationId)
       : Promise.resolve(null),
-    db.getApiIntegration(assistant.id).catch(() => null),
+    // The API catalogue is an Assistant integration (spec #559); a Teammate
+    // has none, so the tools stay unregistered rather than querying for an id
+    // that belongs to a different table.
+    subject.hasApiCatalogue
+      ? db.getApiIntegration(assistant.id).catch(() => null)
+      : Promise.resolve(null),
     // The immutable platform (Ciele) prompt layer, same for every org.
     getRuntimeHost().getPlatformSystemPrompt(),
     memorySubjectId
@@ -534,13 +689,14 @@ export async function streamConversationTurn(
     conversation &&
     (conversation.subjectType !== subjectType ||
       conversation.subjectId !== subjectId ||
-      conversation.assistantId !== assistant.id)
+      !ownsConversation(subject, conversation))
   ) {
     conversation = null;
   }
   if (!conversation) {
     conversation = await db.createConversation({
-      assistantId: assistant.id,
+      // Exactly one owner (#768): the Teammate, or the Assistant.
+      ...subject.conversationOwner,
       subjectType,
       subjectId,
       collectionId: input.collectionId ?? null,
@@ -556,16 +712,32 @@ export async function streamConversationTurn(
   // uses. The graph QA id for this turn is captured for the feedback
   // substrate (#389).
   let graphQaId: string | null = null;
-  const searchKnowledge: KnowledgeSearcher = buildKnowledgeSearcher({
-    db,
-    connections: input.connections,
-    assistant,
-    collectionId,
-    conversationId: conversation.id,
-    onTrace: (qaId) => {
-      graphQaId = qaId;
-    },
-  });
+  /**
+   * A Teammate with an empty Knowledge Scope gets NO searcher, which is what
+   * leaves the tool unregistered downstream (`buildToolset`): a pure-persona
+   * Teammate must not be handed a search that always comes back empty, or it
+   * spends the turn calling it (#768).
+   */
+  const searchKnowledge: KnowledgeSearcher | undefined = !subject.searchesKnowledge
+    ? undefined
+    : teammate
+      ? buildCollectionSearcher({
+          db,
+          connections: input.connections,
+          organizationId: input.organizationId,
+          collectionIds: teammate.collectionIds,
+          conversationId: conversation.id,
+        })
+      : buildKnowledgeSearcher({
+        db,
+        connections: input.connections,
+        assistant,
+        collectionId,
+        conversationId: conversation.id,
+        onTrace: (qaId) => {
+          graphQaId = qaId;
+        },
+      });
 
   const stored = await db.listRecentMessages(
     conversation.id,
@@ -581,7 +753,7 @@ export async function streamConversationTurn(
       const embedding = await embedText(query, input.connections, {
         db,
         organizationId: input.organizationId,
-        assistantId: assistant.id,
+        assistantId: attributedAssistantId,
         conversationId: conversation!.id,
       });
       return db.searchMemories({
@@ -603,7 +775,32 @@ export async function streamConversationTurn(
    * knowledge-document-reader.ts.
    */
   const documentReaderFor = createDocumentReaderFactory(db);
-  const readKnowledgeDocument = documentReaderFor(assistant.id);
+  const readKnowledgeDocument = subject.readsKnowledgeDocuments
+    ? documentReaderFor(assistant.id)
+    : undefined;
+
+  /**
+   * The three memory layers (#771), read fresh each turn like the rest of a
+   * Teammate's configuration: an edit in settings lands on the next message,
+   * and so does a Project being archived.
+   *
+   * All three reads are best-effort. Memory is an enrichment, and a turn that
+   * answers without it is worse than one that answers with it but far better
+   * than one that fails; the same fail-open rule long-term memory already has.
+   */
+  const memoryDocuments = teammate
+    ? // A referral's summary is standing context for this conversation, not a
+      // message: it is neither the Member's words nor this Teammate's, so it
+      // rides the same channel as the memory layers rather than being faked
+      // into the transcript as something somebody said (#773).
+      standingContextSections(
+        await teammateMemorySections(db, teammate, subjectId).catch((error) => {
+          console.error("[runtime] memory-document read failed:", error);
+          return [] as string[];
+        }),
+        conversation.metadata
+      )
+    : undefined;
 
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
@@ -740,7 +937,7 @@ export async function streamConversationTurn(
         await turn.afterPersist?.(saved.id);
         await recordRuntimeEvent(db, {
           organizationId: input.organizationId,
-          assistantId: assistant.id,
+          assistantId: attributedAssistantId,
           conversationId,
           messageId: saved.id,
           kind: "chat_turn",
@@ -852,7 +1049,13 @@ export async function streamConversationTurn(
         let result = await runAssistantChat({
           assistant,
           platformPrompt,
-          flows: input.flows,
+          // A Teammate has no Flows: one built-in Default behavior stands in, so
+          // the engine routes it the way it routes an Assistant whose flows all
+          // miss (core's `teammateDefaultFlow`).
+          flows: subject.flows,
+          // The persona layer (#767): read from the row on every turn, which is
+          // why editing a Standing Role needs no republish.
+          persona: subject.persona,
           connections: input.connections,
           message,
           history,
@@ -878,6 +1081,9 @@ export async function streamConversationTurn(
           searchKnowledge,
           readKnowledgeDocument,
           apiIntegration,
+          teammateActions: input.teammateActions,
+          memoryDocuments,
+          referralCandidates: input.referralCandidates,
           collectionId,
           session,
           alreadyClarified,
@@ -908,8 +1114,11 @@ export async function streamConversationTurn(
               event,
             }),
           // Live tier read (never snapshotted): missing row → watch (earned
-          // nothing yet), read error → fail-open.
-          getFlowTrust: (flowId) => readFlowTrustTier(db, assistant.id, flowId),
+          // nothing yet), read error → fail-open. A Teammate's implicit flow
+          // has no ledger and no escalation ramp to offer, so it is not graded.
+          getFlowTrust: subject.gradesFlowTrust
+            ? (flowId) => readFlowTrustTier(db, assistant.id, flowId)
+            : undefined,
         });
         if (signal.aborted) {
           throw new DOMException("Conversation turn aborted", "AbortError");
@@ -969,7 +1178,7 @@ export async function streamConversationTurn(
               db,
               result.usage.map((u) => ({
                 organizationId: input.organizationId,
-                assistantId: assistant.id,
+                assistantId: attributedAssistantId,
                 conversationId,
                 messageId,
                 stage: u.stage,
@@ -1017,6 +1226,25 @@ export async function streamConversationTurn(
                 console.error("[runtime] memory-promotion enqueue failed:", error);
               }
             }
+            // The Agent layer (#771): what this Teammate learned about doing
+            // its job. Unconditional on a Teammate turn, because the decision
+            // about whether anything was worth keeping belongs to the
+            // distiller, which usually says no. Same durable-row-first shape,
+            // and a failure to enqueue never breaks the chat.
+            if (teammate) {
+              try {
+                await enqueueAgentMemoryJob(
+                  {
+                    organizationId: input.organizationId,
+                    teammateId: teammate.id,
+                    conversationId,
+                  },
+                  { db }
+                );
+              } catch (error) {
+                console.error("[runtime] agent-memory enqueue failed:", error);
+              }
+            }
           },
         });
       } catch (error) {
@@ -1029,7 +1257,7 @@ export async function streamConversationTurn(
         // client-aborted turn suppresses the wire error event.
         await recordRuntimeEvent(db, {
           organizationId: input.organizationId,
-          assistantId: assistant.id,
+          assistantId: attributedAssistantId,
           conversationId,
           kind: "chat_turn",
           status: "failed",
@@ -1043,5 +1271,46 @@ export async function streamConversationTurn(
         controller.close();
       }
     },
+  });
+}
+
+/**
+ * The Teammate's three memory documents, rendered into prompt sections (#771).
+ *
+ * Read here rather than handed in by the host, because the runtime already
+ * holds the Teammate and the Db and this is a fact about the turn, not about
+ * the surface that started it. Which layers exist is a domain rule
+ * (`memoryPromptSections`), including the one that matters most: all three
+ * empty means nothing is injected at all, not three empty headings.
+ */
+async function teammateMemorySections(
+  db: Db,
+  teammate: Teammate,
+  memberId: string
+): Promise<string[]> {
+  const organizationId = teammate.organizationId;
+  const [user, agent, project] = await Promise.all([
+    db.getMemoryDocument(organizationId, { scope: "user", memberId }),
+    db.getMemoryDocument(organizationId, {
+      scope: "agent",
+      teammateId: teammate.id,
+    }),
+    teammate.projectId
+      ? db.table("projects").get(teammate.projectId)
+      : Promise.resolve(null),
+  ]);
+  // An archived Project keeps its decisions readable and stops feeding them to
+  // a model; a dangling reference resolves to nothing rather than to an error.
+  const projectDocument = projectInjects(project)
+    ? await db.getMemoryDocument(organizationId, {
+        scope: "project",
+        projectId: project!.id,
+      })
+    : null;
+  return memoryPromptSections({
+    user: user?.body,
+    agent: agent?.body,
+    project: projectDocument?.body,
+    projectName: project?.name,
   });
 }

@@ -13,27 +13,37 @@ les capacités d'exécution et les instructions réutilisables.
 | Recherche de connaissances | Activée | Recherche les connaissances connectées et renvoie les réponses citées. |
 | Mémoire de session | Activée | Utilise les informations de la session de conversation en cours. |
 | Récupérer l'URL | Désactivé | Lit une URL lorsque le moteur d'exécution sélectionne l'outil. |
+| Afficher un tableau | Désactivé | Affiche les faits dans un tableau lorsque le moteur d'exécution sélectionne l'outil. |
 
 La recherche dans la base de connaissances est toujours disponible. Vous pouvez
 activer ou désactiver les autres outils intégrés.
 
-## Connecter des données structurées
+L'option Afficher un tableau organise les faits que l'Assistant a trouvés dans
+cette réponse. Il ne calcule pas de valeurs. Le tableau apparaît au-dessus de la
+réponse écrite, et la transcription de la boîte de réception affiche le même
+tableau.
+
+L'Assistant peut ajouter une question de suivi à une ligne. Le visiteur
+sélectionne la ligne pour poser cette question. La transcription de la boîte de
+réception affiche ces lignes, mais un membre ne peut pas les sélectionner.
+
+## Connectez des données structurées
 
 La section **Data** répertorie les Entités importées via **Settings → Data**.
 Sélectionnez chaque Entité que cet Assistant peut interroger.
 
-Chaque entité sélectionnée fournit un outil de filtrage exact. Une entité avec
+Chaque Entité sélectionnée fournit un outil de filtrage exact. Une entité avec
 des attributs de texte fournit également un outil de recherche par mot-clé.
 
 Les Entités partagées sont disponibles pour chaque Visiteur pris en charge par
-l'Assistant. Les Entités à portée utilisateur nécessitent une
+l'Assistant. Les entités à portée utilisateur nécessitent une
 [revendication d'identité](/authentication/microsoft-entra-id#choose-an-identity-claim)
 vérifiée.
 
 La sélection d'entité et le schéma sont intégrés au prochain instantané de
-publication. Le contenu de l'enregistrement reste actif après la publication.
+publication. Le contenu de l'enregistrement reste en ligne après la publication.
 
-Consultez [Entités et enregistrements](/data/entities-and-records) pour les
+Consultez [Entities and Records](/data/entities-and-records) pour les
 importations CSV, les choix de portée et le filtrage d'identité.
 
 ## Configurez une intégration d'API
@@ -62,7 +72,7 @@ associer la même Compétence à plusieurs Assistants.
 1. Ouvrez **Tools & Skills**.
 2. Recherchez la compétence d'organisation requise.
 3. Associez la compétence à l'assistant.
-4. Testez le résultat en mode Aperçu.
+4. Testez le résultat dans l'Aperçu.
 5. Publiez l'Assistant lorsque le résultat est correct.
 
 Les modifications apportées aux compétences sont immédiatement disponibles dans
@@ -71,7 +81,7 @@ l'aperçu. Le widget publié utilise le dernier instantané de publication.
 ## Testez la configuration
 
 Posez une question qui nécessite chacun des outils activés. Vérifiez le panneau
-Pensée et les Sources avant de publier.
+Thinking et les Sources avant de publier.
 
 Pour les données structurées, testez une recherche exacte d'attribut et une
 recherche textuelle. Testez l'accès au niveau de l'utilisateur avec deux comptes

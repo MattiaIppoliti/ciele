@@ -3,8 +3,8 @@
 How an **Assistant** behaves at runtime, the conversational engine's design. Read with
 [`CLAUDE.md`](CLAUDE.md) (feature surface) and [`context.md`](context.md) (domain language).
 
-> **Repository-agent pull requests:** GPT Codex must follow the complete automatic PR contract in
-> [`docs/agents/pull-requests.md`](docs/agents/pull-requests.md).
+> **Repository-agent pull requests:** Claude Code and GPT Codex must follow the complete automatic
+> PR contract in [`docs/agents/pull-requests.md`](docs/agents/pull-requests.md).
 
 > **This document is the target conversational design.** For exactly how *this repo* implements it
 > today, the **two-engine runtime**, wire-event contract, and per-action/-condition status, see
@@ -309,8 +309,11 @@ The **Search knowledge** loop:
 Per ADR-0001, the runtime is **multi-provider** (Anthropic / OpenAI / Google) behind one abstraction
 (Vercel AI SDK). Each Organization configures **Provider Connections** of three types:
 - **Platform plan**: bundled models on our keys.
-- **Subscription**: a member's personal plan via provider OAuth, **preview-only** (never serves
-  published widget traffic; ToS + rate limits).
+- **Subscription**: a member's personal plan via provider OAuth, for **operator surfaces only**:
+  the Assistant Preview, and (ADR-0007 as amended by #769) that member's own attended Teammate
+  turns. It never serves published widget traffic, never another member's turn and never an
+  unattended Routine run, which is what keeps somebody's personal plan off third-party and
+  scheduled traffic (ToS + rate limits).
 - **API key**: BYOK, stored encrypted.
 
 Each Assistant selects the provider+model it runs on. When building AI features here, default to the
@@ -375,8 +378,16 @@ latest Claude models (see the API reference skill for current model IDs).
    egress. Plus the windowed readers `readApiResponse(handle, from, to)` and
    `readKnowledgeSource(sourceId, from, to)`, which return the window **and the total length** so a
    large payload is walked rather than truncated. A queried endpoint is a citable Source.
-5. Provider abstraction with the three Provider-Connection types and the preview-only subscription
-   boundary.
+4c. **Teammate-only tools** (#767), registered on a Teammate turn and on no Assistant turn. One tool
+   per granted domain from the catalogue in `@ciele/ops`, each capped by the Teammate's ceiling and
+   each leaving a card in the transcript naming the operation and the entity it touched, which is
+   what makes the transcript the audit trail. Plus two ungated memory writes (`memory.remember`,
+   `memory.project.record`), neither of which takes a target, so no prompt injection can point them
+   at another Member's profile or another team's Project. Plus `referToTeammate`, registered only
+   when the org has another org-visible Teammate to name. A Teammate with an empty Knowledge Scope
+   gets **no** `searchKnowledge` at all rather than one that always finds nothing.
+5. Provider abstraction with the three Provider-Connection types and the operator-surface
+   subscription boundary (Preview, plus a member's own Teammate turns).
 6. Escalation runtime: desk selection, channel form → conversation-data attach → ticket/email/API.
 7. Telemetry pipeline feeding Inbox + Insights + Improvements.
 

@@ -1,4 +1,5 @@
 import type { Invite, Member, Role } from "@agent-hub/core";
+import { memberDisplayName } from "@agent-hub/core";
 
 /**
  * One line of the Members table. Accepted Members and pending Invites share
@@ -19,14 +20,12 @@ export interface MemberRow {
   /** Joined (member) or invited (invite). */
   since: string;
   isSelf: boolean;
-}
-
-function displayName(member: Member): string {
-  const full = [member.firstName, member.lastName].filter(Boolean).join(" ");
-  if (full) return full;
-  if (member.username) return member.username;
-  if (member.email) return member.email.split("@")[0];
-  return member.userId;
+  /**
+   * The member's uploaded picture, when they have one. Null for an invite and
+   * for anyone who never set one, where the row draws a generated avatar from
+   * `subjectId` instead.
+   */
+  avatarUrl: string | null;
 }
 
 /**
@@ -50,12 +49,13 @@ export function buildMemberRows(
       id: `member:${member.userId}`,
       kind: "member" as const,
       subjectId: member.userId,
-      name: displayName(member),
+      name: memberDisplayName(member),
       email: member.email,
       role: member.role,
       status: "active" as const,
       since: member.createdAt,
       isSelf: member.userId === currentUserId,
+      avatarUrl: member.avatarUrl,
     }))
     .sort(
       (a, b) =>
@@ -72,6 +72,8 @@ export function buildMemberRows(
     status: "pending" as const,
     since: invite.createdAt,
     isSelf: false,
+    // Nobody has accepted it yet, so there is no profile to have a picture in.
+    avatarUrl: null,
   }));
 
   return [...memberRows, ...inviteRows];

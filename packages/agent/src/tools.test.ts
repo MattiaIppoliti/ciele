@@ -90,6 +90,9 @@ function makeContext(overrides: Partial<ToolRuntimeContext> = {}) {
   const ctx: ToolRuntimeContext = {
     assistant: makeAssistant(),
     session: createTurnSession("c1", {}),
+    // Every real caller wires a searcher; the turn that does not is the
+    // scopeless Teammate, and it has its own case below.
+    searchKnowledge: async () => [],
     usedSources: [],
     searchPasses: [],
     emit: (e) => events.push(e),
@@ -150,6 +153,14 @@ describe("buildToolset gating", () => {
       "fetchUrl",
       "searchKnowledge",
     ]);
+  });
+
+  it("registers no knowledge tool when the turn has nothing to search (#768)", () => {
+    // An AI Teammate with an empty Knowledge Scope: the turn is handed no
+    // searcher, so the model is never offered a search that could only ever
+    // come back empty.
+    const { ctx } = makeContext({ searchKnowledge: undefined });
+    expect(Object.keys(buildToolset(ctx)).sort()).toEqual(["remember"]);
   });
 
   it("ignores a stored `custom` key left over from the per-endpoint tools", () => {

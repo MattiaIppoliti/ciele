@@ -1,5 +1,10 @@
-import type { TurnStep, TurnTerminalStatus } from "@agent-hub/core";
-import type { ChatReplyPart } from "./types";
+import type {
+  ChainCapReason,
+  ChannelMessage,
+  TurnStep,
+  TurnTerminalStatus,
+} from "@agent-hub/core";
+import type { ChannelEvent, ChatReplyPart } from "./types";
 import type { RuntimeEvent } from "./types";
 import { parsePartialJson } from "./partial-json";
 import { stripNonProps } from "./reply-components";
@@ -322,10 +327,16 @@ export interface TurnView extends TurnTrace {
   streamingText: string | null;
 }
 
-/** Decodes an ndjson body into RuntimeEvents, buffering partial lines. */
-export async function* decodeRuntimeEvents(
+/**
+ * Decodes an ndjson body into RuntimeEvents, buffering partial lines.
+ *
+ * Generic in the event type for the one stream that carries more than turn
+ * events: a channel chain interleaves `channel-*` envelope events with the turn
+ * events of whoever is speaking (#778).
+ */
+export async function* decodeRuntimeEvents<E = RuntimeEvent>(
   body: ReadableStream<Uint8Array>
-): AsyncGenerator<RuntimeEvent> {
+): AsyncGenerator<E> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -337,10 +348,10 @@ export async function* decodeRuntimeEvents(
     buffer = lines.pop() ?? "";
     for (const line of lines) {
       if (!line.trim()) continue;
-      yield JSON.parse(line) as RuntimeEvent;
+      yield JSON.parse(line) as E;
     }
   }
-  if (buffer.trim()) yield JSON.parse(buffer) as RuntimeEvent;
+  if (buffer.trim()) yield JSON.parse(buffer) as E;
 }
 
 export interface ConsumeTurnOptions<T extends TurnView> {
@@ -365,15 +376,7 @@ export async function consumeTurnStream<T extends TurnView>(
   body: ReadableStream<Uint8Array>,
   options: ConsumeTurnOptions<T>
 ): Promise<void> {
-  const { update, onStart, onDone } = options;
-  const errorText =
-    options.errorText ?? (() => "Something went wrong, please try again.");
-  let streamAction = "search_knowledge";
-  // Argument JSON accumulated per render-only call. Live-client state, which is
-  // why it lives here rather than in the fold: the persisted trace takes its
-  // component from the validated `part`, never from a partial parse.
-  const streamingProps = new Map<string, string>();
-
+  const state = newTurnState();
   // Wrapped so NOTHING provisional outlives this consumer, whichever way it
   // returns. `done` and `error` sweep on their own below, but an aborted fetch
   // or a dropped connection throws straight out of the iterator, and the
@@ -381,137 +384,257 @@ export async function consumeTurnStream<T extends TurnView>(
   // transcript for the rest of the session.
   try {
     for await (const event of decodeRuntimeEvents(body)) {
-      // The shared fold first, for every event, then the streaming-only extras.
-      update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
-      switch (event.type) {
-        case "turn":
-          onStart?.({ conversationId: event.conversationId });
-          break;
-        case "thought":
-          // The reasoning moved into the Thinking panel, so the bubble resets.
-          update((view) => ({ ...view, streamingText: null }));
-          break;
-        case "part":
-          update((view) => ({
-            ...view,
-            parts: appendOrReplacePart(view.parts, event.part),
-          }));
-          break;
-        case "tool-input-start": {
-          // The component goes up empty and grows. Props arrive as argument
-          // deltas, which some providers never send (see the event's docs), so
-          // this may be the only frame before the validated part lands.
-          streamingProps.set(event.callId, "");
-          const skeleton: ChatReplyPart = {
-            type: "component",
-            action: "search_knowledge",
-            name: event.name,
-            props: {},
-            callId: event.callId,
-            pending: true,
-          };
-          update((view) => ({
-            ...view,
-            parts: appendOrReplacePart(view.parts, skeleton),
-          }));
-          break;
-        }
-        case "tool-input-delta": {
-          const text = (streamingProps.get(event.callId) ?? "") + event.delta;
-          streamingProps.set(event.callId, text);
-          const props = parsePartialJson(text);
-          // Nothing coherent yet: keep the last render rather than blanking it.
-          if (!props || typeof props !== "object" || Array.isArray(props)) break;
-          update((view) => ({
-            ...view,
-            parts: updatePendingComponent(
-              view.parts,
-              event.callId,
-              // The Simplified-thinking line rides the same argument JSON, and it
-              // is narration, not a prop.
-              stripNonProps(props as Record<string, unknown>)
-            ),
-          }));
-          break;
-        }
-        case "tool-end":
-          // Either the render tool ran and emitted its part (swapped in by the
-          // `part` case above), or the call died before reaching the tool and
-          // `gather-phase` reported it here. Anything still pending is not
-          // arriving.
-          if (streamingProps.has(event.callId)) {
-            streamingProps.delete(event.callId);
-            update((view) => ({
-              ...view,
-              parts: dropPendingComponents(view.parts, event.callId),
-            }));
-          }
-          break;
-        case "text-start":
-          streamAction = event.action;
-          update((view) => ({ ...view, streamingText: "" }));
-          break;
-        case "text-delta":
-          update((view) => ({
-            ...view,
-            streamingText: (view.streamingText ?? "") + event.delta,
-          }));
-          break;
-        case "text-end":
-          update((view) => ({
-            ...view,
-            parts: [
-              ...view.parts,
-              {
-                type: "text",
-                action: streamAction,
-                text: view.streamingText ?? "",
-              } as ChatReplyPart,
-            ],
-            streamingText: null,
-          }));
-          break;
-        case "done":
-          // Backstop: schema validation runs before execute, so a rejected
-          // payload yields no tool-end to clean up after. Nothing is still
-          // arriving once the turn is done.
-          if (streamingProps.size > 0) {
-            streamingProps.clear();
-            update((view) => ({
-              ...view,
-              parts: dropPendingComponents(view.parts),
-            }));
-          }
-          onDone?.({
-            conversationId: event.conversationId,
-            messageId: event.messageId,
-          });
-          break;
-        case "error":
-          // Same backstop as `done`: the turn is over, so nothing still pending
-          // is going to arrive, and the fallback goes where the component was.
-          streamingProps.clear();
-          update((view) => ({
-            ...view,
-            parts: [
-              ...dropPendingComponents(view.parts),
-              {
-                type: "text",
-                action: "fallback",
-                text: errorText(event.message),
-              } as ChatReplyPart,
-            ],
-          }));
-          break;
-      }
+      applyTurnEvent(event, options, state);
     }
   } finally {
-    if (streamingProps.size > 0) {
+    sweepPendingComponents(options, state);
+  }
+}
+
+/** Live-client state one turn accumulates while its events arrive. */
+interface TurnApplyState {
+  /** Which action the current text run belongs to, from `text-start`. */
+  streamAction: string;
+  /**
+   * Argument JSON accumulated per render-only call. Live-client state, which is
+   * why it lives here rather than in the fold: the persisted trace takes its
+   * component from the validated `part`, never from a partial parse.
+   */
+  streamingProps: Map<string, string>;
+}
+
+function newTurnState(): TurnApplyState {
+  return { streamAction: "search_knowledge", streamingProps: new Map() };
+}
+
+/** Nothing provisional outlives a consumer, however it returned. */
+function sweepPendingComponents<T extends TurnView>(
+  options: ConsumeTurnOptions<T>,
+  state: TurnApplyState
+): void {
+  if (state.streamingProps.size === 0) return;
+  state.streamingProps.clear();
+  options.update((view) => ({
+    ...view,
+    parts: dropPendingComponents(view.parts),
+  }));
+}
+
+/**
+ * One turn event applied to one view.
+ *
+ * Extracted so the channel consumer below can reuse it verbatim (#778): a chain
+ * is a sequence of ordinary turns with an envelope saying who is speaking, and
+ * two consumers rendering the same events differently is exactly the drift this
+ * avoids.
+ */
+function applyTurnEvent<T extends TurnView>(
+  event: RuntimeEvent,
+  options: ConsumeTurnOptions<T>,
+  state: TurnApplyState
+): void {
+  const { update, onStart, onDone } = options;
+  const errorText =
+    options.errorText ?? (() => "Something went wrong, please try again.");
+  const streamingProps = state.streamingProps;
+  // The shared fold first, for every event, then the streaming-only extras.
+  update((view) => ({ ...view, ...foldTraceEvent(view, event) }));
+  switch (event.type) {
+    case "turn":
+      onStart?.({ conversationId: event.conversationId });
+      break;
+    case "thought":
+      // The reasoning moved into the Thinking panel, so the bubble resets.
+      update((view) => ({ ...view, streamingText: null }));
+      break;
+    case "part":
+      update((view) => ({
+        ...view,
+        parts: appendOrReplacePart(view.parts, event.part),
+      }));
+      break;
+    case "tool-input-start": {
+      // The component goes up empty and grows. Props arrive as argument
+      // deltas, which some providers never send (see the event's docs), so
+      // this may be the only frame before the validated part lands.
+      streamingProps.set(event.callId, "");
+      const skeleton: ChatReplyPart = {
+        type: "component",
+        action: "search_knowledge",
+        name: event.name,
+        props: {},
+        callId: event.callId,
+        pending: true,
+      };
+      update((view) => ({
+        ...view,
+        parts: appendOrReplacePart(view.parts, skeleton),
+      }));
+      break;
+    }
+    case "tool-input-delta": {
+      const text = (streamingProps.get(event.callId) ?? "") + event.delta;
+      streamingProps.set(event.callId, text);
+      const props = parsePartialJson(text);
+      // Nothing coherent yet: keep the last render rather than blanking it.
+      if (!props || typeof props !== "object" || Array.isArray(props)) break;
+      update((view) => ({
+        ...view,
+        parts: updatePendingComponent(
+          view.parts,
+          event.callId,
+          // The Simplified-thinking line rides the same argument JSON, and it
+          // is narration, not a prop.
+          stripNonProps(props as Record<string, unknown>)
+        ),
+      }));
+      break;
+    }
+    case "tool-end":
+      // Either the render tool ran and emitted its part (swapped in by the
+      // `part` case above), or the call died before reaching the tool and
+      // `gather-phase` reported it here. Anything still pending is not
+      // arriving.
+      if (streamingProps.has(event.callId)) {
+        streamingProps.delete(event.callId);
+        update((view) => ({
+          ...view,
+          parts: dropPendingComponents(view.parts, event.callId),
+        }));
+      }
+      break;
+    case "text-start":
+      state.streamAction = event.action;
+      update((view) => ({ ...view, streamingText: "" }));
+      break;
+    case "text-delta":
+      update((view) => ({
+        ...view,
+        streamingText: (view.streamingText ?? "") + event.delta,
+      }));
+      break;
+    case "text-end":
+      update((view) => ({
+        ...view,
+        parts: [
+          ...view.parts,
+          {
+            type: "text",
+            action: state.streamAction,
+            text: view.streamingText ?? "",
+          } as ChatReplyPart,
+        ],
+        streamingText: null,
+      }));
+      break;
+    case "done":
+      // Backstop: schema validation runs before execute, so a rejected
+      // payload yields no tool-end to clean up after. Nothing is still
+      // arriving once the turn is done.
+      if (streamingProps.size > 0) {
+        streamingProps.clear();
+        update((view) => ({
+          ...view,
+          parts: dropPendingComponents(view.parts),
+        }));
+      }
+      onDone?.({
+        conversationId: event.conversationId,
+        messageId: event.messageId,
+      });
+      break;
+    case "error":
+      // Same backstop as `done`: the turn is over, so nothing still pending
+      // is going to arrive, and the fallback goes where the component was.
       streamingProps.clear();
       update((view) => ({
         ...view,
-        parts: dropPendingComponents(view.parts),
+        parts: [
+          ...dropPendingComponents(view.parts),
+          {
+            type: "text",
+            action: "fallback",
+            text: errorText(event.message),
+          } as ChatReplyPart,
+        ],
       }));
+      break;
+  }
+}
+
+export interface ConsumeChannelOptions<T extends TurnView> {
+  /**
+   * A Teammate is about to speak: the surface opens a bubble for it, and every
+   * `update` after this one belongs to that bubble.
+   */
+  onSpeaker: (speaker: { teammateId: string; teammateName: string }) => void;
+  /** Applies a functional update to the bubble of whoever is speaking now. */
+  update: (fn: (view: T) => T) => void;
+  /**
+   * A durable channel message arrived: a Teammate's reply (stamp its id on the
+   * bubble it just filled) or a chain-cap marker (render it, nobody was
+   * speaking).
+   */
+  onMessage?: (message: ChannelMessage) => void;
+  /** The chain is over: how many turns it ran, and which cap stopped it. */
+  onEnd?: (end: {
+    chainId: string;
+    turns: number;
+    capped: ChainCapReason | null;
+  }) => void;
+  errorText?: (message: string) => string;
+}
+
+/**
+ * Consumes a channel chain (#778): the turn events of each speaker in turn,
+ * wrapped in `channel-*` envelope events saying who is talking and what was
+ * persisted.
+ *
+ * The turn events go through {@link applyTurnEvent}, the same code the 1:1 chat
+ * runs, so a channel renders thinking steps, tool cards, streamed text and
+ * citations exactly as a private chat does. What this adds is only the
+ * bookkeeping a group needs: whose bubble the events belong to, and when one
+ * bubble has become a stored message.
+ */
+export async function consumeChannelStream<T extends TurnView>(
+  body: ReadableStream<Uint8Array>,
+  options: ConsumeChannelOptions<T>
+): Promise<void> {
+  // Fresh per speaker: a half-written component from one Teammate's turn must
+  // not grow into the next one's bubble.
+  let state = newTurnState();
+  const turnOptions = (): ConsumeTurnOptions<T> => ({
+    update: options.update,
+    errorText: options.errorText,
+  });
+  try {
+    for await (const event of decodeRuntimeEvents<RuntimeEvent | ChannelEvent>(
+      body
+    )) {
+      switch (event.type) {
+        case "channel-speaker":
+          sweepPendingComponents(turnOptions(), state);
+          state = newTurnState();
+          options.onSpeaker({
+            teammateId: event.teammateId,
+            teammateName: event.teammateName,
+          });
+          break;
+        case "channel-message":
+          options.onMessage?.(event.message);
+          break;
+        case "channel-end":
+          options.onEnd?.({
+            chainId: event.chainId,
+            turns: event.turns,
+            capped: event.capped,
+          });
+          break;
+        default:
+          applyTurnEvent(event, turnOptions(), state);
+      }
     }
+  } finally {
+    sweepPendingComponents(turnOptions(), state);
   }
 }

@@ -7,12 +7,9 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  HelpCircle,
   Pin,
   Square,
   SquarePen,
-  ThumbsDown,
-  ThumbsUp,
   Trash2,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
@@ -29,7 +26,7 @@ import {
 import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
-import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
+import { consumeTurnStream } from "@agent-hub/agent/client";
 import {
   completeFollowUp,
   initialFollowUpState,
@@ -47,61 +44,27 @@ import { ChatHeader } from "@/components/chat/chat-header";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
-import { ProgressLine } from "@/components/chat/progress-line";
-import { ComponentReplyPart } from "@/components/chat/component-part";
 import { IdentityGate } from "@/components/chat/identity-gate";
-import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
-import { ThinkingPanel } from "@/components/chat/thinking-panel";
-import { ComposerPulse } from "@/components/chat/composer-pulse";
 import {
-  latestHelpDeskId,
-  visibleReplyParts,
-} from "@/components/chat/visible-reply-parts";
+  ChatThread,
+  type ChatBotMsg,
+  type ChatMsg,
+} from "@/components/chat/chat-thread";
+import { ComposerPulse } from "@/components/chat/composer-pulse";
+import { latestHelpDeskId } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
 import { useRightRail } from "@/components/shell/right-rail";
-import {
-  Message,
-  MessageBubble,
-  MessageBubbleContent,
-  MessageContent,
-  MessageScroller,
-} from "@/components/agents/message";
+import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
-import { StreamingResponse } from "@/components/agents/streaming-response";
-import { Citations, type CitationItem } from "@/components/agents/citations";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 import { MessageSquareText } from "lucide-react";
 
-type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
-
-/** Concept→Source citations, shaped for the beui citation components. */
-function toCitationItems(sources: SourcesPart["sources"]): CitationItem[] {
-  return sources.map((source, index) => ({
-    id: source.conceptId ?? `source-${index}`,
-    title: source.conceptTitle,
-    domain: source.sourceName
-      ? `${source.collectionName} · ${source.sourceName}`
-      : source.collectionName,
-    url: source.url ?? undefined,
-  }));
-}
-
-interface UserMsg {
-  role: "user";
-  text: string;
-  sentAt: string | null;
-}
-
-interface BotMsg extends TurnView {
-  role: "bot";
-  id: string | null;
-  feedback: -1 | 0 | 1;
-}
-
-type Msg = UserMsg | BotMsg;
+/** The transcript's message shapes live with the renderer they belong to. */
+type BotMsg = ChatBotMsg;
+type Msg = ChatMsg;
 
 const PANEL_DEFAULT_WIDTH = 400;
 const PANEL_MIN_WIDTH = 320;
@@ -125,155 +88,6 @@ function historyDayLabel(iso: string): string {
     month: "short",
     year: "numeric",
   });
-}
-
-/** "07 Jul, 14:32", the hover timestamp on a sent message. */
-function sentAtLabel(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const day = date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-  });
-  const time = date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${day}, ${time}`;
-}
-
-function PartView({
-  part,
-  onSend,
-  onOpenSupport,
-}: {
-  part: ChatReplyPart;
-  onSend: (text: string) => void;
-  onOpenSupport: (helpDeskId?: string) => void;
-}) {
-  // `text` and `sources` parts are rendered by the message body itself (a
-  // beui StreamingResponse with the sources disclosure folded in), not here.
-  if (part.type === "progress") {
-    return <ProgressLine text={part.text} />;
-  }
-  if (part.type === "notification") {
-    return (
-      <div className="bg-muted/60 max-w-[90%] space-y-1 rounded-2xl rounded-tl-sm border-l-2 px-3.5 py-2.5 text-sm">
-        {part.title && <p className="font-medium">{part.title}</p>}
-        <ChatMarkdown text={part.content} />
-      </div>
-    );
-  }
-  if (part.type === "help_desk") {
-    return (
-      <div className="flex max-w-[90%] items-center gap-3 rounded-2xl border px-3.5 py-3">
-        {part.showIcon !== false && (
-          <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
-            <FlowButtonIcon icon={part.icon} className="size-4" />
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">Need more help?</p>
-          <button
-            type="button"
-            className="text-primary text-sm font-semibold hover:underline"
-            onClick={() => onOpenSupport(part.helpDeskId)}
-          >
-            {part.label}
-          </button>
-        </div>
-      </div>
-    );
-  }
-  if (part.type === "clarify") {
-    return (
-      <div className="bg-muted/40 max-w-[90%] rounded-2xl rounded-tl-sm border border-dashed px-3.5 py-2.5 text-sm">
-        <div className="text-muted-foreground flex items-center gap-1.5">
-          <HelpCircle className="size-4" />
-          <span className="text-xs font-medium">Quick question first</span>
-        </div>
-        <p className="mt-1.5">{part.question}</p>
-        {part.found && part.found.length > 0 && (
-          <div className="text-muted-foreground mt-2 text-xs">
-            <span>Here&apos;s what I did find:</span>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4">
-              {part.found.map((f) => (
-                <li key={f}>{f}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-    );
-  }
-  if (part.type === "button") {
-    if (part.buttonType === "send_text" || part.buttonType === "faq") {
-      return (
-        <button
-          type="button"
-          onClick={() => onSend(part.text ?? "")}
-          className="bg-primary text-primary-foreground inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
-        >
-          {part.label}
-          {part.showIcon !== false && (
-            <FlowButtonIcon icon={part.icon} className="size-3.5" />
-          )}
-        </button>
-      );
-    }
-    return (
-      <a
-        href={part.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-primary text-primary-foreground inline-flex max-w-[90%] items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90"
-      >
-        {part.label}
-        {part.showIcon !== false && (
-          <FlowButtonIcon icon={part.icon} className="size-3.5" />
-        )}
-      </a>
-    );
-  }
-  if (part.type === "iframe") {
-    const iframeTitle = part.title?.trim() || "Embedded content";
-    return (
-      <div className="max-w-[90%]">
-        {part.title && (
-          <p className="mb-1.5 text-sm font-medium">{iframeTitle}</p>
-        )}
-        <div className="overflow-hidden rounded-2xl border">
-          <iframe
-            src={part.url}
-            title={iframeTitle}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            className="w-full"
-            style={{ height: `${part.height ?? 30}${part.heightUnit ?? "vh"}` }}
-          />
-        </div>
-      </div>
-    );
-  }
-  if (part.type === "component") {
-    return <ComponentReplyPart part={part} onAsk={onSend} />;
-  }
-  if (part.type === "follow_ups") {
-    return (
-      <div className="flex flex-wrap gap-2 pt-1">
-        {part.questions.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => onSend(q)}
-            className="border-primary/30 text-primary hover:bg-primary/5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-          >
-            {q}
-          </button>
-        ))}
-      </div>
-    );
-  }
-  return null;
 }
 
 export function PreviewPanel({
@@ -1066,127 +880,17 @@ export function PreviewPanel({
             </div>
           )}
 
-          {messages.map((msg, i) =>
-            msg.role === "user" ? (
-              <Message key={i} from="user" animateIn className="group relative">
-                <MessageContent>
-                  <MessageBubble>
-                    <MessageBubbleContent className="max-w-[85%] text-primary-foreground [&>span[aria-hidden]]:bg-primary">
-                      {msg.text}
-                    </MessageBubbleContent>
-                  </MessageBubble>
-                  {msg.sentAt && (
-                    <span className="text-muted-foreground/80 pointer-events-none absolute right-1 -bottom-4 text-[10px] whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                      {sentAtLabel(msg.sentAt)}
-                    </span>
-                  )}
-                </MessageContent>
-              </Message>
-            ) : (
-              (() => {
-                const parts = visibleReplyParts(msg.parts, !hideEscalation);
-                const lastTextIndex = parts.reduce(
-                  (acc, part, index) => (part.type === "text" ? index : acc),
-                  -1
-                );
-                const citationItems = toCitationItems(
-                  parts.flatMap((part) =>
-                    part.type === "sources" ? part.sources : []
-                  )
-                );
-                const feedback =
-                  msg.feedback === 1 ? "up" : msg.feedback === -1 ? "down" : null;
-                return (
-                  <Message key={i} from="assistant">
-                    <MessageContent className="gap-2">
-                      {/* Flows are deliberately invisible to chat users, routing
-                          is audited in the Inbox transcript only. */}
-                      <ThinkingPanel
-                        steps={msg.steps}
-                        phase={msg.phase}
-                        searchCount={msg.searchCount}
-                        active={pending && i === messages.length - 1}
-                      />
-                      {parts.map((part, j) => {
-                        if (part.type === "text") {
-                          const isLast = j === lastTextIndex;
-                          return (
-                            <StreamingResponse
-                              key={j}
-                              status="complete"
-                              copyText={part.text}
-                              showActions={isLast && Boolean(msg.id)}
-                              sources={isLast ? citationItems : []}
-                              feedback={isLast ? feedback : null}
-                              onFeedbackChange={(next) => {
-                                if (next === "up") vote(msg, 1);
-                                else if (next === "down") vote(msg, -1);
-                                // Clearing = re-voting the active value.
-                                else vote(msg, msg.feedback === 1 ? 1 : -1);
-                              }}
-                            >
-                              <ChatMarkdown text={part.text} />
-                            </StreamingResponse>
-                          );
-                        }
-                        if (part.type === "sources") {
-                          if (lastTextIndex !== -1) return null;
-                          return (
-                            <Citations
-                              key={j}
-                              citations={toCitationItems(part.sources)}
-                              className="max-w-[90%]"
-                            />
-                          );
-                        }
-                        return (
-                          <PartView
-                            key={j}
-                            part={part}
-                            onSend={send}
-                            onOpenSupport={(helpDeskId) => {
-                              setSupportHelpDeskId(helpDeskId);
-                              setSupportOpen(true);
-                            }}
-                          />
-                        );
-                      })}
-                      {msg.streamingText !== null && (
-                        <StreamingResponse status="streaming">
-                          <ChatMarkdown text={msg.streamingText} />
-                          <span className="animate-pulse">▍</span>
-                        </StreamingResponse>
-                      )}
-                      {lastTextIndex === -1 && msg.id && parts.length > 0 && (
-                        <div className="flex gap-1">
-                          <Hint label="Good response">
-                            <button
-                              type="button"
-                              aria-label="Good response"
-                              onClick={() => vote(msg, 1)}
-                              className={`rounded p-1 transition-colors ${msg.feedback === 1 ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground"}`}
-                            >
-                              <ThumbsUp className="size-3.5" />
-                            </button>
-                          </Hint>
-                          <Hint label="Bad response">
-                            <button
-                              type="button"
-                              aria-label="Bad response"
-                              onClick={() => vote(msg, -1)}
-                              className={`rounded p-1 transition-colors ${msg.feedback === -1 ? "text-destructive bg-destructive/10" : "text-muted-foreground hover:text-foreground"}`}
-                            >
-                              <ThumbsDown className="size-3.5" />
-                            </button>
-                          </Hint>
-                        </div>
-                      )}
-                    </MessageContent>
-                  </Message>
-                );
-              })()
-            )
-          )}
+          <ChatThread
+            messages={messages}
+            pending={pending}
+            onSend={send}
+            onVote={vote}
+            onOpenSupport={(helpDeskId) => {
+              setSupportHelpDeskId(helpDeskId);
+              setSupportOpen(true);
+            }}
+            hasPersistentSupport={!hideEscalation}
+          />
         </MessageScroller>
 
         {/* Chat input */}

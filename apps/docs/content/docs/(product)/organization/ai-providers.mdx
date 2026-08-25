@@ -10,10 +10,12 @@ Ciele uses one provider abstraction for Anthropic, OpenAI, and Google models. An
 | Type | Use |
 | --- | --- |
 | Platform plan | Uses models supplied by the managed Ciele plan. |
-| Subscription | Uses a member subscription for Preview only. |
+| Subscription | Uses a member subscription for that member's own chats. |
 | API key | Uses an Organization-managed provider key. |
 
-A Subscription connection does not serve a published widget. Select a Platform plan or API-key connection for published traffic.
+A member subscription runs only that member's own chats: the Assistant Preview, and their chats with
+an AI Teammate. It does not serve a published widget, and it does not run another member's chat.
+Select a Platform plan or API-key connection for published traffic.
 
 ## Add an API-key connection
 

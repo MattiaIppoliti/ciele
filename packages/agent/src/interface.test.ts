@@ -27,6 +27,9 @@ const valueKeys = (mod: object) =>
 describe("runtime public interface", () => {
   it("server barrel exports exactly its declared surface", () => {
     expect(valueKeys(server)).toEqual([
+      // The channel chain's ndjson framing (#778): its own constant because a
+      // channel stream carries `channel-*` events beside the turn events.
+      "CHANNEL_NDJSON_HEADERS",
       "CRAWL_FINALIZE_BATCH_SIZE",
       "CRAWL_FINALIZE_LEASE_MS",
       // The shipped platform prompt layer: public so the owner-only editor can
@@ -45,6 +48,9 @@ describe("runtime public interface", () => {
       "alertKeys",
       "backfillCollectionToGraph",
       "beginWebsiteCrawl",
+      // The Agent memory layer's writer (#771). Public because the job ledger
+      // and the cron drain both reach it; nothing else should.
+      "distillAgentLearning",
       "embedConcept",
       "enqueueDraftProposalJob",
       "enqueueEntitySyncJob",
@@ -73,10 +79,16 @@ describe("runtime public interface", () => {
       // it directly. Its siblings (graph-sync / proposals / memories /
       // entity-sync) are composed only by finalizeDueCrawls and stay internal.
       "runDueIngestJobs",
+      // The unattended Routine drain (#772): its own schedule, so it is not a
+      // job-ledger kind, and the cron tick composes it directly.
+      "runDueRoutines",
       "runGraphLearning",
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",
+      // Teammate channels (#778): one entrypoint for a whole chain, like
+      // `streamConversationTurn` is for one turn.
+      "streamChannelChain",
       "streamConversationTurn",
       "sweepDueRecrawls",
       // The trace-retention cron drain (#573), a deliberate widening.
@@ -102,6 +114,8 @@ describe("runtime public interface", () => {
       "canEmbedWithConnection",
       // Flattens a rendered component to text for the Inbox export (generative UI).
       "componentPartText",
+      // The channel chain's consumer (#778), over the same fold.
+      "consumeChannelStream",
       "consumeTurnStream",
       "decodeRuntimeEvents",
       "foldTraceEvent",

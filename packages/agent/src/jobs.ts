@@ -14,6 +14,7 @@ import {
 import { draftImprovementProposal } from "./improvement-proposal";
 import { ingestSource } from "./ingest";
 import { MEMORY_QUIET_MS, promoteConversationMemories } from "./memories";
+import { distillAgentLearning } from "./agent-learnings";
 import { runEntitySync } from "./entity-sync";
 
 /**
@@ -231,6 +232,69 @@ const promoteMemoriesHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
+// distill_agent_memory, appends one distilled learning to a Teammate's Agent
+// layer after a turn (#771). Modelled on promote_memories: durable row first,
+// `after()` accelerates it, cron is the backstop. The handler resolves every
+// gate (retired Teammate, no exchange, no credential, nothing worth keeping)
+// into a no-op success, so only real model/db failures retry.
+// ---------------------------------------------------------------------------
+
+const DISTILL_AGENT_MEMORY_KIND = "distill_agent_memory" as const;
+
+type DistillAgentMemoryJob = {
+  kind: typeof DISTILL_AGENT_MEMORY_KIND;
+  organizationId: string;
+  teammateId: string;
+  conversationId: string;
+};
+
+const distillAgentMemoryHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<DistillAgentMemoryJob>;
+    if (!payload.organizationId || !payload.teammateId || !payload.conversationId) {
+      throw new Error("Invalid distill-agent-memory job payload");
+    }
+    await distillAgentLearning({
+      db: deps.db,
+      organizationId: payload.organizationId,
+      teammateId: payload.teammateId,
+      conversationId: payload.conversationId,
+    });
+  },
+  // No onTerminalFailure: a learning is additive and the next turn distils
+  // again. Losing one is a note the Teammate does not have, not a broken state.
+};
+
+/**
+ * Queue the end-of-turn distillation. Delayed like memory promotion, so a
+ * fast back-and-forth distils the exchange once rather than once per message.
+ */
+export async function enqueueAgentMemoryJob(
+  job: { organizationId: string; teammateId: string; conversationId: string },
+  deps: JobDeps,
+  options: { delayMs?: number } = {}
+): Promise<void> {
+  await deps.db.createBackgroundJob({
+    kind: DISTILL_AGENT_MEMORY_KIND,
+    payload: { kind: DISTILL_AGENT_MEMORY_KIND, ...job },
+    nextRunAt: new Date(
+      Date.now() + (options.delayMs ?? MEMORY_QUIET_MS)
+    ).toISOString(),
+  });
+  getRuntimeHost().scheduleAfterResponse(() =>
+    runDueJobs(deps, { kinds: [DISTILL_AGENT_MEMORY_KIND], limit: 5 })
+  );
+}
+
+/** Drains due agent-memory jobs, the cron backstop for `after()`. */
+export async function runDueAgentMemoryJobs(
+  deps: JobDeps,
+  options: { now?: Date; limit?: number; workerId?: string; staleAfterMs?: number } = {}
+): Promise<RunDueJobsResult> {
+  return runDueJobs(deps, { ...options, kinds: [DISTILL_AGENT_MEMORY_KIND] });
+}
+
+// ---------------------------------------------------------------------------
 // sync_entity_records, one Record sync run for an Entity's REST/JSON source
 // (#670). The handler itself no-ops duplicate sweep enqueues (cadence check)
 // and missing configs; genuine fetch/map/db failures record a failed run,
@@ -273,6 +337,7 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   graph_sync_concept: graphSyncHandler,
   draft_improvement_proposal: draftProposalHandler,
   promote_memories: promoteMemoriesHandler,
+  distill_agent_memory: distillAgentMemoryHandler,
   sync_entity_records: entitySyncHandler,
 };
 

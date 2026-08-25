@@ -32,6 +32,9 @@ import { Reveal } from "@/components/home/reveal";
 /** Breathing room the panel keeps from either edge of the viewport. */
 const MIN_PANEL_MARGIN = 16;
 
+/** The panel card's own border, top plus bottom (Tailwind `border` = 1px). */
+const PANEL_BORDER = 2;
+
 /** How long the pointer may be outside the nav cluster before it closes. */
 const CLOSE_GRACE_MS = 220;
 
@@ -83,7 +86,11 @@ function DropdownPanel({
     const node = bodyRef.current;
     if (!node) return;
     const observer = new ResizeObserver(([entry]) =>
-      setHeight(entry.contentRect.height)
+      /* +PANEL_BORDER: the measurement is the body's content box, the card it
+         is applied to is border-box. Without it the card lands 2px short, and a
+         promo tile stretched to fill it then sits 8px from the top and 6px from
+         the bottom, which a concentric corner shows up immediately. */
+      setHeight(entry.contentRect.height + PANEL_BORDER)
     );
     observer.observe(node);
     return () => observer.disconnect();

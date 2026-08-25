@@ -30,7 +30,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDay } from "@/lib/format";
-import { memberDisplayName, memberInitials } from "@/lib/members";
+import { memberDisplayName } from "@/lib/members";
+import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import {
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
@@ -448,11 +449,11 @@ export function ImprovementsBoard({
                                 </span>
                               )}
                               {email ? (
-                                <span
-                                  title={memberDisplayName(email)}
-                                  className="bg-primary/10 text-primary flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold"
-                                >
-                                  {memberInitials(email)}
+                                <span title={memberDisplayName(email)}>
+                                  <GeneratedAvatar
+                                    seed={email}
+                                    size="size-7"
+                                  />
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground bg-muted flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">

@@ -59,6 +59,17 @@ import type {
   SsoConnection,
   StoredMessage,
   SupportChannel,
+  Project,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
+  Teammate,
+  TeammateChannel,
+  TeammateChannelParticipant,
+  ChannelMessage,
+  TeammateGrant,
+  TeammateRosterHidden,
+  TeammateRoutine,
   TicketingIntegration,
   TrustSignal,
   UsageDailyRow,
@@ -82,6 +93,7 @@ import {
   monotonicNow,
   nextCrawlDue,
   okfActor,
+  capMemoryDocument,
   shortId,
   sortFlows,
   usageResourceOf,
@@ -150,6 +162,17 @@ interface MockStore {
   ssoConnections: Map<string, SsoConnection>;
   /** assistantId → its one API integration (spec #559). */
   apiIntegrations: Map<string, ApiIntegration>;
+  teammates: Map<string, Teammate>;
+  teammateGrants: Map<string, TeammateGrant>;
+  teammateRosterHidden: Map<string, TeammateRosterHidden>;
+  teammateRoutines: Map<string, TeammateRoutine>;
+  teammateChannels: Map<string, TeammateChannel>;
+  teammateChannelParticipants: Map<string, TeammateChannelParticipant>;
+  /** Channel transcripts (#778); ordered by a per-channel monotonic createdAt. */
+  channelMessages: Map<string, ChannelMessage>;
+  projects: Map<string, Project>;
+  memoryDocuments: Map<string, MemoryDocument>;
+  memoryDocumentEntries: Map<string, MemoryDocumentEntry>;
   conversations: Map<string, Conversation>;
   messages: Map<string, StoredMessage>;
   improvements: Map<string, Improvement>;
@@ -401,6 +424,16 @@ function emptyStore(): MockStore {
     embeddingConnections: new Map(),
     ssoConnections: new Map(),
     apiIntegrations: new Map(),
+    teammates: new Map(),
+    teammateGrants: new Map(),
+    teammateRosterHidden: new Map(),
+    teammateRoutines: new Map(),
+    teammateChannels: new Map(),
+    teammateChannelParticipants: new Map(),
+    channelMessages: new Map(),
+    projects: new Map(),
+    memoryDocuments: new Map(),
+    memoryDocumentEntries: new Map(),
     conversations: new Map(),
     messages: new Map(),
     improvements: new Map(),
@@ -597,8 +630,11 @@ export function listMockInsightsMessages(organizationId: string) {
     [...store.conversations.values()]
       .filter(
         (c) =>
+          // A Teammate-owned Conversation has no Assistant and is not part of
+          // the Visitor population (#767, story 31).
+          c.assistantId !== null &&
           store.assistants.get(c.assistantId)?.organizationId ===
-          organizationId
+            organizationId
       )
       .map((c) => c.id)
   );
@@ -1215,6 +1251,7 @@ function seedInboxDemo(store: MockStore) {
   const conversation: Conversation = {
     id: "conv-demo-support",
     assistantId: "Vrp47KxooVPk",
+    teammateId: null,
     subjectType: "visitor",
     subjectId: "anon-2f9c",
     collectionId: null,
@@ -1375,6 +1412,7 @@ function seedInboxDemo(store: MockStore) {
   const conv2: Conversation = {
     id: "conv-demo-onboarding",
     assistantId: "Vrp47KxooVPk",
+    teammateId: null,
     subjectType: "member",
     subjectId: "u-claudio",
     collectionId: "col-onboarding",
@@ -1602,6 +1640,20 @@ function getStore(): MockStore {
   return store;
 }
 
+/**
+ * The Assistant behind a Conversation, or undefined when there is none: a
+ * Teammate Conversation is owned by a Teammate, so every read that reaches for
+ * an Assistant (Inbox joins, Insights population, trust signals) simply misses
+ * and the Conversation drops out of that read (#768).
+ */
+function assistantOfConversation(
+  conversation: Pick<Conversation, "assistantId">
+): Assistant | undefined {
+  return conversation.assistantId
+    ? getStore().assistants.get(conversation.assistantId)
+    : undefined;
+}
+
 /** Store binding per DbTableMap table, the mock's one-line cost of mapping
  * a new table onto the generic accessor (ADR-0016). */
 const MOCK_TABLE_STORES: {
@@ -1610,9 +1662,102 @@ const MOCK_TABLE_STORES: {
   entities: () => getStore().entities,
   cookieConsentRecords: () => getStore().cookieConsentRecords,
   skills: () => getStore().skills,
+  teammates: () => getStore().teammates,
+  teammateGrants: () => getStore().teammateGrants,
+  teammateRosterHidden: () => getStore().teammateRosterHidden,
+  teammateRoutines: () => getStore().teammateRoutines,
+  teammateChannels: () => getStore().teammateChannels,
+  teammateChannelParticipants: () =>
+    getStore().teammateChannelParticipants,
+  projects: () => getStore().projects,
   localConnectorPairings: () => getStore().localConnectorPairings,
   localConnectorDevices: () => getStore().localConnectorDevices,
   localInferenceJobs: () => getStore().localInferenceJobs,
+};
+
+/**
+ * The FK cascades the database performs and this implementation has to mirror,
+ * or the contract suite catches the two disagreeing (as it did when Teammate
+ * grants arrived). Declared in one table rather than as a branch inside
+ * `delete`, so a new `on delete cascade` costs a line here and nothing else.
+ *
+ * Only *mapped* children need an entry: a child reached through a behavioural
+ * `Db` method already deletes explicitly.
+ */
+const MOCK_CASCADES: Partial<
+  Record<
+    DbTableName,
+    readonly {
+      rows: () => Map<string, unknown>;
+      column: string;
+      /** `delete` mirrors `on delete cascade`; `null` mirrors `set null`. */
+      onDelete?: "delete" | "null";
+    }[]
+  >
+> = {
+  entities: [
+    { rows: () => getStore().entityRecords as Map<string, unknown>, column: "entityId" },
+  ],
+  teammates: [
+    {
+      rows: () => getStore().teammateGrants as Map<string, unknown>,
+      column: "teammateId",
+    },
+    {
+      rows: () => getStore().memoryDocuments as Map<string, unknown>,
+      column: "teammateId",
+    },
+    {
+      rows: () => getStore().teammateRoutines as Map<string, unknown>,
+      column: "teammateId",
+    },
+    {
+      rows: () => getStore().teammateRosterHidden as Map<string, unknown>,
+      column: "teammateId",
+    },
+    {
+      // Hard-deleting a Teammate takes its seat in every channel; its past
+      // messages stay, with `authorTeammateId` nulled below, because the
+      // thread's history is not the Teammate's to take with it (#778).
+      rows: () => getStore().teammateChannelParticipants as Map<string, unknown>,
+      column: "teammateId",
+    },
+    {
+      rows: () => getStore().channelMessages as Map<string, unknown>,
+      column: "authorTeammateId",
+      onDelete: "null",
+    },
+  ],
+  teammateChannels: [
+    {
+      rows: () => getStore().teammateChannelParticipants as Map<string, unknown>,
+      column: "channelId",
+    },
+    {
+      rows: () => getStore().channelMessages as Map<string, unknown>,
+      column: "channelId",
+    },
+  ],
+  projects: [
+    {
+      rows: () => getStore().memoryDocuments as Map<string, unknown>,
+      column: "projectId",
+    },
+    {
+      // `on delete set null`: losing a Project detaches the Teammates that
+      // read it rather than deleting them with it.
+      rows: () => getStore().teammates as Map<string, unknown>,
+      column: "projectId",
+      onDelete: "null",
+    },
+    {
+      // Same rule for a channel: losing the Project unbinds the thread rather
+      // than deleting it.
+      rows: () => getStore().teammateChannels as Map<string, unknown>,
+      column: "projectId",
+      onDelete: "null",
+    },
+  ],
 };
 
 function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
@@ -1673,14 +1818,26 @@ function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
 
     async delete(id) {
       store().delete(id);
-      // Mirror the database FK cascade for mapped Entity rows.
-      if (name === "entities") {
-        for (const [recordId, record] of getStore().entityRecords) {
-          if (record.entityId === id) getStore().entityRecords.delete(recordId);
+      for (const { rows, column, onDelete = "delete" } of MOCK_CASCADES[name] ?? []) {
+        for (const [childId, child] of rows()) {
+          const record = child as Record<string, unknown>;
+          if (record[column] !== id) continue;
+          if (onDelete === "null") rows().set(childId, { ...record, [column]: null });
+          else rows().delete(childId);
         }
       }
     },
   };
+}
+
+/** Whether a stored document belongs to the owner a read named (#771). */
+function ownerMatches(
+  doc: Pick<MemoryDocument, "memberId" | "teammateId" | "projectId">,
+  owner: MemoryDocumentOwner
+): boolean {
+  if (owner.scope === "user") return doc.memberId === owner.memberId;
+  if (owner.scope === "agent") return doc.teammateId === owner.teammateId;
+  return doc.projectId === owner.projectId;
 }
 
 /** One usage_daily rollup row (org retained for scoping the report reads). */
@@ -2409,6 +2566,12 @@ export const mockDb: Db = {
 
   // --- Knowledge (OKF collections) ------------------------------------------
 
+  async listOrgCollections(organizationId) {
+    return [...getStore().collections.values()]
+      .filter((c) => c.organizationId === organizationId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  },
+
   async listCollections(assistantId) {
     // Derived membership (PRD #726 contract): the Collections holding
     // Sources linked to this Assistant.
@@ -2991,6 +3154,47 @@ export const mockDb: Db = {
       .slice(0, query.limit ?? 6);
   },
 
+  async searchCollectionChunks(organizationId, collectionIds, query) {
+    const store = getStore();
+    if (collectionIds.length === 0) return [];
+    const scope = new Set(collectionIds);
+    const tokens = lexicalTokens(query.text);
+    const results: KnowledgeSearchResult[] = [];
+    for (const chunk of store.chunks.values()) {
+      if (!scope.has(chunk.collectionId)) continue;
+      const collection = store.collections.get(chunk.collectionId);
+      // Tenancy is the Collection's, not the caller's word for it: a scope
+      // naming another org's Collection retrieves nothing.
+      if (collection?.organizationId !== organizationId) continue;
+      const similarity = lexicalScore(chunk.content, tokens);
+      if (similarity === 0) continue;
+      const concept = store.concepts.get(chunk.conceptId);
+      if (concept?.excluded) continue;
+      const source = concept?.sourceId
+        ? store.sources.get(concept.sourceId)
+        : undefined;
+      results.push({
+        conceptId: chunk.conceptId,
+        conceptTitle: concept?.frontmatter.title ?? concept?.path ?? "Concept",
+        conceptPath: concept?.path ?? "",
+        collectionId: chunk.collectionId,
+        collectionName: collection?.name ?? "",
+        sourceName: source?.name ?? null,
+        sourceId: source?.id ?? null,
+        // Direct access is a per-Assistant grant on a link row (#733); a
+        // Teammate search has no Assistant, so a cited file is never handed
+        // out as a signed original here.
+        directAccess: false,
+        resourceUrl: concept?.frontmatter.resource ?? null,
+        content: chunk.content,
+        similarity,
+      });
+    }
+    return results
+      .sort((a, b) => b.similarity - a.similarity)
+      .slice(0, query.limit ?? 6);
+  },
+
   // --- Publications ---------------------------------------------------------
 
   async createPublication(assistantId, config) {
@@ -3039,7 +3243,8 @@ export const mockDb: Db = {
     const now = new Date().toISOString();
     const conversation: Conversation = {
       id: shortId(),
-      assistantId: input.assistantId,
+      assistantId: input.assistantId ?? null,
+      teammateId: input.teammateId ?? null,
       subjectType: input.subjectType,
       subjectId: input.subjectId,
       collectionId: input.collectionId ?? null,
@@ -3065,12 +3270,21 @@ export const mockDb: Db = {
       .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
   },
 
+  async listTeammateConversations(teammateId, subjectId) {
+    return [...getStore().conversations.values()]
+      .filter((c) => c.teammateId === teammateId && c.subjectId === subjectId)
+      .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : 1));
+  },
+
   async listInboxConversations(organizationId) {
     const store = getStore();
     const messages = [...store.messages.values()];
     return [...store.conversations.values()]
       .filter(
         (c) =>
+          // A Teammate Conversation has no Assistant, so the Inbox's join drops
+          // it: internal chat is not a customer conversation (#768).
+          c.assistantId !== null &&
           store.assistants.get(c.assistantId)?.organizationId === organizationId
       )
       .map((c): InboxConversation => {
@@ -3085,7 +3299,8 @@ export const mockDb: Db = {
             : 0;
         return {
           ...c,
-          assistantTitle: store.assistants.get(c.assistantId)?.title ?? "",
+          assistantTitle:
+            (c.assistantId && store.assistants.get(c.assistantId)?.title) || "",
           collectionName: c.collectionId
             ? (store.collections.get(c.collectionId)?.name ?? null)
             : null,
@@ -3200,6 +3415,65 @@ export const mockDb: Db = {
     return message;
   },
 
+  async appendChannelMessage(input) {
+    const store = getStore();
+    // Strictly increasing per channel: a reply and the marker behind it are
+    // written in the same millisecond, and the transcript has to read back in
+    // the order they were written (see the Db doc comment).
+    const latest = [...store.channelMessages.values()]
+      .filter((message) => message.channelId === input.channelId)
+      .reduce<string | null>(
+        (newest, message) =>
+          !newest || message.createdAt > newest ? message.createdAt : newest,
+        null
+      );
+    const now = new Date().toISOString();
+    const createdAt =
+      latest && latest >= now
+        ? new Date(new Date(latest).getTime() + 1).toISOString()
+        : now;
+    const message: ChannelMessage = {
+      id: shortId(),
+      organizationId: input.organizationId,
+      channelId: input.channelId,
+      authorType: input.authorType,
+      authorUserId: input.authorUserId ?? null,
+      authorTeammateId: input.authorTeammateId ?? null,
+      content: input.content,
+      mentions: input.mentions ?? [],
+      chainId: input.chainId ?? null,
+      trace: input.trace ?? null,
+      createdAt,
+    };
+    store.channelMessages.set(message.id, message);
+    const channel = store.teammateChannels.get(input.channelId);
+    if (channel) {
+      // The roster sorts by last activity, so the channel row moves with its
+      // transcript the way a Conversation does.
+      store.teammateChannels.set(channel.id, {
+        ...channel,
+        updatedAt: createdAt,
+      });
+    }
+    return message;
+  },
+
+  async listChannelMessages(channelId, limit = 100) {
+    return [...getStore().channelMessages.values()]
+      .filter((message) => message.channelId === channelId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+      .slice(-limit);
+  },
+
+  async listChannelChainMessages(channelId, chainId) {
+    return [...getStore().channelMessages.values()]
+      .filter(
+        (message) =>
+          message.channelId === channelId && message.chainId === chainId
+      )
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  },
+
   async setMessageFeedback(messageId, feedback) {
     const store = getStore();
     const message = store.messages.get(messageId);
@@ -3223,7 +3497,7 @@ export const mockDb: Db = {
       if (Date.parse(message.createdAt) >= cutoff) continue;
       const conversation = store.conversations.get(message.conversationId);
       const assistant = conversation
-        ? store.assistants.get(conversation.assistantId)
+        ? assistantOfConversation(conversation)
         : undefined;
       if (assistant?.organizationId !== organizationId) continue;
       store.messages.set(id, { ...message, trace: null });
@@ -3319,6 +3593,130 @@ export const mockDb: Db = {
     );
   },
 
+  async listDueRoutineCandidates({ before, limit }) {
+    return [...getStore().teammateRoutines.values()]
+      .filter(
+        (routine) =>
+          routine.enabled && (!routine.lastRunAt || routine.lastRunAt < before)
+      )
+      .sort((a, b) => (a.lastRunAt ?? "").localeCompare(b.lastRunAt ?? ""))
+      .slice(0, limit);
+  },
+
+  async claimTeammateRoutine(id, expectedLastRunAt, now) {
+    const store = getStore();
+    const routine = store.teammateRoutines.get(id);
+    // Compare-and-set: another tick that already stamped it wins, and this one
+    // gets null rather than a second run.
+    if (!routine || (routine.lastRunAt ?? null) !== expectedLastRunAt) return null;
+    const claimed = { ...routine, lastRunAt: now, updatedAt: now };
+    store.teammateRoutines.set(id, claimed);
+    return claimed;
+  },
+
+  async recordTeammateRoutineRun(id, input) {
+    const store = getStore();
+    const routine = store.teammateRoutines.get(id);
+    if (!routine) return;
+    // Outcome columns only: the instruction may have been edited while the run
+    // was in flight, and a run record must not put the old one back.
+    store.teammateRoutines.set(id, {
+      ...routine,
+      lastStatus: input.status,
+      lastDetail: input.detail.slice(0, 1000),
+    });
+  },
+
+  async getMemoryDocument(organizationId, owner) {
+    return (
+      [...getStore().memoryDocuments.values()].find(
+        (doc) => doc.organizationId === organizationId && ownerMatches(doc, owner)
+      ) ?? null
+    );
+  },
+
+  async writeMemoryDocument(input) {
+    const store = getStore();
+    // Monotonic, not `Date.now()`: two writes in one millisecond would tie, and
+    // "newest first" would then be decided by whatever order the map happened
+    // to yield. The same coin flip 98c5df54 fixed for another list.
+    const now = new Date(monotonicNow()).toISOString();
+    const existing = [...store.memoryDocuments.values()].find(
+      (doc) =>
+        doc.organizationId === input.organizationId &&
+        ownerMatches(doc, input.owner)
+    );
+    const body = capMemoryDocument(input.body);
+    const document: MemoryDocument = existing
+      ? { ...existing, body, updatedAt: now }
+      : {
+          id: shortId(),
+          organizationId: input.organizationId,
+          memberId: input.owner.scope === "user" ? input.owner.memberId : null,
+          teammateId:
+            input.owner.scope === "agent" ? input.owner.teammateId : null,
+          projectId:
+            input.owner.scope === "project" ? input.owner.projectId : null,
+          scope: input.owner.scope,
+          body,
+          createdAt: now,
+          updatedAt: now,
+        };
+    store.memoryDocuments.set(document.id, document);
+    // The history entry is not optional: a body that changed with no record of
+    // who changed it is exactly the write nobody can audit or revert.
+    const entryId = shortId();
+    store.memoryDocumentEntries.set(entryId, {
+      id: entryId,
+      organizationId: input.organizationId,
+      documentId: document.id,
+      teammateId: input.teammateId ?? null,
+      authorId: input.authorId ?? null,
+      note: input.note ?? "",
+      bodyBefore: existing?.body ?? "",
+      createdAt: now,
+    });
+    return document;
+  },
+
+  async listMemoryDocumentEntries(documentId, limit = 50) {
+    return [...getStore().memoryDocumentEntries.values()]
+      .filter((entry) => entry.documentId === documentId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
+  },
+
+  async revertMemoryDocument(input) {
+    const store = getStore();
+    const entry = store.memoryDocumentEntries.get(input.entryId);
+    if (!entry) throw new Error("No such memory history entry");
+    const document = store.memoryDocuments.get(entry.documentId);
+    if (!document) throw new Error("No such memory document");
+    const now = new Date(monotonicNow()).toISOString();
+    const restored: MemoryDocument = {
+      ...document,
+      body: entry.bodyBefore,
+      updatedAt: now,
+    };
+    store.memoryDocuments.set(restored.id, restored);
+    const entryId = shortId();
+    store.memoryDocumentEntries.set(entryId, {
+      id: entryId,
+      organizationId: document.organizationId,
+      documentId: document.id,
+      teammateId: null,
+      authorId: input.authorId ?? null,
+      note: "Reverted an earlier write",
+      bodyBefore: document.body,
+      createdAt: now,
+    });
+    return restored;
+  },
+
+  async getImprovementProposalById(id) {
+    return getStore().improvementProposals.get(id) ?? null;
+  },
+
   async createImprovementProposal(input) {
     const store = getStore();
     // At most one live proposal per improvement, replace any prior draft.
@@ -3374,7 +3772,7 @@ export const mockDb: Db = {
         const own = allMessages
           .filter((m) => m.conversationId === conversation.id)
           .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
-        const assistant = store.assistants.get(conversation.assistantId);
+        const assistant = assistantOfConversation(conversation);
         const enriched: InboxConversation = {
           ...conversation,
           assistantTitle: assistant?.title ?? "",
@@ -3976,7 +4374,7 @@ export const mockDb: Db = {
       if (!generative) continue;
       const conversation = store.conversations.get(m.conversationId);
       if (!conversation) continue;
-      const assistant = store.assistants.get(conversation.assistantId);
+      const assistant = assistantOfConversation(conversation);
       if (!assistant) continue;
       const question =
         [...store.messages.values()]
@@ -4090,7 +4488,7 @@ export const mockDb: Db = {
       if (!generative) continue;
       const conversation = store.conversations.get(m.conversationId);
       const assistant = conversation
-        ? store.assistants.get(conversation.assistantId)
+        ? assistantOfConversation(conversation)
         : null;
       if (!assistant) continue;
       signals.push({
@@ -4717,7 +5115,7 @@ export const mockDb: Db = {
       for (const conversation of store.conversations.values()) {
         if (conversation.subjectType !== "sso") continue;
         if (conversation.subjectId !== subjectId) continue;
-        const assistant = store.assistants.get(conversation.assistantId);
+        const assistant = assistantOfConversation(conversation);
         if (assistant?.organizationId !== organizationId) continue;
         const value = conversation.metadata.ssoClaimValue;
         if (value && conversation.createdAt > latest) {

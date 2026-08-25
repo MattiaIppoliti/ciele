@@ -107,7 +107,14 @@ export function ProfileClient({
             })
           }
           onRemove={removeAvatar}
-          fallback={<UserAvatar avatarUrl={null} size="size-full" />}
+          fallback={
+            <UserAvatar
+              avatarUrl={null}
+              userId={profile?.userId}
+              email={email}
+              size="size-full"
+            />
+          }
         />
       </div>
 

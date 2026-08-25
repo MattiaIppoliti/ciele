@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
+import {
+  DEMO_ORG,
+  danglingScopeAlertKey,
+  getMockDb,
+  resolveDanglingCollectionAlerts,
+  type Db,
+} from "@agent-hub/db";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 // after() is the enqueue accelerator; a no-op keeps graph-sync jobs on the
@@ -381,6 +387,40 @@ describe("assistant & flow actions (orgMutation tranche)", () => {
 
     expect(await db.getAssistant(assistant.id)).toBeNull();
     expect(await claimGraphSyncJobs()).toHaveLength(0);
+  });
+
+  it("deleteCollectionAction raises the dangling-Collection Alert for a Teammate still searching it (#769)", async () => {
+    const assistant = await db.createAssistant(DEMO_ORG.id, { title: "A" });
+    const collection = await db.createCollection(assistant.id, {
+      name: "Refund policy",
+    });
+    const teammate = await db.table("teammates").insert({
+      organizationId: DEMO_ORG.id,
+      ownerId: "member-1",
+      name: "Scoped Sam",
+      collectionIds: [collection.id],
+    });
+
+    await deleteCollectionAction(assistant.id, collection.id);
+
+    const raised = (await db.listAlerts(DEMO_ORG.id)).find(
+      (alert) =>
+        alert.status === "active" &&
+        alert.sourceKey === danglingScopeAlertKey(collection.id)
+    );
+    // The Collection is gone, so the Alert has to carry the name itself: the
+    // action reads it before the delete for exactly this line.
+    expect(raised?.title).toContain("Refund policy");
+    expect(raised?.detail).toContain("Scoped Sam");
+    expect(raised?.type).toBe("knowledge");
+
+    // And it clears the way the ticket says it should: by editing the scope.
+    await db.table("teammates").update(teammate.id, { collectionIds: [] });
+    await resolveDanglingCollectionAlerts(db, DEMO_ORG.id, [collection.id]);
+    const stillActive = (await db.listAlerts(DEMO_ORG.id))
+      .filter((alert) => alert.status === "active")
+      .map((alert) => alert.sourceKey);
+    expect(stillActive).not.toContain(danglingScopeAlertKey(collection.id));
   });
 
   it("deleteCollectionAction deletes the Collection and purges its graph dataset when configured", async () => {

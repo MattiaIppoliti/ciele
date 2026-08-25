@@ -537,7 +537,9 @@ class ShimQueryBuilder implements PromiseLike<{
           const parts = String(f.value)
             .split(",")
             .map((segment) => {
-              const m = segment.match(/^([a-z0-9_]+)\.(is|eq|lte|gte|ilike)\.(.*)$/);
+              const m = segment.match(
+                /^([a-z0-9_]+)\.(is|eq|lt|gt|lte|gte|ilike)\.(.*)$/
+              );
               if (!m) {
                 throw new Error(`postgrest-shim: unsupported or() segment ${segment}`);
               }
@@ -546,7 +548,11 @@ class ShimQueryBuilder implements PromiseLike<{
               if (op === "is" && raw === "null") return `${target} is null`;
               const expr = this.rest.encodeValue(raw, cols.get(column), params);
               if (op === "ilike") return `${target} ilike ${expr}`;
-              const sqlOp = op === "eq" ? "=" : op === "lte" ? "<=" : ">=";
+              // The strict comparisons arrived with the Routine over-fetch
+              // (#772): "never run OR last run before the cutoff".
+              const sqlOp = { eq: "=", lt: "<", gt: ">", lte: "<=", gte: ">=" }[
+                op as "eq" | "lt" | "gt" | "lte" | "gte"
+              ];
               return `${target} ${sqlOp} ${expr}`;
             });
           clauses.push(`(${parts.join(" or ")})`);

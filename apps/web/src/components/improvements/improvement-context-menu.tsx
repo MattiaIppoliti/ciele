@@ -20,7 +20,8 @@ import {
 import { updateImprovementAction } from "@/app/actions";
 import { fuzzyMatch } from "@/lib/fuzzy";
 import { IMPROVEMENT_PRIORITIES, improvementKey } from "@/lib/improvements";
-import { memberDisplayName, memberInitials } from "@/lib/members";
+import { memberDisplayName } from "@/lib/members";
+import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 
 /** Members listed before the "…more" row sends you to the search field. */
 const COLLAPSED_MEMBERS = 3;
@@ -215,9 +216,7 @@ export function ImprovementContextMenu({
                   value={m.userId}
                   textValue={memberDisplayName(m.email)}
                 >
-                  <span className="bg-primary/10 text-primary flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold">
-                    {memberInitials(m.email)}
-                  </span>
+                  <GeneratedAvatar seed={m.userId || m.email} size="size-5" />
                   <span className="truncate">{memberDisplayName(m.email)}</span>
                 </ContextMenuRadioItem>
               ))}

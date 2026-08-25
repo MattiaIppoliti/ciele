@@ -29,6 +29,15 @@ export {
   raiseOrAttachImprovement,
 } from "./improvements";
 
+// Scope hygiene for AI Teammates (#769): the dangling-Collection Alert, raised
+// when a delete leaves a Teammate searching something that is gone.
+export {
+  danglingScopeAlertKey,
+  raiseAlertsForAddedScope,
+  raiseDanglingCollectionAlert,
+  resolveDanglingCollectionAlerts,
+} from "./teammate-scope";
+
 // The demo org the in-memory adapter seeds.
 export { DEMO_MEMBER, DEMO_ORG } from "./mock";
 

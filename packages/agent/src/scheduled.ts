@@ -31,6 +31,7 @@ import {
   runDueEntitySyncJobs,
   runDueGraphSyncJobs,
   runDueIngestJobs,
+  runDueAgentMemoryJobs,
   runDueMemoryPromotionJobs,
   runDueProposalJobs,
 } from "./jobs";
@@ -129,6 +130,8 @@ export interface FinalizeDueCrawlsReport {
   graphSync: RunDueJobsResult;
   proposals: RunDueJobsResult;
   memories: RunDueJobsResult;
+  /** Teammate Agent-layer distillation (#771). */
+  agentMemories: RunDueJobsResult;
   entitySyncs: RunDueJobsResult & { enqueued: number };
   crawls: { swept: number; settled: number; results: FinalizedCrawlResult[] };
 }
@@ -165,6 +168,12 @@ export async function finalizeDueCrawls(
   const memories = await runDueMemoryPromotionJobs(
     { db },
     { workerId: `${workerId}-memories`, limit: 20 }
+  );
+  // Backstop for the Agent memory layer (#771), same shape as the Visitor
+  // memory drain above: `after()` runs it first, this catches what it dropped.
+  const agentMemories = await runDueAgentMemoryJobs(
+    { db },
+    { workerId: `${workerId}-agent-memory`, limit: 20 }
   );
   const syncsEnqueued = await enqueueDueEntitySyncs({ db });
   const entitySyncs = await runDueEntitySyncJobs(
@@ -208,6 +217,7 @@ export async function finalizeDueCrawls(
     graphSync,
     proposals,
     memories,
+    agentMemories,
     entitySyncs: { ...entitySyncs, enqueued: syncsEnqueued.enqueued },
     crawls: { swept: pending.length, settled, results },
   };

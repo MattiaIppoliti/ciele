@@ -92,7 +92,7 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et au rôle. |
 | `manage_assistants` | Répertorier, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
 | `manage_flows` | Lister, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
-| `manage_knowledge` | Gérez les collections, les sources et les FAQ. |
+| `manage_knowledge` | Gérer les collections, les sources et les FAQ. |
 | `publish_assistant` | Lire le statut, publier, annuler la publication ou restaurer une publication. |
 | `read_inbox` | Lister, lire, exporter, épingler, annoter, évaluer ou supprimer des conversations. |
 | `manage_improvements` | Lister, lire ou mettre à jour les améliorations. |
@@ -100,11 +100,13 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 | `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire ciblé. |
 | `manage_sso` | Gérez les demandes d'identité et la connexion SSO de l'organisation. |
 | `manage_help_desks` | Gérez les centres d'assistance, les canaux, les commandes et ServiceNow. |
+| `manage_teammates` | Gérez les collègues IA et lisez vos propres conversations de collègue. |
+| `manage_channels` | Lisez et façonnez les canaux des coéquipiers dont vous faites partie. |
 | `manage_configuration` | Gérez les compétences, la sélection des compétences de l'assistant, les objectifs et les alertes. |
 | `manage_organization` | Gérez les paramètres de l'organisation, les membres, les invitations et les clés API. |
 | `manage_integrations` | Gérez les intégrations de l'API Assistant et les fournisseurs de modèles. |
 
-Le serveur enregistre quatorze outils. Chaque outil de domaine utilise un champ
+Le serveur enregistre seize outils. Chaque outil de domaine utilise un champ
 `action` pour ses opérations.
 
 Le mode lecture seule catégorise chaque action. Il autorise les actions list,
@@ -115,8 +117,9 @@ client pris en charge.
 
 ## Vérifiez la connexion
 
-Demandez au client d'appeler `ciele_identity`. Confirmez l'ID d'organisation, le
-rôle, la version de l'API et la liste de domaines attendus.
+Demandez au client d'appeler `ciele_identity`. Confirmez l'ID de l'organisation,
+le rôle, la version de l'API et la liste des domaines attendus.
 
-La suite de tests du dépôt lance également le véritable processus `stdio`. Elle
-vérifie l'initialisation, la découverte des outils et un appel API authentifié.
+La suite de tests du référentiel lance également le véritable processus `stdio`.
+Elle vérifie l'initialisation, la découverte des outils et un appel API
+authentifié.

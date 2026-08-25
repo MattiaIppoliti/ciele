@@ -7,6 +7,10 @@ import {
 import type {
   Alert,
   AlertStatus,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
+  TeammateRoutine,
   AlertType,
   ApiEndpointSpec,
   ApiIntegration,
@@ -17,7 +21,9 @@ import type {
   AssistantTools,
   BackgroundJob,
   ChannelAvailability,
+  ChannelAuthorType,
   ChannelConversationData,
+  ChannelMessage,
   ChannelFormField,
   ChannelKind,
   Concept,
@@ -94,6 +100,7 @@ import type {
 } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  capMemoryDocument,
   colorizeOverview,
   DEFAULT_AI_DISCLAIMER,
   DEFAULT_FLOWS,
@@ -104,6 +111,7 @@ import {
   GOAL_RUN_RETENTION,
   isProactiveMessage,
   MEMORIES_PER_SUBJECT_CAP,
+  memoryDocumentScope,
   monotonicNow,
   normalizeChannelAvailability,
   shortId,
@@ -238,7 +246,8 @@ interface SsoConnectionRow {
 
 interface ConversationRow {
   id: string;
-  assistant_id: string;
+  assistant_id: string | null;
+  teammate_id: string | null;
   subject_type: "member" | "visitor";
   subject_id: string;
   collection_id: string | null;
@@ -262,10 +271,97 @@ interface MessageRow {
   created_at: string;
 }
 
+/**
+ * Turns raw chunk hits into citable results: the Concept behind each chunk, its
+ * Collection and Source, and (for an Assistant search) whether that Assistant
+ * was granted Direct access to the Source's original file.
+ *
+ * Shared by both searches, `searchChunks` (an Assistant's linked Sources) and
+ * `searchCollectionChunks` (a Teammate's Knowledge Scope), because a citation
+ * must look identical whichever one produced it (ADR-0002). Passing a null
+ * `assistantId` means there is no Direct access grant to read.
+ */
+async function hydrateChunkHits(
+  client: SupabaseClient,
+  rows: Array<{ concept_id: string; content: string; similarity: number }>,
+  assistantId: string | null
+): Promise<KnowledgeSearchResult[]> {
+  if (rows.length === 0) return [];
+
+  const conceptIds = [...new Set(rows.map((r) => r.concept_id))];
+  const { data: conceptRows, error: conceptError } = await client
+    .from("concepts")
+    .select(
+      "id, path, frontmatter, collection_id, source_id, knowledge_collections (name), sources (id, name, kind, original_object_path)"
+    )
+    .in("id", conceptIds);
+  if (conceptError) throw conceptError;
+
+  const conceptById = new Map(
+    (conceptRows as Array<Record<string, unknown>>).map((c) => [c.id, c])
+  );
+
+  // Direct access is per (assistant, source) link (PRD #726): one read for
+  // the querying assistant's flags across the hit sources.
+  const hitSourceIds = [
+    ...new Set(
+      (conceptRows as Array<{ source_id: string | null }>)
+        .map((c) => c.source_id)
+        .filter((id): id is string => id !== null)
+    ),
+  ];
+  const directBySource = new Map<string, boolean>();
+  if (assistantId && hitSourceIds.length > 0) {
+    const { data: linkRows, error: linkErr } = await client
+      .from("assistant_sources")
+      .select("source_id, direct_access")
+      .eq("assistant_id", assistantId)
+      .in("source_id", hitSourceIds);
+    if (linkErr) throw linkErr;
+    for (const link of linkRows as Array<{
+      source_id: string;
+      direct_access: boolean;
+    }>) {
+      directBySource.set(link.source_id, link.direct_access);
+    }
+  }
+
+  return rows.map((row): KnowledgeSearchResult => {
+    const concept = conceptById.get(row.concept_id) as
+      | Record<string, unknown>
+      | undefined;
+    const frontmatter = (concept?.frontmatter ?? {}) as ConceptFrontmatter;
+    const collection = concept?.knowledge_collections as { name?: string } | null;
+    const source = concept?.sources as {
+      id?: string;
+      name?: string;
+      kind?: string;
+      original_object_path?: string | null;
+    } | null;
+    return {
+      conceptId: row.concept_id,
+      conceptTitle: frontmatter.title ?? (concept?.path as string) ?? "Concept",
+      conceptPath: (concept?.path as string) ?? "",
+      collectionId: (concept?.collection_id as string) ?? "",
+      collectionName: collection?.name ?? "",
+      sourceName: source?.name ?? null,
+      sourceId: source?.id ?? null,
+      directAccess:
+        source?.kind === "file" &&
+        (source?.original_object_path ?? null) !== null &&
+        directBySource.get(source?.id ?? "") === true,
+      resourceUrl: frontmatter.resource ?? null,
+      content: row.content,
+      similarity: row.similarity,
+    };
+  });
+}
+
 function toConversation(row: ConversationRow): Conversation {
   return {
     id: row.id,
     assistantId: row.assistant_id,
+    teammateId: row.teammate_id ?? null,
     subjectType: row.subject_type,
     subjectId: row.subject_id,
     collectionId: row.collection_id,
@@ -396,6 +492,36 @@ function toStoredMessage(row: MessageRow): StoredMessage {
   };
 }
 
+interface ChannelMessageRow {
+  id: string;
+  organization_id: string;
+  channel_id: string;
+  author_type: ChannelAuthorType;
+  author_user_id: string | null;
+  author_teammate_id: string | null;
+  content: unknown[];
+  mentions: string[] | null;
+  chain_id: string | null;
+  trace: StoredTurnTrace | null;
+  created_at: string;
+}
+
+function toChannelMessage(row: ChannelMessageRow): ChannelMessage {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    channelId: row.channel_id,
+    authorType: row.author_type,
+    authorUserId: row.author_user_id,
+    authorTeammateId: row.author_teammate_id,
+    content: row.content ?? [],
+    mentions: row.mentions ?? [],
+    chainId: row.chain_id,
+    trace: row.trace ?? null,
+    createdAt: row.created_at,
+  };
+}
+
 interface ImprovementRow {
   id: string;
   organization_id: string;
@@ -440,6 +566,74 @@ interface ImprovementProposalRow {
   accepted_concept_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface MemoryDocumentRow {
+  id: string;
+  organization_id: string;
+  member_id: string | null;
+  teammate_id: string | null;
+  project_id: string | null;
+  body: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+function toMemoryDocument(row: MemoryDocumentRow): MemoryDocument {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    memberId: row.member_id,
+    teammateId: row.teammate_id,
+    projectId: row.project_id,
+    // Derived, never stored: a `scope` column beside the ids could disagree
+    // with them, and the exclusive-or check already fixes the answer (#771).
+    scope: memoryDocumentScope({
+      memberId: row.member_id,
+      teammateId: row.teammate_id,
+      projectId: row.project_id,
+    }),
+    body: row.body ?? "",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+interface MemoryDocumentEntryRow {
+  id: string;
+  organization_id: string;
+  document_id: string;
+  teammate_id: string | null;
+  author_id: string | null;
+  note: string | null;
+  body_before: string | null;
+  created_at: string;
+}
+
+function toMemoryDocumentEntry(
+  row: MemoryDocumentEntryRow
+): MemoryDocumentEntry {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    documentId: row.document_id,
+    teammateId: row.teammate_id,
+    authorId: row.author_id,
+    note: row.note ?? "",
+    bodyBefore: row.body_before ?? "",
+    createdAt: row.created_at,
+  };
+}
+
+/** The owner as a PostgREST filter column + value pair. */
+function memoryOwnerColumn(owner: MemoryDocumentOwner): {
+  column: "member_id" | "teammate_id" | "project_id";
+  value: string;
+} {
+  if (owner.scope === "user") return { column: "member_id", value: owner.memberId };
+  if (owner.scope === "agent")
+    return { column: "teammate_id", value: owner.teammateId };
+  return { column: "project_id", value: owner.projectId };
 }
 
 function toImprovementProposal(row: ImprovementProposalRow): ImprovementProposal {
@@ -1758,6 +1952,22 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     // --- Knowledge (OKF collections) ----------------------------------------
 
+    async listOrgCollections(organizationId) {
+      const { data, error } = await client
+        .from("knowledge_collections")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data as Array<Record<string, string>>).map((r) => ({
+        id: r.id,
+        organizationId: r.organization_id ?? "",
+        name: r.name,
+        description: r.description,
+        createdAt: r.created_at,
+      })) satisfies KnowledgeCollection[];
+    },
+
     async listCollections(assistantId) {
       // Derived membership (PRD #726 contract): the Collections holding
       // Sources linked to this Assistant.
@@ -2457,75 +2667,67 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         keyOf: (r) => `${r.concept_id}\n${r.content}`,
       });
 
-      if (rows.length === 0) return [];
+      return hydrateChunkHits(client, rows, assistantId);
+    },
 
-      const conceptIds = [...new Set(rows.map((r) => r.concept_id))];
-      const { data: conceptRows, error: conceptError } = await client
-        .from("concepts")
-        .select(
-          "id, path, frontmatter, collection_id, source_id, knowledge_collections (name), sources (id, name, kind, original_object_path)"
-        )
-        .in("id", conceptIds);
-      if (conceptError) throw conceptError;
+    async searchCollectionChunks(organizationId, collectionIds, query) {
+      // Saying "no Collections" is not the same as saying "everything": a
+      // pure-persona Teammate must not fall through to an org-wide search.
+      if (collectionIds.length === 0) return [];
+      const limit = query.limit ?? 6;
+      type ChunkRow = { concept_id: string; content: string; similarity: number };
 
-      const conceptById = new Map(
-        (conceptRows as Array<Record<string, unknown>>).map((c) => [c.id, c])
-      );
+      // Tenancy first: the caller names Collections, the database decides which
+      // of them are this Organization's. A stale scope (a Collection deleted or
+      // moved) narrows the search instead of widening it.
+      const { data: ownRows, error: ownError } = await client
+        .from("knowledge_collections")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .in("id", collectionIds);
+      if (ownError) throw ownError;
+      const scoped = (ownRows as Array<{ id: string }>).map((row) => row.id);
+      if (scoped.length === 0) return [];
 
-      // Direct access is per (assistant, source) link (PRD #726): one read for
-      // the querying assistant's flags across the hit sources.
-      const hitSourceIds = [
-        ...new Set(
-          (conceptRows as Array<{ source_id: string | null }>)
-            .map((c) => c.source_id)
-            .filter((id): id is string => id !== null)
-        ),
-      ];
-      const directBySource = new Map<string, boolean>();
-      if (hitSourceIds.length > 0) {
-        const { data: linkRows, error: linkErr } = await client
-          .from("assistant_sources")
-          .select("source_id, direct_access")
-          .eq("assistant_id", assistantId)
-          .in("source_id", hitSourceIds);
-        if (linkErr) throw linkErr;
-        for (const link of linkRows as Array<{
-          source_id: string;
-          direct_access: boolean;
-        }>) {
-          directBySource.set(link.source_id, link.direct_access);
-        }
-      }
+      const lexicalSearch = async (): Promise<ChunkRow[]> => {
+        const tokens = lexicalTokens(query.text, 5);
+        if (tokens.length === 0) return [];
+        const { data, error } = await client
+          .from("concept_chunks")
+          .select("concept_id, content, concepts!inner(excluded)")
+          .eq("concepts.excluded", false)
+          .in("collection_id", scoped)
+          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
+          .limit(limit);
+        if (error) throw error;
+        return (data as Array<{ concept_id: string; content: string }>).map(
+          (r) => ({
+            concept_id: r.concept_id,
+            content: r.content,
+            similarity: LEXICAL_SIMILARITY,
+          })
+        );
+      };
 
-      return rows.map((row): KnowledgeSearchResult => {
-        const concept = conceptById.get(row.concept_id) as
-          | Record<string, unknown>
-          | undefined;
-        const frontmatter = (concept?.frontmatter ?? {}) as ConceptFrontmatter;
-        const collection = concept?.knowledge_collections as { name?: string } | null;
-        const source = concept?.sources as {
-          id?: string;
-          name?: string;
-          kind?: string;
-          original_object_path?: string | null;
-        } | null;
-        return {
-          conceptId: row.concept_id,
-          conceptTitle: frontmatter.title ?? (concept?.path as string) ?? "Concept",
-          conceptPath: (concept?.path as string) ?? "",
-          collectionId: (concept?.collection_id as string) ?? "",
-          collectionName: collection?.name ?? "",
-          sourceName: source?.name ?? null,
-          sourceId: source?.id ?? null,
-          directAccess:
-            source?.kind === "file" &&
-            (source?.original_object_path ?? null) !== null &&
-            directBySource.get(source?.id ?? "") === true,
-          resourceUrl: frontmatter.resource ?? null,
-          content: row.content,
-          similarity: row.similarity,
-        };
+      const rows = await hybridRetrieve<ChunkRow>({
+        embedding: query.embedding,
+        limit,
+        vector: async () => {
+          const { data, error } = await client.rpc("match_chunks_collections", {
+            p_collection_ids: scoped,
+            p_query_embedding: query.embedding,
+            p_match_count: limit,
+          });
+          if (error) throw error;
+          return data as ChunkRow[];
+        },
+        lexical: lexicalSearch,
+        keyOf: (r) => `${r.concept_id}\n${r.content}`,
       });
+
+      // No assistant, so no per-(assistant, source) Direct access grant: a
+      // Teammate cites the file, it never hands out a signed original.
+      return hydrateChunkHits(client, rows, null);
     },
 
     // --- Publications --------------------------------------------------------
@@ -2622,7 +2824,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("conversations")
         .insert({
           id: shortId(),
-          assistant_id: input.assistantId,
+          assistant_id: input.assistantId ?? null,
+          teammate_id: input.teammateId ?? null,
           subject_type: input.subjectType,
           subject_id: input.subjectId,
           collection_id: input.collectionId ?? null,
@@ -2651,6 +2854,18 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as ConversationRow[]).map(toConversation);
     },
 
+    async listTeammateConversations(teammateId, subjectId) {
+      const { data, error } = await client
+        .from("conversations")
+        .select("*")
+        .eq("teammate_id", teammateId)
+        .eq("subject_id", subjectId)
+        .order("updated_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data as ConversationRow[]).map(toConversation);
+    },
+
     async listInboxConversations(organizationId) {
       // collection_id has no FK (anchoring survives collection deletion), so
       // names can't be embedded, but they don't depend on the conversation
@@ -2664,10 +2879,15 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           )
           .eq("assistants.organization_id", organizationId)
           .order("updated_at", { ascending: false }),
+        // Collections belong to the Organization directly (#741): the join
+        // through assistants died with `knowledge_collections.assistant_id`,
+        // and PostgREST answers a join it has no FK for with an error, so the
+        // Inbox 500'd. Same break the Insights aggregate hit in
+        // 20260821120000_insights_collections_org.sql.
         client
           .from("knowledge_collections")
-          .select("id, name, assistants!inner(organization_id)")
-          .eq("assistants.organization_id", organizationId),
+          .select("id, name")
+          .eq("organization_id", organizationId),
       ]);
       if (convRes.error) throw convRes.error;
       type JoinedRow = ConversationRow & {
@@ -2855,6 +3075,64 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return toStoredMessage(data as MessageRow);
     },
 
+    async appendChannelMessage(input) {
+      // The strictly increasing per-channel order the Db contract promises. In
+      // Postgres `now()` is transaction time and each PostgREST write is its own
+      // transaction, so consecutive appends already differ at microsecond
+      // resolution; the guarantee is the database's, not a client-side clock's.
+      const { data, error } = await client
+        .from("teammate_channel_messages")
+        .insert({
+          id: shortId(),
+          organization_id: input.organizationId,
+          channel_id: input.channelId,
+          author_type: input.authorType,
+          author_user_id: input.authorUserId ?? null,
+          author_teammate_id: input.authorTeammateId ?? null,
+          content: input.content,
+          mentions: input.mentions ?? [],
+          chain_id: input.chainId ?? null,
+          trace: input.trace ?? null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      // The roster sorts channels by last activity, so the row moves with its
+      // transcript the way a Conversation does.
+      await client
+        .from("teammate_channels")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", input.channelId);
+      return toChannelMessage(data as ChannelMessageRow);
+    },
+
+    async listChannelMessages(channelId, limit = 100) {
+      // Newest-first with a limit, then reversed: "the last 100 messages" is a
+      // tail read, and ordering ascending with a limit would return the oldest
+      // hundred of a long channel.
+      const { data, error } = await client
+        .from("teammate_channel_messages")
+        .select("*")
+        .eq("channel_id", channelId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data as ChannelMessageRow[]).map(toChannelMessage).reverse();
+    },
+
+    async listChannelChainMessages(channelId, chainId) {
+      const { data, error } = await client
+        .from("teammate_channel_messages")
+        .select("*")
+        .eq("channel_id", channelId)
+        .eq("chain_id", chainId)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+      if (error) throw error;
+      return (data as ChannelMessageRow[]).map(toChannelMessage);
+    },
+
     async setMessageFeedback(messageId, feedback) {
       const { error } = await client
         .from("messages")
@@ -2981,6 +3259,184 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("improvement_proposals")
         .select("*")
         .eq("improvement_id", improvementId)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toImprovementProposal(data as ImprovementProposalRow) : null;
+    },
+
+    async listDueRoutineCandidates({ before, limit }) {
+      const { data, error } = await client
+        .from("teammate_routines")
+        .select("*")
+        .eq("enabled", true)
+        .or(`last_run_at.is.null,last_run_at.lt.${before}`)
+        .order("last_run_at", { ascending: true, nullsFirst: true })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map(
+        (row) => rowToDomain(row) as unknown as TeammateRoutine
+      );
+    },
+
+    async claimTeammateRoutine(id, expectedLastRunAt, now) {
+      // Compare-and-set in one statement: the `eq`/`is` on the value the
+      // caller read is the lock. A concurrent tick that already stamped it
+      // matches zero rows and gets null, so one routine runs once.
+      let query = client
+        .from("teammate_routines")
+        .update({ last_run_at: now, updated_at: now })
+        .eq("id", id);
+      query = expectedLastRunAt
+        ? query.eq("last_run_at", expectedLastRunAt)
+        : query.is("last_run_at", null);
+      const { data, error } = await query.select("*").maybeSingle();
+      if (error) throw error;
+      return data ? (rowToDomain(data) as unknown as TeammateRoutine) : null;
+    },
+
+    async recordTeammateRoutineRun(id, input) {
+      const { error } = await client
+        .from("teammate_routines")
+        .update({
+          last_status: input.status,
+          last_detail: input.detail.slice(0, 1000),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+
+    async getMemoryDocument(organizationId, owner) {
+      const { column, value } = memoryOwnerColumn(owner);
+      const { data, error } = await client
+        .from("memory_documents")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq(column, value)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toMemoryDocument(data as MemoryDocumentRow) : null;
+    },
+
+    async writeMemoryDocument(input) {
+      const { column, value } = memoryOwnerColumn(input.owner);
+      const existing = await this.getMemoryDocument(
+        input.organizationId,
+        input.owner
+      );
+      const body = capMemoryDocument(input.body);
+      // Monotonic, not `Date.now()` and not the column default: two writes in
+      // one millisecond would tie, and `order("created_at")` would then decide
+      // "newest first" arbitrarily (the coin flip 98c5df54 fixed elsewhere).
+      const now = new Date(monotonicNow()).toISOString();
+
+      let row: MemoryDocumentRow;
+      if (existing) {
+        const { data, error } = await client
+          .from("memory_documents")
+          .update({ body, updated_at: now })
+          .eq("id", existing.id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        row = data as MemoryDocumentRow;
+      } else {
+        const { data, error } = await client
+          .from("memory_documents")
+          .insert({
+            id: shortId(),
+            organization_id: input.organizationId,
+            [column]: value,
+            body,
+          })
+          .select("*")
+          .single();
+        if (error) throw error;
+        row = data as MemoryDocumentRow;
+      }
+
+      // Append the history entry after the body lands. Ordered this way on
+      // purpose: a missing entry is a gap in an audit trail, a phantom entry
+      // for a write that failed is a lie in one.
+      const { error: entryError } = await client
+        .from("memory_document_entries")
+        .insert({
+          id: shortId(),
+          organization_id: input.organizationId,
+          document_id: row.id,
+          teammate_id: input.teammateId ?? null,
+          author_id: input.authorId ?? null,
+          note: input.note ?? "",
+          body_before: existing?.body ?? "",
+          created_at: now,
+        });
+      if (entryError) throw entryError;
+      return toMemoryDocument(row);
+    },
+
+    async listMemoryDocumentEntries(documentId, limit = 50) {
+      const { data, error } = await client
+        .from("memory_document_entries")
+        .select("*")
+        .eq("document_id", documentId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []).map((row) =>
+        toMemoryDocumentEntry(row as MemoryDocumentEntryRow)
+      );
+    },
+
+    async revertMemoryDocument(input) {
+      const { data: entryData, error: entryError } = await client
+        .from("memory_document_entries")
+        .select("*")
+        .eq("id", input.entryId)
+        .maybeSingle();
+      if (entryError) throw entryError;
+      if (!entryData) throw new Error("No such memory history entry");
+      const entry = toMemoryDocumentEntry(entryData as MemoryDocumentEntryRow);
+
+      const { data: docData, error: docError } = await client
+        .from("memory_documents")
+        .select("*")
+        .eq("id", entry.documentId)
+        .maybeSingle();
+      if (docError) throw docError;
+      if (!docData) throw new Error("No such memory document");
+      const before = toMemoryDocument(docData as MemoryDocumentRow);
+
+      const revertedAt = new Date(monotonicNow()).toISOString();
+      const { data, error } = await client
+        .from("memory_documents")
+        .update({ body: entry.bodyBefore, updated_at: revertedAt })
+        .eq("id", entry.documentId)
+        .select("*")
+        .single();
+      if (error) throw error;
+
+      // Undoing a write is another write: the history keeps both, so a revert
+      // is visible rather than a hole where a write used to be.
+      const { error: appendError } = await client
+        .from("memory_document_entries")
+        .insert({
+          id: shortId(),
+          organization_id: before.organizationId,
+          document_id: before.id,
+          teammate_id: null,
+          author_id: input.authorId ?? null,
+          note: "Reverted an earlier write",
+          body_before: before.body,
+          created_at: revertedAt,
+        });
+      if (appendError) throw appendError;
+      return toMemoryDocument(data as MemoryDocumentRow);
+    },
+
+    async getImprovementProposalById(id) {
+      const { data, error } = await client
+        .from("improvement_proposals")
+        .select("*")
+        .eq("id", id)
         .maybeSingle();
       if (error) throw error;
       return data ? toImprovementProposal(data as ImprovementProposalRow) : null;

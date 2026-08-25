@@ -10,12 +10,21 @@ funzionalità di runtime e le istruzioni riutilizzabili.
 
 | Strumento | Predefinito | Comportamento attuale |
 | --- | :---: | --- |
-| Cerca nella conoscenza | Attivo | Cerca nella Conoscenza connessa e restituisce le risposte citate. |
-| Memoria di sessione | Attiva | Utilizza le informazioni della sessione di conversazione corrente. |
+| Cerca nella conoscenza | Attivo | Cerca nella Conoscenza collegata e restituisce le risposte citate. |
+| Memoria della sessione | Attivata | Utilizza le informazioni della sessione di conversazione corrente. |
 | Recupera URL | Disattivato | Legge un URL quando il runtime seleziona lo strumento. |
+| Mostra una tabella | Disattivato | Mostra i fatti in una tabella quando il runtime seleziona lo strumento. |
 
 La ricerca nella Knowledge Base è sempre disponibile. Puoi abilitare o
 disabilitare gli altri strumenti integrati.
+
+Mostra una tabella organizza i fatti che l'Assistente ha trovato in questa
+risposta. Non calcola valori. La tabella appare sopra la risposta scritta e la
+trascrizione della Posta in arrivo mostra la stessa tabella.
+
+L'Assistente può aggiungere una domanda di follow-up a una riga. Il Visitatore
+seleziona la riga per porre quella domanda. La trascrizione della Posta in
+arrivo mostra queste righe, ma un Membro non può selezionarle.
 
 ## Collega i dati strutturati
 
@@ -30,13 +39,13 @@ dall'Assistente. Le Entità con ambito utente richiedono una
 [dichiarazione di identità](/authentication/microsoft-entra-id#choose-an-identity-claim)
 verificata.
 
-La selezione dell'Entità e lo schema entrano nel successivo snapshot della
+La selezione dell'Entità e lo schema entrano nel successivo snapshot di
 Pubblicazione. Il contenuto del record rimane attivo dopo la pubblicazione.
 
-Consulta [Entities and Records](/data/entities-and-records) per le importazioni
-CSV, le scelte di ambito e il filtro delle identità.
+Vedi [Entità e record](/data/entities-and-records) per le importazioni CSV, le
+scelte di ambito e il filtro delle identità.
 
-## Configura un'integintegrazione API
+## Configura un'integrazione API
 
 Un Assistente può utilizzare una sola integrazione API registrata.
 L'integrazione contiene un URL di base, una credenziale protetta ed endpoint
@@ -60,9 +69,9 @@ Una Skill è un modello di istruzioni riutilizzabile. Un'Organizzazione può
 associare la stessa Skill a più Assistenti.
 
 1. Apri **Tools & Skills**.
-2. Trova la Skill dell'Organizzazione richiesta.
-3. Associa la Skill all'Assistente.
-4. Prova il risultato in Anteprima.
+2. Trova la competenza organizzativa richiesta.
+3. Associa la Skill all'Assistant.
+4. Verifica il risultato in Anteprima.
 5. Pubblica l'Assistente quando il risultato è corretto.
 
 Le modifiche alle competenze sono immediatamente disponibili in Anteprima. Il
@@ -74,5 +83,4 @@ Poni una domanda che richieda ciascuno strumento abilitato. Controlla il
 pannello Thinking e le Sources prima di pubblicare.
 
 Per i dati strutturati, prova una ricerca esatta per attributo e una ricerca
-testuale. Verifica l'accesso con ambito utente utilizzando due diversi account
-connessi.
+testuale. Verifica l'accesso con ambito utente con due diversi account connessi.

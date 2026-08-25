@@ -47,6 +47,13 @@ export interface StreamingResponseProps {
   announce?: boolean;
   /** Hides the built-in completion actions without changing response status. */
   showActions?: boolean;
+  /**
+   * Whether the action row offers 👍/👎 at all. Default true, which is every
+   * chat surface that persists a vote. A channel transcript passes false: its
+   * messages live in their own table with no feedback column, and thumbs that
+   * light up and store nothing are worse than none (#778).
+   */
+  showFeedback?: boolean;
   className?: string;
   contentClassName?: string;
   actionsClassName?: string;
@@ -100,6 +107,7 @@ export function StreamingResponse({
   onFeedbackChange,
   announce = true,
   showActions = true,
+  showFeedback = true,
   className,
   contentClassName,
   actionsClassName,
@@ -183,7 +191,7 @@ export function StreamingResponse({
                   <RotateCcw className="size-3.5" />
                 </ResponseAction>
               ) : null}
-              {complete ? (
+              {complete && showFeedback ? (
                 <>
                   <ResponseAction
                     label="Helpful"

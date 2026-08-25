@@ -72,3 +72,41 @@ export function buildKnowledgeSearcher(opts: {
     onTrace: opts.onTrace,
   });
 }
+
+/**
+ * The Teammate's searcher (#768): the same hybrid retrieval, scoped by a set of
+ * Knowledge Collections instead of by an Assistant's linked Sources.
+ *
+ * Deliberately not routed through `withGraphEngine`: the Knowledge Graph is
+ * derived per Assistant (ADR-0017), and a Teammate is not one, so this is the
+ * pgvector path with the same embedding client, the same top-k, and the same
+ * Concept → Source citations the widget produces.
+ *
+ * The caller is responsible for only building one when the scope is non-empty;
+ * an empty scope means no search tool at all, not a search that finds nothing.
+ */
+export function buildCollectionSearcher(opts: {
+  db: Db;
+  connections: ProviderConnection[];
+  organizationId: string;
+  collectionIds: string[];
+  conversationId: string | null;
+}): KnowledgeSearcher {
+  const { db, organizationId, collectionIds, conversationId } = opts;
+  const embed = createEmbedder(opts.connections, {
+    db,
+    organizationId,
+    // No Assistant to attribute the embedding spend to; the Organization and
+    // the Conversation are the whole attribution for internal traffic.
+    assistantId: null,
+    conversationId,
+  });
+  return async (query) => {
+    const embedding = await embed(query);
+    return db.searchCollectionChunks(organizationId, collectionIds, {
+      embedding,
+      text: query,
+      limit: KNOWLEDGE_SEARCH_LIMIT,
+    });
+  };
+}

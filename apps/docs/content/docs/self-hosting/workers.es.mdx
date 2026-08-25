@@ -1,48 +1,70 @@
 ---
-title: Procesos en segundo plano
-description: Habilita los servicios opcionales de recuperación de grafos y de rastreo con renderización de JavaScript.
+title: Procesos de fondo
+description: Habilita los servicios opcionales de rastreo para la recuperación de grafos y la renderización de JavaScript.
 ---
 
-La pila predeterminada no inicia el perfil `workers`. La búsqueda y la ingesta
-de sitios web continúan con capacidades reducidas.
+La pila predeterminada no inicia los trabajadores. La búsqueda y la ingesta de
+sitios web continúan con capacidades reducidas.
 
 Sin el trabajador de grafos, Knowledge utiliza la recuperación vectorial y
 léxica. Sin Crawl4AI, Ciele utiliza su rastreador de búsqueda integrado.
 
-## Habilita el perfil
+Los trabajadores son un archivo Compose independiente,
+`deploy/docker-compose.workers.yml`. La pila lee ese archivo solo cuando
+`COMPOSE_FILE` lo enumera.
 
-Establece estos valores en `deploy/.env`:
+## Habilita los trabajadores
+
+Ejecuta el script de arranque con la opción `--workers`:
+
+```bash
+./deploy/bootstrap.sh --workers
+```
+
+El script añade el archivo a `COMPOSE_FILE` en `deploy/.env`. También genera
+tres de las cuatro credenciales:
 
 ```dotenv
-COMPOSE_PROFILES=db,migrate,app,cron,workers
-GRAPH_WORKER_API_TOKEN=<generated-token>
-GRAPH_LLM_API_KEY=<provider-key>
-CRAWL4AI_API_TOKEN=<generated-token>
-CRAWL4AI_SECRET_KEY=<generated-token>
+COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+GRAPH_WORKER_API_TOKEN=<generated>
+CRAWL4AI_API_TOKEN=<generated>
+CRAWL4AI_SECRET_KEY=<generated>
 ```
 
-A continuación, inicia la pila:
+El trabajador de grafos también necesita una clave para su propio proveedor de
+modelos. El script no puede generar esta clave. Establece `GRAPH_LLM_API_KEY` en
+`deploy/.env` y, a continuación, vuelve a ejecutar el comando.
+
+La opción `--workers` y la opción `--images` son independientes. Ninguna de las
+opciones desactiva a la otra.
+
+Los dos trabajadores pueden requerir aproximadamente 8 GiB de memoria. Mide el
+uso real en el host que hayas seleccionado.
+
+## Comprueba el estado del proceso de trabajo
+
+Incluye el archivo workers en cada comando:
 
 ```bash
-docker compose -f deploy/docker-compose.yml up -d
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
 ```
 
-Los dos trabajadores opcionales pueden requerir aproximadamente 8 GiB de
-memoria. Mide el uso real en el host que hayas seleccionado.
+No expongas los puertos ni los tokens de los trabajadores a la red pública.
 
-## Comprueba el estado del trabajador
+## Desactiva los trabajadores
+
+Elimina `docker-compose.workers.yml` de `COMPOSE_FILE` en `deploy/.env`. A
+continuación, elimina los dos contenedores:
 
 ```bash
-docker compose -f deploy/docker-compose.yml ps
-docker compose -f deploy/docker-compose.yml logs -f graph-worker crawl4ai
+docker compose -f deploy/docker-compose.yml up -d --remove-orphans
 ```
-
-No expongas los puertos de los trabajadores ni los tokens a la red pública.
 
 ## Trabajos de memoria a largo plazo
 
-La memoria a largo plazo utiliza el registro de trabajos duraderos integrado. No
-requiere el perfil opcional `workers`.
+La memoria a largo plazo utiliza el registro de trabajos duradero integrado. No
+requiere los trabajadores opcionales.
 
 Cada turno conectado programa un trabajo `promote_memories` después de una
 ventana de inactividad de 15 minutos. El perfil `cron` drena estos trabajos a

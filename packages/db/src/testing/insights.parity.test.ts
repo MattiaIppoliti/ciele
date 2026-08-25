@@ -45,6 +45,7 @@ function seedFor(
     conversations: conversations.map((c) => ({
       id: c.id,
       assistantId: c.assistantId,
+      teammateId: c.teammateId,
       subjectType: c.subjectType,
       subjectId: c.subjectId,
       createdAt: c.createdAt,
@@ -83,6 +84,78 @@ it.each(FILTER_CASES.map((f, i) => [i, f] as const))(
     );
     const actual = await harness.run(seedFor(conversations, messages), filter);
     expect(actual).toEqual(expected);
+  },
+  30000
+);
+
+/**
+ * Teammate traffic is not Visitor traffic (#764, #768). The exclusion is not a
+ * new rule: a Teammate Conversation is member-subject, and Insights has dropped
+ * member subjects since #668. What this pins is that both halves still agree
+ * once such a Conversation can exist at all, the oracle by subject type and the
+ * SQL by the same condition inside `get_insights_overview`.
+ */
+it(
+  "leaves internal Teammate chat out of the Visitor population, in SQL and in the oracle",
+  async () => {
+    const filter = FILTER_CASES[0];
+    const internal: InboxConversation = {
+      ...conversations[0],
+      id: "c-teammate",
+      assistantId: null,
+      teammateId: "tm-parity",
+      subjectType: "member",
+      subjectId: "member-1",
+      assistantTitle: "",
+      collectionName: null,
+      metadata: {},
+      createdAt: "2026-06-15T09:00:00.000Z",
+      updatedAt: "2026-06-15T09:00:00.000Z",
+    };
+    const internalMessages: InsightsMessage[] = [
+      {
+        ...messages[0],
+        conversationId: internal.id,
+        role: "user",
+        createdAt: internal.createdAt,
+      },
+      {
+        ...messages[0],
+        conversationId: internal.id,
+        role: "assistant",
+        createdAt: internal.createdAt,
+      },
+    ];
+
+    const withInternal = [...conversations, internal];
+    const withInternalMessages = [...messages, ...internalMessages];
+
+    const expected = colorizeOverview(
+      computeInsightsOverview(
+        withInternal,
+        withInternalMessages,
+        ASSISTANTS,
+        CHANNELS,
+        filter
+      )
+    );
+    const actual = await harness.run(
+      {
+        ...seedFor(withInternal, withInternalMessages),
+        teammates: [{ id: "tm-parity", name: "Nora" }],
+      },
+      filter
+    );
+    expect(actual).toEqual(expected);
+
+    // And the exclusion is real, not two implementations agreeing on a wrong
+    // number: the same run without the internal Conversation reports the same
+    // KPIs.
+    const withoutInternal = await harness.run(
+      seedFor(conversations, messages),
+      filter
+    );
+    expect(actual.stats).toEqual(withoutInternal.stats);
   },
   30000
 );

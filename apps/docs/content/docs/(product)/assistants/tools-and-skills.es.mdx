@@ -11,13 +11,22 @@ capacidades de tiempo de ejecución y las instrucciones reutilizables.
 | Herramienta | Predeterminado | Comportamiento actual |
 | --- | :---: | --- |
 | Buscar en el conocimiento | Activado | Busca en el conocimiento conectado y devuelve respuestas citadas. |
-| Memoria de sesión | Activada | Utiliza información de la sesión de conversación actual. |
+| Memoria de sesión | Activada | Utiliza la información de la sesión de conversación actual. |
 | Obtener URL | Desactivado | Lee una URL cuando el tiempo de ejecución selecciona la herramienta. |
+| Mostrar una tabla | Desactivado | Muestra los datos en una tabla cuando el tiempo de ejecución selecciona la herramienta. |
 
-La búsqueda en Knowledge siempre está disponible. Puedes activar o desactivar
+La búsqueda de conocimiento siempre está disponible. Puedes activar o desactivar
 las demás herramientas integradas.
 
-## Conectar datos estructurados
+Mostrar una tabla organiza los datos que el Asistente ha encontrado en esta
+respuesta. No calcula valores. La tabla aparece encima de la respuesta escrita y
+la transcripción de la bandeja de entrada muestra la misma tabla.
+
+El Asistente puede añadir una pregunta de seguimiento a una fila. El visitante
+selecciona la fila para hacer esa pregunta. La transcripción de la bandeja de
+entrada muestra estas filas, pero un miembro no puede seleccionarlas.
+
+## Conecta datos estructurados
 
 La sección **Data** enumera las Entidades importadas a través de **Settings →
 Data**. Selecciona cada Entidad que este Asistente pueda consultar.
@@ -35,9 +44,8 @@ La selección de Entidad y el esquema pasan a la siguiente instantánea de
 Publicación. El contenido del registro permanece activo después de la
 publicación.
 
-Consulta [Entidades y registros](/data/entities-and-records) para obtener
-información sobre las importaciones de CSV, las opciones de ámbito y el filtrado
-de identidad.
+Consulta [Entidades y registros](/data/entities-and-records) para las
+importaciones CSV, las opciones de ámbito y el filtrado de identidad.
 
 ## Configura una integración de API
 
@@ -63,7 +71,7 @@ asignar la misma Habilidad a varios Asistentes.
 
 1. Abre **Tools & Skills**.
 2. Busca la habilidad de organización necesaria.
-3. Asigna la Habilidad al Asistente.
+3. Asigna la habilidad al asistente.
 4. Prueba el resultado en Vista previa.
 5. Publica el Asistente cuando el resultado sea correcto.
 
@@ -75,6 +83,6 @@ El widget publicado utiliza la última instantánea de la publicación.
 Haz una pregunta que requiera cada herramienta habilitada. Revisa el panel
 Pensamiento y las Fuentes antes de publicar.
 
-Para datos estructurados, prueba una búsqueda exacta de atributos y una búsqueda
-de texto. Prueba el acceso con ámbito de usuario con dos cuentas diferentes con
-sesión iniciada.
+Para los datos estructurados, prueba una búsqueda exacta de atributos y una
+búsqueda de texto. Prueba el acceso con ámbito de usuario con dos cuentas
+diferentes con sesión iniciada.

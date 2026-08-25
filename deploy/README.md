@@ -38,11 +38,13 @@ assistants) so you can see a populated product before adding your own.
 | `migrate` | ✅ | One-shot. Applies pending migrations and provisions the three storage buckets, then the app starts |
 | `app` | ✅ | The web app: admin console and widget runtime |
 | `cron` | ✅ | The five scheduled jobs, on the same UTC schedules the hosted deployment uses |
-| `workers` | ⬜ | Graph retrieval + JavaScript-rendering crawler. Heavy (~8 GiB RAM) |
 | `studio` | ⬜ | Database admin UI |
 
 Realtime, Edge Functions, Analytics and Kong are not started; Ciele does not
 use them.
+
+Two things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
+prebuilt images and the heavy workers. Both are covered below.
 
 ## Prebuilt images instead of a source build
 
@@ -107,24 +109,41 @@ providers work too, set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or
 
 **Without an embedding model, knowledge search degrades to keyword/lexical
 matching.** Answers still work; retrieval is just less able to match meaning.
-The same applies to the `workers` profile: without the graph worker there is
-no derived-graph retrieval, and without Crawl4AI the built-in fetch-based
-crawler handles websites (fine for server-rendered pages, weaker on
-JavaScript-heavy ones).
+The same applies to the workers: without the graph worker there is no
+derived-graph retrieval, and without Crawl4AI the built-in fetch-based crawler
+handles websites (fine for server-rendered pages, weaker on JavaScript-heavy
+ones).
 
 ## Turning on the heavy workers
 
 ```sh
-# deploy/.env
-COMPOSE_PROFILES=db,migrate,app,cron,workers
-GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
-GRAPH_LLM_API_KEY=<key for the graph worker's LLM>
-CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
-CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+./deploy/bootstrap.sh --workers
 ```
 
-Then `docker compose -f deploy/docker-compose.yml up -d`. Budget ~8 GiB of RAM
-for the two of them.
+That adds the second overlay to `deploy/.env` and generates the three shared
+secrets the pair needs:
+
+```sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+GRAPH_WORKER_API_TOKEN=<generated>
+CRAWL4AI_API_TOKEN=<generated>
+CRAWL4AI_SECRET_KEY=<generated>
+```
+
+The fourth credential is yours to supply: set `GRAPH_LLM_API_KEY` to a key for
+the graph worker's LLM (Gemini by default, `GRAPH_LLM_PROVIDER` and
+`GRAPH_LLM_MODEL` change that), then run the command again. Budget ~8 GiB of
+RAM for the pair.
+
+`--workers` and `--images` compose, in either order, and neither turns the
+other off. To stop running the workers, drop `docker-compose.workers.yml` from
+`COMPOSE_FILE` and `docker compose up -d --remove-orphans`.
+
+The workers are an overlay rather than a `workers` profile for one reason:
+Compose interpolates every service in a file before it filters by profile, so
+the `:?` guards that stop a worker from starting without its token used to
+abort a plain `docker compose up` on a stack that was never going to run them.
+A file nobody asked for is never read at all.
 
 ## TLS and exposure
 

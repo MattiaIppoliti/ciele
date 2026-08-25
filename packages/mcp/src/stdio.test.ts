@@ -121,7 +121,7 @@ describe("ciele MCP stdio process", () => {
       expect(client.getServerVersion()).toMatchObject({ name: "ciele" });
 
       const listed = await client.listTools();
-      expect(listed.tools).toHaveLength(14);
+      expect(listed.tools).toHaveLength(16);
       expect(listed.tools.map((tool) => tool.name)).toContain("manage_integrations");
       expect(listed.tools[0]?.description).toContain("READ-ONLY mode");
 
@@ -153,7 +153,7 @@ describe("ciele MCP stdio process", () => {
       expect(client.getNegotiatedProtocolVersion()).toBe("2026-07-28");
 
       const listed = await client.listTools();
-      expect(listed.tools).toHaveLength(14);
+      expect(listed.tools).toHaveLength(16);
 
       const result = await client.callTool({ name: "ciele_identity", arguments: {} });
       expect(result.isError).not.toBe(true);
@@ -183,7 +183,7 @@ describe("ciele MCP stdio process", () => {
         spawnServer(api.baseUrl, { CIELE_MCP_MODERN_ONLY: "1" })
       );
       expect(client.getProtocolEra()).toBe("modern");
-      expect((await client.listTools()).tools).toHaveLength(14);
+      expect((await client.listTools()).tools).toHaveLength(16);
     } finally {
       await client.close();
     }

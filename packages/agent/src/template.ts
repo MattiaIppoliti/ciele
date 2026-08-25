@@ -15,6 +15,21 @@ import type { HistoryMessage } from "./types";
  * in the catalog is left untouched.
  */
 
+/**
+ * Origin of the console, for `{{conversation.link}}` and anything else that has
+ * to name a page rather than link to one relatively.
+ *
+ * Here rather than beside each caller because every surface that builds a
+ * template context wants the same answer, and two copies of a fallback are two
+ * different production hosts the day one of them is edited.
+ */
+export function platformAppOrigin(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
+    "https://platform.ciele.app"
+  );
+}
+
 /** One entry the picker/docs UI renders and the resolver can fill. */
 export interface TemplateVariable {
   token: string;

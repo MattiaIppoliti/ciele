@@ -103,6 +103,9 @@ function makeContext(overrides: Partial<ToolRuntimeContext> = {}) {
   const ctx: ToolRuntimeContext = {
     assistant: makeAssistant(),
     session: createTurnSession("c1", {}),
+    // The turn's knowledge searcher, present here like on any real turn (a
+    // scopeless Teammate is the exception, see tools.test.ts).
+    searchKnowledge: async () => [],
     usedSources: [],
     searchPasses: [],
     apiIntegration: INTEGRATION,

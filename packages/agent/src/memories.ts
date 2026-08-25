@@ -124,7 +124,11 @@ export async function promoteConversationMemories(
     return { promoted: 0, skipped: "budget-exhausted" };
   }
 
-  const assistant = await db.getAssistant(conversation.assistantId);
+  // Only the extractor model is read off it, and a Teammate Conversation has
+  // no Assistant (#768); the provider default below covers that.
+  const assistant = conversation.assistantId
+    ? await db.getAssistant(conversation.assistantId)
+    : null;
   const connections = await db.listProviderConnections(organizationId);
   // Extraction runs on the small classifier-tier model; without any
   // credentialed provider there is nothing to extract with.

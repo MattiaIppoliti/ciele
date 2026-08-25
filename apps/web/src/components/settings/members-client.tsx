@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
-import { ChevronDown, Link2, Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, Link2, Plus, Trash2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { createInviteAction, updateMemberRoleAction } from "@/app/actions";
 import { Table, type TableColumn } from "@/components/motion/table";
 import { RemoveMemberModal } from "@/components/settings/remove-member-modal";
@@ -100,9 +101,14 @@ export function MembersClient({
       width: "38%",
       cell: (row) => (
         <div className="flex min-w-0 items-center gap-3">
-          <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-full">
-            <UserRound className="text-foreground/70 size-4" />
-          </span>
+          {/* One face per person, generated from who they are, so a row is
+              recognisable at a glance. It was the same grey silhouette for the
+              whole organization, which told you nothing. */}
+          <UserAvatar
+            avatarUrl={row.avatarUrl}
+            userId={row.kind === "member" ? row.subjectId : null}
+            email={row.email}
+          />
           <div className="min-w-0">
             <p className="truncate font-medium">
               {row.name}

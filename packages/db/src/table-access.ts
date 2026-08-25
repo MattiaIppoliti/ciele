@@ -6,6 +6,24 @@ import type {
   Entity,
   EntityInput,
   Skill,
+  Project,
+  ProjectInput,
+  ProjectPatch,
+  Teammate,
+  TeammateChannel,
+  TeammateChannelInput,
+  TeammateChannelParticipant,
+  TeammateChannelParticipantInput,
+  TeammateChannelPatch,
+  TeammateGovernancePatch,
+  TeammateRoutine,
+  TeammateRoutineInput,
+  TeammateRoutinePatch,
+  TeammateGrant,
+  TeammateRosterHidden,
+  TeammateGrantDomain,
+  TeammateInput,
+  TeammatePatch,
 } from "@agent-hub/core";
 import { shortId } from "@agent-hub/core";
 
@@ -58,6 +76,92 @@ export interface DbTableMap {
       description?: string;
     };
     update: Partial<Pick<Skill, "name" | "description" | "prompt">>;
+  };
+  /**
+   * AI Teammates (#768). Mechanical by construction: the persona and the
+   * Knowledge Scope are plain columns, and a soft delete is a patch on
+   * `deletedAt`, so nothing here needs a behavioural method. The rules about
+   * who may write which patch live in the operations layer, not in the seam.
+   */
+  teammates: {
+    row: Teammate;
+    insert: TeammateInput;
+    update: TeammatePatch | TeammateGovernancePatch;
+  };
+  /**
+   * Projects (#771). Mechanical: three plain columns and a flag, and archiving
+   * is a patch on one of them. What is *not* here is the Project's document,
+   * which lives in `memory_documents` with the other two layers, because a
+   * document with history and a size cap is not a mechanical column.
+   */
+  projects: {
+    row: Project;
+    insert: ProjectInput;
+    update: ProjectPatch;
+  };
+  /**
+   * Routines (#772). The CRUD half is mechanical; what is NOT here is claiming
+   * a due routine and recording its outcome, because both carry semantics the
+   * generic accessor has no way to express (a compare-and-set lease, and a
+   * write that must not clobber a concurrent edit to the instruction).
+   */
+  teammateRoutines: {
+    row: TeammateRoutine;
+    insert: TeammateRoutineInput;
+    update: TeammateRoutinePatch;
+  };
+  /**
+   * Teammate action grants (#770). The row *is* the grant, so the table has no
+   * mutable state at all: `update` is `never`, and revoking is a delete. That
+   * makes it mechanical in the strictest sense, two ids and a closed-vocabulary
+   * string, which is exactly what this accessor is for.
+   */
+  teammateGrants: {
+    row: TeammateGrant;
+    insert: {
+      organizationId: string;
+      teammateId: string;
+      domain: TeammateGrantDomain;
+      grantedBy?: string | null;
+    };
+    update: never;
+  };
+  /**
+   * Per-Member roster hiding (#767, story 10). Same shape as a grant row and
+   * for the same reason: the row is the fact, so there is nothing to update and
+   * unhiding is a delete.
+   */
+  teammateRosterHidden: {
+    row: TeammateRosterHidden;
+    insert: {
+      organizationId: string;
+      teammateId: string;
+      userId: string;
+    };
+    update: never;
+  };
+  /**
+   * Teammate channels (#778). Mechanical: a name, a bound Project and a
+   * creator. What is NOT here is the transcript, because appending to it has
+   * semantics the generic accessor cannot express (a strictly increasing
+   * per-channel order, so two messages written in the same millisecond still
+   * read back in the order they were written).
+   */
+  teammateChannels: {
+    row: TeammateChannel;
+    insert: TeammateChannelInput;
+    update: TeammateChannelPatch;
+  };
+  /**
+   * A seat in a channel: a Member or a Teammate, never both. The only mutable
+   * column is a Member's own read marker, which is why `update` is that one
+   * field and nothing else, adding somebody is an insert and removing them is a
+   * delete.
+   */
+  teammateChannelParticipants: {
+    row: TeammateChannelParticipant;
+    insert: TeammateChannelParticipantInput;
+    update: Partial<Pick<TeammateChannelParticipant, "lastReadAt">>;
   };
   localConnectorPairings: {
     row: LocalConnectorPairing;
@@ -180,6 +284,89 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,
+  },
+  teammates: {
+    table: "teammates",
+    id: "shortId",
+    defaults: {
+      title: "",
+      roleDescription: "",
+      avatarSeed: "",
+      visibility: "org",
+      collectionIds: [],
+      editorIds: [],
+      modelProvider: "anthropic",
+      modelId: "claude-opus-4-8",
+      capabilityCeiling: "edit",
+      approvalBypass: false,
+      projectId: null,
+      deletedAt: null,
+    },
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  projects: {
+    table: "projects",
+    id: "shortId",
+    defaults: { description: "", archived: false, createdBy: null },
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  teammateRoutines: {
+    table: "teammate_routines",
+    id: "shortId",
+    defaults: {
+      hour: 8,
+      enabled: true,
+      createdBy: null,
+      lastRunAt: null,
+      lastStatus: null,
+      lastDetail: "",
+    },
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  teammateGrants: {
+    table: "teammate_grants",
+    id: "shortId",
+    defaults: { grantedBy: null },
+    // Oldest first: the grants list reads as the order an admin built it in.
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  teammateRosterHidden: {
+    table: "teammate_roster_hidden",
+    id: "shortId",
+    defaults: {},
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: false,
+  },
+  teammateChannels: {
+    table: "teammate_channels",
+    id: "shortId",
+    defaults: { projectId: null, createdBy: null },
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: true,
+  },
+  teammateChannelParticipants: {
+    table: "teammate_channel_participants",
+    id: "shortId",
+    defaults: {
+      userId: null,
+      teammateId: null,
+      addedBy: null,
+      lastReadAt: null,
+    },
+    // Oldest first: the roster reads as the order the channel was built in.
+    orderBy: "createdAt",
+    ascending: true,
+    touchesUpdatedAt: false,
   },
   localConnectorPairings: {
     table: "local_connector_pairings",

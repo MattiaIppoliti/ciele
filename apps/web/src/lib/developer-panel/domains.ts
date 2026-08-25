@@ -9,8 +9,8 @@ import type { ApiV1Domain } from "@/lib/api-v1/meta";
  * must not start carrying UI copy. Nothing here imports the registry, so the module
  * stays cheap and client-safe.
  *
- * **The MCP tool name belongs to the domain, not the endpoint.** The 14 MCP tools
- * are coarse and map onto the 18 domains many-to-one (one tool covers Skills,
+ * **The MCP tool name belongs to the domain, not the endpoint.** The 16 MCP tools
+ * are coarse and map onto the 19 domains many-to-one (one tool covers Skills,
  * Goals and Alerts; another covers Organization, Members and API Keys), so a
  * per-endpoint field would repeat a string with no added truth. The per-endpoint
  * half of an MCP call is its `action`, and that is a template in the registry.
@@ -103,6 +103,18 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpTool: "manage_sso",
     mcpPrompt:
       "Validate the SSO connection and tell me which claim carries the Visitor identity.",
+  },
+  teammates: {
+    title: "Teammates API",
+    mcpTool: "manage_teammates",
+    mcpPrompt:
+      "List the AI Teammates in this Organization and tell me which ones have no Knowledge Collection in scope.",
+  },
+  channels: {
+    title: "Channels API",
+    mcpTool: "manage_channels",
+    mcpPrompt:
+      "List the teammate channels I am in and tell me which ones have no teammate seated.",
   },
   "help-desks": {
     title: "Help Desks API",

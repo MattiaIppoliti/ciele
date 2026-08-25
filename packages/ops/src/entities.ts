@@ -40,4 +40,22 @@ export type MutatedEntity =
   /** The org-staff data assistant page (#668). */
   | { kind: "dataAssistant" }
   /** The org-level Knowledge hub (PRD #726). */
-  | { kind: "knowledgeHub" };
+  | { kind: "knowledgeHub" }
+  /** The AI Teammates roster (#768). */
+  | { kind: "teammateList" }
+  /** One Teammate's page: its configuration and its chat. */
+  | { kind: "teammate"; id: string }
+  /** The Teammate channel roster: the channels beside the 1:1 threads (#778). */
+  | { kind: "channelList" }
+  /** One channel: its transcript and its roster. */
+  | { kind: "channel"; id: string }
+  /** The Projects directory (#771). */
+  | { kind: "projectList" }
+  /** One Project's page: its description and its decisions document. */
+  | { kind: "project"; id: string }
+  /**
+   * The signed-in Member's own memory document, in their settings. Not keyed
+   * by member id: the page only ever renders the caller's own (#767, story 19),
+   * so an id would be a second way to say the same thing.
+   */
+  | { kind: "myMemory" };

@@ -20,6 +20,7 @@ const TYPE_LABELS: Record<AlertType, string> = {
   crawl: "Crawl",
   provider: "AI Provider",
   ingestion: "Ingestion",
+  knowledge: "Knowledge",
   system: "System",
 };
 

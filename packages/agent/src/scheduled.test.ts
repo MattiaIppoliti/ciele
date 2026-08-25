@@ -65,6 +65,8 @@ function stubDb(overrides: Partial<Db>): Db {
     claimProcessingCrawlSources: vi.fn().mockResolvedValue([]),
     claimBackgroundJobs: vi.fn().mockResolvedValue([]),
     listDueEntitySyncConfigs: vi.fn().mockResolvedValue([]),
+    // Routines are the tick's fifth drain (#772); nothing due by default.
+    listDueRoutineCandidates: vi.fn().mockResolvedValue([]),
     ...overrides,
   } as unknown as Db;
 }

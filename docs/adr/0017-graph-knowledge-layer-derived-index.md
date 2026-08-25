@@ -109,3 +109,40 @@ Consequence for the build: this flips the default in #388 (Graph selected unless
 an assistant opts out / the worker is down). The ingestion fan-out (#387) is
 **unchanged**: content still originates in OKF and flows into the graph either
 way.
+
+## Amendment, 2026-08-22: approval-bypass, an admin-granted exception (#770)
+
+Original decision #6 said the loop **never** silently edits a tenant's
+knowledge: any change to knowledge content is a Suggested Fix a Member must
+accept. AI Teammates (spec #767) make that absolute too strong in one narrow
+case, so it becomes conditional:
+
+> Any change to knowledge content is a Suggested Fix a Member must accept,
+> **unless an administrator granted exactly that permission to exactly that
+> Teammate**.
+
+The invariant it replaces was never "a human reads every FAQ". It was "nobody's
+knowledge base changes without somebody deciding it may". A per-Teammate
+approval-bypass keeps that: the deciding is done once, by an admin, in advance,
+instead of once per fix by a reviewer.
+
+Three constraints make it an exception rather than a hole, and each is a test:
+
+1. **Off by default and never implied.** No domain grant turns it on, and it
+   cannot be set through the operation that edits a Teammate's persona. It is a
+   `manageMembers`-capability write on the grants surface, the same rung as
+   changing what a person may do.
+2. **Inert without the knowledge grant.** Accepting a fix writes a FAQ Concept,
+   so it needs the domain that writes Concepts. Permission to approve a write is
+   not the write. (`mayAcceptSuggestedFix` in `packages/core`.)
+3. **It never launders provenance.** OKF's `human-reviewed` tier means a person
+   verified the Concept (§5.3). A bypassing Teammate stamps an *agent* actor, so
+   its own accepts come out `machine-confirmed` and the Knowledge page shows
+   that tier. The bypass moves who may press accept; it does not let a machine
+   sign as a person.
+
+What is unchanged: the feedback loop still re-weights retrieval automatically
+and still edits no content on its own, and the background drafter still only
+drafts. The only new accepter is a Teammate an admin deliberately armed, and
+every accept it performs is a tool card in the conversation transcript naming
+the operation and the entity.

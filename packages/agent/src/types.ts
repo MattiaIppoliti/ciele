@@ -1,9 +1,12 @@
 import type { LanguageModel } from "ai";
+import type { ZodObject, ZodRawShape } from "zod";
 import type {
   AiCredentialKind,
   AiUsageStage,
   ApiIntegration,
   Assistant,
+  ChainCapReason,
+  ChannelMessage,
   ConversationSubject,
   EntityRecord,
   EntityRecordQuery,
@@ -13,7 +16,9 @@ import type {
   FlowButtonIcon,
   KnowledgeSearchResult,
   Provider,
+  ReferralCandidate,
   SkillSnapshot,
+  TeammateActionDomain,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
@@ -24,6 +29,8 @@ import type { TemplateContext } from "./template";
  * through the RuntimeEvent `part` event and is what Widget, Preview, and
  * Inbox render. Owned here: the data package's engine is routing-only.
  */
+export type { ReferralCandidate } from "@agent-hub/core";
+
 export type ChatReplyPart =
   /**
    * `fallback` = error/limit copy; `refusal` = the model declined on safety
@@ -137,6 +144,26 @@ export type ChatReplyPart =
        * end. Absent means replies are allowed.
        */
       allowReplies?: boolean;
+    }
+  /**
+   * A referral to another AI Teammate (#773): this one has decided the request
+   * belongs to a colleague and is saying so, with a summary of the
+   * conversation so far for the Member to carry over.
+   *
+   * Human-mediated by design in 1:1 chat. The card is an offer, not a
+   * handover: the target never speaks in this transcript, and nothing happens
+   * until the Member clicks. Autonomous agent-to-agent chains are the channels
+   * effort's problem, not this one's.
+   */
+  | {
+      type: "teammate_referral";
+      action: "refer_teammate";
+      teammateId: string;
+      teammateName: string;
+      /** Why this colleague, in the referring Teammate's own words. */
+      reason: string;
+      /** What the target needs to know, so the Member repeats nothing. */
+      summary: string;
     }
   /**
    * Simplified thinking (#560): one short, user-facing line per tool phase, in
@@ -342,6 +369,28 @@ export type RuntimeEvent =
   | { type: "error"; message: string };
 
 /**
+ * The channel stream's own events (#778), beside the turn events of whoever is
+ * speaking.
+ *
+ * Here rather than in `channel-turn.ts` because the wire format is what the
+ * browser reads, and `client.ts` may only publish types from a module that
+ * pulls in nothing server-side.
+ */
+export type ChannelEvent =
+  /** A Teammate is about to take a turn: open a bubble for it. */
+  | { type: "channel-speaker"; teammateId: string; teammateName: string }
+  /** A durable channel message: a reply, or a chain-cap marker. */
+  | { type: "channel-message"; message: ChannelMessage }
+  | {
+      type: "channel-end";
+      chainId: string;
+      /** Teammate turns this call ran. */
+      turns: number;
+      /** Which cap stopped the fan-out, if one did. */
+      capped: ChainCapReason | null;
+    };
+
+/**
  * Who a turn verifiably speaks for (#667/#668/#669, ADR-0020): resolved
  * server-side from the session or the sealed SSO gate cookie, never from
  * request bodies or model output. The tool-registration policy reads it to
@@ -393,6 +442,39 @@ export type ActionEffect =
     };
 
 /** Everything a Flow Action handler needs; the engine builds one per turn. */
+/**
+ * One action an AI Teammate may take this turn (#770), as a port.
+ *
+ * The runtime deliberately does not know that operations exist: it is handed a
+ * name, a schema and something to call, and the host, which owns the grants,
+ * the operations layer and the Db, decides what that list contains. That keeps
+ * `@agent-hub/agent` framework-free and keeps the capability decision in the
+ * one place that can enforce it.
+ */
+export interface TeammateActionTool {
+  /** The operation's catalogue name, e.g. `improvements.update`. */
+  operation: string;
+  /** The grant that put it on the list, or `memory` for the ungated writes. */
+  domain: TeammateActionDomain;
+  /** Short human-readable phrase for the Thinking panel ("Move an improvement"). */
+  label: string;
+  /** What the model is told this does. */
+  description: string;
+  inputSchema: ZodObject<ZodRawShape>;
+  run(input: Record<string, unknown>): Promise<TeammateActionOutcome>;
+}
+
+/** What running one returned, plus what it says it touched. */
+export interface TeammateActionOutcome {
+  /**
+   * The entities the operation declared it mutated, `kind` plus the id when the
+   * kind carries one. Empty for a read. The transcript card names these, which
+   * is what makes the transcript the audit trail (#767, story 17).
+   */
+  entities: readonly { kind: string; id?: string }[];
+  result: unknown;
+}
+
 export interface ActionContext {
   assistant: Assistant;
   /**
@@ -400,6 +482,12 @@ export interface ActionContext {
    * ABOVE the assistant's own answeringStyle (see lib/platform.ts).
    */
   platformPrompt: string;
+  /**
+   * An AI Teammate's persona layer (#768): its name, its title and its Standing
+   * Role, which replace the "you are an assistant on a website" identity lines
+   * a public Assistant gets. Absent on Assistant turns.
+   */
+  persona?: string;
   flow: Flow;
   message: string;
   history: HistoryMessage[];
@@ -435,6 +523,23 @@ export interface ActionContext {
    * or empty leaves the three catalogue tools unregistered (spec #559).
    */
   apiIntegration?: ApiIntegration | null;
+  /**
+   * What this AI Teammate was granted permission to do (#770), already
+   * filtered by the host against its grant rows and its ceiling. An empty list
+   * is the normal state, and it registers no action tools at all.
+   */
+  teammateActions?: readonly TeammateActionTool[];
+  /**
+   * An AI Teammate's three memory documents, already rendered and capped
+   * (#771). Empty on an Assistant turn and on a Teammate whose layers are all
+   * empty, which is the same thing to the prompt: nothing is injected.
+   */
+  memoryDocuments?: readonly string[];
+  /**
+   * The colleagues this Teammate may refer to (#773). Empty leaves the
+   * referral tool unregistered; the model is then never told it exists.
+   */
+  referralCandidates?: readonly ReferralCandidate[];
   /** Persistent cross-turn session state (see session.ts). */
   session: TurnSession;
   /**

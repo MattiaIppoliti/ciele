@@ -186,7 +186,10 @@ export function conversationExportRows(
       "User Email": str(meta.userEmail),
       "User Role": str(meta.userRole),
       "Student ID": str(meta.studentId),
-      "Assistant ID": conversation.assistantId,
+      // Only Assistant Conversations are exportable from the Inbox, so this
+      // is never empty in practice; the fallback keeps the 29-field shape
+      // total rather than emitting a null into a parser's column.
+      "Assistant ID": conversation.assistantId ?? "",
       "Assistant Name": str(conversation.assistantTitle),
       "Course ID": str(meta.courseId),
       "Course Name": str(meta.courseName),

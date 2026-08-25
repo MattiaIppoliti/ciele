@@ -1,5 +1,15 @@
 import type {
   AssistantPatch,
+  Conversation,
+  StoredMessage,
+  ChannelMessage,
+  ChannelRosterEntry,
+  ChannelUnread,
+  Teammate,
+  TeammateChannel,
+  TeammateChannelParticipant,
+  TeammateInput,
+  TeammatePatch,
   Flow,
   FlowInput,
   FlowPatch,
@@ -127,6 +137,32 @@ export type ApiSupportChannel = Omit<SupportChannel, "config"> & {
     hasBasicPassword: boolean;
   };
 };
+
+/** One channel row as the roster read returns it (#778). */
+export interface ApiChannelSummary {
+  channel: TeammateChannel;
+  memberIds: string[];
+  teammateIds: string[];
+  unread: ChannelUnread;
+  lastMessagePreview: string;
+  lastMessageAt: string | null;
+}
+
+/** One channel: its roster, the names a mention can reach, its transcript. */
+export interface ApiChannelView {
+  channel: TeammateChannel;
+  participants: TeammateChannelParticipant[];
+  teammates: Teammate[];
+  roster: ChannelRosterEntry[];
+  messages: ChannelMessage[];
+  canManage: boolean;
+}
+
+/** A Teammate conversation with the turns it holds (#768). */
+export interface ApiTeammateConversation {
+  conversation: Conversation;
+  messages: StoredMessage[];
+}
 
 export type PublicationStatus =
   | { published: false }
@@ -604,6 +640,79 @@ export class CieleClient {
       this.request("PUT", "/sso/connection", { body: input }),
     disconnect: (): Promise<void> =>
       this.request("DELETE", "/sso/connection"),
+  };
+
+  /**
+   * AI Teammates (#768). A key acts as the Member who minted it, so `list`
+   * hides the private Teammates that Member may not see and `conversations`
+   * returns that Member's own thread, never a colleague's.
+   */
+  readonly teammates = {
+    list: (): Promise<{ data: Teammate[] }> => this.request("GET", "/teammates"),
+    get: (id: string): Promise<Teammate> =>
+      this.request("GET", `/teammates/${encodeURIComponent(id)}`),
+    create: (input: Omit<TeammateInput, "organizationId" | "ownerId">): Promise<Teammate> =>
+      this.request("POST", "/teammates", { body: input }),
+    update: (id: string, patch: TeammatePatch): Promise<Teammate> =>
+      this.request("PATCH", `/teammates/${encodeURIComponent(id)}`, { body: patch }),
+    delete: (id: string): Promise<void> =>
+      this.request("DELETE", `/teammates/${encodeURIComponent(id)}`),
+    conversations: (id: string): Promise<{ data: Conversation[] }> =>
+      this.request("GET", `/teammates/${encodeURIComponent(id)}/conversations`),
+    conversation: (
+      id: string,
+      conversationId: string
+    ): Promise<ApiTeammateConversation> =>
+      this.request(
+        "GET",
+        `/teammates/${encodeURIComponent(id)}/conversations/${encodeURIComponent(conversationId)}`
+      ),
+  };
+
+  /**
+   * Teammate channels (#778): the group threads Members share with Teammates.
+   *
+   * Membership is the visibility rule, and a key acts as the Member who minted
+   * it, so `list` returns that Member's channels and nobody else's. There is no
+   * `post`: a message starts a bounded chain of model turns, which belongs to
+   * the console's streaming route rather than to a request/response API.
+   */
+  readonly channels = {
+    list: (): Promise<{ data: ApiChannelSummary[] }> =>
+      this.request("GET", "/channels"),
+    get: (id: string): Promise<ApiChannelView> =>
+      this.request("GET", `/channels/${encodeURIComponent(id)}`),
+    create: (input: {
+      name: string;
+      memberIds?: string[];
+      teammateIds?: string[];
+      projectId?: string | null;
+    }): Promise<TeammateChannel> => this.request("POST", "/channels", { body: input }),
+    update: (
+      id: string,
+      patch: { name?: string; projectId?: string | null }
+    ): Promise<TeammateChannel> =>
+      this.request("PATCH", `/channels/${encodeURIComponent(id)}`, { body: patch }),
+    delete: (id: string): Promise<void> =>
+      this.request("DELETE", `/channels/${encodeURIComponent(id)}`),
+    addMembers: (id: string, userIds: string[]): Promise<void> =>
+      this.request("POST", `/channels/${encodeURIComponent(id)}/members`, {
+        body: { userIds },
+      }),
+    removeMember: (id: string, userId: string): Promise<void> =>
+      this.request(
+        "DELETE",
+        `/channels/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}`
+      ),
+    addTeammates: (id: string, teammateIds: string[]): Promise<void> =>
+      this.request("POST", `/channels/${encodeURIComponent(id)}/teammates`, {
+        body: { teammateIds },
+      }),
+    removeTeammate: (id: string, teammateId: string): Promise<void> =>
+      this.request(
+        "DELETE",
+        `/channels/${encodeURIComponent(id)}/teammates/${encodeURIComponent(teammateId)}`
+      ),
   };
 
   readonly helpDesks = {

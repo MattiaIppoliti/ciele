@@ -40,6 +40,19 @@ function needObject(args: Record<string, unknown>, key: string): Record<string, 
 }
 
 /**
+ * A non-empty list of ids, for the channel roster actions (#778). An empty list
+ * would be a call that changes nothing, so the server is told nothing and the
+ * agent is told what to send instead.
+ */
+function needList(args: Record<string, unknown>, key: string): string[] {
+  const value = args[key];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new ToolInputError(`"${key}" must be a non-empty array of ids`);
+  }
+  return value.map(String);
+}
+
+/**
  * The Assistants an added knowledge item links to (PRD #726). A Collection has
  * no owner, so these links are the only reach and the server refuses an empty
  * set; refusing here instead spends no round trip and tells the agent what to
@@ -72,6 +85,9 @@ const READ_ACTIONS = new Set([
   "subjects",
   "settings",
   "get_entities",
+  // Teammates (#768): reading one Member's own thread mutates nothing.
+  "conversations",
+  "conversation",
 ]);
 
 const byAction = (args: Record<string, unknown>) =>
@@ -536,6 +552,81 @@ export function buildTools(client: CieleClient): CieleTool[] {
             return client.improvements.update(need(args, "id"), args.patch as never);
           default:
             throw new ToolInputError(`Unknown action "${args.action}"`);
+        }
+      },
+    },
+    {
+      name: "manage_teammates",
+      description:
+        "Manage the Organization's AI Teammates: the internal agents Members chat with in the console. Delete is a soft delete, so a retired Teammate answers nothing more while its Conversations stay readable. The key acts as the Member who minted it, so `conversations` reads that Member's own thread.",
+      schema: {
+        action: z.enum(["list", "get", "create", "update", "delete", "conversations", "conversation"]),
+        id: z.string().optional().describe("Teammate id"),
+        conversationId: z.string().optional(),
+        input: z.record(z.string(), z.unknown()).optional(),
+        patch: z.record(z.string(), z.unknown()).optional(),
+      },
+      mutates: byAction,
+      run: async (args) => {
+        const id = () => need(args, "id");
+        switch (args.action) {
+          case "list": return client.teammates.list();
+          case "get": return client.teammates.get(id());
+          case "create": return client.teammates.create(needObject(args, "input") as never);
+          case "update": return client.teammates.update(id(), needObject(args, "patch") as never);
+          case "delete": await client.teammates.delete(id()); return { deleted: args.id };
+          case "conversations": return client.teammates.conversations(id());
+          case "conversation": return client.teammates.conversation(id(), need(args, "conversationId"));
+          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+        }
+      },
+    },
+    {
+      name: "manage_channels",
+      description:
+        "Read and shape the Organization's Teammate channels: the group threads where Members and AI Teammates work on one thing. Membership is the visibility rule and the key acts as the Member who minted it, so `list` returns that Member's channels. There is no post action: a message in a channel starts a bounded chain of Teammate turns, which runs on the console's streaming surface.",
+      schema: {
+        action: z.enum([
+          "list",
+          "get",
+          "create",
+          "update",
+          "delete",
+          "add_member",
+          "remove_member",
+          "add_teammate",
+          "remove_teammate",
+        ]),
+        id: z.string().optional().describe("Channel id"),
+        userId: z.string().optional(),
+        userIds: z.array(z.string()).optional(),
+        teammateId: z.string().optional(),
+        teammateIds: z.array(z.string()).optional(),
+        input: z.record(z.string(), z.unknown()).optional(),
+        patch: z.record(z.string(), z.unknown()).optional(),
+      },
+      mutates: byAction,
+      run: async (args) => {
+        const id = () => need(args, "id");
+        switch (args.action) {
+          case "list": return client.channels.list();
+          case "get": return client.channels.get(id());
+          case "create": return client.channels.create(needObject(args, "input") as never);
+          case "update": return client.channels.update(id(), needObject(args, "patch") as never);
+          case "delete": await client.channels.delete(id()); return { deleted: args.id };
+          case "add_member":
+            await client.channels.addMembers(id(), needList(args, "userIds"));
+            return { added: args.userIds };
+          case "remove_member":
+            await client.channels.removeMember(id(), need(args, "userId"));
+            return { removed: args.userId };
+          case "add_teammate":
+            await client.channels.addTeammates(id(), needList(args, "teammateIds"));
+            return { added: args.teammateIds };
+          case "remove_teammate":
+            await client.channels.removeTeammate(id(), need(args, "teammateId"));
+            return { removed: args.teammateId };
+          default: throw new ToolInputError(`Unknown action "${args.action}"`);
         }
       },
     },

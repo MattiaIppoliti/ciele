@@ -38,5 +38,11 @@ Rules that follow from that:
   history, don't "fix" it.
 - Enterprise migrations live in `ee/migrations/`, a separate chain applied strictly **after** the
   full OSS chain by the same applier. EE tables may reference OSS ones, never the reverse.
-- New tables need RLS policies in the same migration. `packages/db`'s pglite contract tests
-  exercise them, an RLS gap shows up there, not in review.
+- New tables need RLS policies in the same migration, **and a test that asks as `authenticated`**.
+  The pglite contract tests connect as a superuser, so they run straight past every policy; see
+  `packages/db/src/testing/channel-access.test.ts` for the switch that makes them real. An
+  unasserted policy is where the operations layer looks like the tenancy line and PostgREST is the
+  way around it.
+- A rule about *which column* changed cannot be a policy, which sees a row. That is a trigger; see
+  `20260824120000_teammate_channels.sql` (the channel manage rule) and
+  `20260823170000_teammate_routine_cap.sql` (a count over sibling rows).

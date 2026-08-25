@@ -41,8 +41,15 @@ const PLATFORM_ENV: Record<CatalogProvider, string> = {
   google: "GOOGLE_GENERATIVE_AI_API_KEY",
 };
 
-/** Which traffic surface a provider credential is being resolved for. */
-export type KeySurface = "published" | "preview";
+/**
+ * Which traffic surface a provider credential is being resolved for.
+ *
+ * `teammate` is internal chat (#769). It is its own value rather than a second
+ * meaning for `preview`, because the ADR-0007 boundary now names two surfaces
+ * where a personal subscription may run, and a boundary stated in an ADR should
+ * be readable in the code that enforces it.
+ */
+export type KeySurface = "published" | "preview" | "teammate";
 
 /**
  * Context for provider resolution. Hosted subscription rows remain retired.
@@ -51,6 +58,11 @@ export type KeySurface = "published" | "preview";
  */
 export interface KeyResolution {
   surface?: KeySurface;
+  /**
+   * The Member whose turn this is. The personal-subscription branch needs it:
+   * a subscription may power its owner's turns and nobody else's, and "who is
+   * asking" is the only thing that distinguishes the two.
+   */
   memberId?: string | null;
   localSubscriptionProviders?: LocalSubscriptionProvider[];
   localSubscriptionRunner?: LocalCliRunner;
@@ -188,8 +200,34 @@ function resolveOpenAiCompatibleCredential(
 }
 
 /**
+ * Whether this turn may run on the invoking Member's own consumer subscription
+ * (ADR-0007 as amended by #769).
+ *
+ * Two conditions, both load-bearing. The **surface** must be one the amendment
+ * names: their own Preview, or their own Teammate chat. Published Widget
+ * traffic never qualifies, and neither does an unattended run, which has no
+ * surface and no invoker. The **memberId** must be present, because the
+ * capability belongs to a person: the caller advertises only the providers that
+ * person's own paired device verified, so an absent invoker means there is
+ * nobody whose subscription this could be.
+ */
+export function mayUsePersonalSubscription(resolution: KeyResolution): boolean {
+  return isOperatorSurface(resolution) && Boolean(resolution.memberId);
+}
+
+/**
+ * Whether this surface may see operator diagnostics: which provider answered,
+ * that no credential is configured, where to fix it. Both internal surfaces
+ * qualify, because everyone on them is org staff. A Visitor on a published
+ * widget never sees a word about the tenant's configuration.
+ */
+export function isOperatorSurface(resolution: KeyResolution): boolean {
+  return resolution.surface === "preview" || resolution.surface === "teammate";
+}
+
+/**
  * Resolves an authenticated provider capability. A Member's explicitly
- * detected local CLI wins only in local Preview; otherwise order is the
+ * detected local CLI wins only on their own internal surface; otherwise order is the
  * Organization BYOK connection, provider-specific federated credential, then
  * platform key. Legacy database subscription rows remain ignored everywhere.
  */
@@ -202,8 +240,7 @@ export function resolveProviderCredential(
     return resolveOpenAiCompatibleCredential(connections);
   }
   if (
-    resolution.surface === "preview" &&
-    resolution.memberId &&
+    mayUsePersonalSubscription(resolution) &&
     (provider === "openai" || provider === "anthropic") &&
     resolution.localSubscriptionProviders?.includes(provider)
   ) {

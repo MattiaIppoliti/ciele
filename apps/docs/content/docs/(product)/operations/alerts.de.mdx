@@ -12,12 +12,18 @@ Anzahl der aktiven Warnungen anzeigen.
 - **Resolved** zeigt gelöschte Warnungen an.
 - **All** zeigt beide Zustände an.
 
-Jede Warnung enthält ihren Typ, ihren Titel, Details, den Zeitpunkt der
-Erkennung und den aktuellen Status.
+Jede Warnung enthält ihren Typ, ihren Titel, Details, den Erkennungszeitpunkt
+und den aktuellen Status.
 
 Fehler bei der Zielerreichung führen zur Erstellung von Warnmeldungen. Auch
 andere überwachte Vorgänge können eine Warnung erzeugen, wenn ihre aktuelle
 Implementierung einen Fehler meldet.
+
+Ein Alert vom Typ **Knowledge** meldet ein Konfigurationsproblem, keinen Fehler.
+Ciele erstellt eine, wenn Sie eine Wissenssammlung löschen, die ein
+KI-Teamkollege noch durchsucht. Die Warnung benennt die Teammates, die auf die
+gelöschte Sammlung verweisen. Sie wird gelöscht, wenn der letzte von ihnen die
+Sammlung aus seinem Wissen entfernt.
 
 ## Eine Warnung beheben
 
@@ -29,5 +35,5 @@ Implementierung einen Fehler meldet.
 5. Vergewissern Sie sich, dass das Problem nicht mehr auftritt.
 6. Markieren Sie die Warnung bei Bedarf als gelöst.
 
-Schließen Sie eine Warnung nicht nur ab, um ihr Badge zu entfernen. Bestätigen
-Sie zuerst den betroffenen Vorgang.
+Lösen Sie eine Warnung nicht nur auf, um ihr Badge zu entfernen. Bestätigen Sie
+zuerst den betroffenen Vorgang.
