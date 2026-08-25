@@ -140,21 +140,21 @@ describe("orgMutation", () => {
       { kind: "channel", id: "ch_1" },
       [["/teammates/channels/ch_1", undefined]],
     ],
-    // A Project change reaches the page that renders every Project, and every
-    // Teammate page, which renders the live ones. The bracketed path is how
-    // Next names a dynamic route for all of its params, and it only works with
-    // the explicit "page" type.
+    // A Project change reaches the roster (whose create dialog offers the
+    // live Projects) and every Teammate page. The bracketed path is how Next
+    // names a dynamic route for all of its params, and it only works with the
+    // explicit "page" type.
     [
       { kind: "projectList" },
       [
-        ["/projects", undefined],
+        ["/teammates", undefined],
         ["/teammates/[teammateId]", "page"],
       ],
     ],
     [
       { kind: "project", id: "prj_1" },
       [
-        ["/projects", undefined],
+        ["/teammates", undefined],
         ["/teammates/[teammateId]", "page"],
       ],
     ],
@@ -188,7 +188,7 @@ describe("orgMutation", () => {
       async () => null
     );
     expect(revalidatePathMock.mock.calls).toEqual([
-      ["/projects", undefined],
+      ["/teammates", undefined],
       ["/teammates/[teammateId]", "page"],
     ]);
   });

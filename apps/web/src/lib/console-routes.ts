@@ -19,7 +19,6 @@ export const CONSOLE_PATH_PREFIXES = [
   "/inbox",
   "/insights",
   "/library",
-  "/projects",
   "/settings",
   "/setup",
   "/teammates",

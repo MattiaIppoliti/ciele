@@ -28,7 +28,7 @@ import { setMessageFeedbackAction } from "@/app/actions";
 import type { MemberOption } from "@/components/teammates/teammate-editors-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
-import { TeammateSettingsDialog } from "@/components/teammates/teammate-settings-dialog";
+import { TeammateSettingsDrawer } from "@/components/teammates/teammate-settings-drawer";
 import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import {
   readTeammateConversationAction,
@@ -94,20 +94,16 @@ export function TeammateWorkspace({
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   /**
-   * Bumped on every Configure click, and the settings dialog's `key`.
-   *
-   * The dialog seeds each field from a prop at mount, and it is mounted here
-   * beside the chat rather than when it opens, so that mount is the page load.
-   * The props move under it in between: `router.refresh()` runs from the
-   * history list and from the dialog's own save, and a colleague can be
-   * editing the same Teammate. Remounting per open is what makes "seeded at
-   * mount" mean "seeded when you opened it", and nothing is lost, because a
-   * closed dialog holds no draft anybody meant to keep. The Agent memory layer
-   * needs more than this and reads itself on open; see the dialog.
+   * The settings drawer mounts only while this is true, so every open is a
+   * fresh mount seeded from the props as they stand at that click. The props
+   * move between opens: `router.refresh()` runs from the history list and from
+   * the drawer's own save, and a colleague can be editing the same Teammate.
+   * Nothing is lost by unmounting, because a closed drawer holds no draft
+   * anybody meant to keep. The Agent memory layer needs more than this and
+   * reads itself on open; see the drawer.
    */
-  const [configureSession, setConfigureSession] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   /**
@@ -301,10 +297,7 @@ export function TeammateWorkspace({
               variant="outline"
               size="sm"
               className="ml-auto"
-              onClick={() => {
-                setConfigureSession((session) => session + 1);
-                setSettingsOpen(true);
-              }}
+              onClick={() => setSettingsOpen(true)}
             >
               <Settings2 className="size-4" /> Configure
             </Button>
@@ -428,10 +421,8 @@ export function TeammateWorkspace({
         )}
       </div>
 
-      {canEdit && (
-        <TeammateSettingsDialog
-          key={configureSession}
-          open={settingsOpen}
+      {canEdit && settingsOpen && (
+        <TeammateSettingsDrawer
           teammate={teammate}
           collections={collections}
           members={members}

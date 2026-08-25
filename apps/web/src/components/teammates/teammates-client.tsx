@@ -12,9 +12,11 @@ import {
   createTeammateAction,
   hideTeammateAction,
   unhideTeammateAction,
+  updateTeammateAction,
 } from "@/app/(admin)/teammates/actions";
 import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { CollectionScopePicker } from "@/components/teammates/collection-scope-picker";
+import { ProjectSection } from "@/components/teammates/project-section";
 import { VisibilityPicker } from "@/components/teammates/visibility-picker";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 
@@ -84,10 +86,13 @@ const TEMPLATES: Array<{
 function CreateTeammateDialog({
   open,
   collections,
+  projects,
   onClose,
 }: {
   open: boolean;
   collections: CollectionOption[];
+  /** Live Projects the new Teammate can attach to right away (#771). */
+  projects: { id: string; name: string }[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -96,6 +101,7 @@ function CreateTeammateDialog({
   const [roleDescription, setRoleDescription] = useState("");
   const [collectionIds, setCollectionIds] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<TeammateVisibility>("org");
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function pick(template: (typeof TEMPLATES)[number] | null) {
@@ -118,6 +124,12 @@ function CreateTeammateDialog({
           visibility,
           collectionIds,
         });
+        // A second write rather than a field on the create operation: the
+        // attach is the same patch the configuration panel makes, so creating
+        // with a Project and attaching one later stay one code path.
+        if (projectId) {
+          await updateTeammateAction(teammate.id, { projectId });
+        }
         toast.success(`${teammate.name} is ready`);
         onClose();
         router.push(`/teammates/${teammate.id}`);
@@ -201,6 +213,13 @@ function CreateTeammateDialog({
           collections={collections}
           selected={collectionIds}
           onChange={setCollectionIds}
+        />
+
+        <ProjectSection
+          projects={projects}
+          value={projectId}
+          onChange={setProjectId}
+          canEdit
         />
 
         <VisibilityPicker value={visibility} onChange={setVisibility} />
@@ -361,6 +380,7 @@ export function TeammatesClient({
   channels,
   members,
   collections,
+  projects,
   canEdit,
 }: {
   teammates: Teammate[];
@@ -371,6 +391,8 @@ export function TeammatesClient({
   /** Colleagues who can be invited into a new channel. */
   members: MemberChoice[];
   collections: CollectionOption[];
+  /** Live Projects, offered by the create dialog's project section (#771). */
+  projects: { id: string; name: string }[];
   canEdit: boolean;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
@@ -566,6 +588,7 @@ export function TeammatesClient({
       <CreateTeammateDialog
         open={createOpen}
         collections={collections}
+        projects={projects}
         onClose={() => setCreateOpen(false)}
       />
       <CreateChannelDialog

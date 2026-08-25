@@ -7,7 +7,6 @@ import {
   CircleHelp,
   Compass,
   FlaskConical,
-  FolderKanban,
   LayoutGrid,
   Lock,
   MessageCircle,
@@ -85,21 +84,9 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     // prefix, so it answers with both as well.
     apiDomains: ["teammates", "channels"],
   },
-  {
-    // Beside Teammates, because a Project is only ever read by one (#771).
-    //
-    // #767 specifies "a top-level Teammates nav entry" and says nothing about
-    // where Projects lives. A Project is a first-class entity Editors create
-    // and edit (#771), the decisions document is human-written as often as
-    // agent-written, and the only alternative was burying it inside a
-    // Teammate's settings dialog, where a team's decisions are not.
-    //
-    // No `apiDomains`: the domain has no /api/v1 routes yet, and claiming one
-    // it cannot present would fail the Developer Panel's catalogue test.
-    label: "Projects",
-    icon: FolderKanban,
-    href: "/projects",
-  },
+  // Projects deliberately have no nav entry: a Project is only ever read by
+  // one Teammate (#771), so it is created, attached and edited from the
+  // Teammate's own configuration panel rather than a page of its own.
   {
     label: "Improvements",
     icon: FlaskConical,

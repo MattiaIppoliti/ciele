@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 export default async function TeammatesPage() {
   const { organizationId, role, session, db } = await requirePageMember();
 
-  const [teammates, collections, hiddenRows, channels, members] =
+  const [teammates, collections, hiddenRows, channels, members, projects] =
     await Promise.all([
       db.table("teammates").list({ organizationId, deletedAt: null }),
       db.listOrgCollections(organizationId),
@@ -34,6 +34,8 @@ export default async function TeammatesPage() {
       // Membership is the visibility rule, and the operation is where it lives.
       runOperation(listChannelsOp, {}),
       db.listMembers(organizationId),
+      // The create dialog's project section offers the live ones (#771).
+      db.table("projects").list({ organizationId }),
     ]);
 
   const viewer = { userId: session.userId, role: role ?? "viewer" };
@@ -61,6 +63,11 @@ export default async function TeammatesPage() {
           label: memberDisplayName(member),
         }))}
       collections={collections.map((c) => ({ id: c.id, name: c.name }))}
+      projects={projects
+        // Archived projects keep their decisions and stop feeding them to a
+        // model, so attaching to one would be attaching to nothing.
+        .filter((project) => !project.archived)
+        .map((project) => ({ id: project.id, name: project.name }))}
       canEdit={canEdit(role)}
     />
   );

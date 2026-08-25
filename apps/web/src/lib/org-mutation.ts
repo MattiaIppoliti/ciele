@@ -95,17 +95,17 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
     case "channel":
       // A concrete path, so no `scope`: one channel page, one id.
       return [{ path: `/teammates/channels/${entity.id}` }];
-    // One entity or the other, but the same two routes: there is no
-    // `/projects/[id]` route to name (`projects/page.tsx` renders every
-    // Project and its decisions on one page), and a Teammate page renders the
-    // live Projects whether one of them changed or the set of them did.
+    // One entity or the other, but the same two routes: Projects have no page
+    // of their own since they moved into the Teammate configuration panel, so
+    // a Project change reaches the roster (whose create dialog offers the live
+    // Projects) and every Teammate page.
     case "project":
     case "projectList":
       return [
-        { path: "/projects" },
+        { path: "/teammates" },
         // Every Teammate page at once: the Project a Teammate reads is picked
-        // in its Configure dialog, so which Teammates a Project change reaches
-        // is not knowable from the entity.
+        // in its configuration panel, so which Teammates a Project change
+        // reaches is not knowable from the entity.
         { path: "/teammates/[teammateId]", scope: "page" },
       ];
     case "myMemory":

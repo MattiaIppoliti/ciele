@@ -8,7 +8,7 @@ import { findVisibleTeammate } from "@/lib/teammates/access";
 export const dynamic = "force-dynamic";
 
 /**
- * One Teammate: the chat, with its configuration behind a dialog.
+ * One Teammate: the chat, with its configuration in a right-side drawer.
  *
  * A retired Teammate still opens. It answers nothing more, but the
  * Conversations a Member had with it are readable only here, so a 404 would

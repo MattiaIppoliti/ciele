@@ -2,6 +2,8 @@
 
 import type {
   MemoryDocument,
+  Project,
+  ProjectPatch,
   RoutineCadence,
   Teammate,
   TeammateCapabilityCeiling,
@@ -11,10 +13,13 @@ import type {
   TeammateRoutinePatch,
 } from "@agent-hub/core";
 import {
+  createProjectOp,
   createRoutineOp,
   createTeammateOp,
+  deleteProjectOp,
   deleteRoutineOp,
   deleteTeammateOp,
+  getProjectOp,
   getTeammateMemoryOp,
   hideTeammateOp,
   listTeammateThreadOp,
@@ -22,8 +27,10 @@ import {
   setTeammateGrantsOp,
   startReferralOp,
   unhideTeammateOp,
+  updateProjectOp,
   updateRoutineOp,
   updateTeammateOp,
+  writeProjectDocumentOp,
   writeTeammateMemoryOp,
   type MemoryDocumentView,
   type TeammateGovernance,
@@ -177,4 +184,53 @@ export async function startReferredConversationAction(input: {
   summary: string;
 }): Promise<{ conversationId: string }> {
   return runOperation(startReferralOp, input);
+}
+
+/**
+ * Projects (#771), managed from the Teammate configuration panel since they
+ * lost their own page: a Project is only ever read by one Teammate, so it is
+ * created, attached and edited beside the Teammate that reads it. Thin
+ * adapters over the operations, like everything above.
+ */
+
+export async function createProjectAction(input: {
+  name: string;
+  description?: string;
+}): Promise<Project> {
+  return runOperation(createProjectOp, {
+    name: input.name,
+    description: input.description ?? "",
+  });
+}
+
+export async function updateProjectAction(
+  id: string,
+  patch: ProjectPatch
+): Promise<Project> {
+  return runOperation(updateProjectOp, { id, patch });
+}
+
+export async function deleteProjectAction(id: string): Promise<void> {
+  await runOperation(deleteProjectOp, { id });
+}
+
+/**
+ * One Project with its decisions document and the history of writes to it
+ * (#767, story 24): the configuration panel reads this when a Project is
+ * selected, so the versioning is answerable from wherever the Project is
+ * edited rather than from whichever transcript a decision happened in.
+ */
+export async function readProjectAction(id: string): Promise<
+  { project: Project } & MemoryDocumentView
+> {
+  return runOperation(getProjectOp, { id });
+}
+
+/** The conventions-and-decisions document every attached Teammate reads. */
+export async function writeProjectDocumentAction(
+  id: string,
+  body: string,
+  note = ""
+): Promise<MemoryDocument> {
+  return runOperation(writeProjectDocumentOp, { id, body, note });
 }
