@@ -15,6 +15,7 @@ interface Detail {
   improvement: Improvement;
   associations: ImprovementAssociation[];
   proposal: ImprovementProposal | null;
+  projects: { id: string; name: string }[];
 }
 
 /**
@@ -65,6 +66,7 @@ export function ImprovementDrawer({
           associations={detail.associations}
           members={members}
           proposal={detail.proposal}
+          projects={detail.projects}
           canEdit={canEdit}
           variant="drawer"
         />

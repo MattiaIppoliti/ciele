@@ -46,6 +46,7 @@ export const improvementPatchSchema = z
     tags: z.array(z.string().max(100)).max(50),
     assigneeId: z.string().nullable(),
     dueDate: z.string().nullable(),
+    projectId: z.string().nullable(),
   })
   .partial() satisfies z.ZodType<ImprovementPatch, ImprovementPatch>;
 

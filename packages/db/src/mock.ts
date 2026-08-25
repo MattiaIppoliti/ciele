@@ -1382,6 +1382,7 @@ function seedInboxDemo(store: MockStore) {
     tags: ["Generico"],
     assigneeId: null,
     dueDate: null,
+    projectId: null,
     createdBy: "u-marco",
     createdAt: at(7, 47),
     updatedAt: at(7, 47),
@@ -1754,6 +1755,13 @@ const MOCK_CASCADES: Partial<
       // Same rule for a channel: losing the Project unbinds the thread rather
       // than deleting it.
       rows: () => getStore().teammateChannels as Map<string, unknown>,
+      column: "projectId",
+      onDelete: "null",
+    },
+    {
+      // And for an Improvement: what was wrong with an answer outlives the
+      // Project it was filed under.
+      rows: () => getStore().improvements as Map<string, unknown>,
       column: "projectId",
       onDelete: "null",
     },
@@ -3543,6 +3551,7 @@ export const mockDb: Db = {
       tags: [],
       assigneeId: null,
       dueDate: null,
+      projectId: null,
       createdBy: input.createdBy ?? null,
       createdAt: now,
       updatedAt: now,

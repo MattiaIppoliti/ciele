@@ -533,6 +533,7 @@ interface ImprovementRow {
   tags: string[] | null;
   assignee_id: string | null;
   due_date: string | null;
+  project_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -550,6 +551,7 @@ function toImprovement(row: ImprovementRow): Improvement {
     tags: row.tags ?? [],
     assigneeId: row.assignee_id,
     dueDate: row.due_date,
+    projectId: row.project_id,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -3239,6 +3241,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (patch.tags !== undefined) row.tags = patch.tags;
       if (patch.assigneeId !== undefined) row.assignee_id = patch.assigneeId;
       if (patch.dueDate !== undefined) row.due_date = patch.dueDate;
+      if (patch.projectId !== undefined) row.project_id = patch.projectId;
       const { data, error } = await client
         .from("improvements")
         .update(row)

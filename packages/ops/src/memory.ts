@@ -139,8 +139,10 @@ export const deleteProjectOp = defineOperation({
   entities: ({ id }) => [
     { kind: "project" as const, id },
     { kind: "projectList" as const },
-    // Every attached Teammate loses its Project layer next turn.
+    // Every attached Teammate loses its Project layer next turn, and every
+    // Improvement filed under it detaches.
     { kind: "teammateList" as const },
+    { kind: "improvementList" as const },
   ],
   run: async (ctx, { id }): Promise<void> => {
     await requireProject(ctx, id);

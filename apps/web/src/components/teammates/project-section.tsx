@@ -19,7 +19,7 @@ import {
   readProjectAction,
   updateProjectAction,
   writeProjectDocumentAction,
-} from "@/app/(admin)/teammates/actions";
+} from "@/app/actions";
 
 /**
  * The whole Projects surface (#771), inside the Teammate form it always served.

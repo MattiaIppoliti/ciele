@@ -18,10 +18,11 @@ export default async function ImprovementDetailPage({
     notFound();
   }
 
-  const [associations, members, proposal] = await Promise.all([
+  const [associations, members, proposal, projects] = await Promise.all([
     db.listImprovementMessages(improvement.id),
     db.listMembers(organizationId),
     db.getImprovementProposal(improvement.id),
+    db.table("projects").list({ organizationId }),
   ]);
 
   return (
@@ -30,6 +31,11 @@ export default async function ImprovementDetailPage({
       associations={associations}
       members={members.map((m) => ({ userId: m.userId, email: m.email }))}
       proposal={proposal}
+      projects={projects
+        // Archived projects have stopped being run; filing new work under one
+        // would file it under something nobody is looking at.
+        .filter((project) => !project.archived)
+        .map((project) => ({ id: project.id, name: project.name }))}
       canEdit={canEdit(role)}
     />
   );

@@ -15,12 +15,15 @@ import type {
   Improvement,
   ImprovementAssociation,
   Memory,
+  MemoryDocument,
   ImprovementListItem,
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
   OrganizationPatch,
   ProfilePatch,
+  Project,
+  ProjectPatch,
   Provider,
   RecrawlSchedule,
   Role,
@@ -156,6 +159,12 @@ import {
   setConversationPinnedOp,
   setMessageFeedbackOp,
   validateSsoIdentityOp,
+  createProjectOp,
+  deleteProjectOp,
+  getProjectOp,
+  updateProjectOp,
+  writeProjectDocumentOp,
+  type MemoryDocumentView,
 } from "@ciele/ops";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
@@ -1862,17 +1871,29 @@ export async function getImprovementDetailAction(
   improvement: Improvement;
   associations: ImprovementAssociation[];
   proposal: ImprovementProposal | null;
+  /** Live Projects it can be filed under (#771). */
+  projects: { id: string; name: string }[];
 } | null> {
   const { db, session } = await requireMember();
   const improvement = await db.getImprovement(improvementId);
   if (!improvement || improvement.organizationId !== session.organization.id) {
     return null;
   }
-  const [associations, proposal] = await Promise.all([
+  const [associations, proposal, projects] = await Promise.all([
     db.listImprovementMessages(improvement.id),
     db.getImprovementProposal(improvement.id),
+    db.table("projects").list({ organizationId: session.organization.id }),
   ]);
-  return { improvement, associations, proposal };
+  return {
+    improvement,
+    associations,
+    proposal,
+    projects: projects
+      // Archived projects have stopped being run; filing new work under one
+      // would file it under something nobody is looking at.
+      .filter((project) => !project.archived)
+      .map((project) => ({ id: project.id, name: project.name })),
+  };
 }
 
 export async function listConversationImprovementLinksAction(
@@ -2220,4 +2241,53 @@ export async function listEntityRecordsAction(
     offset: opts?.offset,
   });
   return { records: result.data, total: result.total };
+}
+
+/**
+ * Projects (#771). Shared rather than route-local, because a Project is named
+ * from two places now: the Teammate configuration panel that reads its
+ * decisions every message, and an Improvement that says which project the work
+ * belongs to. Thin adapters over the operations, like everything above.
+ */
+
+export async function createProjectAction(input: {
+  name: string;
+  description?: string;
+}): Promise<Project> {
+  return runOperation(createProjectOp, {
+    name: input.name,
+    description: input.description ?? "",
+  });
+}
+
+export async function updateProjectAction(
+  id: string,
+  patch: ProjectPatch
+): Promise<Project> {
+  return runOperation(updateProjectOp, { id, patch });
+}
+
+export async function deleteProjectAction(id: string): Promise<void> {
+  await runOperation(deleteProjectOp, { id });
+}
+
+/**
+ * One Project with its decisions document and the history of writes to it
+ * (#767, story 24): the configuration panel reads this when a Project is
+ * selected, so the versioning is answerable from wherever the Project is
+ * edited rather than from whichever transcript a decision happened in.
+ */
+export async function readProjectAction(id: string): Promise<
+  { project: Project } & MemoryDocumentView
+> {
+  return runOperation(getProjectOp, { id });
+}
+
+/** The conventions-and-decisions document every attached Teammate reads. */
+export async function writeProjectDocumentAction(
+  id: string,
+  body: string,
+  note = ""
+): Promise<MemoryDocument> {
+  return runOperation(writeProjectDocumentOp, { id, body, note });
 }

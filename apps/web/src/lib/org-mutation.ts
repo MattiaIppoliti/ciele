@@ -95,10 +95,11 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
     case "channel":
       // A concrete path, so no `scope`: one channel page, one id.
       return [{ path: `/teammates/channels/${entity.id}` }];
-    // One entity or the other, but the same two routes: Projects have no page
-    // of their own since they moved into the Teammate configuration panel, so
-    // a Project change reaches the roster (whose create dialog offers the live
-    // Projects) and every Teammate page.
+    // One entity or the other, but the same routes: Projects have no page of
+    // their own since they moved into the Teammate configuration panel, so a
+    // Project change reaches the roster (whose create dialog offers the live
+    // Projects), every Teammate page, and the Improvements board, where an
+    // Improvement names the Project it belongs to.
     case "project":
     case "projectList":
       return [
@@ -107,6 +108,7 @@ function revalidationsFor(entity: MutatedEntity): Revalidation[] {
         // in its configuration panel, so which Teammates a Project change
         // reaches is not knowable from the entity.
         { path: "/teammates/[teammateId]", scope: "page" },
+        { path: "/improvements" },
       ];
     case "myMemory":
       return [{ path: "/settings/memory" }];

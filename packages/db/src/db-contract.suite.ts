@@ -2229,6 +2229,30 @@ export function describeDbContract(
           title: "Patch me",
         });
       });
+
+      it("files an improvement under a project, and detaches on delete", async () => {
+        const project = await db.table("projects").insert({
+          organizationId: ctx.organizationId,
+          name: "Atlas",
+          description: "",
+          createdBy: null,
+        });
+        const improvement = await db.createImprovement(ctx.organizationId, {
+          title: "Belongs to Atlas",
+        });
+        // Most Improvements are org-wide work, so the column starts empty.
+        expect(improvement.projectId).toBeNull();
+
+        const filed = await db.updateImprovement(improvement.id, {
+          projectId: project.id,
+        });
+        expect(filed.projectId).toBe(project.id);
+
+        // `on delete set null`: what was wrong with an answer outlives the
+        // project it was filed under.
+        await db.table("projects").delete(project.id);
+        expect((await db.getImprovement(improvement.id))?.projectId).toBeNull();
+      });
     });
 
     describe("website source re-crawl schedule", () => {

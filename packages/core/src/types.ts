@@ -2329,6 +2329,14 @@ export interface Improvement {
   assigneeId: string | null;
   /** Due date as yyyy-mm-dd, or null. */
   dueDate: string | null;
+  /**
+   * The Project this work belongs to, or null (#771).
+   *
+   * Most Improvements are org-wide and stay null. Deleting the Project detaches
+   * them rather than taking them with it: what was wrong with an answer is
+   * still worth knowing after the project it was filed under is gone.
+   */
+  projectId: string | null;
   /** Auth user id of whoever created the item, or null. */
   createdBy: string | null;
   createdAt: string;
@@ -2419,6 +2427,7 @@ export type ImprovementPatch = Partial<
     | "tags"
     | "assigneeId"
     | "dueDate"
+    | "projectId"
   >
 >;
 
