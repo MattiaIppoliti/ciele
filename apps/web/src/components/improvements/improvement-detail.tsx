@@ -358,7 +358,11 @@ export function ImprovementDetail({
         </div>
       </header>
 
-      <div className="@4xl:grid-cols-[1fr_320px] grid flex-1 gap-6 border-t px-6 py-5">
+      {/* @5xl, not @4xl: at 896px the fixed 320px panel left the main column
+          ~500px, which is narrower than the transcript it has to hold. Below
+          this the panel keeps everything it has and stacks under the content
+          instead of squeezing it. */}
+      <div className="@5xl:grid-cols-[1fr_320px] grid flex-1 gap-6 border-t px-6 py-5">
         {/* Main column */}
         <div className="min-w-0 space-y-6">
           {/* Straight under the title and in the same hand: a description is
@@ -420,12 +424,16 @@ export function ImprovementDetail({
 
             {current && (
               <div className="@2xl:grid-cols-[1fr_220px] grid gap-4">
-                <div className="bg-card min-w-0 rounded-xl border p-4">
+                {/* Its own container: the row below used viewport breakpoints
+                    while living in a container-query column, so a wide window
+                    turned it horizontal inside a 240px box and its buttons
+                    overflowed the card. */}
+                <div className="@container bg-card min-w-0 rounded-xl border p-4">
                   <Transcript
                     transcript={current.transcript}
                     flaggedId={current.messageId}
                   />
-                  <div className="mt-3 flex flex-col gap-3 border-t pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="@xl:flex-row @xl:items-center @xl:justify-between mt-3 flex flex-col gap-3 border-t pt-3">
                     <Link
                       href={`/inbox?conversation=${current.conversationId}`}
                       className="text-primary inline-flex items-center gap-1.5 text-xs font-medium hover:underline"
