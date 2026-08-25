@@ -1,18 +1,20 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { Teammate, TeammateRoutine } from "@agent-hub/core";
-import { DetailDrawer } from "@/components/ui/detail-drawer";
 import { TeammateSettingsForm } from "@/components/teammates/teammate-settings-form";
 import type { MemberOption } from "@/components/teammates/teammate-editors-picker";
 import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 
 /**
- * The Teammate's configuration, beside its chat: the console's shared
- * `DetailDrawer` (overlay, resize handle, "Open full screen") with the same
- * form `/teammates/{id}/settings` renders full width.
+ * `/teammates/{id}/settings`: the configuration form full width.
+ *
+ * A client shell around the shared form for one reason, where the Member goes
+ * when they are done. In the drawer that is "close"; here the form was the
+ * whole screen, so leaving it means going back to the chat it configures.
  */
-export function TeammateSettingsDrawer({
+export function TeammateSettingsPage({
   teammate,
   collections,
   members,
@@ -21,7 +23,6 @@ export function TeammateSettingsDrawer({
   projects,
   learnings,
   routines,
-  onClose,
 }: {
   teammate: Teammate;
   collections: CollectionOption[];
@@ -31,18 +32,11 @@ export function TeammateSettingsDrawer({
   routines: TeammateRoutine[];
   governance: TeammateGovernanceState;
   canGrant: boolean;
-  onClose: () => void;
 }) {
+  const router = useRouter();
+
   return (
-    <DetailDrawer
-      ariaLabel={`Configure ${teammate.name}`}
-      fullScreenHref={`/teammates/${teammate.id}/settings`}
-      resizeLabel="Resize teammate panel"
-      defaultWidth={620}
-      minWidth={420}
-      maxWidth={1000}
-      onClose={onClose}
-    >
+    <div className="mx-auto w-full max-w-3xl">
       <TeammateSettingsForm
         teammate={teammate}
         collections={collections}
@@ -52,9 +46,9 @@ export function TeammateSettingsDrawer({
         projects={projects}
         learnings={learnings}
         routines={routines}
-        variant="drawer"
-        onDone={onClose}
+        variant="page"
+        onDone={() => router.push(`/teammates/${teammate.id}`)}
       />
-    </DetailDrawer>
+    </div>
   );
 }
