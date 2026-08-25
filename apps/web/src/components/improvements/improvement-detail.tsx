@@ -56,7 +56,7 @@ import {
   statusLabel,
 } from "@/lib/improvements";
 import { memberDisplayName } from "@/lib/members";
-import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 interface MemberOption {
   userId: string;
@@ -621,7 +621,11 @@ export function ImprovementDetail({
               <PopoverTrigger className={PILL} disabled={!canEdit}>
                 {assigneeEmail ? (
                   <>
-                    <GeneratedAvatar seed={assigneeEmail} size="size-5" />
+                    <UserAvatar
+                      userId={assigneeId}
+                      email={assigneeEmail}
+                      size="size-5"
+                    />
                     {memberDisplayName(assigneeEmail)}
                   </>
                 ) : (
@@ -653,7 +657,11 @@ export function ImprovementDetail({
                       onClick={() => changeAssignee(m.userId)}
                       className="hover:bg-muted flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
                     >
-                      <GeneratedAvatar seed={m.userId || m.email} size="size-6" />
+                      <UserAvatar
+                        userId={m.userId}
+                        email={m.email}
+                        size="size-6"
+                      />
                       <span className="min-w-0">
                         <span className="block truncate">
                           {memberDisplayName(m.email)}

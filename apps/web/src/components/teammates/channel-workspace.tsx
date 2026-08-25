@@ -245,9 +245,8 @@ export function ChannelWorkspace({
           <div className="hidden items-center sm:flex">
             {roster.slice(0, 6).map((entry) => (
               <Hint key={entry.id} label={entry.name}>
-                {/* The margin rides the avatar itself: an inline wrapper would
-                    stop `size-7` applying at all, and the faces render at the
-                    SVG's own 210px. */}
+                {/* The margin rides the avatar itself rather than a wrapper,
+                    so the overlap stays on the sized element. */}
                 <GeneratedAvatar
                   seed={
                     entry.kind === "teammate"

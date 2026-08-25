@@ -362,7 +362,7 @@ export function TeammateWorkspace({
                 <div className="pt-10 text-center">
                   <TeammateAvatar
                     teammate={teammate}
-                    className="mx-auto size-14 text-lg"
+                    className="size-12"
                   />
                   <p className="mt-4 text-lg font-semibold">{teammate.name}</p>
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">

@@ -26,7 +26,12 @@ export function GeneratedAvatar({
     <span
       className={cn(
         size,
-        "shrink-0 overflow-hidden rounded-full [&>svg]:size-full",
+        // `inline-flex`, not the span's default `inline`: an inline box ignores
+        // width and height, so the size class was silently dropped anywhere the
+        // avatar was not itself a flex item — a wrapping `<span title>` on an
+        // improvement card, a centred empty state — and the SVG stretched to
+        // the width of whatever contained it.
+        "inline-flex shrink-0 overflow-hidden rounded-full [&>svg]:size-full",
         className
       )}
       // Decorative: every place this appears, the person's or Teammate's name

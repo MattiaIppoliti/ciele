@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
-import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   IMPROVEMENT_PRIORITIES,
   IMPROVEMENT_STATUSES,
@@ -450,13 +450,14 @@ export function ImprovementsBoard({
                               )}
                               {email ? (
                                 <span title={memberDisplayName(email)}>
-                                  <GeneratedAvatar
-                                    seed={email}
-                                    size="size-7"
+                                  <UserAvatar
+                                    userId={i.assigneeId}
+                                    email={email}
+                                    size="size-6"
                                   />
                                 </span>
                               ) : (
-                                <span className="text-muted-foreground bg-muted flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
+                                <span className="text-muted-foreground bg-muted flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
                                   N/A
                                 </span>
                               )}

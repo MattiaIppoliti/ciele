@@ -6,7 +6,7 @@ import { CalendarClock, MessageSquare } from "lucide-react";
 import { Badge, Card, CardContent, cn } from "@agent-hub/ui";
 import { formatDay } from "@/lib/format";
 import { memberDisplayName } from "@/lib/members";
-import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   IMPROVEMENT_STATUSES,
   improvementKey,
@@ -103,7 +103,11 @@ function ImprovementCard({
               )}
               {assigneeEmail ? (
                 <span title={memberDisplayName(assigneeEmail)}>
-                  <GeneratedAvatar seed={assigneeEmail} size="size-6" />
+                  <UserAvatar
+                    userId={item.assigneeId}
+                    email={assigneeEmail}
+                    size="size-6"
+                  />
                 </span>
               ) : (
                 <span className="bg-muted text-muted-foreground flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold">
