@@ -3,6 +3,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import type { SpringOptions } from "motion/react";
+import { usePointerSeen } from "@/lib/hooks/use-pointer-seen";
 
 export type MagneticProps = {
   children: React.ReactNode;
@@ -17,45 +18,12 @@ export type MagneticProps = {
    marketing page's own JavaScript put together, and only a visitor moving a
    mouse can ever see it: it is inert on touch, and nothing about the button's
    layout or behaviour depends on it. So the implementation is fetched on the
-   first pointer movement on a fine-pointer device and swapped in underneath
-   the same children, the way the home cursor already does it (see
-   home-cursor-mount.tsx). */
+   first pointer movement (see `usePointerSeen`) and swapped in underneath the
+   same children, the way the home cursor already does it. */
 const MagneticPull = dynamic(
   () => import("./magnetic-motion").then((module) => module.Magnetic),
   { ssr: false }
 );
-
-/* One listener and one flag for every instance on the page (the header alone
-   renders three), so the first movement arms all of them at once. */
-let pointerSeen = false;
-const listeners = new Set<() => void>();
-
-function arm() {
-  if (pointerSeen) return;
-  pointerSeen = true;
-  for (const notify of listeners) notify();
-}
-
-function usePointerSeen() {
-  React.useEffect(() => {
-    if (pointerSeen) return;
-    if (!window.matchMedia("(pointer: fine)").matches) return;
-    window.addEventListener("pointermove", arm, { once: true, passive: true });
-    return () => window.removeEventListener("pointermove", arm);
-  }, []);
-
-  return React.useSyncExternalStore(
-    (onChange) => {
-      listeners.add(onChange);
-      return () => {
-        listeners.delete(onChange);
-      };
-    },
-    () => pointerSeen,
-    // The server has seen no pointer either, so both renders agree.
-    () => false
-  );
-}
 
 /**
  * A button (or any child) that leans toward a nearby pointer.

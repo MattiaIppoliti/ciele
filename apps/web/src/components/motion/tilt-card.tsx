@@ -1,16 +1,8 @@
 "use client";
-// beui.dev/components/motion/tilt-card
 
-import {
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-} from "motion/react";
-import { useRef, type ReactNode } from "react";
-import { SPRING_MOUSE } from "@/lib/ease";
-import { useHoverCapable } from "@/lib/hooks/use-hover-capable";
+import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
+import { usePointerSeen } from "@/lib/hooks/use-pointer-seen";
 import { cn } from "@/lib/utils";
 
 export interface TiltCardProps {
@@ -34,80 +26,33 @@ export interface TiltCardProps {
   className?: string;
 }
 
+/* The tilt is `motion/react`, and only a mouse can ever see it. Loaded on the
+   first pointer movement (see `usePointerSeen`); until then, and forever on a
+   touch device, the card is the same box without the rotation. */
+const TiltCardMotion = dynamic(
+  () => import("@/components/motion/tilt-card-motion").then((m) => m.TiltCard),
+  { ssr: false }
+);
+
 /**
  * Tilts its contents towards the cursor, with a soft highlight tracking the
  * pointer. Decorative only: the tilt is skipped on touch devices (where hover
  * is phantom) and under `prefers-reduced-motion`, and the surface keeps working
  * either way.
  */
-export function TiltCard({
-  children,
-  max = 12,
-  glare = true,
-  glareOpacity = 0.15,
-  invert = false,
-  className,
-}: TiltCardProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
-  const canHover = useHoverCapable();
-  const enabled = !reduce && canHover;
-  const rx = useMotionValue(0);
-  const ry = useMotionValue(0);
-  const gx = useMotionValue(50);
-  const gy = useMotionValue(50);
+export function TiltCard(props: TiltCardProps) {
+  const pointerSeen = usePointerSeen();
 
-  const srx = useSpring(rx, SPRING_MOUSE);
-  const sry = useSpring(ry, SPRING_MOUSE);
-
-  const onMove = (event: React.MouseEvent<HTMLDivElement>) => {
-    const element = ref.current;
-    if (!element || !enabled) return;
-    const rect = element.getBoundingClientRect();
-    const px = (event.clientX - rect.left) / rect.width;
-    const py = (event.clientY - rect.top) / rect.height;
-    // CSS `rotateX` is right-handed about the +X axis and +Y points down, so a
-    // positive angle brings the BOTTOM edge toward the viewer. Upstream's
-    // `0.5 - py` therefore pushes whichever edge the pointer is near away;
-    // `invert` swaps both axes so it comes forward instead.
-    const direction = invert ? -1 : 1;
-    ry.set((px - 0.5) * max * direction);
-    rx.set((0.5 - py) * max * direction);
-    gx.set(px * 100);
-    gy.set(py * 100);
-  };
-
-  const onLeave = () => {
-    rx.set(0);
-    ry.set(0);
-  };
-
-  const transform = useMotionTemplate`perspective(1000px) rotateX(${srx}deg) rotateY(${sry}deg)`;
-  const glareBg = useMotionTemplate`radial-gradient(circle at ${gx}% ${gy}%, var(--foreground), transparent 50%)`;
+  if (pointerSeen) return <TiltCardMotion {...props} />;
 
   return (
-    <motion.div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      style={{ transform, transformStyle: "preserve-3d" }}
+    <div
       className={cn(
         "relative overflow-hidden rounded-2xl will-change-transform",
-        className
+        props.className
       )}
     >
-      {children}
-      {/* `rounded-[inherit]` rather than relying on the wrapper's clip: callers
-          that carry a ring or shadow have to turn `overflow-hidden` off (it
-          would clip an outward ring away), and the highlight still has to stop
-          at the corners when they do. */}
-      {glare && enabled ? (
-        <motion.div
-          aria-hidden
-          style={{ background: glareBg, opacity: glareOpacity }}
-          className="pointer-events-none absolute inset-0 rounded-[inherit]"
-        />
-      ) : null}
-    </motion.div>
+      {props.children}
+    </div>
   );
 }

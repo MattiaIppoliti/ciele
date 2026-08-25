@@ -98,13 +98,26 @@ behind a lazy boundary.
 | `home/hero-rotating-word.tsx` | after hydration; the resting word is server-rendered |
 | `home/nav-dropdown.tsx`, `nav-panel`'s mobile list | first pointer/focus in the nav, first tap of the menu |
 | `home/feature-card.tsx` (tilt, spotlight, morphing dialog) | the features grid comes within 400px of view; `feature-card-face` is what SSR renders |
-| `core/magnetic.tsx` | first pointer movement on a fine-pointer device |
+| `core/magnetic.tsx`, `motion/tilt-card.tsx`, `marketing/spotlight-card.tsx`'s glow | first pointer movement on a fine-pointer device (`lib/hooks/use-pointer-seen.ts`) |
 | `home/home-section-rail.tsx` | after hydration, and only from `xl` up |
 
-Measured with `measure:bundle` across that change: `/home` went from 989.7 KB raw /
-306.7 KB gz to 824.9 KB raw / 253.1 KB gz. The other marketing routes still ship it,
-`SpotlightCard` (`marketing/spotlight-card.tsx`) is the reason, and it is the next thing
-to defer if those pages need the same treatment.
+`SpotlightCard`'s scroll-in reveal is no longer JavaScript at all: it is
+`.marketing-card-reveal` in `home.css`, a view-timeline animation that degrades to the
+card already in place where view timelines are unsupported.
+
+Measured with `measure:bundle` across those changes:
+
+| Route | before | after |
+|---|---|---|
+| `/home` | 989.7 KB raw / 306.7 KB gz | 825.0 KB raw / 253.1 KB gz |
+| `/features/*` | 986.3 KB raw / 303.0 KB gz | 840.0 KB raw / 255.8 KB gz |
+| `/pricing` | 967.5 KB raw / 302.1 KB gz | 963.1 KB raw / 300.5 KB gz |
+| `/security` | 928.0 KB raw / 288.1 KB gz | 923.9 KB raw / 286.6 KB gz |
+
+`/pricing` and `/security` barely move because they still ship motion for one component:
+`BouncyAccordion` (the FAQ). It is the last holdout, and the only one whose static
+fallback is not obviously free, the grouped corner radii and the open row are the
+animation. Defer it only with a `<details>` face that matches those states.
 
 The rule the boundaries follow: **what the server renders must be the animation's resting
 state**, so the swap changes only whether the thing can move. A lazy boundary that renders

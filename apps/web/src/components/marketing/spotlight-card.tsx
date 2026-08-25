@@ -1,12 +1,19 @@
 "use client";
 
-import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
-import { Spotlight } from "@/components/core/spotlight";
+import dynamic from "next/dynamic";
+import type { CSSProperties, ReactNode } from "react";
+import { usePointerSeen } from "@/lib/hooks/use-pointer-seen";
 import { cn } from "@/lib/utils";
 
-/** The block's own spring: short, barely bouncy, the same for every card. */
-const SPRING = { type: "spring" as const, bounce: 0.1, duration: 0.25 };
+/* The glow follows a cursor, so it is worth nothing to a visitor who has not
+   moved one, and it is `motion/react` from top to bottom. Loaded on the first
+   pointer movement anywhere on the page (see `usePointerSeen`), which is what
+   keeps the animation library off the first load of /pricing, /security,
+   /download and the feature pages. */
+const Spotlight = dynamic(
+  () => import("@/components/core/spotlight").then((m) => m.Spotlight),
+  { ssr: false, loading: () => null }
+);
 
 /**
  * The home page's card treatment, shared by every marketing card grid: a
@@ -14,7 +21,13 @@ const SPRING = { type: "spring" as const, bounce: 0.1, duration: 0.25 };
  * cursor-following spotlight that only shows through that rim. Defined once so
  * the feature pages and the security page cannot drift apart on hover.
  *
- * `index` staggers the scroll-in reveal; pass the position in the grid.
+ * The scroll-in reveal is CSS (`.marketing-card-reveal` in home.css, driven by
+ * a view timeline), not JavaScript: it used to be the reason this component,
+ * and every page rendering it, imported an animation library before it could
+ * draw a card. Where view timelines are unsupported the card simply arrives
+ * already in place, which is the state the animation ends on anyway.
+ *
+ * `index` staggers that reveal; pass the position in the grid.
  */
 export function SpotlightCard({
   index = 0,
@@ -27,31 +40,30 @@ export function SpotlightCard({
   faceClassName?: string;
   children: ReactNode;
 }) {
-  const reduceMotion = useReducedMotion();
+  const pointerSeen = usePointerSeen();
 
   return (
-    <motion.div
+    <div
       className={cn(
-        "relative overflow-hidden rounded-2xl bg-zinc-300/30 p-[1.5px] dark:bg-zinc-700/30",
-        className,
+        "marketing-card-reveal relative overflow-hidden rounded-2xl bg-zinc-300/30 p-[1.5px] dark:bg-zinc-700/30",
+        className
       )}
-      initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.96 }}
-      whileInView={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={reduceMotion ? { duration: 0 } : { ...SPRING, delay: index * 0.05 }}
+      style={{ "--card-index": index } as CSSProperties}
     >
-      <Spotlight
-        className="from-sky-400 via-indigo-500 to-transparent blur-2xl dark:from-sky-300 dark:via-indigo-400"
-        size={220}
-      />
+      {pointerSeen && (
+        <Spotlight
+          className="from-sky-400 via-indigo-500 to-transparent blur-2xl dark:from-sky-300 dark:via-indigo-400"
+          size={220}
+        />
+      )}
       <div
         className={cn(
           "bg-card relative flex h-full flex-col rounded-[calc(1rem-1.5px)] p-6",
-          faceClassName,
+          faceClassName
         )}
       >
         {children}
       </div>
-    </motion.div>
+    </div>
   );
 }

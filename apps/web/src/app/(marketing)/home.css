@@ -986,3 +986,37 @@ html[data-sky-transition="to-day"] .home-sun::after {
     opacity: 0;
   }
 }
+
+/* Marketing card grids (pricing tiers, security controls, feature points):
+   each card rises and fades as it scrolls into view.
+
+   Driven by a view timeline rather than by JavaScript, because the previous
+   implementation was a `motion/react` component, which meant every page with a
+   card grid downloaded an animation library before it could draw one. The
+   fallback where view timelines are unsupported (Firefox today) is the card
+   already in place, which is exactly where the animation ends, so nothing is
+   ever left invisible waiting on a frame that will not come.
+
+   `--card-index` staggers a row: each card starts its range a little further
+   into the scroll, so a grid arrives left to right rather than all at once. */
+@keyframes marketing-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .marketing-card-reveal {
+      animation: marketing-card-in linear both;
+      animation-timeline: view();
+      animation-range: entry calc(0% + var(--card-index, 0) * 5%) entry
+        calc(45% + var(--card-index, 0) * 5%);
+    }
+  }
+}
