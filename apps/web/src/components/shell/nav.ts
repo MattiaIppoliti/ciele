@@ -2,7 +2,6 @@ import {
   Archive,
   Bell,
   BookText,
-  Bot,
   ChartLine,
   CircleHelp,
   Compass,
@@ -10,6 +9,7 @@ import {
   LayoutGrid,
   Lock,
   MessageCircle,
+  MousePointerClick,
   PenTool,
   Phone,
   Plane,
@@ -77,7 +77,9 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
   // The org's internal AI colleagues (#768).
   {
     label: "Teammates",
-    icon: Bot,
+    // The cursor-click glyph, which the animated-icon registry maps from
+    // `MousePointerClick`: a Teammate is a colleague you talk to, not a robot.
+    icon: MousePointerClick,
     href: "/teammates",
     // Two domains, because the page renders two rosters: the Teammates and the
     // channels they share with the team (#778). A channel page nests under this

@@ -7,8 +7,10 @@ import {
   memoryDocumentChanges,
 } from "@agent-hub/core";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
-import { Archive, ArchiveRestore, Box, ChevronRight, Trash2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, Trash2, X } from "lucide-react";
 import { Button, Dialog, DialogContent, Skeleton } from "@agent-hub/ui";
+import { AnimatedGlyph } from "@/components/ui/animated-icon";
+import { FoldersIcon } from "@/components/ui/icons/folders";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/lib/toast";
 import { MemoryHistory } from "@/components/teammates/memory-history";
@@ -156,7 +158,7 @@ export function ProjectDialog({
         <header className="flex shrink-0 items-center justify-between gap-2 border-b px-4 py-3">
           <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
             <span className="bg-primary/10 text-primary flex size-6 shrink-0 items-center justify-center rounded-md">
-              <Box className="size-3.5" />
+              <AnimatedGlyph icon={FoldersIcon} size={14} />
             </span>
             <span>Projects</span>
             <ChevronRight className="size-3.5" />

@@ -19,7 +19,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  FolderKanban,
   Pencil,
   Plus,
   Search,
@@ -28,6 +27,8 @@ import {
   X,
 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { AnimatedGlyph } from "@/components/ui/animated-icon";
+import { FoldersIcon } from "@/components/ui/icons/folders";
 import { ProjectDialog } from "@/components/projects/project-dialog";
 import {
   acceptImprovementProposalAction,
@@ -709,7 +710,7 @@ export function ImprovementDetail({
           <FieldPill label="Project">
             <Popover>
               <PopoverTrigger className={PILL} disabled={!canEdit}>
-                <FolderKanban className="size-3.5" />
+                <AnimatedGlyph icon={FoldersIcon} size={14} />
                 {projectName ?? "Add to project"}
               </PopoverTrigger>
               <PopoverContent align="end" className="w-64 p-1">
