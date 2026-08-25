@@ -1,11 +1,8 @@
 "use client";
 
 import React from "react";
-import { motion, useMotionValue, useSpring, type SpringOptions } from "motion/react";
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
+import dynamic from "next/dynamic";
+import type { SpringOptions } from "motion/react";
 
 export type MagneticProps = {
   children: React.ReactNode;
@@ -16,56 +13,60 @@ export type MagneticProps = {
   springOptions?: SpringOptions;
 };
 
-export function Magnetic({
-  children,
-  intensity = 0.6,
-  range = 100,
-  maxOffset = 14,
-  springOptions = { stiffness: 26.7, damping: 4.1, mass: 0.2 },
-}: MagneticProps) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const springX = useSpring(x, springOptions);
-  const springY = useSpring(y, springOptions);
+/* The magnetic pull is drawn by `motion/react`, which outweighs every
+   marketing page's own JavaScript put together, and only a visitor moving a
+   mouse can ever see it: it is inert on touch, and nothing about the button's
+   layout or behaviour depends on it. So the implementation is fetched on the
+   first pointer movement on a fine-pointer device and swapped in underneath
+   the same children, the way the home cursor already does it (see
+   home-cursor-mount.tsx). */
+const MagneticPull = dynamic(
+  () => import("./magnetic-motion").then((module) => module.Magnetic),
+  { ssr: false }
+);
 
+/* One listener and one flag for every instance on the page (the header alone
+   renders three), so the first movement arms all of them at once. */
+let pointerSeen = false;
+const listeners = new Set<() => void>();
+
+function arm() {
+  if (pointerSeen) return;
+  pointerSeen = true;
+  for (const notify of listeners) notify();
+}
+
+function usePointerSeen() {
   React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    if (pointerSeen) return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    window.addEventListener("pointermove", arm, { once: true, passive: true });
+    return () => window.removeEventListener("pointermove", arm);
+  }, []);
 
-    function handleMouseMove(e: MouseEvent) {
-      const { left, top, width, height } = el!.getBoundingClientRect();
-      const centerX = left + width / 2;
-      const centerY = top + height / 2;
-      const distance = Math.sqrt((e.clientX - centerX) ** 2 + (e.clientY - centerY) ** 2);
-
-      if (distance < range) {
-        const offsetX = clamp((e.clientX - centerX) * intensity, -maxOffset, maxOffset);
-        const offsetY = clamp((e.clientY - centerY) * intensity, -maxOffset, maxOffset);
-        x.set(offsetX);
-        y.set(offsetY);
-      } else {
-        x.set(0);
-        y.set(0);
-      }
-    }
-
-    function handleMouseLeave() {
-      x.set(0);
-      y.set(0);
-    }
-
-    window.addEventListener("mousemove", handleMouseMove);
-    el.addEventListener("mouseleave", handleMouseLeave);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      el.removeEventListener("mouseleave", handleMouseLeave);
-    };
-  }, [intensity, range, maxOffset, x, y]);
-
-  return (
-    <motion.div ref={ref} style={{ x: springX, y: springY }} className="inline-block">
-      {children}
-    </motion.div>
+  return React.useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => {
+        listeners.delete(onChange);
+      };
+    },
+    () => pointerSeen,
+    // The server has seen no pointer either, so both renders agree.
+    () => false
   );
+}
+
+/**
+ * A button (or any child) that leans toward a nearby pointer.
+ *
+ * Renders its children in the same inline box whether or not the animation
+ * module has arrived, so the only thing the swap changes is whether the box
+ * can move.
+ */
+export function Magnetic(props: MagneticProps) {
+  const armed = usePointerSeen();
+
+  if (!armed) return <div className="inline-block">{props.children}</div>;
+  return <MagneticPull {...props} />;
 }

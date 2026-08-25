@@ -51,6 +51,28 @@ const PUBLIC_PATHS = [
   /^\/install\.sh$/,
 ];
 
+/**
+ * Does the request carry a Supabase session cookie at all?
+ *
+ * supabase-js names them `sb-<project-ref>-auth-token`, and splits a large
+ * session across `…auth-token.0`, `…auth-token.1`. The legacy name from the
+ * pre-SSR client is matched too, so an old tab keeps being validated rather
+ * than silently treated as signed out.
+ */
+const AUTH_COOKIE = /^(sb-.+-auth-token(\.\d+)?|supabase-auth-token)$/;
+
+function hasSupabaseAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some(({ name }) => AUTH_COOKIE.test(name));
+}
+
+/** Clear a stale signed-in hint on a response we know belongs to nobody. */
+function signedOutHint(request: NextRequest, response: NextResponse) {
+  if (!authHintIsCurrent(request.cookies.get(AUTH_HINT_COOKIE)?.value, false)) {
+    response.cookies.delete({ name: AUTH_HINT_COOKIE, path: "/" });
+  }
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   // Documentation is a separate app served at its own origin (apps/docs, see
   // #410). The legacy ciele.app/docs path is not a route here, without this it
@@ -82,6 +104,42 @@ export async function middleware(request: NextRequest) {
       });
     }
     return demo;
+  }
+
+  const { pathname } = request.nextUrl;
+  const isPublic =
+    isMarketingPath(pathname) || PUBLIC_PATHS.some((re) => re.test(pathname));
+
+  /**
+   * Anonymous fast path (the first load of ciele.app).
+   *
+   * A visitor who has never signed in carries no Supabase auth cookie, so
+   * there is nothing for `getClaims()` to validate, and everything below is
+   * pure cost: constructing the Supabase client, and on a cold function the
+   * JWKS fetch that validation needs, on the request that has to redirect
+   * `/` to the marketing home before a single byte reaches the browser. That
+   * network hop sat on the critical path of every first visit, and when
+   * Supabase was slow to answer it, the first load hung rather than merely
+   * being slow.
+   *
+   * Skipping it is not a weaker gate: no auth cookie means no session, which
+   * is exactly what `getClaims()` would have concluded. The signed-out
+   * branches below are reproduced here verbatim, hint included, so a stale
+   * hint still self-corrects.
+   */
+  if (!hasSupabaseAuthCookie(request)) {
+    if (!isPublic) {
+      const url = request.nextUrl.clone();
+      if (pathname === "/") {
+        url.pathname = "/home";
+        url.search = "";
+      } else {
+        url.pathname = "/login";
+        url.searchParams.set("next", pathname);
+      }
+      return signedOutHint(request, NextResponse.redirect(url));
+    }
+    return signedOutHint(request, NextResponse.next({ request }));
   }
 
   let response = NextResponse.next({ request });
@@ -143,10 +201,6 @@ export async function middleware(request: NextRequest) {
     }
     return res;
   };
-
-  const { pathname } = request.nextUrl;
-  const isPublic =
-    isMarketingPath(pathname) || PUBLIC_PATHS.some((re) => re.test(pathname));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

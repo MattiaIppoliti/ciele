@@ -66,6 +66,7 @@ export function TeammateWorkspace({
   routines,
   retired,
   initialConversationId,
+  initialConfigure,
 }: {
   teammate: Teammate;
   collections: CollectionOption[];
@@ -90,11 +91,17 @@ export function TeammateWorkspace({
    * not a blank one beside it (#773).
    */
   initialConversationId: string | null;
+  /**
+   * Land with the configuration dialog already open, from the roster's Edit
+   * button (`?configure=1`). Ignored for a Member who may not edit this
+   * Teammate: the dialog is theirs to open or not, not the URL's to decide.
+   */
+  initialConfigure: boolean;
 }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(initialConfigure && canEdit);
   /**
    * Bumped on every Configure click, and the settings dialog's `key`.
    *

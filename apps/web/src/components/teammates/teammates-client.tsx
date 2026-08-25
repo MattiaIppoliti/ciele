@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
-import { Eye, EyeOff, Hash, Lock, Sparkles } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Hash, Lock, Pencil, Sparkles } from "lucide-react";
 import { Button, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
@@ -511,16 +511,47 @@ export function TeammatesClient({
                     : `Knows: ${teammate.collectionIds.map(nameOf).join(", ")}`}
                 </p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isPending}
-                title="Hide from my roster"
-                aria-label={`Hide ${teammate.name} from my roster`}
-                onClick={() => setHidden(teammate, true)}
-              >
-                <EyeOff className="size-4" />
-              </Button>
+              {/* Reading order is what a Member reaches for, in order: go in
+                  and talk to it, change how it works, and only then take it
+                  off the roster. Hiding used to be the card's only button,
+                  which put the one destructive-looking action under the
+                  thumb and left opening it to the name alone. */}
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  title="Open"
+                  aria-label={`Open ${teammate.name}`}
+                  render={<Link href={`/teammates/${teammate.id}`} />}
+                >
+                  <ArrowRight className="size-4" />
+                </Button>
+                {canEdit && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                      title="Edit"
+                    aria-label={`Edit ${teammate.name}`}
+                    /* The configuration lives in a dialog beside the chat and
+                       needs the whole page's reads (knowledge, members,
+                       grants, memory), so editing from here opens that page
+                       with the dialog already up rather than rebuilding it. */
+                    render={<Link href={`/teammates/${teammate.id}?configure=1`} />}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  title="Hide from my roster"
+                  aria-label={`Hide ${teammate.name} from my roster`}
+                  onClick={() => setHidden(teammate, true)}
+                >
+                  <EyeOff className="size-4" />
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

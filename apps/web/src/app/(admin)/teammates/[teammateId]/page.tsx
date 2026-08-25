@@ -24,11 +24,15 @@ export default async function TeammatePage({
    * navigates here with it, and that link is the whole handoff: without it the
    * Member lands on an empty chat and the summary the referring Teammate wrote
    * sits unread in a conversation they would have to hunt for in the history.
+   *
+   * `?configure=1` arrives from the roster's Edit button and opens the
+   * configuration dialog on landing: the dialog needs every read this page
+   * already does, so the roster links here instead of duplicating them.
    */
-  searchParams: Promise<{ c?: string }>;
+  searchParams: Promise<{ c?: string; configure?: string }>;
 }) {
   const { teammateId } = await params;
-  const { c: initialConversationId } = await searchParams;
+  const { c: initialConversationId, configure } = await searchParams;
   const { organizationId, role, session, db } = await requirePageMember();
 
   const viewer = { userId: session.userId, role: role ?? "viewer" };
@@ -97,6 +101,7 @@ export default async function TeammatePage({
         .map((project) => ({ id: project.id, name: project.name }))}
       retired={isTeammateRetired(teammate)}
       initialConversationId={initialConversationId ?? null}
+      initialConfigure={configure === "1"}
     />
   );
 }

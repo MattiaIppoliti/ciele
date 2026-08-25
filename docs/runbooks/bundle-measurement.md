@@ -86,3 +86,26 @@ Measured on `main` at 9f7a21df, for context on what is worth chasing:
 `attribute`'s ratios the largest single dependency in that second half is `motion`, not
 icons. Chase individual components only after checking they are more than a rounding error
 against that floor.
+
+## Motion is deferred, not removed
+
+`motion/react` is the largest single dependency in the half of a marketing route that is
+ours, and the home page now pays for none of it up front: every use of it on `/home` is
+behind a lazy boundary.
+
+| Boundary | Loads when |
+|---|---|
+| `home/hero-rotating-word.tsx` | after hydration; the resting word is server-rendered |
+| `home/nav-dropdown.tsx`, `nav-panel`'s mobile list | first pointer/focus in the nav, first tap of the menu |
+| `home/feature-card.tsx` (tilt, spotlight, morphing dialog) | the features grid comes within 400px of view; `feature-card-face` is what SSR renders |
+| `core/magnetic.tsx` | first pointer movement on a fine-pointer device |
+| `home/home-section-rail.tsx` | after hydration, and only from `xl` up |
+
+Measured with `measure:bundle` across that change: `/home` went from 989.7 KB raw /
+306.7 KB gz to 824.9 KB raw / 253.1 KB gz. The other marketing routes still ship it,
+`SpotlightCard` (`marketing/spotlight-card.tsx`) is the reason, and it is the next thing
+to defer if those pages need the same treatment.
+
+The rule the boundaries follow: **what the server renders must be the animation's resting
+state**, so the swap changes only whether the thing can move. A lazy boundary that renders
+nothing until its chunk lands trades bytes for a blank frame, which is not the trade.

@@ -271,11 +271,17 @@ export function ImprovementDetail({
                       setEditingTitle(false);
                     }
                   }}
-                  className="h-9 w-72 text-lg font-bold"
+                  /* No box around the title in either state: the field wears
+                     the heading's own type and sits on the page, so clicking
+                     into it does not draw a frame the reading view never had.
+                     Same heading treatment as a Project's (#771). */
+                  className="h-auto w-full max-w-lg border-transparent bg-transparent px-0 py-0 text-2xl font-semibold tracking-tight shadow-none focus-visible:border-transparent focus-visible:ring-0"
                 />
               ) : (
                 <>
-                  <h1 className="truncate text-xl font-bold">{title}</h1>
+                  <h1 className="truncate text-2xl font-semibold tracking-tight">
+                    {title}
+                  </h1>
                   {canEdit && (
                     <button
                       type="button"

@@ -1,10 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import {
-  PreviewRail,
-  type PreviewRailItem,
-} from "@/components/motion/preview-rail";
+import type { PreviewRailItem } from "@/components/motion/preview-rail";
+
+/* The rail is a decorative scroll-spy, drawn with `motion/react`, shown only
+   from xl up and never on a phone. Loading it with the page meant every
+   visitor paid for it; loading it here means only a wide viewport does, and
+   only after the fold has painted. */
+const PreviewRail = dynamic(
+  () => import("@/components/motion/preview-rail").then((m) => m.PreviewRail),
+  { ssr: false, loading: () => null }
+);
 
 /* Each item's `id` must match a section anchor's `id` in the home page so the
    links jump to it AND the scroll-spy below can highlight the active one. */

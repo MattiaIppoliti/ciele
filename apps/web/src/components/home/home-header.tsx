@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import dynamic from "next/dynamic";
 import { ChevronDown } from "lucide-react";
 // Icon *data* (not components) for the two marks that reshape rather than
 // swap: the theme toggle and the mobile menu button.
@@ -12,13 +12,29 @@ import { Button, cn } from "@agent-hub/ui";
 import { GhostMark } from "@/components/auth/ghost-mark";
 import { Magnetic } from "@/components/core/magnetic";
 import { useTheme } from "@/components/theme-provider";
-import { menuItems, type MenuItem } from "@/components/home/nav-menu";
-import {
-  MobileMenuList,
-  PanelContent,
-  loadAnimatedIcons,
-} from "@/components/home/nav-panel";
+import { menuItems } from "@/components/home/nav-menu";
+import { loadAnimatedIcons } from "@/components/home/animated-icons";
 import { Reveal } from "@/components/home/reveal";
+
+/* Both menus animate with `motion/react`, and neither can be on screen before
+   the visitor asks for it: the dropdown needs a pointer in the nav, the mobile
+   list needs the menu button. Loading them on that first interaction keeps the
+   animation library (~70 KB gzip, the largest single dependency the public
+   site had) out of the first-load bundle of every marketing page, where it was
+   paid for on every visit and used on a minority of them.
+
+   `ssr: false` for the same reason it is safe: neither is visible in the
+   server-rendered frame. The desktop nav's own links are plain markup in this
+   file and stay server-rendered, so nothing a crawler reads moved. */
+const DropdownPanel = dynamic(
+  () => import("@/components/home/nav-dropdown").then((m) => m.DropdownPanel),
+  { ssr: false }
+);
+
+const MobileMenuList = dynamic(
+  () => import("@/components/home/nav-panel").then((m) => m.MobileMenuList),
+  { ssr: false }
+);
 
 /**
  * The marketing header: the morphing pill, and the state that drives it.
@@ -32,131 +48,8 @@ import { Reveal } from "@/components/home/reveal";
 /** Breathing room the panel keeps from either edge of the viewport. */
 const MIN_PANEL_MARGIN = 16;
 
-/** The panel card's own border, top plus bottom (Tailwind `border` = 1px). */
-const PANEL_BORDER = 2;
-
 /** How long the pointer may be outside the nav cluster before it closes. */
 const CLOSE_GRACE_MS = 220;
-
-/* Motion values of the directional-hover header the panel's movement is copied
-   from: the contents cross-slide by CONTENT_X, and the rows inside stagger
-   against the pointer's travel (see nav-panel). */
-const PANEL_EASE = [0.16, 1, 0.3, 1] as const;
-const CONTENT_X = 84;
-/** Panel height tween (open, close and every swap between two panels). */
-const HEIGHT_DURATION = 0.28;
-
-/**
- * One panel shared by every dropdown (resend.com-style): it slides along the
- * nav to sit under the open trigger and morphs to that panel's size, while the
- * contents cross-slide, outgoing leaves toward the previous trigger, incoming
- * enters from the new one. `direction` is +1 when moving right along the nav.
- *
- * The caller keeps the last opened item rendering while the panel closes, so
- * closing fades out rather than collapsing to nothing first.
- */
-function DropdownPanel({
-  item,
-  x,
-  direction,
-  open,
-  onNavigate,
-  cardRef,
-}: {
-  item: MenuItem | undefined;
-  x: number;
-  direction: number;
-  open: boolean;
-  onNavigate: () => void;
-  cardRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const reduceMotion = useReducedMotion();
-  /* Cross-slide the way the reference header does it: moving right along the
-     nav (direction +1) brings the new panel in from the right and pushes the
-     old one out to the left. */
-  const slide = reduceMotion ? 0 : CONTENT_X * direction;
-  const bodyRef = React.useRef<HTMLDivElement>(null);
-  const [height, setHeight] = React.useState<number | "auto">("auto");
-
-  /* The card tweens to each panel's height instead of snapping. Measured off
-     the body (`popLayout` pulls the outgoing panel out of flow, so this is the
-     incoming panel's height), not animated with `layout`, that measures
-     through the `-translate-x-1/2` ancestor and pinned the width. */
-  React.useEffect(() => {
-    const node = bodyRef.current;
-    if (!node) return;
-    const observer = new ResizeObserver(([entry]) =>
-      /* +PANEL_BORDER: the measurement is the body's content box, the card it
-         is applied to is border-box. Without it the card lands 2px short, and a
-         promo tile stretched to fill it then sits 8px from the top and 6px from
-         the bottom, which a concentric corner shows up immediately. */
-      setHeight(entry.contentRect.height + PANEL_BORDER)
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <motion.div
-      aria-hidden={!open}
-      data-nav-panel
-      className="absolute left-0 top-full z-30"
-      initial={false}
-      animate={{ x, opacity: open ? 1 : 0, y: open ? 0 : -6 }}
-      transition={{
-        x: { type: "spring", stiffness: 420, damping: 40, mass: 0.7 },
-        default: { duration: reduceMotion ? 0 : 0.18, ease: [0.16, 1, 0.3, 1] },
-      }}
-      style={{ pointerEvents: open ? "auto" : "none" }}
-    >
-      {/* Transparent padding around the card is the hit area that makes the
-          panel reachable: pt-4 bridges the visible gap under the trigger, and
-          px-8/pb-6 catch a diagonal approach that overshoots the card's edge.
-          The centering translate lives here, on the padded box, so the card
-          still lines up with the trigger. */}
-      <div className="-translate-x-1/2 px-8 pb-6 pt-4">
-        {/* Sized by its content, not by a layout animation. `layout` measures
-            through its ancestors, and this card sits inside a `-translate-x-1/2`
-            box, so it kept the previous panel's width: the Docs icon grid
-            spilled out over the page. The panel still slides and cross-fades. */}
-        <motion.div
-          ref={cardRef}
-          animate={{ height }}
-          transition={{
-            duration: reduceMotion ? 0 : HEIGHT_DURATION,
-            ease: PANEL_EASE,
-          }}
-          className="bg-background/95 relative w-max overflow-hidden rounded-3xl border shadow-2xl shadow-black/10 backdrop-blur-xl dark:shadow-black/40"
-        >
-          <div ref={bodyRef}>
-            {/* popLayout pulls the outgoing panel out of flow, so the card
-                resizes to the incoming one instead of stretching to fit both. */}
-            <AnimatePresence mode="popLayout" initial={false}>
-              {item && (
-                <motion.div
-                  key={item.name}
-                  initial={{ opacity: 0, x: slide }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -slide }}
-                  transition={{
-                    x: { duration: reduceMotion ? 0 : 0.26, ease: PANEL_EASE },
-                    opacity: { duration: reduceMotion ? 0 : 0.16, ease: "easeOut" },
-                  }}
-                >
-                  <PanelContent
-                    item={item}
-                    direction={direction}
-                    onNavigate={onNavigate}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </div>
-    </motion.div>
-  );
-}
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -196,6 +89,12 @@ function ThemeToggle() {
  */
 export function HomeHeader({ scrolled }: { scrolled: boolean }) {
   const [menuState, setMenuState] = React.useState(false);
+  /* The two lazy menus above mount only once the visitor reaches for them:
+     `next/dynamic` fetches a chunk when the component first renders, so
+     rendering them unconditionally would have downloaded both right after
+     hydration, on every visit, which is most of what this was meant to avoid.
+     Once true they stay mounted, so a second hover costs nothing. */
+  const [navReached, setNavReached] = React.useState(false);
   // Which desktop dropdown is open (null = none). Hover-driven, click-toggled.
   const [openMenu, setOpenMenu] = React.useState<string | null>(null);
   // Mobile: which group is expanded inside the menu card (one at a time).
@@ -252,6 +151,9 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
 
   const openPanel = React.useCallback(
     (name: string) => {
+      // Keyboard users reach a trigger by focus, never by pointer, so arm the
+      // lazy panel here too rather than only on the cluster's mouseenter.
+      setNavReached(true);
       setOpenMenu((current) => {
         if (current === name) return current;
         const order = menuItems.map((entry) => entry.name);
@@ -387,6 +289,9 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               className="relative hidden size-fit lg:block"
               onMouseEnter={() => {
                 cancelClose();
+                // The panel itself is a lazy chunk; the pointer arriving in
+                // the nav is the earliest honest signal it will be needed.
+                setNavReached(true);
                 // Entering the nav is the earliest signal the Docs panel might
                 // open, so the animated module is usually there by the time a
                 // tile is hovered.
@@ -436,25 +341,33 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
               {/* One panel for the whole nav, it glides between triggers and
                   morphs to each panel's size (see DropdownPanel). Sibling of
                   the list, not a child: a <ul> may only contain <li>. */}
-              <DropdownPanel
-                item={menuItems.find((entry) => entry.name === (openMenu ?? lastMenu))}
-                x={panelX}
-                direction={direction}
-                open={openMenu !== null}
-                onNavigate={closeNow}
-                cardRef={cardRef}
-              />
+              {navReached && (
+                <DropdownPanel
+                  item={menuItems.find(
+                    (entry) => entry.name === (openMenu ?? lastMenu)
+                  )}
+                  x={panelX}
+                  direction={direction}
+                  open={openMenu !== null}
+                  onNavigate={closeNow}
+                  cardRef={cardRef}
+                />
+              )}
             </div>
 
             <div className="home-mobile-menu bg-background lg:in-data-[state=active]:flex mb-6 w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
               {/* Mobile: menu links pinned to the top of the card. */}
-              <MobileMenuList
-                openGroup={mobileGroup}
-                onToggleGroup={(name) =>
-                  setMobileGroup((current) => (current === name ? null : name))
-                }
-                onNavigate={() => setMenuState(false)}
-              />
+              {/* Mounted with the card, which is the first moment it can be
+                  seen; on a desktop visit it is never fetched at all. */}
+              {menuState && (
+                <MobileMenuList
+                  openGroup={mobileGroup}
+                  onToggleGroup={(name) =>
+                    setMobileGroup((current) => (current === name ? null : name))
+                  }
+                  onNavigate={() => setMenuState(false)}
+                />
+              )}
 
               {/* Desktop inline nav cluster (theme toggle + CTAs); hidden on
                   mobile, where the top bar and the buttons below take over. */}

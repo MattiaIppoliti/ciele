@@ -13,6 +13,17 @@ vi.mock("@supabase/ssr", () => ({
 
 import { middleware } from "./middleware";
 
+/**
+ * A request that carries a Supabase session cookie. Only these reach the
+ * claims check: a request without one is signed out by definition, and the
+ * middleware answers it without touching Supabase (see the fast path there).
+ */
+function withSession(url: string) {
+  const request = new NextRequest(url);
+  request.cookies.set("sb-project-auth-token", "session-value");
+  return request;
+}
+
 describe("middleware local connector relay", () => {
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://supabase.example.com");
@@ -156,7 +167,7 @@ describe("middleware local connector relay", () => {
     } as never);
 
     const response = await middleware(
-      new NextRequest("https://ciele.example.com/home")
+      withSession("https://ciele.example.com/home")
     );
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
@@ -168,9 +179,7 @@ describe("middleware local connector relay", () => {
       data: { claims: { sub: "user-1" } },
     } as never);
 
-    const response = await middleware(
-      new NextRequest("https://ciele.example.com/")
-    );
+    const response = await middleware(withSession("https://ciele.example.com/"));
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(response.headers.get("location")).toBeNull();
@@ -188,7 +197,7 @@ describe("middleware local connector relay", () => {
       } as never);
 
       const response = await middleware(
-        new NextRequest("https://ciele.example.com/home")
+        withSession("https://ciele.example.com/home")
       );
 
       expect(response.cookies.get("ciele_signed_in")?.value).toBe("1");
@@ -197,7 +206,7 @@ describe("middleware local connector relay", () => {
     it("clears a stale hint when the session has gone", async () => {
       // Session expired since the hint was written: the header must stop
       // offering "Open app".
-      const request = new NextRequest("https://ciele.example.com/home");
+      const request = withSession("https://ciele.example.com/home");
       request.cookies.set("ciele_signed_in", "1");
 
       const response = await middleware(request);
@@ -217,7 +226,7 @@ describe("middleware local connector relay", () => {
       mocks.getClaims.mockResolvedValueOnce({
         data: { claims: { sub: "user-1" } },
       } as never);
-      const request = new NextRequest("https://ciele.example.com/home");
+      const request = withSession("https://ciele.example.com/home");
       request.cookies.set("ciele_signed_in", "1");
       const signedIn = await middleware(request);
       expect(signedIn.headers.get("set-cookie")).toBeNull();
@@ -245,10 +254,63 @@ describe("middleware local connector relay", () => {
       } as never);
 
       const response = await middleware(
-        new NextRequest("https://ciele.example.com/home")
+        withSession("https://ciele.example.com/home")
       );
 
       expect(response.cookies.get("ciele_signed_in")?.httpOnly).toBeFalsy();
+    });
+  });
+
+  /**
+   * The first-load fast path: a visitor with no Supabase cookie is signed out
+   * by definition, so the middleware answers without constructing a Supabase
+   * client or validating anything over the network. That round trip used to
+   * sit in front of the `/` → `/home` redirect on every first visit.
+   */
+  describe("anonymous fast path", () => {
+    it("never asks Supabase about a request that carries no session cookie", async () => {
+      mocks.getClaims.mockClear();
+
+      await middleware(new NextRequest("https://ciele.example.com/"));
+      await middleware(new NextRequest("https://ciele.example.com/home"));
+      await middleware(new NextRequest("https://ciele.example.com/insights"));
+
+      expect(mocks.getClaims).not.toHaveBeenCalled();
+    });
+
+    it("still gates the console for a cookieless caller", async () => {
+      const response = await middleware(
+        new NextRequest("https://ciele.example.com/insights")
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        "https://ciele.example.com/login?next=%2Finsights"
+      );
+    });
+
+    it("clears a stale hint on the fast path too", async () => {
+      const request = new NextRequest("https://ciele.example.com/home");
+      request.cookies.set("ciele_signed_in", "1");
+
+      const response = await middleware(request);
+
+      expect(response.cookies.get("ciele_signed_in")?.value).toBe("");
+    });
+
+    it("validates a chunked session cookie rather than skipping it", async () => {
+      // supabase-js splits a large session across `…auth-token.0`/`.1`; the
+      // caller is signed in and must not be bounced to /login.
+      mocks.getClaims.mockResolvedValueOnce({
+        data: { claims: { sub: "user-1" } },
+      } as never);
+      const request = new NextRequest("https://ciele.example.com/insights");
+      request.cookies.set("sb-project-auth-token.0", "first-half");
+
+      const response = await middleware(request);
+
+      expect(mocks.getClaims).toHaveBeenCalled();
+      expect(response.headers.get("location")).toBeNull();
     });
   });
 

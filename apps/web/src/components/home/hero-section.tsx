@@ -15,7 +15,7 @@ import {
   StarField,
 } from "@/components/home/sky";
 import { SkySceneTransition } from "@/components/home/sky-transition";
-import { ChromaticTextReveal } from "@/components/motion/text-animation";
+import { HeroRotatingWord } from "@/components/home/hero-rotating-word";
 import { resolveSelfHostInstallCommand } from "@/lib/self-host-install";
 import { cn } from "@/lib/utils";
 
@@ -103,7 +103,7 @@ export function HeroSection() {
               {/* The closing noun rotates under the chromatic sweep:
                   clouds → sky → ciele → cielo → back to clouds. No prefix,
                   the ghost sits immediately before it. */}
-              <ChromaticTextReveal
+              <HeroRotatingWord
                 words={["clouds", "sky", "ciele", "cielo"]}
                 // The h1 paints a top-to-bottom fade over the whole block, and
                 // this word paints its own gradient, so it cannot inherit that
