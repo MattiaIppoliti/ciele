@@ -1,0 +1,25 @@
+{
+  "title": "Documentation",
+  "description": "Build and run your assistants",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "index",
+    "editions",
+    "---Start here---",
+    "getting-started",
+    "---Build an assistant---",
+    "assistants",
+    "knowledge",
+    "data",
+    "flows",
+    "---Connect it up---",
+    "help-desks",
+    "authentication",
+    "publishing",
+    "---Run it---",
+    "teammates",
+    "operations",
+    "organization"
+  ]
+}

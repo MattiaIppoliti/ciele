@@ -1,0 +1,106 @@
+---
+title: Modèle de données
+description: Comprenez les relations entre le locataire principal, la configuration, les connaissances et les conversations.
+---
+
+## Propriété du locataire
+
+Une organisation est le locataire principal. Les membres rejoignent une
+organisation avec un rôle.
+
+Les enregistrements appartenant à l'organisation comprennent les assistants, les
+entités, les mémoires, les centres d'assistance, les connexions aux
+fournisseurs, les clés API, les compétences, les améliorations, les objectifs,
+les alertes et les enregistrements d'utilisation.
+
+## Configuration de l'assistant
+
+<Mermaid
+  title="Un Assistant est propriétaire de son routage et de ses instantanés"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
+`}
+/>
+
+Une Publication stocke un instantané immuable de la configuration de
+l'Assistant. Les enregistrements en brouillon restent modifiables après la
+publication.
+
+Un flux stocke un déclencheur, une configuration de condition et des actions
+ordonnées. La validation à l'exécution impose des paires valides de déclencheurs
+et d'actions.
+
+Un Assistant sélectionne des schémas d'Entité pour sa prochaine Publication.
+L'instantané de schéma contrôle les outils générés, tandis que chaque requête
+lit les enregistrements actuels.
+
+Les Entités partagées exposent les données communes de l'Organisation. Les
+Entités à portée utilisateur désignent un attribut d'identité pour le filtrage
+lié au serveur.
+
+## Propriété des connaissances
+
+<Mermaid
+  title="C'est un lien, et non une Collection, qui détermine ce qu'un Assistant recherche"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+La connaissance appartient à l'Organisation. Une Collection est un conteneur, et
+non un propriétaire, et elle ne décide pas quel Assistant répond à partir d'une
+Source.
+
+C'est le lien Assistant-Source qui le fait. La récupération lit l'ensemble des
+liens, de sorte qu'une source non liée ne répond à personne. Le lien permet
+également un accès direct par Assistant.
+
+La suppression d'un Assistant supprime ses liens et laisse chaque Source en
+place.
+
+## Données de conversation
+
+Une Conversation appartient à l'Assistant qui la sert et suit une session
+Visiteur. Les messages stockent les éléments saisis pour le texte, les
+citations, les boutons, les traces et les autres réponses.
+
+L'état de la session enregistre également la livraison de notifications
+proactives. Une notification ne crée pas de message visiteur.
+
+Les mémoires à long terme appartiennent à une organisation et à un sujet SSO
+vérifié. Elles stockent un fait durable, l'intégration, les horodatages et la
+provenance de la conversation source.
+
+Le moteur d'exécution limite chaque sujet à 200 mémoires. La suppression retire
+un fait de l'injection future d'invites et des recherches dans la mémoire.
+
+## Identifiants programmatiques
+
+Un enregistrement de clé API appartient à une organisation et stocke un hachage
+secret, un rôle, un créateur et un état de révocation. Le secret en texte clair
+n'est pas stocké.
+
+## Isolement
+
+L'accès authentifié à la console utilise la sécurité au niveau des lignes, le
+cas échéant. Les chemins d'accès des rôles de service doivent ajouter une limite
+explicite d'organisation.
+
+L'API v1 utilise l'organisation résolue à partir de la clé API. Elle n'accepte
+pas une organisation sélectionnée par l'appelant comme autorité.

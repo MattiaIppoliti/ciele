@@ -1,0 +1,729 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Generate utilities used by the shared UI primitives (workspace source). */
+@source "../../../../packages/ui/src";
+
+/* A `.light` subtree (the auth panel, see `.light` below) opts out: it
+   re-declares the light tokens, but a `dark:` utility is a *class*, not a
+   token, so without the exclusion `dark:bg-neutral-900 dark:text-foreground`
+   still fired there and painted near-black ink on the near-black pill, which
+   is how the login button lost its label under a leftover <html class="dark">.
+   The repo has no `.dark` island inside a `.light` one, so "not inside .light"
+   is the whole rule. */
+@custom-variant dark (&:is(.dark *):not(.light, .light *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-content: var(--content);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-host-grotesk);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-goudy);
+  --font-brand: var(--font-solitus);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Tracking is size-specific, never one value across the scale: letters read
+     too far apart as they grow, and too tight as they shrink. Binding it to
+     the step means `text-4xl` is correctly tracked without anyone remembering
+     to add `tracking-tight`, and small UI text stops being tightened by a
+     class that was only ever right for headings. */
+  --text-xs--letter-spacing: 0.01em;
+  --text-sm--letter-spacing: 0.005em;
+  --text-base--letter-spacing: 0em;
+  --text-lg--letter-spacing: -0.01em;
+  --text-xl--letter-spacing: -0.015em;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-3xl--letter-spacing: -0.025em;
+  --text-4xl--letter-spacing: -0.03em;
+  --text-5xl--letter-spacing: -0.035em;
+  --text-6xl--letter-spacing: -0.04em;
+  --text-7xl--letter-spacing: -0.045em;
+
+  /* Steps below text-xs, so the product UI that reached for text-[10px] and
+     text-[11px] has a rem-based rung to land on instead. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-2xs--letter-spacing: 0.015em;
+}
+
+:root {
+  /* How much of the viewport's right edge the workspace's right rail occupies
+     (the assistant editor's docked live preview). Viewport-fixed furniture,
+     the bottom-right notification stack, offsets by this so it lands beside
+     the rail instead of over its content. Whatever occupies the rail overwrites
+     both values while it is mounted; see components/shell/right-rail.ts. */
+  --right-rail-width: 0px;
+  --right-rail-transition: none;
+  /* Match the neutral surface scale used by docs.ciele.app. The widget
+     renders under this same root, so its chat chrome stays in sync. */
+  --background: #f5f5f5;
+  /* Center surface of the admin shell (main content); top bar and sidebars
+     keep --background. Light theme keeps both identical. */
+  --content: var(--background);
+  --foreground: oklch(0.145 0 0);
+  --card: #f1f1f1;
+  --card-foreground: oklch(0.145 0 0);
+  /* Card sheen (see the .bg-card rule below). The light theme needs a fully
+     opaque white to read at all against #f1f1f1, and gets a faint bottom
+     shade so the card still reads as lit from above. */
+  --card-sheen-line: rgba(255, 255, 255, 1);
+  --card-sheen-glow: rgba(255, 255, 255, 0.7);
+  --card-sheen-shade: rgba(0, 0, 0, 0.045);
+  --popover: #f1f1f1;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f1f1f1;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f1f1f1;
+  /* 0.556 measured 4.34:1 on the #f5f5f5 ground, under the 4.5:1 floor for
+     normal text, and this token carries ~1000 usages (350 of them at 12px or
+     smaller). 0.52 lands at ~5.0:1 and still reads clearly secondary against
+     the 0.145 body ink. Dark mode was already fine at 7.2:1 and is untouched. */
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: #f1f1f1;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: #f1f1f1;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #f1f1f1;
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Card sheen: a soft light source just above the box, offset right of center,
+   plus a brighter top hairline under it. Same geometry in both themes; only
+   the three sheen colors change. The light theme pushes the white to full
+   opacity (#f1f1f1 leaves little headroom) and adds the bottom shade layer,
+   which carries most of the "lit from above" read there; dark mode leaves that
+   layer transparent and relies on the white glow. Targets the app's card
+   convention (bg-card + rounded-xl/2xl, incl. the shared <Card>) as layered
+   background images, so it composes with the bg-card color and needs no
+   pseudo-elements or position changes. */
+:is(.bg-card.rounded-xl, .bg-card.rounded-2xl) {
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 25%,
+      var(--card-sheen-line) 63%,
+      transparent 92%
+    ),
+    radial-gradient(90% 55% at 63% -5%, var(--card-sheen-glow), transparent 70%),
+    linear-gradient(180deg, transparent 45%, var(--card-sheen-shade));
+  background-size:
+    100% 1px,
+    100% 100%,
+    100% 100%;
+  background-position:
+    top,
+    center,
+    center;
+  background-repeat: no-repeat;
+}
+
+.dark {
+  --background: #121212;
+  --content: #171717;
+  --foreground: oklch(0.985 0 0);
+  --card: #191919;
+  --card-foreground: oklch(0.985 0 0);
+  --card-sheen-line: rgba(255, 255, 255, 0.16);
+  --card-sheen-glow: rgba(255, 255, 255, 0.07);
+  --card-sheen-shade: transparent;
+  --popover: #191919;
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: #191919;
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: #191919;
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: #191919;
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: #191919;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: #191919;
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Forces light-theme tokens on a subtree regardless of an ancestor .dark
+   class, needed on the auth pages, which are always light, but can render
+   under <html class="dark"> left over from a client-side nav out of the
+   (dark-mode) admin shell. */
+.light {
+  --background: #f5f5f5;
+  --content: var(--background);
+  --foreground: oklch(0.145 0 0);
+  --card: #f1f1f1;
+  --card-foreground: oklch(0.145 0 0);
+  --card-sheen-line: rgba(255, 255, 255, 1);
+  --card-sheen-glow: rgba(255, 255, 255, 0.7);
+  --card-sheen-shade: rgba(0, 0, 0, 0.045);
+  --popover: #f1f1f1;
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: #f1f1f1;
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: #f1f1f1;
+  /* Contrast rationale on the `:root` copy above. */
+  --muted-foreground: oklch(0.52 0 0);
+  --accent: #f1f1f1;
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar: #f1f1f1;
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: #f1f1f1;
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    /* Both UI faces are variable; without this they never adapt their own
+       shapes to the size they are set at. */
+    font-optical-sizing: auto;
+  }
+  /* The display serif (Sorts Mill Goudy) is a *marketing-only* brand accent,
+     home, pricing, policies, etc. The actual app (admin console, assistant
+     editor, chat widget) stays entirely in the sans UI font. The marketing
+     route group's layout opts in with `.marketing-serif` (see (marketing)/). */
+  .marketing-serif :is(h1, h2, h3, h4) {
+    @apply font-heading;
+  }
+  /* One highlighter across every surface and both themes: a fixed dark grey
+     marker with white ink. Deliberately *not* theme tokens, the selection
+     used to invert with the theme, which read as two different brand
+     behaviours between the marketing pages and the app. Keep this value in
+     step with apps/docs and the staff console, which declare the same pair. */
+  ::selection {
+    background: #333333;
+    color: #ffffff;
+  }
+  ::-moz-selection {
+    background: #333333;
+    color: #ffffff;
+  }
+}
+/* Press feedback for interactive surfaces that are not <Button>: cards, list
+   rows, nav items, chips. The app had 488 click handlers and 34 `:active`
+   states, so almost nothing acknowledged a press, only a hover that touch
+   devices never deliver.
+
+   The scale is gentler than the button's 0.97 on purpose: a card is a large
+   surface, and shrinking a large surface that far reads as the page moving
+   rather than the card being pressed. Transform only, so it composites. */
+/* Unlayered on purpose. `@utility` registers into Tailwind's `utilities` layer,
+   where `transition-colors` (which every one of these 27 surfaces already
+   carried) sets `transition-property: color, background-color, ...` and wins on
+   source order, so the transform got the colour transition's property list and
+   the press snapped with no easing. A rule outside every `@layer` beats any
+   layered rule, which is the only reliable way to own `transition` here without
+   clobbering the colour transition the element also wants. */
+
+/* Same contract for a small control that is not a <Button> (icon buttons made
+   of a bare <button>, chips, tabs). Matches the button's own press depth. */
+.press,
+.press-control {
+  transition-property: transform, color, background-color, border-color, opacity;
+  transition-duration: 100ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.press:active {
+  transform: scale(0.985);
+}
+
+/* Text links and text-only triggers. Scaling a run of text is wrong: it
+   reflows against its neighbours and reads as a wobble rather than a press.
+   A tonal dip is the press feedback text can actually take, and it is the
+   only feedback a link gets on touch, where the hover colour never fires. */
+.press-text {
+  transition: opacity 100ms ease-out, color 100ms ease-out;
+}
+
+.press-text:active {
+  opacity: 0.55;
+}
+
+.press-control:active {
+  transform: scale(0.94);
+}
+
+/* Reduced motion keeps the acknowledgement and drops the travel, rather than
+   removing the feedback altogether: a press that does nothing is the problem
+   this utility exists to fix. */
+@media (prefers-reduced-motion: reduce) {
+  .press:active,
+  .press-control:active {
+    transform: none;
+    opacity: 0.7;
+  }
+}
+
+/* Arc-style dark gray chrome behind the translucent rail: subtle light
+   pockets so the backdrop-blur reads as translucency, not flat paint. */
+.app-backdrop {
+  background:
+    radial-gradient(
+      80rem 50rem at 90% -10%,
+      oklch(0.45 0.015 280 / 0.5),
+      transparent 60%
+    ),
+    radial-gradient(
+      60rem 45rem at -15% 110%,
+      oklch(0.4 0.02 300 / 0.4),
+      transparent 60%
+    ),
+    linear-gradient(180deg, oklch(0.32 0.006 270), oklch(0.23 0.006 270));
+}
+
+/* Dia-style composer pulse: two blurred glow dots start at the bottom-center
+   of the chat input, race along the left/right halves of its border, and meet
+   at the top-center before fading out. Coordinates live in the SVG's
+   604x108 viewBox (preserveAspectRatio="none" stretches it to the composer). */
+.composer-pulse-left {
+  offset-path: path(
+    "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 0.7s ease-out 0.2s forwards,
+    composer-pulse-fade 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+.composer-pulse-right {
+  offset-path: path(
+    "M 302 106 L 570 106 A 32 32 0 0 0 602 74 L 602 34 A 32 32 0 0 0 570 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 0.7s ease-out 0.2s forwards,
+    composer-pulse-fade 0.7s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+/* Auth page loop variant: same border-race path but alternates forever
+   instead of firing once, so it never sits idle between focus events. */
+.auth-composer-pulse-left {
+  offset-path: path(
+    "M 302 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 2.2s ease-in-out infinite alternate,
+    composer-pulse-fade 2.2s ease-in-out infinite alternate;
+}
+
+.auth-composer-pulse-right {
+  offset-path: path(
+    "M 302 106 L 570 106 A 32 32 0 0 0 602 74 L 602 34 A 32 32 0 0 0 570 2 L 302 2"
+  );
+  animation:
+    composer-pulse-path 2.2s ease-in-out infinite alternate,
+    composer-pulse-fade 2.2s ease-in-out infinite alternate;
+}
+
+/* Loading variant: a single glow dot circles the whole composer border
+   clockwise, looping continuously while a response streams in. */
+.composer-pulse-loading {
+  offset-path: path(
+    "M 302 2 L 570 2 A 32 32 0 0 1 602 34 L 602 74 A 32 32 0 0 1 570 106 L 34 106 A 32 32 0 0 1 2 74 L 2 34 A 32 32 0 0 1 34 2 Z"
+  );
+  animation: composer-pulse-loop 1.6s linear infinite;
+  opacity: 0.6;
+}
+
+@keyframes composer-pulse-loop {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes composer-pulse-path {
+  to {
+    offset-distance: 100%;
+  }
+}
+
+@keyframes composer-pulse-fade {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.6;
+  }
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* The grid scrolls continuously; a second, brighter layer is revealed
+   around the cursor by AuthGrid. Both backgrounds share this animation so
+   their lines stay perfectly aligned. */
+.auth-grid-layer {
+  background-position: 0 0;
+  background-size: 64px 64px;
+  /* One 64px cell every 12s, slow enough to feel ambient, not distracting. */
+  animation: auth-grid-drift 12s linear infinite;
+}
+
+/* Auth-shell variant: a drifting background behind the login form pulled the
+   eye away from it, so both panels there tile the grid without moving. */
+.auth-grid-layer--static {
+  animation: none;
+}
+
+@keyframes auth-grid-drift {
+  to {
+    background-position: 64px 64px;
+  }
+}
+
+/* A moving contrast band makes the active Thinking label feel alive while the
+   answer is generated. It is text-clipped rather than an overlay, so the
+   effect follows the exact shape of each translated phase label. */
+.thinking-label-glow {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 42%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 58%,
+    var(--muted-foreground) 100%
+  );
+  background-position: 100% 50%;
+  background-size: 250% 100%;
+  color: var(--muted-foreground);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-label-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes thinking-label-glow {
+  to {
+    background-position: -100% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thinking-label-glow,
+  .auth-grid-layer,
+  /* The composer border-race was the one family of keyframes left out of this
+     block. `composer-pulse-loading` matters most: it loops for the whole
+     duration of every streamed response, so on a long answer it is the only
+     thing moving on screen, indefinitely. */
+  .composer-pulse-left,
+  .composer-pulse-right,
+  .auth-composer-pulse-left,
+  .auth-composer-pulse-right,
+  .composer-pulse-loading {
+    animation: none;
+  }
+  /* The one-shot pulses exist only to acknowledge focus; with the travel
+     removed, a dot parked at the start of the path reads as a stuck artifact,
+     so they are hidden outright.
+
+     `composer-pulse-loading` is deliberately NOT in that list. It is the
+     streaming indicator, and hiding it would take the *signal* away rather than
+     the motion: a reduced-motion reader would lose the only sign that an answer
+     is still coming. It keeps its glow, parked, and stops travelling. */
+  .composer-pulse-left,
+  .composer-pulse-right,
+  .auth-composer-pulse-left,
+  .auth-composer-pulse-right {
+    opacity: 0;
+  }
+}
+
+/* Deliberately NOT reduced here: the animated icon set (`ciele-animated-icons`,
+   re-exported through components/ui/animated-icon). Those are small, local,
+   pointer-triggered state changes on a glyph, not vestibular motion, and they
+   are how several controls signal what they do. Do not add a blanket
+   `* { animation: none }` to this block, it would take them out. */
+
+/* The OS asks for less see-through, so surfaces become surfaces. Blur is the
+   expensive, lowest-legibility half of the material; opacity is the half that
+   was doing the real work. Tokens only, so every consumer follows. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --card-sheen-line: transparent;
+    --card-sheen-glow: transparent;
+  }
+  .app-backdrop {
+    background: oklch(0.27 0.006 270);
+  }
+  [class*="backdrop-blur"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Tailwind's alpha-suffixed surface utilities (bg-background/40 and friends)
+     lose their point without the blur behind them; opaque them back up. */
+  .bg-background\/40,
+  .bg-background\/60,
+  .bg-background\/80,
+  .bg-background\/95 {
+    background-color: var(--background);
+  }
+}
+
+/* Increased contrast: darken the two tokens that carry the app's secondary
+   information, and give every border a real edge rather than a suggestion. */
+@media (prefers-contrast: more) {
+  :root,
+  .light {
+    --muted-foreground: oklch(0.4 0 0);
+    --border: oklch(0.78 0 0);
+    --input: oklch(0.72 0 0);
+    --ring: oklch(0.45 0 0);
+  }
+  .dark {
+    --muted-foreground: oklch(0.82 0 0);
+    --border: oklch(0.42 0 0);
+    --input: oklch(0.48 0 0);
+    --ring: oklch(0.8 0 0);
+  }
+}
+
+/* Keeps a container scrollable without rendering the OS/browser scrollbar
+   chrome, used on the shell's left nav rail and the right widget-preview
+   panel, where a gray scrollbar reads as a stray UI element next to their
+   flush borders. */
+/* `scrollbar-hide` is the name the vendored agent-chat kit (components/agents,
+   and the composer it puts in both the Preview panel and the widget) writes on
+   its scroll containers. It comes from a Tailwind plugin we do not install, so
+   without this alias every one of those elements shows OS scrollbar chrome,
+   most visibly as arrow buttons inside the chat composer on Windows. */
+.no-scrollbar,
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Shimmer band that sweeps the "Swipe to publish" label, hinting the drag
+   affordance. Text-clipped so the highlight follows the glyph shapes. */
+.animate-swipe-button-text {
+  animation: swipe-button-text 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes swipe-button-text {
+  0% {
+    background-position: calc(-1 * var(--swipe-button-text-width, 130px)) 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-swipe-button-text {
+    animation: none;
+  }
+}
+
+/* Ghost mark glances left and right. Values are SVG user units (viewBox
+   212x186); the eye sockets have room for ±12 without leaving the face.
+   Shared so the wordmark's eyes can animate anywhere the GhostMark renders
+   (marketing footer, contact page), not just on the home route. */
+@keyframes ghost-eyes-glance {
+  0%,
+  10% {
+    transform: translateX(0); /* center */
+  }
+  22%,
+  35% {
+    transform: translateX(8px); /* look right, more pronounced */
+  }
+  47%,
+  57% {
+    transform: translateX(0); /* back to center */
+  }
+  69%,
+  82% {
+    transform: translateX(-12px); /* look left, sharper angle */
+  }
+  94%,
+  100% {
+    transform: translateX(0); /* back to center */
+  }
+}
+
+.ghost-eyes-glance {
+  animation: ghost-eyes-glance 3.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost-eyes-glance {
+    animation: none;
+  }
+}
+
+/* Home marketing page renders its own custom cursor (HomeCursor). Hide the
+   native cursor across the whole scene, including descendants that set their
+   own `cursor: pointer` (buttons, links, the card triggers) which would
+   otherwise override an inline `cursor: none` on the scene. Fine-pointer only
+   so touch is unaffected. */
+@media (hover: hover) and (pointer: fine) {
+  .home-cursor-hide-native,
+  .home-cursor-hide-native * {
+    cursor: none !important;
+  }
+}
+
+/* GridBeam, soft glow travelling along the dividers of a comparison grid.
+   Two identical lattices are stacked over the same tracks: the lower one draws
+   the static hairlines, the upper one draws them in `--foreground` but is
+   revealed only through a moving radial mask, so the highlight reads as light
+   running along the lines rather than a shape sliding over them.
+
+   The overlay aligns to the content via `grid-template-*: subgrid`, which is
+   the only way to follow auto-sized rows exactly. Where subgrid is missing the
+   overlay would be off by whole rows, so the component gates the glow behind
+   the same @supports and the grid simply renders static. */
+.grid-beam-glow {
+  --grid-beam-spot: 46%;
+  -webkit-mask-image: radial-gradient(
+    circle at center,
+    #000 0%,
+    rgb(0 0 0 / 0.4) 42%,
+    transparent 68%
+  );
+  mask-image: radial-gradient(
+    circle at center,
+    #000 0%,
+    rgb(0 0 0 / 0.4) 42%,
+    transparent 68%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: var(--grid-beam-spot) var(--grid-beam-spot);
+  mask-size: var(--grid-beam-spot) var(--grid-beam-spot);
+  animation: grid-beam-drift 11s ease-in-out infinite;
+}
+
+/* A second, faster and smaller pass on the opposite diagonal: one spot alone
+   reads as a loop, two crossing at different rates read as ambient. */
+.grid-beam-glow-alt {
+  --grid-beam-spot: 30%;
+  animation: grid-beam-drift-alt 7.5s ease-in-out infinite;
+}
+
+@keyframes grid-beam-drift {
+  0% {
+    -webkit-mask-position: -15% 0%;
+    mask-position: -15% 0%;
+  }
+  50% {
+    -webkit-mask-position: 115% 100%;
+    mask-position: 115% 100%;
+  }
+  100% {
+    -webkit-mask-position: -15% 0%;
+    mask-position: -15% 0%;
+  }
+}
+
+@keyframes grid-beam-drift-alt {
+  0% {
+    -webkit-mask-position: 115% 10%;
+    mask-position: 115% 10%;
+  }
+  50% {
+    -webkit-mask-position: -15% 90%;
+    mask-position: -15% 90%;
+  }
+  100% {
+    -webkit-mask-position: 115% 10%;
+    mask-position: 115% 10%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grid-beam-glow,
+  .grid-beam-glow-alt {
+    animation: none;
+    opacity: 0;
+  }
+}

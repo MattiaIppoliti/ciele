@@ -1,0 +1,38 @@
+---
+title: Flows
+description: Leiten Sie Nachrichten und proaktive Ereignisse an geordnete Antwortaktionen weiter.
+---
+
+Ein Flow enthält einen Trigger, verfügbare Bedingungen und geordnete Aktionen.
+Der Router verarbeitet aktivierte Flows in der konfigurierten Reihenfolge.
+
+## Nachrichtenflüsse
+
+Der **User sends a message**-Trigger verwendet die Intent-Klassifizierung. Ein
+Modellklassifikator wählt den besten geeigneten Flow aus, wenn ein Modell
+verfügbar ist.
+
+Der Keyword-Router bietet ein Offline- und Fehler-Fallback. Beide Router
+verwenden denselben Kandidatenfilter.
+
+Der gesperrte **Default behavior**-Flow bleibt der letzte. Er verarbeitet eine
+berechtigte Nachricht, wenn kein früherer Flow gewinnt.
+
+## Proaktive Flows
+
+Diese Trigger klassifizieren eine Nachricht nicht:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+Ein proaktiver Flow hat keine Bedingungen und enthält eine
+Benachrichtigungsaktion. Siehe [Benachrichtigungen](/flows/notifications).
+
+## Reihenfolge der Flows
+
+Platzieren Sie spezifische Nachrichten-Flows vor allgemeinen Nachrichten-Flows.
+Die Reihenfolge steuert auch die integrierte Verknüpfung „Basic Interaction“.
+
+Ein früherer übereinstimmender benutzerdefinierter Flow kann eine
+Höflichkeitsnachricht vor dem integrierten Basic Interaction Flow verarbeiten.

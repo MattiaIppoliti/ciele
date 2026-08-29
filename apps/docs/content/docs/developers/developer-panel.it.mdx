@@ -1,0 +1,61 @@
+---
+title: Pannello sviluppatore
+description: Leggi lo snippet CLI, cURL e MCP per la pagina della console che hai aperto.
+---
+
+Il Pannello sviluppatore mostra l'equivalente programmatico della pagina della
+console che stai visualizzando. Elenca le operazioni di quella pagina come
+snippet pronti, con gli ID della pagina già inseriti.
+
+Usalo per spostare un'attività manuale in uno script o per scoprire quale
+operazione API si nasconde dietro un controllo della console.
+
+## Apri il pannello
+
+Seleziona il pulsante nella barra in alto. La sua etichetta indica il dominio
+della pagina, ad esempio **Flows API**. Puoi anche premere `D`.
+
+Il pannello si apre nel riquadro di destra e rimane aperto quando passi a
+un'altra pagina.
+
+Un editor di Assistenti utilizza lo stesso riquadro per l'anteprima in tempo
+reale. Solo uno dei due è visibile alla volta.
+
+<Callout title="No button means no API">
+The button is absent when the page has no API operations. Insights and the Style setup section show none. The absence is correct information, not a defect.
+</Callout>
+
+## Leggi uno snippet
+
+Ogni operazione ha tre schede.
+
+| Scheda | Contenuti |
+| --- | --- |
+| CLI | Il comando `ciele` per l'operazione. |
+| cURL | La richiesta HTTP, con l'origine della tua distribuzione. |
+| MCP | Il nome dello strumento e gli argomenti `action` per un client IA. |
+
+Accanto a un'operazione possono comparire due badge:
+
+- Il badge **Role** indica il ruolo minimo richiesto per una chiave API. Deriva
+  dal guard applicato dall'API.
+- Il badge **Idempotent** indica una richiesta che può essere ripetuta in
+  sicurezza con un'intestazione `Idempotency-Key`.
+
+## I corpi delle richieste sono forme
+
+Un corpo cURL mostra segnaposto digitati, non valori di esempio, e si ferma a
+due livelli di annidamento.
+
+Questo è intenzionale. Un valore plausibile inventato è pericoloso, perché
+qualcuno lo incolla in un'Organizzazione reale. Leggi la
+[documentazione API](/developers/api) per il contratto completo di un campo.
+
+## Prima che uno snippet venga eseguito
+
+Ogni snippet necessita di una
+[chiave API dell'organizzazione](/developers/api-keys). Il pannello lo indica
+quando l'Organizzazione non ne ha.
+
+Solo un Proprietario o un Amministratore può creare una chiave. Il pannello
+indica il ruolo richiesto quando il tuo ruolo non può farlo.

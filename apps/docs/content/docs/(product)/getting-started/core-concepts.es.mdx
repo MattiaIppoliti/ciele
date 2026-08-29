@@ -1,0 +1,67 @@
+---
+title: Conceptos básicos
+description: Aprende los términos estables que Ciele utiliza en el producto y en la documentación.
+---
+
+## Organización
+
+Una Organización posee miembros, Asistentes, Help Desks, conexiones con
+proveedores, claves de API, Habilidades y datos operativos.
+
+## Asistente
+
+Un Asistente es un agente conversacional configurado. Tiene identidad,
+conocimiento, flujos, herramientas, un modelo, apariencia y estado de
+publicación.
+
+## Fuente y colección de conocimientos
+
+Una Fuente es un sitio web, un archivo, un texto o un contenido de preguntas
+frecuentes original. La ingesta convierte una Fuente en Conceptos, los
+documentos que permiten realizar búsquedas y que sustentan una respuesta
+fundamentada.
+
+Las Fuentes pertenecen a la Organización. Una colección de conocimiento es el
+contenedor de la organización que las almacena.
+
+## Enlace de la fuente
+
+Un enlace conecta una Fuente con un Asistente. Un Asistente busca en una Fuente
+solo a través de un enlace.
+
+El enlace también contiene **Direct access**, que decide si el Asistente puede
+proporcionar el archivo original a un Visitante.
+
+## Flujo
+
+Un flujo es una regla de enrutamiento ordenada. Contiene un desencadenante,
+condiciones disponibles y acciones de respuesta ordenadas.
+
+El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
+mensaje apto cuando ningún flujo anterior gana.
+
+## Publicación
+
+Una publicación es una instantánea inmutable del asistente. El widget utiliza la
+publicación activa, no el borrador actual del administrador.
+
+## Conversación
+
+Una Conversación almacena los mensajes del Visitante y del Asistente, las partes
+de las respuestas, las citas, los seguimientos del tiempo de ejecución y los
+metadatos de la sesión.
+
+## Centro de ayuda
+
+Un Help Desk define uno o más canales de contacto. Un Asistente puede sugerir un
+Help Desk relevante durante la escalada.
+
+## Mejora
+
+Una mejora es un elemento de revisión para un problema de calidad de respuesta.
+Puede enlazar al mensaje exacto de la conversación.
+
+## Objetivo y alerta
+
+Un objetivo ejecuta una comprobación de respuesta programada. Cuando un objetivo
+falla, se crea una alerta para un administrador.

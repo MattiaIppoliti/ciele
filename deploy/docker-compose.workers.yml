@@ -1,0 +1,54 @@
+# The heavy workers: derived-graph retrieval and the JavaScript-rendering
+# crawler. An overlay, never used on its own, and off unless `.env` asks:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+#   GRAPH_WORKER_API_TOKEN=<openssl rand -hex 32>
+#   GRAPH_LLM_API_KEY=<key for the graph worker's LLM>
+#   CRAWL4AI_API_TOKEN=<openssl rand -hex 32>
+#   CRAWL4AI_SECRET_KEY=<openssl rand -hex 32>
+#
+# or `./deploy/bootstrap.sh --workers`, which writes that line for you.
+#
+# They live here rather than behind a `workers` profile in docker-compose.yml
+# because compose interpolates every service in a file before it filters by
+# profile: the four `:?` guards below would abort a default `docker compose
+# up`, naming a credential for a container that was never going to start.
+# (Which they did, for a month.) An overlay is the only way to keep both the
+# loud refusal and a stack that boots without these four values set.
+#
+# Both carry credentials and neither is reachable from outside the compose
+# network. Budget ~8 GiB of RAM for the pair. Without them the app degrades
+# rather than breaks: knowledge search falls back to vector + lexical
+# retrieval, and crawling to the built-in fetch-based crawler.
+
+services:
+  graph-worker:
+    build:
+      context: ../services/graph-worker
+    restart: unless-stopped
+    environment:
+      GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN to run the workers}
+      LLM_PROVIDER: ${GRAPH_LLM_PROVIDER:-gemini}
+      LLM_MODEL: ${GRAPH_LLM_MODEL:-gemini/gemini-2.0-flash}
+      LLM_API_KEY: ${GRAPH_LLM_API_KEY:?set GRAPH_LLM_API_KEY to run the workers}
+      TELEMETRY_DISABLED: "1"
+    volumes:
+      - graph-data:/data
+    mem_limit: 4g
+    cpus: 2
+
+  crawl4ai:
+    image: unclecode/crawl4ai:0.9.1
+    restart: unless-stopped
+    environment:
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN to run the workers}
+      SECRET_KEY: ${CRAWL4AI_SECRET_KEY:?set CRAWL4AI_SECRET_KEY to run the workers}
+      CRAWL4AI_HOOKS_ENABLED: "false"
+    volumes:
+      - ../services/crawl4ai-worker/config/crawl4ai.config.yml:/app/config.yml:ro
+    shm_size: "1gb"
+    mem_limit: 4g
+    cpus: 1.5
+
+volumes:
+  graph-data:

@@ -1,0 +1,56 @@
+---
+title: Configuration
+description: Configurez les origines, les secrets, les comptes, les modèles, l'e-mail et les travailleurs optionnels.
+---
+
+Le script de démarrage écrit `deploy/.env`. Utilisez `deploy/.env.example` comme
+référence de variable actuelle.
+
+## Origines publiques
+
+Définissez `PUBLIC_URL` sur l'origine publique de l'application. Définissez
+`SUPABASE_PUBLIC_URL` sur l'origine de la passerelle de base de données
+accessible par le navigateur.
+
+Recompilez l'application après avoir modifié `SUPABASE_PUBLIC_URL`. Le paquet du
+navigateur contient cette valeur au moment de la compilation.
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## Secrets générés
+
+La pile nécessite Postgres, JSON Web Token, un rôle de service, le chiffrement
+de l'application et des secrets cron. Laissez le script de démarrage les
+générer.
+
+Ne modifiez pas `JWT_SECRET`, `ANON_KEY` ou `SERVICE_ROLE_KEY` indépendamment.
+Ils forment une configuration de signature.
+
+## Comptes et e-mail
+
+Le premier compte devient le propriétaire de l'organisation. Définissez
+`DISABLE_SIGNUP=true` une fois que les comptes requis existent.
+
+Sans configuration SMTP, `MAILER_AUTOCONFIRM=true` confirme automatiquement les
+nouveaux comptes.
+
+Les actions d'e-mail d'exécution utilisent `RESEND_API_KEY` et `EMAIL_FROM`.
+Elles signalent un résultat non configuré lorsque l'une ou l'autre de ces
+valeurs est absente.
+
+## Points de terminaison de modèle
+
+Configurez les clés de fournisseur Anthropic, OpenAI ou Google. Vous pouvez
+également configurer un point de terminaison de chat et d'intégration compatible
+avec OpenAI.
+
+La recherche de connaissances utilise la correspondance lexicale lorsqu'aucun
+modèle d'intégration n'est disponible.
+
+## TLS
+
+Terminez le protocole TLS dans un proxy inverse. Ensuite, définissez les deux
+variables d'origine publique sur leurs adresses HTTPS et recompilez
+l'application.

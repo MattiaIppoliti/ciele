@@ -1,0 +1,68 @@
+---
+title: Chat runtime
+description: Understand current trigger dispatch, Flow routing, conditions, and ordered actions.
+---
+
+## Message path
+
+<Mermaid
+  title="How a Visitor message reaches stored reply parts"
+  chart={`
+flowchart TB
+  MSG["Visitor message"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+`}
+/>
+
+Verified identity, Entity Records, and long-term memory are inputs the actions read. They are not stages of the router, so the picture leaves them out.
+
+`messageFlowCandidates` supplies candidates to both routing engines. This boundary prevents objective conditions from producing different router results.
+
+Conversation context supplies semantic examples to classification. It does not act as an independent boolean gate.
+
+## Identity-bound context
+
+A valid Widget SSO gate supplies an Organization-scoped subject. An optional verified claim can match user-scoped Entity Records.
+
+Selected Entities produce generated filter and text-search tools. User-scoped tools omit the identity attribute from model-facing input.
+
+The server adds the verified identity filter after validating tool input. The model cannot omit or override it.
+
+On a new Conversation's first turn, the runtime can inject up to five relevant long-term memories. A built-in memory search tool covers later recall.
+
+Both memory paths require the Organization toggle and a verified SSO subject.
+
+## Courtesy shortcut
+
+The built-in Basic Interaction Flow can handle a short courtesy-only message before Intent Classification. An earlier eligible custom Flow still has priority.
+
+The shortcut does not activate after an Assistant question or for a message that contains an information request.
+
+## Proactive path
+
+The embed reports page load, dwell time, and chat-open events. The server validates the configured trigger and delivery state.
+
+A proactive Flow contains one Notification action and no conditions. The action emits configured content without a model call.
+
+## Action execution
+
+Actions run in stored order. Each action returns structured reply parts or a silent effect.
+
+Generative work stays inside Basic reply, Search knowledge, generated Follow-ups, and supported recommendation paths.
+
+## Handover
+
+Handover loads a published target Assistant in the same Organization. It runs the Visitor message through that target one time.
+
+The target execution ignores another handover. This rule prevents an unbounded Assistant chain.

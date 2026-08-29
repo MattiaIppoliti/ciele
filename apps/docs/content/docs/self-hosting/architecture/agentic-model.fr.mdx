@@ -1,0 +1,59 @@
+---
+title: Modèle agentique
+description: Comprenez la résolution du fournisseur, l'utilisation des outils, les limites, les traces et les citations.
+---
+
+Le runtime utilise l'abstraction de fournisseur du SDK Vercel AI. Les
+adaptateurs de fournisseurs actuels incluent Anthropic, OpenAI, Google et un
+point de terminaison compatible avec OpenAI.
+
+## Limites génératives
+
+Le runtime n'effectue un appel au modèle qu'au sein d'une action générative ou
+d'une classification d'intention. Les actions déterministes ne transmettent pas
+leur contenu à un modèle.
+
+La réponse de base utilise un appel de chat et aucun outil. La recherche de
+connaissances utilise une boucle d'outils limitée.
+
+## Boucle de recherche dans Knowledge
+
+1. Le modèle reçoit les instructions de l'assistant et les descriptions des
+   outils disponibles.
+2. Le modèle effectue une recherche dans Knowledge ou lit une fenêtre Source
+   sélectionnée.
+3. Le runtime enregistre les événements du cycle de vie de l'outil.
+4. Le modèle peut répéter la recherche dans la limite du nombre d'étapes.
+5. Le moteur d'exécution génère la réponse finale et les citations nommées.
+
+Le panneau Thinking représente ces événements enregistrés relatifs à la
+progression et aux outils. La réflexion simplifiée réécrit le texte de
+progression pour l'affichage Visiteur.
+
+## Outils d'intégration d'API
+
+Un Assistant peut enregistrer un catalogue d'API. Le catalogue décrit son URL de
+base, son identifiant protégé et les points de terminaison disponibles.
+
+Le modèle peut inspecter les détails de l'API et interroger un point de
+terminaison enregistré. Le moteur d'exécution valide chaque chemin d'accès par
+rapport au catalogue avant la sortie du réseau.
+
+Les lecteurs fenêtrés renvoient une plage de contenu demandée et une longueur
+totale. Ce contrat permet au modèle d'inspecter de grandes charges utiles d'API
+et de connaissances sans troncature silencieuse.
+
+## Comportement en cas d'échec
+
+Le routeur de mots-clés gère la classification lorsqu'aucun modèle de
+classificateur n'est disponible ou que la classification échoue. La recherche de
+connaissances peut utiliser le repli lexical sans vecteurs d'embedding.
+
+Un transport de messagerie non configuré renvoie un résultat d'échec honnête. Il
+ne crée pas de message de livraison réussie.
+
+## Règle d'extension
+
+Ajoutez un nouvel outil d'agent via le registre d'outils et son wrapper de cycle
+de vie. Gardez les contrôles d'autorisation, de propriété, de validation des
+entrées et de sortie en dehors du contrôle du modèle.

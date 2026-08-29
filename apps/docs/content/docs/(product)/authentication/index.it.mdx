@@ -1,0 +1,32 @@
+---
+title: Autenticazione dei visitatori
+description: Richiedi l'accesso a Microsoft Entra prima che un Visitatore possa utilizzare un Assistente.
+---
+
+L'autenticazione dei visitatori è facoltativa. I visitatori anonimi ricevono un
+ID visitatore persistente dalla memoria locale della pagina host.
+
+Il prodotto attuale supporta una connessione Microsoft Entra a livello di
+organizzazione. Un Assistente può richiedere tale connessione prima dell'avvio
+della chat.
+
+## Limite di identità attuale
+
+Ciele richiede l'ambito `openid` e convalida il token ID restituito. L'identità
+autenticata utilizza l'identificatore del soggetto del token.
+
+La connessione attuale non importa campi del profilo, e-mail, gruppi o ruoli
+dell'applicazione. Non personalizza le risposte in base a tali attributi.
+
+## Richiedi l'accesso
+
+1. Configura Microsoft Entra nelle impostazioni dell'organizzazione.
+2. Apri l'Assistente.
+3. Seleziona **Authentication**.
+4. Abilita il requisito di accesso.
+5. Salva la bozza.
+6. Prova il flusso di accesso in Anteprima.
+7. Pubblica l'Assistente.
+
+Il gate di autenticazione utilizza un cookie Organization crittografato. La
+sessione scade dopo 12 ore.

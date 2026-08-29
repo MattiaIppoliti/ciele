@@ -1,0 +1,50 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "globalDependencies": ["turbo.json", "pnpm-workspace.yaml"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "APP_ENCRYPTION_KEY",
+        "APPLICATION_IMPORT_MAX_REMOTE_ITEMS",
+        "APPLICATION_IMPORT_MAX_ORG_BYTES",
+        "APPLICATION_IMPORT_MAX_CONCURRENT",
+        "GOOGLE_APPLICATION_CLIENT_ID",
+        "GOOGLE_APPLICATION_CLIENT_SECRET",
+        "MICROSOFT_APPLICATION_CLIENT_ID",
+        "MICROSOFT_APPLICATION_CLIENT_SECRET",
+        "SLACK_APPLICATION_CLIENT_ID",
+        "SLACK_APPLICATION_CLIENT_SECRET"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
+    },
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/supabase/migrations/**",
+        "$TURBO_ROOT$/ee/migrations/**"
+      ],
+      "env": [
+        "APP_ENCRYPTION_KEY",
+        "APPLICATION_IMPORT_MAX_REMOTE_ITEMS",
+        "APPLICATION_IMPORT_MAX_ORG_BYTES",
+        "APPLICATION_IMPORT_MAX_CONCURRENT",
+        "CRON_SECRET",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ]
+    },
+    "typecheck": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
+    }
+  }
+}

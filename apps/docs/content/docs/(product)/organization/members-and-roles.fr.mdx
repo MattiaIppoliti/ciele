@@ -1,0 +1,40 @@
+---
+title: Membres et rôles
+description: Contrôlez qui peut lire, modifier, publier et administrer une organisation.
+---
+
+## Rôles
+
+| Rôle | Niveau d'autorisation actuel |
+| --- | --- |
+| Lecteur | Lit les données de l'organisation et du produit. |
+| Éditeur | Modifie le contenu et la configuration de l'Assistant. |
+| Administrateur | Publie les Assistants et gère les membres et les clés API. |
+| Propriétaire | Modifie les rôles et gère les propriétaires. |
+
+L'application applique des vérifications de capacité plus spécifiques aux
+opérations individuelles.
+
+## Inviter un membre
+
+1. Ouvrez **Settings > Members**.
+2. Sélectionnez **Invite member**.
+3. Saisissez l'adresse e-mail.
+4. Sélectionnez le rôle minimum requis.
+5. Envoyez l'invitation.
+
+## Modifier un membre
+
+Un administrateur peut gérer les membres dont le niveau est inférieur à celui de
+propriétaire. Un propriétaire peut gérer tous les niveaux.
+
+Un membre ne peut pas modifier ou supprimer sa propre ligne de la liste des
+membres. Utilisez un autre membre autorisé pour cette opération.
+
+## Rôles de clé API
+
+Un administrateur ou un propriétaire peut créer une clé API d'organisation. Le
+rôle sélectionné ne peut pas être supérieur au rôle du créateur.
+
+Révoquez une clé lorsque son client n'a plus besoin d'accès. Ciele conserve
+l'enregistrement révoqué à des fins d'audit.

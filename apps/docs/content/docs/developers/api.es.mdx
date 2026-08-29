@@ -1,0 +1,98 @@
+---
+title: API v1
+description: Llama a la API de administración actual de Ciele con una clave de API de organización.
+---
+
+La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
+comienzan con `/api/v1`.
+
+## Descubre la implementación
+
+Utiliza estos puntos de conexión públicos antes de generar un cliente:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` enumera la versión de la API y los dominios disponibles. `openapi.json`
+devuelve el contrato legible por máquina para la implementación.
+
+## Autenticar una solicitud
+
+Envía la clave de API como token bearer:
+
+```bash
+curl https://ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Para el autoalojamiento, sustituye `https://ciele.app` por el origen público de
+Ciele.
+
+## Errores de respuesta
+
+Los errores utilizan una envoltura JSON:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Los códigos de estado habituales son:
+
+| Estado | Significado |
+| --- | --- |
+| `400` | Los datos de la solicitud no son válidos. |
+| `401` | La clave falta, no es válida o está revocada. |
+| `403` | El rol de la clave no permite la operación. |
+| `404` | El recurso no existe en la Organization. |
+| `409` | La solicitud entra en conflicto con el estado actual. |
+
+## Paginación
+
+Las operaciones de lista aceptan los parámetros `limit` y `cursor` cuando el
+punto de conexión admite la paginación. Utiliza el cursor devuelto para la
+siguiente solicitud.
+
+## Reintentos seguros
+
+Las rutas de mutación pueden aceptar un encabezado `Idempotency-Key`. Reutiliza
+el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
+
+## Dominios actuales
+
+- Asistentes: enumerar, leer, crear, actualizar, duplicar y eliminar.
+- Flujos: enumerar, leer, crear, actualizar, reordenar y eliminar.
+- Knowledge: gestiona las Collections, las Sources, las FAQs y los enlaces del
+  Assistant en cada Source.
+- Publicación: leer el estado, publicar, anular la publicación y restaurar una
+  publicación.
+- Bandeja de entrada: revisar, exportar, anclar, anotar, valorar y eliminar
+  conversaciones.
+- Mejoras: enumerar, leer y actualizar elementos.
+- Entidades y memorias: gestiona los datos tipificados de la organización y el
+  borrado de la memoria con ámbito.
+- SSO: gestiona las notificaciones de identidad, la configuración de la
+  conexión, la validación y la desconexión.
+- Help Desks: gestiona los desks, los canales de escalado, el orden y
+  ServiceNow.
+- Compañeros de equipo: gestiona a los compañeros de equipo de IA y lee tus
+  propias conversaciones de compañero de equipo.
+- Canales: lee y configura los canales de Teammates en los que estás y sus
+  listas. No hay ningún punto final para enviar un mensaje: un mensaje inicia
+  una cadena de respuestas de los compañeros de equipo, y esta se ejecuta en la
+  consola.
+- Configuración: gestiona las Habilidades, los Objetivos del Asistente y las
+  Alertas operativas.
+- Organization: gestiona la configuración, los Members, las Invites y las claves
+  API.
+- Integraciones: gestiona las integraciones de la API del Asistente y las
+  conexiones con proveedores de modelos.
+
+Utiliza el documento OpenAPI para conocer los campos exactos de las solicitudes
+y los esquemas de respuesta.

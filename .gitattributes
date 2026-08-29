@@ -1,0 +1,4 @@
+# The connector runtime is digest-pinned (CONNECTOR_SHA256) and verified
+# byte-for-byte at serve time. Keep it binary so Windows autocrlf never
+# rewrites its line endings and breaks the checksum on Windows checkouts.
+apps/web/public/connectors/*.mjs binary

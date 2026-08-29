@@ -1,0 +1,98 @@
+---
+title: Memoria a lungo termine
+description: Ricorda i fatti duraturi per i Visitatori che hanno effettuato l'accesso e cancellali quando necessario.
+---
+
+La memoria a lungo termine porta i fatti duraturi nelle Conversazioni
+successive. Funziona solo per i Visitatori che hanno effettuato l'accesso
+tramite il gateway SSO del Widget.
+
+La funzione è disattivata per impostazione predefinita. I Visitatori anonimi non
+generano né richiamano mai ricordi a lungo termine.
+
+## Abilita la memoria a lungo termine
+
+1. Apri **Settings**.
+2. Seleziona **AI Providers**.
+3. Trova **Long-term memory**.
+4. Abilita **Remember signed-in users across conversations**.
+
+L'Organizzazione ha bisogno di una connessione funzionante con il provider.
+L'estrazione della memoria utilizza il modello a livelli di classificatori e
+viene conteggiata nel budget giornaliero dell'IA.
+
+## Cosa ricorda Ciele
+
+Ciele promuove fatti espliciti che possono rimanere utili anche dopo la
+Conversazione in corso. Gli esempi includono una preferenza di contatto o
+un'istruzione permanente.
+
+L'estrattore evita richieste una tantum, domande, ipotesi e affermazioni fatte
+solo dall'Assistente. Molte Conversazioni non producono fatti duraturi.
+
+Ogni ricordo memorizzato mantiene il riferimento alla Conversazione di origine.
+I fatti esattamente duplicati vengono rimossi durante la memorizzazione.
+
+Un Visitatore che ha effettuato l'accesso può conservare fino a 200 ricordi. Le
+nuove scritture rimuovono i fatti più vecchi una volta raggiunto tale limite.
+
+## Promozione e richiamo
+
+<Mermaid
+  title="Il ciclo di vita di promozione e richiamo"
+  chart={`
+flowchart TB
+  TURN["Signed-in Conversation"]
+  QUIET["15 quiet minutes"]
+  JOB["promote_memories job"]
+  STORE["Extract, deduplicate, and store"]
+  NEXT["A later Conversation opens"]
+  PROMPT["Up to five memories join the prompt"]
+  TURN --> QUIET
+  QUIET --> JOB
+  JOB --> STORE
+  STORE --> NEXT
+  NEXT --> PROMPT
+`}
+/>
+
+Un job di promozione attende che la Conversazione rimanga inattiva per 15
+minuti. Un messaggio più recente sostituisce un vecchio lavoro in sospeso.
+
+Prima di memorizzare qualsiasi cosa, il job verifica quattro aspetti:
+l'attivazione/disattivazione dell'organizzazione, il soggetto SSO, la
+disponibilità di un modello e il budget. Ognuno di questi elementi può
+interrompere la promozione.
+
+Solo il primo turno di una Conversazione successiva riceve i ricordi in questo
+modo. Dopodiché, il runtime li raggiunge tramite lo strumento `searchMemories`.
+
+Recall non supera mai i confini di un'Organizzazione o di un soggetto SSO.
+
+## Consenti a un Visitatore di ispezionare ed eliminare i ricordi
+
+Un Visitatore che ha effettuato l'accesso può aprire il pannello della
+cronologia del Widget. La cartella **Memory** appare quando la memoria a lungo
+termine è abilitata.
+
+La cartella elenca i fatti ricordati per quel Visitatore. Seleziona il comando
+di eliminazione accanto a un fatto per dimenticarlo.
+
+L'eliminazione rimuove il fatto dal richiamo futuro del prompt e dalle ricerche
+in memoria.
+
+## Gestisci una richiesta di cancellazione
+
+1. Apri **Settings**.
+2. Seleziona **AI Providers**.
+3. Trova **Remembered users**.
+4. Cerca per ID utente o claim di identità.
+5. Rivedi i fatti memorizzati.
+6. Elimina una memoria o seleziona **Delete all memories for this user**.
+
+La cancellazione completa è immediata. I membri dell'organizzazione possono
+gestire le memorie solo all'interno della loro organizzazione.
+
+<Callout title="Disabling and deleting are different">
+Disabling long-term memory stops extraction and recall. Use **Remembered users** when stored facts must also be erased.
+</Callout>

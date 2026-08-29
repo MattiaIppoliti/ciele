@@ -1,0 +1,3 @@
+# Application Connections follow the external account owner
+
+Salesforce, ServiceNow, and Slack Application Connections belong to the Organization because their content authority is institutional. OneDrive and Google Drive Connections belong to the authorizing Member because their OAuth grants address that person's files. Managed Ciele supplies platform OAuth registrations for shared-consent providers, while self-hosters supply their own; Salesforce and ServiceNow customer credentials remain sealed per Connection. This separates deployment configuration from tenant authorization and prevents one Member from reusing another Member's personal grant.

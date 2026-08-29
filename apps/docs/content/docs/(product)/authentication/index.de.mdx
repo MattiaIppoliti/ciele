@@ -1,0 +1,33 @@
+---
+title: Authentifizierung von Besuchern
+description: Fordern Sie eine Microsoft-Entra-Anmeldung, bevor ein Besucher einen Assistenten nutzen kann.
+---
+
+Die Besucherauthentifizierung ist optional. Anonyme Besucher erhalten eine
+dauerhafte Besucher-ID aus dem lokalen Speicher der Host-Seite.
+
+Das aktuelle Produkt unterstützt eine Microsoft-Entra-Verbindung auf
+Organisationsebene. Ein Assistent kann diese Verbindung verlangen, bevor der
+Chat beginnt.
+
+## Aktuelle Identitätsgrenze
+
+Ciele fordert den Bereich `openid` an und validiert das zurückgegebene ID-Token.
+Die authentifizierte Identität verwendet die Token-Subjekt-ID.
+
+Die aktuelle Verbindung importiert keine Profilfelder, E-Mail-Adressen, Gruppen
+oder Anwendungsrollen. Sie personalisiert keine Antworten anhand dieser
+Attribute.
+
+## Anmeldung erforderlich
+
+1. Konfigurieren Sie Microsoft Entra in den Organisationseinstellungen.
+2. Öffnen Sie den Assistenten.
+3. Wählen Sie **Authentication**.
+4. Aktivieren Sie die Anmeldepflicht.
+5. Speichern Sie den Entwurf.
+6. Testen Sie den Anmeldefluss in der Vorschau.
+7. Veröffentlichen Sie den Assistant.
+
+Das Authentifizierungs-Gate verwendet ein verschlüsseltes Organisations-Cookie.
+Die Sitzung läuft nach 12 Stunden ab.

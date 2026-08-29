@@ -1,0 +1,34 @@
+---
+title: Siti web
+description: Aggiungi l'URL di un sito web e monitora lo stato di inserimento.
+---
+
+## Aggiungi una fonte del sito web
+
+1. Apri l'Assistente.
+2. Seleziona **Knowledge**.
+3. Aggiungi una fonte del sito web.
+4. Inserisci l'URL della pagina.
+5. Avvia l'acquisizione.
+6. Attendi che lo stato della Fonte sia **Ready**.
+7. Poni una domanda a cui la pagina risponda.
+8. Conferma la citazione della Fonte restituita.
+
+Il crawler recupera il contenuto del sito web configurato. Per le pagine che
+richiedono il rendering del browser, è necessario un worker di rendering
+JavaScript.
+
+## Esegui nuovamente la scansione di una fonte
+
+Usa **Recrawl** quando il contenuto del sito web di origine cambia. Ciele
+riavvia la scansione e sostituisce il contenuto indicizzato dopo che
+l'acquisizione è andata a buon fine.
+
+L'API e la CLI supportano la nuova scansione solo per le Sorgenti di tipo sito
+web.
+
+## Accesso alla fonte
+
+Il crawler deve raggiungere l'URL dalla rete di distribuzione. I contenuti
+protetti da autenticazione non sono disponibili senza un percorso di accesso
+supportato.

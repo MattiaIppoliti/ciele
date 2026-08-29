@@ -1,0 +1,36 @@
+---
+title: Database
+description: Operate the current Postgres and Supabase data services.
+---
+
+Ciele uses Postgres with pgvector. The Compose `db` profile also runs authentication, PostgREST, storage, and one gateway.
+
+## Apply migrations
+
+The one-shot `migrate` service applies pending SQL migrations and creates required storage buckets. The application starts after this service succeeds.
+
+Do not edit an applied migration. Add a new migration for every schema change.
+
+## Local development
+
+```bash
+pnpm db:start
+pnpm db:reset
+pnpm db:status
+```
+
+`pnpm db:reset` deletes local database data and applies migrations and seed data again.
+
+## Persistent data
+
+The `postgres-data` volume contains the database. The `storage-data` volume contains uploaded objects.
+
+Back up both volumes for a complete data copy. Test restoration before you depend on a backup process.
+
+<Callout type="warn" title="Volume deletion removes data">
+`docker compose -f deploy/docker-compose.yml down -v` deletes the database and uploaded-file volumes. Use it only for an intentional reset.
+</Callout>
+
+## Tenant isolation
+
+Console requests use authenticated database access and row-level security. API-key operations use an Organization-pinned database wrapper and capability checks.

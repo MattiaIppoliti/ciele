@@ -1,0 +1,54 @@
+---
+title: Architektur
+description: Verstehen Sie die aktuellen Open-Source-Komponenten und deren Laufzeitgrenzen.
+---
+
+Ciele ist ein TypeScript-Monorepo mit einer Next.js-Produktanwendung, gemeinsam
+genutzten Paketen, Postgres und optionalen Workern.
+
+## Hauptgrenzen
+
+<Mermaid
+  title="Jede Anfrage erreicht Postgres über dieselbe Datenzugriffsschicht"
+  chart={`
+flowchart TB
+  UI["Console and widget"]
+  API["Server actions and API v1"]
+  OPS["Shared operations"]
+  RUNTIME["Flow and agent runtime"]
+  DB["Data access"]
+  PG[("Postgres and storage")]
+  UI --> API
+  API --> OPS
+  API --> RUNTIME
+  OPS --> DB
+  RUNTIME --> DB
+  DB --> PG
+`}
+/>
+
+Optionale Worker laufen neben der Laufzeit für Crawling und Graph-Builds. Sie
+lesen dieselbe Datenbank und bleiben standardmäßig deaktiviert. Siehe
+[Background-Worker](/self-hosting/workers).
+
+Der Flow-Router bleibt maßgebend. Ein Modell kann die Absicht klassifizieren,
+ausgewählte Aktionen generieren und registrierte Tools aufrufen.
+
+Das Modell kann weder die Flow-Reihenfolge, die objektiven Bedingungen, die
+Aktionskonfiguration, die Organisationsautorisierung noch die
+Netzwerkausgangsprüfungen ersetzen.
+
+## Lesen Sie die Architektur
+
+- Die [Repository-Karte](/self-hosting/architecture/repository-map) zeigt die
+  Code-Verantwortlichkeit an.
+- [Request flows](/self-hosting/architecture/request-flows) verfolgt Konsolen-,
+  API- und Widget-Anfragen.
+- [Chat-Runtime](/self-hosting/architecture/chat-runtime) erklärt Trigger,
+  Routing und Aktionen.
+- [Agentic model](/self-hosting/architecture/agentic-model) erklärt die
+  Ausführung von Modellen und Tools.
+- Die [Wissens-Pipeline](/self-hosting/architecture/knowledge-pipeline)
+  erläutert die Aufnahme und den Abruf.
+- [Datenmodell](/self-hosting/architecture/data-model) erläutert die Beziehungen
+  zwischen Mandanten und Konversationen.

@@ -1,0 +1,92 @@
+---
+title: Entorno de ejecución del chat
+description: Comprende el envío actual del desencadenante, el enrutamiento del flujo, las condiciones y las acciones ordenadas.
+---
+
+## Ruta del mensaje
+
+<Mermaid
+  title="Cómo llega un mensaje de visitante a las partes de respuesta almacenadas"
+  chart={`
+flowchart TB
+  MSG["Visitor message"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+`}
+/>
+
+Las acciones leen como entradas la identidad verificada, los registros de
+entidad y la memoria a largo plazo. No son etapas del enrutador, por lo que no
+aparecen en la imagen.
+
+`messageFlowCandidates` proporciona candidatos a ambos motores de enrutamiento.
+Este límite evita que las condiciones objetivas produzcan resultados de
+enrutamiento diferentes.
+
+El contexto de la conversación proporciona ejemplos semánticos para la
+clasificación. No actúa como una puerta booleana independiente.
+
+## Contexto vinculado a la identidad
+
+Una puerta SSO de widget válida proporciona un sujeto con ámbito de
+organización. Una afirmación verificada opcional puede coincidir con los
+registros de entidad con ámbito de usuario.
+
+Las Entidades seleccionadas producen herramientas generadas de filtro y búsqueda
+de texto. Las herramientas con ámbito de usuario omiten el atributo de identidad
+de la entrada orientada al modelo.
+
+El servidor añade el filtro de identidad verificada después de validar la
+entrada de la herramienta. El modelo no puede omitirlo ni anularlo.
+
+En el primer turno de una nueva conversación, el entorno de ejecución puede
+inyectar hasta cinco recuerdos relevantes a largo plazo. Una herramienta de
+búsqueda de memoria integrada se encarga de la recuperación posterior.
+
+Ambas rutas de memoria requieren el conmutador Organization y un sujeto SSO
+verificado.
+
+## Acceso directo de cortesía
+
+El flujo de interacción básico integrado puede gestionar un breve mensaje de
+cortesía antes de la clasificación de intenciones. Un flujo personalizado
+anterior que cumpla los requisitos sigue teniendo prioridad.
+
+El atajo no se activa después de una pregunta del Asistente ni para un mensaje
+que contenga una solicitud de información.
+
+## Ruta proactiva
+
+La incrustación informa sobre la carga de la página, el tiempo de permanencia y
+los eventos de apertura del chat. El servidor valida el disparador configurado y
+el estado de entrega.
+
+Un flujo proactivo contiene una acción de notificación y ninguna condición. La
+acción emite el contenido configurado sin una llamada al modelo.
+
+## Ejecución de la acción
+
+Las acciones se ejecutan en el orden almacenado. Cada acción devuelve partes de
+respuesta estructuradas o un efecto silencioso.
+
+El trabajo generativo se mantiene dentro de la respuesta básica, la búsqueda de
+conocimiento, los seguimientos generados y las rutas de recomendación
+compatibles.
+
+## Traspaso
+
+Handover carga un Asistente de destino publicado en la misma Organización.
+Ejecuta el mensaje del visitante a través de ese destino una vez.
+
+La ejecución de destino ignora otro traspaso. Esta regla evita una cadena de
+Asistentes ilimitada.

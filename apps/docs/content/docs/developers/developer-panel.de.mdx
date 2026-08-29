@@ -1,0 +1,61 @@
+---
+title: Entwickler-Panel
+description: Lesen Sie die CLI-, cURL- und MCP-Snippets für die von Ihnen geöffnete Konsolenseite.
+---
+
+Das Developer Panel zeigt das programmatische Äquivalent der Konsolenseite, die
+Sie gerade betrachten. Es listet die Operationen dieser Seite als fertige
+Snippets auf, in denen die IDs der Seite bereits enthalten sind.
+
+Verwenden Sie es, um eine manuelle Aufgabe in ein Skript zu verschieben oder um
+zu erfahren, welcher API-Vorgang hinter einem Konsolensteuerelement steckt.
+
+## Öffnen Sie das Panel
+
+Wählen Sie die Schaltfläche in der oberen Leiste aus. Die Beschriftung gibt die
+Domäne der Seite an, zum Beispiel **Flows API**. Sie können auch `D` drücken.
+
+Das Panel öffnet sich in der rechten Leiste und bleibt geöffnet, wenn Sie zu
+einer anderen Seite wechseln.
+
+Ein Assistant-Editor verwendet dieselbe Leiste für die Live-Vorschau. Es ist
+jeweils nur eines der beiden sichtbar.
+
+<Callout title="No button means no API">
+The button is absent when the page has no API operations. Insights and the Style setup section show none. The absence is correct information, not a defect.
+</Callout>
+
+## Lesen Sie einen Ausschnitt
+
+Jede Operation hat drei Registerkarten.
+
+| Registerkarte | Inhalt |
+| --- | --- |
+| CLI | Der `ciele`-Befehl für die Operation. |
+| cURL | Die HTTP-Anforderung mit dem Ursprung Ihrer eigenen Bereitstellung. |
+| MCP | Der Tool-Name und die `action`-Argumente für einen KI-Client. |
+
+Neben einer Operation können zwei Badges angezeigt werden:
+
+- Das **Role**-Badge gibt die niedrigste Rolle an, die ein API-Schlüssel
+  benötigt. Es wird aus dem Guard abgeleitet, den die API erzwingt.
+- Das **Idempotent**-Badge kennzeichnet eine Anforderung, die mit einem
+  `Idempotency-Key`-Header sicher wiederholt werden kann.
+
+## Anforderungstexte sind Shapes
+
+Ein cURL-Body zeigt typisierte Platzhalter anstelle von Beispielwerten und
+stoppt bei zwei Verschachtelungsebenen.
+
+Dies ist beabsichtigt. Ein plausibler, erfundener Wert ist gefährlich, da ihn
+jemand in eine echte Organisation einfügen könnte. Lesen Sie die
+[API-Referenz](/developers/api), um den vollständigen Vertrag eines Feldes zu
+erhalten.
+
+## Bevor ein Snippet ausgeführt wird
+
+Jedes Snippet benötigt einen [Organization API key](/developers/api-keys). Das
+Panel zeigt dies an, wenn die Organisation keinen hat.
+
+Nur ein Owner oder ein Admin kann einen Schlüssel erstellen. Das Panel benennt
+die erforderliche Rolle, wenn Ihre eigene Rolle dies nicht kann.

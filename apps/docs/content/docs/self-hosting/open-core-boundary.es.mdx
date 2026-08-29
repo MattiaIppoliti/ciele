@@ -1,0 +1,29 @@
+---
+title: Límite del código abierto
+description: Identifica el núcleo público y el directorio empresarial independiente.
+---
+
+El núcleo público de Ciele utiliza la licencia `AGPL-3.0-only`. Su código fuente
+incluye la aplicación del producto y los paquetes de tiempo de ejecución
+compartidos.
+
+El repositorio también puede contener un directorio `ee/` separado. Ese
+directorio tiene sus propios avisos de licencia y no forma parte del núcleo
+AGPL.
+
+## Regla de la documentación pública
+
+La documentación de código abierto describe únicamente los componentes
+necesarios para compilar, ejecutar y comprender el núcleo público.
+
+No enumera los componentes internos de la empresa. Lee el archivo de licencia de
+cada área de código antes de redistribuir o modificar esa área.
+
+## Principales áreas de código abierto
+
+- `apps/web` contiene la aplicación del producto y las rutas de la API.
+- `apps/docs` contiene este sitio de documentación.
+- `packages` contiene paquetes compartidos de producto y de acceso programático.
+- `services` contiene servicios de trabajo opcionales.
+- `supabase` contiene migraciones de esquema y configuración de datos locales.
+- `deploy` contiene el ejemplo de implementación en un solo host.

@@ -1,0 +1,88 @@
+---
+title: Herramientas y habilidades
+description: Controla las herramientas de tiempo de ejecución y adjunta instrucciones reutilizables a un Asistente.
+---
+
+Abre un Asistente y selecciona **Tools & Skills**. Esta sección controla las
+capacidades de tiempo de ejecución y las instrucciones reutilizables.
+
+## Herramientas integradas
+
+| Herramienta | Predeterminado | Comportamiento actual |
+| --- | :---: | --- |
+| Buscar en el conocimiento | Activado | Busca en el conocimiento conectado y devuelve respuestas citadas. |
+| Memoria de sesión | Activada | Utiliza la información de la sesión de conversación actual. |
+| Obtener URL | Desactivado | Lee una URL cuando el tiempo de ejecución selecciona la herramienta. |
+| Mostrar una tabla | Desactivado | Muestra los datos en una tabla cuando el tiempo de ejecución selecciona la herramienta. |
+
+La búsqueda de conocimiento siempre está disponible. Puedes activar o desactivar
+las demás herramientas integradas.
+
+Mostrar una tabla organiza los datos que el Asistente ha encontrado en esta
+respuesta. No calcula valores. La tabla aparece encima de la respuesta escrita y
+la transcripción de la bandeja de entrada muestra la misma tabla.
+
+El Asistente puede añadir una pregunta de seguimiento a una fila. El visitante
+selecciona la fila para hacer esa pregunta. La transcripción de la bandeja de
+entrada muestra estas filas, pero un miembro no puede seleccionarlas.
+
+## Conecta datos estructurados
+
+La sección **Data** enumera las Entidades importadas a través de **Settings →
+Data**. Selecciona cada Entidad que este Asistente pueda consultar.
+
+Cada Entidad seleccionada proporciona una herramienta de filtro exacto. Una
+Entidad con atributos de texto también proporciona una herramienta de búsqueda
+por palabras clave.
+
+Las Entidades compartidas están disponibles para todos los Visitantes atendidos
+por el Asistente. Las Entidades con ámbito de usuario requieren una
+[declaración de identidad](/authentication/microsoft-entra-id#choose-an-identity-claim)
+verificada.
+
+La selección de Entidad y el esquema pasan a la siguiente instantánea de
+Publicación. El contenido del registro permanece activo después de la
+publicación.
+
+Consulta [Entidades y registros](/data/entities-and-records) para las
+importaciones CSV, las opciones de ámbito y el filtrado de identidad.
+
+## Configura una integración de API
+
+Un Asistente puede usar una integración de API registrada. La integración
+contiene una URL base, una credencial protegida y puntos de conexión descritos.
+
+Para cada punto de conexión, define el método, la ruta, el propósito, los
+parámetros y la forma de la respuesta. El tiempo de ejecución valida cada ruta
+solicitada con este catálogo.
+
+El agente puede inspeccionar los detalles del punto de conexión antes de enviar
+una solicitud. Las respuestas grandes siguen estando disponibles a través de
+lecturas en ventanas.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Adjunta una habilidad de organización
+
+Una Skill es una plantilla de instrucciones reutilizable. Una Organización puede
+asignar la misma Habilidad a varios Asistentes.
+
+1. Abre **Tools & Skills**.
+2. Busca la habilidad de organización necesaria.
+3. Asigna la habilidad al asistente.
+4. Prueba el resultado en Vista previa.
+5. Publica el Asistente cuando el resultado sea correcto.
+
+Los cambios en las habilidades están disponibles en Vista previa de inmediato.
+El widget publicado utiliza la última instantánea de la publicación.
+
+## Prueba la configuración
+
+Haz una pregunta que requiera cada herramienta habilitada. Revisa el panel
+Pensamiento y las Fuentes antes de publicar.
+
+Para los datos estructurados, prueba una búsqueda exacta de atributos y una
+búsqueda de texto. Prueba el acceso con ámbito de usuario con dos cuentas
+diferentes con sesión iniciada.

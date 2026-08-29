@@ -1,0 +1,104 @@
+---
+title: Actions de flux
+description: Sélectionnez les actions de réponse que le runtime actuel peut exécuter.
+---
+
+Les actions Message Flow sont exécutées dans l'ordre. Les actions non
+génératives utilisent le contenu configuré sans réécriture du modèle.
+
+## Actions disponibles
+
+| Action | Utilisation du modèle | Comportement actuel |
+| --- | :---: | --- |
+| Message | Non | Émet le texte configuré tel quel. |
+| Bouton | Non | Ajoute un bouton de lien ou un bouton qui envoie du texte dans le chat. |
+| Recherche de connaissances | Oui | Exécute la boucle de l'agent Knowledge et renvoie des citations. |
+| Suivis | Facultatif | Utilise les questions configurées ou génère des suggestions de questions. |
+| Iframe | Non | Incorpore le contenu externe configuré dans le chat. |
+| Requête API | Non | Appelle un point de terminaison HTTP configuré et mappe son résultat. |
+| Envoyer un e-mail | Non | Envoie un e-mail via le transport Resend configuré. |
+| Amélioration | Non | Crée une amélioration pour la réponse concernée. |
+| Transfert | Dépend de la cible | Se poursuit une fois dans un autre Assistant publié. |
+
+Le flux d'interaction de base intégré utilise également **Basic reply**. La
+recommandation du service d'assistance utilise une action d'exécution que le
+sélecteur d'action directe n'affiche pas.
+
+## Message
+
+Saisissez le texte exact que Ciele doit envoyer. Le moteur d'exécution ne
+paraphrase pas ce texte.
+
+## Réponse de base
+
+La réponse de base gère les courtes salutations, les remerciements et les
+formules de prise de congé. Elle utilise un seul appel de modèle et ne fait
+appel à aucun outil de connaissance, aucune citation ni aucun événement de
+réflexion.
+
+Saisissez un texte d'action fixe pour ignorer le modèle. Le même texte sert de
+solution de secours lorsqu'aucun modèle de chat n'est disponible.
+
+## Recherche de connaissances
+
+Search knowledge utilise les outils Knowledge disponibles jusqu'à la limite
+d'étapes d'exécution. Il peut renvoyer des citations de source nommées et des
+étapes de réflexion.
+
+Utilisez ses paramètres de requête non résolue pour proposer une remontée au
+service d'assistance ou créer une amélioration.
+
+## Bouton
+
+Configurez une étiquette et une cible. Une cible peut ouvrir un lien ou envoyer
+du texte configuré dans la conversation.
+
+## Questions de suivi
+
+Saisissez des questions de suivi prédéfinies ou activez leur génération. Les
+questions de suivi générées utilisent le modèle rapide configuré.
+
+## Iframe
+
+Configurez le titre, le lien HTTPS, les préférences de la lightbox et la
+hauteur. Le site hôte peut toujours empêcher l'intégration via ses en-têtes de
+sécurité.
+
+## Requête API
+
+Configurez la méthode, le point de terminaison, l'authentification, les
+en-têtes, les paramètres de requête, le corps JSON et le chemin JSON de la
+réponse.
+
+Les variables de modèle peuvent fournir des valeurs issues du contexte actuel.
+Utilisez **Test API** avant d'enregistrer le flux.
+
+L'action peut afficher des messages distincts de réussite et d'échec. Les règles
+de sortie réseau s'appliquent toujours à l'URL finale.
+
+## Envoyer un e-mail
+
+Configurez les destinataires, l'objet, le corps et le comportement de réponse.
+Le runtime utilise Resend lorsque son transport est configuré.
+
+Lorsque le transport n'est pas configuré, l'action signale qu'elle n'a pas
+envoyé l'e-mail. Elle ne confirme pas la livraison.
+
+## Amélioration
+
+L'action crée une tâche d'amélioration. Elle n'ajoute pas de texte de réponse
+visible par elle-même.
+
+## Transfert
+
+Sélectionnez un autre Assistant dans la même Organisation. La cible doit avoir
+une publication en cours.
+
+Ciele fait passer une seule fois le même message de visiteur à l'assistant
+cible. Il ne poursuit pas un deuxième transfert à partir de ce tour de cible.
+
+## Ordre des actions
+
+Placez le texte d'encadrement avant Rechercher dans la base de connaissances.
+Placez les boutons et les actions de suivi après la réponse qu'ils prennent en
+charge.

@@ -1,0 +1,50 @@
+---
+title: Crea un flujo
+description: Configura un desencadenante, las condiciones disponibles y las acciones de respuesta ordenadas.
+---
+
+## Crea el flujo
+
+1. Abre un Asistente.
+2. Selecciona **Flows**.
+3. Crea un flujo.
+4. Introduce un nombre y una descripción claros.
+5. Selecciona un desencadenante.
+
+La descripción ayuda a Intent Classification a seleccionar un flujo de mensajes.
+Indica la intención del visitante y el ámbito requerido.
+
+## Añade condiciones de mensaje
+
+Los flujos de mensajes admiten estos tipos de condiciones:
+
+| Condición | Comportamiento actual |
+| --- | --- |
+| Contexto de la conversación | Añade ejemplos semánticos a la clasificación de intenciones. No es una puerta rígida. |
+| URL | Aplica una puerta dura de Coincidencia, Contiene o Regex. |
+| Programación | Aplica una puerta rígida de inicio, finalización y zona horaria. |
+
+Selecciona **Any condition matches** o **All conditions match** cuando el flujo
+contenga más de una condición.
+
+Las condiciones de URL y Programación eliminan un flujo no apto antes de la
+clasificación. Una condición satisfecha no obliga al flujo a ganar.
+
+## Añade acciones de respuesta
+
+1. Añade las acciones necesarias.
+2. Coloca las acciones en su orden de ejecución.
+3. Configura todos los campos obligatorios.
+4. Guarda el flujo.
+5. Prueba un mensaje que coincida y otro que no coincida.
+
+El editor limita los Flows proactivos a una acción de Notificación. El servidor
+aplica la misma regla cuando guarda o envía un Flow.
+
+## Reordena los flujos
+
+Arrastra un flujo para cambiar la prioridad de enrutamiento de los mensajes. El
+flujo de comportamiento predeterminado permanece en último lugar.
+
+Desactiva un flujo cuando debas detener su enrutamiento sin eliminar su
+configuración.

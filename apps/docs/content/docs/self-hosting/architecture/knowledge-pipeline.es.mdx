@@ -1,0 +1,66 @@
+---
+title: Canal de conocimiento
+description: Rastrea una Fuente desde la ingesta hasta una respuesta citada del Asistente.
+---
+
+## Ingestión
+
+<Mermaid
+  title="Una Fuente se convierte en Conceptos que se pueden buscar antes de que indique que está Lista"
+  chart={`
+flowchart TB
+  SOURCE["Website, file, text, or FAQ"]
+  EXTRACT["Extract the content"]
+  CONCEPT["Create OKF Concepts"]
+  INDEX["Index for search"]
+  GRAPH["Update the graph"]
+  READY["Status becomes Ready"]
+  SOURCE --> EXTRACT
+  EXTRACT --> CONCEPT
+  CONCEPT --> INDEX
+  CONCEPT --> GRAPH
+  INDEX --> READY
+  GRAPH --> READY
+`}
+/>
+
+Knowledge utiliza Concepts en Open Knowledge Format (OKF). Un Concepto mantiene
+una referencia a su Source original.
+
+La ingesta de preguntas frecuentes crea un Concepto seleccionado con procedencia
+de preguntas y respuestas. La ingesta de archivos y sitios web conserva el
+objeto Source original cuando corresponde.
+
+## Recuperación
+
+El motor de ejecución puede recuperar Conceptos mediante búsqueda vectorial y
+reserva léxica. El modo de grafo puede añadir navegación a través de relaciones
+de Conceptos indexados.
+
+Cada ruta se limita por los enlaces de Asistente a Fuente. Se descarta cualquier
+coincidencia de una Fuente que no esté vinculada al Asistente que realiza la
+consulta, tanto en la ruta del grafo como en la ruta del vector.
+
+Una pista de contexto puede limitar la recuperación a una colección relevante o
+a un contexto similar a un curso cuando el tiempo de ejecución proporciona uno.
+
+Deep Search aumenta el trabajo de navegación por el conocimiento dentro de los
+límites del tiempo de ejecución. No realiza consultas en la web pública.
+
+## Resolución de citas
+
+La respuesta final cita Fuentes con nombre, no fragmentos de búsqueda opacos.
+Los identificadores de citas se resuelven a través del Concepto hasta su Fuente
+original.
+
+El visitante puede abrir la pantalla de Fuentes después de la respuesta. La
+Bandeja de entrada almacena las mismas partes de la cita junto con la
+Conversación.
+
+## Eliminación y nuevo rastreo
+
+Al eliminar una fuente, se retiran los Conceptos relacionados del grafo activo y
+de los datos de búsqueda para cada Asistente vinculado. Al eliminar un enlace,
+no se retira nada. Impide que un Asistente acceda a la Fuente.
+
+El rastreo de sitios web reinicia la extracción y la indexación para esa Fuente.

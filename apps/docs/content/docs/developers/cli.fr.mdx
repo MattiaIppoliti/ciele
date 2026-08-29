@@ -1,0 +1,156 @@
+---
+title: Ciele CLI
+description: Gérez Ciele depuis un terminal ou une tâche automatisée.
+---
+
+La commande `ciele` utilise les mêmes opérations d'API que la console
+d'administration. La CLI prend en charge le service hébergé et les installations
+auto-hébergées.
+
+## Prérequis
+
+- Utilisez Node.js 22.6 ou une version ultérieure.
+- Créez une [clé API d'organisation](/developers/api-keys).
+
+## Installation
+
+Compilez et installez le paquet autonome à partir d'une extraction du dépôt :
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+Le tarball inclut ses dépendances d'exécution. La commande installed n'a plus
+besoin du dépôt.
+
+Une fois `@ciele/cli` publié sur npm, `npm install --global @ciele/cli` installe
+le même artefact.
+
+Les contributeurs peuvent également exécuter `node packages/cli/bin/ciele.mjs`
+sans l'installer.
+
+## Se connecter
+
+Pour le service hébergé, exécutez :
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+Pour une installation auto-hébergée, ajoutez son origine publique :
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+ciele doctor
+```
+
+La commande `login` valide la clé avant d'écrire `~/.ciele/config.json`. Sur les
+systèmes pris en charge, le mode de fichier est `0600`.
+
+La CLI résout une clé dans cet ordre :
+
+1. L'option `--api-key`.
+2. La variable d'environnement `CIELE_API_KEY`.
+3. Le fichier de configuration enregistré.
+
+La CLI utilise le même ordre pour `--base-url`, `CIELE_BASE_URL` et l'origine
+enregistrée. L'origine hébergée est la valeur par défaut finale.
+
+## Utiliser la sortie d'automatisation
+
+Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
+
+| Code de sortie | Signification |
+| --- | --- |
+| `0` | L'opération est terminée. |
+| `1` | Le serveur a renvoyé une erreur. |
+| `2` | L'entrée de la commande n'est pas valide. |
+| `3` | L'authentification a échoué. |
+
+`ciele doctor` vérifie la découverte de l'API, la compatibilité de l'API, la
+clé, son rôle et son organisation.
+
+## Commandes d'assistant et de connaissances
+
+```bash
+ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
+ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
+ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf --assistants <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+```
+
+Chaque commande qui ajoute des connaissances nécessite `--assistants`. Une
+Collection n'a pas de propriétaire ; par conséquent, ces liens sont le seul
+moyen de mettre les connaissances à la disposition d'un Assistant. Les commandes
+sont `sources add-text`, `sources add-url`, `sources add-file`, `faqs add` et
+`faqs import`.
+
+### Liens de source
+
+Une Source répond pour les Assistants qui lui sont liés. Ces commandes lisent et
+modifient les liens.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` répertorie toutes les Sources détenues par l'Organisation,
+pour l'ensemble des Assistants.
+
+`sources link` remplace l'ensemble de liens. Une liste vide supprime tous les
+liens et la Source cesse de répondre.
+
+`sources direct-access` décide si cet Assistant peut fournir le fichier original
+à un Visiteur.
+
+## Commandes d'opérations et d'organisation
+
+```bash
+ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
+ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele teammates list
+ciele channels list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
+```
+
+Les commandes qui suppriment des données nécessitent `--yes`. Le flux de
+comportement par défaut ne peut pas être supprimé.
+
+Exécutez `ciele help` pour chaque groupe de commandes et chaque option acceptée.
+Ajoutez `--file` lorsqu'une commande accepte une entrée JSON complète ou un
+correctif.
+
+## Exemple de vérification CI
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Stockez toutes les valeurs dans le magasin de secrets CI. N'écrivez pas de clé
+dans un fichier de workflow.

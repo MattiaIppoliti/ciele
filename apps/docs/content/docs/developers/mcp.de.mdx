@@ -1,0 +1,125 @@
+---
+title: Ciele-MCP-Server
+description: Gewähren Sie einem MCP-Client kontrollierten Zugriff auf Ciele-Administrationsvorgänge.
+---
+
+Der Ciele Model Context Protocol (MCP)-Server stellt die Administrationsvorgänge
+einem KI-Agenten zur Verfügung. Er verfügt über zwei Transporte, und beide
+registrieren dieselben Tools.
+
+- Der **gehostete Endpunkt** ist `POST /api/mcp` in Ihrer Bereitstellung.
+  Verwenden Sie ihn für einen Client, der über HTTP eine Verbindung herstellt.
+- Der **lokale Server** ist ein `stdio`-Prozess, den Sie aus einem
+  Repository-Checkout heraus starten.
+
+Jeder Tool-Aufruf erreicht die Organisation über `/api/v1`, sodass eine
+Operation nur einen Ausführungspfad hat, unabhängig davon, welcher Transport ihn
+angefordert hat.
+
+## Gehosteter Endpunkt
+
+Jede Ciele-Bereitstellung bedient den Endpunkt an ihrem eigenen Ursprung. Dazu
+gehören der gehostete Dienst, ein Docker-Self-Host und der lokale Stack von
+Ciele Desktop. Der Endpunkt benötigt keine Konfiguration.
+
+```text
+https://ciele.example.edu/api/mcp
+```
+
+Authentifizieren Sie sich mit einem [Organization API key](/developers/api-keys)
+im `Authorization`-Header:
+
+```text
+Authorization: Bearer ciele_sk_...
+```
+
+Ein unbekannter oder fehlender Schlüssel wird mit `401` abgelehnt, bevor ein
+Tool aufgelistet wird.
+
+<Callout title="The key Role is the permission boundary">
+The hosted endpoint has no read-only switch. Its permissions are the Role of the key: the operations layer refuses a mutation the Role does not cover with `403`. A Viewer key is not a read-only agent, though. Reviewing conversations counts as curation, so a Viewer key can pin a conversation, leave feedback, and delete a conversation. Use `CIELE_MCP_READ_ONLY=1` on a stdio server when you need an agent that cannot write at all.
+</Callout>
+
+## Protokollrevisionen
+
+Der Server spricht die Revision `2026-07-28` und die Revisionen 2025. Er
+entscheidet die Revision anhand des Eröffnungsaustauschs, sodass ein Client, der
+nicht auf `2026-07-28` umgestellt hat, weiterhin funktioniert.
+
+In der Revision `2026-07-28` wurden Protokollsitzungen entfernt. Jede Anfrage
+ist in sich geschlossen, sodass der gehostete Endpunkt weder Sticky Routing noch
+einen Session Store benötigt.
+
+## Lokaler `stdio`-Server
+
+### Anforderungen
+
+- Verwenden Sie Node.js 22.6 oder höher.
+- Klonen Sie das Ciele-Repository.
+- Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
+- Verwenden Sie einen MCP-Client, der einen lokalen `stdio`-Server starten kann.
+
+Starten Sie dieses Programm aus dem Repository:
+
+```text
+node <repo>/packages/mcp/bin/ciele-mcp.mjs
+```
+
+### Umgebungsvariablen
+
+| Variable | Anforderung | Zweck |
+| --- | --- | --- |
+| `CIELE_API_KEY` | Erforderlich | Authentifiziert die Organisation. |
+| `CIELE_BASE_URL` | Optional | Wählt einen selbst gehosteten Ursprung aus. |
+| `CIELE_MCP_READ_ONLY` | Optional | Lehnt Mutationsaktionen ab, wenn der Wert `1` ist. |
+| `CIELE_MCP_MODERN_ONLY` | Optional | Lehnt Clients der Revision 2025 ab, wenn der Wert `1` ist. |
+
+Die Schreibschutzprüfung erfolgt innerhalb des MCP-Prozesses. Eine abgelehnte
+Mutation führt zu keiner API-Anforderung.
+
+<Callout type="warn" title="These variables apply to the local server only">
+A Ciele web container ignores `CIELE_MCP_READ_ONLY` and `CIELE_MCP_MODERN_ONLY`. Do not set them on a deployment and expect the hosted endpoint to obey.
+</Callout>
+
+<Callout title="Recommended first connection">
+Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only when the agent must change Ciele data.
+</Callout>
+
+## Verfügbare Tools
+
+| Tool | Aktuelle Vorgänge |
+| --- | --- |
+| `ciele_identity` | Informationen zu Bereitstellung, Organisation und Rolle lesen. |
+| `manage_assistants` | Assistenten auflisten, lesen, erstellen, aktualisieren, duplizieren oder löschen. |
+| `manage_flows` | Flows auflisten, lesen, erstellen, aktualisieren, neu anordnen oder löschen. |
+| `manage_knowledge` | Verwalten Sie Sammlungen, Quellen und FAQs. |
+| `publish_assistant` | Status einer Veröffentlichung lesen, veröffentlichen, Veröffentlichung aufheben oder eine Veröffentlichung wiederherstellen. |
+| `read_inbox` | Konversationen auflisten, lesen, exportieren, anheften, mit Anmerkungen versehen, bewerten oder löschen. |
+| `manage_improvements` | Verbesserungen auflisten, lesen oder aktualisieren. |
+| `manage_entities` | Verwalten Sie Organisationseinheiten und typisierte Datensätze. |
+| `manage_memories` | Überprüfen Sie die Einstellungen und führen Sie eine bereichsbezogene Speicherlöschung durch. |
+| `manage_sso` | Verwalten Sie Identitätsansprüche und die SSO-Verbindung der Organisation. |
+| `manage_help_desks` | Verwalten Sie Helpdesks, Kanäle, Bestellungen und ServiceNow. |
+| `manage_teammates` | Verwalten Sie KI-Teamkollegen und lesen Sie Ihre eigenen Teamkollegen-Gespräche. |
+| `manage_channels` | Lesen und gestalten Sie die Teamkollegen-Kanäle, in denen Sie sich befinden. |
+| `manage_configuration` | Verwalten Sie Skills, die Auswahl von Assistant Skills, Ziele und Warnungen. |
+| `manage_organization` | Verwalten Sie Organisationseinstellungen, Mitglieder, Einladungen und API-Schlüssel. |
+| `manage_integrations` | Verwalten Sie API-Integrationen für Assistenten und Modellanbieter. |
+
+Der Server registriert sechzehn Tools. Jedes Domänen-Tool verwendet ein
+`action`-Feld für seine Operationen.
+
+Der schreibgeschützte Modus klassifiziert jede Aktion. Er erlaubt die Aktionen
+„List“, „Read“, „Status“, „Query“ und „Export“, lehnt jedoch Mutationen ab.
+
+Informationen zur Konfiguration der einzelnen unterstützten Clients finden Sie
+unter [AI-Clients](/developers/ai-clients).
+
+## Überprüfen Sie die Verbindung
+
+Bitten Sie den Kunden, `ciele_identity` anzurufen. Bestätigen Sie die erwartete
+Organisations-ID, die Rolle, die API-Version und die Domain-Liste.
+
+Die Repository-Testsuite startet auch den eigentlichen `stdio`-Prozess. Sie
+überprüft die Initialisierung, die Tool-Erkennung und einen authentifizierten
+API-Aufruf.

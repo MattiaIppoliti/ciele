@@ -1,0 +1,35 @@
+---
+title: Members and Roles
+description: Control who can read, edit, publish, and administer an Organization.
+---
+
+## Roles
+
+| Role | Current permission level |
+| --- | --- |
+| Viewer | Reads Organization and product data. |
+| Editor | Changes Assistant content and configuration. |
+| Admin | Publishes Assistants and manages members and API keys. |
+| Owner | Changes Roles and manages owners. |
+
+The application applies more specific capability checks to individual operations.
+
+## Invite a member
+
+1. Open **Settings > Members**.
+2. Select **Invite member**.
+3. Enter the email address.
+4. Select the minimum required Role.
+5. Send the invitation.
+
+## Change a member
+
+An Admin can manage members below the Owner tier. An Owner can manage all tiers.
+
+A member cannot edit or remove their own row from the member list. Use another authorized member for that operation.
+
+## API-key Roles
+
+An Admin or Owner can create an Organization API key. The selected Role cannot be higher than the creator's Role.
+
+Revoke a key when its client no longer needs access. Ciele keeps the revoked record for audit information.

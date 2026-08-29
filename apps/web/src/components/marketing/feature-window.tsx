@@ -1,0 +1,176 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import { ChevronsUpDown, Search } from "lucide-react";
+import { PreviewPane } from "@/components/home/preview-panes";
+import { GLOBAL_NAV, SETUP_SECTIONS } from "@/components/shell/nav";
+import { cn } from "@/lib/utils";
+import type { FeatureShot } from "@/components/marketing/feature-catalog";
+import {
+  AlertsMock,
+  AuthenticationMock,
+  FlowsMock,
+  KnowledgeMock,
+  PublishingMock,
+} from "@/components/marketing/feature-mocks";
+
+/* The screenshot on a feature page: the admin shell drawn in real DOM rather
+   than captured as an image, so it stays crisp, follows the visitor's theme,
+   and cannot drift out of date the way a PNG does. Mostly static by design,
+   the home page owns the fully interactive version of this mock; only the
+   Knowledge mock's view tabs respond to clicks. */
+
+/* The one animated shot: the widget preview playing its scripted turn. Split
+   into its own chunk, it pulls the real chat components (Thinking panel,
+   markdown, shiki) that the rest of the marketing bundle never needs. */
+const AssistantPreviewDemo = dynamic(
+  () =>
+    import("./assistant-preview-demo").then(
+      (module) => module.AssistantPreviewDemo
+    ),
+  { ssr: false, loading: () => <div className="bg-muted/40 h-full" /> }
+);
+
+/* The other animated shot: a Teammate answering a colleague. Its own chunk for
+   the same reason, and separate from the widget demo because the two are
+   different surfaces, not two skins of one. */
+const TeammateChatDemo = dynamic(
+  () => import("./teammate-chat-demo").then((module) => module.TeammateChatDemo),
+  { ssr: false, loading: () => <div className="bg-muted/40 h-full" /> }
+);
+
+const MOCKS = {
+  knowledge: KnowledgeMock,
+  flows: FlowsMock,
+  publishing: PublishingMock,
+  authentication: AuthenticationMock,
+  alerts: AlertsMock,
+} as const;
+
+function SidebarRow({
+  icon: Icon,
+  label,
+  active,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm",
+        active ? "bg-muted text-foreground font-medium" : "text-muted-foreground"
+      )}
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
+export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: string }) {
+  // Which sidebar row reads as current: an org-wide screen, or the editor
+  // section this feature lives in.
+  // Teammates is an org-wide screen like the five panes, it just has no pane
+  // in the home-page mock, so it names its row directly.
+  const activeGlobal: string | null =
+    shot.kind === "pane" ? shot.view : shot.kind === "teammates" ? "Teammates" : null;
+  const activeSetup =
+    shot.kind === "preview"
+      ? "preview"
+      : shot.kind === "mock"
+        ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null }[
+            shot.mock
+          ]
+        : null;
+
+  const Mock = shot.kind === "mock" ? MOCKS[shot.mock] : null;
+
+  // The animated preview keeps more of itself: its lower third is where the
+  // answer streams, so the dissolve starts later than on the static shots.
+  const animated = shot.kind === "preview" || shot.kind === "teammates";
+  const flows = shot.kind === "mock" && shot.mock === "flows";
+  const maskStop = animated ? "80%" : flows ? "76%" : "62%";
+
+  return (
+    <div
+      aria-hidden
+      /* Masked at the foot rather than cut: the screen is a window onto a
+         product that keeps going, so it dissolves into the page instead of
+         ending on a border. The mask takes the border and shadow with it,
+         which is the whole point, any hard edge would read as the bottom. */
+      style={{
+        maskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
+        WebkitMaskImage: `linear-gradient(to bottom, black ${maskStop}, transparent 100%)`,
+      }}
+      className={cn(
+        "bg-background text-foreground flex overflow-hidden rounded-2xl border",
+        flows ? "h-[500px] sm:h-[640px]" : "h-[420px] sm:h-[520px]"
+      )}
+    >
+      {/* Sidebar, hidden on phones, where it would leave no room for the pane. */}
+      <aside className="hidden w-52 shrink-0 flex-col gap-1 border-r px-3 py-3 md:flex">
+        <div className="flex items-center gap-2 px-1.5 pb-2">
+          <span className="bg-muted size-6 shrink-0 rounded-full border" />
+          <span className="text-sm font-semibold">Acme …</span>
+          <ChevronsUpDown className="text-muted-foreground ml-auto size-3.5" />
+        </div>
+        <div className="text-muted-foreground mb-2 flex h-8 items-center gap-2 rounded-lg border px-2.5 text-sm">
+          <Search className="size-3.5" />
+          Find…
+        </div>
+
+        {GLOBAL_NAV.filter((item) => !item.bottom).map((item) => (
+          <SidebarRow
+            key={item.label}
+            icon={item.icon}
+            label={item.label}
+            active={item.label === activeGlobal}
+          />
+        ))}
+
+        <div className="my-2 border-t" />
+
+        {SETUP_SECTIONS.slice(0, 6).map((section) => (
+          <SidebarRow
+            key={section.slug}
+            icon={section.icon}
+            label={section.label}
+            active={section.slug === activeSetup}
+          />
+        ))}
+
+        <div className="mt-auto border-t pt-2">
+          {GLOBAL_NAV.filter((item) => item.bottom).map((item) => (
+            <SidebarRow
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              active={item.label === "Alerts" && shot.kind === "mock" && shot.mock === "alerts"}
+            />
+          ))}
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-11 shrink-0 items-center gap-3 border-b px-5 text-sm">
+          <span className="text-muted-foreground">All Assistants</span>
+          <span className="text-muted-foreground/50">/</span>
+          <span className="font-medium">{label}</span>
+        </header>
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {shot.kind === "preview" ? (
+            <AssistantPreviewDemo />
+          ) : shot.kind === "teammates" ? (
+            <TeammateChatDemo />
+          ) : Mock ? (
+            <Mock />
+          ) : shot.kind === "pane" ? (
+            <PreviewPane view={{ kind: "global", label: shot.view }} />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}

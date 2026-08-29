@@ -1,0 +1,98 @@
+---
+title: API v1
+description: Rufen Sie die aktuelle Ciele-Administrations-API mit einem Organisations-API-Schlüssel auf.
+---
+
+Die Ciele-API verwendet JSON über HTTP. Alle Routen der Version 1 beginnen mit
+`/api/v1`.
+
+## Entdecken Sie die Bereitstellung
+
+Verwenden Sie diese öffentlichen Endpunkte, bevor Sie einen Client generieren:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` listet die API-Version und die verfügbaren Domains auf. `openapi.json`
+gibt den maschinenlesbaren Vertrag für die Bereitstellung zurück.
+
+## Authentifizieren Sie eine Anfrage
+
+Senden Sie den API-Schlüssel als Bearer-Token:
+
+```bash
+curl https://ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Ersetzen Sie für Self-Hosting `https://ciele.app` durch den öffentlichen
+Ciele-Ursprung.
+
+## Antwortfehler
+
+Fehler verwenden einen JSON-Umschlag:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Häufige Statuscodes sind:
+
+| Status | Bedeutung |
+| --- | --- |
+| `400` | Die Anfragedaten sind ungültig. |
+| `401` | Der Schlüssel fehlt, ist ungültig oder wurde widerrufen. |
+| `403` | Die Role des Schlüssels erlaubt den Vorgang nicht. |
+| `404` | Die Ressource existiert nicht in der Organisation. |
+| `409` | Die Anforderung steht im Widerspruch zum aktuellen Status. |
+
+## Paginierung
+
+Listenoperationen akzeptieren die Parameter `limit` und `cursor`, wenn der
+Endpunkt Paginierung unterstützt. Verwenden Sie den zurückgegebenen Cursor für
+die nächste Anfrage.
+
+## Sichere Wiederholungsversuche
+
+Mutationsrouten können einen `Idempotency-Key`-Header akzeptieren. Verwenden Sie
+denselben Wert nur dann wieder, wenn Sie dieselbe logische Operation erneut
+versuchen.
+
+## Aktuelle Domains
+
+- Assistenten: list, read, create, update, duplicate und delete.
+- Flows: auflisten, lesen, erstellen, aktualisieren, neu anordnen und löschen.
+- Wissen: Verwalten Sie Sammlungen, Quellen, FAQs und die Assistant-Links für
+  jede Quelle.
+- Veröffentlichung: Status lesen, Veröffentlichung durchführen, Veröffentlichung
+  zurückziehen und eine Veröffentlichung wiederherstellen.
+- Posteingang: Konversationen überprüfen, exportieren, anheften, mit Anmerkungen
+  versehen, bewerten und löschen.
+- Verbesserungen: Elemente auflisten, lesen und aktualisieren.
+- Entities und Memories: Verwalten Sie typisierte Organisationsdaten und das
+  Löschen von Memories innerhalb eines bestimmten Geltungsbereichs.
+- SSO: Verwalten Sie Identity Claims, Verbindungseinstellungen, Validierung und
+  Trennung.
+- Helpdesks: Verwalten Sie Desks, Eskalationskanäle, Bestellungen und
+  ServiceNow.
+- Teammates: Verwalten Sie AI Teammates und lesen Sie Ihre eigenen
+  Teammate-Konversationen.
+- Kanäle: Lesen und gestalten Sie die Teammate-Kanäle, in denen Sie sich
+  befinden, sowie deren Listen. Es gibt keinen Endpunkt zum Senden einer
+  Nachricht: Eine Nachricht startet eine Kette von Teammate-Antworten, die in
+  der Konsole ausgeführt wird.
+- Konfiguration: Verwalten Sie Skills, Assistant Goals und operative Alerts.
+- Organisation: Verwalten Sie Einstellungen, Mitglieder, Einladungen und
+  API-Schlüssel.
+- Integrations: Verwalten Sie Assistant-API-Integrationen und
+  Modell-Provider-Verbindungen.
+
+Verwenden Sie das OpenAPI-Dokument für die genauen Anforderungsfelder und
+Antwortschemata.

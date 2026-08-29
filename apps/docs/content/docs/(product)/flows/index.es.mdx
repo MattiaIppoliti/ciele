@@ -1,0 +1,38 @@
+---
+title: Flujos
+description: Enruta mensajes y eventos proactivos a acciones de respuesta ordenadas.
+---
+
+Un flujo contiene un desencadenante, condiciones disponibles y acciones
+ordenadas. El enrutador procesa los Flows habilitados en el orden configurado.
+
+## Flujos de mensajes
+
+El desencadenante **User sends a message** utiliza la clasificación de
+intenciones. Un clasificador de modelos selecciona el mejor flujo apto cuando
+hay un modelo disponible.
+
+El enrutador de palabras clave proporciona una alternativa para casos de
+desconexión y error. Ambos enrutadores utilizan el mismo filtro de candidatos.
+
+El flujo **Default behavior** bloqueado permanece en último lugar. Gestiona un
+mensaje apto cuando ningún flujo anterior gana.
+
+## Flujos proactivos
+
+Estos desencadenantes no clasifican un mensaje:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+Un flujo proactivo no tiene condiciones y contiene una acción de notificación.
+Consulta [Notificaciones](/flows/notifications).
+
+## Orden de los flujos
+
+Coloca los flujos de mensajes específicos antes de los flujos de mensajes
+generales. El orden también controla el atajo integrado Basic Interaction.
+
+Un flujo personalizado anterior que coincida puede gestionar un mensaje de
+cortesía antes del flujo de interacción básica integrado.

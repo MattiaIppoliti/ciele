@@ -1,0 +1,38 @@
+---
+title: Domande frequenti
+description: Aggiungi coppie di domande e risposte approvate per uno o più Assistenti.
+---
+
+Una FAQ contiene una domanda e una risposta selezionata. Utilizza le FAQ per i
+contenuti che richiedono una risposta esatta e approvata.
+
+## Aggiungi una FAQ
+
+1. Apri l'Assistente.
+2. Seleziona **Knowledge**.
+3. Aggiungi una FAQ.
+4. Inserisci la domanda.
+5. Inserisci la risposta approvata.
+6. Salva la FAQ.
+
+## Importa le FAQ
+
+Prepara un file CSV con queste colonne:
+
+```csv
+question,answer
+When does enrollment close?,Enrollment closes on October 31.
+```
+
+Importa il file dall'Assistente o dalla scheda FAQ nella
+[Libreria](/knowledge/library) quando più Assistenti necessitano delle stesse
+coppie. Correggi le righe che non contengono entrambi i valori.
+
+## Usa una risposta rapida FAQ
+
+Una risposta rapida FAQ restituisce la risposta curata parola per parola. Non
+effettua alcuna chiamata al modello di chat e include la citazione della fonte
+FAQ.
+
+Usa una risposta rapida **Send Text** quando il testo deve invece entrare nel
+normale router Flow.

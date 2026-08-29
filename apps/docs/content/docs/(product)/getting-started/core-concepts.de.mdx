@@ -1,0 +1,66 @@
+---
+title: Kernkonzepte
+description: Lernen Sie die festen Begriffe, die Ciele im Produkt und in der Dokumentation verwendet.
+---
+
+## Organisation
+
+Eine Organisation besitzt Mitglieder, Assistenten, Helpdesks,
+Provider-Verbindungen, API-Schlüssel, Skills und Betriebsdaten.
+
+## Assistent
+
+Ein Assistent ist ein konfigurierter Konversationsagent. Er verfügt über eine
+Identität, Wissen, Flows, Tools, ein Modell, ein Erscheinungsbild und einen
+Veröffentlichungsstatus.
+
+## Quelle und Wissenssammlung
+
+Eine Quelle ist eine ursprüngliche Website, eine Datei, ein Text oder
+FAQ-Inhalt. Durch die Aufnahme wird eine Quelle in Konzepte umgewandelt, die
+durchsuchbaren Dokumente, die einer fundierten Antwort zugrunde liegen.
+
+Die Quellen gehören zur Organisation. Eine Knowledge Collection ist der
+Container der Organisation, in dem sie gespeichert werden.
+
+## Quelllink
+
+Ein Link verbindet eine Quelle mit einem Assistenten. Ein Assistant durchsucht
+eine Source nur über einen Link.
+
+Der Link enthält auch **Direct access**, was entscheidet, ob der Assistent einem
+Besucher die Originaldatei zur Verfügung stellen kann.
+
+## Flow
+
+Ein Flow ist eine geordnete Routing-Regel. Er enthält einen Trigger, verfügbare
+Bedingungen und geordnete Antwortaktionen.
+
+Der gesperrte **Default behavior**-Flow bleibt an letzter Stelle. Er verarbeitet
+eine berechtigte Nachricht, wenn kein früherer Flow gewinnt.
+
+## Veröffentlichung
+
+Eine Veröffentlichung ist ein unveränderlicher Snapshot eines Assistenten. Das
+Widget verwendet die aktive Veröffentlichung, nicht den aktuellen
+Administrator-Entwurf.
+
+## Konversation
+
+Eine Konversation speichert Nachrichten von Besuchern und Assistenten,
+Antwortteile, Zitate, Laufzeit-Traces und Sitzungs-Metadaten.
+
+## Helpdesk
+
+Ein Helpdesk definiert einen oder mehrere Kontaktkanäle. Ein Assistent kann
+während der Eskalation einen relevanten Helpdesk vorschlagen.
+
+## Verbesserung
+
+Eine Verbesserung ist ein Überprüfungselement für ein Problem mit der
+Antwortqualität. Sie kann auf die genaue Konversationsnachricht verweisen.
+
+## Ziel und Warnung
+
+Ein Goal führt eine geplante Antwortprüfung durch. Ein fehlgeschlagenes Goal
+erstellt eine Warnung für einen Administrator.

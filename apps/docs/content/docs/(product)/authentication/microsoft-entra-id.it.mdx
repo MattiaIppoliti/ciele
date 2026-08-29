@@ -1,0 +1,70 @@
+---
+title: Microsoft Entra ID
+description: Configura la connessione OpenID Connect corrente per l'accesso dei visitatori.
+---
+
+Microsoft Entra ID è il provider di identità disponibile per i visitatori.
+
+## Crea l'applicazione Entra
+
+1. Registra un'applicazione web riservata in Microsoft Entra ID.
+2. Aggiungi l'URL di callback di Ciele indicato nel modulo del provider.
+3. Crea un client secret.
+4. Registra l'ID tenant e l'ID client.
+
+Utilizza l'URL di callback esatto. Uno schema, un host, un percorso o una porta
+diversi impediscono la risposta di autorizzazione.
+
+## Configura Ciele
+
+1. Apri **Settings**.
+2. Apri la configurazione dell'autenticazione dei visitatori.
+3. Seleziona **Microsoft Entra ID**.
+4. Inserisci l'ID tenant.
+5. Inserisci l'ID client.
+6. Inserisci il client secret.
+7. Scegli un **Identity claim** quando le funzionalità per visitatore lo
+   richiedono.
+8. Salva la connessione.
+
+Ciele utilizza il flusso del codice di autorizzazione con Proof Key for Code
+Exchange (PKCE).
+
+## Scegli un claim di identità
+
+L'impostazione predefinita è **Off, subject only**. Ciele quindi memorizza il
+soggetto OIDC opaco senza un identificatore leggibile dall'uomo.
+
+Scegli **Email address** o **Username (preferred_username claim)** quando un
+Assistente deve associare i Visitatori che hanno effettuato l'accesso ai
+[Record con ambito utente](/data/entities-and-records#protect-user-scoped-records).
+
+Ciele verifica l'attestazione selezionata all'interno del token ID firmato. Il
+server lo porta nella Conversazione e nel turno di runtime.
+
+Un corpo di richiesta o un input dello strumento del modello non possono
+sostituire il valore verificato. Una claim configurata mancante disabilita le
+funzionalità che la richiedono per quel Visitatore.
+
+Ricollega Entra per modificare il claim. Ciele richiede gli ambiti del profilo e
+dell'e-mail quando una claim è abilitata.
+
+## Impostazione server richiesta
+
+Imposta `APP_ENCRYPTION_KEY` sulla distribuzione di Ciele. Ciele utilizza questa
+chiave per proteggere il cookie del gate di autenticazione e i segreti
+memorizzati.
+
+## Verifica la connessione
+
+1. Richiedi l'autenticazione su una bozza di Assistente.
+2. Apri l'anteprima in una sessione del browser senza aver effettuato l'accesso.
+3. Completa l'accesso a Microsoft.
+4. Verifica che la chat diventi disponibile.
+5. Verifica che un'altra organizzazione non possa riutilizzare il cookie gate.
+6. Avvia una conversazione e verifica che la Posta in arrivo mostri il soggetto
+   che ha effettuato l'accesso.
+
+Testa un'Entità con ambito utente quando è abilitata un'attestazione di
+identità. Verifica che un altro Visitatore che ha effettuato l'accesso non possa
+recuperare i Record del primo Visitatore.

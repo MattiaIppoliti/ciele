@@ -1,0 +1,40 @@
+---
+title: Configuration
+description: Configure origins, secrets, accounts, models, email, and optional workers.
+---
+
+The bootstrap script writes `deploy/.env`. Use `deploy/.env.example` as the current variable reference.
+
+## Public origins
+
+Set `PUBLIC_URL` to the public application origin. Set `SUPABASE_PUBLIC_URL` to the browser-accessible database gateway origin.
+
+Rebuild the application after you change `SUPABASE_PUBLIC_URL`. The browser bundle contains this value at build time.
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## Generated secrets
+
+The stack requires Postgres, JSON Web Token, service Role, application encryption, and cron secrets. Let the bootstrap script generate them.
+
+Do not change `JWT_SECRET`, `ANON_KEY`, or `SERVICE_ROLE_KEY` independently. They form one signing configuration.
+
+## Accounts and email
+
+The first account becomes the Organization owner. Set `DISABLE_SIGNUP=true` after the required accounts exist.
+
+Without SMTP configuration, `MAILER_AUTOCONFIRM=true` confirms new accounts automatically.
+
+Runtime email actions use `RESEND_API_KEY` and `EMAIL_FROM`. They report an unconfigured result when either value is absent.
+
+## Model endpoints
+
+Configure Anthropic, OpenAI, or Google provider keys. You can also configure an OpenAI-compatible chat and embedding endpoint.
+
+Knowledge search uses lexical matching when no embedding model is available.
+
+## TLS
+
+Terminate TLS in a reverse proxy. Then set both public origin variables to their HTTPS addresses and rebuild the application.

@@ -1,0 +1,12 @@
+{
+  "title": "Ciele Cloud",
+  "description": "El servicio gestionado",
+  "icon": "Cloud",
+  "root": true,
+  "pages": [
+    "index",
+    "---Tu suscripción---",
+    "plans-and-billing",
+    "usage-and-limits"
+  ]
+}

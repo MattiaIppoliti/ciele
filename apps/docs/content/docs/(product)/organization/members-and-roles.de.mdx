@@ -1,0 +1,41 @@
+---
+title: Mitglieder und Rollen
+description: Bestimmen Sie, wer eine Organisation lesen, bearbeiten, veröffentlichen und verwalten kann.
+---
+
+## Rollen
+
+| Rolle | Aktuelle Berechtigungsstufe |
+| --- | --- |
+| Viewer | Liest Organisations- und Produktdaten. |
+| Editor | Ändert den Inhalt und die Konfiguration des Assistenten. |
+| Admin | Veröffentlicht Assistenten und verwaltet Mitglieder und API-Schlüssel. |
+| Owner | Ändert Rollen und verwaltet Owner. |
+
+Die Anwendung wendet spezifischere Berechtigungsprüfungen auf einzelne Vorgänge
+an.
+
+## Ein Mitglied einladen
+
+1. Öffnen Sie **Settings > Members**.
+2. Wählen Sie **Invite member**.
+3. Geben Sie die E-Mail-Adresse ein.
+4. Wählen Sie die mindestens erforderliche Rolle aus.
+5. Senden Sie die Einladung.
+
+## Ein Mitglied ändern
+
+Ein Administrator kann Mitglieder unterhalb der Owner-Stufe verwalten. Ein Owner
+kann alle Ebenen verwalten.
+
+Ein Mitglied kann seine eigene Zeile in der Mitgliederliste weder bearbeiten
+noch entfernen. Verwenden Sie für diesen Vorgang ein anderes autorisiertes
+Mitglied.
+
+## API-Schlüssel-Rollen
+
+Ein Administrator oder Owner kann einen Organisations-API-Schlüssel erstellen.
+Die ausgewählte Rolle darf nicht höher sein als die Rolle des Erstellers.
+
+Widerrufen Sie einen Schlüssel, wenn sein Client keinen Zugriff mehr benötigt.
+Ciele bewahrt den widerrufenen Datensatz zu Audit-Zwecken auf.

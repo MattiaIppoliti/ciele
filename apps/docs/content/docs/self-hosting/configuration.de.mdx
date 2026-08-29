@@ -1,0 +1,53 @@
+---
+title: Konfiguration
+description: Konfigurieren Sie Ursprünge, Secrets, Konten, Modelle, E-Mail und optionale Worker.
+---
+
+Das Bootstrap-Skript schreibt `deploy/.env`. Verwenden Sie `deploy/.env.example`
+als Referenz für die aktuelle Variable.
+
+## Öffentliche Ursprünge
+
+Setzen Sie `PUBLIC_URL` auf den öffentlichen Anwendungs-Ursprung. Setzen Sie
+`SUPABASE_PUBLIC_URL` auf den Ursprung des vom Browser zugänglichen
+Datenbank-Gateways.
+
+Erstellen Sie die Anwendung neu, nachdem Sie `SUPABASE_PUBLIC_URL` geändert
+haben. Das Browser-Bundle enthält diesen Wert zum Zeitpunkt des Builds.
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## Generierte Geheimnisse
+
+Der Stack benötigt Postgres, JSON Web Token, Service-Rolle,
+Anwendungsverschlüsselung und Cron-Geheimnisse. Lassen Sie das Bootstrap-Skript
+sie generieren.
+
+Ändern Sie `JWT_SECRET`, `ANON_KEY` oder `SERVICE_ROLE_KEY` nicht unabhängig
+voneinander. Sie bilden eine Signaturkonfiguration.
+
+## Konten und E-Mail
+
+Das erste Konto wird zum Eigentümer der Organisation. Legen Sie
+`DISABLE_SIGNUP=true` fest, nachdem die erforderlichen Konten vorhanden sind.
+
+Ohne SMTP-Konfiguration bestätigt `MAILER_AUTOCONFIRM=true` neue Konten
+automatisch.
+
+E-Mail-Aktionen zur Laufzeit verwenden `RESEND_API_KEY` und `EMAIL_FROM`. Sie
+melden ein nicht konfiguriertes Ergebnis, wenn einer der Werte fehlt.
+
+## Modell-Endpunkte
+
+Konfigurieren Sie die Provider-Schlüssel für Anthropic, OpenAI oder Google. Sie
+können auch einen OpenAI-kompatiblen Chat- und Embedding-Endpunkt konfigurieren.
+
+Die Wissenssuche verwendet lexikalischen Abgleich, wenn kein Embedding-Modell
+verfügbar ist.
+
+## TLS
+
+Terminieren Sie TLS in einem Reverse-Proxy. Setzen Sie dann beide öffentlichen
+Origin-Variablen auf ihre HTTPS-Adressen und bauen Sie die Anwendung neu.

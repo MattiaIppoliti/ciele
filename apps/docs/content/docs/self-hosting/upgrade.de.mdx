@@ -1,0 +1,53 @@
+---
+title: Upgrade
+description: Wenden Sie eine neue Repository-Version und die dazugehörigen ausstehenden Migrationen an.
+---
+
+## Vor dem Upgrade
+
+1. Lesen Sie die Versionsänderungen.
+2. Erfassen Sie den aktuellen Commit oder das aktuelle Tag.
+3. Erstellen Sie eine Sicherungskopie der Datenbank und der hochgeladenen
+   Dateien.
+4. Testen Sie den Wiederherstellungsprozess.
+5. Planen Sie ein akzeptables Servicefenster.
+
+## Version anwenden
+
+```bash
+git pull
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+Ändern Sie im Image-Modus `CIELE_IMAGE_TAG` in `deploy/.env` auf die neue
+Version und wenden Sie diese stattdessen an:
+
+```bash
+docker compose up -d
+```
+
+Auf [Ciele Desktop](/self-hosting/desktop) führt das Aktualisieren der Anwendung
+diesen Schritt aus: Jeder Build fixiert die Images, die zu seiner eigenen
+Version passen.
+
+Der Dienst `migrate` wendet nur ausstehende Migrationen an. Überprüfen Sie das
+Ergebnis, bevor Sie die Anwendung als fehlerfrei akzeptieren.
+
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
+```
+
+## Überprüfen Sie das Ergebnis
+
+1. Melden Sie sich bei der Administratorkonsole an.
+2. Öffnen Sie einen Assistenten.
+3. Testvorschau.
+4. Öffnen Sie ein veröffentlichtes Widget.
+5. Rufen Sie `GET /api/v1/meta` auf, wenn programmgesteuerte Clients verwendet
+   werden.
+
+Stellen Sie kein altes Anwendungs-Image in einer inkompatiblen migrierten
+Datenbank wieder her. Verwenden Sie die Release-Anweisungen für einen
+unterstützten Rollback-Pfad.

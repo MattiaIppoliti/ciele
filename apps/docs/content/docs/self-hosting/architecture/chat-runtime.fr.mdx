@@ -1,0 +1,92 @@
+---
+title: Exécution du chat
+description: Comprendre le déclenchement actuel, le routage du flux, les conditions et les actions ordonnées.
+---
+
+## Chemin du message
+
+<Mermaid
+  title="Comment un message d'un visiteur parvient aux éléments de réponse stockés"
+  chart={`
+flowchart TB
+  MSG["Visitor message"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+`}
+/>
+
+L'identité vérifiée, les enregistrements d'entité et la mémoire à long terme
+sont des entrées que les actions lisent. Ce ne sont pas des étapes du routeur,
+c'est pourquoi l'illustration ne les inclut pas.
+
+`messageFlowCandidates` fournit des candidats aux deux moteurs de routage. Cette
+limite empêche que des conditions objectives ne produisent des résultats de
+routage différents.
+
+Le contexte de la conversation fournit des exemples sémantiques à la
+classification. Il ne fonctionne pas comme une porte booléenne indépendante.
+
+## Contexte lié à l'identité
+
+Une passerelle SSO Widget valide fournit un sujet au niveau de l'organisation.
+Une revendication vérifiée facultative peut correspondre à des enregistrements
+d'entité au niveau de l'utilisateur.
+
+Les Entités sélectionnées produisent des outils générés de filtrage et de
+recherche textuelle. Les outils au niveau de l'utilisateur omettent l'attribut
+d'identité de l'entrée destinée au modèle.
+
+Le serveur ajoute le filtre d'identité vérifiée après avoir validé l'entrée de
+l'outil. Le modèle ne peut ni l'omettre ni le remplacer.
+
+Au premier tour d'une nouvelle conversation, le moteur d'exécution peut injecter
+jusqu'à cinq souvenirs à long terme pertinents. Un outil de recherche intégré
+dans la mémoire permet de récupérer ultérieurement les informations.
+
+Les deux chemins de mémoire nécessitent l'activation de l'option Organization et
+un sujet SSO vérifié.
+
+## Raccourci de courtoisie
+
+Le flux d'interaction de base intégré peut gérer un court message de courtoisie
+avant la classification d'intention. Un flux personnalisé éligible antérieur
+reste prioritaire.
+
+Le raccourci ne s'active pas après une question de l'Assistant ou pour un
+message contenant une demande d'information.
+
+## Chemin proactif
+
+L'intégration signale les événements de chargement de page, de temps de présence
+et d'ouverture de chat. Le serveur valide le déclencheur configuré et l'état de
+livraison.
+
+Un flux proactif contient une action de notification et aucune condition.
+L'action émet le contenu configuré sans appel de modèle.
+
+## Exécution de l'action
+
+Les actions s'exécutent dans l'ordre enregistré. Chaque action renvoie des
+éléments de réponse structurés ou un effet silencieux.
+
+Le travail génératif reste à l'intérieur de la Réponse de base, de la Recherche
+de connaissances, des Suivis générés et des chemins de recommandation pris en
+charge.
+
+## Transfert
+
+Handover charge un Assistant cible publié dans la même Organisation. Il exécute
+une fois le message du visiteur via cet assistant cible.
+
+L'exécution cible ignore un autre transfert. Cette règle empêche la création
+d'une chaîne d'assistants illimitée.

@@ -1,0 +1,38 @@
+---
+title: Flux
+description: Acheminez les messages et les événements proactifs vers des actions de réponse ordonnées.
+---
+
+Un flux contient un déclencheur, des conditions disponibles et des actions
+ordonnances. Le routeur traite les flux activés dans l'ordre configuré.
+
+## Flux de messages
+
+Le déclencheur **User sends a message** utilise la classification d'intention.
+Un classificateur de modèle sélectionne le meilleur flux éligible lorsqu'un
+modèle est disponible.
+
+Le routeur de mots-clés fournit un plan de secours en cas d'erreur ou de
+déconnexion. Les deux routeurs utilisent le même filtre de candidats.
+
+Le flux **Default behavior** verrouillé reste le dernier. Il traite un message
+éligible lorsqu'aucun flux précédent n'est retenu.
+
+## Flux proactifs
+
+Ces déclencheurs ne classent pas un message :
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+Un flux proactif n'a pas de conditions et contient une action de notification.
+Voir [Notifications](/flows/notifications).
+
+## Ordre des flux
+
+Placez les flux de messages spécifiques avant les flux de messages généraux.
+L'ordre détermine également le raccourci intégré Basic Interaction.
+
+Un flux personnalisé correspondant antérieur peut gérer un message de courtoisie
+avant le flux d'interaction de base intégré.

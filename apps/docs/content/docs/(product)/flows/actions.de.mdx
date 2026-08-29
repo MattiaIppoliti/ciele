@@ -1,0 +1,102 @@
+---
+title: Flow-Aktionen
+description: Wählen Sie Antwortaktionen aus, die die aktuelle Laufzeit ausführen kann.
+---
+
+Message-Flow-Aktionen werden der Reihe nach ausgeführt. Nicht-generative
+Aktionen verwenden den konfigurierten Inhalt, ohne das Modell umzuschreiben.
+
+## Verfügbare Aktionen
+
+| Aktion | Modellverwendung | Aktuelles Verhalten |
+| --- | :---: | --- |
+| Nachricht | Nein | Gibt den konfigurierten Text wortgetreu wieder. |
+| Schaltfläche | Nein | Fügt eine Link-Schaltfläche oder eine Schaltfläche hinzu, die Text in den Chat sendet. |
+| Knowledge durchsuchen | Ja | Führt die Knowledge-Agent-Schleife aus und gibt Zitate zurück. |
+| Follow-ups | Optional | Verwendet konfigurierte Fragen oder generiert vorgeschlagene Fragen. |
+| Iframe | Nein | Betten Sie konfigurierte externe Inhalte in den Chat ein. |
+| API-Anforderung | Nein | Ruft einen konfigurierten HTTP-Endpunkt auf und bildet dessen Ergebnis ab. |
+| E-Mail senden | Nein | Sendet E-Mails über den konfigurierten Resend-Transport. |
+| Verbesserung | Nein | Erstellt eine Verbesserung für die entsprechende Antwort. |
+| Übergabe | Abhängig vom Ziel | Wird einmal in einem anderen veröffentlichten Assistenten fortgesetzt. |
+
+Der integrierte Basic Interaction Flow verwendet ebenfalls **Basic reply**. Die
+Helpdesk-Empfehlung verwendet eine Laufzeitaktion, die die Direktaktionsauswahl
+nicht anzeigt.
+
+## Nachricht
+
+Geben Sie den genauen Text ein, den Ciele senden muss. Die Laufzeit umformuliert
+diesen Text nicht.
+
+## Einfache Antwort
+
+Die einfache Antwort kümmert sich um kurze Begrüßungen, Dankes- und
+Verabschiedungsformeln. Sie verwendet einen Modellaufruf und keine
+Knowledge-Tools, Zitate oder Thinking-Ereignisse.
+
+Geben Sie festen Aktionstext ein, um das Modell zu überspringen. Der gleiche
+Text dient als Fallback, wenn kein Chat-Modell verfügbar ist.
+
+## Wissen durchsuchen
+
+Search Knowledge nutzt verfügbare Knowledge-Tools bis zur maximalen Anzahl von
+Laufzeit-Schritten. Es kann benannte Source-Zitate und Thinking Steps
+zurückgeben.
+
+Verwenden Sie die Einstellungen für ungelöste Anfragen, um eine Eskalation an
+den Helpdesk anzubieten oder eine Verbesserung zu erstellen.
+
+## Schaltfläche
+
+Konfigurieren Sie ein Label und ein Ziel. Ein Ziel kann einen Link öffnen oder
+konfigurierten Text in die Konversation senden.
+
+## Folgefragen
+
+Geben Sie feste Folgefragen ein oder aktivieren Sie die Generierung. Generierte
+Folgefragen verwenden das konfigurierte schnelle Modell.
+
+## Iframe
+
+Konfigurieren Sie den Titel, den HTTPS-Link, die Lightbox-Einstellung und die
+Höhe. Die Host-Site kann das Einbetten weiterhin durch ihre Sicherheits-Header
+verhindern.
+
+## API-Anforderung
+
+Konfigurieren Sie die Methode, den Endpunkt, die Authentifizierung, die Header,
+die Abfrageparameter, den JSON-Body und den JSON-Pfad der Antwort.
+
+Vorlagenvariablen können Werte aus dem aktuellen Kontext liefern. Verwenden Sie
+**Test API**, bevor Sie den Flow speichern.
+
+Die Aktion kann separate Erfolgs- und Fehlermeldungen anzeigen. Für die
+endgültige URL gelten weiterhin die Regeln für den Netzwerkausgang.
+
+## E-Mail senden
+
+Konfigurieren Sie Empfänger, Betreff, Text und das Verhalten für die
+Antwortadresse. Die Laufzeitumgebung verwendet Resend, wenn ihr Transport
+konfiguriert ist.
+
+Wenn der Transport nicht konfiguriert ist, meldet die Aktion, dass sie die
+E-Mail nicht gesendet hat. Sie bestätigt die Zustellung nicht.
+
+## Verbesserung
+
+Die Aktion erstellt eine Verbesserungsaufgabe. Sie fügt selbst keinen sichtbaren
+Antworttext hinzu.
+
+## Übergabe
+
+Wählen Sie einen anderen Assistenten in derselben Organisation aus. Das Ziel
+muss über eine aktuelle Veröffentlichung verfügen.
+
+Ciele führt dieselbe Besuchernachricht einmal durch den Ziel-Assistenten. Es
+führt keine zweite Übergabe von diesem Zielzug aus fort.
+
+## Reihenfolge der Aktionen
+
+Fügen Sie Rahmentext vor „Search knowledge“ ein. Platzieren Sie Schaltflächen
+und Folgemaßnahmen nach der Antwort, die sie unterstützen.

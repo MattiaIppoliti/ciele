@@ -1,0 +1,20 @@
+{
+  "title": "Open Source",
+  "description": "Ospita in autonomia il core AGPL",
+  "icon": "Boxes",
+  "root": true,
+  "pages": [
+    "index",
+    "---Eseguilo---",
+    "installation",
+    "desktop",
+    "configuration",
+    "database",
+    "workers",
+    "---Mantienilo in esecuzione---",
+    "upgrade",
+    "---Comprendilo---",
+    "architecture",
+    "open-core-boundary"
+  ]
+}

@@ -1,0 +1,78 @@
+---
+title: Flow actions
+description: Select response actions that the current runtime can execute.
+---
+
+Message Flow actions run in order. Non-generative actions use the configured content without model rewriting.
+
+## Available actions
+
+| Action | Model use | Current behavior |
+| --- | :---: | --- |
+| Message | No | Emits the configured text verbatim. |
+| Button | No | Adds a link button or a button that sends text into chat. |
+| Search knowledge | Yes | Runs the Knowledge agent loop and returns citations. |
+| Follow-ups | Optional | Uses configured questions or generates suggested questions. |
+| Iframe | No | Embeds configured external content in the chat. |
+| API request | No | Calls a configured HTTP endpoint and maps its result. |
+| Send email | No | Sends mail through the configured Resend transport. |
+| Improvement | No | Creates an Improvement for the applicable answer. |
+| Handover | Depends on target | Continues one time in another published Assistant. |
+
+The built-in Basic Interaction Flow also uses **Basic reply**. Help Desk recommendation uses a runtime action that the direct action picker does not show.
+
+## Message
+
+Enter the exact text that Ciele must send. The runtime does not paraphrase this text.
+
+## Basic reply
+
+Basic reply handles short greetings, thanks, and farewells. It uses one model call and no Knowledge tools, citations, or Thinking events.
+
+Enter fixed action text to skip the model. The same text provides the fallback when no chat model is available.
+
+## Search knowledge
+
+Search knowledge uses available Knowledge tools for up to the runtime step limit. It can return named Source citations and Thinking Steps.
+
+Use its unresolved-query settings to offer Help Desk escalation or create an Improvement.
+
+## Button
+
+Configure a label and target. A target can open a link or send configured text into the Conversation.
+
+## Follow-ups
+
+Enter fixed follow-up questions or enable generation. Generated follow-ups use the configured fast model.
+
+## Iframe
+
+Configure the title, HTTPS link, lightbox preference, and height. The host site can still prevent embedding through its security headers.
+
+## API request
+
+Configure the method, endpoint, authentication, headers, query parameters, JSON body, and response JSON path.
+
+Template variables can supply values from the current context. Use **Test API** before you save the Flow.
+
+The action can show separate success and failure messages. Network egress rules still apply to the final URL.
+
+## Send email
+
+Configure recipients, subject, body, and reply-to behavior. The runtime uses Resend when its transport is configured.
+
+When the transport is not configured, the action reports that it did not send the email. It does not claim delivery.
+
+## Improvement
+
+The action creates an Improvement task. It does not add visible reply text by itself.
+
+## Handover
+
+Select another Assistant in the same Organization. The target must have a current Publication.
+
+Ciele runs the same Visitor message through the target Assistant one time. It does not continue a second handover from that target turn.
+
+## Action order
+
+Put framing text before Search knowledge. Put buttons and follow-ups after the answer that they support.

@@ -1,0 +1,33 @@
+---
+title: Authentification des visiteurs
+description: Exiger la connexion Microsoft Entra avant qu'un visiteur puisse utiliser un assistant.
+---
+
+L'authentification des visiteurs est facultative. Les visiteurs anonymes
+reçoivent un identifiant de visiteur persistant provenant du stockage local de
+la page hôte.
+
+Le produit actuel prend en charge une connexion Microsoft Entra au niveau de
+l'organisation. Un Assistant peut exiger cette connexion avant le début du chat.
+
+## Limite d'identité actuelle
+
+Ciele demande l'étendue `openid` et valide le jeton d'identification renvoyé.
+L'identité authentifiée utilise l'identifiant du sujet du jeton.
+
+La connexion actuelle n'importe pas les champs de profil, l'adresse e-mail, les
+groupes ni les rôles d'application. Elle ne personnalise pas les réponses à
+partir de ces attributs.
+
+## Exiger la connexion
+
+1. Configurez Microsoft Entra dans les paramètres de l'organisation.
+2. Ouvrez l'Assistant.
+3. Sélectionnez **Authentication**.
+4. Activez l'obligation de connexion.
+5. Enregistrez le brouillon.
+6. Testez le flux de connexion en mode Aperçu.
+7. Publiez l'Assistant.
+
+La passerelle d'authentification utilise un cookie d'organisation chiffré. La
+session expire au bout de 12 heures.

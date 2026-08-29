@@ -1,0 +1,192 @@
+---
+title: Applications
+description: Synchronisez le contenu sélectionné depuis Salesforce, ServiceNow, Slack, OneDrive et Google Drive.
+---
+
+Application Knowledge copie le contenu externe sélectionné dans Ciele sous la
+forme de Sources consultables. Chaque Source suit le chemin d'ingestion normal,
+apparaît dans les citations et répond uniquement aux Assistants liés.
+L'intégration est directe. Elle n'utilise pas Merge ni aucun autre courtier
+d'intégration.
+
+<Callout title="Content is copied into Ciele">
+  Ciele applies the Assistant links that you configure. It does not recheck the source system's
+  per-user permissions when a Visitor asks a question. Select only content that every intended
+  audience may receive.
+</Callout>
+
+## Connexion, Importation et Source
+
+Un **Application Connection** stocke un compte externe autorisé. Un
+**Application Import** sélectionne le contenu de ce compte, une planification et
+les Assistants autorisés à effectuer des recherches. Une synchronisation crée ou
+met à jour une Ciele Source pour chaque élément distant.
+
+Utilisez une seule connexion pour plusieurs importations lorsque leur portée ou
+les liens d'assistant diffèrent. Par exemple, une connexion Slack peut alimenter
+des ensembles de canaux distincts vers des assistants distincts.
+
+Les connexions Salesforce, ServiceNow et Slack appartiennent à l'organisation.
+Chaque organisation peut disposer d'une connexion pour chacun de ces
+fournisseurs. Les connexions OneDrive et Google Drive appartiennent au membre
+qui les autorise. Chaque Member peut connecter un compte pour chaque fournisseur
+personnel.
+
+Un administrateur d'organisation peut consulter les métadonnées des connexions
+personnelles et supprimer une connexion personnelle. Seul le Membre propriétaire
+peut la reconnecter. Les informations d'identification du fournisseur ne
+dépassent jamais le cadre du Membre. Les Imported Sources constituent la base de
+connaissances de l'organisation et suivent les liens d'Assistant qui y sont
+configurés.
+
+## Connecter un compte
+
+Un administrateur ou un propriétaire de l'organisation peut connecter
+Salesforce, ServiceNow ou Slack. Un membre disposant de l'autorisation Knowledge
+edit peut connecter son OneDrive ou son Google Drive et gérer les importations.
+
+1. Ouvrez **Library** et sélectionnez **Applications**, ou ouvrez le
+   **Knowledge** d'un Assistant et sélectionnez **Applications**.
+2. Sélectionnez **Connect** sur le fournisseur.
+3. Pour Salesforce ou ServiceNow, saisissez un nom de connexion, une URL
+   d'instance, un identifiant client et un secret client.
+4. Remplissez la fenêtre d'autorisation du fournisseur.
+5. Créez une Importation, sélectionnez son périmètre et associez au moins un
+   Assistant.
+6. Choisissez la synchronisation **Daily** ou **Manual**.
+7. Enregistrez l'importation et attendez que ses sources deviennent **Ready**.
+8. Testez une réponse et ouvrez la citation de la source qui lui est associée.
+
+L'éditeur d'Assistant affiche les importations de l'organisation que vous pouvez
+lier. La Bibliothèque est la vue complète de l'Organisation et inclut toutes les
+Sources importées.
+
+## Portées des fournisseurs
+
+| Fournisseur | Contenu sélectionnable | Notes |
+| --- | --- | --- |
+| Salesforce | Langue Knowledge et jusqu'à trois catégories de données de groupes différents | Utilisez Production, Sandbox ou un My Domain approuvé. |
+| ServiceNow | Une ou plusieurs bases de connaissances et une langue | Saisissez l'URL de l'instance et le client OAuth fourni par cette instance ServiceNow. Les octrois de mot de passe ne sont pas pris en charge. |
+| Slack | Canaux accessibles et fenêtre d'historique | La fenêtre par défaut est de 180 jours. **All history** peut nécessiter de nombreux appels d'API. Les fils de discussion sont stockés avec leur message racine. |
+| OneDrive | Un lecteur ou un dossier | Ciele importe les fichiers pris en charge via Microsoft Graph. Les bibliothèques SharePoint ne font pas partie de cette première version. |
+| Google Drive | Dossiers Mon Drive ou Drive partagé | Les documents Google natifs sont exportés dans un format lisible. Les autres fichiers pris en charge sont téléchargés directement. |
+
+Ciele signale les fichiers non pris en charge, les éléments vides et les
+exclusions spécifiques au fournisseur comme des éléments ignorés. Un élément
+incorrect n'interrompt pas le traitement du contenu valide au cours de la même
+exécution.
+
+## Synchronisation et état
+
+Sélectionnez **Sync now** pour une exécution immédiate. **Pause** arrête les
+exécutions planifiées sans supprimer les Sources. **Resume** met en file
+d'attente une nouvelle exécution. La modification d'une étendue réinitialise son
+point de contrôle et planifie une actualisation complète de la nouvelle
+sélection.
+
+La ligne Import affiche sa dernière synchronisation et la prochaine, le nombre
+de Sources et de liens d'assistant, ainsi que les totaux d'éléments découverts,
+mis à jour, supprimés, ignorés et en échec de la dernière exécution. Les échecs
+d'autorisation du fournisseur marquent la Connection pour une reconnexion et
+créent une Alert. Une exécution ultérieure réussie efface l'alerte.
+
+L'identité distante reste stable. Un élément distant modifié met à jour la
+Source existante, de sorte que les liens et les citations ne changent pas. Un
+élément distant supprimé efface sa source active, mais conserve une marque
+funéraire interne, ce qui permet, en cas de réapparition ultérieure, de créer le
+remplacement correct sans le dupliquer.
+
+Les limites de débit du fournisseur utilisent le délai de nouvelle tentative
+renvoyé. Les importations quotidiennes s'exécutent également selon le calendrier
+normal des tâches Ciele, de sorte que le processus Web n'a pas besoin de rester
+ouvert.
+
+## Reconnecter ou supprimer
+
+Sélectionnez **Reconnect** lorsque le consentement expire ou que le compte
+change. La connexion conserve la même identité et ses importations restent
+configurées.
+
+La suppression d'une importation supprime ses sources synchronisées pour chaque
+assistant lié. La suppression d'une connexion supprime toutes ses importations
+et sources. La confirmation indique le nombre d'importations, de sources et de
+liens d'assistant concernés. Ciele tente de révoquer le jeton du fournisseur
+lorsque celui-ci le prend en charge, puis supprime toujours les informations
+d'identification locales.
+
+## Configurez OAuth pour un déploiement auto-hébergé
+
+Définissez `APP_ENCRYPTION_KEY` avant de connecter un fournisseur. Ciele scelle
+les jetons OAuth et les secrets clients Salesforce et ServiceNow par connexion
+avec cette clé.
+
+Le service géré Ciele fournit les enregistrements OAuth partagés pour Slack,
+Microsoft et Google. Chaque déploiement auto-hébergé fournit ses propres
+enregistrements via des variables d'environnement. Ces enregistrements
+identifient le déploiement Ciele. Ils n'identifient pas un compte d'organisation
+ou de membre.
+
+Créez des applications OAuth de fournisseur et définissez les paires que vous
+activez :
+
+```dotenv
+SLACK_APPLICATION_CLIENT_ID=
+SLACK_APPLICATION_CLIENT_SECRET=
+MICROSOFT_APPLICATION_CLIENT_ID=
+MICROSOFT_APPLICATION_CLIENT_SECRET=
+GOOGLE_APPLICATION_CLIENT_ID=
+GOOGLE_APPLICATION_CLIENT_SECRET=
+APPLICATION_IMPORT_MAX_REMOTE_ITEMS=100000
+APPLICATION_IMPORT_MAX_ORG_BYTES=5368709120
+APPLICATION_IMPORT_MAX_CONCURRENT=3
+```
+
+Les trois limites concernent : le nombre d'éléments distants synchronisés par
+Connection, le volume d'octets d'Application stockés par Organization, et le
+nombre de claims de synchronisation actifs par Organization. Réduisez-les pour
+les déploiements de plus petite taille. Ciele effectue un point de contrôle du
+curseur du fournisseur et poursuit les importations volumineuses dans des
+réclamations durables ultérieures.
+
+Les identifiants client Salesforce et ServiceNow sont spécifiques à
+l'organisation connectée. L'administrateur les saisit dans le formulaire protégé
+de la connexion. Ciele les scelle avant de les stocker et ne les renvoie jamais
+au navigateur. ServiceNow utilise un code d'autorisation et ne stocke ni nom
+d'utilisateur ni mot de passe.
+
+Enregistrez une URL de rappel exacte par fournisseur. Remplacez `{origin}` par
+l'origine HTTPS publique de votre console Ciele :
+
+| Fournisseur | URL de rappel |
+| --- | --- |
+| Salesforce | `{origin}/api/applications/oauth/salesforce/callback` |
+| ServiceNow | `{origin}/api/applications/oauth/servicenow/callback` |
+| Slack | `{origin}/api/applications/oauth/slack/callback` |
+| OneDrive | `{origin}/api/applications/oauth/onedrive/callback` |
+| Google Drive | `{origin}/api/applications/oauth/google_drive/callback` |
+
+Une paire de variables d'environnement Slack, Microsoft ou Google manquante
+désactive uniquement ce fournisseur et affiche des conseils de configuration
+dans la console. Salesforce et ServiceNow restent disponibles car
+l'administrateur saisit leur enregistrement OAuth dans le formulaire de
+connexion. Tous deux utilisent le code d'autorisation. Salesforce, Microsoft et
+Google utilisent également PKCE. Chaque transaction est de courte durée et liée
+à l'organisation, au membre initiateur, au fournisseur et à l'URL de rappel
+exacte.
+
+## Dépannage
+
+| Symptôme | Action |
+| --- | --- |
+| **Connect** n'est pas disponible pour Slack, OneDrive ou Google Drive | Configurez l'identifiant client et le secret de déploiement de ce fournisseur, puis redémarrez le service Web. |
+| Salesforce ou ServiceNow rejette le client | Vérifiez l'identifiant client, le secret client, l'URL de l'instance et le rappel exact dans l'application du fournisseur de cette organisation. |
+| Le fournisseur rejette le rappel | Faites en sorte que son rappel enregistré corresponde exactement à l'origine et au chemin publics de Ciele. |
+| La connexion indique qu'une autorisation est requise | Sélectionnez **Reconnect** et approuvez à nouveau les étendues de lecture demandées. |
+| Un dossier ou un canal est manquant | Vérifiez que le compte autorisé peut l'ouvrir et, pour Slack, qu'il est membre du canal. |
+| Des éléments sont ignorés | Ouvrez le dernier résultat de synchronisation. Vérifiez les motifs : type non pris en charge, contenu vide ou portée du fournisseur. |
+| Le contenu importé ne répond pas | Vérifiez que la Source est **Ready** et que l'Importation est liée à l'Assistant attendu. |
+
+Les connecteurs d'application sont en lecture seule pour le contenu source.
+Cette version n'effectue pas d'écriture en retour vers un fournisseur,
+n'applique pas les ACL du fournisseur au moment de la réponse et ne prend pas en
+charge les bibliothèques SharePoint.

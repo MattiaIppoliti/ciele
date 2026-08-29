@@ -1,0 +1,57 @@
+---
+title: Données et mémoire
+description: Basez les réponses sur des enregistrements structurés et mémorisez les visiteurs connectés au fil des conversations.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Brain, Database } from 'lucide-react';
+
+Ciele peut combiner les enregistrements de l'organisation avec des informations
+durables sur les visiteurs connectés. Ces fonctionnalités utilisent une identité
+vérifiée et restent sous le contrôle de l'Organisation.
+
+<Mermaid
+  title="Les enregistrements ne deviennent des outils que lorsque vous publiez"
+  chart={`
+flowchart TB
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
+  DATA --> SELECT
+  SELECT --> PUB
+  PUB --> TOOLS
+  TOOLS --> TRACE
+`}
+/>
+
+La Publication contrôle quels outils d'Entité existent. Les valeurs des
+enregistrements restent actives, de sorte qu'une importation CSV ultérieure peut
+modifier les réponses sans qu'une autre publication soit nécessaire.
+
+Une entité au niveau de l'utilisateur nécessite une revendication d'identité
+vérifiée. Le serveur ajoute ce filtre après avoir validé l'entrée de l'outil, de
+sorte qu'un modèle ne peut ni le supprimer ni nommer un autre Visiteur.
+
+La mémoire à long terme est une fonctionnalité distincte avec son propre cycle
+de vie. Elle ne dépend pas des Entités. Voir
+[Mémoire à long terme](/data/long-term-memory).
+
+<Cards>
+  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
+  <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
+</Cards>
+
+## Deux types de mémoire
+
+**Session memory** appartient à une seule Conversation. Elle ne suit pas un
+Visiteur dans une nouvelle Conversation.
+
+**Long-term memory** appartient à un sujet SSO vérifié au sein d'une
+Organisation. Il peut prendre en charge les Conversations ultérieures lorsque
+l'Organisation l'active.
+
+<Callout title="Signed-in Visitors only">
+Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+</Callout>

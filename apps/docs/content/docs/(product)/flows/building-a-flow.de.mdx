@@ -1,0 +1,52 @@
+---
+title: Erstellen Sie einen Flow
+description: Konfigurieren Sie einen Trigger, verfügbare Bedingungen und geordnete Antwortaktionen.
+---
+
+## Erstellen Sie den Flow
+
+1. Öffnen Sie einen Assistenten.
+2. Wählen Sie **Flows**.
+3. Erstellen Sie einen Flow.
+4. Geben Sie einen eindeutigen Namen und eine Beschreibung ein.
+5. Wählen Sie einen Trigger aus.
+
+Die Beschreibung hilft der Intent Classification, einen Nachrichten-Flow
+auszuwählen. Geben Sie die Absicht des Besuchers und den erforderlichen
+Geltungsbereich an.
+
+## Fügen Sie Nachrichtenbedingungen hinzu
+
+Message Flows unterstützen diese Bedingungstypen:
+
+| Bedingung | Aktuelles Verhalten |
+| --- | --- |
+| Konversationskontext | Fügt der Intent Classification semantische Beispiele hinzu. Es handelt sich nicht um ein Hard Gate. |
+| URL | Wendet ein Hard-Gate vom Typ „Matches“, „Contains“ oder „Regex“ an. |
+| Zeitplan | Wendet ein Hard-Gate für Start, Ende und Zeitzone an. |
+
+Wählen Sie **Any condition matches** oder **All conditions match**, wenn der
+Flow mehr als eine Bedingung enthält.
+
+Die Bedingungen URL und Schedule entfernen einen nicht zulässigen Flow vor der
+Klassifizierung. Eine erfüllte Bedingung führt nicht zwingend dazu, dass der
+Flow gewinnt.
+
+## Antwortaktionen hinzufügen
+
+1. Fügen Sie die erforderlichen Aktionen hinzu.
+2. Ordnen Sie die Aktionen in ihrer Ausführungsreihenfolge an.
+3. Konfigurieren Sie jedes erforderliche Feld.
+4. Speichern Sie den Flow.
+5. Testen Sie eine passende und eine nicht passende Nachricht.
+
+Der Editor beschränkt proaktive Flows auf eine Benachrichtigungsaktion. Der
+Server wendet dieselbe Regel an, wenn er einen Flow speichert oder versendet.
+
+## Flows neu anordnen
+
+Ziehen Sie einen Flow, um die Priorität für das Weiterleiten von Nachrichten zu
+ändern. Der Flow für das Standardverhalten bleibt an letzter Stelle.
+
+Deaktivieren Sie einen Flow, wenn Sie sein Routing stoppen müssen, ohne seine
+Konfiguration zu löschen.

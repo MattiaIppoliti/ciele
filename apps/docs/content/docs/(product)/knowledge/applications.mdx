@@ -1,0 +1,152 @@
+---
+title: Applications
+description: Synchronize selected content from Salesforce, ServiceNow, Slack, OneDrive, and Google Drive.
+---
+
+Application Knowledge copies selected external content into Ciele as searchable Sources. Each
+Source follows the normal ingestion path, appears in citations, and answers only for the linked
+Assistants. The integration is direct. It does not use Merge or another integration broker.
+
+<Callout title="Content is copied into Ciele">
+  Ciele applies the Assistant links that you configure. It does not recheck the source system's
+  per-user permissions when a Visitor asks a question. Select only content that every intended
+  audience may receive.
+</Callout>
+
+## Connection, Import, and Source
+
+An **Application Connection** stores one authorized external account. An **Application Import**
+selects content within that account, a schedule, and the Assistants allowed to search it. A sync
+creates or updates one Ciele Source for each remote item.
+
+Use one Connection for several Imports when their scope or Assistant links differ. For example,
+one Slack Connection can feed separate channel sets to separate Assistants.
+
+Salesforce, ServiceNow, and Slack Connections belong to the Organization. Each Organization can
+have one Connection for each of these providers. OneDrive and Google Drive Connections belong to
+the Member who authorizes them. Each Member can connect one account for each personal provider.
+
+An Organization Admin can see personal Connection metadata and remove a personal Connection. Only
+the owning Member can reconnect it. Provider credentials never cross the Member boundary. Imported
+Sources are Organization knowledge and follow their configured Assistant links.
+
+## Connect an account
+
+An Organization Admin or Owner can connect Salesforce, ServiceNow, or Slack. A Member with Knowledge
+edit permission can connect their OneDrive or Google Drive and manage Imports.
+
+1. Open **Library** and select **Applications**, or open an Assistant's **Knowledge** and select
+   **Applications**.
+2. Select **Connect** on the provider.
+3. For Salesforce or ServiceNow, enter a Connection name, instance URL, client ID, and client secret.
+4. Complete the provider authorization window.
+5. Create an Import, select its scope, and link at least one Assistant.
+6. Choose **Daily** or **Manual** synchronization.
+7. Save the Import and wait for its Sources to become **Ready**.
+8. Test an answer and open its named Source citation.
+
+The Assistant editor shows Organization Imports that you can link. The Library is the full
+Organization view and includes every imported Source.
+
+## Provider scopes
+
+| Provider | Selectable content | Notes |
+| --- | --- | --- |
+| Salesforce | Knowledge language and up to three Data Categories from different groups | Use Production, Sandbox, or an approved My Domain. |
+| ServiceNow | One or more Knowledge Bases and a language | Enter the instance URL and OAuth client supplied by that ServiceNow instance. Password grants are not supported. |
+| Slack | Accessible channels and a history window | The default window is 180 days. **All history** can require many API calls. Threads are stored with their root message. |
+| OneDrive | A drive or folder | Ciele imports supported files through Microsoft Graph. SharePoint libraries are not part of this first release. |
+| Google Drive | My Drive or Shared Drive folders | Native Google documents are exported to a readable format. Other supported files are downloaded directly. |
+
+Ciele reports unsupported files, empty items, and provider-specific exclusions as skipped items. A
+bad item does not stop valid content in the same run.
+
+## Synchronization and status
+
+Select **Sync now** for an immediate run. **Pause** stops scheduled runs without deleting Sources.
+**Resume** queues a new run. Editing a scope resets its checkpoint and schedules a complete refresh
+of the new selection.
+
+The Import row shows its last and next sync, Source and Assistant-link counts, and the latest run's
+discovered, updated, removed, skipped, and failed totals. Provider authorization failures mark the
+Connection for reconnection and create an Alert. A successful later run clears the Alert.
+
+Remote identity remains stable. An edited remote item updates the existing Source, so links and
+citations do not change. A removed remote item deletes its active Source but retains an internal
+tombstone, which lets a later reappearance create the correct replacement without duplicating it.
+
+Provider rate limits use the returned retry delay. Daily Imports also run through the normal Ciele
+worker schedule, so the web process does not need to stay open.
+
+## Reconnect or delete
+
+Select **Reconnect** when consent expires or the account changes. The Connection keeps the same
+identity and its Imports remain configured.
+
+Deleting an Import deletes its synchronized Sources for every linked Assistant. Deleting a
+Connection deletes all its Imports and Sources. The confirmation shows the affected Import, Source,
+and Assistant-link counts. Ciele attempts provider token revocation when the provider supports it,
+then always removes the local credentials.
+
+## Configure OAuth for a self-hosted deployment
+
+Set `APP_ENCRYPTION_KEY` before you connect any provider. Ciele seals OAuth tokens and the
+per-Connection Salesforce and ServiceNow client secrets with that key.
+
+The managed Ciele service supplies the shared OAuth registrations for Slack, Microsoft, and Google.
+Each self-hosted deployment supplies its own registrations through environment variables. These
+registrations identify the Ciele deployment. They do not identify an Organization or Member account.
+
+Create provider OAuth applications and set the pairs you enable:
+
+```dotenv
+SLACK_APPLICATION_CLIENT_ID=
+SLACK_APPLICATION_CLIENT_SECRET=
+MICROSOFT_APPLICATION_CLIENT_ID=
+MICROSOFT_APPLICATION_CLIENT_SECRET=
+GOOGLE_APPLICATION_CLIENT_ID=
+GOOGLE_APPLICATION_CLIENT_SECRET=
+APPLICATION_IMPORT_MAX_REMOTE_ITEMS=100000
+APPLICATION_IMPORT_MAX_ORG_BYTES=5368709120
+APPLICATION_IMPORT_MAX_CONCURRENT=3
+```
+
+The three limits bound synchronized remote items per Connection, stored Application bytes per
+Organization, and active sync claims per Organization. Lower them for smaller deployments. Ciele checkpoints the provider cursor and
+continues large imports in later durable claims.
+
+Salesforce and ServiceNow client credentials are specific to the connected Organization. The Admin
+enters them in the protected Connection form. Ciele seals them before storage and never returns them
+to the browser. ServiceNow uses Authorization Code and does not store a username or password.
+
+Register one exact callback URL per provider. Replace `{origin}` with the public HTTPS origin of
+your Ciele console:
+
+| Provider | Callback URL |
+| --- | --- |
+| Salesforce | `{origin}/api/applications/oauth/salesforce/callback` |
+| ServiceNow | `{origin}/api/applications/oauth/servicenow/callback` |
+| Slack | `{origin}/api/applications/oauth/slack/callback` |
+| OneDrive | `{origin}/api/applications/oauth/onedrive/callback` |
+| Google Drive | `{origin}/api/applications/oauth/google_drive/callback` |
+
+A missing Slack, Microsoft, or Google environment-variable pair disables only that provider and shows
+configuration guidance in the console. Salesforce and ServiceNow remain available because the Admin
+enters their OAuth registration in the Connection form. Both use Authorization Code. Salesforce,
+Microsoft, and Google also use PKCE. Every transaction is short-lived and bound to the Organization,
+initiating Member, provider, and exact callback URL.
+
+## Troubleshooting
+
+| Symptom | Action |
+| --- | --- |
+| **Connect** is unavailable for Slack, OneDrive, or Google Drive | Configure that provider's deployment client ID and secret, then restart the web service. |
+| Salesforce or ServiceNow rejects the client | Check the client ID, client secret, instance URL, and exact callback in that Organization's provider application. |
+| The provider rejects the callback | Make its registered callback match the public Ciele origin and path exactly. |
+| The Connection says authorization is required | Select **Reconnect** and approve the requested read scopes again. |
+| A folder or channel is missing | Confirm that the authorized account can open it and, for Slack, is a channel member. |
+| Items are skipped | Open the latest sync result. Check unsupported type, empty content, or provider scope reasons. |
+| Imported content does not answer | Confirm that the Source is **Ready** and that the Import links the expected Assistant. |
+
+Application connectors are read-only for source content. This release does not write back to a
+provider, enforce provider ACLs at answer time, or support SharePoint libraries.

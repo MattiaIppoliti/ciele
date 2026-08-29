@@ -1,0 +1,63 @@
+---
+title: Tools and Skills
+description: Control runtime tools and attach reusable instructions to an Assistant.
+---
+
+Open an Assistant and select **Tools & Skills**. This section controls runtime capabilities and reusable instructions.
+
+## Built-in tools
+
+| Tool | Default | Current behavior |
+| --- | :---: | --- |
+| Search knowledge | On | Searches connected Knowledge and returns cited answers. |
+| Session memory | On | Uses information from the current conversation session. |
+| Fetch URL | Off | Reads a URL when the runtime selects the tool. |
+| Show a table | Off | Shows facts in a table when the runtime selects the tool. |
+
+Search knowledge is always available. You can enable or disable the other built-in tools.
+
+Show a table arranges facts that the Assistant found in this answer. It does not calculate values. The table appears above the written answer, and the Inbox transcript shows the same table.
+
+The Assistant can add a follow-up question to a row. The Visitor selects the row to ask that question. The Inbox transcript shows these rows, but a Member cannot select them.
+
+## Connect structured data
+
+The **Data** section lists Entities imported through **Settings → Data**. Select each Entity that this Assistant may query.
+
+Each selected Entity provides an exact filter tool. An Entity with text attributes also provides a keyword search tool.
+
+Shared Entities are available to every Visitor served by the Assistant. User-scoped Entities require a verified [identity claim](/authentication/microsoft-entra-id#choose-an-identity-claim).
+
+The Entity selection and schema enter the next Publication snapshot. Record content remains live after Publication.
+
+See [Entities and Records](/data/entities-and-records) for CSV imports, scope choices, and identity filtering.
+
+## Configure one API integration
+
+An Assistant can use one registered API integration. The integration contains a base URL, a protected credential, and described endpoints.
+
+For each endpoint, define the method, path, purpose, parameters, and response shape. The runtime validates every requested path against this catalogue.
+
+The agent can inspect endpoint details before it sends a request. Large responses remain available through windowed reads.
+
+<Callout title="Control the endpoint catalogue">
+Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
+</Callout>
+
+## Attach an Organization Skill
+
+A Skill is a reusable instruction template. An Organization can attach the same Skill to multiple Assistants.
+
+1. Open **Tools & Skills**.
+2. Find the required Organization Skill.
+3. Attach the Skill to the Assistant.
+4. Test the result in Preview.
+5. Publish the Assistant when the result is correct.
+
+Skill changes are available in Preview immediately. The published Widget uses the last Publication snapshot.
+
+## Test the configuration
+
+Ask one question that requires each enabled tool. Inspect the Thinking panel and Sources before you publish.
+
+For structured data, test an exact attribute lookup and a text search. Test user-scoped access with two different signed-in accounts.

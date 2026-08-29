@@ -1,0 +1,66 @@
+---
+title: Concetti fondamentali
+description: Scopri i termini stabili che Ciele utilizza nel prodotto e nella documentazione.
+---
+
+## Organizzazione
+
+Un'Organizzazione possiede membri, Assistenti, Help Desk, connessioni con i
+provider, chiavi API, Competenze e dati operativi.
+
+## Assistente
+
+Un Assistente è un agente conversazionale configurato. Ha un'identità, una
+Conoscenza, dei Flussi, degli strumenti, un modello, un aspetto e uno stato di
+pubblicazione.
+
+## Fonte e raccolta di conoscenze
+
+Una Fonte è un sito web, un file, un testo o un contenuto FAQ originale.
+L'ingestione trasforma una Fonte in Concetti, i documenti ricercabili alla base
+di una risposta fondata.
+
+Le fonti appartengono all'Organizzazione. Una Knowledge Collection è il
+contenitore dell'Organization in cui vengono archiviate.
+
+## Link alla fonte
+
+Un link collega una Fonte a un Assistente. Un Assistente cerca in una Fonte solo
+tramite un link.
+
+Il collegamento contiene anche **Direct access**, che decide se l'Assistente può
+fornire a un Visitatore il file originale.
+
+## Flusso
+
+Un Flow è una regola di routing ordinata. Contiene un trigger, le condizioni
+disponibili e le azioni di risposta ordinate.
+
+Il Flow **Default behavior** bloccato rimane per ultimo. Gestisce un messaggio
+idoneo quando nessun Flow precedente ha la priorità.
+
+## Pubblicazione
+
+Una Pubblicazione è un'istantanea immutabile dell'Assistente. Il widget utilizza
+la Pubblicazione attiva, non la bozza corrente dell'amministratore.
+
+## Conversazione
+
+Una Conversazione memorizza i messaggi del Visitatore e dell'Assistente, le
+parti di risposta, le citazioni, le tracce di runtime e i metadati della
+sessione.
+
+## Help Desk
+
+Un Help Desk definisce uno o più canali di contatto. Un Assistente può suggerire
+un Help Desk pertinente durante l'escalation.
+
+## Miglioramento
+
+Un miglioramento è un elemento di revisione per un problema di qualità della
+risposta. Può collegarsi al messaggio esatto della Conversazione.
+
+## Obiettivo e avviso
+
+Un Goal esegue un controllo delle risposte pianificato. Un Goal non riuscito
+crea un Avviso per un amministratore.

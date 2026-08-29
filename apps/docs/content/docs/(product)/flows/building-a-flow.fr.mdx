@@ -1,0 +1,50 @@
+---
+title: Créez un flux
+description: Configurez un déclencheur, les conditions disponibles et les actions de réponse ordonnées.
+---
+
+## Créez le flux
+
+1. Ouvrez un Assistant.
+2. Sélectionnez **Flows**.
+3. Créez un flux.
+4. Saisissez un nom et une description clairs.
+5. Sélectionnez un déclencheur.
+
+La description aide Intent Classification à sélectionner un flux de messages.
+Indiquez l'intention du visiteur et la portée requise.
+
+## Ajoutez des conditions de message
+
+Les flux de messages prennent en charge ces types de conditions :
+
+| Condition | Comportement actuel |
+| --- | --- |
+| Contexte de la conversation | Ajoute des exemples sémantiques à la classification des intentions. Il ne s'agit pas d'un filtre strict. |
+| URL | Applique un critère strict de type Correspond, Contient ou Regex. |
+| Planification | Applique un critère strict de début, de fin et de fuseau horaire. |
+
+Sélectionnez **Any condition matches** ou **All conditions match** lorsque le
+flux contient plus d'une condition.
+
+Les conditions URL et Schedule suppriment un flux non éligible avant la
+classification. Une condition satisfaite ne force pas le flux à gagner.
+
+## Ajoutez des actions de réponse
+
+1. Ajoutez les actions requises.
+2. Placez les actions dans leur ordre d'exécution.
+3. Configurez tous les champs obligatoires.
+4. Enregistrez le flux.
+5. Testez un message correspondant et un message non correspondant.
+
+L'éditeur limite les flux proactifs à une action de notification. Le serveur
+applique la même règle lorsqu'il enregistre ou distribue un flux.
+
+## Réorganiser les flux
+
+Faites glisser un flux pour modifier la priorité de routage des messages. Le
+flux de comportement par défaut reste en dernier.
+
+Désactivez un flux lorsque vous devez arrêter son routage sans supprimer sa
+configuration.

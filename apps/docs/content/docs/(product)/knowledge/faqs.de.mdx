@@ -1,0 +1,37 @@
+---
+title: Häufig gestellte Fragen
+description: Fügen Sie genehmigte Frage-Antwort-Paare für einen oder mehrere Assistenten hinzu.
+---
+
+Eine FAQ speichert eine Frage und eine kuratierte Antwort. Verwenden Sie FAQs
+für Inhalte, die eine genaue, genehmigte Antwort erfordern.
+
+## Fügen Sie eine FAQ hinzu
+
+1. Öffnen Sie den Assistenten.
+2. Wählen Sie **Knowledge**.
+3. Fügen Sie eine FAQ hinzu.
+4. Geben Sie die Frage ein.
+5. Geben Sie die genehmigte Antwort ein.
+6. Speichern Sie die FAQ.
+
+## FAQs importieren
+
+Bereiten Sie eine CSV-Datei mit diesen Spalten vor:
+
+```csv
+question,answer
+When does enrollment close?,Enrollment closes on October 31.
+```
+
+Importieren Sie die Datei aus dem Assistenten oder aus der Registerkarte FAQs in
+der [Bibliothek](/knowledge/library), wenn mehrere Assistenten dieselben Paare
+benötigen. Korrigieren Sie Zeilen, die nicht beide Werte enthalten.
+
+## Verwenden Sie eine FAQ-Schnellantwort
+
+Eine FAQ-Schnellantwort gibt die kuratierte Antwort wortgetreu zurück. Sie führt
+keinen Chatmodell-Aufruf durch und enthält die Quellenangabe zur FAQ.
+
+Verwenden Sie eine **Send Text**-Schnellantwort, wenn der Text stattdessen in
+den normalen Flow-Router geleitet werden muss.

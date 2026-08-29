@@ -1,0 +1,59 @@
+---
+title: Modelo agentivo
+description: Comprende la resolución del proveedor, el uso de herramientas, los límites, los seguimientos y las citas.
+---
+
+El tiempo de ejecución utiliza la abstracción de proveedor del SDK de Vercel AI.
+Los adaptadores de proveedores actuales incluyen Anthropic, OpenAI, Google y un
+punto de conexión compatible con OpenAI.
+
+## Límites generativos
+
+El tiempo de ejecución realiza una llamada al modelo solo dentro de una acción
+generativa o de una Clasificación de Intención. Las acciones deterministas no
+pasan su contenido a través de un modelo.
+
+La respuesta básica utiliza una llamada de chat y ninguna herramienta. Search
+knowledge utiliza un bucle de herramientas limitado.
+
+## Bucle de búsqueda en Knowledge
+
+1. El modelo recibe las instrucciones del Asistente y las descripciones de las
+   herramientas disponibles.
+2. El modelo busca en Knowledge o lee una ventana de Source seleccionada.
+3. El tiempo de ejecución registra los eventos del ciclo de vida de la
+   herramienta.
+4. El modelo puede repetir la búsqueda dentro del límite de pasos.
+5. El tiempo de ejecución genera la respuesta final y las citas con nombre.
+
+El panel Pensamiento representa estos eventos registrados del progreso y de las
+herramientas. El pensamiento simplificado reescribe el texto de progreso para la
+pantalla del visitante.
+
+## Herramientas de integración de API
+
+Un Asistente puede registrar un catálogo de API. El catálogo describe su URL
+base, su credencial protegida y los puntos de conexión disponibles.
+
+El modelo puede inspeccionar los detalles de la API y consultar un punto de
+conexión registrado. El tiempo de ejecución valida cada ruta con el catálogo
+antes de la salida de la red.
+
+Los lectores en ventana devuelven un rango de contenido solicitado y la longitud
+total. Este contrato permite que el modelo inspeccione grandes cargas útiles de
+API y Knowledge sin truncamiento silencioso.
+
+## Comportamiento en caso de fallo
+
+El enrutador de palabras clave se encarga de la clasificación cuando no hay
+ningún modelo clasificador disponible o cuando falla la clasificación. La
+búsqueda de conocimiento puede usar la reserva léxica sin incrustaciones.
+
+Un transporte de correo electrónico sin configurar devuelve un resultado de
+error honesto. No crea un mensaje de entrega correcta.
+
+## Regla de extensión
+
+Añade una nueva herramienta de agente a través del registro de herramientas y su
+contenedor de ciclo de vida. Mantén la autorización, la propiedad, la validación
+de entradas y las comprobaciones de salida fuera del control del modelo.

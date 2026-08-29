@@ -1,0 +1,51 @@
+---
+title: Aggiorna
+description: Applica una nuova versione del repository e le relative migrazioni in sospeso.
+---
+
+## Prima dell'aggiornamento
+
+1. Leggi le modifiche della release.
+2. Registra il commit o il tag corrente.
+3. Esegui il backup del database e dei file caricati.
+4. Testa il processo di ripristino.
+5. Pianifica una finestra di manutenzione accettabile.
+
+## Applica la versione
+
+```bash
+git pull
+docker compose -f deploy/docker-compose.yml up -d --build
+```
+
+In modalità immagine, cambia `CIELE_IMAGE_TAG` in `deploy/.env` con la nuova
+versione e applicala al suo posto:
+
+```bash
+docker compose up -d
+```
+
+Su [Ciele Desktop](/self-hosting/desktop), l'aggiornamento dell'applicazione
+esegue questo passaggio: ogni build fissa le immagini corrispondenti alla
+propria versione.
+
+Il servizio `migrate` applica solo le migrazioni in sospeso. Controlla il
+risultato prima di accettare l'applicazione come integra.
+
+```bash
+docker compose -f deploy/docker-compose.yml ps
+docker compose -f deploy/docker-compose.yml logs migrate
+docker compose -f deploy/docker-compose.yml logs app
+```
+
+## Verifica il risultato
+
+1. Accedi alla console di amministrazione.
+2. Apri un Assistente.
+3. Anteprima di prova.
+4. Apri un widget pubblicato.
+5. Chiama `GET /api/v1/meta` quando sono in uso client programmatici.
+
+Non ripristinare una vecchia immagine dell'applicazione su un database migrato
+incompatibile. Utilizza le istruzioni di rilascio per un percorso di rollback
+supportato.

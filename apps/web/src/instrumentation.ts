@@ -1,0 +1,45 @@
+/**
+ * Next.js instrumentation: runs once when the server process starts.
+ *
+ * Two startup registrations, both guarded to the Node.js runtime because each
+ * pulls server-only code that must never load into the edge runtime:
+ *
+ * 1. The **runtime host ports** (`@agent-hub/agent`'s `host.ts`). The agent
+ *    package is framework-free, so the facts only this host knows are handed to
+ *    it here: reading the cached platform prompt, running work after the
+ *    response is sent, and whether this deployment may relax the egress
+ *    posture. All have safe defaults, so a missed registration degrades
+ *    latency (or tightens security), never correctness.
+ * 2. The **enterprise registration entrypoint**, so the enterprise edition can
+ *    register its capability overrides before any request is served (#435). In
+ *    the open-source edition that entrypoint is an inert stub, so it is a no-op.
+ */
+export async function register() {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  const { after } = await import("next/server");
+  const { registerRuntimeHost } = await import("@agent-hub/agent");
+  const { getPlatformSystemPrompt } = await import("@/lib/platform");
+
+  registerRuntimeHost({
+    getPlatformSystemPrompt,
+    // `after` keeps the invocation alive for the returned promise, which is what
+    // makes it safe to hand a job drain to, see the port's contract.
+    scheduleAfterResponse: (work) => after(work),
+    // Dev and preview deployments may point tenant-configured requests at
+    // plain-HTTP / loopback mocks; production never does. The port defaults to
+    // strict, so only this registration ever relaxes it (#577).
+    //
+    // Tested positively, never as "not production": `VERCEL_ENV` is unset on
+    // every non-Vercel host, so `!== "production"` read an absent variable as a
+    // dev signal and relaxed the policy on all self-host, Docker and Desktop
+    // installs. `NODE_ENV` is pinned to production by the Dockerfile and by
+    // `next start`, so this keeps the carve-out for `next dev` only.
+    allowRelaxedEgress: () =>
+      process.env.NODE_ENV !== "production" ||
+      process.env.VERCEL_ENV === "preview" ||
+      process.env.VERCEL_ENV === "development",
+  });
+
+  await import("@/ee/register");
+}

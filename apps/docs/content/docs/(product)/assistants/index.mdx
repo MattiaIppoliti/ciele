@@ -1,0 +1,28 @@
+---
+title: Assistants
+description: Configure the identity, model, behavior, tools, and checks for an Assistant.
+---
+
+An Assistant is the main configuration unit in Ciele. Each Assistant owns its Knowledge, Flows, draft settings, and publication history.
+
+## Setup sections
+
+| Section | Purpose |
+| --- | --- |
+| General | Set identity, model, knowledge engine, and conversation defaults. |
+| Knowledge | Add Sources and FAQs. |
+| Flows | Define routing and responses. |
+| Tools & Skills | Control runtime tools, API integration, and reusable instructions. |
+| Goals | Schedule deterministic answer checks. |
+| Assistant Help Desks | Select Help Desks for escalation. |
+| Style | Set the brand color and launcher position. |
+| Authentication | Require Microsoft Entra sign-in for Visitors. |
+| Publish | Create and manage the live snapshot. |
+
+Changes affect Preview immediately. The live widget changes only after publication.
+
+## Duplicate an Assistant
+
+Duplication copies configuration and Flows. It does not copy Knowledge content.
+
+Review the new Assistant before publication. In particular, add its required Sources and confirm its Help Desk connections.

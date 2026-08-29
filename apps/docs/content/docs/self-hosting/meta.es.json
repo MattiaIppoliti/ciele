@@ -1,0 +1,20 @@
+{
+  "title": "Código abierto",
+  "description": "Autoalojar el núcleo AGPL",
+  "icon": "Boxes",
+  "root": true,
+  "pages": [
+    "index",
+    "---Ejecútalo---",
+    "installation",
+    "desktop",
+    "configuration",
+    "database",
+    "workers",
+    "---Mantenlo en funcionamiento---",
+    "upgrade",
+    "---Compréndelo---",
+    "architecture",
+    "open-core-boundary"
+  ]
+}

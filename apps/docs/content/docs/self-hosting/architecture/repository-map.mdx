@@ -1,0 +1,42 @@
+---
+title: Repository map
+description: Locate the current open-source application, packages, workers, schema, and deployment files.
+---
+
+## Applications
+
+| Path | Responsibility |
+| --- | --- |
+| `apps/web` | Administrator console, widget runtime, public pages, server actions, and API v1. |
+| `apps/docs` | Fumadocs documentation application and translation pipeline. |
+
+## Shared packages
+
+| Path | Responsibility |
+| --- | --- |
+| `packages/core` | Domain types, pure Flow rules, defaults, conditions, and analytics logic. |
+| `packages/db` | Persistence interfaces, mock storage, and Supabase implementation. |
+| `packages/agent` | Turn execution, model providers, Knowledge tools, ingestion, and evaluation. |
+| `packages/ops` | Shared Organization operations used by console actions and API v1. |
+| `packages/client` | Typed client for API v1. |
+| `packages/cli` | Terminal interface over the typed client. |
+| `packages/mcp` | Fourteen-tool local MCP adapter over the typed client. |
+| `packages/ui` | Shared user-interface components. |
+| `packages/charts` | Shared analytics visualizations. |
+
+## Services and infrastructure
+
+| Path | Responsibility |
+| --- | --- |
+| `services/graph-worker` | Optional graph extraction and retrieval service. |
+| `services/crawl4ai` | Optional JavaScript-rendering crawler configuration. |
+| `supabase/migrations` | Ordered database schema changes. |
+| `deploy` | Single-host Docker Compose deployment and bootstrap scripts. |
+
+## Dependency direction
+
+Pure rules belong in `packages/core`. Persistence behavior belongs in `packages/db`.
+
+Reusable mutations belong in `packages/ops`. Model and retrieval behavior belongs in `packages/agent`.
+
+Surface adapters in `apps/web`, `packages/cli`, and `packages/mcp` must not create separate domain behavior.

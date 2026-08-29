@@ -1,0 +1,58 @@
+---
+title: Agentenmodell
+description: Verstehen Sie die Provider-Auflösung, die Tool-Nutzung, die Grenzen, die Traces und die Zitationen.
+---
+
+Die Laufzeitumgebung verwendet die Provider-Abstraktion des Vercel AI SDK. Zu
+den aktuellen Provider-Adaptern gehören Anthropic, OpenAI, Google und ein
+OpenAI-kompatibler Endpunkt.
+
+## Generative Grenzen
+
+Die Laufzeitumgebung führt einen Modellaufruf nur innerhalb einer generativen
+Aktion oder einer Intent Classification durch. Deterministische Aktionen leiten
+ihren Inhalt nicht über ein Modell weiter.
+
+Die einfache Antwort verwendet einen Chat-Aufruf und keine Tools. Search
+Knowledge verwendet eine begrenzte Tool-Schleife.
+
+## Schleife zur Suche in Knowledge
+
+1. Das Modell erhält die Anweisungen für den Assistenten und die Beschreibungen
+   der verfügbaren Tools.
+2. Das Modell durchsucht Knowledge oder liest ein ausgewähltes Source-Fenster.
+3. Die Laufzeitumgebung zeichnet Ereignisse im Lebenszyklus des Tools auf.
+4. Das Modell kann die Suche innerhalb der Schrittbegrenzung wiederholen.
+5. Die Laufzeit generiert die endgültige Antwort und benannte Zitate.
+
+Das Thinking-Panel stellt diese aufgezeichneten Fortschritts- und
+Tool-Ereignisse dar. Simplified Thinking schreibt den Fortschrittstext für die
+Besucheranzeige neu.
+
+## Tools zur API-Integration
+
+Ein Assistent kann einen API-Katalog registrieren. Der Katalog beschreibt seine
+Basis-URL, seine geschützten Anmeldeinformationen und die verfügbaren Endpunkte.
+
+Das Modell kann API-Details prüfen und einen registrierten Endpunkt abfragen.
+Die Laufzeit validiert jeden Pfad anhand des Katalogs, bevor er das Netzwerk
+verlässt.
+
+Reader im Fenster-Modus geben einen angeforderten Inhaltsbereich und die
+Gesamtlänge zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
+Wissens-Nutzlasten ohne stille Trunkierung zu untersuchen.
+
+## Fehlverhalten
+
+Der Keyword-Router übernimmt die Klassifizierung, wenn kein Klassifizierermodell
+verfügbar ist oder die Klassifizierung fehlschlägt. Die Wissenssuche kann auf
+lexikalische Fallback-Funktionen ohne Embeddings zurückgreifen.
+
+Ein nicht konfigurierter E-Mail-Transport gibt ein ehrliches Fehlerergebnis
+zurück. Es wird keine Nachricht über eine erfolgreiche Zustellung erstellt.
+
+## Erweiterungsregel
+
+Fügen Sie ein neues Agent-Tool über das Tool-Registry und dessen
+Lifecycle-Wrapper hinzu. Behalten Sie Autorisierungs-, Eigentums-,
+Eingabevalidierungs- und Ausgangsprüfungen außerhalb der Modellsteuerung.

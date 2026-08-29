@@ -1,0 +1,55 @@
+---
+title: Microsoft Entra ID
+description: Configure the current OpenID Connect connection for Visitor sign-in.
+---
+
+Microsoft Entra ID is the available Visitor identity provider.
+
+## Create the Entra application
+
+1. Register a confidential web application in Microsoft Entra ID.
+2. Add the Ciele callback URL shown in the provider form.
+3. Create a client secret.
+4. Record the tenant ID and client ID.
+
+Use the exact callback URL. A different scheme, host, path, or port prevents the authorization response.
+
+## Configure Ciele
+
+1. Open **Settings**.
+2. Open the Visitor authentication configuration.
+3. Select **Microsoft Entra ID**.
+4. Enter the tenant ID.
+5. Enter the client ID.
+6. Enter the client secret.
+7. Choose an **Identity claim** when per-Visitor features need one.
+8. Save the connection.
+
+Ciele uses the authorization-code flow with Proof Key for Code Exchange (PKCE).
+
+## Choose an identity claim
+
+The default is **Off, subject only**. Ciele then stores the opaque OIDC subject without a human-readable identifier.
+
+Choose **Email address** or **Username (preferred_username claim)** when an Assistant must match signed-in Visitors to [user-scoped Records](/data/entities-and-records#protect-user-scoped-records).
+
+Ciele verifies the selected claim inside the signed ID token. The server carries it into the Conversation and runtime turn.
+
+A request body or model tool input cannot replace the verified value. A missing configured claim disables features that require it for that Visitor.
+
+Reconnect the Entra connection to change the claim. Ciele requests the profile and email scopes when a claim is enabled.
+
+## Required server setting
+
+Set `APP_ENCRYPTION_KEY` on the Ciele deployment. Ciele uses this key to protect the authentication gate cookie and stored secrets.
+
+## Test the connection
+
+1. Require authentication on one draft Assistant.
+2. Open Preview in a signed-out browser session.
+3. Complete Microsoft sign-in.
+4. Confirm that the chat becomes available.
+5. Confirm that another Organization cannot reuse the gate cookie.
+6. Start a Conversation and confirm that the Inbox shows the signed-in subject.
+
+Test one user-scoped Entity when an identity claim is enabled. Confirm that another signed-in Visitor cannot retrieve the first Visitor's Records.

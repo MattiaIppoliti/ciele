@@ -1,0 +1,46 @@
+---
+title: Base de datos
+description: Opera los servicios de datos actuales de Postgres y Supabase.
+---
+
+Ciele utiliza Postgres con pgvector. El perfil `db` de Compose también ejecuta
+la autenticación, PostgREST, el almacenamiento y una pasarela.
+
+## Aplicar migraciones
+
+El servicio único `migrate` aplica las migraciones SQL pendientes y crea los
+depósitos de almacenamiento necesarios. La aplicación se inicia después de que
+este servicio finalice correctamente.
+
+No edites una migración aplicada. Añade una nueva migración por cada cambio de
+esquema.
+
+## Desarrollo local
+
+```bash
+pnpm db:start
+pnpm db:reset
+pnpm db:status
+```
+
+`pnpm db:reset` elimina los datos de la base de datos local y vuelve a aplicar
+las migraciones y los datos iniciales.
+
+## Datos persistentes
+
+El volumen `postgres-data` contiene la base de datos. El volumen `storage-data`
+contiene los objetos subidos.
+
+Realiza una copia de seguridad de ambos volúmenes para obtener una copia
+completa de los datos. Prueba la restauración antes de depender de un proceso de
+copia de seguridad.
+
+<Callout type="warn" title="Volume deletion removes data">
+`docker compose -f deploy/docker-compose.yml down -v` deletes the database and uploaded-file volumes. Use it only for an intentional reset.
+</Callout>
+
+## Aislamiento de inquilinos
+
+Las solicitudes de la consola utilizan acceso autenticado a la base de datos y
+seguridad a nivel de fila. Las operaciones con claves API utilizan un contenedor
+de base de datos anclado a la organización y comprobaciones de capacidades.

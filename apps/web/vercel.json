@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "crons": [
+    {
+      "path": "/api/cron/finalize-crawls",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/run-routines",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/verify-goals",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/learn-graph",
+      "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/run-exports",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/sweep-recrawls",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/rollup-usage",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sweep-traces",
+      "schedule": "30 2 * * *"
+    }
+  ]
+}

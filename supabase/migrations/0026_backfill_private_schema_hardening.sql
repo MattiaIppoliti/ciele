@@ -1,0 +1,23 @@
+-- Superseded, and deliberately a no-op. The file keeps its name because the
+-- filename IS this repo's ledger key (private.applied_migrations), so deleting
+-- it would strand the row that records it.
+--
+-- History: 0018..0020 were applied straight to the live project and only
+-- captured as local files later. Meanwhile these four backfill twins were
+-- written so a fresh environment would match production. Both sets ended up in
+-- the chain, so the work is duplicated: stripped of comments, this file was
+-- byte-identical to 0018_private_schema_hardening.sql.
+--
+-- On the live project the duplication was invisible: every file through
+-- 20260710220000_compost.sql sits in migrations-baseline.txt, recorded and
+-- never executed, so neither copy ever ran through the applier there.
+--
+-- On an EMPTY database it was not harmless: the twin runs a second time, and by
+-- then 0018_private_schema_hardening has moved is_org_member/has_org_role into
+-- `private`, so this file's `public.has_org_role(...)` references resolve to
+-- nothing and the replay dies here with "function public.has_org_role(uuid,
+-- integer) does not exist".
+--
+-- Nothing is lost: 0018_private_schema_hardening.sql does this work, at the
+-- point in the order where the schema state it assumes is actually true.
+-- .github/workflows/migrations.yml is the gate that proved it.

@@ -1,0 +1,71 @@
+---
+title: Microsoft Entra ID
+description: Configurez la connexion OpenID Connect actuelle pour la connexion des visiteurs.
+---
+
+Microsoft Entra ID est le fournisseur d'identité Visiteur disponible.
+
+## Créez l'application Entra
+
+1. Enregistrez une application Web confidentielle dans Microsoft Entra ID.
+2. Ajoutez l'URL de rappel Ciele indiquée dans le formulaire du fournisseur.
+3. Créez un secret client.
+4. Enregistrez l'identifiant du locataire et l'identifiant du client.
+
+Utilisez l'URL de rappel exacte. Un schéma, un hôte, un chemin ou un port
+différent empêche la réponse d'autorisation.
+
+## Configurez Ciele
+
+1. Ouvrez **Settings**.
+2. Ouvrez la configuration de l'authentification des visiteurs.
+3. Sélectionnez **Microsoft Entra ID**.
+4. Saisissez l'identifiant du locataire.
+5. Saisissez l'identifiant du client.
+6. Saisissez le secret client.
+7. Choisissez un **Identity claim** lorsque les fonctionnalités par visiteur en
+   nécessitent un.
+8. Enregistrez la connexion.
+
+Ciele utilise le flux de code d'autorisation avec Proof Key for Code Exchange
+(PKCE).
+
+## Choisissez une revendication d'identité
+
+La valeur par défaut est **Off, subject only**. Ciele stocke ensuite le sujet
+OIDC opaque sans identifiant lisible par l'homme.
+
+Choisissez **Email address** ou **Username (preferred_username claim)**
+lorsqu'un Assistant doit faire correspondre les Visiteurs connectés aux
+[user-scoped Records](/data/entities-and-records#protect-user-scoped-records).
+
+Ciele vérifie la revendication sélectionnée à l'intérieur du jeton
+d'identification signé. Le serveur le transmet à la Conversation et au moteur
+d'exécution.
+
+Un corps de requête ou une entrée d'outil de modèle ne peut pas remplacer la
+valeur vérifiée. Une revendication configurée manquante désactive les
+fonctionnalités qui en ont besoin pour ce visiteur.
+
+Reconnectez la connexion Entra pour modifier la revendication. Ciele demande les
+étendues de profil et d'e-mail lorsqu'une revendication est activée.
+
+## Paramètre serveur requis
+
+Définissez `APP_ENCRYPTION_KEY` sur le déploiement Ciele. Ciele utilise cette
+clé pour protéger le cookie d'authentification Gate et les secrets stockés.
+
+## Testez la connexion
+
+1. Exiger l'authentification sur un brouillon d'assistant.
+2. Ouvrez l'aperçu dans une session de navigateur sans être connecté.
+3. Terminez la connexion Microsoft.
+4. Vérifiez que le chat devient disponible.
+5. Vérifiez qu'une autre organisation ne peut pas réutiliser le cookie de la
+   passerelle.
+6. Lancez une conversation et vérifiez que la boîte de réception affiche le
+   sujet connecté.
+
+Testez une entité au niveau de l'utilisateur lorsqu'une revendication d'identité
+est activée activée. Vérifiez qu'un autre Visiteur connecté ne peut pas
+récupérer les Dossiers du premier Visiteur.

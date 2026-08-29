@@ -1,0 +1,35 @@
+---
+title: Inbox
+description: Inspect Conversations, Sources, runtime traces, and session metadata.
+---
+
+The Inbox stores Visitor and Assistant turns. Open a Conversation to inspect the exact stored transcript.
+
+## Conversation list
+
+Use search and available filters to narrow the list. Each row identifies recent activity and its current Conversation state.
+
+A session that contains only proactive Notifications has the **Notification only** marker. It becomes a normal Conversation after a Visitor replies.
+
+## Conversation detail
+
+The detail view can show:
+
+- Visitor and Assistant messages
+- the Flow that handled a turn
+- named Source citations
+- Visitor feedback
+- escalation state
+- launch and device metadata
+- the verified SSO subject and configured identity claim
+- stored Thinking information when the member Role permits access
+
+Verbatim Message actions and Basic replies do not contain a Thinking trace. Search knowledge answers can contain tool and progress events.
+
+Generated Entity tools also appear in the trace. Their events show which live Organization data supported the answer.
+
+## Create quality work
+
+Use the available Improvement action when an answer needs correction. The new item links back to the affected Conversation message.
+
+Use [Exports](/operations/exports) when you need structured records outside the Inbox.

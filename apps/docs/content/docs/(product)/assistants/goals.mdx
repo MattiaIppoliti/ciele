@@ -1,0 +1,42 @@
+---
+title: Goals
+description: Schedule repeatable checks for important Assistant answers.
+---
+
+A Goal asks a standing question and checks the answer against deterministic expectations. A failing Goal creates an Alert.
+
+## Create a Goal
+
+1. Open an Assistant.
+2. Select **Goals**.
+3. Select **Create Goal**.
+4. Enter the question that Ciele must ask.
+5. Add one or more expectations.
+6. Save the Goal.
+
+## Available expectations
+
+| Expectation | Check |
+| --- | --- |
+| Must cite a source | The answer contains at least one Source citation. |
+| Cited URL contains | A cited URL contains the configured text. |
+| Answer contains | The answer contains each configured text fragment. |
+| Non-fallback answer | The runtime did not return its fallback result. |
+
+Ciele always checks for a non-fallback answer. Other expectations depend on the Goal configuration.
+
+## Goal status
+
+An active Goal runs on its schedule. Ciele can quarantine a Goal after repeated execution problems.
+
+A quarantined Goal does not continue its normal schedule. Review the Goal and its Alert before you activate it again.
+
+## Review a failure
+
+1. Open **Alerts**.
+2. Select the Goal failure.
+3. Review the answer and the failed expectation.
+4. Correct the Knowledge, Flow, or Goal.
+5. Run the Goal again.
+
+Goals use exact checks. They do not use an open-ended model grader.

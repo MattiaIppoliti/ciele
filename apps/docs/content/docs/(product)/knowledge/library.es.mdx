@@ -1,0 +1,92 @@
+---
+title: Biblioteca
+description: Gestiona las Fuentes de la Organización y elige qué Asistentes responden desde cada una de ellas.
+---
+
+**Library** es la vista de Knowledge de la organización. Enumera todas las
+Fuentes que posee la Organización, en todos los Asistentes. Ábrela desde la
+navegación principal.
+
+Un asistente solo busca en una fuente cuando existe un enlace que los conecta.
+La Biblioteca es donde creas y modificas esos enlaces.
+
+## Pestañas
+
+| Pestaña | Contenido |
+| --- | --- |
+| Websites | Fuentes de tipo sitio web y página. |
+| Archivos | Archivos subidos y texto pegado. |
+| Aplicaciones | Contenido sincronizado desde aplicaciones externas conectadas. |
+| Preguntas frecuentes | Parejas de preguntas y respuestas seleccionadas. |
+
+Cada pestaña muestra un punto de estado. El punto indica el peor estado de la
+pestaña. Un error tiene prioridad sobre el procesamiento, y el procesamiento
+tiene prioridad sobre el estado listo.
+
+## Encuentra una fuente
+
+Utiliza el cuadro de búsqueda para encontrar el nombre de la Fuente. Utiliza los
+filtros para restringir la lista por estado o por Asistente vinculado. Cada
+filtro se almacena en la dirección de la página, por lo que puedes compartir la
+vista filtrada.
+
+## Asistentes vinculados
+
+La columna **Linked assistants** nombra a cada Asistente que responde desde la
+Fuente.
+
+1. Abre el menú de la fila Source.
+2. Selecciona **Manage assistants**.
+3. Selecciona o desmarca cada asistente.
+4. Guarda la selección.
+
+La selección guardada reemplaza el conjunto de enlaces anterior. Un Asistente
+que desmarques deja de buscar en la Fuente. La Fuente y sus Conceptos permanecen
+en la Organización.
+
+## Acceso directo
+
+**Direct access** se aplica a las Fuentes de archivo. Cuando está activado para
+un enlace, el Asistente puede proporcionar al Visitante el archivo original con
+la cita. Cuando está desactivado, el Asistente cita el archivo, pero no lo
+entrega.
+
+El acceso directo es una propiedad de un enlace. Configúralo por Asistente, no
+por Fuente. El valor predeterminado es desactivado.
+
+## Añade una fuente de la biblioteca
+
+1. Selecciona la pestaña que necesites.
+2. Selecciona la acción «add» para ese tipo de fuente.
+3. Introduce el contenido de la fuente o selecciona el archivo.
+4. Selecciona los Assistants que quieres vincular.
+5. Inicia la ingesta.
+
+Una Fuente añadida aquí necesita al menos un Asistente vinculado. Nada busca en
+una Fuente no vinculada.
+
+## Eliminar en comparación con borrar
+
+La Biblioteca y el editor de Asistentes ofrecen dos operaciones diferentes.
+
+| Operación | Efecto |
+| --- | --- |
+| Eliminar de este Asistente | Elimina un enlace. Otros Asistentes conservan la Fuente. |
+| Eliminar | Elimina la Fuente y sus Conceptos para cada Asistente vinculado. |
+
+Cuando una Fuente está vinculada a más de un Asistente, el editor de Asistentes
+ofrece primero la opción de eliminarla. La confirmación de eliminación nombra a
+cada Asistente que pierde el conocimiento.
+
+Cuando solo hay un Asistente vinculado, el editor elimina la Fuente
+directamente.
+
+## Conocimiento compartido en el editor de Asistentes
+
+La sección **Knowledge** del Asistente muestra las Fuentes añadidas dentro de
+ese Asistente. Un panel **Shared knowledge** debajo muestra las Fuentes de la
+organización vinculadas desde la Biblioteca.
+
+Juntas, las dos listas constituyen el alcance de búsqueda completo del
+Asistente. Utiliza **Open in Library** para cambiar un enlace o su acceso
+directo.

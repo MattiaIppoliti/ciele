@@ -1,0 +1,38 @@
+---
+title: Alertes
+description: Examinez les défaillances détectées qui nécessitent une action de l'administrateur.
+---
+
+Alerts enregistre les problèmes opérationnels en cours et ceux qui ont été
+résolus. Un badge peut afficher le nombre d'alertes actives.
+
+## Vues des alertes
+
+- **Needs attention** affiche les alertes actives.
+- **Resolved** affiche les alertes résolues.
+- **All** affiche les deux états.
+
+Chaque alerte contient son type, son titre, ses détails, son heure de détection
+et son état actuel.
+
+Les échecs par rapport aux attentes en matière d'objectifs génèrent des alertes.
+D'autres opérations surveillées peuvent également créer une alerte lorsque leur
+implémentation actuelle signale un échec.
+
+Une alerte de type **Knowledge** signale un problème de configuration, et non un
+échec. Ciele en crée une lorsque vous supprimez une collection de connaissances
+qu'un coéquipier IA continue d'interroger. L'alerte nomme les Teammates qui
+pointent vers la collection supprimée. Elle disparaît lorsque le dernier d'entre
+eux supprime la collection de ses connaissances.
+
+## Résoudre une alerte
+
+1. Ouvrez l'alerte.
+2. Lisez la cause enregistrée et l'élément concerné.
+3. Corrigez l'objectif, la connexion, la source ou toute autre configuration.
+4. Répétez l'opération concernée.
+5. Vérifiez que le problème ne se produit plus.
+6. Marquez l'alerte comme résolue si nécessaire.
+
+Ne résolvez pas une alerte uniquement pour supprimer son badge. Confirmez
+d'abord l'opération concernée.

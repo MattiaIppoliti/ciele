@@ -1,0 +1,53 @@
+---
+title: Configuración
+description: Configura orígenes, secretos, cuentas, modelos, correo electrónico y trabajadores opcionales.
+---
+
+El script de arranque escribe `deploy/.env`. Utiliza `deploy/.env.example` como
+referencia de la variable actual.
+
+## Orígenes públicos
+
+Establece `PUBLIC_URL` como el origen público de la aplicación. Establece
+`SUPABASE_PUBLIC_URL` como el origen de la puerta de enlace de la base de datos
+accesible desde el navegador.
+
+Vuelve a compilar la aplicación después de cambiar `SUPABASE_PUBLIC_URL`. El
+paquete del navegador contiene este valor en el momento de la compilación.
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## Secretos generados
+
+La pila requiere Postgres, JSON Web Token, rol de servicio, cifrado de la
+aplicación y secretos de cron. Deja que el script de arranque los genere.
+
+No cambies `JWT_SECRET`, `ANON_KEY` ni `SERVICE_ROLE_KEY` de forma
+independiente. Forman una configuración de firma.
+
+## Cuentas y correo electrónico
+
+La primera cuenta se convierte en la propietaria de la organización. Establece
+`DISABLE_SIGNUP=true` después de que existan las cuentas necesarias.
+
+Sin configuración SMTP, `MAILER_AUTOCONFIRM=true` confirma automáticamente las
+nuevas cuentas.
+
+Las acciones de correo electrónico en tiempo de ejecución utilizan
+`RESEND_API_KEY` y `EMAIL_FROM`. Informan de un resultado sin configurar cuando
+falta cualquiera de los valores.
+
+## Puntos de conexión de modelos
+
+Configura las claves de proveedor de Anthropic, OpenAI o Google. También puedes
+configurar un punto de conexión de chat y de incrustación compatible con OpenAI.
+
+La búsqueda de conocimiento utiliza la coincidencia léxica cuando no hay ningún
+modelo de incrustación disponible.
+
+## TLS
+
+Termina TLS en un proxy inverso. A continuación, establece ambas variables de
+origen público en sus direcciones HTTPS y recompila la aplicación.

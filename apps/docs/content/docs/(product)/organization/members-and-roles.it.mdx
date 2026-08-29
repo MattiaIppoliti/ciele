@@ -1,0 +1,41 @@
+---
+title: Membri e ruoli
+description: Controlla chi può leggere, modificare, pubblicare e amministrare un'Organizzazione.
+---
+
+## Ruoli
+
+| Ruolo | Livello di autorizzazione attuale |
+| --- | --- |
+| Visualizzatore | Legge i dati dell'organizzazione e del prodotto. |
+| Editor | Modifica il contenuto e la configurazione dell'Assistente. |
+| Amministratore | Pubblica gli Assistenti e gestisce i membri e le chiavi API. |
+| Proprietario | Modifica i ruoli e gestisce i proprietari. |
+
+L'applicazione applica controlli delle capacità più specifici alle singole
+operazioni.
+
+## Invita un membro
+
+1. Apri **Settings > Members**.
+2. Seleziona **Invite member**.
+3. Inserisci l'indirizzo e-mail.
+4. Seleziona il ruolo minimo richiesto.
+5. Invia l'invito.
+
+## Modifica un membro
+
+Un amministratore può gestire i membri al di sotto del livello Proprietario. Un
+Owner può gestire tutti i livelli.
+
+Un membro non può modificare o rimuovere la propria riga dall'elenco dei membri.
+Utilizza un altro membro autorizzato per quell'operazione.
+
+## Ruoli chiave API
+
+Un amministratore o un proprietario può creare una chiave API
+dell'organizzazione. Il ruolo selezionato non può essere superiore a quello del
+creatore.
+
+Revoca una chiave quando il suo client non ha più bisogno dell'accesso. Ciele
+conserva il record revocato per le informazioni di audit.

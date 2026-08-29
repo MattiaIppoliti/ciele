@@ -1,0 +1,38 @@
+---
+title: Alertas
+description: Revisa los fallos detectados que requieren la intervención del administrador.
+---
+
+Alerts registra los problemas operativos actuales y los resueltos. Una insignia
+puede mostrar el número de alertas activas.
+
+## Vistas de alertas
+
+- **Needs attention** muestra las alertas activas.
+- **Resolved** muestra las alertas resueltas.
+- **All** muestra ambos estados.
+
+Cada alerta contiene su tipo, título, detalle, hora de detección y estado
+actual.
+
+Los fallos en las expectativas de los objetivos generan alertas. Otras
+operaciones supervisadas también pueden crear una alerta cuando su
+implementación actual informa de un fallo.
+
+Una alerta del tipo **Knowledge** informa de un problema de configuración, no de
+un fallo. Ciele crea una cuando eliminas una colección de conocimientos en la
+que un compañero de IA todavía está realizando búsquedas. La alerta nombra a los
+Teammates que apuntan a la colección eliminada. Se borra cuando el último de
+ellos elimina la colección de su conocimiento.
+
+## Resolver una alerta
+
+1. Abre la alerta.
+2. Lee la causa registrada y el elemento afectado.
+3. Corrige el objetivo, la conexión, la fuente u otra configuración.
+4. Repite la operación afectada.
+5. Confirma que el problema ya no se produce.
+6. Marca la alerta como resuelta cuando sea necesario.
+
+No resuelvas una alerta solo para eliminar su insignia. Primero, confirma la
+operación afectada.

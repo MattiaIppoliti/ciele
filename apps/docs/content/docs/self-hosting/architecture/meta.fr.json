@@ -1,0 +1,13 @@
+{
+  "title": "Architecture",
+  "description": "Comment le code source est assemblé",
+  "pages": [
+    "index",
+    "repository-map",
+    "request-flows",
+    "chat-runtime",
+    "agentic-model",
+    "knowledge-pipeline",
+    "data-model"
+  ]
+}

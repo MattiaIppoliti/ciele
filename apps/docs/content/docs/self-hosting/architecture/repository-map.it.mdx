@@ -1,0 +1,45 @@
+---
+title: Mappa del repository
+description: Individua l'applicazione open source corrente, i pacchetti, i worker, lo schema e i file di distribuzione.
+---
+
+## Applicazioni
+
+| Percorso | Responsabilità |
+| --- | --- |
+| `apps/web` | Console di amministrazione, runtime dei widget, pagine pubbliche, azioni del server e API v1. |
+| `apps/docs` | Applicazione di documentazione Fumadocs e pipeline di traduzione. |
+
+## Pacchetti condivisi
+
+| Percorso | Responsabilità |
+| --- | --- |
+| `packages/core` | Tipi di dominio, regole pure Flow, impostazioni predefinite, condizioni e logica di analisi. |
+| `packages/db` | Interfacce di persistenza, archiviazione simulata e implementazione di Supabase. |
+| `packages/agent` | Esecuzione di turn, provider di modelli, strumenti di Knowledge, importazione e valutazione. |
+| `packages/ops` | Operazioni dell'organizzazione condivisa utilizzate dalle azioni della console e dall'API v1. |
+| `packages/client` | Client tipizzato per API v1. |
+| `packages/cli` | Interfaccia terminale sul client tipizzato. |
+| `packages/mcp` | Adattatore MCP locale Fourteen-tool sul client tipizzato. |
+| `packages/ui` | Componenti condivisi dell'interfaccia utente. |
+| `packages/charts` | Visualizzazioni analitiche condivise. |
+
+## Servizi e infrastruttura
+
+| Percorso | Responsabilità |
+| --- | --- |
+| `services/graph-worker` | Servizio opzionale di estrazione e recupero di grafi. |
+| `services/crawl4ai` | Configurazione opzionale del crawler con rendering JavaScript. |
+| `supabase/migrations` | Modifiche ordinate allo schema del database. |
+| `deploy` | Script di distribuzione e bootstrap Docker Compose su host singolo. |
+
+## Direzione della dipendenza
+
+Le regole pure vanno in `packages/core`. Il comportamento di persistenza
+appartiene a `packages/db`.
+
+Le mutazioni riutilizzabili vanno inserite in `packages/ops`. Il comportamento
+del modello e del recupero appartiene a `packages/agent`.
+
+Gli adattatori di superficie in `apps/web`, `packages/cli` e `packages/mcp` non
+devono creare un comportamento di dominio separato.

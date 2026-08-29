@@ -1,0 +1,44 @@
+---
+title: Build a Flow
+description: Configure one trigger, available conditions, and ordered response actions.
+---
+
+## Create the Flow
+
+1. Open an Assistant.
+2. Select **Flows**.
+3. Create a Flow.
+4. Enter a clear name and description.
+5. Select one trigger.
+
+The description helps Intent Classification select a message Flow. State the Visitor intent and the required scope.
+
+## Add message conditions
+
+Message Flows support these condition types:
+
+| Condition | Current behavior |
+| --- | --- |
+| Conversation context | Adds semantic examples to Intent Classification. It is not a hard gate. |
+| URL | Applies a Matches, Contains, or Regex hard gate. |
+| Schedule | Applies a start, end, and timezone hard gate. |
+
+Select **Any condition matches** or **All conditions match** when the Flow contains more than one condition.
+
+URL and Schedule conditions remove an ineligible Flow before classification. A satisfied condition does not force the Flow to win.
+
+## Add response actions
+
+1. Add the required actions.
+2. Put the actions in their execution order.
+3. Configure every required field.
+4. Save the Flow.
+5. Test one matching and one non-matching message.
+
+The editor limits proactive Flows to one Notification action. The server applies the same rule when it saves or dispatches a Flow.
+
+## Reorder Flows
+
+Drag a Flow to change message routing priority. The Default behavior Flow remains last.
+
+Disable a Flow when you must stop its routing without deleting its configuration.

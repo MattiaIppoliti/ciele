@@ -1,0 +1,105 @@
+---
+title: Datenmodell
+description: Verstehen Sie die Beziehungen zwischen Hauptmandant, Konfiguration, Wissen und Konversation.
+---
+
+## Mandantenbesitz
+
+Eine Organisation ist der primäre Mandant. Mitglieder treten einer Organisation
+mit einer Rolle bei.
+
+Zu den Datensätzen im Besitz der Organisation gehören Assistenten, Entitäten,
+Speicher, Helpdesks, Provider-Verbindungen, API-Schlüssel, Skills,
+Verbesserungen, Ziele, Warnungen und Nutzungsdatensätze.
+
+## Konfiguration des Assistenten
+
+<Mermaid
+  title="Ein Assistant ist für sein Routing und seine Snapshots verantwortlich"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  FLOW["Flow"]
+  PUB["Publication"]
+  ORG -->|"owns many"| ASSISTANT
+  ASSISTANT -->|"routes with"| FLOW
+  ASSISTANT -->|"snapshots into"| PUB
+`}
+/>
+
+Eine Veröffentlichung speichert einen unveränderlichen Snapshot der
+Assistenten-Konfiguration. Entwurfsdatensätze bleiben nach der Veröffentlichung
+bearbeitbar.
+
+Ein Flow speichert einen Trigger, eine Bedingungskonfiguration und geordnete
+Aktionen. Die Laufzeitvalidierung erzwingt gültige Trigger-Aktions-Paare.
+
+Ein Assistant wählt Entity-Schemata für seine nächste Veröffentlichung aus. Der
+Schema-Snapshot steuert die generierten Tools, während jede Abfrage die
+aktuellen Datensätze ausliest.
+
+Gemeinsam genutzte Entitäten stellen allgemeine Organisationsdaten zur
+Verfügung. Entitäten im Benutzerbereich benennen ein Identitätsattribut für die
+servergebundene Filterung.
+
+## Wissensbesitz
+
+<Mermaid
+  title="Ein Link, nicht eine Collection, bestimmt, was ein Assistant sucht"
+  chart={`
+flowchart TB
+  ORG["Organization"]
+  ASSISTANT["Assistant"]
+  COLLECTION["Knowledge Collection"]
+  SOURCE["Source"]
+  CONCEPT["Concept"]
+  ORG -->|"owns"| COLLECTION
+  COLLECTION -->|"holds"| SOURCE
+  SOURCE -->|"ingests into"| CONCEPT
+  ASSISTANT -->|"links to"| SOURCE
+`}
+/>
+
+Das Wissen gehört der Organisation. Eine Collection ist ein Container, kein
+Eigentümer, und sie entscheidet nicht, welcher Assistant aus einer Source
+antwortet.
+
+Die Verknüpfung zwischen Assistant und Quelle bestimmt dies. Retrieval liest den
+Link-Satz, sodass eine nicht verknüpfte Quelle niemandem antwortet. Die
+Verknüpfung ermöglicht zudem den direkten Zugriff für jeden einzelnen
+Assistenten.
+
+Wenn Sie einen Assistenten löschen, werden seine Verknüpfungen aufgehoben, aber
+alle Quellen bleiben erhalten.
+
+## Gesprächsdaten
+
+Eine Konversation gehört zum bedienenden Assistenten und verfolgt eine
+Besuchersitzung. In Messages werden eingegebene Teile für Text, Zitate,
+Schaltflächen, Traces und andere Antworten gespeichert.
+
+Der Sitzungsstatus zeichnet auch die proaktive Zustellung von Benachrichtigungen
+auf. Eine Benachrichtigung erzeugt keine Besuchernachricht.
+
+Langzeit-Speicher gehören zu einer Organisation und zu einem verifizierten
+SSO-Benutzer. Sie speichern eine dauerhafte Tatsache, eine Einbettung,
+Zeitstempel und die Herkunft der Quell-Konversation.
+
+Die Laufzeit begrenzt jedes Subjekt auf 200 Speicher. Durch das Löschen wird ein
+Fakt aus zukünftiger Prompt-Injektion und Speichersuchen entfernt.
+
+## Programmatische Anmeldeinformationen
+
+Ein API-Schlüssel-Datensatz gehört zu einer Organisation und speichert einen
+geheimen Hash, eine Rolle, den Ersteller und den Widerrufsstatus. Das
+Klartext-Geheimnis wird nicht gespeichert.
+
+## Isolierung
+
+Der authentifizierte Konsolenzugriff verwendet gegebenenfalls Sicherheit auf
+Zeilenebene. Pfade für Service-Rollen müssen eine explizite Organisationsgrenze
+hinzufügen.
+
+API v1 verwendet die Organisation, die aus dem API-Schlüssel aufgelöst wurde.
+Sie akzeptiert keine vom Aufrufer ausgewählte Organisation als Autorität.

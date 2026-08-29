@@ -1,0 +1,53 @@
+---
+title: Configurazione
+description: Configura origini, segreti, account, modelli, e-mail e worker opzionali.
+---
+
+Lo script bootstrap scrive `deploy/.env`. Usa `deploy/.env.example` come
+riferimento alla variabile corrente.
+
+## Origini pubbliche
+
+Imposta `PUBLIC_URL` sull'origine pubblica dell'applicazione. Imposta
+`SUPABASE_PUBLIC_URL` sull'origine del gateway del database accessibile dal
+browser.
+
+Ricompila l'applicazione dopo aver modificato `SUPABASE_PUBLIC_URL`. Il bundle
+del browser contiene questo valore in fase di compilazione.
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## Segreti generati
+
+Lo stack richiede Postgres, JSON Web Token, ruolo di servizio, crittografia
+dell'applicazione e segreti cron. Lascia che li generi lo script di bootstrap.
+
+Non modificare `JWT_SECRET`, `ANON_KEY` o `SERVICE_ROLE_KEY` separatamente.
+Insieme formano un'unica configurazione di firma.
+
+## Account ed e-mail
+
+Il primo account diventa il proprietario dell'organizzazione. Imposta
+`DISABLE_SIGNUP=true` dopo che gli account richiesti esistono.
+
+Senza la configurazione SMTP, `MAILER_AUTOCONFIRM=true` conferma automaticamente
+i nuovi account.
+
+Le azioni e-mail in fase di esecuzione utilizzano `RESEND_API_KEY` e
+`EMAIL_FROM`. Segnalano un risultato non configurato quando uno dei due valori è
+assente.
+
+## Endpoint del modello
+
+Configura le chiavi dei provider Anthropic, OpenAI o Google. Puoi anche
+configurare un endpoint di chat ed embedding compatibile con OpenAI.
+
+La ricerca nella knowledge base utilizza la corrispondenza lessicale quando non
+è disponibile alcun modello di embedding.
+
+## TLS
+
+Termina TLS in un reverse proxy. Quindi imposta entrambe le variabili di origine
+pubblica sui rispettivi indirizzi HTTPS e ricompila l'applicazione.

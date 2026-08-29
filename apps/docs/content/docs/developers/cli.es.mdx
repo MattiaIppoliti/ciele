@@ -1,0 +1,154 @@
+---
+title: Ciele CLI
+description: Gestiona Ciele desde un terminal o una tarea automatizada.
+---
+
+El comando `ciele` utiliza las mismas operaciones de API que la consola de
+administración. La CLI es compatible con el servicio alojado y con las
+instalaciones autoalojadas.
+
+## Requisitos
+
+- Utiliza Node.js 22.6 o una versión posterior.
+- Crea una [clave de API de organización](/developers/api-keys).
+
+## Instalar
+
+Compila e instala el paquete independiente desde una copia del repositorio:
+
+```bash
+pnpm --dir packages/cli pack --pack-destination ./dist
+npm install --global ./packages/cli/dist/ciele-cli-*.tgz
+ciele help
+```
+
+El tarball incluye sus dependencias de tiempo de ejecución. El comando installed
+ya no necesita el repositorio.
+
+Después de que `@ciele/cli` se publique en npm,
+`npm install --global @ciele/cli` instala el mismo artefacto.
+
+Los colaboradores también pueden ejecutar `node packages/cli/bin/ciele.mjs` sin
+instalarlo.
+
+## Iniciar sesión
+
+Para el servicio alojado, ejecuta:
+
+```bash
+ciele login --key "$CIELE_API_KEY"
+ciele whoami
+```
+
+Para una instalación autohospedada, añade su origen público:
+
+```bash
+ciele login \
+  --key "$CIELE_API_KEY" \
+  --base-url "https://ciele.example.edu"
+ciele doctor
+```
+
+El comando `login` valida la clave antes de escribir `~/.ciele/config.json`. En
+los sistemas compatibles, el modo de archivo es `0600`.
+
+La CLI resuelve una clave en este orden:
+
+1. La opción `--api-key`.
+2. La variable de entorno `CIELE_API_KEY`.
+3. El archivo de configuración guardado.
+
+La CLI utiliza el mismo orden para `--base-url`, `CIELE_BASE_URL` y el origen
+guardado. El origen alojado es el valor predeterminado final.
+
+## Usar la salida de automatización
+
+Añade `--json` a un comando para recibir una salida legible por máquina.
+
+| Código de salida | Significado |
+| --- | --- |
+| `0` | La operación se ha completado. |
+| `1` | El servidor ha devuelto un error. |
+| `2` | La entrada del comando no es válida. |
+| `3` | Error de autenticación. |
+
+`ciele doctor` verifica el descubrimiento de la API, la compatibilidad de la
+API, la clave, su rol y su organización.
+
+## Comandos de asistente y conocimiento
+
+```bash
+ciele assistants list --all
+ciele assistants update <assistant-id> --file assistant-patch.json
+ciele flows list <assistant-id>
+ciele flows update <flow-id> --file flow-patch.json
+ciele collections list <assistant-id>
+ciele sources add-file <collection-id> --file handbook.pdf --assistants <assistant-id>
+ciele sources get <source-id>
+ciele publish status <assistant-id>
+```
+
+Cada comando que añade conocimiento necesita `--assistants`. Una Colección no
+tiene propietario, por lo que estos enlaces son lo único que pone el
+conocimiento al alcance de un Asistente. Los comandos son `sources add-text`,
+`sources add-url`, `sources add-file`, `faqs add` y `faqs import`.
+
+### Enlaces de fuente
+
+Una Fuente responde por los Asistentes vinculados a ella. Estos comandos leen y
+modifican los enlaces.
+
+```bash
+ciele sources list-org
+ciele sources link <source-id> --assistants <assistant-id>,<assistant-id>
+ciele sources direct-access <source-id> on --assistant <assistant-id>
+```
+
+`sources list-org` enumera todas las Fuentes que posee la Organización, en todos
+los Asistentes.
+
+`sources link` reemplaza el conjunto de enlaces. Una lista vacía elimina todos
+los enlaces y la Fuente deja de responder.
+
+`sources direct-access` decide si ese Asistente puede proporcionar el archivo
+original a un Visitante.
+
+## Comandos de Operaciones y Organización
+
+```bash
+ciele conversations list --assistant <assistant-id>
+ciele conversations pin <conversation-id>
+ciele messages feedback <message-id> --value -1
+ciele improvements list
+ciele entities list
+ciele memories subjects
+ciele help-desks list
+ciele teammates list
+ciele channels list
+ciele skills list
+ciele goals list <assistant-id>
+ciele alerts list
+ciele organization get
+ciele members list
+ciele invites list
+ciele api-keys list
+ciele providers list
+ciele sso connection
+```
+
+Los comandos que eliminan datos requieren `--yes`. No se puede eliminar el flujo
+de comportamiento predeterminado.
+
+Ejecuta `ciele help` para cada grupo de comandos y opción aceptada. Añade
+`--file` cuando un comando acepte una entrada JSON completa o un parche.
+
+## Ejemplo de comprobación de CI
+
+```bash
+export CIELE_API_KEY="ciele_sk_..."
+export CIELE_BASE_URL="https://ciele.example.edu"
+ciele publish status "$ASSISTANT_ID" --json
+```
+
+Guarda todos los valores en el almacén de secretos de CI. No escribas una clave
+en un archivo de flujo de trabajo.

@@ -1,0 +1,31 @@
+---
+title: Improvements
+description: Track and complete work that corrects weak Assistant answers.
+---
+
+An Improvement records one answer-quality problem. It can include linked messages, Sources, a description, and a suggested fix.
+
+## Sources of Improvements
+
+- An Improvement Flow action creates an item.
+- A Help Desk can create an item after escalation.
+- An administrator can flag an answer from the Inbox.
+- Search knowledge can create an item for an unresolved query when configured.
+
+## Manage an item
+
+Open an item to review its linked messages and available suggested fix. You can change its status, priority, tags, assignee, and due date.
+
+The API, CLI, and MCP server can list, read, and update existing Improvements. Improvement creation remains a product-runtime operation.
+
+## Correct the answer
+
+1. Read the linked Conversation.
+2. Identify the incorrect Source, FAQ, Flow, or instruction.
+3. Correct the draft configuration.
+4. Ask the original question in Preview.
+5. Confirm the answer and Sources.
+6. Publish the Assistant.
+7. Mark the Improvement as complete.
+
+Review generated suggested fixes before you use them. The stored suggestion is not a publication change.

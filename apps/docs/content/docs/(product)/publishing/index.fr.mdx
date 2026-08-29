@@ -1,0 +1,53 @@
+---
+title: Publier un Assistant
+description: Créez un instantané de widget immuable et contrôlez où il peut s'exécuter.
+---
+
+Une publication fige la configuration actuelle de l'assistant. Le widget en
+production lit la publication active au lieu du brouillon.
+
+## Préparez la publication
+
+1. Testez le brouillon en mode Prévisualisation.
+2. Vérifiez que les sources de connaissances requises sont prêtes.
+3. Testez les messages de flux correspondants et non correspondants.
+4. Testez le service d'assistance et les chemins d'authentification lorsqu'ils
+   sont activés.
+5. Ouvrez **Publish**.
+
+## Configurez les domaines autorisés
+
+Ajoutez chaque origine de site Web pouvant intégrer l'Assistant. Utilisez
+exactement le schéma et l'hôte envoyés par le navigateur.
+
+N'ajoutez pas de domaine générique lorsqu'une seule application a besoin du
+widget.
+
+## Créez la publication
+
+1. Sélectionnez **Publish**.
+2. Confirmez l'action de publication.
+3. Copiez le code d'intégration.
+4. Ajoutez le code à un site Web autorisé.
+5. Ouvrez le site Web dans une session de navigation privée.
+6. Envoyez un message de test.
+
+Les modifications ultérieures apportées au brouillon ne modifient pas cette
+Publication. Publiez à nouveau pour créer et activer un nouvel instantané
+immuable.
+
+## Restaurer une publication
+
+Sélectionnez une publication antérieure lorsque vous devez restaurer sa
+configuration. L'action de restauration rend cette version immuable à nouveau
+active.
+
+## Annuler la publication
+
+Utilisez **Unpublish** pour mettre la configuration du widget hors ligne. Le
+code d'intégration existant ne peut pas charger un Assistant actif après
+l'opération.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
+</Callout>

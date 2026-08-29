@@ -1,0 +1,101 @@
+---
+title: Entità e record
+description: Definisci i dati tipizzati dell'Organizzazione, importa righe CSV e rendi disponibili strumenti di recupero sicuri.
+---
+
+Un'Entity descrive un tipo di dati strutturati dell'Organization. I suoi Record
+contengono i valori che un Assistente può interrogare.
+
+Un'Entità **Orders** può contenere attributi `order_id`, `status`, `total` e
+`customer_email`.
+
+## Crea un'entità
+
+1. Apri **Settings**.
+2. Seleziona **Data**.
+3. Seleziona **New entity**.
+4. Inserisci un nome e una descrizione.
+5. Aggiungi la chiave, l'etichetta e il tipo di ogni attributo.
+6. Seleziona l'attributo chiave.
+7. Seleziona **Shared** o **User-scoped**.
+8. Seleziona **Create entity**.
+
+Gli attributi supportano valori di testo, numerici, di data e booleani.
+L'attributo chiave identifica un Record all'interno dell'Entity.
+
+Gli attributi, la chiave e l'ambito di un'Entità diventano fissi dopo la
+creazione. Crea un'altra Entità quando quella struttura deve cambiare.
+
+## Modifica o elimina un'Entità
+
+Apri un'Entità e seleziona **Edit** per modificarne il nome o la descrizione. I
+suoi attributi, l'attributo chiave e l'ambito rimangono fissi.
+
+Seleziona **Delete** per rimuovere l'Entità e tutti i suoi Record.
+
+## Scegli l'ambito
+
+| Ambito | Utilizzo | Comportamento in fase di esecuzione |
+| --- | --- | --- |
+| **Shared** | Cataloghi, programmi, posizioni e dati di riferimento comuni | Qualsiasi Visitatore servito dall'Assistente può interrogare i Record corrispondenti. |
+| **User-scoped** | Ordini, account, applicazioni e altri dati per visitatore | Il server limita ogni query al visitatore verificato che ha effettuato l'accesso. |
+
+Anche un'Entità con ambito utente necessita di un attributo di identità. I suoi
+valori devono corrispondere al
+[claim di identità Entra](/authentication/microsoft-entra-id#choose-an-identity-claim)
+configurato.
+
+## Importa record da CSV
+
+1. Apri l'Entità.
+2. Seleziona **Import CSV**.
+3. Scegli un file CSV o incolla il suo testo.
+4. Verifica che ogni intestazione corrisponda a una chiave attributo o a
+   un'etichetta. La corrispondenza non fa distinzione tra maiuscole e minuscole.
+5. Seleziona **Import**.
+6. Controlla il numero di righe importate e rifiutate.
+
+Importa e aggiorna in base all'attributo chiave. La reimportazione della stessa
+chiave aggiorna il suo Record invece di creare un duplicato.
+
+Le righe valide vengono comunque importate quando altre righe non superano la
+convalida. Il report elenca un motivo per ogni riga rifiutata.
+
+Una colonna CSV sconosciuta rifiuta l'importazione. Rimuovila o aggiungi
+l'attributo corrispondente a una nuova Entità.
+
+Seleziona **Records** per sfogliare i primi 50 Record in ordine di chiave.
+
+## Collega un'Entità a un Assistente
+
+1. Apri l'Assistente.
+2. Seleziona **Tools & Skills**.
+3. Trova **Data**.
+4. Seleziona ogni Entità che l'Assistente può interrogare.
+5. Prova la ricerca esatta e la ricerca testuale in **Preview**.
+6. Pubblica l'Assistente.
+
+Ogni Entità selezionata può fornire uno strumento di filtro esatto. Le entità
+con attributi di testo forniscono anche uno strumento di ricerca per parole
+chiave.
+
+Gli schemi delle Entità selezionate entrano nello snapshot della Pubblicazione.
+Le Entità non selezionate non generano strumenti.
+
+Il contenuto del record viene letto in tempo reale. L'importazione di Record
+aggiornati non richiede un'altra Pubblicazione.
+
+## Proteggi i record con ambito utente
+
+Gli strumenti con ambito utente esistono solo quando il turno contiene un claim
+di identità verificato. I visitatori anonimi non ricevono questi strumenti.
+
+L'attributo identity viene rimosso dall'input dello strumento rivolto al
+modello. Il server aggiunge il valore verificato a ogni query.
+
+Se manca il claim, gli strumenti con ambito utente rimangono non disponibili.
+Gli strumenti Shared Entity possono comunque funzionare.
+
+<Callout title="Identity cannot come from the prompt">
+Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.
+</Callout>

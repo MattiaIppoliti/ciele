@@ -1,0 +1,59 @@
+---
+title: Modello agentico
+description: Comprendi la risoluzione del provider, l'utilizzo degli strumenti, i limiti, le tracce e le citazioni.
+---
+
+Il runtime utilizza l'astrazione del provider Vercel AI SDK. Gli attuali
+adattatori di provider includono Anthropic, OpenAI, Google e un endpoint
+compatibile con OpenAI.
+
+## Limiti generativi
+
+Il runtime effettua una chiamata al modello solo all'interno di un'azione
+generativa o di una Classificazione dell'intento. Le azioni deterministiche non
+passano il loro contenuto attraverso un modello.
+
+La risposta di base utilizza una chiamata di chat e nessun tool. Search
+knowledge utilizza un ciclo di strumenti delimitato.
+
+## Ciclo di ricerca nella Knowledge Base
+
+1. Il modello riceve le istruzioni dell'Assistente e le descrizioni degli
+   strumenti disponibili.
+2. Il modello cerca in Knowledge o legge una finestra Source selezionata.
+3. Il runtime registra gli eventi del ciclo di vita dello strumento.
+4. Il modello può ripetere la ricerca entro il limite di passaggi.
+5. Il runtime genera la risposta finale e le citazioni nominate.
+
+Il pannello Thinking rappresenta questi progressi registrati e gli eventi
+relativi agli strumenti. Il pensiero semplificato riscrive il testo di
+avanzamento per la visualizzazione Visitor.
+
+## Strumenti di integrazione API
+
+Un Assistente può registrare un catalogo API. Il catalogo descrive il suo URL di
+base, le credenziali protette e gli endpoint disponibili.
+
+Il modello può ispezionare i dettagli dell'API e interrogare un endpoint
+registrato. Il runtime convalida ogni percorso rispetto al catalogo prima
+dell'uscita dalla rete.
+
+I lettori in modalità finestra restituiscono un intervallo di contenuto
+richiesto e la lunghezza totale. Questo contratto consente al modello di
+ispezionare payload API e Knowledge di grandi dimensioni senza troncamenti
+silenziosi.
+
+## Comportamento in caso di errore
+
+Il router delle parole chiave gestisce la classificazione quando non è
+disponibile alcun modello classificatore o la classificazione fallisce. La
+ricerca nella conoscenza può utilizzare il fallback lessicale senza embedding.
+
+Un trasporto e-mail non configurato restituisce un risultato di errore onesto.
+Non crea un messaggio di recapito riuscito.
+
+## Regola di estensione
+
+Aggiungi un nuovo strumento agente tramite il registro degli strumenti e il suo
+wrapper del ciclo di vita. Mantieni l'autorizzazione, la proprietà, la convalida
+degli input e i controlli in uscita al di fuori del controllo del modello.

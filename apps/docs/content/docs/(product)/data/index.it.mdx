@@ -1,0 +1,57 @@
+---
+title: Dati e memoria
+description: Basa le risposte su Record strutturati e ricorda i Visitatori che hanno effettuato l'accesso in tutte le Conversazioni.
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Brain, Database } from 'lucide-react';
+
+Ciele può combinare i Record dell'Organizzazione con informazioni permanenti sui
+Visitatori che hanno effettuato l'accesso. Queste funzionalità utilizzano
+l'identità verificata e rimangono sotto il controllo dell'Organizzazione.
+
+<Mermaid
+  title="I record diventano strumenti solo quando li pubblichi"
+  chart={`
+flowchart TB
+  DATA["Entity schema and imported Records"]
+  SELECT["Select the Entity in Tools & Skills"]
+  PUB["Publish the Assistant"]
+  TOOLS["Lookup tools the Assistant can call"]
+  TRACE["Calls appear in Thinking and the Inbox"]
+  DATA --> SELECT
+  SELECT --> PUB
+  PUB --> TOOLS
+  TOOLS --> TRACE
+`}
+/>
+
+La Pubblicazione controlla quali strumenti di Entità esistono. I valori dei
+Record rimangono attivi, quindi una successiva importazione CSV può modificare
+le risposte senza un'altra Pubblicazione.
+
+Un'Entità con ambito utente necessita di un claim di identità verificato. Il
+server aggiunge quel filtro dopo aver convalidato l'input dello strumento,
+quindi un modello non può né rimuoverlo né nominare un altro Visitatore.
+
+La memoria a lungo termine è una funzionalità separata con un proprio ciclo di
+vita. Non dipende dalle Entità. Vedi
+[Memoria a lungo termine](/data/long-term-memory).
+
+<Cards>
+  <Card icon={<Database />} title="Entities and Records" href="/data/entities-and-records" description="Define typed data, import CSV rows, and expose bounded retrieval tools." />
+  <Card icon={<Brain />} title="Long-term memory" href="/data/long-term-memory" description="Enable durable facts, inspect recall, and erase stored memories." />
+</Cards>
+
+## Due tipi di memoria
+
+**Session memory** appartiene a una Conversazione. Non segue un Visitatore in
+una nuova Conversazione.
+
+**Long-term memory** appartiene a un soggetto SSO verificato all'interno di
+un'Organizzazione. Può supportare Conversazioni successive quando
+l'Organizzazione lo abilita.
+
+<Callout title="Signed-in Visitors only">
+Anonymous Visitors never receive user-scoped Entity tools. They also never produce or recall long-term memories.
+</Callout>

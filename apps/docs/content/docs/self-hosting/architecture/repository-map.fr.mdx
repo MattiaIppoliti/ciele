@@ -1,0 +1,46 @@
+---
+title: Carte du dépôt
+description: Localisez l'application open source actuelle, les paquets, les workers, le schéma et les fichiers de déploiement.
+---
+
+## Applications
+
+| Chemin | Responsabilité |
+| --- | --- |
+| `apps/web` | Console d'administration, moteur d'exécution de widget, pages publiques, actions serveur et API v1. |
+| `apps/docs` | Application de documentation Fumadocs et pipeline de traduction. |
+
+## Paquets partagés
+
+| Chemin | Responsabilité |
+| --- | --- |
+| `packages/core` | Types de domaine, règles Pure Flow, valeurs par défaut, conditions et logique d'analyse. |
+| `packages/db` | Interfaces de persistance, stockage fictif et implémentation de Supabase. |
+| `packages/agent` | Exécution de tours, fournisseurs de modèles, outils de connaissances, ingestion et évaluation. |
+| `packages/ops` | Opérations de l'organisation partagée utilisées par les actions de la console et l'API v1. |
+| `packages/client` | Client typé pour l'API v1. |
+| `packages/cli` | Interface terminale via le client typé. |
+| `packages/mcp` | Adaptateur MCP local à quatorze outils sur le client typé. |
+| `packages/ui` | Composants partagés de l'interface utilisateur. |
+| `packages/charts` | Visualisations analytiques partagées. |
+
+## Services et infrastructure
+
+| Chemin | Responsabilité |
+| --- | --- |
+| `services/graph-worker` | Service optionnel d'extraction et de récupération de graphes. |
+| `services/crawl4ai` | Configuration optionnelle du robot d'indexation avec rendu JavaScript. |
+| `supabase/migrations` | Modifications ordonnées du schéma de base de données. |
+| `deploy` | Scripts de déploiement et d'amorçage Docker Compose sur un hôte unique. |
+
+## Direction de la dépendance
+
+Les règles pures appartiennent à `packages/core`. Le comportement de persistance
+appartient à `packages/db`.
+
+Les mutations réutilisables doivent être placées dans `packages/ops`. Le
+comportement de modèle et de récupération doit être défini dans
+`packages/agent`.
+
+Les adaptateurs de surface dans `apps/web`, `packages/cli` et `packages/mcp` ne
+doivent pas créer de comportement de domaine distinct.

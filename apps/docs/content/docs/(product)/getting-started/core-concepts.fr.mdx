@@ -1,0 +1,66 @@
+---
+title: Concepts fondamentaux
+description: Découvrez les termes stables que Ciele utilise dans le produit et dans la documentation.
+---
+
+## Organisation
+
+Une organisation possède des membres, des assistants, des centres d'assistance,
+des connexions à des fournisseurs, des clés API, des compétences et des données
+opérationnelles.
+
+## Assistant
+
+Un Assistant est un agent conversationnel configuré. Il possède une identité,
+des connaissances, des flux, des outils, un modèle, une apparence et un état de
+publication.
+
+## Source et collection de connaissances
+
+Une Source est un site Web, un fichier, un texte ou un contenu de FAQ d'origine.
+L'ingestion transforme une Source en Concepts, les documents consultables qui
+sous-tendent une réponse fondée.
+
+Les sources appartiennent à l'organisation. Une Collection de connaissances est
+le conteneur de l'Organisation qui les stocke.
+
+## Lien de la source
+
+Un lien relie une Source à un Assistant. Un Assistant effectue une recherche
+dans une Source uniquement via un lien.
+
+Le lien contient également **Direct access**, qui détermine si l'Assistant peut
+fournir le fichier original à un Visiteur.
+
+## Flux
+
+Un flux est une règle de routage ordonnée. Il contient un déclencheur, des
+conditions disponibles et des actions de réponse ordonnées.
+
+Le flux **Default behavior** verrouillé reste le dernier. Il traite un message
+éligible lorsqu'aucun flux précédent n'est prioritaire.
+
+## Publication
+
+Une Publication est un instantané immuable de l'Assistant. Le widget utilise la
+Publication active, et non le brouillon actuel de l'administrateur.
+
+## Conversation
+
+Une Conversation stocke les messages du Visiteur et de l'Assistant, les éléments
+de réponse, les citations, les traces d'exécution et les métadonnées de session.
+
+## Centre d'assistance
+
+Un centre d'assistance définit un ou plusieurs canaux de contact. Un Assistant
+peut suggérer un Centre d'assistance pertinent lors de l'escalade.
+
+## Amélioration
+
+Une amélioration est un élément d'examen pour un problème de qualité de réponse.
+Elle peut renvoyer au message exact de la conversation.
+
+## Objectif et alerte
+
+Un objectif exécute une vérification de réponse planifiée. Un objectif ayant
+échoué crée une alerte pour un administrateur.

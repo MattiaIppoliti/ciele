@@ -1,0 +1,43 @@
+---
+title: Publish an Assistant
+description: Create an immutable widget snapshot and control where it can run.
+---
+
+A Publication freezes the current Assistant configuration. The live widget reads the active Publication instead of the draft.
+
+## Prepare the publication
+
+1. Test the draft in Preview.
+2. Confirm that required Knowledge Sources are ready.
+3. Test matching and non-matching Flow messages.
+4. Test Help Desk and authentication paths when enabled.
+5. Open **Publish**.
+
+## Configure allowed domains
+
+Add each website origin that can embed the Assistant. Use the exact scheme and host that the browser sends.
+
+Do not add a broad domain when only one application needs the widget.
+
+## Create the Publication
+
+1. Select **Publish**.
+2. Confirm the publication action.
+3. Copy the embed code.
+4. Add the code to an allowed website.
+5. Open the website in a private browser session.
+6. Send one test message.
+
+Later draft changes do not modify this Publication. Publish again to create and activate a new immutable snapshot.
+
+## Restore a publication
+
+Select an earlier Publication when you must restore its configuration. The restore action makes that immutable version active again.
+
+## Unpublish
+
+Use **Unpublish** to take the widget configuration offline. Existing embed code cannot load an active Assistant after the operation.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
+</Callout>

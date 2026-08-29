@@ -1,0 +1,39 @@
+{
+  "name": "@agent-hub/ui",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./use-resizable-width": "./src/use-resizable-width.ts",
+    "./resize-geometry": "./src/resize-geometry.ts"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
+    "morphicons": "^1.4.1",
+    "react-day-picker": "^9.11.1",
+    "tailwind-merge": "^3.6.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
+    "@types/react": "^19",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^9.39.4",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.9"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

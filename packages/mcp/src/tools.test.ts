@@ -1,0 +1,315 @@
+import { describe, expect, it } from "vitest";
+import { z } from "zod";
+import { CieleClient } from "@ciele/client";
+import { callTool } from "./server.ts";
+import { buildTools, type CieleTool } from "./tools.ts";
+
+/** Tool calls against a stubbed fetch: request shapes + the read-only gate. */
+
+interface Captured {
+  url: string;
+  method: string;
+  body?: string;
+  formFile?: { name: string; text: string };
+  /** The JSON-encoded `assistantIds` multipart field (PRD #726 links). */
+  formLinks?: string;
+}
+
+function harness(
+  respond: (c: Captured) => { status?: number; json?: unknown } = () => ({
+    json: { ok: true },
+  })
+) {
+  const calls: Captured[] = [];
+  const fetchImpl = (async (input: string | URL | Request, init?: RequestInit) => {
+    const captured: Captured = {
+      url: String(input),
+      method: init?.method ?? "GET",
+      body: typeof init?.body === "string" ? init.body : undefined,
+    };
+    if (init?.body instanceof FormData) {
+      const value = init.body.get("file");
+      if (value instanceof File) {
+        captured.formFile = { name: value.name, text: await value.text() };
+      }
+      const links = init.body.get("assistantIds");
+      if (typeof links === "string") captured.formLinks = links;
+    }
+    calls.push(captured);
+    const { status = 200, json = {} } = respond(captured);
+    return new Response(status === 204 ? null : JSON.stringify(json), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  const client = new CieleClient({
+    apiKey: "ciele_sk_test",
+    baseUrl: "http://self.host",
+    fetch: fetchImpl,
+  });
+  const tools = new Map(buildTools(client).map((t) => [t.name, t]));
+  const tool = (name: string): CieleTool => {
+    const found = tools.get(name);
+    if (!found) throw new Error(`no tool ${name}`);
+    return found;
+  };
+  return { calls, tool, tools };
+}
+
+describe("ciele MCP tools", () => {
+  it("registers the coarse tool set covering every domain", () => {
+    const { tools } = harness();
+    expect([...tools.keys()].sort()).toEqual([
+      "ciele_identity",
+      "manage_assistants",
+      // Teammate channels (#778): the group threads, read and shaped. No post
+      // action, because a message starts a chain of model turns.
+      "manage_channels",
+      "manage_configuration",
+      "manage_entities",
+      "manage_flows",
+      "manage_help_desks",
+      "manage_improvements",
+      "manage_integrations",
+      "manage_knowledge",
+      "manage_memories",
+      "manage_organization",
+      "manage_sso",
+      "manage_teammates",
+      "publish_assistant",
+      "read_inbox",
+    ]);
+  });
+
+  it("tool calls become the right API requests", async () => {
+    const { calls, tool } = harness();
+
+    await callTool(tool("manage_assistants"), { action: "create", title: "Bot" }, false);
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      url: "http://self.host/api/v1/assistants",
+    });
+    expect(JSON.parse(calls[0].body!).title).toBe("Bot");
+
+    await callTool(
+      tool("manage_flows"),
+      { action: "update", id: "f1", flow: { enabled: false } },
+      false
+    );
+    expect(calls[1]).toMatchObject({ method: "PATCH" });
+    expect(calls[1].url).toContain("/flows/f1");
+
+    await callTool(
+      tool("manage_knowledge"),
+      {
+        action: "add_file",
+        collectionId: "c1",
+        name: "notes.txt",
+        fileBase64: Buffer.from("hello").toString("base64"),
+        assistantIds: ["a1"],
+      },
+      false
+    );
+    expect(calls[2].formFile).toEqual({ name: "notes.txt", text: "hello" });
+    expect(calls[2].formLinks).toBe('["a1"]');
+
+    await callTool(
+      tool("manage_knowledge"),
+      {
+        action: "import_faqs",
+        collectionId: "c1",
+        csvText: "question,answer\nQ,A\n",
+        assistantIds: ["a1"],
+      },
+      false
+    );
+    expect(calls[3].url).toContain("/collections/c1/faqs/import");
+    expect(calls[3].formFile?.name).toBe("faqs.csv");
+    expect(calls[3].formLinks).toBe('["a1"]');
+
+    await callTool(tool("publish_assistant"), { action: "publish", assistantId: "a1" }, false);
+    expect(calls[4]).toMatchObject({ method: "POST" });
+    expect(calls[4].url).toContain("/assistants/a1/publish");
+
+    await callTool(
+      tool("read_inbox"),
+      { action: "export", conversationIds: ["c1", "c2"] },
+      false
+    );
+    expect(JSON.parse(calls[5].body!)).toEqual({ conversationIds: ["c1", "c2"] });
+
+    await callTool(
+      tool("manage_entities"),
+      { action: "query_records", entityId: "e1", query: { search: "delayed" } },
+      false
+    );
+    expect(calls[6].url).toContain("/entities/e1/records/query");
+
+    await callTool(
+      tool("manage_memories"),
+      { action: "list", subjectId: "user@example.com" },
+      false
+    );
+    expect(calls[7].url).toContain("/memories/subjects/user%40example.com");
+
+    await callTool(
+      tool("manage_assistants"),
+      { action: "set_entities", id: "a1", entityIds: ["e1"] },
+      false
+    );
+    expect(JSON.parse(calls[8].body!)).toEqual({ entityIds: ["e1"] });
+
+    await callTool(
+      tool("manage_sso"),
+      { action: "set_identity", identityClaim: "email" },
+      false
+    );
+    expect(JSON.parse(calls[9].body!)).toEqual({ identityClaim: "email" });
+
+    await callTool(
+      tool("manage_help_desks"),
+      { action: "create", input: { name: "Admissions" } },
+      false
+    );
+    expect(calls[10]).toMatchObject({ method: "POST" });
+    expect(calls[10].url).toContain("/help-desks");
+
+    await callTool(
+      tool("manage_configuration"),
+      { action: "assistant_skills_set", assistantId: "a1", skillIds: ["s1"] },
+      false
+    );
+    expect(JSON.parse(calls[11].body!)).toEqual({ skillIds: ["s1"] });
+
+    await callTool(
+      tool("manage_organization"),
+      { action: "member_set_role", id: "u1", role: "editor" },
+      false
+    );
+    expect(JSON.parse(calls[12].body!)).toEqual({ role: "editor" });
+
+    await callTool(
+      tool("manage_integrations"),
+      { action: "provider_set_embedding", connectionId: null },
+      false
+    );
+    expect(JSON.parse(calls[13].body!)).toEqual({ connectionId: null });
+  });
+
+  it("read-only mode refuses every mutation before it reaches the network", async () => {
+    const { calls, tool, tools } = harness();
+    const mutating: Array<[string, Record<string, unknown>]> = [
+      ["manage_assistants", { action: "delete", id: "a1" }],
+      ["manage_assistants", { action: "create", title: "x" }],
+      ["manage_flows", { action: "reorder", assistantId: "a1", orderedIds: [] }],
+      ["manage_knowledge", { action: "add_text", collectionId: "c1", text: "x" }],
+      ["manage_knowledge", { action: "delete_source", sourceId: "s1" }],
+      ["publish_assistant", { action: "unpublish", assistantId: "a1" }],
+      ["manage_improvements", { action: "update", id: "i1", patch: {} }],
+      ["manage_entities", { action: "delete", id: "e1" }],
+      ["manage_entities", { action: "import_records", entityId: "e1", csvText: "id\n1\n" }],
+      ["manage_memories", { action: "wipe", subjectId: "s1" }],
+      ["manage_memories", { action: "disable" }],
+      ["manage_assistants", { action: "set_entities", id: "a1", entityIds: [] }],
+      ["manage_sso", { action: "set_identity", identityClaim: "email" }],
+      ["manage_sso", { action: "validate" }],
+      ["read_inbox", { action: "delete", conversationId: "c1" }],
+      ["manage_help_desks", { action: "delete", id: "h1" }],
+      ["manage_configuration", { action: "alert_resolve", id: "a1" }],
+      ["manage_organization", { action: "api_key_revoke", id: "k1" }],
+      ["manage_integrations", { action: "provider_delete", id: "p1" }],
+    ];
+    for (const [name, args] of mutating) {
+      const result = await callTool(tool(name), args, true);
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Read-only mode");
+    }
+    expect(calls).toHaveLength(0);
+
+    // Reads still work in read-only mode.
+    const listed = await callTool(tool("manage_assistants"), { action: "list" }, true);
+    expect(listed.isError).toBeUndefined();
+    const status = await callTool(
+      tool("publish_assistant"),
+      { action: "status", assistantId: "a1" },
+      true
+    );
+    expect(status.isError).toBeUndefined();
+    expect(calls.length).toBe(2);
+
+    // Every tool declares read-only-safe reads.
+    expect(tools.get("ciele_identity")!.mutates({})).toBe(false);
+    expect(tools.get("read_inbox")!.mutates({ action: "export" })).toBe(false);
+    expect(tools.get("read_inbox")!.mutates({ action: "pin" })).toBe(true);
+    expect(tools.get("manage_entities")!.mutates({ action: "query_records" })).toBe(false);
+    expect(tools.get("manage_memories")!.mutates({ action: "list" })).toBe(false);
+    expect(tools.get("manage_assistants")!.mutates({ action: "get_entities" })).toBe(false);
+    expect(tools.get("manage_sso")!.mutates({ action: "status" })).toBe(false);
+    expect(tools.get("manage_help_desks")!.mutates({ action: "list" })).toBe(false);
+    expect(tools.get("manage_configuration")!.mutates({ action: "goal_list" })).toBe(false);
+    expect(tools.get("manage_organization")!.mutates({ action: "member_list" })).toBe(false);
+    expect(tools.get("manage_integrations")!.mutates({ action: "provider_list" })).toBe(false);
+  });
+
+  it("missing per-action fields and API errors become error results, not throws", async () => {
+    const { tool } = harness(() => ({
+      status: 403,
+      json: { error: { code: "forbidden", message: "role too low" } },
+    }));
+
+    const missing = await callTool(tool("manage_assistants"), { action: "get" }, false);
+    expect(missing.isError).toBe(true);
+    expect(missing.content[0].text).toContain('"id" is required');
+
+    const denied = await callTool(
+      tool("manage_assistants"),
+      { action: "delete", id: "a1" },
+      false
+    );
+    expect(denied.isError).toBe(true);
+    expect(denied.content[0].text).toBe("403 forbidden: role too low");
+  });
+
+  it("results serialize as JSON text content", async () => {
+    const { tool } = harness(() => ({ json: { data: [{ id: "a1" }] } }));
+    const result = await callTool(tool("manage_assistants"), { action: "list" }, false);
+    expect(result.content[0].type).toBe("text");
+    expect(JSON.parse(result.content[0].text)).toEqual({ data: [{ id: "a1" }] });
+  });
+
+  /**
+   * 2026-07-28 asks servers to return tools in a deterministic order so
+   * clients can cache and LLM prompt caches hit (#701). `buildTools` returns
+   * an array literal, which already satisfies it, this locks that in, because
+   * the obvious future refactor (build from a map/registry) would silently
+   * break it.
+   */
+  it("returns tools in a deterministic order", () => {
+    const names = () =>
+      buildTools(
+        new CieleClient({ apiKey: "ciele_sk_test", baseUrl: "http://self.host" })
+      ).map((tool) => tool.name);
+
+    expect(names()).toEqual(names());
+    expect(names()[0]).toBe("ciele_identity");
+  });
+
+  /**
+   * SEP-2106 loosened `inputSchema` to any JSON Schema 2020-12. Every tool
+   * declares a raw Zod shape that `server.ts` wraps in `z.object`, so what
+   * reaches the wire must be an object schema, a tool whose schema is not an
+   * object would be rejected by a strict client.
+   */
+  it("every tool declares an object-shaped input schema", () => {
+    const { tools } = harness();
+    for (const tool of tools.values()) {
+      const jsonSchema = z.toJSONSchema(z.object(tool.schema));
+      expect(jsonSchema.type, `${tool.name} input schema`).toBe("object");
+      if (tool.name !== "ciele_identity") {
+        // Every domain tool discriminates on `action`.
+        expect(Object.keys(jsonSchema.properties ?? {})).toContain("action");
+      }
+    }
+  });
+});

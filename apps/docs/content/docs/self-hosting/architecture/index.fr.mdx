@@ -1,0 +1,55 @@
+---
+title: Architecture
+description: Comprendre les composants open source actuels et leurs limites d'exécution.
+---
+
+Ciele est un monorepo TypeScript avec une application produit Next.js, des
+paquets partagés, Postgres et des workers optionnels.
+
+## Limites principales
+
+<Mermaid
+  title="Chaque requête parvient à Postgres via la même couche d'accès aux données"
+  chart={`
+flowchart TB
+  UI["Console and widget"]
+  API["Server actions and API v1"]
+  OPS["Shared operations"]
+  RUNTIME["Flow and agent runtime"]
+  DB["Data access"]
+  PG[("Postgres and storage")]
+  UI --> API
+  API --> OPS
+  API --> RUNTIME
+  OPS --> DB
+  RUNTIME --> DB
+  DB --> PG
+`}
+/>
+
+Des processus de travail optionnels s'exécutent en parallèle de l'environnement
+d'exécution pour l'indexation et la construction de graphes. Ils lisent la même
+base de données et restent désactivés par défaut. Voir
+[Processus d'arrière-plan](/self-hosting/workers).
+
+Le routeur Flow reste l'autorité. Un modèle peut classer l'intention, générer
+des actions sélectionnées et appeler des outils enregistrés.
+
+Le modèle ne peut pas remplacer l'ordre Flow, les conditions objectives, la
+configuration des actions, l'autorisation de l'organisation ou les vérifications
+de sortie du réseau.
+
+## Lisez l'architecture
+
+- La [carte du dépôt](/self-hosting/architecture/repository-map) permet de
+  localiser la propriété du code.
+- [Request flows](/self-hosting/architecture/request-flows) suit les requêtes de
+  la console, de l'API et des widgets.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) explique les
+  déclencheurs, le routage et les actions.
+- Le [modèle agentique](/self-hosting/architecture/agentic-model) explique
+  l'exécution du modèle et de l'outil.
+- [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explique
+  l'ingestion et la récupération.
+- [Data model](/self-hosting/architecture/data-model) explique les relations
+  entre le locataire et la conversation.

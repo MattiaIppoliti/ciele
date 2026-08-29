@@ -1,0 +1,33 @@
+---
+title: Autenticación de visitantes
+description: Requerir el inicio de sesión de Microsoft Entra antes de que un visitante pueda usar un asistente.
+---
+
+La autenticación de visitantes es opcional. Los visitantes anónimos reciben un
+ID de visitante persistente del almacenamiento local de la página de
+alojamiento.
+
+El producto actual admite una conexión de Microsoft Entra a nivel de
+organización. Un Asistente puede requerir esa conexión antes de que comience el
+chat.
+
+## Límite de identidad actual
+
+Ciele solicita el ámbito `openid` y valida el token de ID devuelto. La identidad
+autenticada utiliza el identificador de sujeto del token.
+
+La conexión actual no importa campos de perfil, correo electrónico, grupos ni
+roles de aplicación. No personaliza las respuestas a partir de esos atributos.
+
+## Requerir inicio de sesión
+
+1. Configura Microsoft Entra en los ajustes de la organización.
+2. Abre el Asistente.
+3. Selecciona **Authentication**.
+4. Habilita el requisito de inicio de sesión.
+5. Guarda el borrador.
+6. Prueba el flujo de inicio de sesión en Vista previa.
+7. Publica el Asistente.
+
+La puerta de autenticación utiliza una cookie cifrada de la Organización. La
+sesión caduca después de 12 horas.

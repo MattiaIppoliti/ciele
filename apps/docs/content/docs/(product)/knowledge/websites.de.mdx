@@ -1,0 +1,32 @@
+---
+title: Websites
+description: Fügen Sie eine Website-URL hinzu und überwachen Sie deren Aufnahmestatus.
+---
+
+## Fügen Sie eine Website-Quelle hinzu
+
+1. Öffnen Sie den Assistenten.
+2. Wählen Sie **Knowledge**.
+3. Fügen Sie eine Website-Quelle hinzu.
+4. Geben Sie die Seiten-URL ein.
+5. Starten Sie die Aufnahme.
+6. Warten Sie, bis der Status der Quelle **Ready** lautet.
+7. Stellen Sie eine Frage, die die Seite beantwortet.
+8. Bestätigen Sie die zurückgegebene Quellenangabe.
+
+Der Crawler ruft den konfigurierten Website-Inhalt ab. Für Seiten, die ein
+Browser-Rendering erfordern, ist ein JavaScript-Rendering-Worker erforderlich.
+
+## Eine Quelle erneut crawlen
+
+Verwenden Sie **Recrawl**, wenn sich der Inhalt der Quell-Website ändert. Ciele
+startet das Crawlen neu und ersetzt den indizierten Inhalt nach erfolgreicher
+Aufnahme.
+
+Die API und die CLI unterstützen das erneute Crawlen nur für Website-Quellen.
+
+## Quellzugriff
+
+Der Crawler muss die URL vom Bereitstellungsnetzwerk aus erreichen.
+Authentifizierungspflichtige Inhalte sind ohne einen unterstützten Zugriffspfad
+nicht verfügbar.

@@ -1,0 +1,24 @@
+# Keep the build context small and the image reproducible from a clean
+# checkout: nothing generated, secret, or environment-local goes to Docker.
+node_modules
+**/node_modules
+**/.next
+**/.turbo
+.git
+.github
+.claude
+.vscode
+**/.env
+**/.env.*
+!**/.env.example
+supabase/.temp
+graphify-out
+docs
+services
+# Only apps/web is built here; every sibling workspace app stays out of the
+# context. Written as a wildcard so the rule needs no edit when apps come and
+# go, and so it says nothing about apps that exist in only one edition.
+apps/*
+!apps/web
+# Enterprise edition (apps + migrations): never part of this image.
+ee

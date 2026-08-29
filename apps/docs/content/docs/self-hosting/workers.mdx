@@ -1,0 +1,62 @@
+---
+title: Background workers
+description: Enable optional graph retrieval and JavaScript-rendering crawl services.
+---
+
+The default stack does not start the workers. Search and website ingestion continue with reduced capabilities.
+
+Without the graph worker, Knowledge uses vector and lexical retrieval. Without Crawl4AI, Ciele uses its built-in fetch crawler.
+
+The workers are a separate Compose file, `deploy/docker-compose.workers.yml`. The stack reads that file only when `COMPOSE_FILE` lists it.
+
+## Enable the workers
+
+Run the bootstrap script with the `--workers` option:
+
+```bash
+./deploy/bootstrap.sh --workers
+```
+
+The script adds the file to `COMPOSE_FILE` in `deploy/.env`. It also generates three of the four credentials:
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+GRAPH_WORKER_API_TOKEN=<generated>
+CRAWL4AI_API_TOKEN=<generated>
+CRAWL4AI_SECRET_KEY=<generated>
+```
+
+The graph worker also needs a key for its own model provider. The script cannot generate this key. Set `GRAPH_LLM_API_KEY` in `deploy/.env`, then run the command again.
+
+The `--workers` option and the `--images` option are independent. Neither option disables the other.
+
+The two workers can require approximately 8 GiB of memory. Measure the actual use on your selected host.
+
+## Check worker status
+
+Include the workers file in each command:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
+```
+
+Do not expose worker ports or tokens to the public network.
+
+## Disable the workers
+
+Remove `docker-compose.workers.yml` from `COMPOSE_FILE` in `deploy/.env`. Then remove the two containers:
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+```
+
+## Long-term memory jobs
+
+Long-term memory uses the built-in durable job ledger. It does not require the optional workers.
+
+Each signed-in turn schedules a `promote_memories` job after a 15-minute quiet window. The `cron` profile drains these jobs through the existing scheduled route.
+
+Keep `cron` in `COMPOSE_PROFILES` when long-term memory is enabled. The default self-host configuration already includes it.
+
+The job skips extraction when memory is disabled or the daily token budget is exhausted. It also skips when no suitable model connection exists.

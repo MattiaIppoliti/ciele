@@ -1,0 +1,13 @@
+{
+  "title": "Arquitectura",
+  "description": "Cómo se organiza la base de código",
+  "pages": [
+    "index",
+    "repository-map",
+    "request-flows",
+    "chat-runtime",
+    "agentic-model",
+    "knowledge-pipeline",
+    "data-model"
+  ]
+}

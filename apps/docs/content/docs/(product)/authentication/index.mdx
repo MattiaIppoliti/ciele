@@ -1,0 +1,26 @@
+---
+title: Visitor authentication
+description: Require Microsoft Entra sign-in before a Visitor can use an Assistant.
+---
+
+Visitor authentication is optional. Anonymous Visitors receive a persistent Visitor ID from host-page local storage.
+
+The current product supports one Organization-level Microsoft Entra connection. An Assistant can require that connection before chat starts.
+
+## Current identity boundary
+
+Ciele requests the `openid` scope and validates the returned ID token. The authenticated identity uses the token subject identifier.
+
+The current connection does not import profile fields, email, groups, or application Roles. It does not personalize answers from those attributes.
+
+## Require sign-in
+
+1. Configure Microsoft Entra in Organization settings.
+2. Open the Assistant.
+3. Select **Authentication**.
+4. Enable the sign-in requirement.
+5. Save the draft.
+6. Test the sign-in flow in Preview.
+7. Publish the Assistant.
+
+The authentication gate uses an encrypted Organization cookie. The session expires after 12 hours.

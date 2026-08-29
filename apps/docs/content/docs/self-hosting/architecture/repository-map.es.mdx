@@ -1,0 +1,45 @@
+---
+title: Mapa del repositorio
+description: Localiza la aplicación de código abierto actual, los paquetes, los procesos de trabajo, el esquema y los archivos de implementación.
+---
+
+## Aplicaciones
+
+| Ruta | Responsabilidad |
+| --- | --- |
+| `apps/web` | Consola de administrador, entorno de ejecución de widgets, páginas públicas, acciones del servidor y API v1. |
+| `apps/docs` | Aplicación de documentación y canal de traducción de Fumadocs. |
+
+## Paquetes compartidos
+
+| Ruta | Responsabilidad |
+| --- | --- |
+| `packages/core` | Tipos de dominio, reglas de Pure Flow, valores predeterminados, condiciones y lógica de análisis. |
+| `packages/db` | Interfaces de persistencia, almacenamiento simulado e implementación de Supabase. |
+| `packages/agent` | Ejecución de turnos, proveedores de modelos, herramientas de conocimiento, ingestión y evaluación. |
+| `packages/ops` | Operaciones de la organización compartida utilizadas por las acciones de la consola y la API v1. |
+| `packages/client` | Cliente tipado para la API v1. |
+| `packages/cli` | Interfaz de terminal sobre el cliente tipado. |
+| `packages/mcp` | Adaptador MCP local de Fourteen-tools sobre el cliente tipado. |
+| `packages/ui` | Componentes compartidos de la interfaz de usuario. |
+| `packages/charts` | Visualizaciones de análisis compartidas. |
+
+## Servicios e infraestructura
+
+| Ruta | Responsabilidad |
+| --- | --- |
+| `services/graph-worker` | Servicio opcional de extracción y recuperación de grafos. |
+| `services/crawl4ai` | Configuración opcional del rastreador con renderización en JavaScript. |
+| `supabase/migrations` | Cambios ordenados en el esquema de la base de datos. |
+| `deploy` | Implementación de Docker Compose en un solo host y scripts de arranque. |
+
+## Dirección de la dependencia
+
+Las reglas puras pertenecen a `packages/core`. El comportamiento de persistencia
+pertenece a `packages/db`.
+
+Las mutaciones reutilizables pertenecen a `packages/ops`. El comportamiento de
+modelo y recuperación pertenece a `packages/agent`.
+
+Los adaptadores de superficie en `apps/web`, `packages/cli` y `packages/mcp` no
+deben crear un comportamiento de dominio separado.

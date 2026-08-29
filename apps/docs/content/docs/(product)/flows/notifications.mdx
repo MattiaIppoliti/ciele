@@ -1,0 +1,41 @@
+---
+title: Notifications
+description: Send a proactive message when a page or chat event occurs.
+---
+
+A Notification is the only response action for a proactive Flow. It does not call an AI model.
+
+## Select a proactive trigger
+
+Use one of these triggers:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+## Configure the Notification
+
+1. Create or open a Flow.
+2. Select a proactive trigger.
+3. Enter the Notification title.
+4. Enter the Notification content.
+5. Select the delivery rule.
+6. Choose whether users can reply.
+7. Add buttons when required.
+8. Save and test the Flow in Preview.
+
+Ciele emits the configured content verbatim. The title can contain 100 characters. The content can contain 5,000 characters.
+
+## Delivery behavior
+
+The server checks the trigger and delivery state again before it writes a message. Replayed client events do not bypass this check.
+
+Preview ignores the delivery rule. This behavior lets an administrator test the Notification more than one time.
+
+The latest Notification reply setting controls the composer. A later reply-enabled response can open the composer again.
+
+## Analytics
+
+A Notification is not an AI answer. Notification-only sessions do not increase answer volume or AI Resolution Rate.
+
+The **Notifications Sent** metric records delivered Notifications. The Inbox marks a session as **Notification only** until a Visitor replies.

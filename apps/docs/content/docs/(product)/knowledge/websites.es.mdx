@@ -1,0 +1,33 @@
+---
+title: Sitios web
+description: Añade la URL de un sitio web y supervisa su estado de ingestión.
+---
+
+## Añade una fuente de sitio web
+
+1. Abre el Asistente.
+2. Selecciona **Knowledge**.
+3. Añade una fuente de sitio web.
+4. Introduce la URL de la página.
+5. Inicia la ingesta.
+6. Espera hasta que el estado de la Fuente sea **Ready**.
+7. Haz una pregunta que la página responda.
+8. Confirma la cita de la Fuente devuelta.
+
+El rastreador recupera el contenido del sitio web configurado. Se requiere un
+trabajador de renderización de JavaScript para las páginas que necesitan
+renderización del navegador.
+
+## Vuelve a rastrear una fuente
+
+Utiliza **Recrawl** cuando cambie el contenido del sitio web de origen. Ciele
+reinicia el rastreo y reemplaza el contenido indexado después de una ingesta
+correcta.
+
+La API y la CLI solo admiten el reindexado para Fuentes de sitios web.
+
+## Acceso a la fuente
+
+El rastreador debe llegar a la URL desde la red de implementación. El contenido
+protegido por autenticación no está disponible sin una ruta de acceso
+compatible.

@@ -1,0 +1,34 @@
+{
+  "name": "@agent-hub/charts",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@agent-hub/ui": "workspace:*",
+    "@number-flow/react": "^0.5.10",
+    "lucide-react": "^1.23.0",
+    "motion": "^12.23.0"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@agent-hub/eslint-config": "workspace:*",
+    "@types/react": "^19",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^9.39.4",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.9"
+  },
+  "scripts": {
+    "lint": "eslint",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -1,0 +1,37 @@
+---
+title: FAQ
+description: Ajoutez des paires de questions-réponses approuvées pour un ou plusieurs Assistants.
+---
+
+Une FAQ stocke une question et une réponse sélectionnée. Utilisez les FAQ pour
+le contenu qui nécessite une réponse exacte et approuvée.
+
+## Ajoutez une FAQ
+
+1. Ouvrez l'Assistant.
+2. Sélectionnez **Knowledge**.
+3. Ajoutez une FAQ.
+4. Saisissez la question.
+5. Saisissez la réponse approuvée.
+6. Enregistrez la FAQ.
+
+## Importer les FAQ
+
+Préparez un fichier CSV avec ces colonnes :
+
+```csv
+question,answer
+When does enrollment close?,Enrollment closes on October 31.
+```
+
+Importez le fichier depuis l'Assistant ou depuis l'onglet FAQ de la
+[Bibliothèque](/knowledge/library) lorsque plusieurs Assistants ont besoin des
+mêmes paires. Corrigez les lignes qui ne contiennent pas les deux valeurs.
+
+## Utilisez une réponse rapide FAQ
+
+Une réponse rapide FAQ renvoie la réponse sélectionnée telle quelle. Elle
+n'effectue aucun appel au modèle de chat et inclut la citation de la source FAQ.
+
+Utilisez une réponse rapide **Send Text** lorsque le texte doit plutôt être
+acheminé vers le routeur Flow normal.

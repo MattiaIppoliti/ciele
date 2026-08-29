@@ -1,0 +1,106 @@
+---
+title: Entités et enregistrements
+description: Définissez des données d'organisation typées, importez des lignes CSV et exposez des outils de récupération sécurisés.
+---
+
+Une Entité décrit un type de données structurées de l'Organisation. Ses
+enregistrements contiennent les valeurs qu'un assistant peut interroger.
+
+Une entité **Orders** peut contenir des attributs `order_id`, `status`, `total`
+et `customer_email`.
+
+## Créer une entité
+
+1. Ouvrez **Settings**.
+2. Sélectionnez **Data**.
+3. Sélectionnez **New entity**.
+4. Saisissez un nom et une description.
+5. Ajoutez chaque clé d'attribut, chaque libellé et chaque type.
+6. Sélectionnez l'attribut clé.
+7. Sélectionnez **Shared** ou **User-scoped**.
+8. Sélectionnez **Create entity**.
+
+Les attributs prennent en charge les valeurs de type texte, nombre, date et
+booléen. L'attribut clé identifie un enregistrement au sein de l'entité.
+
+Les attributs, la clé et la portée d'une entité deviennent fixes après sa
+création. Créez une autre entité lorsque cette structure doit être modifiée.
+
+## Modifier ou supprimer une entité
+
+Ouvrez une Entité et sélectionnez **Edit** pour modifier son nom ou sa
+description. Ses attributs, son attribut clé et son champ d'application restent
+fixes.
+
+Sélectionnez **Delete** pour supprimer l'entité et tous ses enregistrements.
+
+## Choisissez le périmètre
+
+| Portée | Utilisation | Comportement à l'exécution |
+| --- | --- | --- |
+| **Shared** | Catalogues, plannings, emplacements et données de référence communes | Tout visiteur pris en charge par l'assistant peut interroger les enregistrements correspondants. |
+| **User-scoped** | Commandes, comptes, applications et autres données par Visiteur | Le serveur limite chaque requête au Visiteur vérifié et connecté. |
+
+Une entité à portée utilisateur a également besoin d'un attribut d'identité. Ses
+valeurs doivent correspondre à la
+[revendication d'identité Entra](/authentication/microsoft-entra-id#choose-an-identity-claim)
+configurée.
+
+## Importer des enregistrements depuis un fichier CSV
+
+1. Ouvrez l'entité.
+2. Sélectionnez **Import CSV**.
+3. Choisissez un fichier CSV ou collez son contenu.
+4. Vérifiez que chaque en-tête correspond à une clé d'attribut ou à une
+   étiquette. La correspondance est insensible à la casse.
+5. Sélectionnez **Import**.
+6. Vérifiez le nombre de lignes importées et rejetées.
+
+Importations avec mise à jour et insertion (« upsert ») par l'attribut clé. La
+réimportation de la même clé met à jour son enregistrement au lieu de créer un
+doublon.
+
+Les lignes valides sont toujours importées lorsque d'autres lignes échouent à la
+validation. Le rapport indique une raison pour chaque ligne rejetée.
+
+Une colonne CSV inconnue rejette l'importation. Supprimez-la ou ajoutez
+l'attribut correspondant à une nouvelle Entité.
+
+Sélectionnez **Records** pour parcourir les 50 premiers enregistrements dans
+l'ordre des clés.
+
+## Connectez une entité à un assistant
+
+1. Ouvrez l'Assistant.
+2. Sélectionnez **Tools & Skills**.
+3. Recherchez **Data**.
+4. Sélectionnez chaque Entité que l'Assistant peut interroger.
+5. Testez la recherche exacte et la recherche textuelle dans **Preview**.
+6. Publiez l'Assistant.
+
+Chaque entité sélectionnée peut fournir un outil de filtrage exact. Les entités
+dotées d'attributs de texte fournissent également un outil de recherche par
+mot-clé.
+
+Les schémas d'entité sélectionnés sont intégrés à l'instantané de publication.
+Les entités non sélectionnées ne génèrent aucun outil.
+
+Le contenu de l'enregistrement est lu en direct. L'importation d'enregistrements
+mis à jour ne nécessite pas de nouvelle publication.
+
+## Protégez les enregistrements à l'échelle de l'utilisateur
+
+Les outils à l'échelle de l'utilisateur n'existent que lorsque le tour contient
+une revendication d'identité vérifiée. Les visiteurs anonymes ne reçoivent pas
+ces outils.
+
+L'attribut d'identité est supprimé de l'entrée de l'outil orienté modèle. Le
+serveur ajoute la valeur vérifiée à chaque requête.
+
+Si la revendication est manquante, les outils à l'échelle de l'utilisateur
+restent indisponibles. Les outils d'entité partagée peuvent toujours
+fonctionner.
+
+<Callout title="Identity cannot come from the prompt">
+Never ask a Visitor to type the identity used for Record access. Configure the claim in Microsoft Entra ID instead.
+</Callout>

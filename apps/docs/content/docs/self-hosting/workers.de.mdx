@@ -1,0 +1,80 @@
+---
+title: Hintergrund-Worker
+description: Aktivieren Sie die optionalen Crawl-Dienste für Graph-Abruf und JavaScript-Rendering.
+---
+
+Der Standard-Stack startet die Worker nicht. Die Suche und die Website-Erfassung
+werden mit eingeschränkten Funktionen fortgesetzt.
+
+Ohne den Graph-Worker verwendet Knowledge Vektor- und lexikalische Abfrage. Ohne
+Crawl4AI verwendet Ciele seinen integrierten Fetch-Crawler.
+
+Die Worker sind eine separate Compose-Datei,
+`deploy/docker-compose.workers.yml`. Der Stack liest diese Datei nur, wenn
+`COMPOSE_FILE` sie auflistet.
+
+## Aktivieren Sie die Worker
+
+Führen Sie das Bootstrap-Skript mit der Option `--workers` aus:
+
+```bash
+./deploy/bootstrap.sh --workers
+```
+
+Das Skript fügt die Datei zu `COMPOSE_FILE` in `deploy/.env` hinzu. Es generiert
+auch drei der vier Anmeldeinformationen:
+
+```dotenv
+COMPOSE_FILE=docker-compose.yml:docker-compose.workers.yml
+GRAPH_WORKER_API_TOKEN=<generated>
+CRAWL4AI_API_TOKEN=<generated>
+CRAWL4AI_SECRET_KEY=<generated>
+```
+
+Der Graph-Worker benötigt außerdem einen Schlüssel für seinen eigenen
+Modell-Provider. Das Skript kann diesen Schlüssel nicht generieren. Legen Sie
+`GRAPH_LLM_API_KEY` in `deploy/.env` fest und führen Sie den Befehl dann erneut
+aus.
+
+Die Option `--workers` und die Option `--images` sind unabhängig voneinander.
+Keine der beiden Optionen deaktiviert die andere.
+
+Die beiden Worker benötigen möglicherweise etwa 8 GiB Speicher. Messen Sie die
+tatsächliche Nutzung auf Ihrem ausgewählten Host.
+
+## Überprüfen Sie den Status des Workers
+
+Fügen Sie die Datei „workers“ in jeden Befehl ein:
+
+```bash
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml ps
+docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.workers.yml logs -f graph-worker crawl4ai
+```
+
+Stellen Sie Worker-Ports oder -Token nicht dem öffentlichen Netzwerk zur
+Verfügung.
+
+## Deaktivieren Sie die Worker
+
+Entfernen Sie `docker-compose.workers.yml` aus `COMPOSE_FILE` in `deploy/.env`.
+Entfernen Sie anschließend die beiden Container:
+
+```bash
+docker compose -f deploy/docker-compose.yml up -d --remove-orphans
+```
+
+## Langzeitspeicher-Jobs
+
+Der Langzeitspeicher verwendet das integrierte dauerhafte Job-Ledger. Es sind
+keine optionalen Worker erforderlich.
+
+Jeder angemeldete Turn plant nach einem 15-minütigen Ruhefenster einen
+`promote_memories`-Job. Das Profil `cron` leitet diese Jobs über die bestehende
+geplante Route ab.
+
+Behalten Sie `cron` in `COMPOSE_PROFILES` bei, wenn der Langzeitspeicher
+aktiviert ist. Die standardmäßige Self-Host-Konfiguration enthält dies bereits.
+
+Der Job überspringt die Extraktion, wenn der Speicher deaktiviert ist oder das
+tägliche Token-Budget aufgebraucht ist. Er wird auch übersprungen, wenn keine
+geeignete Modellverbindung vorhanden ist.

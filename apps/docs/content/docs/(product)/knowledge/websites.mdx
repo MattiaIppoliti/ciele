@@ -1,0 +1,27 @@
+---
+title: Websites
+description: Add a website URL and monitor its ingestion status.
+---
+
+## Add a website Source
+
+1. Open the Assistant.
+2. Select **Knowledge**.
+3. Add a website Source.
+4. Enter the page URL.
+5. Start ingestion.
+6. Wait until the Source status is **Ready**.
+7. Ask a question that the page answers.
+8. Confirm the returned Source citation.
+
+The crawler retrieves the configured website content. A JavaScript-rendering worker is required for pages that need browser rendering.
+
+## Recrawl a Source
+
+Use **Recrawl** when the source website content changes. Ciele restarts the crawl and replaces the indexed content after successful ingestion.
+
+The API and CLI support recrawl only for website Sources.
+
+## Source access
+
+The crawler must reach the URL from the deployment network. Authentication-protected content is not available without a supported access path.

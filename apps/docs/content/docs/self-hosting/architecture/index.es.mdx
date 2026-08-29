@@ -1,0 +1,55 @@
+---
+title: Arquitectura
+description: Comprende los componentes de código abierto actuales y sus límites de tiempo de ejecución.
+---
+
+Ciele es un monorepositorio de TypeScript con una aplicación de producto
+Next.js, paquetes compartidos, Postgres y trabajadores opcionales.
+
+## Límites principales
+
+<Mermaid
+  title="Todas las solicitudes llegan a Postgres a través de la misma capa de acceso a datos"
+  chart={`
+flowchart TB
+  UI["Console and widget"]
+  API["Server actions and API v1"]
+  OPS["Shared operations"]
+  RUNTIME["Flow and agent runtime"]
+  DB["Data access"]
+  PG[("Postgres and storage")]
+  UI --> API
+  API --> OPS
+  API --> RUNTIME
+  OPS --> DB
+  RUNTIME --> DB
+  DB --> PG
+`}
+/>
+
+Los trabajadores opcionales se ejecutan junto al tiempo de ejecución para el
+rastreo y la creación de grafos. Leen la misma base de datos y permanecen
+desactivados de forma predeterminada. Consulta
+[Procesos en segundo plano](/self-hosting/workers).
+
+El enrutador Flow sigue siendo la autoridad. Un modelo puede clasificar la
+intención, generar acciones seleccionadas y llamar a herramientas registradas.
+
+El modelo no puede reemplazar el orden de Flow, las condiciones de los
+objetivos, la configuración de las acciones, la autorización de la organización
+ni las comprobaciones de salida de la red.
+
+## Lee la arquitectura
+
+- [Repository map](/self-hosting/architecture/repository-map) localiza la
+  propiedad del código.
+- [Request flows](/self-hosting/architecture/request-flows) rastrea las
+  solicitudes de la consola, la API y los widgets.
+- [Chat runtime](/self-hosting/architecture/chat-runtime) explica los
+  desencadenantes, el enrutamiento y las acciones.
+- [Agentic model](/self-hosting/architecture/agentic-model) explica la ejecución
+  del modelo y de la herramienta.
+- [Knowledge pipeline](/self-hosting/architecture/knowledge-pipeline) explica la
+  ingesta y la recuperación.
+- [Data model](/self-hosting/architecture/data-model) explica las relaciones
+  entre el inquilino y la conversación.

@@ -1,0 +1,51 @@
+---
+title: Knowledge pipeline
+description: Trace a Source from ingestion to a cited Assistant answer.
+---
+
+## Ingestion
+
+<Mermaid
+  title="A Source becomes searchable Concepts before it reports Ready"
+  chart={`
+flowchart TB
+  SOURCE["Website, file, text, or FAQ"]
+  EXTRACT["Extract the content"]
+  CONCEPT["Create OKF Concepts"]
+  INDEX["Index for search"]
+  GRAPH["Update the graph"]
+  READY["Status becomes Ready"]
+  SOURCE --> EXTRACT
+  EXTRACT --> CONCEPT
+  CONCEPT --> INDEX
+  CONCEPT --> GRAPH
+  INDEX --> READY
+  GRAPH --> READY
+`}
+/>
+
+Knowledge uses Open Knowledge Format (OKF) Concepts. A Concept keeps a reference to its original Source.
+
+FAQ ingestion creates a curated Concept with question and answer provenance. File and website ingestion preserve the original Source object where applicable.
+
+## Retrieval
+
+The runtime can retrieve Concepts through vector search and lexical fallback. Graph mode can add navigation through indexed Concept relationships.
+
+Every path scopes by the Assistant-to-Source links. A hit from a Source that is not linked to the querying Assistant is dropped, in the graph path as in the vector path.
+
+A Context Hint can constrain retrieval to a relevant Collection or course-like context when the runtime supplies one.
+
+Deep Search increases Knowledge navigation work within runtime bounds. It does not query the public web.
+
+## Citation resolution
+
+The final answer cites named Sources, not opaque search chunks. Citation identifiers resolve through the Concept to its original Source.
+
+The Visitor can open the Sources display after the answer. The Inbox stores the same citation parts with the Conversation.
+
+## Deletion and recrawl
+
+Source deletion retires related Concepts from active graph and search data, for every linked Assistant. Removing one link retires nothing. It stops one Assistant from reaching the Source.
+
+Website recrawl restarts extraction and indexing for that Source.

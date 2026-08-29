@@ -1,0 +1,50 @@
+---
+title: Core concepts
+description: Learn the stable terms that Ciele uses in the product and documentation.
+---
+
+## Organization
+
+An Organization owns members, Assistants, Help Desks, provider connections, API keys, Skills, and operational data.
+
+## Assistant
+
+An Assistant is a configured conversational agent. It has identity, Knowledge, Flows, tools, a model, appearance, and publication state.
+
+## Source and Knowledge Collection
+
+A Source is original website, file, text, or FAQ content. Ingestion turns a Source into Concepts, the searchable documents behind a grounded answer.
+
+Sources belong to the Organization. A Knowledge Collection is the Organization container that stores them.
+
+## Source link
+
+A link connects one Source to one Assistant. An Assistant searches a Source only through a link.
+
+The link also carries **Direct access**, which decides whether the Assistant can give a Visitor the original file.
+
+## Flow
+
+A Flow is an ordered routing rule. It contains one trigger, available conditions, and ordered response actions.
+
+The locked **Default behavior** Flow remains last. It handles an eligible message when no earlier Flow wins.
+
+## Publication
+
+A Publication is an immutable Assistant snapshot. The widget uses the active Publication, not the current administrator draft.
+
+## Conversation
+
+A Conversation stores Visitor and Assistant messages, reply parts, citations, runtime traces, and session metadata.
+
+## Help Desk
+
+A Help Desk defines one or more contact channels. An Assistant can suggest a relevant Help Desk during escalation.
+
+## Improvement
+
+An Improvement is a review item for an answer-quality problem. It can link to the exact Conversation message.
+
+## Goal and Alert
+
+A Goal runs a scheduled answer check. A failed Goal creates an Alert for an administrator.

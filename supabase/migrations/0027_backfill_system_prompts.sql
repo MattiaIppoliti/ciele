@@ -1,0 +1,22 @@
+-- Superseded, and deliberately a no-op. The file keeps its name because the
+-- filename IS this repo's ledger key (private.applied_migrations), so deleting
+-- it would strand the row that records it.
+--
+-- History: 0019..0020 were applied straight to the live project and only
+-- captured as local files later. Meanwhile these four backfill twins were
+-- written so a fresh environment would match production. Both sets ended up in
+-- the chain, so the work is duplicated: stripped of comments, this file was
+-- byte-identical to 0019_system_prompts.sql.
+--
+-- On the live project the duplication was invisible: every file through
+-- 20260710220000_compost.sql sits in migrations-baseline.txt, recorded and
+-- never executed, so neither copy ever ran through the applier there.
+--
+-- On an EMPTY database it merely re-ran the same DDL a second time. Harmless
+-- today, but it is the same defect as its siblings 0025/0026, which do break
+-- the replay, and two of four staying live would just invite the next reader
+-- to assume the duplication is deliberate.
+--
+-- Nothing is lost: 0019_system_prompts.sql does this work, at the
+-- point in the order where the schema state it assumes is actually true.
+-- .github/workflows/migrations.yml is the gate that proved it.

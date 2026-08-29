@@ -1,0 +1,27 @@
+# Ciele scheduled jobs: the same routes as vercel.json, on the same UTC
+# schedules, so a self-host runs the same maintenance the hosted deployment
+# does. Keep this file and vercel.json in step; deploy/compose.test.mjs fails
+# if the two disagree about which jobs exist.
+#
+# Two schedules deliberately differ, and the test knows them by name. The
+# durable worker can run every five minutes here; Vercel Hobby permits daily
+# cron only. See RUN_ROUTINES below for the other exception.
+#
+# min hour dom mon dow  command
+0 2 * * *   /usr/local/bin/run-job.sh /api/cron/rollup-usage
+30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-traces
+*/5 * * * * /usr/local/bin/run-job.sh /api/cron/finalize-crawls
+# RUN_ROUTINES: hourly here, daily in vercel.json, and the difference is a
+# platform limit rather than a decision. A Routine carries a preferred hour
+# (#772), which only means something if the drain ticks more often than once a
+# day: on a daily tick every routine runs at the tick's hour, whatever its
+# author chose. Ordinary cron has no opinion about frequency, so a self-host
+# honours the hour. Vercel's Hobby plan refuses any schedule that runs more
+# than once a day, and the whole deployment fails rather than degrading, so the
+# hosted file asks for daily and the hour is approximate there until the plan
+# is Pro. Making the hosted one hourly is a one-line change in vercel.json.
+0 * * * *   /usr/local/bin/run-job.sh /api/cron/run-routines
+0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
+30 4 * * *  /usr/local/bin/run-job.sh /api/cron/learn-graph
+0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
+0 6 * * *   /usr/local/bin/run-job.sh /api/cron/sweep-recrawls

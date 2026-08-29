@@ -1,0 +1,59 @@
+---
+title: Fichiers et texte
+description: Importez un fichier ou ajoutez du texte, puis choisissez les Assistants qui répondront à partir de celui-ci.
+---
+
+## Téléchargez un fichier
+
+1. Ouvrez l'Assistant.
+2. Sélectionnez **Knowledge**.
+3. Ajoutez une source de fichier.
+4. Sélectionnez le fichier.
+5. Lancez l'ingestion.
+6. Attendez que le statut de la Source soit **Ready**.
+7. Testez une réponse et sa citation.
+
+Ciele stocke le fichier d'origine et en extrait le texte pris en charge pour
+l'ingestion. L'état Source indique si l'extraction et l'indexation sont
+terminées.
+
+## Ajouter du texte collé
+
+Utilisez une source de texte pour du contenu court qui ne nécessite pas de
+fichier séparé.
+
+1. Ajoutez une source de texte.
+2. Saisissez un nom de source facultatif.
+3. Collez le texte.
+4. Lancez l'ingestion.
+
+Utilisez un nom de source stable. Le nom peut apparaître dans les citations des
+visiteurs.
+
+## Remplacez le contenu obsolète
+
+Supprimez l'ancienne Source avant de vous fier à une solution de remplacement.
+Ensuite, confirmez que la nouvelle Source est **Ready** et produit des citations
+correctes.
+
+La suppression d'une Source supprime ses Concepts du graphe de connaissances
+actif et de l'index de recherche.
+
+## Supprimer par opposition à effacer
+
+Une Source de type fichier peut répondre pour plusieurs Assistants. L'éditeur
+d'Assistant propose donc deux opérations.
+
+- **Remove from this Assistant** supprime un lien. Les autres Assistants
+  conservent le fichier.
+- **Delete** supprime la Source pour chaque Assistant lié. La confirmation nomme
+  chacun d'entre eux.
+
+Lorsque seul cet Assistant répond à partir du fichier, l'éditeur le supprime
+directement.
+
+## Remettez le fichier original au Visiteur
+
+Activez **Direct access** dans la [Bibliothèque](/knowledge/library) pour
+permettre à l'Assistant de joindre le fichier original à sa citation. Le
+paramètre s'applique à un lien d'Assistant et est désactivé par défaut.

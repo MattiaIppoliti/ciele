@@ -1,0 +1,38 @@
+---
+title: Flussi
+description: Indirizza messaggi ed eventi proattivi ad azioni di risposta ordinate.
+---
+
+Un Flow contiene un trigger, le condizioni disponibili e le azioni ordinate. Il
+router elabora i flussi abilitati nell'ordine configurato.
+
+## Flussi di messaggi
+
+Il trigger **User sends a message** utilizza la Classificazione degli intenti.
+Un classificatore di modelli seleziona il miglior Flow idoneo quando è
+disponibile un modello.
+
+Il router delle parole chiave fornisce un fallback offline e per gli errori.
+Entrambi i router utilizzano lo stesso filtro dei candidati.
+
+Il flusso **Default behavior** bloccato rimane l'ultimo. Gestisce un messaggio
+idoneo quando nessun Flow precedente ha la priorità.
+
+## Flussi proattivi
+
+Questi trigger non classificano un messaggio:
+
+- **On page load**
+- **Time on page**
+- **Chat opens**
+
+Un flusso proattivo non ha condizioni e contiene un'azione di notifica. Vedi
+[Notifiche](/flows/notifications).
+
+## Ordine dei flussi
+
+Posiziona i flussi di messaggi specifici prima di quelli generici. L'ordine
+determina anche il collegamento rapido Basic Interaction integrato.
+
+Un Flow personalizzato corrispondente precedente può gestire un messaggio di
+cortesia prima del Flow Basic Interaction integrato.

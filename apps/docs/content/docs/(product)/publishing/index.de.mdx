@@ -1,0 +1,53 @@
+---
+title: Einen Assistenten veröffentlichen
+description: Erstellen Sie einen unveränderlichen Widget-Snapshot und steuern Sie, wo er ausgeführt werden kann.
+---
+
+Eine Veröffentlichung fixiert die aktuelle Konfiguration des Assistenten. Das
+Live-Widget liest die aktive Veröffentlichung anstelle des Entwurfs.
+
+## Bereiten Sie die Veröffentlichung vor
+
+1. Testen Sie den Entwurf in der Vorschau.
+2. Vergewissern Sie sich, dass die erforderlichen Wissensquellen bereitstehen.
+3. Testen Sie übereinstimmende und nicht übereinstimmende Flow-Nachrichten.
+4. Testen Sie den Helpdesk und die Authentifizierungspfade, sofern diese
+   aktiviert sind.
+5. Öffnen Sie **Publish**.
+
+## Zulässige Domains konfigurieren
+
+Fügen Sie jede Website-Ursprungsdomain hinzu, die den Assistenten einbetten
+kann. Verwenden Sie genau das Schema und den Host, die der Browser sendet.
+
+Fügen Sie keine allgemeine Domain hinzu, wenn nur eine Anwendung das Widget
+benötigt.
+
+## Erstellen Sie die Veröffentlichung
+
+1. Wählen Sie **Publish**.
+2. Bestätigen Sie die Veröffentlichungsaktion.
+3. Kopieren Sie den Einbettungscode.
+4. Fügen Sie den Code zu einer zulässigen Website hinzu.
+5. Öffnen Sie die Website in einer privaten Browsersitzung.
+6. Senden Sie eine Testnachricht.
+
+Spätere Änderungen am Entwurf wirken sich nicht auf diese Veröffentlichung aus.
+Veröffentlichen Sie erneut, um einen neuen unveränderlichen Snapshot zu
+erstellen und zu aktivieren.
+
+## Eine Veröffentlichung wiederherstellen
+
+Wählen Sie eine frühere Veröffentlichung aus, wenn Sie deren Konfiguration
+wiederherstellen müssen. Durch die Wiederherstellungsaktion wird diese
+unveränderliche Version wieder aktiv.
+
+## Veröffentlichung aufheben
+
+Verwenden Sie **Unpublish**, um die Widget-Konfiguration offline zu schalten.
+Der vorhandene Einbettungscode kann nach dem Vorgang keinen aktiven Assistenten
+laden.
+
+<Callout type="warn" title="Test before publication">
+A Publication can change Visitor routing, external API calls, email actions, and Help Desk paths. Test these actions in Preview first.
+</Callout>

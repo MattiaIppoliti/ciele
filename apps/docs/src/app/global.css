@@ -1,0 +1,92 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Tailwind v4 only scans this app's own tree, so utilities used exclusively
+   inside the shared UI package would never be generated, the components would
+   render unstyled. Same declaration as apps/web's globals.css. */
+@source "../../../../packages/ui/src";
+
+/* One highlighter across every surface and both themes: a fixed dark grey
+   marker with white ink. It used to invert with the theme, which read as two
+   different brand behaviours between the docs and the product. Keep this value
+   in step with apps/web's globals.css, which declares the same pair. */
+::selection {
+  background: #333333;
+  color: #ffffff;
+}
+::-moz-selection {
+  background: #333333;
+  color: #ffffff;
+}
+
+/*
+ * Sidebar footer row: [home] [repo] │ … │ [theme].
+ *
+ * The theme switch already carries a leading divider (fumadocs applies its own
+ * `border-s` there). This closes the pair by drawing the matching line after the
+ * last icon link, so the two clusters read as bracketed groups instead of one
+ * drifting apart. Hung on the repository button's `aria-label`
+ * (REPO_BUTTON_LABEL in lib/layout.shared.tsx, keep them in step) because
+ * fumadocs offers no hook inside that row; both the docked sidebar and the
+ * mobile drawer are covered.
+ */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub'] {
+  position: relative;
+  margin-inline-end: 0.375rem;
+}
+
+/*
+ * Same glyph size as the theme switch beside them. Fumadocs sizes icons inside
+ * these buttons at 18px while its own switch draws its sun and moon at 14px
+ * (a `size-6.5` box with `p-1.5`), so the pair read as oversized. Sized here
+ * rather than with a class on the icon because the button's own
+ * `[&_svg]:size-4.5` rule outranks one.
+ */
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Back to ciele.app'] svg,
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub'] svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+:is(#nd-sidebar, #nd-sidebar-mobile) a[aria-label='Ciele on GitHub']::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: calc(-0.375rem / 2);
+  inset-block: 0;
+  width: 1px;
+  background-color: var(--color-fd-border);
+}
+
+/* Wiggle for the "Ask AI" launcher chat icon (hover / mount nudge). */
+@keyframes ciele-wiggle {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-7deg) scale(1.05);
+  }
+  60% {
+    transform: rotate(7deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.ciele-ask-ai:hover .ciele-ask-ai-icon {
+  animation: ciele-wiggle 0.5s ease-in-out;
+}
+
+/*
+ * When the Ask AI drawer is open, reserve space for it on the right so the
+ * documentation reflows instead of hiding behind the fixed panel. The width is
+ * published by the widget as --ciele-ai-width. Self-contained (only touches the
+ * root element + this variable) so a fumadocs upgrade never conflicts here.
+ * Desktop only: on small screens the drawer is a full-screen overlay.
+ */
+@media (min-width: 640px) {
+  html.ciele-ai-open {
+    padding-right: var(--ciele-ai-width, 0px);
+  }
+}

@@ -1,0 +1,91 @@
+---
+title: Chat-Laufzeit
+description: Verstehen Sie den aktuellen Trigger-Dispatch, das Flow-Routing, die Bedingungen und die geordneten Aktionen.
+---
+
+## Nachrichtenpfad
+
+<Mermaid
+  title="Wie eine Besuchernachricht gespeicherte Antwortteile erreicht"
+  chart={`
+flowchart TB
+  MSG["Visitor message"]
+  CAND["Enabled candidate Flows"]
+  GATE["URL and Schedule gates"]
+  COURTESY["Basic Interaction check"]
+  CLASSIFY["Model classifier or keyword fallback"]
+  ACTIONS["Ordered Flow actions"]
+  PARTS["Stored and streamed reply parts"]
+  MSG --> CAND
+  CAND --> GATE
+  GATE --> COURTESY
+  COURTESY --> CLASSIFY
+  CLASSIFY --> ACTIONS
+  ACTIONS --> PARTS
+`}
+/>
+
+Verifizierte Identität, Entity Records und Langzeitgedächtnis sind Eingaben, die
+die Aktionen lesen. Sie sind keine Phasen des Routers, daher werden sie in der
+Abbildung nicht dargestellt.
+
+`messageFlowCandidates` liefert Kandidaten an beide Routing-Engines. Diese
+Grenze verhindert, dass objektive Bedingungen zu unterschiedlichen
+Router-Ergebnissen führen.
+
+Der Konversationskontext liefert semantische Beispiele für die Klassifizierung.
+Es fungiert nicht als unabhängiges Boolesches Gate.
+
+## Identitätsgebundener Kontext
+
+Ein gültiges Widget-SSO-Gate liefert ein Subjekt im Bereich der Organisation.
+Ein optionaler verifizierter Anspruch kann mit Entity Records auf Benutzerebene
+übereinstimmen.
+
+Ausgewählte Entitäten erzeugen generierte Filter- und Textsuchwerkzeuge. Tools
+im Benutzerbereich lassen das Identitätsattribut in der modellseitigen Eingabe
+weg.
+
+Der Server fügt den Filter für die verifizierte Identität hinzu, nachdem er die
+Eingabe des Tools validiert hat. Das Modell kann ihn weder auslassen noch
+überschreiben.
+
+Beim ersten Zug einer neuen Konversation kann die Laufzeitumgebung bis zu fünf
+relevante Langzeiterinnerungen injizieren. Ein integriertes Speichersuchwerkzeug
+ermöglicht den späteren Abruf.
+
+Für beide Speicherpfade sind der Schalter „Organization“ und ein verifizierter
+SSO-Benutzer erforderlich.
+
+## Höflichkeits-Shortcut
+
+Der integrierte Basic Interaction Flow kann eine kurze, reine
+Höflichkeitsnachricht vor der Intent Classification verarbeiten. Ein früherer
+berechtigter benutzerdefinierter Flow hat weiterhin Priorität.
+
+Die Shortcut wird nicht aktiviert nach einer Frage des Assistenten oder bei
+einer Nachricht, die eine Informationsanfrage enthält.
+
+## Proaktiver Pfad
+
+Die Einbettung meldet Seitenlade-, Verweilzeit- und Chat-Öffnungsereignisse. Der
+Server validiert den konfigurierten Trigger und den Zustellstatus.
+
+Ein proaktiver Flow enthält eine Benachrichtigungsaktion und keine Bedingungen.
+Die Aktion gibt konfigurierten Inhalt ohne Modellaufruf aus.
+
+## Ausführung von Aktionen
+
+Aktionen werden in der gespeicherten Reihenfolge ausgeführt. Jede Aktion gibt
+strukturierte Antwortteile oder einen stillen Effekt zurück.
+
+Generative Arbeit bleibt innerhalb von Basic Reply, Search Knowledge,
+generierten Follow-ups und unterstützten Empfehlungspfaden.
+
+## Übergabe
+
+Handover lädt einen veröffentlichten Ziel-Assistenten in derselben Organisation.
+Sie führt die Besuchernachricht einmal durch diesen Zielassistenten.
+
+Die Zielausführung ignoriert eine weitere Übergabe. Diese Regel verhindert eine
+unbegrenzte Assistant-Kette.

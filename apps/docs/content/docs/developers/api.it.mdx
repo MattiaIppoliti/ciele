@@ -1,0 +1,95 @@
+---
+title: API v1
+description: Chiama l'attuale API di amministrazione di Ciele con una chiave API dell'organizzazione.
+---
+
+L'API di Ciele utilizza JSON tramite HTTP. Tutti i percorsi della versione 1
+iniziano con `/api/v1`.
+
+## Scopri la distribuzione
+
+Utilizza questi endpoint pubblici prima di generare un client:
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` elenca la versione dell'API e i domini disponibili. `openapi.json`
+restituisce il contratto leggibile dalla macchina per la distribuzione.
+
+## Autentica una richiesta
+
+Invia la chiave API come bearer token:
+
+```bash
+curl https://ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Per l'autohosting, sostituisci `https://ciele.app` con l'origin pubblica di
+Ciele.
+
+## Errori di risposta
+
+Gli errori utilizzano un unico involucro JSON:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+I codici di stato più comuni sono:
+
+| Stato | Significato |
+| --- | --- |
+| `400` | I dati della richiesta non sono validi. |
+| `401` | La chiave risulta mancante, non valida o revocata. |
+| `403` | Il ruolo della chiave non consente l'operazione. |
+| `404` | La risorsa non esiste nell'Organization. |
+| `409` | La richiesta è in conflitto con lo stato corrente. |
+
+## Impaginazione
+
+Le operazioni di elenco accettano i parametri `limit` e `cursor` quando
+l'endpoint supporta la paginazione. Utilizza il cursore restituito per la
+richiesta successiva.
+
+## Riprova in modo sicuro
+
+Le route di mutazione possono accettare un'intestazione `Idempotency-Key`.
+Riutilizza lo stesso valore solo quando riprovi la stessa operazione logica.
+
+## Domini correnti
+
+- Assistenti: elenca, leggi, crea, aggiorna, duplica ed elimina.
+- Flussi: elenca, leggi, crea, aggiorna, riordina ed elimina.
+- Knowledge: gestisci raccolte, fonti, FAQ e i link dell'assistente su ciascuna
+  fonte.
+- Pubblicazione: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
+  una pubblicazione.
+- Posta in arrivo: rivedi, esporta, metti in evidenza, annota, valuta ed elimina
+  le Conversazioni.
+- Miglioramenti: elenca, leggi e aggiorna gli elementi.
+- Entità e memorie: gestisci i dati tipizzati dell'organizzazione e la
+  cancellazione della memoria con ambito.
+- SSO: gestisci le identity claim, le impostazioni di connessione, la convalida
+  e la disconnessione.
+- Help Desk: gestisci i desk, i canali di escalation, gli ordini e ServiceNow.
+- Teammates: gestisci gli AI Teammates e leggi le tue conversazioni con i
+  Teammates.
+- Canali: leggi e modella i canali dei Teammate di cui fai parte e i relativi
+  elenchi. Non esiste un endpoint per inviare un messaggio: un messaggio avvia
+  una catena di risposte dei Teammate e questa viene eseguita nella console.
+- Configurazione: gestisci le competenze, gli obiettivi dell'assistente e gli
+  avvisi operativi.
+- Organizzazione: gestisci impostazioni, membri, inviti e chiavi API.
+- Integrations: gestisci le integrazioni dell'API dell'Assistente e le
+  connessioni ai provider di modelli.
+
+Utilizza il documento OpenAPI per i campi di richiesta e gli schemi di risposta
+esatti.

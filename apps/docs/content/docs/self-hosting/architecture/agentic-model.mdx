@@ -1,0 +1,40 @@
+---
+title: Agentic model
+description: Understand provider resolution, tool use, bounds, traces, and citations.
+---
+
+The runtime uses the Vercel AI SDK provider abstraction. Current provider adapters include Anthropic, OpenAI, Google, and an OpenAI-compatible endpoint.
+
+## Generative boundaries
+
+The runtime makes a model call only inside a generative action or Intent Classification. Deterministic actions do not pass their content through a model.
+
+Basic reply uses one chat call and no tools. Search knowledge uses a bounded tool loop.
+
+## Search knowledge loop
+
+1. The model receives the Assistant instructions and available tool descriptions.
+2. The model searches Knowledge or reads a selected Source window.
+3. The runtime records tool lifecycle events.
+4. The model can repeat the search within the step limit.
+5. The runtime generates the final answer and named citations.
+
+The Thinking panel represents these recorded progress and tool events. Simplified thinking rewrites progress text for the Visitor display.
+
+## API integration tools
+
+One Assistant can register one API catalogue. The catalogue describes its base URL, protected credential, and available endpoints.
+
+The model can inspect API details and query a registered endpoint. The runtime validates every path against the catalogue before network egress.
+
+Windowed readers return a requested content range and total length. This contract lets the model inspect large API and Knowledge payloads without silent truncation.
+
+## Failure behavior
+
+The keyword router handles classification when no classifier model is available or classification fails. Knowledge search can use lexical fallback without embeddings.
+
+An unconfigured email transport returns an honest failure result. It does not create a successful delivery message.
+
+## Extension rule
+
+Add a new agent tool through the tool registry and its lifecycle wrapper. Keep authorization, ownership, input validation, and egress checks outside model control.

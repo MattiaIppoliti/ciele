@@ -1,0 +1,23 @@
+---
+title: Open-source boundary
+description: Identify the public core and the separate enterprise directory.
+---
+
+The public Ciele core uses the `AGPL-3.0-only` license. Its source includes the product application and shared runtime packages.
+
+The repository can also contain a separate `ee/` directory. That directory has its own license notices and is not part of the AGPL core.
+
+## Public documentation rule
+
+The Open Source documentation describes only components required to build, run, and understand the public core.
+
+It does not enumerate enterprise internals. Read the license file in each code area before you redistribute or modify that area.
+
+## Main open-source areas
+
+- `apps/web` contains the product application and API routes.
+- `apps/docs` contains this documentation site.
+- `packages` contains shared product and programmatic-access packages.
+- `services` contains optional worker services.
+- `supabase` contains schema migrations and local data configuration.
+- `deploy` contains the single-host deployment example.

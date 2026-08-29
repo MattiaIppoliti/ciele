@@ -1,0 +1,29 @@
+---
+title: Limite open source
+description: Identifica il core pubblico e la directory enterprise separata.
+---
+
+Il core pubblico di Ciele utilizza la licenza `AGPL-3.0-only`. Il suo sorgente
+include l'applicazione del prodotto e i pacchetti runtime condivisi.
+
+Il repository può contenere anche una directory `ee/` separata. Quella directory
+ha le proprie note di licenza e non fa parte del core AGPL.
+
+## Regola per la documentazione pubblica
+
+La documentazione Open Source descrive solo i componenti necessari per
+compilare, eseguire e comprendere il core pubblico.
+
+Non elenca gli elementi interni dell'azienda. Leggi il file di licenza in
+ciascuna area di codice prima di ridistribuire o modificare quell'area.
+
+## Principali aree open source
+
+- `apps/web` contiene l'applicazione del prodotto e i percorsi API.
+- `apps/docs` contiene questo sito di documentazione.
+- `packages` contiene pacchetti condivisi del prodotto e di accesso
+  programmatico.
+- `services` contiene servizi worker opzionali.
+- `supabase` contiene le migrazioni dello schema e la configurazione dei dati
+  locali.
+- `deploy` contiene l'esempio di distribuzione su host singolo.

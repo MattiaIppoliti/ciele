@@ -1,0 +1,33 @@
+---
+title: Asistentes
+description: Configura la identidad, el modelo, el comportamiento, las herramientas y las comprobaciones de un Asistente.
+---
+
+Un Asistente es la principal unidad de configuración en Ciele. Cada Asistente
+tiene su propio Conocimiento, Flujos, configuración de borradores e historial de
+publicaciones.
+
+## Secciones de configuración
+
+| Sección | Finalidad |
+| --- | --- |
+| General | Establece los valores predeterminados de identidad, modelo, motor de conocimiento y conversación. |
+| Conocimiento | Añade fuentes y preguntas frecuentes. |
+| Flujos | Define el enrutamiento y las respuestas. |
+| Herramientas y habilidades | Controla las herramientas de tiempo de ejecución, la integración de API y las instrucciones reutilizables. |
+| Objetivos | Programar comprobaciones deterministas de respuestas. |
+| Servicios de asistencia para asistentes | Selecciona los servicios de asistencia para la escalada. |
+| Estilo | Establece el color de la marca y la posición del lanzador. |
+| Autenticación | Requerir el inicio de sesión de Microsoft Entra para los visitantes. |
+| Publicar | Crea y gestiona la instantánea en vivo. |
+
+Los cambios afectan a la Vista previa de inmediato. El widget en vivo solo
+cambia después de la publicación.
+
+## Duplicar un Asistente
+
+La duplicación copia la configuración y los flujos. No copia el contenido de
+Knowledge.
+
+Revisa el nuevo Asistente antes de publicarlo. En particular, añade sus Fuentes
+obligatorias y confirma sus conexiones con el servicio de asistencia.

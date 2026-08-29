@@ -1,0 +1,98 @@
+---
+title: API v1
+description: Appelez l'API d'administration actuelle de Ciele à l'aide d'une clé API d'organisation.
+---
+
+L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
+par `/api/v1`.
+
+## Découvrez le déploiement
+
+Utilisez ces points de terminaison publics avant de générer un client :
+
+```text
+GET /api/v1/meta
+GET /api/v1/openapi.json
+```
+
+`meta` répertorie la version de l'API et les domaines disponibles.
+`openapi.json` renvoie le contrat lisible par machine pour le déploiement.
+
+## Authentifier une requête
+
+Envoyez la clé API en tant que jeton au porteur :
+
+```bash
+curl https://ciele.app/api/v1/whoami \
+  --header "Authorization: Bearer $CIELE_API_KEY"
+```
+
+Pour l'auto-hébergement, remplacez `https://ciele.app` par l'origine publique de
+Ciele.
+
+## Erreurs de réponse
+
+Les erreurs utilisent une enveloppe JSON :
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "This API key cannot perform this operation."
+  }
+}
+```
+
+Les codes d'état courants sont :
+
+| Statut | Signification |
+| --- | --- |
+| `400` | Les données de la requête ne sont pas valides. |
+| `401` | La clé est manquante, invalide ou révoquée. |
+| `403` | Le rôle de la clé n'autorise pas l'opération. |
+| `404` | La ressource n'existe pas dans l'organisation. |
+| `409` | La requête est en conflit avec l'état actuel. |
+
+## Pagination
+
+Les opérations de liste acceptent les paramètres `limit` et `cursor` lorsque le
+point de terminaison prend en charge la pagination. Utilisez le curseur renvoyé
+pour la requête suivante.
+
+## Nouvelles tentatives sécurisées
+
+Les routes de mutation peuvent accepter un en-tête `Idempotency-Key`. Réutilisez
+la même valeur uniquement lorsque vous réessayez la même opération logique.
+
+## Domaines actuels
+
+- Assistants : list, read, create, update, duplicate et delete.
+- Flux : lister, lire, créer, mettre à jour, réorganiser et supprimer.
+- Connaissances : gérez les collections, les sources, les FAQ et les liens
+  d'assistant sur chaque source.
+- Publication : lire le statut, publier, annuler la publication et restaurer une
+  publication.
+- Boîte de réception : examinez, exportez, épinglez, annotez, évaluez et
+  supprimez les conversations.
+- Améliorations : lister, lire et mettre à jour des éléments.
+- Entities and Memories : gérez les données typées de l'organisation et
+  l'effacement des mémoires selon leur portée.
+- SSO : gérez les revendications d'identité, les paramètres de connexion, la
+  validation et la déconnexion.
+- Centres d'assistance : gérez les centres, les canaux d'escalade, les commandes
+  et ServiceNow.
+- Teammates : gérez les Teammates IA et lisez vos propres conversations
+  Teammate.
+- Canaux : lisez et modifiez les canaux des coéquipiers dont vous faites partie,
+  ainsi que leurs listes. Il n'y a pas de point de terminaison pour envoyer un
+  message : un message déclenche une chaîne de réponses de la part des
+  coéquipiers, qui s'exécute dans la console.
+- Configuration : gérez les compétences, les objectifs de l'assistant et les
+  alertes opérationnelles.
+- Organisation : gérez les paramètres, les membres, les invitations et les clés
+  API.
+- Intégrations : gérez les intégrations de l'API Assistant et les connexions aux
+  fournisseurs de modèles.
+
+Utilisez le document OpenAPI pour connaître les champs de requête et les schémas
+de réponse exacts.

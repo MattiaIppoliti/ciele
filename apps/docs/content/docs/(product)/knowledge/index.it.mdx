@@ -1,0 +1,51 @@
+---
+title: Conoscenza
+description: Aggiungi le Fonti che l'Assistente può cercare e citare.
+---
+
+Le fonti appartengono all'Organizzazione e una Raccolta di conoscenze le
+memorizza insieme ai Concetti prodotti durante l'importazione. Un Assistente
+cerca in una Fonte solo dopo che tu hai collegato quella Fonte all'Assistente.
+Collega una Fonte dalla [Libreria](/knowledge/library) oppure aggiungila
+all'interno dell'Assistente, che la collegherà per te.
+
+Poiché una Fonte può rispondere per più Assistenti, rimuoverla da un Assistente
+ed eliminarla per l'Organizzazione sono operazioni diverse. Eliminando un
+Assistente, le Fonti dell'Organizzazione rimangono invariate. Rimuove solo i
+collegamenti di quell'Assistente.
+
+## Tipi di sorgente disponibili
+
+- URL del sito web
+- File caricato
+- Testo incollato
+- Applicazione connessa
+- FAQ selezionate
+
+Ciele estrae il contenuto della Fonte e crea Concetti ricercabili. Il runtime
+risolve le citazioni riportandole alle Fonti nominate.
+
+## Stato della fonte
+
+| Status | Significato |
+| --- | --- |
+| In elaborazione | Ciele sta estraendo e indicizzando la Fonte. |
+| Pronto | La Fonte è disponibile per la ricerca di conoscenze. |
+| Non riuscito | L'acquisizione non è stata completata. Controlla l'errore e riprova l'operazione. |
+
+Non testare una nuova Fonte prima che il suo stato sia **Ready**.
+
+## Accesso diretto
+
+Una Source di tipo file può fornire al Visitor il file originale accanto alla
+citazione. Questa è l'impostazione **Direct access** su un link dell'Assistente
+ed è disattivata per impostazione predefinita. Impostalo nella Library.
+
+## Recupero
+
+Search Knowledge può utilizzare la ricerca vettoriale, il fallback lessicale e
+la navigazione nel grafo della conoscenza. Il motore Knowledge selezionato
+controlla il percorso principale.
+
+Deep Search consente più iterazioni solo Knowledge. Non effettua ricerche sul
+web aperto.

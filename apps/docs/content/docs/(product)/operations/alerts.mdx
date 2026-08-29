@@ -1,0 +1,32 @@
+---
+title: Alerts
+description: Review detected failures that require administrator action.
+---
+
+Alerts records current and resolved operational problems. A badge can show the number of active Alerts.
+
+## Alert views
+
+- **Needs attention** shows active Alerts.
+- **Resolved** shows cleared Alerts.
+- **All** shows both states.
+
+Each Alert contains its type, title, detail, detection time, and current status.
+
+Goal expectation failures create Alerts. Other monitored operations can also create an Alert when their current implementation reports a failure.
+
+An Alert of the **Knowledge** type reports a configuration problem, not a failure. Ciele creates one
+when you delete a Knowledge Collection that an AI Teammate still searches. The Alert names the
+Teammates that point at the deleted collection. It clears when the last of them removes the
+collection from its knowledge.
+
+## Resolve an Alert
+
+1. Open the Alert.
+2. Read its recorded cause and affected item.
+3. Correct the Goal, connection, Source, or other configuration.
+4. Repeat the affected operation.
+5. Confirm that the problem no longer occurs.
+6. Mark the Alert as resolved when required.
+
+Do not resolve an Alert only to remove its badge. Confirm the affected operation first.
