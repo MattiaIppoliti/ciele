@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { formatDateTime } from "@/lib/format";
 import type {
   ApplicationImport,
   ApplicationSyncRun,
@@ -123,13 +124,10 @@ const STATUS_BADGE: Record<SourceStatus, string> = {
 
 function formatWhen(iso: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // The explicit-locale, UTC formatter: `toLocaleString(undefined, …)` took the
+  // server's locale and zone on the server and the reader's in the browser, so
+  // every dated row hydrated to different text (React #418) on the Library.
+  return formatDateTime(iso);
 }
 
 function StatusBadge({ status }: { status: SourceStatus }) {

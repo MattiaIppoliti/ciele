@@ -304,10 +304,10 @@ export function ContactSalesForm() {
               We couldn&apos;t send your request, nothing has reached us. Please
               email{" "}
               <a
-                href="mailto:sales@ciele.app"
+                href="mailto:hello@ciele.app"
                 className="font-medium underline underline-offset-4"
               >
-                sales@ciele.app
+                hello@ciele.app
               </a>{" "}
               and we&apos;ll pick it up from there.
             </>

@@ -11,6 +11,17 @@ const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const execFileAsync = promisify(execFile);
 
 /**
+ * Windows ships every one of these as a `.cmd` shim, which `execFile` cannot
+ * resolve by bare name and, since the argument-injection fix in Node 18.20,
+ * refuses to spawn at all without a shell. Both facts are about the host, not
+ * about the packed artifact, so they are handled here rather than skipping the
+ * one test that proves installation works.
+ */
+const onWindows = process.platform === "win32";
+const cmd = (name: string) => (onWindows ? `${name}.cmd` : name);
+const shellOnWindows = onWindows ? { shell: true } : {};
+
+/**
  * Installation is a public boundary: prove the packed artifact works from a
  * directory that has no access to this monorepo or its workspace packages.
  */
@@ -20,9 +31,9 @@ describe("installed ciele CLI", () => {
     const installDir = mkdtempSync(join(tmpdir(), "ciele-install-"));
 
     const tarballName = execFileSync(
-      "pnpm",
+      cmd("pnpm"),
       ["pack", "--pack-destination", packDir, "--json"],
-      { cwd: packageRoot, encoding: "utf8" }
+      { cwd: packageRoot, encoding: "utf8", ...shellOnWindows }
     );
     const manifestStart = tarballName.indexOf('{\n  "name"');
     expect(manifestStart).toBeGreaterThanOrEqual(0);
@@ -31,9 +42,9 @@ describe("installed ciele CLI", () => {
     };
 
     execFileSync(
-      "npm",
+      cmd("npm"),
       ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefix", installDir, filename],
-      { cwd: installDir, encoding: "utf8" }
+      { cwd: installDir, encoding: "utf8", ...shellOnWindows }
     );
 
     const installedManifest = JSON.parse(
@@ -42,9 +53,11 @@ describe("installed ciele CLI", () => {
     expect(installedManifest.private).not.toBe(true);
     expect(installedManifest.files).toEqual(expect.arrayContaining(["dist"]));
 
-    const output = execFileSync(join(installDir, "node_modules/.bin/ciele"), ["help"], {
+    const installedCli = join(installDir, "node_modules/.bin", cmd("ciele"));
+    const output = execFileSync(installedCli, ["help"], {
       cwd: installDir,
       encoding: "utf8",
+      ...shellOnWindows,
     });
     expect(output).toContain("ciele, manage your Organization from the terminal");
 
@@ -66,9 +79,9 @@ describe("installed ciele CLI", () => {
       const address = server.address();
       if (!address || typeof address === "string") throw new Error("No test server port");
       const result = await execFileAsync(
-        join(installDir, "node_modules/.bin/ciele"),
+        installedCli,
         ["doctor", "--base-url", `http://127.0.0.1:${address.port}`, "--api-key", "ciele_sk_local"],
-        { cwd: installDir, encoding: "utf8" }
+        { cwd: installDir, encoding: "utf8", ...shellOnWindows }
       );
       expect(result.stdout).toContain("org-local");
       expect(result.stdout).toContain("local-test");

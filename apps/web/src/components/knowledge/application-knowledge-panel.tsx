@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { formatDateTime } from "@/lib/format";
 import type {
   ApplicationImport,
   ApplicationSyncRun,
@@ -89,13 +90,9 @@ const PROVIDER_BY_ID = Object.fromEntries(
 
 function when(value: string | null): string {
   if (!value) return "Never";
-  return new Date(value).toLocaleString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Same formatter as the rest of the Library: server and browser must agree
+  // on the text or the row fails hydration.
+  return formatDateTime(value);
 }
 
 function errorMessage(error: unknown): string {

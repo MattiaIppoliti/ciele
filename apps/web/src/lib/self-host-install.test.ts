@@ -64,7 +64,19 @@ describe("normalizeSourceUrl", () => {
 describe("buildSelfHostInstallScript", () => {
   const script = buildSelfHostInstallScript(REPO);
 
-  it("is valid POSIX shell", () => {
+  // A Windows checkout without Git's sh on PATH cannot run this one, and a
+  // hard failure there would say "the script is broken" about a machine that
+  // never looked at it. CI is POSIX, so the gate itself is unchanged.
+  const hasSh = (() => {
+    try {
+      execFileSync("sh", ["-c", "exit 0"], { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  it.skipIf(!hasSh)("is valid POSIX shell", () => {
     // `sh -n` parses without executing: the cheapest possible guard against
     // shipping a syntax error to everyone who pastes the command.
     expect(() =>
@@ -187,10 +199,12 @@ describe("the bootstrap.sh contract", () => {
  * stranger's Mac.
  */
 describe("the Ciele Desktop packaging contract", () => {
+  // Newlines normalized: the assertions below are anchored line patterns, and
+  // a Windows checkout with core.autocrlf leaves a \r before every $.
   const builderConfig = readFileSync(
     join(REPO_ROOT, "apps/desktop/electron-builder.yml"),
     "utf8"
-  );
+  ).replace(/\r\n/g, "\n");
 
   it("still packages the bundle the installer opens", () => {
     const productName = builderConfig.match(/^productName:\s*(\S+)\s*$/m)?.[1];

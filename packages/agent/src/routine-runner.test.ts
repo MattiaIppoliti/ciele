@@ -47,10 +47,19 @@ async function seedRoutine(
     cadence: "daily",
     hour: 8,
     createdBy: DEMO_MEMBER.userId,
+    // Stamped, not left to the clock. A routine that has never run is due only
+    // once a slot has opened *after* it was created, so a row created "now"
+    // stops being due at RUN_AT the moment the real date catches up with the
+    // fixture. Production never writes createdAt, so it is not in the insert
+    // type; the mock keeps whatever the row carries, hence the spread.
+    ...(CREATED_AT as object),
     ...over,
   });
   return { teammate, routine };
 }
+
+/** When every seeded routine was created. Before RUN_AT, and fixed. */
+const CREATED_AT = { createdAt: "2026-08-25T00:00:00.000Z" };
 
 /** Well past the routine's creation, and after an 08:00 slot. */
 const RUN_AT = new Date("2026-09-01T09:00:00.000Z");

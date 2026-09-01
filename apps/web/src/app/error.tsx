@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { isStaleBundleError } from "@/lib/stale-bundle";
+
+const RELOAD_KEY = "ciele:stale-bundle-reload";
 
 /**
  * The boundary the console never had.
@@ -13,7 +17,16 @@ import Link from "next/link";
  *
  * `reset()` re-renders the failed tree in place, which is all the user was
  * doing by hand when they hit reload and it worked.
+ *
+ * Two additions since. The error is written to the console, because a
+ * client-side throw during a soft navigation leaves no trace on the server and
+ * the boundary was the only witness. And a stale bundle reloads itself: a tab
+ * left open across a deploy keeps the old runtime, and its first navigation
+ * into a route it had not loaded asks the new deployment for modules the old
+ * runtime cannot link. Nothing in the app is wrong there, the tab is, and the
+ * reload the user would do by hand is done once for them.
  */
+
 export default function Error({
   error,
   reset,
@@ -21,6 +34,21 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    console.error(error);
+    if (!isStaleBundleError(error)) return;
+    // Once per path per tab. If storage is unavailable the reload is skipped
+    // rather than risked in a loop; the buttons below still work.
+    try {
+      const key = `${RELOAD_KEY}:${window.location.pathname}`;
+      if (window.sessionStorage.getItem(key)) return;
+      window.sessionStorage.setItem(key, String(Date.now()));
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [error]);
+
   return (
     <main className="bg-background text-foreground flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4 text-center">
@@ -43,9 +71,11 @@ export default function Error({
             Back to assistants
           </Link>
         </div>
-        {error.digest && (
-          <p className="text-muted-foreground pt-4 font-mono text-xs">
-            {error.digest}
+        {(error.digest || error.message) && (
+          // The digest names a server-side failure; the message is what a
+          // client-side throw has instead. Either is what support needs to hear.
+          <p className="text-muted-foreground pt-4 font-mono text-xs break-words">
+            {error.digest ?? error.message}
           </p>
         )}
       </div>

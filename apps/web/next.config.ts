@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
   // traces every runtime file into .next/standalone, so the container ships
   // node_modules-free (see apps/web/Dockerfile). No effect on Vercel deploys.
   output: "standalone",
+  // Deployment skew: a console tab left open across a deploy keeps the
+  // old runtime, and its first soft navigation into a route it never loaded
+  // asks the new deployment for modules the old runtime cannot link. With an
+  // id, Next stamps every RSC response and asset URL, and a mismatch turns
+  // that navigation into a full reload of the new build instead of a throw
+  // into the root error boundary. Vercel sets the variable at build time; a
+  // self-host build leaves it undefined, which disables the check.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   transpilePackages: [
     "@agent-hub/agent",
     "@agent-hub/core",

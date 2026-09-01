@@ -6,7 +6,7 @@ describe("candidatePaths", () => {
     // The whole reason this function exists: a macOS app launched from the
     // Dock inherits none of the shell's PATH, so `spawn("docker")` fails with
     // ENOENT on a machine where the terminal finds it instantly.
-    const paths = candidatePaths({ PATH: "/usr/bin:/bin:/usr/sbin:/sbin", HOME: "/Users/x" });
+    const paths = candidatePaths({ PATH: "/usr/bin:/bin:/usr/sbin:/sbin", HOME: "/Users/x" }, "darwin");
 
     expect(paths).toContain("/usr/local/bin/docker");
     expect(paths).toContain("/opt/homebrew/bin/docker");
@@ -62,13 +62,13 @@ describe("candidatePaths (macOS details)", () => {
   it("prefers what is on PATH, when there is a PATH to read", () => {
     // A developer running from a terminal, or a machine with a deliberate
     // install: their choice wins over our guesses.
-    const paths = candidatePaths({ PATH: "/custom/bin", HOME: "/Users/x" });
+    const paths = candidatePaths({ PATH: "/custom/bin", HOME: "/Users/x" }, "darwin");
 
     expect(paths[0]).toBe("/custom/bin/docker");
   });
 
   it("still has somewhere to look with no PATH at all", () => {
-    const paths = candidatePaths({ HOME: "/Users/x" });
+    const paths = candidatePaths({ HOME: "/Users/x" }, "darwin");
 
     expect(paths.length).toBeGreaterThan(0);
     expect(paths).toContain("/usr/local/bin/docker");
@@ -78,7 +78,7 @@ describe("candidatePaths (macOS details)", () => {
     // An empty PATH entry means "the current directory" to the shell, and
     // spawning `./docker` from wherever the app happens to be is not a thing
     // this should ever do.
-    const paths = candidatePaths({ PATH: "/usr/bin::/bin:", HOME: "/Users/x" });
+    const paths = candidatePaths({ PATH: "/usr/bin::/bin:", HOME: "/Users/x" }, "darwin");
 
     for (const candidate of paths) {
       expect(candidate.startsWith("/")).toBe(true);

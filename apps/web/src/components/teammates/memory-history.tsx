@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { MemoryDocumentChange } from "@agent-hub/core";
+import { formatDateTime } from "@/lib/format";
 import {
   historyAuthor,
   historyChangeSummary,
@@ -53,7 +54,7 @@ export function MemoryHistory({
                 {historyAuthor({ entry, teammateNames })}
                 <span className="text-muted-foreground font-normal">
                   {" · "}
-                  {new Date(entry.createdAt).toLocaleString()}
+                  {formatDateTime(entry.createdAt)}
                   {" · "}
                   {historyChangeSummary(change)}
                 </span>
