@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 // Keep the enqueued Ingestion Job queued instead of running it inline, so the
 // test can observe the world between the action and the job.
 vi.mock("next/server", () => ({ after: vi.fn() }));

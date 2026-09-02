@@ -2079,7 +2079,6 @@ export function KnowledgeClient({
             onClick={() =>
               startTransition(async () => {
                 await reembedKnowledgeAction(assistantId);
-                router.refresh();
               })
             }
           >

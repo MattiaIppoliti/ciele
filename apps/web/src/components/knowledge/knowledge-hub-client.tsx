@@ -58,7 +58,6 @@ import {
 } from "@/components/ui/select";
 import {
   deleteOrgSourceAction,
-  downloadKnowledgeOriginalAction,
   exportOrgFaqsAction,
   listSourceConceptsAction,
 } from "@/app/actions";
@@ -264,13 +263,14 @@ export function KnowledgeHubClient({
     URL.revokeObjectURL(url);
   }
 
-  async function downloadOriginal(item: OrgKnowledgeSourceListItem) {
-    const { url } = await downloadKnowledgeOriginalAction(item.id);
-    if (!url) {
-      toast.error("No stored original is available for this file.");
-      return;
-    }
-    window.open(url, "_blank", "noopener");
+  function downloadOriginal(item: OrgKnowledgeSourceListItem) {
+    // The route streams the bytes and records the transfer (#801, CYB-05); a
+    // signed URL handed to the browser recorded nothing and outlived the click.
+    window.open(
+      `/api/knowledge/originals/${encodeURIComponent(item.id)}`,
+      "_blank",
+      "noopener"
+    );
   }
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
@@ -615,7 +615,6 @@ export function KnowledgeHubClient({
                                 onConfirm: async () => {
                                   await deleteOrgSourceAction(item.id);
                                   toast.success("Deleted.");
-                                  router.refresh();
                                 },
                               })
                             }

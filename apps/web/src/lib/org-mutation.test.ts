@@ -1,24 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 vi.mock("@/lib/authz", () => ({
   requireMember: vi.fn(),
 }));
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireMember } from "@/lib/authz";
 import { orgMutation } from "./org-mutation";
 
 describe("orgMutation", () => {
   const requireMemberMock = vi.mocked(requireMember);
   const revalidatePathMock = vi.mocked(revalidatePath);
+  const revalidateTagMock = vi.mocked(revalidateTag);
   let db: Db;
 
   beforeEach(() => {
     db = getMockDb();
     requireMemberMock.mockReset();
     revalidatePathMock.mockReset();
+    revalidateTagMock.mockReset();
     requireMemberMock.mockResolvedValue({
       db,
       organizationId: DEMO_ORG.id,
@@ -48,6 +50,33 @@ describe("orgMutation", () => {
     ).rejects.toThrow("Not allowed");
     expect(fn).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("expires the Organization's Insights cache for the kinds the aggregate reads", async () => {
+    for (const entities of [
+      [{ kind: "inbox" as const }],
+      [{ kind: "assistant" as const, id: "as_1" }],
+      [{ kind: "improvement" as const, id: "imp_1" }],
+    ]) {
+      revalidateTagMock.mockReset();
+      await orgMutation({ capability: "edit", entities }, async () => null);
+      expect(revalidateTagMock).toHaveBeenCalledExactlyOnceWith(
+        `insights:${DEMO_ORG.id}`,
+        { expire: 0 },
+      );
+    }
+  });
+
+  it("leaves the Insights cache alone for mutations the aggregate never reads", async () => {
+    await orgMutation(
+      { capability: "changeRoles", entities: [{ kind: "members" }] },
+      async () => null,
+    );
+    await orgMutation(
+      { capability: "edit", entities: [{ kind: "helpDeskList" }] },
+      async () => null,
+    );
+    expect(revalidateTagMock).not.toHaveBeenCalled();
   });
 
   it("fans one entity out to all its routes, layout scope included", async () => {

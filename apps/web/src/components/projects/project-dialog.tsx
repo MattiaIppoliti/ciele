@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   MEMORY_DOCUMENT_MAX_CHARS,
   memoryDocumentChanges,
@@ -54,7 +53,6 @@ export function ProjectDialog({
   onCreated?: (project: { id: string; name: string }) => void;
   onDeleted?: (projectId: string) => void;
 }) {
-  const router = useRouter();
   const creating = projectId === null;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -99,7 +97,6 @@ export function ProjectDialog({
       try {
         await work();
         toast.success(done);
-        router.refresh();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Something went wrong"

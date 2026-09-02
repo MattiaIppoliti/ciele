@@ -40,7 +40,10 @@ import {
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { Button } from "@agent-hub/ui";
 import { Calendar } from "@/components/ui/calendar";
-import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
+import {
+  isRedirectError,
+  useConfirmDelete,
+} from "@/components/ui/confirm-delete-modal";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
@@ -138,6 +141,8 @@ export function ImprovementDetail({
   projects,
   canEdit,
   variant = "page",
+  onUpdated,
+  onDeleted,
 }: {
   improvement: Improvement;
   associationPage: ImprovementAssociationPage;
@@ -155,6 +160,12 @@ export function ImprovementDetail({
    * need no flag, they respond to the container's width, not the viewport's.
    */
   variant?: "page" | "drawer";
+  onUpdated?: (improvement: Improvement) => void;
+  /**
+   * The row is gone server-side. The board drops every copy it holds on this,
+   * instead of waiting for a refreshed page to prove the absence.
+   */
+  onDeleted?: (improvementId: string) => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -210,7 +221,8 @@ export function ImprovementDetail({
   function persist(patch: Parameters<typeof updateImprovementAction>[1]) {
     startTransition(async () => {
       try {
-        await updateImprovementAction(improvement.id, patch);
+        const updated = await updateImprovementAction(improvement.id, patch);
+        onUpdated?.(updated);
       } catch {
         router.refresh();
       }
@@ -267,7 +279,14 @@ export function ImprovementDetail({
       description:
         "This permanently removes the improvement and cannot be undone.",
       confirmLabel: "Delete improvement",
-      onConfirm: () => deleteImprovementAction(improvement.id),
+      onConfirm: () =>
+        deleteImprovementAction(improvement.id).catch((error: unknown) => {
+          // The action always redirects after deleting, and a redirect
+          // surfaces as a throw the router must still see: the row is gone
+          // all the same, so tell the board before rethrowing.
+          if (isRedirectError(error)) onDeleted?.(improvement.id);
+          throw error;
+        }),
     });
   }
 
@@ -882,7 +901,6 @@ export function ImprovementDetail({
         onClose={() => setRelinkMessageId(null)}
         onChanged={() => {
           setRelinkMessageId(null);
-          router.refresh();
         }}
       />
 
@@ -957,7 +975,6 @@ function SuggestedFix({
   proposal: ImprovementProposal | null;
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [dismissReason, setDismissReason] = useState("");
   const [dismissing, setDismissing] = useState(false);
@@ -978,13 +995,11 @@ function SuggestedFix({
   const accept = () =>
     startTransition(async () => {
       await acceptImprovementProposalAction(improvementId);
-      router.refresh();
     });
   const dismiss = () =>
     startTransition(async () => {
       await dismissImprovementProposalAction(improvementId, dismissReason);
       setDismissing(false);
-      router.refresh();
     });
 
   return (

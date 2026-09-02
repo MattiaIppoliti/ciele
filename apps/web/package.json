@@ -12,9 +12,13 @@
     "lint": "eslint",
     "measure:bundle": "node scripts/measure-bundle.mjs",
     "check:admin-bundle": "node scripts/check-admin-bundle.mjs",
+    "check:admin-interactions": "node scripts/check-admin-interactions.mjs",
+    "check:admin-latency": "node scripts/check-admin-latency.mjs",
+    "check:admin-perf": "node scripts/check-admin-perf.mjs",
     "analyze": "next experimental-analyze -o",
     "attribute": "node scripts/attribute-bundle.mjs",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"**/*.security.test.ts\"",
+    "test:security": "vitest run .security.test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -63,6 +67,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "playwright-core": "^1.62.1",
     "shadcn": "^4.12.0",
     "tailwindcss": "^4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

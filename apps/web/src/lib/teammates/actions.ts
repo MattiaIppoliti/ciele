@@ -111,7 +111,7 @@ export async function resolveTeammateActions(args: {
       // the mutation has landed either way: the cost of failing here is a page
       // that is one refresh stale, which is not worth losing the turn over.
       try {
-        revalidateEntities(outcome.entities);
+        revalidateEntities(outcome.entities, organizationId);
       } catch {
         // Ignored on purpose, see above.
       }

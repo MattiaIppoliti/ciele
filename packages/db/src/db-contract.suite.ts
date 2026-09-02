@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AiUsageStage, FlowCondition } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  IMPROVEMENT_STATUS_VALUES,
   MEMORIES_PER_SUBJECT_CAP,
   apiKeySecretHint,
   buildPublicationConfig,
@@ -2760,6 +2761,93 @@ export function describeDbContract(
         }
         expect(await db.listTraceRetentionPolicies()).toEqual([]);
       });
+
+      it("deletes expired transcripts, and never one under legal hold (#801, CYB-12)", async () => {
+        const assistant = await newAssistant();
+        const doomed = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-retention",
+          title: "expired",
+        });
+        await db.appendMessage({
+          conversationId: doomed.id,
+          role: "user",
+          content: [{ type: "text", text: "something sensitive" }],
+        });
+        // Opened before the cutoff, active after it: the clock is last
+        // activity, so a thread still in use is not expired however long ago
+        // it was opened (#801 review, CYB-12).
+        const active = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-active",
+          title: "old but active",
+        });
+        const held = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-hold",
+          title: "under hold",
+        });
+        await db.setConversationLegalHold(held.id, true);
+
+        const futureCutoff = new Date(Date.now() + 86_400_000).toISOString();
+        try {
+          await db.updateOrganization(ctx.organizationId, {
+            transcriptRetentionDays: 30,
+          });
+          expect(await db.listTranscriptRetentionPolicies()).toContainEqual({
+            organizationId: ctx.organizationId,
+            retentionDays: 30,
+          });
+
+          // One org's sweep never reaches another's conversations.
+          expect(
+            await db.deleteExpiredConversations(
+              ctx.foreignOrganizationId,
+              futureCutoff
+            )
+          ).toBe(0);
+          expect(await db.getConversation(doomed.id)).not.toBeNull();
+
+          // A cutoff between the active thread's creation and its next
+          // message: created_at is older than it, updated_at is newer.
+          const midCutoff = new Date(Date.now() + 1_000).toISOString();
+          await new Promise((resolve) => setTimeout(resolve, 1_100));
+          await db.appendMessage({
+            conversationId: active.id,
+            role: "user",
+            content: [{ type: "text", text: "still here" }],
+          });
+          await db.deleteExpiredConversations(ctx.organizationId, midCutoff);
+          expect(await db.getConversation(active.id)).not.toBeNull();
+
+          const deleted = await db.deleteExpiredConversations(
+            ctx.organizationId,
+            futureCutoff
+          );
+          expect(deleted).toBeGreaterThanOrEqual(1);
+          // The transcript goes with it: this is a deletion, not a
+          // half-erasure that leaves the messages reachable by id.
+          expect(await db.getConversation(doomed.id)).toBeNull();
+          expect(await db.listMessages(doomed.id)).toEqual([]);
+          // A preservation obligation outlives the policy.
+          expect(await db.getConversation(held.id)).not.toBeNull();
+
+          // Idempotent: a deleted conversation never matches again, and the
+          // held one still does not.
+          expect(
+            await db.deleteExpiredConversations(ctx.organizationId, futureCutoff)
+          ).toBe(0);
+        } finally {
+          await db.setConversationLegalHold(held.id, false);
+          await db.updateOrganization(ctx.organizationId, {
+            transcriptRetentionDays: null,
+          });
+        }
+        expect(await db.listTranscriptRetentionPolicies()).toEqual([]);
+      });
     });
 
     describe("improvements", () => {
@@ -2794,8 +2882,22 @@ export function describeDbContract(
       });
 
       it("pages Improvements by their monotonic sequence", async () => {
+        const assistant = await newAssistant();
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "pagination-contract",
+        });
+        const message = await db.appendMessage({
+          conversationId: conversation.id,
+          role: "assistant",
+          content: [{ type: "text", text: "page-linked answer" }],
+        });
         await db.createImprovement(ctx.organizationId, { title: "Page one" });
-        await db.createImprovement(ctx.organizationId, { title: "Page two" });
+        await db.createImprovement(ctx.organizationId, {
+          title: "Page two",
+          messageId: message.id,
+        });
         const first = await db.listImprovementsPage(ctx.organizationId, {
           limit: 1,
         });
@@ -2804,8 +2906,58 @@ export function describeDbContract(
           cursor: first.nextCursor,
         });
         expect(first.items).toHaveLength(1);
+        expect(first.items[0]?.messageCount).toBe(1);
         expect(second.items).toHaveLength(1);
         expect(second.items[0]?.seq).toBeLessThan(first.items[0]!.seq);
+
+        const exhausted = await db.listImprovementsPage(ctx.organizationId, {
+          limit: 1,
+          cursor: "0",
+        });
+        expect(exhausted).toEqual({ items: [], nextCursor: null });
+      });
+
+      it("pages one lane at a time and counts every lane authoritatively", async () => {
+        const toDo = await db.createImprovement(ctx.organizationId, {
+          title: "Lane to do",
+        });
+        const older = await db.createImprovement(ctx.organizationId, {
+          title: "Lane in progress, older",
+        });
+        const newer = await db.createImprovement(ctx.organizationId, {
+          title: "Lane in progress, newer",
+        });
+        await db.updateImprovement(older.id, { status: "in_progress" });
+        await db.updateImprovement(newer.id, { status: "in_progress" });
+
+        const first = await db.listImprovementsPage(ctx.organizationId, {
+          limit: 1,
+          status: "in_progress",
+        });
+        expect(first.items.map((item) => item.id)).toEqual([newer.id]);
+        expect(first.nextCursor).toBe(String(newer.seq));
+        const second = await db.listImprovementsPage(ctx.organizationId, {
+          limit: 1,
+          status: "in_progress",
+          cursor: first.nextCursor,
+        });
+        expect(second.items.map((item) => item.id)).toEqual([older.id]);
+        expect(second.nextCursor).toBeNull();
+        // The lane filter never lets another lane's row through, even when it
+        // sits between the two in-progress rows by seq.
+        expect(
+          [...first.items, ...second.items].some((item) => item.id === toDo.id)
+        ).toBe(false);
+
+        const counts = await db.countImprovementsByStatus(ctx.organizationId);
+        expect(counts.in_progress).toBe(2);
+        expect(counts.to_do).toBeGreaterThanOrEqual(1);
+        for (const status of IMPROVEMENT_STATUS_VALUES) {
+          expect(typeof counts[status]).toBe("number");
+        }
+        expect(
+          await db.countImprovementsByStatus(ctx.missingOrganizationId)
+        ).toEqual({ to_do: 0, in_progress: 0, in_review: 0, done: 0, archived: 0 });
       });
 
       it("patches status/priority and bumps updatedAt semantics", async () => {
@@ -3067,6 +3219,61 @@ export function describeDbContract(
           text: "chunk",
         });
         expect(results.every((r) => r.conceptId === keep.id)).toBe(true);
+      });
+
+      it("backfills past the per-Source cap from the over-fetch (#801, CYB-14)", async () => {
+        // A long Source whose every chunk matches must not turn the cap into
+        // a short result: the window it loses goes to the next Source. This
+        // is the wiring-level property, the pure-function tests in
+        // hybrid-search.security.test.ts cannot see a truncation that happens
+        // before hydration.
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Diversity Collection",
+        });
+        const makeSource = async (name: string, chunkCount: number) => {
+          const source = await db.createSource({
+            collectionId: collection.id,
+            name,
+            kind: "website",
+            config: { url: `https://${name}.edu` },
+          });
+          const concept = await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path: `web/${name}.md`,
+            frontmatter: { type: "Web Page", title: name },
+            body: "content",
+          });
+          await db.saveChunks(
+            Array.from({ length: chunkCount }, (_, i) => ({
+              conceptId: concept.id,
+              collectionId: collection.id,
+              sourceId: source.id,
+              content: `zebra paragraph ${i} of ${name}`,
+              embedding: null,
+            }))
+          );
+          await db.setSourceAssistantLinks(source.id, [assistant.id]);
+          return source;
+        };
+        const long = await makeSource("monopolist", 6);
+        const other = await makeSource("answer", 1);
+
+        const results = await db.searchChunks(assistant.id, collection.id, {
+          embedding: null,
+          text: "zebra",
+          limit: 4,
+        });
+
+        expect(results).toHaveLength(4);
+        const bySource = new Map<string, number>();
+        for (const row of results) {
+          const key = row.sourceId ?? "none";
+          bySource.set(key, (bySource.get(key) ?? 0) + 1);
+        }
+        expect(bySource.get(long.id)).toBe(3);
+        expect(bySource.get(other.id)).toBe(1);
       });
 
       it("ignores unknown ids and treats an empty list as a no-op", async () => {
@@ -5494,6 +5701,153 @@ export function describeDbContract(
             surface: "teammate",
           })
         ).resolves.toBeUndefined();
+      });
+
+      it("keeps an append-only ledger of sensitive-object access (#801, CYB-05)", async () => {
+        // Issuing a signed URL is not evidence a download happened, so what is
+        // recorded is the transfer: who, from where, and how many bytes moved.
+        await db.recordObjectAccess({
+          organizationId: ctx.organizationId,
+          actorKind: "member",
+          actorId: "user-1",
+          objectKind: "knowledge_original",
+          objectPath: `${ctx.organizationId}/handbook.pdf`,
+          result: "served",
+          bytes: 4096,
+          ip: "203.0.113.7",
+          userAgent: "Mozilla/5.0",
+          requestId: "req-1",
+        });
+        await db.recordObjectAccess({
+          organizationId: ctx.organizationId,
+          actorKind: "visitor",
+          actorId: "visitor-9",
+          objectKind: "knowledge_original",
+          objectPath: `${ctx.organizationId}/private.pdf`,
+          result: "refused",
+        });
+
+        const all = await db.listObjectAccessEvents(ctx.organizationId);
+        expect(all.length).toBeGreaterThanOrEqual(2);
+        // Both attempts are on the ledger, the refusal included: a refused
+        // read is the event a detection counts. Not asserted by position,
+        // because `now()` is transaction time and two inserts a microsecond
+        // apart can share it.
+        expect(all.find((event) => event.result === "refused")).toMatchObject({
+          actorKind: "visitor",
+          bytes: null,
+        });
+        expect(all.find((event) => event.result === "served")).toMatchObject({
+          actorKind: "member",
+          actorId: "user-1",
+          bytes: 4096,
+          ip: "203.0.113.7",
+          requestId: "req-1",
+        });
+
+        const scoped = await db.listObjectAccessEvents(ctx.organizationId, {
+          objectPath: `${ctx.organizationId}/private.pdf`,
+        });
+        expect(scoped).toHaveLength(1);
+        expect(scoped[0]!.result).toBe("refused");
+
+        // A cancelled transfer is its own outcome, with the bytes that moved
+        // (#801 review, CYB-05): the column's check constraint has to accept
+        // it, which is what makes this a contract case and not a type test.
+        await db.recordObjectAccess({
+          organizationId: ctx.organizationId,
+          actorKind: "member",
+          actorId: "user-1",
+          objectKind: "knowledge_original",
+          objectPath: `${ctx.organizationId}/handbook.pdf`,
+          result: "aborted",
+          bytes: 1024,
+        });
+        const aborted = (await db.listObjectAccessEvents(ctx.organizationId)).find(
+          (event) => event.result === "aborted"
+        );
+        expect(aborted).toMatchObject({ bytes: 1024 });
+
+        // Paged reads: every row exactly once across pages, newest first.
+        const firstPage = await db.listObjectAccessEvents(ctx.organizationId, {
+          limit: 2,
+        });
+        const secondPage = await db.listObjectAccessEvents(ctx.organizationId, {
+          limit: 2,
+          offset: 2,
+        });
+        expect(firstPage).toHaveLength(2);
+        const everything = await db.listObjectAccessEvents(ctx.organizationId);
+        expect([...firstPage, ...secondPage].map((e) => e.id)).toEqual(
+          everything.slice(0, 4).map((e) => e.id)
+        );
+      });
+
+      it("answers one member's current role, and null for a stranger", async () => {
+        // The /api/v1 auth seam runs this per request (#801, CYB-04), so it
+        // must be a point read in both implementations, not a roster scan.
+        expect(await db.getMemberRole(ctx.organizationId, ctx.userId)).toBe("owner");
+        // A valid-but-unknown id, not a slug: the column is a uuid.
+        expect(
+          await db.getMemberRole(ctx.organizationId, "00000000-0000-4000-8000-000000000000")
+        ).toBeNull();
+      });
+
+      it("purges ledger rows past the retention cutoff, all organizations at once (#801, CYB-19)", async () => {
+        await db.recordObjectAccess({
+          organizationId: ctx.organizationId,
+          actorKind: "member",
+          actorId: "user-old",
+          objectKind: "knowledge_original",
+          objectPath: `${ctx.organizationId}/old.pdf`,
+          result: "served",
+        });
+        const before = await db.listObjectAccessEvents(ctx.organizationId);
+        expect(before.length).toBeGreaterThan(0);
+
+        // A future cutoff purges everything written so far; a past cutoff is
+        // a no-op. Both directions, so the comparison cannot be backwards.
+        expect(
+          await db.purgeExpiredObjectAccessEvents("2000-01-01T00:00:00.000Z")
+        ).toBe(0);
+        const purged = await db.purgeExpiredObjectAccessEvents(
+          new Date(Date.now() + 60_000).toISOString()
+        );
+        expect(purged).toBeGreaterThanOrEqual(before.length);
+        expect(await db.listObjectAccessEvents(ctx.organizationId)).toEqual([]);
+      });
+
+      it("keeps a durable audit of retention-sweep ticks (#801, CYB-12)", async () => {
+        // The sweep's counts used to live only in the cron response; the audit
+        // must survive the deletion it describes, failures included.
+        await db.recordRetentionSweep({
+          organizationId: ctx.organizationId,
+          policy: "transcripts",
+          retentionDays: 30,
+          cutoff: "2026-08-01T00:00:00.000Z",
+          deleted: 12,
+        });
+        await db.recordRetentionSweep({
+          organizationId: ctx.organizationId,
+          policy: "traces",
+          retentionDays: 7,
+          cutoff: "2026-08-24T00:00:00.000Z",
+          error: "boom",
+        });
+
+        const events = await db.listRetentionSweepEvents(ctx.organizationId);
+        expect(events.length).toBeGreaterThanOrEqual(2);
+        expect(events.find((event) => event.policy === "transcripts")).toMatchObject({
+          retentionDays: 30,
+          deleted: 12,
+          error: null,
+        });
+        // A failed tick is on the audit too, with what stopped it and no count.
+        expect(events.find((event) => event.policy === "traces")).toMatchObject({
+          retentionDays: 7,
+          deleted: null,
+          error: "boom",
+        });
       });
 
       it("reports a completed crawl as pages, attributed to the crawler", async () => {

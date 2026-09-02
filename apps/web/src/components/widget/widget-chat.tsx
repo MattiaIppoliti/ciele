@@ -164,7 +164,7 @@ function toCitationItems(
     url:
       source.url ??
       (assistantId && source.directAccess && source.sourceId
-        ? `/api/widget/${assistantId}/sources/${source.sourceId}/download`
+        ? `/api/widget/${assistantId}/sources/${source.sourceId}/download?visitorId=${encodeURIComponent(visitorId())}`
         : undefined),
   }));
 }

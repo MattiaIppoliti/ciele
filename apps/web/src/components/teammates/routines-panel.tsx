@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { RoutineCadence, TeammateRoutine } from "@agent-hub/core";
 import { ROUTINE_CADENCES, TEAMMATE_ROUTINE_CAP } from "@agent-hub/core";
 import { Button, Input, Label } from "@agent-hub/ui";
@@ -41,7 +40,6 @@ export function RoutinesPanel({
   teammateId: string;
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [instruction, setInstruction] = useState("");
   const [cadence, setCadence] = useState<RoutineCadence>("daily");
@@ -57,7 +55,6 @@ export function RoutinesPanel({
       try {
         await work();
         toast.success(done);
-        router.refresh();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Something went wrong"

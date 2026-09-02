@@ -4,6 +4,7 @@ import {
   PREVIEW_GLOBAL_NAV,
   PREVIEW_SETUP_SECTIONS,
 } from "@/components/home/preview-nav";
+import { GLOBAL_VIEWS } from "@/components/home/preview-model";
 
 /**
  * The marketing hero's app mock advertises the console, so what it draws has to
@@ -20,6 +21,17 @@ describe("marketing app mock navigation", () => {
   it("draws the console's global nav, in order", () => {
     expect(PREVIEW_GLOBAL_NAV.map((item) => item.label)).toEqual(
       GLOBAL_NAV.map((item) => item.label)
+    );
+  });
+
+  it("has a pane behind every nav row above the divider", () => {
+    // The sidebar casts a clicked label straight to GlobalView, and the pane
+    // registry is a Record over that type. A label drawn in the nav but
+    // missing from GLOBAL_VIEWS therefore renders `undefined` when clicked
+    // (React #130), and the idle showcase skips it. Teammates and Library
+    // shipped exactly that way once; this pins the two lists together.
+    expect(GLOBAL_VIEWS).toEqual(
+      PREVIEW_GLOBAL_NAV.filter((item) => !item.bottom).map((i) => i.label)
     );
   });
 

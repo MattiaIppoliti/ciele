@@ -8,6 +8,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./calendar": "./src/calendar.tsx",
     "./use-resizable-width": "./src/use-resizable-width.ts",
     "./resize-geometry": "./src/resize-geometry.ts"
   },

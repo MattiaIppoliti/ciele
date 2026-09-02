@@ -3,6 +3,12 @@ import { z } from "zod";
 import { messageText } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { embedTexts } from "./embeddings";
+import {
+  isSafeToPersist,
+  mintUntrustedNonce,
+  untrustedContentPolicy,
+  wrapUntrustedContent,
+} from "./untrusted-content";
 import { getClassifierModel } from "./models";
 import { createTurnSession, MEMORY_FACT_MAX } from "./session";
 import { meterUsage, usageTotals } from "./usage";
@@ -146,15 +152,23 @@ export async function promoteConversationMemories(
     conversation.sessionState
   ).memory();
 
+  // The transcript is Visitor-authored text going to a model that will act on
+  // what it reads, so it is fenced here exactly as it is in a turn (#801,
+  // CYB-07/CYB-13). A triple-quote is a delimiter the transcript can write.
+  const nonce = mintUntrustedNonce();
   const { object, usage } = await generateObject({
     model: extractor.model,
     schema: FACTS_SCHEMA,
-    system: EXTRACT_SYSTEM,
+    system: `${EXTRACT_SYSTEM}\n\n${untrustedContentPolicy(nonce)}`,
     prompt: [
       sessionFacts.length > 0
         ? `Session-memory facts already noted during the conversation:\n${sessionFacts.map((f) => `- ${f}`).join("\n")}\n`
         : "",
-      `Conversation transcript:\n"""\n${transcript}\n"""`,
+      "Conversation transcript:",
+      wrapUntrustedContent(
+        { provenance: "conversation transcript", body: transcript },
+        nonce
+      ),
     ].join("\n"),
   });
   await meterUsage(db, [
@@ -173,6 +187,13 @@ export async function promoteConversationMemories(
   const facts = object.facts
     .map((f) => f.trim())
     .filter((f) => f.length > 0)
+    // A transcript is untrusted text and the extractor is a model reading it,
+    // so a fact it "found" can be a sentence the Visitor wrote for exactly
+    // this purpose (#801, CYB-13). Long-term memory is injected into the
+    // control context of every later turn, which makes a poisoned fact a
+    // standing instruction rather than one bad answer. Dropped, not stored
+    // with a warning flag: nothing downstream reads flags.
+    .filter((f) => isSafeToPersist(f))
     .slice(0, MAX_FACTS_PER_EXTRACTION);
   if (facts.length === 0) return { promoted: 0, skipped: "nothing-durable" };
 

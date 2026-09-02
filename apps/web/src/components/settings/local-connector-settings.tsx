@@ -71,12 +71,43 @@ function pairingStorageKey(scope: string): string {
   return `${PAIRING_STORAGE_KEY_PREFIX}.${scope}`;
 }
 
+/**
+ * How long a stored pairing stays usable (#801, CYB-17). The token is a live
+ * bearer credential for a local server holding the Member's provider
+ * subscriptions, and it used to sit in `localStorage` with no expiry at all:
+ * a shared or recovered browser profile kept working indefinitely. Thirty days
+ * bounds it without turning a convenience into a weekly chore; re-pairing is
+ * one click from the desktop app.
+ */
+const PAIRING_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** What goes in `localStorage`: the pairing plus when it was issued. */
+function persistPairing(scope: string, pairing: ConnectorPairing): void {
+  localStorage.setItem(
+    pairingStorageKey(scope),
+    JSON.stringify({ ...pairing, issuedAt: Date.now() })
+  );
+}
+
 function storedPairing(scope: string): ConnectorPairing | null {
   try {
     const value = JSON.parse(
       localStorage.getItem(pairingStorageKey(scope)) ?? "null"
-    ) as { port?: unknown; token?: unknown; scope?: unknown } | null;
+    ) as {
+      port?: unknown;
+      token?: unknown;
+      scope?: unknown;
+      issuedAt?: unknown;
+    } | null;
     if (!value) return null;
+    // A pairing written before this had an expiry has no `issuedAt`, so it is
+    // treated as expired rather than grandfathered: the whole point is that an
+    // unbounded one should stop working.
+    const issuedAt = typeof value.issuedAt === "number" ? value.issuedAt : 0;
+    if (Date.now() - issuedAt > PAIRING_MAX_AGE_MS) {
+      localStorage.removeItem(pairingStorageKey(scope));
+      return null;
+    }
     const pairing = parseConnectorPairing(
       `#connectorPort=${String(value.port)}&connectorToken=${String(value.token)}&connectorScope=${String(value.scope)}`
     );
@@ -370,10 +401,7 @@ export function LocalConnectorSettings({
         fragmentPairing?.scope === connectorScope ? fragmentPairing : null;
       const nextPairing = acceptedFragmentPairing ?? storedPairing(connectorScope);
       if (acceptedFragmentPairing) {
-        localStorage.setItem(
-          pairingStorageKey(connectorScope),
-          JSON.stringify(acceptedFragmentPairing)
-        );
+        persistPairing(connectorScope, acceptedFragmentPairing);
         toast.success("Ciele Connector detected");
       } else if (fragmentPairing) {
         toast.error("This connector belongs to a different Ciele workspace.");
@@ -428,7 +456,7 @@ export function LocalConnectorSettings({
           body: JSON.stringify({ token: next.token, scope: next.scope }),
         });
         if (!response.ok || cancelled) return;
-        localStorage.setItem(pairingStorageKey(connectorScope), JSON.stringify(next));
+        persistPairing(connectorScope, next);
         setPairing(next);
         setChecking(true);
         toast.success("Ciele Connector detected");

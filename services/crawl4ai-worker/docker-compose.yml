@@ -36,9 +36,18 @@ services:
       CRAWL4AI_HOOKS_ENABLED: "false"
 
     ports:
-      # Exposed on localhost for the Ciele dev app and the smoke test. In the
-      # managed deployment this port sits behind private ingress + IAM instead.
-      - "11235:11235"
+      # Bound to the loopback interface, not every interface: "11235:11235"
+      # published this token-authenticated crawler to the whole network, which
+      # is not what the line above it said (#801, CYB-06). In the managed
+      # deployment this port sits behind private ingress + IAM instead.
+      - "127.0.0.1:11235:11235"
+
+    # A browser-driving container should never gain privileges it did not
+    # start with. The Chromium sandbox stays off (see the config's
+    # `--no-sandbox` note): re-enabling it needs SYS_ADMIN or a tuned seccomp
+    # profile, and granting SYS_ADMIN to this container is the worse trade.
+    security_opt:
+      - no-new-privileges:true
 
     volumes:
       # Hardened config fully replaces the image default (read-only).

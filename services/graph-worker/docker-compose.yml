@@ -31,9 +31,16 @@ services:
       TELEMETRY_DISABLED: "1"
 
     ports:
-      # Exposed on localhost for the Ciele dev app and the smoke test. In the
-      # managed deployment this sits behind private ingress + the token instead.
-      - "8000:8000"
+      # Loopback only. "8000:8000" bound every interface, which published a
+      # worker holding an LLM key to the whole network (#801, CYB-06). In the
+      # managed deployment this sits behind private ingress + the token.
+      - "127.0.0.1:8000:8000"
+
+    # A Python HTTP server needs no Linux capabilities and never escalates.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
     volumes:
       # The derived graph/vector/relational stores persist across restarts.

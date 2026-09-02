@@ -37,6 +37,7 @@ pnpm --filter @agent-hub/core typecheck   # tsc --noEmit
 | `defaults.ts` | Shipped defaults for a new Assistant and for channel availability. |
 | `publication.ts` | Which Assistant fields freeze into an immutable Publication. |
 | `recrawl.ts` | Per-site re-crawl cadence. Clock-free, the caller passes `now`. |
+| `document-triage.ts` | What an uploaded file *is* before a parser reads it (#801, CYB-09): magic bytes against the claimed extension, the OOXML central directory read for macros and embedded objects, the PDF page and ZIP decompression budgets. Pure over bytes; the verdict it returns is the `TriageEvidence` a Source persists. |
 | `message.ts` · `pricing.ts` · `id.ts` | Message-part flattening, token prices, short ids. |
 | `crypto.ts` · `thrown-message.ts` | Pure helpers that are not domain derivations (see below). |
 | `testing/` | Fixtures, published as `@agent-hub/core/testing`. Test-only, out of the main barrel. |
@@ -65,6 +66,9 @@ consumers, that is the signal to add one.
   more workspaces need it, and it is pure*. These predate the domain move; keep that section small
   rather than letting it become a junk drawer.
 - **Anything with a dependency**: it belongs in the package that already owns that dependency.
+  The prompt-injection fence and scanner (`untrusted-content.ts`) sat here for one release with a
+  `node:crypto` import and a single consumer; it now lives in `packages/agent`, the runtime that
+  uses it.
 
 ## Related
 

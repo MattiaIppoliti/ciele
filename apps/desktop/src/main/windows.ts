@@ -17,13 +17,11 @@ import path from "node:path";
 import { CHANNELS, type Mode } from "../shared/state";
 
 // The wording and the partition name live in a module that imports no
-// Electron, so a unit test for them needs no Electron binary. Re-exported
-// here because this is where callers expect to find them.
-import {
-  httpFailureReason,
-  loadFailureReason,
-  partitionForMode,
-} from "./failure-reasons";
+// Electron, so a unit test for them needs no Electron binary. The three this
+// file uses are re-exported because callers of the window functions expect
+// to find their failure wording beside them; the partition list is not,
+// import it from `./failure-reasons`.
+import { httpFailureReason, loadFailureReason, partitionForMode } from "./failure-reasons";
 
 export { httpFailureReason, loadFailureReason, partitionForMode };
 
@@ -103,7 +101,12 @@ export function showNative(route: string): BrowserWindow {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      // On (#801, CYB-17). It was off, which meant a renderer compromise had
+      // the OS to work with rather than a sandboxed process. Affordable here
+      // because the preload is a bundle importing nothing but `electron`
+      // (electron.vite.config.ts externalises nothing), so it needs no Node
+      // API at run time, which is the usual reason this gets turned off.
+      sandbox: true,
     },
   });
   remember(window);

@@ -123,7 +123,6 @@ export function HelpDeskManage({
         desk.id,
         next.map((c) => c.id)
       );
-      router.refresh();
     });
   }
 
@@ -168,7 +167,6 @@ export function HelpDeskManage({
     startTransition(async () => {
       await updateHelpDeskAction(desk.id, { name: name.trim(), description });
       toast.success("Help desk updated");
-      router.refresh();
     });
   }
 
@@ -195,7 +193,6 @@ export function HelpDeskManage({
       onConfirm: async () => {
         await deleteSupportChannelAction(desk.id, channel.id);
         toast.success("Escalation option deleted");
-        router.refresh();
       },
     });
   }
@@ -437,7 +434,6 @@ export function HelpDeskManage({
                       ? "Improvements will be auto-generated on escalation"
                       : "Auto-generate improvements disabled"
                   );
-                  router.refresh();
                 })
               }
             />

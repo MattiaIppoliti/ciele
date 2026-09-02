@@ -9,12 +9,19 @@
 /* Views + idle cycling                                              */
 /* ---------------------------------------------------------------- */
 
+/* Every global nav row above the sidebar divider has a pane behind it. The
+   list must match PREVIEW_GLOBAL_NAV's non-bottom labels in order; the
+   sidebar casts a clicked label to this type, so a label missing here has
+   no entry in GLOBAL_PANES and the mock renders `undefined` (React #130).
+   preview-nav.test.ts pins the two lists together. */
 export type GlobalView =
   | "Assistants"
   | "Help Desks"
   | "Inbox"
+  | "Teammates"
   | "Improvements"
-  | "Insights";
+  | "Insights"
+  | "Library";
 
 export type View =
   | { kind: "global"; label: GlobalView }
@@ -24,8 +31,10 @@ export const GLOBAL_VIEWS: GlobalView[] = [
   "Assistants",
   "Help Desks",
   "Inbox",
+  "Teammates",
   "Improvements",
   "Insights",
+  "Library",
 ];
 
 /* Idle showcase step: advance to the next global view, wrapping around.
@@ -173,6 +182,151 @@ export const CONVERSATIONS = [
     time: "09:20",
     assistant: "Onboarding Guide",
     up: true,
+  },
+];
+
+/* ---------------------------------------------------------------- */
+/* Teammates, one group thread with a mentioned Teammate            */
+/* ---------------------------------------------------------------- */
+
+/* Everyone in the thread. `seed` feeds the same generated-avatar helper the
+   console uses (`@/lib/avatar`, blobatar), so each participant has a stable
+   drawn face rather than initials. Members seed from their address, as the
+   console's `personAvatarSeed` does; Teammates from a chosen seed. `self` marks
+   the signed-in Member, whose messages sit on the right as in the console. */
+export type ChannelParticipant = {
+  id: string;
+  name: string;
+  seed: string;
+  kind: "member" | "teammate";
+  /** Teammates only: the persona label drawn next to the name. */
+  role?: string;
+  self?: boolean;
+};
+
+export const CHANNEL_PARTICIPANTS: ChannelParticipant[] = [
+  {
+    id: "alex",
+    name: "Alex Carter",
+    seed: "alex.carter@acme.com",
+    kind: "member",
+    self: true,
+  },
+  { id: "priya", name: "Priya Nair", seed: "priya.nair@acme.com", kind: "member" },
+  {
+    id: "tomas",
+    name: "Tomás Reyes",
+    seed: "tomas.reyes@acme.com",
+    kind: "member",
+  },
+  {
+    id: "juno",
+    name: "Juno",
+    seed: "juno-chief-of-staff",
+    kind: "teammate",
+    role: "Chief of Staff",
+  },
+  {
+    id: "sable",
+    name: "Sable",
+    seed: "sable-release-writer",
+    kind: "teammate",
+    role: "Release Writer",
+  },
+];
+
+export const TEAMMATE_CHANNEL = {
+  name: "Launch week",
+  meta: "3 people · 2 teammates",
+};
+
+export type TeammateChannelMessage = {
+  /** A CHANNEL_PARTICIPANTS id. */
+  from: string;
+  text: string;
+  /** Member messages: the Teammate id this message names with @. */
+  mention?: string;
+  /** Teammate messages: the collapsed thinking line + how many Sources. */
+  thought?: string;
+  sources?: number;
+};
+
+export const TEAMMATE_MESSAGES: TeammateChannelMessage[] = [
+  { from: "alex", text: "morning team, quick check before standup" },
+  {
+    from: "priya",
+    text: "pricing page copy is still with legal, I'll chase them today",
+  },
+  {
+    from: "alex",
+    mention: "juno",
+    text: "how is the launch week release going overall?",
+  },
+  {
+    from: "juno",
+    thought: "Thought for 2.1s",
+    text: "On track: 14 of 16 launch tasks are done. Still open: the pricing page copy (Priya, legal review) and the status page banner, which ships tomorrow. I filed both in Improvements so nothing slips past Friday.",
+    sources: 6,
+  },
+  {
+    from: "tomas",
+    text: "banner is done on my side, just waiting on design sign-off",
+  },
+  {
+    from: "priya",
+    mention: "sable",
+    text: "can you draft the release notes from the merged PRs?",
+  },
+  {
+    from: "sable",
+    thought: "Thought for 4.3s",
+    text: "Draft ready: 9 changes grouped under Knowledge, Flows and Console. I left the two unmerged PRs out and flagged them in the doc for Tomás.",
+    sources: 12,
+  },
+  { from: "alex", text: "perfect, let's review it at standup" },
+];
+
+export function channelParticipant(id: string): ChannelParticipant {
+  const participant = CHANNEL_PARTICIPANTS.find((p) => p.id === id);
+  if (!participant) throw new Error(`Unknown channel participant: ${id}`);
+  return participant;
+}
+
+/* ---------------------------------------------------------------- */
+/* Library, the org-level knowledge hub                             */
+/* ---------------------------------------------------------------- */
+
+export const LIBRARY_TABS = [
+  { label: "Websites", count: 3, live: true },
+  { label: "Files", count: 12, live: true },
+  { label: "Applications", count: 0, live: false },
+  { label: "FAQs", count: 8, live: true },
+];
+
+export const LIBRARY_WEBSITES = [
+  {
+    name: "Acme Docs",
+    url: "https://docs.acme.com",
+    content: "20 Pages",
+    assistant: "Docs Navigator",
+    created: "21 Jun 26 15:34",
+    updated: "17 Jul 26 09:12",
+  },
+  {
+    name: "IT Knowledge Base",
+    url: "https://help.acme.com",
+    content: "48 Pages",
+    assistant: "Acme Helpdesk",
+    created: "19 Jun 26 15:04",
+    updated: "16 Jul 26 18:30",
+  },
+  {
+    name: "Acme Intranet",
+    url: "https://intranet.acme.com",
+    content: "112 Pages",
+    assistant: "Acme Intranet",
+    created: "02 Jun 26 10:41",
+    updated: "17 Jul 26 07:55",
   },
 ];
 

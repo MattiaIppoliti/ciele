@@ -289,10 +289,23 @@ export type { FundingBucket } from "./funding";
 
 // AES-256-GCM sealing for stored secrets. Sealed by the app when a credential is
 // saved (provider connections, SSO, session cookies), opened by the agent
-// runtime when it resolves a provider credential. Only the seal/open pair is
-// public: `sealSecret` is what handles the no-key case, and a caller reaching
-// past it would write a row `openSecret` cannot read back.
-export { sealSecret, openSecret } from "./crypto";
+// runtime when it resolves a provider credential. `encryptSecret` stays private
+// so a caller cannot reach past the pair and write a row `openSecret` cannot
+// read back; `isLegacyPlaintextSecret` identifies rows the removed no-key
+// fallback wrote, which a rotation has to find before it can re-seal them.
+export { sealSecret, openSecret, isLegacyPlaintextSecret } from "./crypto";
+
+// What an uploaded file actually is, before a parser reads it (#801, CYB-09):
+// magic-byte agreement with the claimed extension, and the two things an
+// OOXML package can carry that a document has no use for.
+export {
+  documentExtension,
+  triageDocument,
+  DOCUMENT_TRIAGE_VERSION,
+  type DocumentTriage,
+  type DocumentTriageCode,
+  type TriageEvidence,
+} from "./document-triage";
 
 // Organization API key secrets (#618): mint, hash, and hint. Verification is
 // a hash lookup, so the same trio serves the web app now and /api/v1 later.

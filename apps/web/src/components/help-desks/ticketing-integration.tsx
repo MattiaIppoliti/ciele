@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { HelpDesk, TicketingPlatform } from "@agent-hub/core";
 import { CircleCheck, Trash2 } from "lucide-react";
 import { toast } from "@/lib/toast";
@@ -63,7 +62,6 @@ export function TicketingIntegrationSection({
   integration: HelpDesk["ticketingIntegration"];
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<ServiceNowFormState>(EMPTY_FORM);
   const [isPending, startTransition] = useTransition();
@@ -90,7 +88,6 @@ export function TicketingIntegrationSection({
       await connectServiceNowIntegrationAction(helpDeskId, form);
       toast.success("ServiceNow connected");
       setDialogOpen(false);
-      router.refresh();
     });
   }
 
@@ -103,7 +100,6 @@ export function TicketingIntegrationSection({
       onConfirm: async () => {
         await disconnectTicketingIntegrationAction(helpDeskId);
         toast.success("Integration disconnected");
-        router.refresh();
       },
     });
   }

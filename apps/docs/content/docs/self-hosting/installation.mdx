@@ -107,8 +107,12 @@ docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
-The default configuration publishes the application on port `3000` and the database gateway on port `8000`. It does not publish Postgres.
+The default configuration publishes the application on port `3000` and the database gateway on port `8000`. Both bind to `127.0.0.1`, so nothing is reachable from another machine until you put a reverse proxy in front. Set `BIND_ADDRESS=0.0.0.0` in `deploy/.env` to publish them on every interface instead. Postgres is never published. The database console (Studio) always stays on loopback. Reach it through an SSH tunnel.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
+
+The application checks this at startup. It reads `PUBLIC_URL`, `CIELE_PUBLIC_ORIGIN` and `NEXT_PUBLIC_APP_URL`. When any one of them starts with `http://` and does not point at the local machine, the application does not start. The container log names the variable. The default `PUBLIC_URL=http://localhost:3000` passes the check. To run over plain HTTP on purpose, for example on a private network, set `CIELE_ALLOW_INSECURE_HTTP=1` in `deploy/.env`.
+
+Once a public origin exists, set `CIELE_PUBLIC_ORIGIN` in `deploy/.env` to that HTTPS URL. Links that go into an email, such as the newsletter confirmation, are built from this value. Without it, the application refuses to send those emails. It does not build a link from the request's `Host` header.

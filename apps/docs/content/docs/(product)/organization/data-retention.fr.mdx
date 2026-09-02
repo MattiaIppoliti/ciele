@@ -1,0 +1,58 @@
+---
+title: Conservation des données
+description: Définissez la durée de conservation des conversations et des traces de raisonnement, et conservez une conversation.
+---
+
+Une organisation définit deux périodes de conservation dans **Settings**, dans
+l'onglet **General**. Les deux sont désactivées par défaut : rien n'est supprimé
+tant qu'un administrateur n'a pas sélectionné une période.
+
+## Les deux fenêtres
+
+| Paramètre | Ce que fait le nettoyage nocturne après la fenêtre |
+| --- | --- |
+| **Reasoning trace retention** | Supprime le panneau Pensée des anciens messages. Les messages sont conservés. |
+| **Conversation retention** | Supprime l'intégralité de la conversation, transcription comprise. |
+
+Les deux fenêtres sont indépendantes. Une organisation peut définir l'une ou
+l'autre, les deux, ou aucune. Par exemple, conservez les transcriptions pendant
+un an, mais supprimez les traces de raisonnement après 30 jours.
+
+Un nettoyage est effectué une fois par nuit. Il applique chaque fenêtre aux
+conversations plus anciennes que cette fenêtre. Le nettoyage est permanent : une
+conversation supprimée n'est pas placée dans une corbeille.
+
+<Callout type="warn" title="Conversation retention deletes data">
+After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+</Callout>
+
+## Définissez une fenêtre
+
+1. Ouvrez **Settings**.
+2. Restez sur l'onglet **General**.
+3. Sélectionnez une fenêtre sous **Reasoning trace retention** ou **Conversation
+   retention**.
+4. Sélectionnez **Save changes**.
+
+Seul un membre habilité à gérer les membres peut modifier ces paramètres.
+
+## Conservation légale
+
+Une conservation légale exclut une conversation du processus de suppression des
+conversations conservées. Utilisez-la lorsqu'une obligation de conservation
+s'applique à une conversation, sans désactiver la conservation pour toutes les
+autres conversations.
+
+1. Ouvrez **Inbox** et sélectionnez la conversation.
+2. Ouvrez le panneau des détails.
+3. Sélectionnez **Place legal hold** dans la carte **Retention**.
+
+La conservation est maintenue jusqu'à ce qu'un membre sélectionne **Release
+legal hold**. Chaque membre voit le statut de mise en attente. Seul un membre
+habilité à gérer les membres peut placer ou lever une mise en attente.
+
+## Installations auto-hébergées
+
+Le nettoyage nocturne est exécuté à partir du planificateur intégré. Aucune
+configuration supplémentaire n'est nécessaire. Le nettoyage appelle
+`/api/cron/sweep-retention` avec l'identifiant `CRON_SECRET`.

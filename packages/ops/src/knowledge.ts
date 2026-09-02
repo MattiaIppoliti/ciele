@@ -143,6 +143,16 @@ export const addSourceOp = defineOperation({
      * Collection is org-owned.
      */
     assistantIds: z.array(z.string().min(1)).max(50).optional(),
+    /** The persisted triage verdict for a file upload (#801, CYB-09). */
+    triage: z
+      .object({
+        scanner: z.literal("document-triage"),
+        version: z.number().int().positive(),
+        sha256: z.string().regex(/^[0-9a-f]{64}$/),
+        verdict: z.literal("clean"),
+        at: z.string(),
+      })
+      .optional(),
   }),
   entities: (_input, result: { source: Source; assistantId: string }) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
@@ -151,12 +161,17 @@ export const addSourceOp = defineOperation({
   run: async (ctx, input) => {
     await requireCollection(ctx, input.collectionId, input.assistantId);
     const linkTargets = await requireLinkTargets(ctx, input);
+    const config = {
+      ...(input.sourceUrl ? { url: input.sourceUrl } : {}),
+      // "This file was checked" becomes a row, not a claim (#801, CYB-09).
+      ...(input.triage ? { triage: input.triage } : {}),
+    };
     const source = await ctx.db.createSource({
       collectionId: input.collectionId,
       name: input.name,
       kind: input.kind,
       originalObjectPath: input.originalObjectPath ?? null,
-      ...(input.sourceUrl ? { config: { url: input.sourceUrl } } : {}),
+      ...(Object.keys(config).length ? { config } : {}),
     });
     // Every create path links (#733): retrieval is purely link-based, so an
     // editor add links its own assistant.

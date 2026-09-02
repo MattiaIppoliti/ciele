@@ -15,6 +15,20 @@ description: Upload a file or add text, and choose which Assistants answer from 
 
 Ciele stores the original file and extracts supported text for ingestion. The Source status shows whether extraction and indexing completed.
 
+## Files Ciele refuses
+
+Ciele checks the file contents, not only the file name, before it reads a
+document. It refuses:
+
+- a file whose contents do not match its extension, for example an HTML page
+  named `.pdf`
+- a program, whatever the file is called
+- an Office file that contains a macro project or an embedded object
+- a PDF with more than 2000 pages
+
+Save the document without macros or embedded objects, or split a long PDF, and
+upload it again.
+
 ## Add pasted text
 
 Use a text Source for short content that does not require a separate file.

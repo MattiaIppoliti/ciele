@@ -23,7 +23,7 @@
 
 import type { Assistant, ProviderConnection } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
-import { createEmbedder } from "./embeddings";
+import { createEmbedder, embeddingSpaceId } from "./embeddings";
 import { withGraphEngine } from "./graph-search";
 import type { KnowledgeSearcher } from "./types";
 
@@ -60,6 +60,8 @@ export function buildKnowledgeSearcher(opts: {
       embedding,
       text: query,
       limit: KNOWLEDGE_SEARCH_LIMIT,
+      // The query's space: the matcher compares only within it (#801, CYB-14).
+      embeddingSpace: embeddingSpaceId(opts.connections),
     });
   };
   return withGraphEngine({
@@ -115,7 +117,12 @@ export function buildCollectionSearcher(opts: {
     // One embedding for both halves: the query is the same, and paying for it
     // twice would make a two-part scope cost double what a one-part scope does.
     const embedding = await embed(query);
-    const q = { embedding, text: query, limit: KNOWLEDGE_SEARCH_LIMIT };
+    const q = {
+      embedding,
+      text: query,
+      limit: KNOWLEDGE_SEARCH_LIMIT,
+      embeddingSpace: embeddingSpaceId(opts.connections),
+    };
     const [byCollection, bySource] = await Promise.all([
       collectionIds.length > 0
         ? db.searchCollectionChunks(organizationId, collectionIds, q)

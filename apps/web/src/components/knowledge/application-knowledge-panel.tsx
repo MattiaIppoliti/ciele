@@ -472,7 +472,6 @@ function ImportDialog({
   contextAssistantId?: string;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState(editingImport?.name ?? "");
   const [cadence, setCadence] = useState<"manual" | "daily">(
     editingImport?.cadence ?? "daily"
@@ -579,7 +578,6 @@ function ImportDialog({
           toast.success("Import created and queued for synchronization.");
         }
         onClose();
-        router.refresh();
       } catch (error) {
         toast.error(errorMessage(error));
       }
@@ -801,7 +799,6 @@ export function ApplicationKnowledgePanel({
       try {
         await operation();
         toast.success(success);
-        router.refresh();
       } catch (error) {
         toast.error(errorMessage(error));
       }
@@ -963,7 +960,6 @@ export function ApplicationKnowledgePanel({
                                           connection.id
                                         );
                                         toast.success("Connection deleted.");
-                                        router.refresh();
                                       },
                                     });
                                   } catch (error) {
@@ -1116,7 +1112,6 @@ export function ApplicationKnowledgePanel({
                             onConfirm: async () => {
                               await deleteApplicationImportAction(item.id);
                               toast.success("Import deleted.");
-                              router.refresh();
                             },
                           })
                         }

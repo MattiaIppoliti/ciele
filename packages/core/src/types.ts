@@ -1,3 +1,4 @@
+import type { TriageEvidence } from "./document-triage";
 /**
  * The domain vocabulary: every noun in `CONTEXT.md`, as a type.
  *
@@ -677,6 +678,14 @@ export interface Organization {
    * content, feedback and timestamps stay.
    */
   traceRetentionDays?: number | null;
+  /**
+   * How many days a Conversation is kept before the nightly sweep deletes it,
+   * transcript and all (#801, CYB-12). Null (the default) keeps them forever.
+   * Distinct from {@link traceRetentionDays}, which only strips the Thinking
+   * trace and leaves the transcript: this one is the lifecycle the privacy
+   * page promises.
+   */
+  transcriptRetentionDays?: number | null;
   createdAt: string;
 }
 
@@ -715,6 +724,8 @@ export interface OrganizationPatch {
   logoUrl?: string | null;
   /** Trace retention window in days; null = keep forever (#573). */
   traceRetentionDays?: number | null;
+  /** Transcript retention window in days; null = keep forever (#801, CYB-12). */
+  transcriptRetentionDays?: number | null;
 }
 
 export interface Invite {
@@ -1823,7 +1834,15 @@ export interface ApplicationSourceConfig {
  * disjoint and optional so legacy rows remain valid while consumers can read
  * common fields without narrowing a union first.
  */
-export type SourceConfig = WebsiteSourceConfig & ApplicationSourceConfig;
+export type SourceConfig = WebsiteSourceConfig &
+  ApplicationSourceConfig & {
+    /**
+     * The persisted triage verdict for an uploaded file (#801, CYB-09):
+     * scanner, rule-set version, sha256 of the bytes, and when. Absent on
+     * non-file Sources and on files uploaded before the verdict was recorded.
+     */
+    triage?: TriageEvidence;
+  };
 
 export interface Source {
   id: string;
@@ -2224,6 +2243,14 @@ export interface Conversation {
   sessionVersion: number;
   /** Pinned conversations stay in the History panel beyond the recency cap. */
   pinned: boolean;
+  /**
+   * Exempt from the transcript-retention sweep (#801, CYB-12). Set while the
+   * conversation is under a preservation obligation, so an organization can
+   * hold one without turning retention off for every other conversation.
+   * Optional for the same reason the retention windows are: a row written
+   * before the column existed simply is not held.
+   */
+  legalHold?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -2559,6 +2586,15 @@ export type ImprovementStatus =
   | "in_review"
   | "done"
   | "archived";
+
+/** Every lane of the Improvements board, in board order. */
+export const IMPROVEMENT_STATUS_VALUES: readonly ImprovementStatus[] = [
+  "to_do",
+  "in_progress",
+  "in_review",
+  "done",
+  "archived",
+];
 
 export type ImprovementPriority = "high" | "medium" | "low" | "none";
 
@@ -3042,6 +3078,79 @@ export type RuntimeEventStatus = "started" | "succeeded" | "failed";
  * Preview, and folding it into either would misattribute internal usage.
  */
 export type RuntimeEventSurface = "preview" | "widget" | "teammate";
+
+/**
+ * Who reached for a sensitive object (#801, CYB-05). A Member acts with their
+ * auth user id, an API key with the key's id, an anonymous widget Visitor with
+ * its subject id.
+ */
+export type ObjectAccessActorKind = "member" | "api_key" | "visitor" | "unknown";
+
+/** Which private object was reached for. */
+export type ObjectAccessObjectKind = "knowledge_original" | "analytics_export";
+
+/**
+ * `served` means bytes reached the caller and the transfer completed.
+ * `aborted` means the caller went away mid-transfer: `bytes` says how much had
+ * already moved, and the bulk-download detection counts it beside `served`,
+ * because fetching most of every original and cancelling is still
+ * exfiltration. `refused` is an authorization or policy no, the value the
+ * probe detection counts. `failed` is our own side breaking, and is not a
+ * security event.
+ */
+export type ObjectAccessResult = "served" | "aborted" | "refused" | "failed";
+
+/**
+ * One attempt to read a private object, recorded whether or not it succeeded.
+ *
+ * Unlike {@link RuntimeEventInput} this deliberately carries identifying data:
+ * an access ledger that cannot say who, from where, and how much is not
+ * evidence of anything. That is also why it lives in its own append-only
+ * table that only the service role writes.
+ */
+export interface ObjectAccessEventInput {
+  organizationId: string;
+  actorKind: ObjectAccessActorKind;
+  actorId?: string | null;
+  objectKind: ObjectAccessObjectKind;
+  objectPath: string;
+  sourceId?: string | null;
+  result: ObjectAccessResult;
+  /** Bytes actually transferred (`served` and `aborted`). Null when nothing moved. */
+  bytes?: number | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  requestId?: string | null;
+}
+
+export interface ObjectAccessEvent extends ObjectAccessEventInput {
+  id: string;
+  createdAt: string;
+}
+
+/**
+ * One retention-sweep tick for one Organization (#801, CYB-12): the durable
+ * record that a policy ran, what window it enforced, and how many rows it
+ * removed. Carries no personal data, which is what lets the audit outlive the
+ * transcripts it describes.
+ */
+export interface RetentionSweepEventInput {
+  organizationId: string;
+  /** Which lifecycle ran: transcript deletion, or the older trace strip. */
+  policy: "transcripts" | "traces";
+  retentionDays: number;
+  /** The cutoff the sweep computed; rows older than this were the target. */
+  cutoff: string;
+  /** Conversations deleted / messages stripped; null when the tick failed. */
+  deleted?: number | null;
+  /** Present when the org's tick failed. */
+  error?: string | null;
+}
+
+export interface RetentionSweepEvent extends RetentionSweepEventInput {
+  id: string;
+  createdAt: string;
+}
 
 /**
  * One runtime telemetry event: an attributed record of a runtime boundary

@@ -8,6 +8,7 @@ import type {
   ReferralCandidate,
 } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { fencedForTurn } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import type {
   ChatReplyPart,
@@ -126,6 +127,13 @@ export interface ToolRuntimeContext {
   searchPasses: SearchPass[];
   /** Max `searchKnowledge` calls this turn (defaults to MAX_SEARCH_PASSES). */
   searchBudget?: number;
+  /**
+   * This turn's untrusted-content fence label (#801, CYB-07). Every piece of
+   * retrieved text a tool hands back is wrapped in it, and the system prompt
+   * says what it means. Absent, the content goes back bare, which is what
+   * every caller written before the fence existed still does.
+   */
+  untrustedNonce?: string;
   /**
    * Passes claimed by in-flight batches but not yet on the ledger. The AI SDK
    * executes a step's tool calls concurrently, so two simultaneous batches
@@ -435,7 +443,15 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
             concept: r.conceptTitle,
             collection: r.collectionName,
             source: r.sourceName,
-            content: r.content,
+            // Fenced, and labelled with where it came from (#801, CYB-07).
+            // A retrieved chunk reaches the model on the same channel the
+            // system prompt does; the fence is what tells the two apart.
+            content: fencedForTurn(
+              ctx,
+              r.content,
+              [r.sourceName, r.collectionName].filter(Boolean).join(" · ") ||
+                "organization knowledge"
+            ),
             // The handle `readKnowledgeSource` reads by: a search returns the
             // matching chunk, and this is how the model asks for the rest of
             // the document that chunk came from.

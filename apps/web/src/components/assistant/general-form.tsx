@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type {
   Assistant,
   KnowledgeEngine,
@@ -104,7 +103,6 @@ function FieldHeader({ title, hint }: { title: string; hint: string }) {
 }
 
 export function GeneralForm({ assistant }: { assistant: Assistant }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const [launcherEnabled, setLauncherEnabled] = useState(
@@ -215,7 +213,6 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
         knowledgeEngine,
       });
       toast.success("Settings saved");
-      router.refresh();
     });
   }
 
@@ -234,7 +231,6 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
     if (result.avatarUrl) {
       setAvatarUrl(result.avatarUrl);
       toast.success("Avatar uploaded");
-      router.refresh();
     }
   }
 

@@ -27,6 +27,6 @@ export async function runOperation<In, Out>(
     }),
   };
   const result = await op.run(ctx, input);
-  revalidateEntities(op.entities(input, result));
+  revalidateEntities(op.entities(input, result), session.organization.id);
   return result;
 }

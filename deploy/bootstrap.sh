@@ -28,11 +28,13 @@ SEED=0
 ENV_ONLY=0
 IMAGE_TAG=""
 WORKERS=0
+TLS=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --seed) SEED=1 ;;
     --env-only) ENV_ONLY=1 ;;
     --workers) WORKERS=1 ;;
+    --tls) TLS=1 ;;
     --images)
       shift
       IMAGE_TAG="${1:-}"
@@ -177,6 +179,19 @@ if [ "$WORKERS" = "1" ]; then
   fi
 fi
 
+if [ "$TLS" = "1" ]; then
+  listed "$overlays" docker-compose.tls.yml ||
+    overlays="$overlays:docker-compose.tls.yml"
+  # The two hostnames are yours, not something this script can invent; refuse
+  # loudly now rather than let the caddy container crash-loop on an empty
+  # domain later (#801, CYB-16).
+  if ! grep -q '^CIELE_DOMAIN=.' "$ENV_FILE" || ! grep -q '^CIELE_SUPABASE_DOMAIN=.' "$ENV_FILE"; then
+    echo "Set CIELE_DOMAIN and CIELE_SUPABASE_DOMAIN in $PWD/$ENV_FILE first: the TLS proxy needs the names it should answer for (DNS must point here)." >&2
+    [ "$ENV_ONLY" = "1" ] || exit 2
+  fi
+  echo "TLS: Caddy will terminate HTTPS for CIELE_DOMAIN and CIELE_SUPABASE_DOMAIN on 80/443."
+fi
+
 [ "$overlays" = "$overlays_before" ] || replace_var COMPOSE_FILE "$overlays"
 
 # Which overlays are on is whatever .env says, whether this run set them or a
@@ -240,6 +255,7 @@ also own platform-wide settings.
   Stop:              docker compose -f deploy/docker-compose.yml down
   Wipe everything:   docker compose -f deploy/docker-compose.yml down -v
 
-TLS is not handled here: put your own reverse proxy in front and terminate
-there. See deploy/README.md for the workers profile, upgrades and backups.
+TLS: re-run with --tls (after setting CIELE_DOMAIN and CIELE_SUPABASE_DOMAIN
+in deploy/.env) to start the bundled Caddy proxy on 80/443; or put your own
+in front. See deploy/README.md for the workers profile, upgrades and backups.
 EOF

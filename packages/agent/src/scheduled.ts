@@ -12,7 +12,7 @@
  * this package's tests rather than by a route.
  */
 
-import type { SourceStatus } from "@agent-hub/core";
+import type { RetentionSweepEventInput, SourceStatus } from "@agent-hub/core";
 import { thrownMessage } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
@@ -407,48 +407,212 @@ export interface SweepExpiredTracesReport {
   traces: { organizations: number; cleared: number; results: SweptTraceResult[] };
 }
 
+/** A per-Organization retention policy row, as both list methods return it. */
+interface RetentionPolicy {
+  organizationId: string;
+  retentionDays: number;
+}
+
+/** One org's outcome in either sweep, before the count gets its real name. */
+type SweptPolicyResult =
+  | { organizationId: string; retentionDays: number; count: number }
+  | { organizationId: string; retentionDays: number; error: string };
+
+/**
+ * Writes one retention audit row (#801, CYB-12), and never lets that write
+ * take the sweep down with it: the deletion already happened, and an audit
+ * hiccup must not surface as "retention failed" when it did not.
+ */
+async function recordSweepAudit(
+  db: ScheduledDeps["db"],
+  event: RetentionSweepEventInput
+): Promise<void> {
+  try {
+    await db.recordRetentionSweep(event);
+  } catch {
+    // Ledger down ≠ sweep failed. The tick's own result carries the counts.
+  }
+}
+
+/**
+ * The shape both retention sweeps share: list the orgs that opted in, turn
+ * each window into a cutoff, run one primitive per org, write the durable
+ * audit row (#801, CYB-12) for every outcome, zero ticks and failures
+ * included, and report per-org results without letting one failure abort the
+ * rest. The two sweeps differ only in which primitive runs and what its count
+ * means, so that is all a caller supplies.
+ *
+ * Idempotent because the primitives are: a cleared trace is null and a deleted
+ * conversation is gone, so neither matches a second pass.
+ */
+async function sweepRetentionPolicies(input: {
+  db: ScheduledDeps["db"];
+  policies: RetentionPolicy[];
+  now: Date;
+  policy: RetentionSweepEventInput["policy"];
+  errorLabel: string;
+  run: (organizationId: string, cutoffIso: string) => Promise<number>;
+}): Promise<{ total: number; results: SweptPolicyResult[] }> {
+  const results = await Promise.all(
+    input.policies.map(
+      async ({ organizationId, retentionDays }): Promise<SweptPolicyResult> => {
+        const cutoff = new Date(
+          input.now.getTime() - retentionDays * 24 * 60 * 60 * 1000
+        ).toISOString();
+        try {
+          const count = await input.run(organizationId, cutoff);
+          // The audit row is the tick's durable evidence: the cron response is
+          // read once and stored nowhere. Recorded even for a zero tick, "the
+          // policy ran and nothing was due" is an answer an operator needs as
+          // much as a count.
+          await recordSweepAudit(input.db, {
+            organizationId,
+            policy: input.policy,
+            retentionDays,
+            cutoff,
+            deleted: count,
+          });
+          return { organizationId, retentionDays, count };
+        } catch (error) {
+          const message = thrownMessage(error, input.errorLabel);
+          await recordSweepAudit(input.db, {
+            organizationId,
+            policy: input.policy,
+            retentionDays,
+            cutoff,
+            error: message,
+          });
+          return { organizationId, retentionDays, error: message };
+        }
+      }
+    )
+  );
+  const total = results.reduce(
+    (sum, r) => sum + ("count" in r ? r.count : 0),
+    0
+  );
+  return { total, results };
+}
+
 /**
  * Per-Organization trace-retention sweep (#573). For every org that opted into
  * a retention window, strips the persisted Turn Trace from messages older than
  * the window, the message itself (content, feedback, timestamps) stays, so
  * the Inbox keeps the bubble and simply renders no Thinking panel.
- *
- * Idempotent by construction: a cleared trace is null and never matches again,
- * so running the sweep twice in a window clears nothing the second time. One
- * org failing never aborts the rest; the tick reports per-org outcomes the way
- * the other drains do.
  */
 export async function sweepExpiredTraces(
   deps: ScheduledDeps,
   options: { now?: Date } = {}
 ): Promise<SweepExpiredTracesReport> {
   const { db } = deps;
-  const now = options.now ?? new Date();
   const policies = await db.listTraceRetentionPolicies();
+  const swept = await sweepRetentionPolicies({
+    db,
+    policies,
+    now: options.now ?? new Date(),
+    policy: "traces",
+    errorLabel: "trace sweep failed",
+    run: (organizationId, cutoff) => db.clearExpiredTraces(organizationId, cutoff),
+  });
+  return {
+    traces: {
+      organizations: policies.length,
+      cleared: swept.total,
+      results: swept.results.map((r): SweptTraceResult =>
+        "count" in r
+          ? {
+              organizationId: r.organizationId,
+              retentionDays: r.retentionDays,
+              cleared: r.count,
+            }
+          : r
+      ),
+    },
+  };
+}
 
-  const results = await Promise.all(
-    policies.map(
-      async ({ organizationId, retentionDays }): Promise<SweptTraceResult> => {
-        const cutoff = new Date(
-          now.getTime() - retentionDays * 24 * 60 * 60 * 1000
-        ).toISOString();
-        try {
-          const cleared = await db.clearExpiredTraces(organizationId, cutoff);
-          return { organizationId, retentionDays, cleared };
-        } catch (error) {
-          return {
-            organizationId,
-            retentionDays,
-            error: thrownMessage(error, "trace sweep failed"),
-          };
-        }
-      }
-    )
-  );
+/**
+ * How long object-access ledger rows are kept (#801, CYB-19). Operational
+ * retention, not a tenant policy: the rows carry IP and user agent, so
+ * keeping them forever is its own finding, and 400 days clears an annual
+ * audit cycle with margin. The detection rules read 30 days, so no detection
+ * is ever starved by this.
+ */
+export const OBJECT_ACCESS_RETENTION_DAYS = 400;
 
-  const cleared = results.reduce(
-    (sum, r) => sum + ("cleared" in r ? r.cleared : 0),
-    0
-  );
-  return { traces: { organizations: policies.length, cleared, results } };
+export interface SweepObjectAccessReport {
+  objectAccess: { purged: number };
+}
+
+/**
+ * Purges ledger rows past the retention window (#801, CYB-19), every
+ * organization at once. Idempotent: a purged row never matches again.
+ */
+export async function sweepExpiredObjectAccess(
+  deps: ScheduledDeps,
+  options: { now?: Date } = {}
+): Promise<SweepObjectAccessReport> {
+  const now = options.now ?? new Date();
+  const cutoff = new Date(
+    now.getTime() - OBJECT_ACCESS_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const purged = await deps.db.purgeExpiredObjectAccessEvents(cutoff);
+  return { objectAccess: { purged } };
+}
+
+/** One organization's outcome in a transcript-retention tick (#801, CYB-12). */
+export type SweptTranscriptResult =
+  | { organizationId: string; retentionDays: number; deleted: number }
+  | { organizationId: string; retentionDays: number; error: string };
+
+export interface SweepExpiredTranscriptsReport {
+  transcripts: {
+    organizations: number;
+    deleted: number;
+    results: SweptTranscriptResult[];
+  };
+}
+
+/**
+ * Per-Organization transcript-retention sweep (#801, CYB-12). For every org
+ * that opted into a window, deletes Conversations older than it, messages and
+ * links included. Conversations under legal hold are skipped by the sweep
+ * primitive itself, so a preservation obligation survives a policy change
+ * nobody remembered it during.
+ *
+ * The counterpart to {@link sweepExpiredTraces}, and deliberately a different
+ * policy: that one strips the Thinking trace and keeps the transcript, this
+ * one is the lifecycle the privacy page promises. An organization can set
+ * either, both, or neither.
+ */
+export async function sweepExpiredTranscripts(
+  deps: ScheduledDeps,
+  options: { now?: Date } = {}
+): Promise<SweepExpiredTranscriptsReport> {
+  const { db } = deps;
+  const policies = await db.listTranscriptRetentionPolicies();
+  const swept = await sweepRetentionPolicies({
+    db,
+    policies,
+    now: options.now ?? new Date(),
+    policy: "transcripts",
+    errorLabel: "transcript sweep failed",
+    run: (organizationId, cutoff) =>
+      db.deleteExpiredConversations(organizationId, cutoff),
+  });
+  return {
+    transcripts: {
+      organizations: policies.length,
+      deleted: swept.total,
+      results: swept.results.map((r): SweptTranscriptResult =>
+        "count" in r
+          ? {
+              organizationId: r.organizationId,
+              retentionDays: r.retentionDays,
+              deleted: r.count,
+            }
+          : r
+      ),
+    },
+  };
 }

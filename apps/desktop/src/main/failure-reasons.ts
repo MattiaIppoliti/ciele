@@ -18,6 +18,15 @@ export function partitionForMode(mode: Mode): string {
 }
 
 /**
+ * Every partition this app writes to. Sign-out clears all of them (#801,
+ * CYB-17): clearing only the mode being left kept a live session for the other
+ * one, on a machine whose user has just said they are done.
+ */
+export const ALL_PARTITIONS: readonly string[] = (["saas", "local"] as const).map(
+  partitionForMode
+);
+
+/**
  * Turn Chromium's error codes into something a person can act on.
  *
  * The alternative is what the app did before: leave the browser's own error

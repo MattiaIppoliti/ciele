@@ -16,6 +16,7 @@ import {
   readWindowNote,
 } from "./windowed-read";
 import type { RuntimeToolSpec, ToolRuntimeContext } from "./tools";
+import { fencedForTurn } from "./untrusted-content";
 
 /**
  * The API catalogue's model-facing surface (spec #559): **three generic tools
@@ -304,6 +305,14 @@ const queryApiSpec: RuntimeToolSpec = {
         parsed = false;
       }
     }
+    // A text body is prose from someone else's server, so it is fenced like
+    // any other retrieved material (#801, CYB-07). A parsed JSON body is not:
+    // fencing it would mean handing the model a string where it expects a
+    // structure, and the policy paragraph says plainly that a response is data
+    // whether or not it arrives inside a fence.
+    if (!parsed) {
+      data = fencedForTurn(ctx, String(data), `API response from ${outcome.endpoint?.name ?? "endpoint"}`);
+    }
     return {
       endpoint: outcome.endpoint?.name,
       method: outcome.endpoint?.method,
@@ -366,7 +375,7 @@ const readApiResponseSpec: RuntimeToolSpec = {
       from: window.from,
       to: window.to,
       totalLength: window.totalLength,
-      content: window.content,
+      content: fencedForTurn(ctx, window.content, `API response from ${stored.endpointName}`),
       nextFrom: window.nextFrom,
       note: readWindowNote(window, `API response ${stored.handle}`),
     };
@@ -423,7 +432,10 @@ const readKnowledgeSourceSpec: RuntimeToolSpec = {
       from: window.from,
       to: window.to,
       totalLength: window.totalLength,
-      content: window.content,
+      // The same document searchKnowledge fences, reached a different way
+      // (#801, CYB-07). A boundary that holds on one route and not the other
+      // is the route an injected page takes.
+      content: fencedForTurn(ctx, window.content, document.sourceName ?? document.title),
       nextFrom: window.nextFrom,
       note: readWindowNote(window, `“${document.title}”`),
     };

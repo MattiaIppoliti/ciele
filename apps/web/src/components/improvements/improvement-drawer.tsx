@@ -29,11 +29,15 @@ export function ImprovementDrawer({
   members,
   canEdit,
   onClose,
+  onUpdated,
+  onDeleted,
 }: {
   improvementId: string;
   members: Array<{ userId: string; email: string }>;
   canEdit: boolean;
   onClose: () => void;
+  onUpdated: (improvement: Improvement) => void;
+  onDeleted: (improvementId: string) => void;
 }) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [missing, setMissing] = useState(false);
@@ -76,6 +80,8 @@ export function ImprovementDrawer({
           projects={detail.projects}
           canEdit={canEdit}
           variant="drawer"
+          onUpdated={onUpdated}
+          onDeleted={onDeleted}
         />
       ) : missing ? (
         <p className="text-muted-foreground px-6 py-10 text-center text-sm">

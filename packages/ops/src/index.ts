@@ -135,6 +135,7 @@ export {
   readConversationsForExportOp,
   readInboxSummaryWindowOp,
   sendConversationFeedbackOp,
+  setConversationLegalHoldOp,
   setConversationPinnedOp,
   setMessageFeedbackOp,
 } from "./inbox";

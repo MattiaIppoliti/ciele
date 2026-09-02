@@ -96,6 +96,18 @@ including the four findings deliberately left alone.
   `packages/db/src/testing/channel-access.test.ts` for the switch that makes them real. An
   unasserted policy is where the operations layer looks like the tenancy line and PostgREST is the
   way around it.
+- **PostgREST aggregates are off until a migration turns them on.** `select("*, table(id.count())")`
+  is an aggregate, and PostgREST ships with `db-aggregates-enabled = false`; hosted Supabase keeps
+  the default. The pglite contract shim accepts the syntax unconditionally, so a green
+  `db-contract.supabase.test.ts` proves nothing about the live API. The setting is in-database:
+  `20260902090000_postgrest_aggregates.sql` runs `alter role authenticator set
+  pgrst.db_aggregates_enabled = 'true'` and notifies `pgrst`, guarded on the role existing so the
+  chain still applies to the pglite harness, the one database in the chain's life that has no
+  `authenticator` (the migrations gate and the self-host stack boot the `supabase/postgres`
+  image, which ships the role, so the alter-role branch runs there). The self-host stack also
+  sets `PGRST_DB_AGGREGATES_ENABLED` on the rest container, which PostgREST reads at start, and
+  `deploy/compose.test.mjs` asserts it. Reach for a new aggregate only when you have checked
+  both are still in place.
 - A rule about *which column* changed cannot be a policy, which sees a row. That is a trigger; see
   `20260824120000_teammate_channels.sql` (the channel manage rule) and
   `20260823170000_teammate_routine_cap.sql` (a count over sibling rows).

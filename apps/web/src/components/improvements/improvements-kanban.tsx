@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import type { ImprovementListItem } from "@agent-hub/core";
+import type { ReactNode } from "react";
+import type {
+  Improvement,
+  ImprovementListItem,
+  ImprovementStatus,
+} from "@agent-hub/core";
 import { CalendarClock, MessageSquare } from "lucide-react";
 import { Badge, Card, CardContent, cn } from "@agent-hub/ui";
 import { formatDay } from "@/lib/format";
@@ -137,6 +142,9 @@ export function ImprovementsKanban({
   lanes,
   onOpen,
   onTagRemembered,
+  onUpdated,
+  laneCount,
+  laneFooter,
 }: {
   improvements: ImprovementListItem[];
   members: Array<{ userId: string; email: string }>;
@@ -147,6 +155,15 @@ export function ImprovementsKanban({
   /** Plain click on a card, the board opens it in the drawer. */
   onOpen: (improvementId: string) => void;
   onTagRemembered: (tag: string) => void;
+  onUpdated: (improvement: Improvement) => void;
+  /**
+   * The lane's size as the board knows it: the server's count of the whole
+   * lane, or the filtered card count while a filter is active. The cards
+   * below are one page of the lane, so their length is not the answer.
+   */
+  laneCount: (status: ImprovementStatus) => number;
+  /** Per-lane "Showing N of M" and its own Load more, rendered by the board. */
+  laneFooter: (status: ImprovementStatus) => ReactNode;
 }) {
   const emailOf = (userId: string | null) =>
     userId ? (members.find((m) => m.userId === userId)?.email ?? null) : null;
@@ -171,7 +188,7 @@ export function ImprovementsKanban({
           >
             <header className="flex items-center gap-2 px-3 py-2.5">
               <span className="text-sm font-semibold">{lane.label}</span>
-              <Badge variant="outline">{items.length}</Badge>
+              <Badge variant="outline">{laneCount(lane.value)}</Badge>
             </header>
             <div className="flex min-h-24 flex-1 flex-col gap-2.5 p-2">
               {items.length === 0 ? (
@@ -188,6 +205,7 @@ export function ImprovementsKanban({
                     canEdit={canEdit}
                     onOpenDrawer={() => onOpen(i.id)}
                     onTagRemembered={onTagRemembered}
+                    onUpdated={onUpdated}
                   >
                     <ImprovementCard
                       item={i}
@@ -199,6 +217,7 @@ export function ImprovementsKanban({
                 ))
               )}
             </div>
+            {laneFooter(lane.value)}
           </section>
         );
       })}

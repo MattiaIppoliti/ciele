@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { decryptSecret, encryptSecret, openSecret, sealSecret } from "./crypto";
+import {
+  decryptSecret,
+  encryptSecret,
+  isLegacyPlaintextSecret,
+  openSecret,
+  sealSecret,
+} from "./crypto";
 
 /**
  * Sealing is the only thing standing between a stored provider credential and
  * anyone who can read the row, so the properties worth pinning are: a
  * round-trip returns the input, two seals of the same plaintext differ (fresh
- * IV), a tampered ciphertext throws rather than returning garbage, and the
- * unconfigured fallback is *marked* so `openSecret` can tell the two apart.
+ * IV), a tampered ciphertext throws rather than returning garbage, and an
+ * unconfigured deployment refuses the write instead of downgrading it.
  */
 
 const KEY = "test-encryption-key";
@@ -64,17 +70,20 @@ describe("sealSecret / openSecret", () => {
     expect(openSecret(sealed)).toBe("sk-live-1234");
   });
 
-  it("falls back to a MARKED plaintext when no key is configured", () => {
+  it("refuses the write when no key is configured, rather than storing plaintext", () => {
+    // #801 CYB-02. The old fallback wrote `plain:<secret>` and warned, which
+    // turned a missing env var into a silent, permanent plaintext credential
+    // store. A refused save is loud; an unencrypted row is not.
     delete process.env.APP_ENCRYPTION_KEY;
-    const sealed = sealSecret("sk-live-1234");
-    // The marker is what lets openSecret read pre-key rows after a key is set.
-    expect(sealed).toBe("plain:sk-live-1234");
-    expect(openSecret(sealed)).toBe("sk-live-1234");
+    expect(() => sealSecret("sk-live-1234")).toThrow(/APP_ENCRYPTION_KEY/);
   });
 
-  it("still opens a marked plaintext row once a key is configured", () => {
-    // The rollout case: rows written before APP_ENCRYPTION_KEY existed must stay
-    // readable, and must not be run through the decipher.
+  it("still opens a legacy marked plaintext row, so it can be rotated", () => {
+    // Rows written before the fallback was removed must stay readable, or a
+    // deployment that sets a key for the first time loses every credential it
+    // would otherwise re-seal. They must not be run through the decipher.
     expect(openSecret("plain:sk-legacy")).toBe("sk-legacy");
+    expect(isLegacyPlaintextSecret("plain:sk-legacy")).toBe(true);
+    expect(isLegacyPlaintextSecret(sealSecret("sk-live-1234"))).toBe(false);
   });
 });

@@ -166,7 +166,6 @@ export function AuthenticationClient({
   const toggleEnforce = (next: boolean) =>
     run(async () => {
       await setAssistantRequireSignInAction(assistantId, next);
-      router.refresh();
     });
 
   const enforceableWithoutValid =

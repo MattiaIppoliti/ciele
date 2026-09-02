@@ -279,7 +279,12 @@ export function InsightsClient({
     <div className="flex min-h-full flex-col">
       {/* Header */}
       <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Insights</h1>
+        <h1
+          className="text-2xl font-bold tracking-tight"
+          data-testid="insights-heading"
+        >
+          Insights
+        </h1>
         {refreshing && <span className="text-muted-foreground text-sm">Updating…</span>}
         {/* Four controls, two of them wide date/assistant pickers: they wrap
             onto their own rows on a phone rather than clipping off-screen. */}

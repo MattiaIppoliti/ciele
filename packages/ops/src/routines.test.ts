@@ -126,6 +126,32 @@ describe("routine CRUD", () => {
     ).rejects.toMatchObject({ code: "not_found" });
   });
 
+  it("names the owning Teammate as the entity every routine write touches", async () => {
+    // The panel that renders routines lives on /teammates/[teammateId]; a
+    // write that only named the roster would leave that page stale.
+    const db = getMockDb();
+    const context = ctx({ db });
+    const teammate = await createTeammateOp.run(context, { name: "Nora" });
+    const input = {
+      teammateId: teammate.id,
+      instruction: "Summarise open feedback",
+      cadence: "daily" as const,
+      hour: 8,
+    };
+    const routine = await createRoutineOp.run(context, input);
+    const expected = [{ kind: "teammate", id: teammate.id }];
+    expect(createRoutineOp.entities(input, routine)).toEqual(expected);
+
+    const updateInput = { id: routine.id, patch: { enabled: false } };
+    const updated = await updateRoutineOp.run(context, updateInput);
+    expect(updateRoutineOp.entities(updateInput, updated)).toEqual(expected);
+
+    const deleted = await deleteRoutineOp.run(context, { id: routine.id });
+    expect(deleteRoutineOp.entities({ id: routine.id }, deleted)).toEqual(
+      expected
+    );
+  });
+
   it("reaches a routine only through the Teammate that owns it", async () => {
     const db = getMockDb();
     const teammate = await createTeammateOp.run(ctx({ db }), {

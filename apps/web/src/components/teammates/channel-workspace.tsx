@@ -378,7 +378,6 @@ function AddDialog({
   teammates: AddableTeammate[];
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function add(run: () => Promise<void>, done: string) {
@@ -386,7 +385,6 @@ function AddDialog({
       try {
         await run();
         toast.success(done);
-        router.refresh();
         onClose();
       } catch (error) {
         toast.error(
@@ -514,7 +512,6 @@ function ChannelSettingsDialog({
         await work();
         toast.success(done);
         if (back) router.push(back);
-        else router.refresh();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Could not save the group"

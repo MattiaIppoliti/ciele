@@ -25,6 +25,18 @@ pnpm --filter @agent-hub/web analyze          # next experimental-analyze -o
 pnpm --filter @agent-hub/web attribute home   # per-module buckets; ratios only, not absolute KB
 ```
 
+Admin performance ([`docs/runbooks/admin-performance.md`](../../docs/runbooks/admin-performance.md)).
+The bundle budgets run inside `build`, so they gate CI; the two probes are manual and run
+either locally in mock mode or against staging with a Member cookie:
+
+```bash
+pnpm --filter @agent-hub/web exec playwright-core install chromium   # once, for the browser probe
+pnpm --filter @agent-hub/web check:admin-bundle        # route-increment gzip budgets (needs a build)
+pnpm --filter @agent-hub/web check:admin-perf          # mock-mode build + both probes, 20 samples each
+ADMIN_PERF_BASE_URL=… ADMIN_PERF_COOKIE=… pnpm --filter @agent-hub/web check:admin-latency
+ADMIN_PERF_BASE_URL=… ADMIN_PERF_COOKIE=… pnpm --filter @agent-hub/web check:admin-interactions
+```
+
 Dev server: use the Browser pane (`preview_start` with `web`, or `web-demo` for the
 Supabase-less mock build), see `.claude/launch.json`. Never `pnpm dev` in a shell.
 
@@ -34,6 +46,10 @@ Supabase-less mock build), see `.claude/launch.json`. Never `pnpm dev` in a shel
   picked up**. Component behaviour is tested through the plain-TS module it delegates to.
 - Tests live next to their subject (`engine.ts` → `engine.test.ts`). Suffixed variants split a
   large surface by concern (`ingest.security.test.ts`, `ingest.crawl.test.ts`).
+- `pnpm --filter @agent-hub/web test` is `vitest run` **minus** `**/*.security.test.ts`; those run
+  under `test:security`, which `pnpm verify` and CI run as their own turbo task, so a red security
+  suite is a red job of its own rather than one line in a long `test` log. Run both when a change
+  touches an origin, egress or auth rule.
 - `@` resolves to `src/`.
 
 ## The chat runtime is a package, not a folder
@@ -158,7 +174,13 @@ RLS; with no Supabase env the app falls back to the in-memory mock db, which is 
 ## Mutations
 
 Server Actions live in `src/app/actions.ts`, `src/app/auth/actions.ts`, and route-local
-`actions.ts` files. After a mutation, revalidate by **path**, not tag (ADR-0005).
+`actions.ts` files. After a mutation, revalidate by **path**, not tag (ADR-0005), and do it
+**synchronously inside the action**: only then does the response carry the refreshed tree back,
+which is what lets client components drop `router.refresh()`. `after(() => revalidatePath(...))`
+purges after the client stopped listening and leaves the shell stale. Declare what you touched
+through `orgMutation`'s `entities` rather than hand-listing paths; the entity table in
+`src/lib/org-mutation.ts` also decides which kinds expire the Insights cache, the one shared
+admin cache (ADR-0005 amendment).
 
 ## Gotchas
 

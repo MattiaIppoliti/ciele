@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Concept, Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
@@ -66,6 +66,7 @@ import {
   removeMemberOp,
   revokeInviteOp,
   revokeOrgApiKeyOp,
+  organizationPatchSchema,
   updateMemberRoleOp,
 } from "./organization";
 import {
@@ -77,6 +78,17 @@ import {
   setEmbeddingConnectionOp,
   setSsoConnectionOp,
 } from "./integrations";
+
+// Sealing is fail-closed since #801 (CYB-02): an operation that stores a
+// credential needs a real key here, exactly as it does in production.
+const priorEncryptionKey = process.env.APP_ENCRYPTION_KEY;
+beforeAll(() => {
+  process.env.APP_ENCRYPTION_KEY = "test-encryption-key";
+});
+afterAll(() => {
+  if (priorEncryptionKey === undefined) delete process.env.APP_ENCRYPTION_KEY;
+  else process.env.APP_ENCRYPTION_KEY = priorEncryptionKey;
+});
 
 const ctx = (over: Partial<OperationContext> = {}): OperationContext => ({
   organizationId: DEMO_ORG.id,
@@ -291,6 +303,26 @@ describe("organization administration operations", () => {
     await expect(
       createOrgApiKeyOp.run(adminCtx, { name: "Too powerful", role: "owner" })
     ).rejects.toMatchObject({ code: "invalid_input" });
+  });
+
+  it("keeps both retention windows through input validation (#801, CYB-12)", () => {
+    // Zod strips undeclared keys, so a field missing from the patch schema is
+    // one the console appears to save and does not. traceRetentionDays was
+    // exactly that until this test existed.
+    expect(
+      organizationPatchSchema.parse({
+        name: "Acme",
+        traceRetentionDays: 30,
+        transcriptRetentionDays: 90,
+      })
+    ).toEqual({ name: "Acme", traceRetentionDays: 30, transcriptRetentionDays: 90 });
+    // Null is how an admin says "keep forever" and must survive too.
+    expect(
+      organizationPatchSchema.parse({ traceRetentionDays: null, transcriptRetentionDays: null })
+    ).toEqual({ traceRetentionDays: null, transcriptRetentionDays: null });
+    expect(
+      organizationPatchSchema.safeParse({ transcriptRetentionDays: 0 }).success
+    ).toBe(false);
   });
 
   it("requires member-management capability to enumerate invite tokens", () => {
@@ -511,6 +543,35 @@ describe("knowledge operations (#622)", () => {
     expect(persisted[2].path).toBe("-1");
     expect(persisted[2].sources).toBeTruthy();
     expect(persisted[0].sources).toBeUndefined();
+  });
+
+  it("persists the triage verdict on a file Source (#801, CYB-09)", async () => {
+    const assistant = await newAssistant("Triage fixture");
+    const collection = await getMockDb().createCollection(assistant.id, {
+      name: "files",
+    });
+    const evidence = {
+      scanner: "document-triage" as const,
+      version: 2,
+      sha256: "a".repeat(64),
+      verdict: "clean" as const,
+      at: "2026-08-30T12:00:00.000Z",
+    };
+    const { source } = await addSourceOp.run(
+      ctx({ ports: { enqueueIngest: async () => {} } }),
+      {
+        assistantId: assistant.id,
+        collectionId: collection.id,
+        name: "handbook.pdf",
+        kind: "file",
+        rawText: "parsed",
+        triage: evidence,
+      }
+    );
+    // "This file was checked" is a row, not a claim: the verdict survives on
+    // the Source an operator later audits.
+    const persisted = await getSourceOp.run(ctx(), { id: source.id });
+    expect(persisted.config?.triage).toEqual(evidence);
   });
 
   it("re-crawl refuses non-website Sources", async () => {

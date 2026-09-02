@@ -1,4 +1,9 @@
 {
   "title": "Account and organization",
-  "pages": ["index", "members-and-roles", "ai-providers"]
+  "pages": [
+    "index",
+    "members-and-roles",
+    "ai-providers",
+    "data-retention"
+  ]
 }

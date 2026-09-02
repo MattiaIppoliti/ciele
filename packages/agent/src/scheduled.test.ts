@@ -48,7 +48,10 @@ import {
   finalizeDueCrawls,
   runDueAgenticOps,
   sweepDueRecrawls,
+  sweepExpiredObjectAccess,
   sweepExpiredTraces,
+  sweepExpiredTranscripts,
+  OBJECT_ACCESS_RETENTION_DAYS,
 } from "./scheduled";
 
 /**
@@ -96,6 +99,8 @@ function stubDb(overrides: Partial<Db>): Db {
     listDueApplicationImports: vi.fn().mockResolvedValue([]),
     // Routines are the tick's fifth drain (#772); nothing due by default.
     listDueRoutineCandidates: vi.fn().mockResolvedValue([]),
+    // The retention audit (#801, CYB-12); asserted where a sweep runs.
+    recordRetentionSweep: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as Db;
 }
@@ -511,5 +516,148 @@ describe("runDueAgenticOps", () => {
       { db },
       { limit: 3 }
     );
+  });
+});
+
+describe("sweepExpiredObjectAccess", () => {
+  it("purges at exactly the retention cutoff and reports the count", async () => {
+    const purgeExpiredObjectAccessEvents = vi.fn().mockResolvedValue(7);
+    const db = stubDb({ purgeExpiredObjectAccessEvents });
+    const now = new Date("2026-08-30T12:00:00.000Z");
+
+    const report = await sweepExpiredObjectAccess({ db }, { now });
+
+    const expectedCutoff = new Date(
+      now.getTime() - OBJECT_ACCESS_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    ).toISOString();
+    expect(purgeExpiredObjectAccessEvents).toHaveBeenCalledWith(expectedCutoff);
+    expect(report).toEqual({ objectAccess: { purged: 7 } });
+  });
+});
+
+describe("sweepExpiredTranscripts", () => {
+  it("computes each org's cutoff from its own window and reports totals", async () => {
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const deleteExpiredConversations = vi
+      .fn()
+      .mockResolvedValueOnce(12)
+      .mockResolvedValueOnce(0);
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [
+        { organizationId: "org-90", retentionDays: 90 },
+        { organizationId: "org-30", retentionDays: 30 },
+      ],
+      deleteExpiredConversations,
+    });
+
+    const report = await sweepExpiredTranscripts({ db }, { now });
+
+    expect(deleteExpiredConversations).toHaveBeenCalledWith(
+      "org-90",
+      "2026-06-01T12:00:00.000Z"
+    );
+    expect(deleteExpiredConversations).toHaveBeenCalledWith(
+      "org-30",
+      "2026-07-31T12:00:00.000Z"
+    );
+    expect(report.transcripts).toMatchObject({
+      organizations: 2,
+      deleted: 12,
+      results: expect.arrayContaining([
+        { organizationId: "org-90", retentionDays: 90, deleted: 12 },
+        { organizationId: "org-30", retentionDays: 30, deleted: 0 },
+      ]),
+    });
+  });
+
+  it("one org failing never aborts the rest of the tick", async () => {
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [
+        { organizationId: "boom", retentionDays: 30 },
+        { organizationId: "fine", retentionDays: 30 },
+      ],
+      deleteExpiredConversations: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("db offline"))
+        .mockResolvedValueOnce(4),
+    });
+
+    const report = await sweepExpiredTranscripts({ db });
+
+    expect(report.transcripts.deleted).toBe(4);
+    expect(report.transcripts.results).toEqual(
+      expect.arrayContaining([
+        { organizationId: "boom", retentionDays: 30, error: "db offline" },
+        { organizationId: "fine", retentionDays: 30, deleted: 4 },
+      ])
+    );
+  });
+
+  it("records one durable audit row per tick, failures included (CYB-12)", async () => {
+    const recordRetentionSweep = vi.fn().mockResolvedValue(undefined);
+    const now = new Date("2026-08-30T12:00:00.000Z");
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [
+        { organizationId: "org-30", retentionDays: 30 },
+        { organizationId: "boom", retentionDays: 7 },
+      ],
+      deleteExpiredConversations: vi
+        .fn()
+        .mockResolvedValueOnce(3)
+        .mockRejectedValueOnce(new Error("db offline")),
+      recordRetentionSweep,
+    });
+
+    await sweepExpiredTranscripts({ db }, { now });
+
+    // The cron response is read once and stored nowhere; the audit row is the
+    // deletion's evidence, so it carries the same cutoff the delete used.
+    expect(recordRetentionSweep).toHaveBeenCalledWith({
+      organizationId: "org-30",
+      policy: "transcripts",
+      retentionDays: 30,
+      cutoff: "2026-07-31T12:00:00.000Z",
+      deleted: 3,
+    });
+    expect(recordRetentionSweep).toHaveBeenCalledWith({
+      organizationId: "boom",
+      policy: "transcripts",
+      retentionDays: 7,
+      cutoff: "2026-08-23T12:00:00.000Z",
+      error: "db offline",
+    });
+  });
+
+  it("an audit write failing never turns a completed deletion into a failure", async () => {
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [
+        { organizationId: "org-30", retentionDays: 30 },
+      ],
+      deleteExpiredConversations: vi.fn().mockResolvedValue(5),
+      recordRetentionSweep: vi.fn().mockRejectedValue(new Error("ledger down")),
+    });
+
+    const report = await sweepExpiredTranscripts({ db });
+
+    expect(report.transcripts.results).toEqual([
+      { organizationId: "org-30", retentionDays: 30, deleted: 5 },
+    ]);
+  });
+
+  it("deletes nothing for an organization that kept the default", async () => {
+    // Null is the default and it means keep forever: an existing tenant's
+    // history must never start disappearing without an admin opting in.
+    const deleteExpiredConversations = vi.fn();
+    const db = stubDb({
+      listTranscriptRetentionPolicies: async () => [],
+      deleteExpiredConversations,
+    });
+    const report = await sweepExpiredTranscripts({ db });
+    expect(deleteExpiredConversations).not.toHaveBeenCalled();
+    expect(report.transcripts).toEqual({
+      organizations: 0,
+      deleted: 0,
+      results: [],
+    });
   });
 });

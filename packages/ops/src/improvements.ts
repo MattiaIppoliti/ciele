@@ -7,6 +7,7 @@ import type {
 } from "@agent-hub/core";
 import {
   AUTO_IMPROVEMENT_LABEL,
+  IMPROVEMENT_STATUS_VALUES,
   findDuplicateImprovement,
   mayAcceptSuggestedFix,
   messageText,
@@ -65,6 +66,8 @@ export const listImprovementsPageOp = defineOperation({
   input: z.object({
     limit: z.number().int().min(1).max(100),
     cursor: z.string().min(1).nullable().optional(),
+    /** One lane; the board pages each lane on its own cursor. */
+    status: z.enum(IMPROVEMENT_STATUS_VALUES).optional(),
   }),
   entities: () => [],
   run: (ctx, input) => ctx.db.listImprovementsPage(ctx.organizationId, input),

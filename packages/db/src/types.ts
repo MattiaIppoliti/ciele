@@ -73,6 +73,7 @@ import type {
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
+  ImprovementStatus,
   ImprovementProposalPayload,
   ImprovementProposalStatus,
   ChannelAuthorType,
@@ -112,6 +113,10 @@ import type {
   ProfilePatch,
   ProviderConnection,
   ProviderConnectionConfig,
+  ObjectAccessEvent,
+  RetentionSweepEvent,
+  RetentionSweepEventInput,
+  ObjectAccessEventInput,
   ProviderConnectionProvider,
   ProviderConnectionType,
   Publication,
@@ -168,6 +173,13 @@ export interface Db {
   createOrganization(name: string): Promise<string>;
   acceptInvite(token: string): Promise<string>;
   listMembers(organizationId: string): Promise<Member[]>;
+  /**
+   * One member's current Role, or null when they are not a member. The
+   * narrow read the /api/v1 auth seam runs per request (#801, CYB-04):
+   * fetching the whole roster to check one creator made every keyed request
+   * pay a query that scales with org size.
+   */
+  getMemberRole(organizationId: string, userId: string): Promise<Role | null>;
   updateMemberRole(
     organizationId: string,
     userId: string,
@@ -838,12 +850,18 @@ export interface Db {
       sourceId?: string | null;
       content: string;
       embedding: number[] | null;
+      /**
+       * Which model produced `embedding`, as `provider:model` (#801, CYB-14).
+       * Null when the chunk carries no embedding, or for rows that predate
+       * the column; retrieval treats null as the current space.
+       */
+      embeddingSpace?: string | null;
     }>
   ): Promise<void>;
   searchChunks(
     assistantId: string,
     collectionId: string | null,
-    query: { embedding: number[] | null; text: string; limit?: number }
+    query: { embedding: number[] | null; text: string; limit?: number; embeddingSpace?: string | null }
   ): Promise<KnowledgeSearchResult[]>;
 
   /**
@@ -856,7 +874,7 @@ export interface Db {
   searchCollectionChunks(
     organizationId: string,
     collectionIds: string[],
-    query: { embedding: number[] | null; text: string; limit?: number }
+    query: { embedding: number[] | null; text: string; limit?: number; embeddingSpace?: string | null }
   ): Promise<KnowledgeSearchResult[]>;
 
   /**
@@ -873,7 +891,7 @@ export interface Db {
   searchSourceChunks(
     organizationId: string,
     sourceIds: string[],
-    query: { embedding: number[] | null; text: string; limit?: number }
+    query: { embedding: number[] | null; text: string; limit?: number; embeddingSpace?: string | null }
   ): Promise<KnowledgeSearchResult[]>;
 
   // --- Org-level knowledge hub (PRD #726) -----------------------------------
@@ -1022,6 +1040,12 @@ export interface Db {
    * Retrieval Trace + Collection); null if the message is unknown. */
   getConversationForMessage(messageId: string): Promise<Conversation | null>;
   setConversationPinned(id: string, pinned: boolean): Promise<void>;
+  /**
+   * Puts one Conversation beyond the reach of the retention sweep, or releases
+   * it (#801, CYB-12). A preservation obligation is per conversation, so
+   * honouring one must not mean turning retention off for the organization.
+   */
+  setConversationLegalHold(id: string, legalHold: boolean): Promise<void>;
   /** Shallow-merges the patch into the conversation's metadata. */
   updateConversationMetadata(
     id: string,
@@ -1143,6 +1167,23 @@ export interface Db {
    * trace never matches again. Returns how many messages were swept.
    */
   clearExpiredTraces(organizationId: string, cutoffIso: string): Promise<number>;
+  /**
+   * Every organization that opted into a transcript-retention window (#801,
+   * CYB-12). Cross-org, the nightly sweep's read; organizations that kept the
+   * default (keep forever) are absent rather than present with a null.
+   */
+  listTranscriptRetentionPolicies(): Promise<
+    Array<{ organizationId: string; retentionDays: number }>
+  >;
+  /**
+   * Deletes this organization's Conversations older than the cutoff, messages
+   * and links included, skipping any under legal hold. Idempotent, a deleted
+   * conversation never matches again. Returns how many were removed.
+   */
+  deleteExpiredConversations(
+    organizationId: string,
+    cutoffIso: string
+  ): Promise<number>;
 
   // Insights (org-wide analytics)
   /**
@@ -1157,10 +1198,19 @@ export interface Db {
 
   // Improvements (AI-answer-quality tracker)
   listImprovements(organizationId: string): Promise<ImprovementListItem[]>;
+  /**
+   * One page of the board, newest `seq` first; `cursor` is the last seq of the
+   * previous page. `status` narrows the page to one lane, which is how the
+   * board pages each lane on its own instead of windowing the whole tracker.
+   */
   listImprovementsPage(
     organizationId: string,
-    input: { limit: number; cursor?: string | null }
+    input: { limit: number; cursor?: string | null; status?: ImprovementStatus }
   ): Promise<{ items: ImprovementListItem[]; nextCursor: string | null }>;
+  /** Authoritative lane sizes, every status present even when zero. */
+  countImprovementsByStatus(
+    organizationId: string
+  ): Promise<Record<ImprovementStatus, number>>;
   getImprovement(id: string): Promise<Improvement | null>;
   createImprovement(
     organizationId: string,
@@ -1304,6 +1354,45 @@ export interface Db {
   recordAiUsage(rows: AiUsageInput[]): Promise<void>;
   /** Append a runtime telemetry event (ADR-0011); post-commit, failures isolated by the caller. */
   recordRuntimeEvent(event: RuntimeEventInput): Promise<void>;
+
+  // Sensitive-object access ledger (#801, CYB-05). Append-only: there is no
+  // update or delete, here or in the table's policies.
+  /**
+   * Record one attempt to read a private object. Written by the proxy that
+   * served (or refused) it, on the service-role client: a Member must not be
+   * able to write their own audit trail.
+   */
+  recordObjectAccess(event: ObjectAccessEventInput): Promise<void>;
+  /**
+   * Newest first. Reading the ledger is an administrative act. `offset` pages
+   * a window longer than one `limit`: the detection tick walks a whole
+   * baseline horizon page by page rather than trusting one page to hold it.
+   */
+  listObjectAccessEvents(
+    organizationId: string,
+    options?: { limit?: number; offset?: number; objectPath?: string; sinceIso?: string }
+  ): Promise<ObjectAccessEvent[]>;
+
+  // Retention-sweep deletion audit (#801, CYB-12). Append-only, like the
+  // access ledger: there is no update or delete, here or in the policies.
+  /**
+   * Record one organization's retention tick: the policy that ran, its
+   * window, and what it removed (or the error that stopped it). Written by
+   * the cron on the service role; the audit must outlive the deletion.
+   */
+  recordRetentionSweep(event: RetentionSweepEventInput): Promise<void>;
+  /**
+   * Deletes ledger rows older than the cutoff, every organization at once
+   * (#801, CYB-19): operational retention for security telemetry that carries
+   * IP and user agent, not a tenant policy. Service-role only in practice,
+   * the table has no delete policy. Returns how many rows went.
+   */
+  purgeExpiredObjectAccessEvents(cutoffIso: string): Promise<number>;
+  /** The audit trail, newest first. Admin-read (RLS rank 3). */
+  listRetentionSweepEvents(
+    organizationId: string,
+    options?: { limit?: number }
+  ): Promise<RetentionSweepEvent[]>;
   /** Input+output tokens the organization consumed today (UTC), the budget pre-turn check. */
   getOrgTokensUsedToday(organizationId: string): Promise<number>;
   /** Estimated EUR cost (see pricing.ts) of today's (UTC) usage, the euro budget pre-turn check. */

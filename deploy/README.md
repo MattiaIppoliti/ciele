@@ -146,10 +146,28 @@ A file nobody asked for is never read at all.
 
 ## TLS and exposure
 
-**TLS is your responsibility.** This stack listens on plain HTTP and expects a
-reverse proxy (Caddy, nginx, Traefik) in front of it terminating TLS. When you
-add one, set `PUBLIC_URL` and `SUPABASE_PUBLIC_URL` in `deploy/.env` to the
-public HTTPS origins.
+**The stack ships its own TLS path** (#801, CYB-16): the
+`docker-compose.tls.yml` overlay runs Caddy on 80/443, terminating HTTPS for
+two hostnames (the app and the Supabase gateway) and provisioning its own
+certificates via ACME. Point DNS for both names at the host, then:
+
+```sh
+# set the two names first; the script does not ask for them
+printf 'CIELE_DOMAIN=app.example.edu\nCIELE_SUPABASE_DOMAIN=supabase.example.edu\n' >> deploy/.env
+./deploy/bootstrap.sh --tls
+```
+
+`--tls` adds the overlay to `COMPOSE_FILE` and checks that both domains are
+set in `.env`; when either is missing it prints what to set and exits 2
+rather than let the Caddy container crash-loop on an empty hostname. It never
+prompts. Or set `COMPOSE_FILE=docker-compose.yml:docker-compose.tls.yml` plus
+the two domains in `.env` yourself. Caddy is the one deliberately public listener; the
+app and gateway keep their loopback host ports. Prefer your own proxy (nginx,
+Traefik, a cloud LB)? Skip the overlay and terminate there instead, the rest
+of this section applies either way.
+
+Whichever proxy terminates, set `PUBLIC_URL`, `SUPABASE_PUBLIC_URL` and
+`CIELE_PUBLIC_ORIGIN` in `deploy/.env` to the public HTTPS origins.
 
 In **source-build mode** that value is baked in, so the app image has to be
 rebuilt:
@@ -166,7 +184,21 @@ docker compose up -d app
 ```
 
 Only two ports are published by default: the app (3000) and the Supabase
-gateway (8000). Postgres is not exposed outside the compose network.
+gateway (8000), and both bind to `127.0.0.1`, so a stack brought up on a VPS is
+not on the internet over plain HTTP before a reverse proxy exists (#801,
+CYB-16). Put the proxy on the box and let it be what the world reaches, or set
+`BIND_ADDRESS=0.0.0.0` in `.env` if you have decided otherwise. Studio ignores
+`BIND_ADDRESS` and stays on loopback whatever it says: it is a database
+console, reach it through an SSH tunnel. Postgres is not published at all.
+
+The app enforces the other half of that at startup: a production build whose
+`PUBLIC_URL`, `CIELE_PUBLIC_ORIGIN` or `NEXT_PUBLIC_APP_URL` (the one a
+Vercel-style deploy sets) is `http://` on anything but a loopback host refuses
+to start and says which variable in the container log, because
+session cookies and signed links on that origin would travel in the clear. The
+unedited `.env` (`PUBLIC_URL=http://localhost:3000`) passes. A LAN-only install
+that has decided to run over HTTP sets `CIELE_ALLOW_INSECURE_HTTP=1` in `.env`;
+the variable has to be typed, so it is a decision rather than a default.
 
 ## Day two
 

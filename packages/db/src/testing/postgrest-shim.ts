@@ -11,7 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * project. It is test infra, deliberately partial: it supports exactly the
  * builder surface the adapter uses (select/insert/update/delete/upsert;
  * eq/is/in/gt/lt/gte/lte/or; order/limit/range; single/maybeSingle; count+head;
- * embedded resources incl. `!inner` and dotted filters; rpc via pg_proc
+ * embedded resources incl. `!inner`, dotted filters, and `column.count()`;
+ * rpc via pg_proc
  * introspection; auth.getUser/getClaims). Anything else throws loudly.
  *
  * NOT covered on purpose: RLS enforcement. PGlite runs as the table owner,
@@ -607,9 +608,21 @@ class ShimQueryBuilder implements PromiseLike<{
     const fk = await this.rest.foreignKey(parentTable, embed.table);
     const embedAlias = `e${depth}_${embed.table}`;
     const parsed = parseSelect(embed.columns || "*");
-    const selectParts = parsed.columns.map((c) =>
-      c === "*" ? `${embedAlias}.*` : `${embedAlias}.${quoteIdent(c)}`
-    );
+    const selectParts = parsed.columns.map((column) => {
+      if (column === "*") return `${embedAlias}.*`;
+      // `column.count()` is a PostgREST aggregate. PostgREST ships with
+      // aggregates disabled and hosted Supabase keeps that default, so the
+      // real API answers 400 until `20260902090000_postgrest_aggregates.sql`
+      // has set `pgrst.db_aggregates_enabled` on the authenticator role (the
+      // self-host stack sets PGRST_DB_AGGREGATES_ENABLED on the rest service).
+      // This shim accepts the syntax unconditionally, so a green contract run
+      // here proves the SQL shape, not that production has been configured.
+      const count = /^([a-z_][a-z0-9_]*)\.count\(\)$/.exec(column);
+      if (count) {
+        return `count(${embedAlias}.${quoteIdent(count[1])})::int as count`;
+      }
+      return `${embedAlias}.${quoteIdent(column)}`;
+    });
     for (const sub of parsed.embeds) {
       selectParts.push(
         await this.embedExpr(embed.table, embedAlias, sub, params, depth + 1)

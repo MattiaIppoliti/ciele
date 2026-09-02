@@ -1,0 +1,57 @@
+---
+title: Conservación de datos
+description: Establece cuánto tiempo se conservan las conversaciones y los registros de razonamiento, y retén una conversación.
+---
+
+Una organización establece dos periodos de retención en **Settings**, en la
+pestaña **General**. Ambos están desactivados de forma predeterminada: no se
+elimina nada hasta que un administrador seleccione un período.
+
+## Los dos periodos
+
+| Configuración | Qué hace la limpieza nocturna después del periodo |
+| --- | --- |
+| **Reasoning trace retention** | Elimina el panel Pensamiento de los mensajes antiguos. Los mensajes permanecen. |
+| **Conversation retention** | Elimina toda la conversación, incluida la transcripción. |
+
+Las dos ventanas son independientes. Una organización puede configurar una de
+las dos, ambas o ninguna. Por ejemplo, conserva las transcripciones durante un
+año, pero elimina los rastros de razonamiento después de 30 días.
+
+Se ejecuta una limpieza una vez por noche. Aplica cada ventana a las
+conversaciones anteriores a esa ventana. La limpieza es permanente: una
+conversación eliminada no va a la papelera.
+
+<Callout type="warn" title="Conversation retention deletes data">
+After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+</Callout>
+
+## Establece un periodo
+
+1. Abre **Settings**.
+2. Quédate en la pestaña **General**.
+3. Selecciona una ventana en **Reasoning trace retention** o **Conversation
+   retention**.
+4. Selecciona **Save changes**.
+
+Solo un miembro con permiso para gestionar miembros puede cambiar estos ajustes.
+
+## Retención legal
+
+Una retención legal exime a una conversación de la eliminación automática de
+conversaciones. Úsala cuando exista una obligación de conservación para una
+conversación, sin desactivar la retención para todas las demás conversaciones.
+
+1. Abre **Inbox** y selecciona la conversación.
+2. Abre el panel de detalles.
+3. Selecciona **Place legal hold** en la tarjeta **Retention**.
+
+La retención se mantiene hasta que un miembro seleccione **Release legal hold**.
+Todos los miembros ven el estado de retención. Solo un miembro que pueda
+gestionar miembros puede aplicar o liberar una retención.
+
+## Instalaciones autohospedadas
+
+La limpieza nocturna se ejecuta desde el planificador incluido. No se necesita
+ninguna configuración adicional. La limpieza llama a `/api/cron/sweep-retention`
+con la credencial `CRON_SECRET`.

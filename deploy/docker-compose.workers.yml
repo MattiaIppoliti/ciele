@@ -26,6 +26,9 @@ services:
     build:
       context: ../services/graph-worker
     restart: unless-stopped
+    # The `workers` zone only (#801, CYB-16): the app reaches this service,
+    # this service reaches nothing else in the stack.
+    networks: [workers]
     environment:
       GRAPH_WORKER_API_TOKEN: ${GRAPH_WORKER_API_TOKEN:?set GRAPH_WORKER_API_TOKEN to run the workers}
       LLM_PROVIDER: ${GRAPH_LLM_PROVIDER:-gemini}
@@ -34,12 +37,19 @@ services:
       TELEMETRY_DISABLED: "1"
     volumes:
       - graph-data:/data
+    # No host port: the app reaches these over the compose network only. The
+    # image also runs as uid 10001 and carries no compiler (#801, CYB-06).
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     mem_limit: 4g
     cpus: 2
 
   crawl4ai:
     image: unclecode/crawl4ai:0.9.1
     restart: unless-stopped
+    networks: [workers]
     environment:
       CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set CRAWL4AI_API_TOKEN to run the workers}
       SECRET_KEY: ${CRAWL4AI_SECRET_KEY:?set CRAWL4AI_SECRET_KEY to run the workers}
@@ -47,6 +57,11 @@ services:
     volumes:
       - ../services/crawl4ai-worker/config/crawl4ai.config.yml:/app/config.yml:ro
     shm_size: "1gb"
+    # Capabilities are left alone here: this one drives Chromium, whose
+    # sandbox is already off (see the config), and dropping them is untested
+    # against that. It still may not gain any it did not start with.
+    security_opt:
+      - no-new-privileges:true
     mem_limit: 4g
     cpus: 1.5
 

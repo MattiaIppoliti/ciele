@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { sendEmail } from "@agent-hub/agent";
 import { clientAddress, createRateLimiter } from "@/lib/rate-limit";
+import { mailLinkOrigin } from "@/lib/origins";
 import { addNewsletterContact } from "@/lib/marketing/newsletter-audience";
 import {
   confirmationSigningConfigured,
@@ -44,16 +45,16 @@ export interface SubscribeInput {
 }
 
 /**
- * Builds the absolute confirm URL from the request. There is no canonical
- * origin env var in this app, and inventing one for a single link would be one
- * more config item to get wrong per environment.
+ * Builds the absolute confirm URL. The origin comes from `mailLinkOrigin`,
+ * which trusts configuration or an allowlisted host and nothing else: this URL
+ * carries a signed confirmation token, so a spoofable `Host` header would have
+ * mailed that token to an attacker's origin (#801, CYB-10). Null means the
+ * deployment cannot name itself, and the caller refuses to send.
  */
-function confirmUrl(requestHeaders: Headers, token: string): string {
-  const host = requestHeaders.get("host") ?? "ciele.app";
-  const proto =
-    requestHeaders.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
-  const url = new URL(`${proto}://${host}/newsletter/confirm`);
+function confirmUrl(requestHeaders: Headers, token: string): string | null {
+  const origin = mailLinkOrigin(requestHeaders);
+  if (!origin) return null;
+  const url = new URL(`${origin}/newsletter/confirm`);
   url.searchParams.set("token", token);
   return url.toString();
 }
@@ -84,10 +85,17 @@ export async function subscribeToNewsletterAction(
   }
 
   const token = mintConfirmationToken(validation.email);
+  const link = confirmUrl(requestHeaders, token);
+  if (!link) {
+    console.error(
+      "[newsletter] no trusted origin for the confirmation link, set CIELE_PUBLIC_ORIGIN"
+    );
+    return { status: "unavailable" };
+  }
   const delivery = await sendEmail(
     newsletterConfirmationEmail({
       to: validation.email,
-      confirmUrl: confirmUrl(requestHeaders, token),
+      confirmUrl: link,
     })
   );
   if (!delivery.delivered) {

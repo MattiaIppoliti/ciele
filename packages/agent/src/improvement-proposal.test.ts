@@ -146,6 +146,8 @@ describe("draftImprovementProposal", () => {
       embedding: null,
       text: QUERY,
       limit: 6,
+      // No embedding-capable connection means no space either (#801, CYB-14).
+      embeddingSpace: null,
     });
     expect(errors).toEqual([]);
   });

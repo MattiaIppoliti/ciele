@@ -24,8 +24,9 @@ its host are ports in `src/host.ts`, registered once at startup (apps/web does i
 ## Commands
 
 ```bash
-pnpm --filter @agent-hub/agent test        # vitest run
-pnpm --filter @agent-hub/agent typecheck   # tsc --noEmit
+pnpm --filter @agent-hub/agent test           # vitest run, minus **/*.security.test.ts
+pnpm --filter @agent-hub/agent test:security  # the *.security.test.ts suites, their own turbo task
+pnpm --filter @agent-hub/agent typecheck      # tsc --noEmit
 ```
 
 Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.test.ts`.
@@ -55,6 +56,8 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 - `local-subscriptions.ts` / `local-subscription-model.ts`, provider CLIs as an inference backend
   (ADR-0015), published through the `./local-providers` barrel.
 - `egress.ts`, `trust.ts`, `redact.ts`, `pinned-fetch.ts`, the outbound-request guardrails.
+- `untrusted-content.ts`: the per-turn prompt fence and the persistence signal scanner (#801);
+  `tools.ts`, `api-catalog-tools.ts`, `memories.ts` and `agent-learnings.ts` consume it.
 - `host.ts`: the host ports above. `ee.ts`, the enterprise capability registry.
 
 ## Rules
@@ -91,6 +94,8 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
 
 Colocated and split by concern (`ingest.crawl.test.ts`, `ingest.security.test.ts`, …). Anything named
 `*.security.test.ts` asserts SSRF/egress containment, a failure there is a security regression.
+`test` excludes those files; `test:security` runs them, and `pnpm verify` and CI run it as a
+separate turbo task so the failure is a job of its own.
 
 `vitest.config.ts` caps `maxWorkers` and raises `testTimeout`: this suite and apps/web's are both
 ~56 files and turbo runs them concurrently, so an unbounded pool oversubscribes the CPU and trips

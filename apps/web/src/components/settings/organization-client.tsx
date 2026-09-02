@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { Organization } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import {
@@ -21,8 +20,9 @@ import {
 } from "@/components/ui/select";
 
 /**
- * Trace-retention choices (#573). "forever" maps to null (the default): an
- * org's transcripts never lose their Thinking panels unless an admin opts in.
+ * Retention choices, shared by both windows. "forever" maps to null (the
+ * default) in each: nothing an organization already has starts disappearing
+ * unless an admin opts in (#573 traces, #801/CYB-12 transcripts).
  */
 const RETENTION_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "forever", label: "Keep forever (default)" },
@@ -48,7 +48,6 @@ export function OrganizationClient({
   organization: Organization;
   demo: boolean;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState(organization.name);
   const [logoUrl, setLogoUrl] = useState(organization.logoUrl ?? "");
@@ -57,8 +56,17 @@ export function OrganizationClient({
     ? String(organization.traceRetentionDays)
     : "forever";
   const [retention, setRetention] = useState(storedRetention);
+  const storedTranscriptRetention = organization.transcriptRetentionDays
+    ? String(organization.transcriptRetentionDays)
+    : "forever";
+  const [transcriptRetention, setTranscriptRetention] = useState(
+    storedTranscriptRetention
+  );
 
-  const dirty = name !== organization.name || retention !== storedRetention;
+  const dirty =
+    name !== organization.name ||
+    retention !== storedRetention ||
+    transcriptRetention !== storedTranscriptRetention;
 
   function handleSave() {
     if (!name.trim()) {
@@ -70,9 +78,12 @@ export function OrganizationClient({
         name: name.trim(),
         traceRetentionDays:
           retention === "forever" ? null : Number.parseInt(retention, 10),
+        transcriptRetentionDays:
+          transcriptRetention === "forever"
+            ? null
+            : Number.parseInt(transcriptRetention, 10),
       });
       toast.success("Organization saved");
-      router.refresh();
     });
   }
 
@@ -91,7 +102,6 @@ export function OrganizationClient({
     if (result.logoUrl) {
       setLogoUrl(result.logoUrl);
       toast.success("Logo uploaded");
-      router.refresh();
     }
   }
 
@@ -100,7 +110,6 @@ export function OrganizationClient({
     startTransition(async () => {
       await updateOrganizationAction({ logoUrl: null });
       toast.success("Logo removed");
-      router.refresh();
     });
   }
 
@@ -150,6 +159,28 @@ export function OrganizationClient({
         <Select
           value={retention}
           onValueChange={(value) => setRetention(value ?? "forever")}
+        >
+          <SelectTrigger className="h-11 w-full max-w-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RETENTION_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-3">
+        <FieldHeader
+          title="Conversation retention"
+          hint="How long a conversation is kept at all. After the window, a nightly sweep deletes it, transcript included. Conversations placed on legal hold are skipped."
+        />
+        <Select
+          value={transcriptRetention}
+          onValueChange={(value) => setTranscriptRetention(value ?? "forever")}
         >
           <SelectTrigger className="h-11 w-full max-w-sm">
             <SelectValue />

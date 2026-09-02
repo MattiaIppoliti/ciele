@@ -1,8 +1,5 @@
-import { isSupabaseConfigured } from "@agent-hub/db";
 import { ExportsClient, type ExportRow } from "@/components/insights/exports-client";
 import { requirePageMember } from "@/lib/authz";
-import { createExportDownloadUrl } from "@/lib/storage/exports";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,22 +7,6 @@ export default async function ExportsPage() {
   const { organizationId, db } = await requirePageMember();
 
   const jobs = await db.listExportJobs(organizationId);
-
-  // Finished artifacts are served through short-lived signed URLs, the
-  // bucket is private, so a link is minted per page load and never persisted.
-  const downloadUrls: Record<string, string> = {};
-  if (isSupabaseConfigured()) {
-    const supabase = await createSupabaseServerClient();
-    const resolved = await Promise.all(
-      jobs
-        .filter((job) => job.status === "done" && job.storagePath)
-        .map(
-          async (job) =>
-            [job.id, await createExportDownloadUrl(supabase, job.storagePath!)] as const
-        )
-    );
-    for (const [id, url] of resolved) if (url) downloadUrls[id] = url;
-  }
 
   const rows: ExportRow[] = jobs.map((job) => ({
     id: job.id,
@@ -35,7 +16,13 @@ export default async function ExportsPage() {
     error: job.error,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
-    downloadUrl: downloadUrls[job.id] ?? null,
+    // A link to our own route, not a signed URL minted for every finished job
+    // on every page load whether or not anyone clicked (#801, CYB-05). The
+    // route authorizes at click time and records the bytes it serves.
+    downloadUrl:
+      job.status === "done" && job.storagePath
+        ? `/api/insights/exports/${encodeURIComponent(job.id)}`
+        : null,
   }));
 
   return <ExportsClient rows={rows} />;

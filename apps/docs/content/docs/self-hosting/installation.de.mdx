@@ -13,14 +13,14 @@ Desktop. This page is the server path.
 
 - Installieren Sie Git.
 - Installieren Sie Docker mit Docker Compose.
-- Reservieren Sie ausreichend Speicherplatz auf der Festplatte für Bilder,
-  Postgres und hochgeladene Dateien.
+- Reservieren Sie ausreichend Speicherplatz für Bilder, Postgres und
+  hochgeladene Dateien.
 - Reservieren Sie mehr Speicher, wenn Sie die optionalen Worker aktivieren.
 
 ## Ein Befehl
 
 Das Installationsprogramm führt jeden Schritt im nächsten Abschnitt aus: Es
-überprüft die Voraussetzungen, ruft den Quellcode in `./ciele` ab und führt
+überprüft die Voraussetzungen, holt den Quellcode in `./ciele` und führt
 `bootstrap.sh` aus.
 
 ```bash
@@ -83,8 +83,8 @@ CIELE_IMAGE_TAG=v0.4.0
 ```
 
 Da sich beide in `deploy/.env` befinden, bleibt ein späterer
-`docker compose up -d` in diesem Verzeichnis im Image-Modus. Löschen Sie beide
-Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
+`docker compose up -d` in diesem Verzeichnis im Image-Modus. Deaktivieren Sie
+beide Einstellungen, um wieder aus dem Quellcode zu bauen. Stellen Sie
 `CIELE_IMAGE_REGISTRY` so ein, dass ein Mirror oder Ihr eigener Rebuild
 verwendet wird.
 
@@ -117,9 +117,19 @@ docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
 In der Standardkonfiguration wird die Anwendung auf Port `3000` und das
-Datenbank-Gateway auf Port `8000` veröffentlicht. Postgres wird nicht
-veröffentlicht.
+Datenbank-Gateway auf Port `8000` veröffentlicht. Beide binden an `127.0.0.1`,
+sodass von einem anderen Rechner nichts erreichbar ist, bis Sie einen
+Reverse-Proxy davor platzieren. Stellen Sie stattdessen `BIND_ADDRESS=0.0.0.0`
+in `deploy/.env` so ein, dass sie auf jeder Schnittstelle veröffentlicht werden.
+Postgres wird niemals veröffentlicht. Die Datenbankkonsole (Studio) bleibt immer
+auf Loopback. Greifen Sie über einen SSH-Tunnel darauf zu.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
+
+Sobald ein öffentlicher Ursprung vorhanden ist, setzen Sie `CIELE_PUBLIC_ORIGIN`
+in `deploy/.env` auf diese HTTPS-URL. Links, die in eine E-Mail eingefügt
+werden, wie etwa die Bestätigung für den Newsletter, werden aus diesem Wert
+erstellt. Ohne diesen Wert lehnt die Anwendung das Versenden dieser E-Mails ab.
+Sie erstellt keinen Link aus dem `Host`-Header der Anfrage.

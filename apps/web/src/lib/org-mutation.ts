@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import type { MutatedEntity } from "@ciele/ops";
+import { expireOrganizationInsights } from "@/lib/insights/cache";
 import {
   requireMember,
   type MemberCapability,
@@ -43,90 +44,135 @@ interface Revalidation {
   scope?: "page" | "layout";
 }
 
-/** The single entity→paths table (ADR-0005). One entity may fan out to many routes. */
-function revalidationsFor(entity: MutatedEntity): Revalidation[] {
-  switch (entity.kind) {
-    case "assistantList":
-      return [{ path: "/" }];
-    case "assistant":
-      return [
-        { path: "/" },
-        { path: `/assistants/${entity.id}`, scope: "layout" },
-      ];
-    case "flows":
-      return [{ path: `/assistants/${entity.assistantId}` }];
-    case "assistantEditor":
-      return [{ path: `/assistants/${entity.assistantId}` }];
-    case "helpDeskList":
-      return [{ path: "/help-desks" }];
-    case "helpDesk":
-      return [{ path: `/help-desks/${entity.id}` }];
-    case "aiSettings":
-      return [{ path: "/settings/ai" }];
-    case "members":
-      return [{ path: "/settings/members" }];
-    case "organization":
-      return [
-        { path: "/settings/general" },
-        { path: "/", scope: "layout" },
-      ];
-    case "apiKeys":
-      return [{ path: "/settings/api-keys" }];
-    case "alerts":
-      return [{ path: "/alerts" }];
-    case "improvementList":
-      return [{ path: "/improvements" }];
-    case "improvement":
-      return [{ path: `/improvements/${entity.id}` }];
-    case "inbox":
-      return [{ path: "/inbox" }];
-    case "dataEntities":
-      return [{ path: "/settings/data" }];
-    case "teammateList":
-      return [{ path: "/teammates" }];
-    case "teammate":
-      return [{ path: `/teammates/${entity.id}` }];
-    case "channelList":
-      // The channels share the Teammates roster (#778), so a channel change
-      // refreshes that page and not a list of its own.
-      return [{ path: "/teammates" }];
-    case "channel":
-      // A concrete path, so no `scope`: one channel page, one id.
-      return [{ path: `/teammates/channels/${entity.id}` }];
-    // One entity or the other, but the same routes: Projects have no page of
-    // their own since they moved into the Teammate configuration panel, so a
-    // Project change reaches the roster (whose create dialog offers the live
-    // Projects), every Teammate page, and the Improvements board, where an
-    // Improvement names the Project it belongs to.
-    case "project":
-    case "projectList":
-      return [
-        { path: "/teammates" },
-        // Every Teammate page at once: the Project a Teammate reads is picked
-        // in its configuration panel, so which Teammates a Project change
-        // reaches is not knowable from the entity.
-        { path: "/teammates/[teammateId]", scope: "page" },
-        { path: "/improvements" },
-      ];
-    case "myMemory":
-      return [{ path: "/settings/memory" }];
-    case "knowledgeHub":
-      // The tab segments render the tables; the layout route carries nothing.
-      return [
-        { path: "/library/websites" },
-        { path: "/library/files" },
-        { path: "/library/applications" },
-        { path: "/library/faqs" },
-      ];
-  }
+type EntityKind = MutatedEntity["kind"];
+type EntityOf<K extends EntityKind> = Extract<MutatedEntity, { kind: K }>;
+
+interface EntityRule<K extends EntityKind> {
+  /** The admin routes that render this entity. */
+  paths: (entity: EntityOf<K>) => Revalidation[];
+  /**
+   * Whether the Insights aggregate reads this entity. The overview counts
+   * Conversations, answers, feedback and escalations per Assistant, so the
+   * kinds that create or remove those rows expire the five-minute cache
+   * (`lib/insights/report.ts`); the rest leave it alone.
+   */
+  insights: boolean;
 }
 
 /**
- * Turns declared entities into deduped `revalidatePath` calls. Shared by
- * `orgMutation` (server actions) and the /api/v1 mutation runner, so an API
- * write refreshes the admin UI exactly like the equivalent web write.
+ * The single entity table (ADR-0005 as amended): one row per kind answers
+ * both "which paths" and "does Insights care", so a new kind cannot be added
+ * to one question and forgotten by the other.
  */
-export function revalidateEntities(entities: MutatedEntity[]) {
+const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
+  assistantList: { paths: () => [{ path: "/" }], insights: true },
+  // Deleting an Assistant takes its Conversations with it, and the filter
+  // options list the Assistants that exist.
+  assistant: {
+    paths: (entity) => [
+      { path: "/" },
+      { path: `/assistants/${entity.id}`, scope: "layout" },
+    ],
+    insights: true,
+  },
+  flows: {
+    paths: (entity) => [{ path: `/assistants/${entity.assistantId}` }],
+    insights: false,
+  },
+  assistantEditor: {
+    paths: (entity) => [{ path: `/assistants/${entity.assistantId}` }],
+    insights: false,
+  },
+  helpDeskList: { paths: () => [{ path: "/help-desks" }], insights: false },
+  helpDesk: {
+    paths: (entity) => [{ path: `/help-desks/${entity.id}` }],
+    insights: false,
+  },
+  aiSettings: { paths: () => [{ path: "/settings/ai" }], insights: false },
+  members: { paths: () => [{ path: "/settings/members" }], insights: false },
+  organization: {
+    paths: () => [{ path: "/settings/general" }, { path: "/", scope: "layout" }],
+    insights: false,
+  },
+  apiKeys: { paths: () => [{ path: "/settings/api-keys" }], insights: false },
+  alerts: { paths: () => [{ path: "/alerts" }], insights: false },
+  // An Improvement's linked messages carry the thumbs that make the Answer
+  // Rating, and "Improve Answer" from the Inbox declares both kinds.
+  improvementList: { paths: () => [{ path: "/improvements" }], insights: true },
+  improvement: {
+    paths: (entity) => [{ path: `/improvements/${entity.id}` }],
+    insights: true,
+  },
+  // Feedback on a message, a deleted Conversation, an escalation: all of it
+  // is what the overview counts.
+  inbox: { paths: () => [{ path: "/inbox" }], insights: true },
+  dataEntities: { paths: () => [{ path: "/settings/data" }], insights: false },
+  teammateList: { paths: () => [{ path: "/teammates" }], insights: false },
+  teammate: {
+    paths: (entity) => [{ path: `/teammates/${entity.id}` }],
+    insights: false,
+  },
+  // The channels share the Teammates roster (#778), so a channel change
+  // refreshes that page and not a list of its own.
+  channelList: { paths: () => [{ path: "/teammates" }], insights: false },
+  // A concrete path, so no `scope`: one channel page, one id.
+  channel: {
+    paths: (entity) => [{ path: `/teammates/channels/${entity.id}` }],
+    insights: false,
+  },
+  // One entity or the other, but the same routes: Projects have no page of
+  // their own since they moved into the Teammate configuration panel, so a
+  // Project change reaches the roster (whose create dialog offers the live
+  // Projects), every Teammate page, and the Improvements board, where an
+  // Improvement names the Project it belongs to.
+  project: { paths: () => projectPaths(), insights: false },
+  projectList: { paths: () => projectPaths(), insights: false },
+  myMemory: { paths: () => [{ path: "/settings/memory" }], insights: false },
+  // The tab segments render the tables; the layout route carries nothing.
+  knowledgeHub: {
+    paths: () => [
+      { path: "/library/websites" },
+      { path: "/library/files" },
+      { path: "/library/applications" },
+      { path: "/library/faqs" },
+    ],
+    insights: false,
+  },
+};
+
+function projectPaths(): Revalidation[] {
+  return [
+    { path: "/teammates" },
+    // Every Teammate page at once: the Project a Teammate reads is picked
+    // in its configuration panel, so which Teammates a Project change
+    // reaches is not knowable from the entity.
+    { path: "/teammates/[teammateId]", scope: "page" },
+    { path: "/improvements" },
+  ];
+}
+
+function ruleFor<K extends EntityKind>(entity: EntityOf<K>): EntityRule<K> {
+  return ENTITY_RULES[entity.kind as K];
+}
+
+/** The entity→paths half of the table. One entity may fan out to many routes. */
+function revalidationsFor(entity: MutatedEntity): Revalidation[] {
+  return ruleFor(entity).paths(entity);
+}
+
+/**
+ * Turns declared entities into deduped `revalidatePath` calls, then expires
+ * the Organization's Insights cache when any entity feeds the aggregate.
+ * Shared by `orgMutation` (server actions), the /api/v1 mutation runner and
+ * the Teammate action loop, so an API write refreshes the admin UI exactly
+ * like the equivalent web write. `organizationId` is required, not optional:
+ * a caller that could omit it would silently skip the Insights expiry, and
+ * every caller has the id at hand.
+ */
+export function revalidateEntities(
+  entities: MutatedEntity[],
+  organizationId: string,
+) {
   const seen = new Set<string>();
   for (const entity of entities) {
     for (const { path, scope } of revalidationsFor(entity)) {
@@ -138,6 +184,9 @@ export function revalidateEntities(entities: MutatedEntity[]) {
       seen.add(key);
       revalidatePath(path, scope);
     }
+  }
+  if (entities.some((entity) => ruleFor(entity).insights)) {
+    expireOrganizationInsights(organizationId);
   }
 }
 
@@ -174,7 +223,8 @@ export async function orgMutation<T>(
     revalidateEntities(
       typeof options.entities === "function"
         ? options.entities(result)
-        : options.entities
+        : options.entities,
+      ctx.organizationId,
     );
   }
 

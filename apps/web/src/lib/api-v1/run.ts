@@ -65,7 +65,7 @@ export async function runApiOperation<In, Out>(
   }
 
   try {
-    revalidateEntities(op.entities(parsed.data, result));
+    revalidateEntities(op.entities(parsed.data, result), ctx.organizationId);
   } catch {
     // Outside a Next request scope (unit tests) revalidatePath throws;
     // UI freshness is best-effort and must never fail an API call.

@@ -33,6 +33,7 @@ import {
   websiteCrawlerAdapter,
 } from "./website-crawlers";
 import {
+  embeddingSpaceId,
   embedTextsWithStatus,
   embeddingConnectionKind,
   type EmbeddingUsageContext,
@@ -515,6 +516,10 @@ export async function embedConcept(options: {
       : (
           await options.db.getConcept(options.conceptId).catch(() => null)
         )?.sourceId ?? null;
+  // The space is a property of the vector, not of the row: a chunk whose
+  // embedding failed carries no space, and gets both when re-embedded
+  // (#801, CYB-14).
+  const embeddingSpace = embeddingSpaceId(options.connections);
   await options.db.saveChunks(
     chunks.map((content, i) => ({
       conceptId: options.conceptId,
@@ -522,6 +527,7 @@ export async function embedConcept(options: {
       sourceId,
       content: `${options.title}\n\n${content}`,
       embedding: embeddings[i],
+      embeddingSpace: embeddings[i] ? embeddingSpace : null,
     }))
   );
   // Project this Concept onto its Collection's derived Knowledge Graph too

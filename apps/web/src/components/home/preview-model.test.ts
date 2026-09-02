@@ -19,7 +19,7 @@ describe("nextView", () => {
       view = nextView(view);
       seen.push(view.kind === "global" ? view.label : "?");
     }
-    // Five steps from the first view return to the first view.
+    // One step per view from the first view returns to the first view.
     expect(seen).toEqual([...GLOBAL_VIEWS, GLOBAL_VIEWS[0]]);
   });
 

@@ -3,6 +3,7 @@
   "pages": [
     "index",
     "members-and-roles",
-    "ai-providers"
+    "ai-providers",
+    "data-retention"
   ]
 }

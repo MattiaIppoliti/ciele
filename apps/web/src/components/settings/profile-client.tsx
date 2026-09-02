@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { Profile } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import { updateProfileAction, uploadProfileAvatarAction } from "@/app/actions";
@@ -29,32 +28,62 @@ export function ProfileClient({
   profile: Profile | null;
   demo: boolean;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl ?? "");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState("");
-  const [firstName, setFirstName] = useState(profile?.firstName ?? "");
-  const [lastName, setLastName] = useState(profile?.lastName ?? "");
-  const [username, setUsername] = useState(profile?.username ?? "");
+  const initialProfile = {
+    firstName: profile?.firstName ?? "",
+    lastName: profile?.lastName ?? "",
+    username: profile?.username ?? "",
+  };
+  const [savedProfile, setSavedProfile] = useState(initialProfile);
+  const [firstName, setFirstName] = useState(initialProfile.firstName);
+  const [lastName, setLastName] = useState(initialProfile.lastName);
+  const [username, setUsername] = useState(initialProfile.username);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
 
   const dirty =
-    firstName !== (profile?.firstName ?? "") ||
-    lastName !== (profile?.lastName ?? "") ||
-    username !== (profile?.username ?? "");
+    firstName !== savedProfile.firstName ||
+    lastName !== savedProfile.lastName ||
+    username !== savedProfile.username;
 
   function handleSave() {
     if (!username.trim()) {
       toast.error("Username is required");
       return;
     }
+    const nextProfile = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      username: username.trim(),
+    };
+    const previousProfile = { firstName, lastName, username };
+    setFirstName(nextProfile.firstName);
+    setLastName(nextProfile.lastName);
+    setUsername(nextProfile.username);
+    setSaveStatus("saving");
     startTransition(async () => {
-      await updateProfileAction({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        username: username.trim(),
-      });
-      toast.success("Profile saved");
-      router.refresh();
+      try {
+        const saved = await updateProfileAction(nextProfile);
+        setFirstName(saved.firstName);
+        setLastName(saved.lastName);
+        setUsername(saved.username);
+        setSavedProfile({
+          firstName: saved.firstName,
+          lastName: saved.lastName,
+          username: saved.username,
+        });
+        setSaveStatus("saved");
+        toast.success("Profile saved");
+      } catch {
+        setFirstName(previousProfile.firstName);
+        setLastName(previousProfile.lastName);
+        setUsername(previousProfile.username);
+        setSaveStatus("idle");
+        toast.error("Could not save profile");
+      }
     });
   }
 
@@ -73,7 +102,6 @@ export function ProfileClient({
     if (result.avatarUrl) {
       setAvatarUrl(result.avatarUrl);
       toast.success("Photo uploaded");
-      router.refresh();
     }
   }
 
@@ -82,7 +110,6 @@ export function ProfileClient({
     startTransition(async () => {
       await updateProfileAction({ avatarUrl: null });
       toast.success("Photo removed");
-      router.refresh();
     });
   }
 
@@ -123,7 +150,11 @@ export function ProfileClient({
           <FieldHeader title="First name" hint="Optional." />
           <Input
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            data-testid="profile-first-name"
+            onChange={(e) => {
+              setFirstName(e.target.value);
+              setSaveStatus("idle");
+            }}
             className="h-11"
           />
         </div>
@@ -131,7 +162,11 @@ export function ProfileClient({
           <FieldHeader title="Last name" hint="Optional." />
           <Input
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            data-testid="profile-last-name"
+            onChange={(e) => {
+              setLastName(e.target.value);
+              setSaveStatus("idle");
+            }}
             className="h-11"
           />
         </div>
@@ -144,7 +179,11 @@ export function ProfileClient({
         />
         <Input
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          data-testid="profile-username"
+          onChange={(e) => {
+            setUsername(e.target.value);
+            setSaveStatus("idle");
+          }}
           className="h-11 max-w-sm"
         />
       </div>
@@ -156,7 +195,22 @@ export function ProfileClient({
 
       <div className="bg-content/95 sticky bottom-0 -mx-2 flex items-center justify-end gap-3 border-t px-2 py-4 backdrop-blur">
         {dirty && <span className="text-muted-foreground text-sm">Unsaved changes</span>}
-        <Button onClick={handleSave} disabled={isPending || !dirty} className="px-6 font-semibold">
+        {!dirty && saveStatus === "saved" && (
+          <span
+            className="text-muted-foreground text-sm"
+            data-testid="profile-saved"
+          >
+            Saved
+          </span>
+        )}
+        {/* Only the button shows the pending save; the fields stay editable,
+            a save that locks the form is the opposite of optimistic. */}
+        <Button
+          onClick={handleSave}
+          disabled={isPending || !dirty}
+          data-testid="profile-save"
+          className="px-6 font-semibold"
+        >
           {isPending ? "Saving..." : "Save changes"}
         </Button>
       </div>

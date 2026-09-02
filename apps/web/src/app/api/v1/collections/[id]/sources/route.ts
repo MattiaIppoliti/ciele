@@ -1,4 +1,5 @@
 import { extractSourceText } from "@agent-hub/agent";
+import type { TriageEvidence } from "@agent-hub/core";
 import { isSupabaseConfigured } from "@agent-hub/db";
 import { addSourceOp, listSourcesOp } from "@ciele/ops";
 import { apiError } from "@/lib/api-v1/http";
@@ -6,6 +7,7 @@ import { idempotencyScope, withIdempotency } from "@/lib/api-v1/idempotency";
 import { sourceResource } from "@/lib/api-v1/resources";
 import { runApiOperation } from "@/lib/api-v1/run";
 import { requireApiCapability, resolveApiKeyContext } from "@/lib/api-v1/auth";
+import { checkUploadAllowance, uploadThrottledMessage } from "@/lib/upload-limit";
 import {
   uploadKnowledgeOriginal,
   validateKnowledgeFile,
@@ -52,11 +54,23 @@ export async function POST(request: Request, { params }: Params) {
 
     const contentType = request.headers.get("content-type") ?? "";
 
+    // The same per-member budget as the console doors (#801, CYB-01), keyed
+    // on the human the key delegates for, so a scripted key and a scripted
+    // Server Action draw on one window. Only the two kinds that run a parser
+    // or a fetch are budgeted, a text Source costs nothing to accept, and the
+    // check sits right before the parse so a refusal spends no parser time.
+    const budget = (): Response | null => {
+      const decision = checkUploadAllowance(auth.organizationId, auth.actorUserId);
+      return decision.allowed ? null : rateLimited(decision.retryAfterMs);
+    };
+
     let name: string;
     let kind: "text" | "url" | "file";
     let rawText: string;
     let sourceUrl: string | undefined;
     let originalObjectPath: string | undefined;
+    /** The triage verdict for an uploaded file, persisted on the Source (#801, CYB-09). */
+    let triage: TriageEvidence | undefined;
     // PRD #726 contract: knowledge reaches Assistants only through explicit
     // links, so the caller names them (JSON `assistantIds`, or a JSON-encoded
     // `assistantIds` field on multipart). The op refuses an empty set.
@@ -80,6 +94,8 @@ export async function POST(request: Request, { params }: Params) {
           size: file.size,
         });
         if (!validation.ok) return apiError(400, "invalid_input", validation.error);
+        const throttled = budget();
+        if (throttled) return throttled;
 
         const extracted = await extractSourceText({
           kind: "file",
@@ -89,6 +105,10 @@ export async function POST(request: Request, { params }: Params) {
         name = extracted.name;
         kind = "file";
         rawText = extracted.text;
+        // The console doors persist this; a file that arrives through a key
+        // must carry the same verdict, or a rule bump cannot name which
+        // Sources predate it (#801, CYB-09).
+        triage = extracted.triage;
 
         if (isSupabaseConfigured() && isSupabaseServiceConfigured()) {
           const stored = await uploadKnowledgeOriginal(
@@ -106,6 +126,8 @@ export async function POST(request: Request, { params }: Params) {
           );
         }
         if (body.kind === "url" && typeof body.url === "string") {
+          const throttled = budget();
+          if (throttled) return throttled;
           const extracted = await extractSourceText({ kind: "url", url: body.url });
           name = extracted.name;
           kind = "url";
@@ -146,8 +168,16 @@ export async function POST(request: Request, { params }: Params) {
       sourceUrl,
       originalObjectPath,
       assistantIds,
+      triage,
     });
     if (outcome instanceof Response) return outcome;
     return Response.json(sourceResource(outcome.result.source), { status: 201 });
   });
+}
+
+/** The 429 the console doors express as a form error; here it is a status and a header. */
+function rateLimited(retryAfterMs: number): Response {
+  const response = apiError(429, "rate_limited", uploadThrottledMessage(retryAfterMs));
+  response.headers.set("retry-after", String(Math.max(1, Math.ceil(retryAfterMs / 1000))));
+  return response;
 }

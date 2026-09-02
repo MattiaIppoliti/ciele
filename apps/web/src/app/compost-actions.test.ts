@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, type Db } from "@agent-hub/db";
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 vi.mock("@/lib/authz", () => ({
   requireMember: vi.fn(),
   requireSession: vi.fn(),

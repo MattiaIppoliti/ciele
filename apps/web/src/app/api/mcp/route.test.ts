@@ -157,14 +157,19 @@ describe("POST /api/mcp", () => {
   });
 
   /**
-   * The loopback is what makes the endpoint configuration-free, so the origin
-   * it dials must come from the request being served rather than any constant.
-   * Proven by intercepting the outbound call a tool makes.
+   * #801, CYB-03. The tools forward the caller's own live API key to whatever
+   * origin this endpoint dials, so the origin must come from configuration and
+   * never from the request: a proxy passing an untrusted `Host` would
+   * otherwise have this server post a working Bearer key to the attacker's
+   * host. Proven by intercepting the outbound call a tool makes, from a request
+   * whose Host says something else entirely.
    */
-  it("reaches /api/v1 on the origin it was served from", async () => {
+  it("dials the configured internal origin, not the Host it was asked on", async () => {
     const secret = await mintKey();
     const outbound: string[] = [];
     const realFetch = globalThis.fetch;
+    const priorInternalOrigin = process.env.CIELE_INTERNAL_API_ORIGIN;
+    process.env.CIELE_INTERNAL_API_ORIGIN = "http://app.internal:3000";
     globalThis.fetch = vi.fn(async (input: string | URL | Request) => {
       outbound.push(String(input instanceof Request ? input.url : input));
       return new Response(JSON.stringify({ ok: true }), {
@@ -204,11 +209,13 @@ describe("POST /api/mcp", () => {
 
       expect(outbound.length).toBeGreaterThan(0);
       for (const url of outbound) {
-        expect(new URL(url).origin).toBe("https://ciele.your-campus.example");
+        expect(new URL(url).origin).toBe("http://app.internal:3000");
         expect(new URL(url).pathname.startsWith("/api/v1/")).toBe(true);
       }
     } finally {
       globalThis.fetch = realFetch;
+      if (priorInternalOrigin === undefined) delete process.env.CIELE_INTERNAL_API_ORIGIN;
+      else process.env.CIELE_INTERNAL_API_ORIGIN = priorInternalOrigin;
     }
   });
 

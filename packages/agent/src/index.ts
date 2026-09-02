@@ -90,10 +90,31 @@ export type {
 export {
   sweepDueRecrawls,
   finalizeDueCrawls,
+  sweepExpiredObjectAccess,
   sweepExpiredTraces,
+  sweepExpiredTranscripts,
+  OBJECT_ACCESS_RETENTION_DAYS,
   RECRAWL_SWEEP_BATCH_SIZE,
   CRAWL_FINALIZE_BATCH_SIZE,
 } from "./scheduled";
+// Detection-as-code over the object-access ledger (#801, CYB-19): the pure
+// rules, and the cron tick that turns findings into keyed Alerts.
+export {
+  runSecurityDetections,
+  runDetectionRules,
+  detectBulkDownloads,
+  detectNewAddressDownloads,
+  detectRefusalProbes,
+  NEW_ADDRESS_MIN_BASELINE,
+  NEW_ADDRESS_BASELINE_DAYS,
+  BULK_DOWNLOAD_THRESHOLD,
+  REFUSAL_PROBE_THRESHOLD,
+  DETECTION_WINDOW_HOURS,
+} from "./security-detections";
+export type {
+  SecurityDetectionsReport,
+  SecurityFinding,
+} from "./security-detections";
 export type {
   SweepDueRecrawlsReport,
   FinalizeDueCrawlsReport,

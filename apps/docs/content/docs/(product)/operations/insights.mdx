@@ -21,6 +21,14 @@ The overview can include these measures:
 
 The exact cards depend on available data for the selected period.
 
+## Data freshness
+
+Insights stores the calculated overview for up to five minutes for each Organization and filter set. Every Member of the Organization reads the same stored overview.
+
+A change a Member makes in the console (to an Assistant, a Conversation, or an Improvement) clears the stored overview at once. Widget traffic (new Conversations, answer ratings, satisfaction scores, escalations) reaches the numbers within five minutes.
+
+To force a new calculation before the five minutes end, send `DELETE /api/insights` from a signed-in browser session. The response is `204` and the next read calculates the overview again. Any Member of the Organization can send this request.
+
 ## Notification counting
 
 A Notification is not an AI answer. A Notification-only session does not increase Conversation or answer KPIs.

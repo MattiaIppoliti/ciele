@@ -2,7 +2,11 @@
 
 import { type ReactElement, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ImprovementListItem, ImprovementPatch } from "@agent-hub/core";
+import type {
+  Improvement,
+  ImprovementListItem,
+  ImprovementPatch,
+} from "@agent-hub/core";
 import { PanelRight, Search } from "lucide-react";
 import { Input } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
@@ -57,6 +61,7 @@ export function ImprovementContextMenu({
   canEdit,
   onOpenDrawer,
   onTagRemembered,
+  onUpdated,
   children,
 }: {
   item: ImprovementListItem;
@@ -70,6 +75,8 @@ export function ImprovementContextMenu({
    * so without this the last card carrying a tag would take it off the menu.
    */
   onTagRemembered: (tag: string) => void;
+  /** Keep progressively loaded rows fresh after their Server Action succeeds. */
+  onUpdated: (improvement: Improvement) => void;
   children: ReactElement<React.HTMLAttributes<HTMLElement>>;
 }) {
   const router = useRouter();
@@ -110,7 +117,8 @@ export function ImprovementContextMenu({
   function persist(patch: ImprovementPatch, done: string) {
     startTransition(async () => {
       try {
-        await updateImprovementAction(item.id, patch);
+        const updated = await updateImprovementAction(item.id, patch);
+        onUpdated(updated);
         toast.success(`${key}, ${done}`);
       } catch {
         toast.error(`Could not update ${key}. Please try again.`);

@@ -42,7 +42,7 @@ En un Mac sin Docker, el instalador no se detiene ante un error. Abre
 [Ciele Desktop](/self-hosting/desktop) y, si la aplicación no está presente,
 primero descarga la versión. La configuración guiada que aparece allí vincula
 Docker Desktop e inicia la misma pila que se describe en esta página. En Linux,
-el instalador se niega porque no hay ninguna aplicación de escritorio a la que
+el instalador se niega, porque no hay ninguna aplicación de escritorio a la que
 pasarle el trabajo.
 
 ## Arranca la pila
@@ -104,7 +104,7 @@ restart alone keeps the previous value.
 | --- | :---: | --- |
 | `db` | Sí | Postgres, pgvector, autenticación, API de datos, almacenamiento y puerta de enlace. |
 | `migrate` | Sí | Migraciones pendientes y buckets de almacenamiento necesarios. |
-| `app` | Sí | Consola de administrador, entorno de ejecución de widgets y API v1. |
+| `app` | Sí | Consola de administración, entorno de ejecución de widgets y API v1. |
 | `cron` | Sí | Tareas programadas de la aplicación. |
 | `workers` | No | Servicios de recuperación de grafos y de rastreo con renderización en JavaScript. |
 | `studio` | No | Interfaz de administración de la base de datos. |
@@ -117,8 +117,19 @@ docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
 La configuración predeterminada publica la aplicación en el puerto `3000` y la
-puerta de enlace de la base de datos en el puerto `8000`. No publica Postgres.
+puerta de enlace de la base de datos en el puerto `8000`. Ambos se vinculan a
+`127.0.0.1`, por lo que no se puede acceder a nada desde otra máquina hasta que
+pongas un proxy inverso delante. En su lugar, configura `BIND_ADDRESS=0.0.0.0`
+en `deploy/.env` para publicarlos en todas las interfaces. Postgres nunca se
+publica. La consola de la base de datos (Studio) siempre permanece en loopback.
+Accede a ella a través de un túnel SSH.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
+
+Una vez que exista un origen público, establece `CIELE_PUBLIC_ORIGIN` en
+`deploy/.env` con esa URL HTTPS. Los enlaces que se incluyen en un correo
+electrónico, como la confirmación del boletín, se generan a partir de este
+valor. Sin él, la aplicación se niega a enviar esos correos electrónicos. No
+genera un enlace a partir del encabezado `Host` de la solicitud.

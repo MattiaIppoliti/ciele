@@ -14,8 +14,22 @@ description: Sube un archivo o añade texto y elige qué Asistentes responden a 
 7. Prueba una respuesta y su cita.
 
 Ciele almacena el archivo original y extrae el texto compatible para su ingesta.
-El estado de la fuente muestra si la extracción y la indexación se han
+El estado de la fuente indica si la extracción y la indexación se han
 completado.
+
+## Archivos que Ciele rechaza
+
+Ciele comprueba el contenido del archivo, no solo el nombre del archivo, antes
+de leer un documento. Rechaza:
+
+- un archivo cuyo contenido no coincide con su extensión, por ejemplo, una
+  página HTML llamada `.pdf`
+- un programa, sea cual sea el nombre del archivo
+- un archivo de Office que contenga un proyecto de macros o un objeto incrustado
+- un PDF con más de 2000 páginas
+
+Guarda el documento sin macros ni objetos incrustados, o divide un PDF largo y
+vuelve a subirlo.
 
 ## Añade texto pegado
 
@@ -27,15 +41,15 @@ separado.
 3. Pega el texto.
 4. Inicia la ingesta.
 
-Utiliza un nombre de fuente estable. El nombre puede aparecer en las citas de
+Utiliza un nombre de origen estable. El nombre puede aparecer en las citas de
 los visitantes.
 
 ## Sustituye el contenido obsoleto
 
 Elimina la Fuente antigua antes de confiar en una sustituta. A continuación,
-confirma que la nueva Fuente está **Ready** y genera citas correctas.
+confirma que la nueva Fuente esté **Ready** y genere citas correctas.
 
-Al eliminar una fuente, se eliminan sus conceptos del grafo de conocimiento
+Al eliminar una fuente, sus conceptos se eliminan del grafo de conocimiento
 activo y del índice de búsqueda.
 
 ## Eliminar frente a borrar
@@ -45,7 +59,7 @@ editor de Asistentes ofrece dos operaciones.
 
 - **Remove from this Assistant** elimina un enlace. Los demás Asistentes
   conservan el archivo.
-- **Delete** elimina la Fuente de cada Asistente vinculado. La confirmación
+- **Delete** elimina la Fuente para cada Asistente vinculado. La confirmación
   nombra a cada uno.
 
 Cuando solo este Asistente responde desde el archivo, el editor lo elimina

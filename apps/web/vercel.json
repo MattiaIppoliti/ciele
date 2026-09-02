@@ -1,6 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "crons": [
     {
       "path": "/api/cron/finalize-crawls",
@@ -31,8 +33,12 @@
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/cron/sweep-traces",
+      "path": "/api/cron/sweep-retention",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/security-detections",
+      "schedule": "45 2 * * *"
     }
   ]
 }

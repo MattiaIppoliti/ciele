@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
 import {
   MEMORY_DOCUMENT_MAX_CHARS,
@@ -36,7 +35,6 @@ export function MemoryClient({
   entries: MemoryDocumentEntry[];
   teammateNames: Record<string, string>;
 }) {
-  const router = useRouter();
   const [body, setBody] = useState(initial);
   const [isPending, startTransition] = useTransition();
   const dirty = body !== initial;
@@ -53,7 +51,6 @@ export function MemoryClient({
       try {
         await writeMyMemoryAction(body);
         toast.success("Saved, your teammates read it from the next message");
-        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not save");
       }
@@ -66,7 +63,6 @@ export function MemoryClient({
         const restored = await revertMyMemoryAction(entry.id);
         setBody(restored.body);
         toast.success("Undone");
-        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not undo");
       }

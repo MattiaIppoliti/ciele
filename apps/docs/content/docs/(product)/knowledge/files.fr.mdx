@@ -17,9 +17,23 @@ Ciele stocke le fichier d'origine et en extrait le texte pris en charge pour
 l'ingestion. L'état Source indique si l'extraction et l'indexation sont
 terminées.
 
-## Ajouter du texte collé
+## Fichiers refusés par Ciele
 
-Utilisez une source de texte pour du contenu court qui ne nécessite pas de
+Ciele vérifie le contenu du fichier, et pas seulement son nom, avant de lire un
+document. Elle refuse :
+
+- un fichier dont le contenu ne correspond pas à son extension, par exemple une
+  page HTML nommée `.pdf`
+- un programme, quel que soit le nom du fichier
+- un fichier Office qui contient un projet de macro ou un objet incorporé
+- un PDF de plus de 2 000 pages
+
+Enregistrez le document sans macros ni objets incorporés, ou scindez un long PDF
+et importez-le à nouveau.
+
+## Ajoutez du texte collé
+
+Utilisez une source de texte pour les contenus courts qui ne nécessitent pas de
 fichier séparé.
 
 1. Ajoutez une source de texte.
@@ -27,14 +41,14 @@ fichier séparé.
 3. Collez le texte.
 4. Lancez l'ingestion.
 
-Utilisez un nom de source stable. Le nom peut apparaître dans les citations des
+Utilisez un nom de Source stable. Le nom peut apparaître dans les citations des
 visiteurs.
 
 ## Remplacez le contenu obsolète
 
 Supprimez l'ancienne Source avant de vous fier à une solution de remplacement.
-Ensuite, confirmez que la nouvelle Source est **Ready** et produit des citations
-correctes.
+Ensuite, confirmez que la nouvelle Source est **Ready** et qu'elle produit des
+citations correctes.
 
 La suppression d'une Source supprime ses Concepts du graphe de connaissances
 actif et de l'index de recherche.
@@ -52,7 +66,7 @@ d'Assistant propose donc deux opérations.
 Lorsque seul cet Assistant répond à partir du fichier, l'éditeur le supprime
 directement.
 
-## Remettez le fichier original au Visiteur
+## Donnez le fichier original au Visiteur
 
 Activez **Direct access** dans la [Bibliothèque](/knowledge/library) pour
 permettre à l'Assistant de joindre le fichier original à sa citation. Le

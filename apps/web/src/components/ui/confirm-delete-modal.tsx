@@ -97,7 +97,7 @@ export interface ConfirmDeleteRequest {
 }
 
 /** A server action's `redirect()` surfaces as a throw the router must see. */
-function isRedirectError(error: unknown): boolean {
+export function isRedirectError(error: unknown): boolean {
   const digest = (error as { digest?: unknown } | null)?.digest;
   return typeof digest === "string" && digest.startsWith("NEXT_REDIRECT");
 }

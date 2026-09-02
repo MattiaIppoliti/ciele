@@ -66,6 +66,7 @@ export function AssistantsPageClient({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search Assistants..."
+              data-testid="assistants-search"
               className="h-9 pl-9"
             />
           </div>

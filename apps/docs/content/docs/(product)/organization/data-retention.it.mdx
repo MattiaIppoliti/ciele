@@ -1,0 +1,58 @@
+---
+title: Conservazione dei dati
+description: Imposta per quanto tempo conservare le conversazioni e le tracce di ragionamento e trattieni una conversazione.
+---
+
+Un'Organizzazione imposta due finestre di conservazione in **Settings**, nella
+scheda **General**. Entrambe sono disattivate per impostazione predefinita:
+nulla viene eliminato finché un amministratore non seleziona una finestra.
+
+## Le due finestre
+
+| Impostazione | Cosa fa la pulizia notturna dopo la finestra |
+| --- | --- |
+| **Reasoning trace retention** | Rimuove il pannello Thinking dai messaggi precedenti. I messaggi restano. |
+| **Conversation retention** | Elimina l'intera conversazione, trascrizione inclusa. |
+
+Le due finestre sono indipendenti. Un'Organizzazione può impostare una delle
+due, entrambe o nessuna delle due. Ad esempio, conserva le trascrizioni per un
+anno ma rimuovi le tracce del ragionamento dopo 30 giorni.
+
+Una volta a notte viene eseguita una pulizia. Applica ogni finestra alle
+conversazioni più vecchie di quella finestra. La pulizia è permanente: una
+conversazione eliminata non finisce nel cestino.
+
+<Callout type="warn" title="Conversation retention deletes data">
+After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+</Callout>
+
+## Imposta una finestra
+
+1. Apri **Settings**.
+2. Rimani nella scheda **General**.
+3. Seleziona una finestra in **Reasoning trace retention** o **Conversation
+   retention**.
+4. Seleziona **Save changes**.
+
+Solo un membro che può gestire i membri può modificare queste impostazioni.
+
+## Conservazione a fini legali
+
+Una conservazione a fini legali esclude una conversazione dalla pulizia delle
+conversazioni conservate. Usalo quando un obbligo di conservazione si applica a
+una conversazione, senza disattivare la conservazione per tutte le altre
+conversazioni.
+
+1. Apri **Inbox** e seleziona la conversazione.
+2. Apri il pannello dei dettagli.
+3. Seleziona **Place legal hold** nella scheda **Retention**.
+
+Il blocco rimane attivo finché un membro non seleziona **Release legal hold**.
+Ogni membro vede lo stato di sospensione. Solo un membro che può gestire i
+membri può impostare o rilasciare un blocco.
+
+## Installazioni self-hosted
+
+La pulizia notturna viene eseguita dal pianificatore integrato. Non è necessaria
+alcuna configurazione aggiuntiva. Lo sweep chiama `/api/cron/sweep-retention`
+con la credenziale `CRON_SECRET`.

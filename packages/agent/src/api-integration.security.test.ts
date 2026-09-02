@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./egress", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./egress")>()),
@@ -15,6 +15,16 @@ import { queryApiEndpoint, resolveIntegrationUrl } from "./api-integration";
  * describe never reaches the network at all**, so every refusal below must show
  * `egressFetch` was not called, not merely that the result was an error.
  */
+
+// Sealing is fail-closed since #801 (CYB-02), so the fixtures below need a key.
+const priorEncryptionKey = process.env.APP_ENCRYPTION_KEY;
+beforeAll(() => {
+  process.env.APP_ENCRYPTION_KEY = "test-encryption-key";
+});
+afterAll(() => {
+  if (priorEncryptionKey === undefined) delete process.env.APP_ENCRYPTION_KEY;
+  else process.env.APP_ENCRYPTION_KEY = priorEncryptionKey;
+});
 
 const egressFetchMock = vi.mocked(egressFetch);
 

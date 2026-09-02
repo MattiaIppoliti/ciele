@@ -79,6 +79,16 @@ lands in the Knowledge slice).
 | `inbox.conversations.get` | member | `GET /api/v1/conversations/{id}` | trace served only to Roles clearing the reasoning gate (#557) |
 | `inbox.conversations.export-read` | member | `POST /api/v1/conversations/export` | 29-field row building at the surface; reasoning gate by Role, never a flag |
 
+## Insights (session routes, outside `/api/v1`)
+
+The dashboard's own reads are browser routes authenticated by the signed-in
+session, not by an API key, so they are not operations and take no key:
+
+| Route | Who | What |
+|---|---|---|
+| `GET /api/insights?from=&to=&aggregate=…` | any Member of the Organization | the cached overview for a filter set (five minutes per Organization and filter, ADR-0005 amendment) |
+| `DELETE /api/insights` | any Member of the Organization | expires the Organization's cached overview; the next read recomputes it. Same gate as GET on purpose: the cache is shared by the roster, and a Member can already force a miss by changing a filter |
+
 ## Improvements (shipped, #625)
 
 | Operation | Capability | Route | Beyond Db |

@@ -56,6 +56,14 @@ export const alertKeys = {
   /** One Application Connection's authorization lifecycle. */
   applicationConnection: (connectionId: string) =>
     `application-connection:${connectionId}`,
+  /**
+   * One security-detection finding (#801, CYB-19): rule + the subject it
+   * fired on, so a still-firing rule updates one Alert in place and two
+   * subjects never share a banner. Raise-only, the detections never send a
+   * healthy signal: security evidence must not clear itself.
+   */
+  securityDetection: (rule: string, subject: string) =>
+    `security-detection:${rule}:${subject}`,
 } as const;
 
 export type HealthSignal =

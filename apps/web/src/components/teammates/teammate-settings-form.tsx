@@ -174,7 +174,6 @@ export function TeammateSettingsForm({
         }
         toast.success("Saved, it applies to the next message");
         onDone();
-        router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Could not save");
       }

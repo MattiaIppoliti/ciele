@@ -7,6 +7,7 @@ import {
   listInboxPageOp,
   readConversationsForExportOp,
   readInboxSummaryWindowOp,
+  setConversationLegalHoldOp,
 } from "./inbox";
 import type { OperationContext } from "./operation";
 
@@ -78,6 +79,51 @@ describe("Inbox read model", () => {
       getInboxConversationReviewOp.run(
         { ...ctx, organizationId: "foreign-org" },
         { conversationId: first.id },
+      ),
+    ).rejects.toMatchObject({ code: "not_found" });
+  });
+});
+
+describe("legal hold (#801, CYB-12)", () => {
+  it("flips the flag on an owned conversation and survives a page read", async () => {
+    const ctx = context();
+    const first = (await ctx.db.getInboxPage(DEMO_ORG.id, { limit: 1 }))
+      .conversations[0]!;
+
+    const held = await setConversationLegalHoldOp.run(ctx, {
+      id: first.id,
+      legalHold: true,
+    });
+    expect(held.legalHold).toBe(true);
+
+    const reread = (
+      await ctx.db.getInboxPage(DEMO_ORG.id, {
+        conversationIds: [first.id],
+        staff: "include",
+        limit: 1,
+      })
+    ).conversations[0]!;
+    expect(reread.legalHold).toBe(true);
+
+    const released = await setConversationLegalHoldOp.run(ctx, {
+      id: first.id,
+      legalHold: false,
+    });
+    expect(released.legalHold).toBe(false);
+  });
+
+  it("is an administrative act, not a member one", () => {
+    // Suspending a deletion the Organization committed to is the same rung as
+    // setting the retention window itself.
+    expect(setConversationLegalHoldOp.capability).toBe("manageMembers");
+  });
+
+  it("refuses a conversation outside the caller's Organization", async () => {
+    const ctx = context();
+    await expect(
+      setConversationLegalHoldOp.run(
+        { ...ctx, organizationId: "some-other-org" },
+        { id: "conv-demo", legalHold: true },
       ),
     ).rejects.toMatchObject({ code: "not_found" });
   });

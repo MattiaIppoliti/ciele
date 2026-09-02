@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type {
   ApiAuthType,
   ChannelAvailability,
@@ -711,7 +710,6 @@ export function ChannelPanel({
   initial: ChannelPanelState;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [state, setState] = useState<ChannelPanelState>(initial);
   const [tab, setTab] = useState<EditTab>("setup");
   // Create-step draft
@@ -766,7 +764,6 @@ export function ChannelPanel({
       setChannel(created);
       setState({ mode: "edit", channel: created });
       setTab(created.form.length > 0 ? "form" : "setup");
-      router.refresh();
     });
   }
 
@@ -797,7 +794,6 @@ export function ChannelPanel({
         availability: channel.availability,
       });
       toast.success("Channel saved");
-      router.refresh();
       onClose();
     });
   }

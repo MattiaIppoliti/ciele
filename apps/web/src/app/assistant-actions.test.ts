@@ -7,7 +7,7 @@ import {
   type Db,
 } from "@agent-hub/db";
 
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 // after() is the enqueue accelerator; a no-op keeps graph-sync jobs on the
 // ledger for assertion instead of running them against a live worker.
 vi.mock("next/server", () => ({ after: vi.fn() }));

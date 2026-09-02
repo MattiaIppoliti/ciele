@@ -13,9 +13,40 @@
  * 2. The **enterprise registration entrypoint**, so the enterprise edition can
  *    register its capability overrides before any request is served (#435). In
  *    the open-source edition that entrypoint is an inert stub, so it is a no-op.
+ *
+ * And two startup **assertions**. CYB-16 (#801): a production build whose
+ * public origin is plain HTTP on a non-loopback host refuses to start unless
+ * `CIELE_ALLOW_INSECURE_HTTP=1` says that is the intent (`lib/secure-origin.ts`
+ * holds the rule). CYB-02 (#801): a deployment that talks to a
+ * real database must carry `APP_ENCRYPTION_KEY`. `sealSecret` already refuses
+ * to write without it, but per-write refusal surfaces as a failed Settings
+ * form weeks after the misconfiguration; a process that refuses to start
+ * surfaces it to the operator who caused it, at the moment they caused it.
+ * The Supabase-less demo mode still lets you paste a provider key into
+ * Settings, it just stores it in the in-memory store, so instead of requiring
+ * a key it gets an ephemeral one: sealed values live exactly as long as the
+ * store they are sealed into, and the fail-closed core stays fail-closed.
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  const { insecurePublicOriginReason } = await import("@/lib/secure-origin");
+  const insecure = insecurePublicOriginReason(process.env);
+  if (insecure) throw new Error(insecure);
+
+  const { isSupabaseConfigured } = await import("@agent-hub/db");
+  if (!isSupabaseConfigured() && !process.env.APP_ENCRYPTION_KEY) {
+    // Demo mode: the mock store is per-process memory, so a per-process key
+    // is exactly as durable as what it seals. This keeps `sealSecret`
+    // fail-closed without making the zero-config demo refuse a Settings form.
+    const { randomBytes } = await import("node:crypto");
+    process.env.APP_ENCRYPTION_KEY = randomBytes(32).toString("hex");
+  }
+  if (isSupabaseConfigured() && !process.env.APP_ENCRYPTION_KEY) {
+    throw new Error(
+      "APP_ENCRYPTION_KEY is not set. It seals every stored credential (provider keys, SSO, help desks, application OAuth), so a Supabase-backed deployment must not start without it. Set it in the environment (deploy/bootstrap.sh generates one) and restart."
+    );
+  }
 
   const { after } = await import("next/server");
   const { registerRuntimeHost } = await import("@agent-hub/agent");

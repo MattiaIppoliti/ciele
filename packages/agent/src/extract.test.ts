@@ -4,8 +4,22 @@ vi.mock("node:dns/promises", () => ({ lookup: vi.fn() }));
 vi.mock("./pinned-fetch", () => ({
   pinnedRequest: vi.fn(),
 }));
-const pdfMocks = vi.hoisted(() => ({ extractText: vi.fn() }));
-vi.mock("unpdf", () => ({ extractText: pdfMocks.extractText }));
+const pdfMocks = vi.hoisted(() => ({
+  extractText: vi.fn(),
+  getDocumentProxy: vi.fn(),
+}));
+vi.mock("unpdf", () => ({
+  extractText: pdfMocks.extractText,
+  getDocumentProxy: pdfMocks.getDocumentProxy,
+}));
+
+/** Real `%PDF-` bytes: triage reads the head before any parser is reached. */
+const pdfBytes = (extra = 0) => {
+  const head = new TextEncoder().encode("%PDF-1.7\n");
+  const out = new Uint8Array(head.length + extra);
+  out.set(head);
+  return out.buffer as ArrayBuffer;
+};
 
 import { lookup } from "node:dns/promises";
 import { pinnedRequest, type PinnedFetchResponse } from "./pinned-fetch";
@@ -52,6 +66,12 @@ describe("htmlToText", () => {
 });
 
 describe("extractSourceText", () => {
+  beforeEach(() => {
+    pdfMocks.extractText.mockReset();
+    pdfMocks.getDocumentProxy.mockReset();
+  });
+
+
   it("passes pasted text through with a default name", async () => {
     const result = await extractSourceText({ kind: "text", name: "  ", text: "hello" });
     expect(result).toEqual({ name: "Pasted text", text: "hello" });
@@ -65,10 +85,27 @@ describe("extractSourceText", () => {
   it("decodes plain-text file uploads", async () => {
     const bytes = new TextEncoder().encode("plain contents").buffer as ArrayBuffer;
     const result = await extractSourceText({ kind: "file", name: "notes.txt", bytes });
-    expect(result).toEqual({ name: "notes.txt", text: "plain contents" });
+    expect(result).toMatchObject({ name: "notes.txt", text: "plain contents" });
+  });
+
+  it("returns triage evidence over exactly the parsed bytes (#801, CYB-09)", async () => {
+    const bytes = new TextEncoder().encode("plain contents").buffer as ArrayBuffer;
+    const result = await extractSourceText({ kind: "file", name: "notes.txt", bytes });
+    // sha256("plain contents"), computed independently of the implementation.
+    const { createHash } = await import("node:crypto");
+    expect(result.triage).toMatchObject({
+      scanner: "document-triage",
+      verdict: "clean",
+      sha256: createHash("sha256").update("plain contents").digest("hex"),
+    });
+    expect(result.triage!.version).toBeGreaterThanOrEqual(2);
+    // Non-file inputs carry no verdict: nothing was triaged.
+    const text = await extractSourceText({ kind: "text", name: "n", text: "t" });
+    expect(text.triage).toBeUndefined();
   });
 
   it("keeps PDF page boundaries for chunking and citations", async () => {
+    pdfMocks.getDocumentProxy.mockResolvedValue({ numPages: 2 });
     pdfMocks.extractText.mockResolvedValue({
       totalPages: 2,
       text: ["First page", "Second page"],
@@ -77,13 +114,55 @@ describe("extractSourceText", () => {
     const result = await extractSourceText({
       kind: "file",
       name: "handbook.pdf",
-      bytes: new ArrayBuffer(8),
+      bytes: pdfBytes(),
     });
 
-    expect(pdfMocks.extractText).toHaveBeenCalledWith(expect.any(Uint8Array), {
-      mergePages: false,
-    });
+    expect(pdfMocks.extractText).toHaveBeenCalledWith(
+      { numPages: 2 },
+      { mergePages: false }
+    );
     expect(result.text).toBe("<!-- page:1 -->\nFirst page\n\n<!-- page:2 -->\nSecond page");
+  });
+
+  it("refuses a PDF with more pages than the parser budget (#801, CYB-09)", async () => {
+    // Size does not bound this: a small file can declare tens of thousands of
+    // pages, and each one is parser work plus an allocation.
+    pdfMocks.getDocumentProxy.mockResolvedValue({ numPages: 5_000 });
+
+    await expect(
+      extractSourceText({ kind: "file", name: "huge.pdf", bytes: pdfBytes() })
+    ).rejects.toThrow(/5000 pages; the limit is 2000/);
+    expect(pdfMocks.extractText).not.toHaveBeenCalled();
+  });
+
+  it("refuses bytes that are not the format the name claims (#801, CYB-09)", async () => {
+    const html = new TextEncoder().encode("<html>not a pdf</html>")
+      .buffer as ArrayBuffer;
+
+    await expect(
+      extractSourceText({ kind: "file", name: "invoice.pdf", bytes: html })
+    ).rejects.toThrow("not a PDF");
+    expect(pdfMocks.getDocumentProxy).not.toHaveBeenCalled();
+  });
+
+  it("refuses an Office package whose contents cannot be read", async () => {
+    // The wiring, not the rule: which packages are refused (macros, embedded
+    // objects, a directory that will not parse) is asserted in
+    // packages/core/src/document-triage.security.test.ts, where the archive
+    // builder lives. What matters here is that triage runs at all, before
+    // Mammoth is handed the bytes.
+    const notReallyAZip = new Uint8Array([
+      0x50, 0x4b, 0x03, 0x04,
+      ...new TextEncoder().encode("word/document.xml"),
+    ]);
+
+    await expect(
+      extractSourceText({
+        kind: "file",
+        name: "payroll.docx",
+        bytes: notReallyAZip.buffer as ArrayBuffer,
+      })
+    ).rejects.toThrow(/could not be read as an Office document/);
   });
 
   it("rejects files that yield no text", async () => {

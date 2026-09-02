@@ -2,6 +2,7 @@ import { createMcpHandler } from "@modelcontextprotocol/server";
 import { CieleClient } from "@ciele/client";
 import { createCieleMcpServer } from "@ciele/mcp/server";
 import { bearerApiKeySecret, resolveApiKeyContext } from "@/lib/api-v1/auth";
+import { internalApiOrigin } from "@/lib/internal-origin";
 
 /**
  * The hosted MCP endpoint (#702). The 2026-07-28 revision removed protocol
@@ -29,11 +30,11 @@ const handler = createMcpHandler((ctx) => {
   const request = ctx.requestInfo;
   const client = new CieleClient({
     apiKey: bearerApiKeySecret(request?.headers.get("authorization") ?? null) ?? "",
-    // This deployment's own origin, taken from the request being served, is
-    // what keeps the endpoint configuration-free. It is a loopback, so the
-    // origin only has to be reachable *from* the server, behind a reverse
-    // proxy an internal origin is the right answer, not a wrong one.
-    baseUrl: request ? new URL(request.url).origin : undefined,
+    // Resolved from the environment, never from the request being served
+    // (#801, CYB-03). The caller's live key travels to this origin, so a
+    // spoofable `Host` here would have been a credential-forwarding sink;
+    // the loopback default keeps the endpoint configuration-free.
+    baseUrl: internalApiOrigin(),
   });
   // Read-only is a property of the key's Role here, not an env switch: a
   // Viewer key simply cannot mutate (the operations layer answers 403).

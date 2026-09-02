@@ -1,0 +1,48 @@
+# The shipped TLS reverse proxy (#801, CYB-16): an overlay, like the workers,
+# because its `:?` guards below would abort a default `docker compose up`
+# from inside the base file (compose interpolates every service in a file
+# before it filters by profile). Turn it on with:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.tls.yml
+#   CIELE_DOMAIN=app.example.edu
+#   CIELE_SUPABASE_DOMAIN=supabase.example.edu
+#
+# or `./deploy/bootstrap.sh --tls`, which writes the COMPOSE_FILE line for you
+# and checks that the two names are already in .env (exit 2 with a message
+# when they are not; it never prompts).
+#
+# With this on, the world reaches Caddy and only Caddy: the app and gateway
+# keep their loopback-bound host ports (useful for SSH-tunnel debugging), and
+# Caddy reaches them over the `backend` network. Certificates are provisioned
+# and renewed by Caddy itself (ACME); DNS for both names must point at this
+# host and 80/443 must be reachable for the challenge.
+#
+# Set PUBLIC_URL, SUPABASE_PUBLIC_URL and CIELE_PUBLIC_ORIGIN to the matching
+# https:// origins in .env, or auth redirects and the browser's Supabase
+# client will still point at the plain-HTTP loopback ports.
+
+services:
+  tls:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    networks: [backend]
+    environment:
+      CIELE_DOMAIN: ${CIELE_DOMAIN:?set CIELE_DOMAIN to run the tls overlay}
+      CIELE_SUPABASE_DOMAIN: ${CIELE_SUPABASE_DOMAIN:?set CIELE_SUPABASE_DOMAIN to run the tls overlay}
+    ports:
+      # The one deliberate public bind in the stack: a TLS terminator that
+      # does not listen on the internet terminates nothing. Everything else
+      # stays behind BIND_ADDRESS (loopback by default).
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./tls/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account state; losing them re-issues on next
+      # boot, keeping them avoids rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

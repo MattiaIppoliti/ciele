@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { OrgKnowledgeSourceListItem } from "@agent-hub/core";
 import { ChevronDown } from "lucide-react";
 import {
@@ -103,7 +102,6 @@ export function LinkAssistantsDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [selected, setSelected] = useState<string[]>(
     item?.linkedAssistants.map((l) => l.assistantId) ?? []
   );
@@ -135,7 +133,6 @@ export function LinkAssistantsDialog({
                 try {
                   await setSourceLinksAction(item!.id, selected);
                   toast.success("Linked assistants updated.");
-                  router.refresh();
                   onClose();
                 } catch {
                   toast.error("Could not update the links.");
@@ -164,7 +161,6 @@ export function ManageDirectAccessDialog({
   item: OrgKnowledgeSourceListItem | null;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [links, setLinks] = useState(item?.linkedAssistants ?? []);
   const [isPending, startTransition] = useTransition();
   const disabled = !item?.originalObjectPath;
@@ -178,7 +174,6 @@ export function ManageDirectAccessDialog({
             l.assistantId === assistantId ? { ...l, directAccess: next } : l
           )
         );
-        router.refresh();
       } catch {
         toast.error("Could not update direct access.");
       }
@@ -268,7 +263,6 @@ export function AddWebsiteDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [includeGlobs, setIncludeGlobs] = useState("");
@@ -295,7 +289,6 @@ export function AddWebsiteDialog({
           selected
         );
         toast.success("Website added, crawling in the background.");
-        router.refresh();
         onClose();
       } catch (error) {
         toast.error(
@@ -410,7 +403,6 @@ export function AddFileDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -428,7 +420,6 @@ export function AddFileDialog({
         return;
       }
       toast.success("File uploaded, indexing in the background.");
-      router.refresh();
       onClose();
     });
 
@@ -478,7 +469,6 @@ export function FaqDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const [question, setQuestion] = useState(editing?.name ?? "");
   // The table row only carries an answer excerpt; load the full answer once.
   // The parent keys this dialog by the edited row, so state starts fresh.
@@ -510,7 +500,6 @@ export function FaqDialog({
           await createOrgFaqAction(question, answer, selected);
         }
         toast.success(editing ? "FAQ updated." : "FAQ created.");
-        router.refresh();
         onClose();
       } catch (error) {
         toast.error(
@@ -594,7 +583,6 @@ export function ImportFaqsDialog({
   assistants: Array<{ id: string; title: string }>;
   onClose: () => void;
 }) {
-  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -613,7 +601,6 @@ export function ImportFaqsDialog({
             skipped.length > 0 ? ` (${skipped.length} skipped)` : ""
           }.`
         );
-        router.refresh();
         onClose();
       } catch {
         toast.error("Import failed.");

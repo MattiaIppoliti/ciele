@@ -64,6 +64,31 @@ describe("subscribeToNewsletterAction", () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
+  it("sends nothing when the request claims a host this deployment does not own", async () => {
+    // #801, CYB-10. The URL carries a signed token; a spoofed Host would have
+    // mailed it to the attacker's origin over a legitimate-looking email.
+    headerMap.set("host", "attacker.example");
+    try {
+      expect(await subscribeToNewsletterAction({ email: "dean@example.edu" })).toEqual({
+        status: "unavailable",
+      });
+      expect(sendEmail).not.toHaveBeenCalled();
+    } finally {
+      headerMap.set("host", "ciele.app");
+    }
+  });
+
+  it("ignores a forwarded protocol trying to downgrade the link", async () => {
+    headerMap.set("x-forwarded-proto", "http");
+    try {
+      await subscribeToNewsletterAction({ email: "dean@example.edu" });
+      const [message] = sendEmail.mock.calls[0];
+      expect(message.body).toContain("https://ciele.app/newsletter/confirm?token=");
+    } finally {
+      headerMap.set("x-forwarded-proto", "https");
+    }
+  });
+
   it("reports unavailable when the transport could not deliver", async () => {
     sendEmail.mockResolvedValue({ delivered: false, reason: "not_configured" });
 

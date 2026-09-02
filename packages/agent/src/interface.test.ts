@@ -29,15 +29,24 @@ describe("runtime public interface", () => {
     expect(valueKeys(server)).toEqual([
       // The channel chain's ndjson framing (#778): its own constant because a
       // channel stream carries `channel-*` events beside the turn events.
+      // Detection-as-code thresholds (#801, CYB-19): exported so the rules
+      // stay tunable as code, with tests, rather than as vendor config.
+      "BULK_DOWNLOAD_THRESHOLD",
       "CHANNEL_NDJSON_HEADERS",
       "CRAWL_FINALIZE_BATCH_SIZE",
       "CRAWL_FINALIZE_LEASE_MS",
       // The shipped platform prompt layer: public so the owner-only editor can
       // show "the default" and the host's cached reader can fall back to it.
       "DEFAULT_PLATFORM_PROMPT",
+      "DETECTION_WINDOW_HOURS",
       "InvalidProviderKeyError",
       "NDJSON_HEADERS",
+      "NEW_ADDRESS_BASELINE_DAYS",
+      "NEW_ADDRESS_MIN_BASELINE",
+      // Ledger retention (#801, CYB-19), beside the other sweep constants.
+      "OBJECT_ACCESS_RETENTION_DAYS",
       "RECRAWL_SWEEP_BATCH_SIZE",
+      "REFUSAL_PROBE_THRESHOLD",
       // The warn threshold: a deliberate widening (#509). The admin Usage
       // surface must colour a gauge amber at exactly the fraction the
       // enterprise ladder warns at, and open-source code cannot import from
@@ -48,6 +57,11 @@ describe("runtime public interface", () => {
       "alertKeys",
       "backfillCollectionToGraph",
       "beginWebsiteCrawl",
+      // The pure detection rules over the object-access ledger (#801,
+      // CYB-19); the cron tick composing them is runSecurityDetections.
+      "detectBulkDownloads",
+      "detectNewAddressDownloads",
+      "detectRefusalProbes",
       "discoverApplicationConnectionScopes",
       // The Agent memory layer's writer (#771). Public because the job ledger
       // and the cron drain both reach it; nothing else should.
@@ -77,6 +91,7 @@ describe("runtime public interface", () => {
       // The nightly agentic-ops drain, one export for the verify-goals cron
       // route; the four loops it sequences (goals, verifier, trust, compost)
       // are internals of scheduled.ts, not surface.
+      "runDetectionRules",
       "runDueAgenticOps",
       // The one per-kind drain still public: apps/web's reingest test drives
       // it directly. Its siblings (graph-sync / proposals / memories /
@@ -86,6 +101,7 @@ describe("runtime public interface", () => {
       // job-ledger kind, and the cron tick composes it directly.
       "runDueRoutines",
       "runGraphLearning",
+      "runSecurityDetections",
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",
@@ -94,8 +110,11 @@ describe("runtime public interface", () => {
       "streamChannelChain",
       "streamConversationTurn",
       "sweepDueRecrawls",
-      // The trace-retention cron drain (#573), a deliberate widening.
+      // The retention drains: traces (#573), transcripts (CYB-12), and the
+      // object-access ledger (CYB-19), all deliberate widenings.
+      "sweepExpiredObjectAccess",
       "sweepExpiredTraces",
+      "sweepExpiredTranscripts",
       "testApiRequest",
       // "Test connection" for OpenAI-compatible endpoints, a deliberate
       // widening for the connection form (#436).

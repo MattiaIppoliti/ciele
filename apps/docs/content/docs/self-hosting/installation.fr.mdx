@@ -59,13 +59,12 @@ Le script génère les secrets requis dans `deploy/.env`. Il crée ensuite les
 profils par défaut et les lance.
 
 Ouvrez [http://localhost:3000](http://localhost:3000) une fois que les services
-sont en bon état. Le premier compte créé en premier devient le propriétaire de
-l'organisation.
+sont opérationnels. Le premier compte devient le propriétaire de l'organisation.
 
 Utilisez `./deploy/bootstrap.sh --seed` pour ajouter du contenu de démonstration
 nettoyé.
 
-## Exécutez des images publiées au lieu de les compiler
+## Exécutez les images publiées au lieu de les compiler
 
 La compilation de `app`, `migrate` et `cron` à partir du répertoire de travail
 prend beaucoup de temps et nécessite le dépôt complet. Chaque version publie
@@ -118,8 +117,19 @@ docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
 La configuration par défaut publie l'application sur le port `3000` et la
-passerelle de base de données sur le port `8000`. Elle ne publie pas Postgres.
+passerelle de base de données sur le port `8000`. Tous deux sont liés à
+`127.0.0.1`, de sorte que rien n'est accessible depuis une autre machine tant
+que vous n'avez pas placé un proxy inverse en amont. Définissez plutôt
+`BIND_ADDRESS=0.0.0.0` dans `deploy/.env` pour les publier sur chaque interface.
+Postgres n'est jamais publié. La console de base de données (Studio) reste
+toujours en boucle locale. Accédez-y via un tunnel SSH.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
+
+Une fois qu'une origine publique existe, définissez `CIELE_PUBLIC_ORIGIN` dans
+`deploy/.env` sur cette URL HTTPS. Les liens qui sont inclus dans un e-mail,
+comme la confirmation de la newsletter, sont générés à partir de cette valeur.
+Sans cela, l'application refuse d'envoyer ces e-mails. Elle ne crée pas de lien
+à partir de l'en-tête `Host` de la requête.

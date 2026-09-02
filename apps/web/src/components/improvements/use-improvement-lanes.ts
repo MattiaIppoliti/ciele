@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { ImprovementListItem, ImprovementStatus } from "@agent-hub/core";
+import type {
+  Improvement,
+  ImprovementListItem,
+  ImprovementStatus,
+} from "@agent-hub/core";
 import { toast } from "sonner";
 import { updateImprovementAction } from "@/app/actions";
 import { improvementKey, statusLabel } from "@/lib/improvements";
@@ -17,6 +21,7 @@ import { improvementKey, statusLabel } from "@/lib/improvements";
 export function useImprovementLanes(
   improvements: ImprovementListItem[],
   canEdit: boolean,
+  onUpdated: (improvement: Improvement) => void,
 ) {
   const [overrides, setOverrides] = useState<Record<string, ImprovementStatus>>(
     {},
@@ -35,7 +40,13 @@ export function useImprovementLanes(
     setOverrides((prev) => ({ ...prev, [id]: status }));
     startTransition(async () => {
       try {
-        await updateImprovementAction(id, { status });
+        const updated = await updateImprovementAction(id, { status });
+        onUpdated(updated);
+        setOverrides((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
         toast.success(
           `${improvementKey(item.seq)} moved to ${statusLabel(status)}`,
         );
@@ -90,7 +101,17 @@ export function useImprovementLanes(
     };
   }
 
-  return { statusOf, draggingId, dropLane, dragProps, laneProps };
+  /** Forget a card's optimistic lane, for a row the board is removing. */
+  function release(id: string) {
+    setOverrides((current) => {
+      if (!(id in current)) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
+  return { statusOf, draggingId, dropLane, dragProps, laneProps, release };
 }
 
 export type ImprovementLanes = ReturnType<typeof useImprovementLanes>;

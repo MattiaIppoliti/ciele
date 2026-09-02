@@ -106,7 +106,6 @@ export function AssistantCard({
     startTransition(async () => {
       const copy = await duplicateAssistantAction(assistant.id);
       toast.success(`Duplicated as "${copy.title}"`);
-      router.refresh();
     });
   }
 
@@ -165,7 +164,7 @@ export function AssistantCard({
       assistantTitle={assistant.title}
       open={confirmDelete}
       onClose={() => setConfirmDelete(false)}
-      onDeleted={() => router.refresh()}
+      onDeleted={() => setConfirmDelete(false)}
     />
   );
 

@@ -7,17 +7,31 @@ description: Laden Sie eine Datei hoch oder fügen Sie Text hinzu und wählen Si
 
 1. Öffnen Sie den Assistenten.
 2. Wählen Sie **Knowledge**.
-3. Fügen Sie eine Dateiquelle hinzu.
+3. Fügen Sie eine Datei-Quelle hinzu.
 4. Wählen Sie die Datei aus.
 5. Starten Sie die Aufnahme.
 6. Warten Sie, bis der Status der Quelle **Ready** lautet.
-7. Testen Sie eine Antwort und deren Zitierung.
+7. Testen Sie eine Antwort und deren Zitat.
 
 Ciele speichert die Originaldatei und extrahiert unterstützten Text für die
 Aufnahme. Der Status „Source“ zeigt an, ob Extraktion und Indizierung
 abgeschlossen sind.
 
-## Eingefügten Text hinzufügen
+## Dateien, die Ciele ablehnt
+
+Ciele prüft den Dateiinhalt, nicht nur den Dateinamen, bevor es ein Dokument
+einliest. Es lehnt Folgendes ab:
+
+- eine Datei, deren Inhalt nicht mit ihrer Erweiterung übereinstimmt, zum
+  Beispiel eine HTML-Seite mit dem Namen `.pdf`
+- ein Programm, wie auch immer die Datei heißt
+- eine Office-Datei, die ein Makroprojekt oder ein eingebettetes Objekt enthält
+- eine PDF-Datei mit mehr als 2.000 Seiten
+
+Speichern Sie das Dokument ohne Makros oder eingebettete Objekte oder teilen Sie
+eine lange PDF-Datei auf und laden Sie sie erneut hoch.
+
+## Fügen Sie eingefügten Text hinzu
 
 Verwenden Sie eine Textquelle für kurze Inhalte, für die keine separate Datei
 erforderlich ist.
@@ -25,12 +39,12 @@ erforderlich ist.
 1. Fügen Sie eine Textquelle hinzu.
 2. Geben Sie optional einen Quellennamen ein.
 3. Fügen Sie den Text ein.
-4. Starten Sie die Aufnahme.
+4. Starten Sie die Erfassung.
 
-Verwenden Sie einen stabilen Quellennamen. Der Name kann in Besucher-Zitaten
-erscheinen.
+Verwenden Sie einen stabilen Quellennamen. Der Name kann in Zitaten von
+Besuchern erscheinen.
 
-## Veraltete Inhalte ersetzen
+## Ersetzen Sie veraltete Inhalte
 
 Löschen Sie die alte Quelle, bevor Sie sich auf einen Ersatz verlassen.
 Bestätigen Sie dann, dass die neue Quelle **Ready** ist und korrekte Zitate
@@ -49,7 +63,7 @@ Assistant-Editor bietet daher zwei Aktionen an.
 - **Delete** entfernt die Quelle für jeden verknüpften Assistenten. In der
   Bestätigung wird jeder einzeln benannt.
 
-Wenn nur dieser Assistent aus der Datei antwortet, löscht der Editor sie direkt.
+Wenn nur dieser Assistant aus der Datei antwortet, löscht der Editor sie direkt.
 
 ## Geben Sie dem Besucher die Originaldatei
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Organization, Profile, Role } from "@agent-hub/core";
 import {
@@ -230,7 +230,6 @@ function OrgAvatarSwitcher({
   demo: boolean;
   collapsed: boolean;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -250,7 +249,6 @@ function OrgAvatarSwitcher({
       await switchOrganizationAction(id);
       setOpen(false);
       setQuery("");
-      router.refresh();
     });
   }
 

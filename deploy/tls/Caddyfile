@@ -1,0 +1,16 @@
+# The shipped TLS path (#801, CYB-16): Caddy terminates HTTPS in front of the
+# stack and provisions/renews its own certificates (ACME) for the two
+# hostnames below. This file is intentionally two blocks long: the app on one
+# hostname, the Supabase gateway on another, everything else stays unreachable
+# because nothing else shares a network with this container.
+#
+# DNS for both names must already point at this host, and 80/443 must be open:
+# ACME's HTTP challenge arrives on 80 and is answered by Caddy itself.
+
+{$CIELE_DOMAIN} {
+	reverse_proxy app:3000
+}
+
+{$CIELE_SUPABASE_DOMAIN} {
+	reverse_proxy gateway:8000
+}

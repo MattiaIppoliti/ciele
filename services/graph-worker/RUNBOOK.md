@@ -103,3 +103,45 @@ across majors**, so a major upgrade may require a rebuild-from-OKF.
 - No arbitrary code execution surface (no hook/JS endpoints exist).
 - Secrets never rendered to any client; the adapter also redacts them from any
   error text before it can reach an Alert or telemetry.
+- The container runs as uid 10001 (`worker`), not root, with no compiler in the
+  runtime image (#801, CYB-06). `/data` is chowned to that uid before it is
+  declared a volume, so a fresh named volume is writable; a volume created by
+  an older root-running image is not, see §9 for the fix.
+
+## 9. The pinned embedding model (#801, CYB-20)
+
+The worker never fetches model bytes at run time. Two repositories are
+resolved at **build** time, each at one immutable commit, hashed per file into
+`/opt/models/embedding/model-manifest.json`, and re-verified by
+`scripts/verify-model.py` before uvicorn starts:
+
+| What | Repository | Pinned revision | Build arg |
+|---|---|---|---|
+| tokenizer + config the worker loads | `sentence-transformers/all-MiniLM-L6-v2` | `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` | `EMBEDDING_MODEL_REVISION` |
+| the ONNX export fastembed actually runs | `Qdrant/all-MiniLM-L6-v2-onnx` | `5f1b8cd78bc4fb444dd171e59b18f3a3af89a079` | `FASTEMBED_MODEL_REVISION` |
+
+`HF_HUB_OFFLINE=1` is set in the runtime image, so a cache miss is a startup
+failure, never a silent download from a mutable branch. The manifest records
+both repositories and both revisions; `verify-model.py` prints them on success.
+
+**Symptoms and what they mean**
+
+- Container exits at start with `model verification failed: changed <file>` or
+  `missing <file>`: the model bytes in the image do not match the manifest the
+  build wrote. Nothing to repair in place; the image is wrong. Redeploy the
+  previous digest, then find out how the layer changed.
+- `model manifest missing`: the model stage did not run, or `EMBEDDING_MODEL_DIR`
+  points somewhere else. Check the build log for `pinned <repo>@<revision>`.
+- A fastembed error mentioning a download or `HF_HUB_OFFLINE` at first embed:
+  the cache layout does not match what this fastembed version expects. That is
+  an upgrade interaction (§7), not a network problem; do not "fix" it by
+  unsetting offline mode.
+- `Permission denied` under `/data` after upgrading from an image that ran as
+  root: the volume is owned by uid 0. Once, from a shell on the host:
+  `docker run --rm -v <volume>:/data alpine chown -R 10001:10001 /data`.
+
+**Upgrading the model.** Change both `*_MODEL_REVISION` build args together
+(the tokenizer and the ONNX export must agree), rebuild, and update the table
+above in the same change. A new revision means a new embedding space: every
+existing graph index was built in the old one, so plan the rebuild-from-OKF
+before promoting, the same way a cognee major upgrade is planned.

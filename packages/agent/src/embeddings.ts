@@ -241,6 +241,21 @@ export function createEmbedder(
   };
 }
 
+/**
+ * The embedding space these connections would embed into (#801, CYB-14):
+ * `provider:model`, the identity a cosine is meaningful within. Null when
+ * nothing can embed (lexical-only). Chunks are stamped with it at write time
+ * and the vector matchers refuse a comparison across spaces, so a provider or
+ * model change degrades to "old chunks wait for re-embedding" instead of
+ * silently ranking against vectors from a different geometry.
+ */
+export function embeddingSpaceId(
+  connections: ProviderConnection[]
+): string | null {
+  const resolved = getEmbeddingModel(connections);
+  return resolved ? `${resolved.provider}:${resolved.modelId}` : null;
+}
+
 export async function embedText(
   text: string,
   connections: ProviderConnection[],

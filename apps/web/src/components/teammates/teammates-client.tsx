@@ -430,7 +430,6 @@ export function TeammatesClient({
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [channelOpen, setChannelOpen] = useState(false);
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function setHidden(teammate: Teammate, hide: boolean) {
@@ -446,7 +445,6 @@ export function TeammatesClient({
             ? `${teammate.name} is off your roster. It still answers everybody else.`
             : `${teammate.name} is back on your roster.`
         );
-        router.refresh();
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : "Could not update your roster"

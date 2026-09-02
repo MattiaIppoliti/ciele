@@ -43,6 +43,10 @@
         "SUPABASE_SERVICE_ROLE_KEY"
       ]
     },
+    "test:security": {
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "env": ["APP_ENCRYPTION_KEY"]
+    },
     "typecheck": {
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"]
     }

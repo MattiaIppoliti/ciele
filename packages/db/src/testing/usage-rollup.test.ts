@@ -267,7 +267,13 @@ describe("org_usage_meters, arbitrary windows (real SQL)", () => {
     );
     // The rollup has seen today too; the window read must still count it once.
     await pg.query("select public.rollup_usage_daily($1)", [6]);
-    const meters = await metersOf(backdateAt(4, 0), new Date().toISOString());
+    // The row above was stamped by Postgres' clock a moment ago; `to` is
+    // exclusive, so a bound read from node's clock in the same millisecond
+    // dropped the row about one run in three. A second of headroom is enough.
+    const meters = await metersOf(
+      backdateAt(4, 0),
+      new Date(Date.now() + 1000).toISOString()
+    );
     expect(meters.get("ai")?.tokens).toBe(510);
   });
 });

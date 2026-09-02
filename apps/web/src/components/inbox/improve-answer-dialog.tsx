@@ -6,7 +6,7 @@ import { Search } from "lucide-react"
 import {
   createImprovementFromMessageAction,
   linkMessageToImprovementAction,
-  listImprovementsAction,
+  listImprovementsPageAction,
 } from "@/app/actions"
 import { Button } from "@agent-hub/ui"
 import {
@@ -43,6 +43,8 @@ export function ImproveAnswerDialog({
   const [search, setSearch] = useState("")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [existing, setExisting] = useState<ImprovementListItem[] | null>(null)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -58,6 +60,8 @@ export function ImproveAnswerDialog({
       setSearch("")
       setSelectedId(null)
       setExisting(null)
+      setNextCursor(null)
+      setLoadingMore(false)
       setError(null)
     }
   }
@@ -65,11 +69,35 @@ export function ImproveAnswerDialog({
   // Lazily load existing improvements when the Link tab is first shown.
   useEffect(() => {
     if (tab === "link" && existing === null && messageId) {
-      listImprovementsAction()
-        .then(setExisting)
-        .catch(() => setExisting([]))
+      listImprovementsPageAction({ limit: 100 })
+        .then((page) => {
+          setExisting(page.items)
+          setNextCursor(page.nextCursor)
+        })
+        .catch(() => {
+          setExisting([])
+          setNextCursor(null)
+        })
     }
   }, [tab, existing, messageId])
+
+  function loadMore() {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    listImprovementsPageAction({ cursor: nextCursor, limit: 100 })
+      .then((page) => {
+        setExisting((current) => {
+          const seen = new Set((current ?? []).map((item) => item.id))
+          return [
+            ...(current ?? []),
+            ...page.items.filter((item) => !seen.has(item.id)),
+          ]
+        })
+        setNextCursor(page.nextCursor)
+      })
+      .catch(() => setError("Could not load more improvements"))
+      .finally(() => setLoadingMore(false))
+  }
 
   const open = messageId !== null
 
@@ -200,6 +228,17 @@ export function ImproveAnswerDialog({
                   <span className="truncate">{i.title}</span>
                 </button>
               ))}
+              {nextCursor && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? "Loading…" : "Load more improvements"}
+                </Button>
+              )}
             </div>
           </div>
         )}

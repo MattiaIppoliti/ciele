@@ -191,6 +191,23 @@ export const setConversationPinnedOp = defineOperation({
   },
 });
 
+/**
+ * Legal hold (#801, CYB-12). An administrative act, not a member one: it
+ * suspends a deletion the organization has committed to, and the person doing
+ * it has to be someone who can answer for that.
+ */
+export const setConversationLegalHoldOp = defineOperation({
+  name: "inbox.conversations.legalHold",
+  capability: "manageMembers",
+  input: z.object({ id: z.string().min(1), legalHold: z.boolean() }),
+  entities: () => [{ kind: "inbox" as const }],
+  run: async (ctx, { id, legalHold }) => {
+    await requireConversation(ctx, id);
+    await ctx.db.setConversationLegalHold(id, legalHold);
+    return requireConversation(ctx, id);
+  },
+});
+
 export const sendConversationFeedbackOp = defineOperation({
   name: "inbox.conversations.feedback",
   capability: "member",

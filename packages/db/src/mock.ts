@@ -1,5 +1,5 @@
 import { entityRecordValuesEqual } from "./entity-records";
-import { lexicalScore, lexicalTokens } from "./hybrid-search";
+import { capPerSource, lexicalScore, lexicalTokens } from "./hybrid-search";
 import {
   compareInboxConversation,
   decodeInboxCursor,
@@ -8,6 +8,10 @@ import {
   inboxPageSize,
   isAfterInboxCursor,
 } from "./inbox";
+import {
+  finalizeImprovementPage,
+  normalizeImprovementPageInput,
+} from "./improvement-pagination";
 import type {
   AiUsageInput,
   Alert,
@@ -46,6 +50,7 @@ import type {
   ImprovementListItem,
   ImprovementMessageLink,
   ImprovementProposal,
+  ImprovementStatus,
   InboxConversation,
   InboxFacets,
   Invite,
@@ -65,6 +70,8 @@ import type {
   OrgBudget,
   Profile,
   ProfilePatch,
+  ObjectAccessEvent,
+  RetentionSweepEvent,
   ProviderConnection,
   Publication,
   RuntimeEventInput,
@@ -93,6 +100,7 @@ import type {
 import {
   ASSISTANT_GOAL_CAP,
   buildPublicationConfig,
+  IMPROVEMENT_STATUS_VALUES,
   computeInsightsOverview,
   DEFAULT_AI_DISCLAIMER,
   DEFAULT_FLOWS,
@@ -229,6 +237,10 @@ interface MockStore {
   usageDaily: Map<string, UsageDailyAggregate>;
   /** Runtime telemetry events (ADR-0011), appended per runtime boundary. */
   runtimeEvents: (RuntimeEventInput & { createdAt: string })[];
+  /** Sensitive-object access ledger (#801, CYB-05). Append-only, like the table. */
+  objectAccessEvents: ObjectAccessEvent[];
+  /** Retention-sweep deletion audit (#801, CYB-12). Append-only, like the table. */
+  retentionSweepEvents: RetentionSweepEvent[];
   /** organizationId → daily token budget. */
   orgBudgets: Map<string, OrgBudget>;
   orgBudgetReservations: Map<
@@ -332,6 +344,9 @@ interface MockStore {
       content: string;
       /** Kept only so the re-embed backfill can see missing embeddings. */
       embedding: number[] | null;
+      /** Which model produced `embedding` (#801, CYB-14); the demo store is
+       * lexical-only, so it is carried, never compared. */
+      embeddingSpace?: string | null;
     }
   >;
   publications: Map<string, Publication>;
@@ -555,6 +570,8 @@ function emptyStore(): MockStore {
       },
     ],
     usageDaily: new Map(),
+    objectAccessEvents: [],
+    retentionSweepEvents: [],
     runtimeEvents: [
       {
         organizationId: DEMO_ORG.id,
@@ -1750,6 +1767,22 @@ function getStore(): MockStore {
  * an Assistant (Inbox joins, Insights population, trust signals) simply misses
  * and the Conversation drops out of that read (#768).
  */
+/**
+ * Deleting a Conversation, and everything the schema's cascades take with it:
+ * its messages, and the Improvement links those messages carry. Written once
+ * so the retention sweep and the Inbox delete button agree.
+ */
+function dropConversation(store: MockStore, id: string): void {
+  store.conversations.delete(id);
+  for (const [messageId, message] of store.messages) {
+    if (message.conversationId !== id) continue;
+    store.messages.delete(messageId);
+    for (const [linkId, link] of store.improvementMessages) {
+      if (link.messageId === messageId) store.improvementMessages.delete(linkId);
+    }
+  }
+}
+
 function assistantOfConversation(
   conversation: Pick<Conversation, "assistantId">
 ): Assistant | undefined {
@@ -2171,6 +2204,9 @@ export const mockDb: Db = {
       ...(patch.traceRetentionDays !== undefined
         ? { traceRetentionDays: patch.traceRetentionDays }
         : {}),
+      ...(patch.transcriptRetentionDays !== undefined
+        ? { transcriptRetentionDays: patch.transcriptRetentionDays }
+        : {}),
     };
     return store.organization;
   },
@@ -2216,6 +2252,10 @@ export const mockDb: Db = {
 
   async listMembers() {
     return [...getStore().members.values()];
+  },
+
+  async getMemberRole(_orgId, userId) {
+    return getStore().members.get(userId)?.role ?? null;
   },
 
   async updateMemberRole(_orgId, userId, role) {
@@ -2308,7 +2348,9 @@ export const mockDb: Db = {
     const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
     const ordered = [...getStore().assistants.values()]
       .filter((assistant) => assistant.organizationId === organizationId)
-      .sort((a, b) => a.id.localeCompare(b.id));
+      // Code-unit order, matching the `>` cursor filter below (same defect as
+      // listEntitiesPage: localeCompare orders "-" differently).
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const nextIndex = input.cursor
       ? ordered.findIndex((assistant) => assistant.id > input.cursor!)
       : 0;
@@ -4391,6 +4433,7 @@ export const mockDb: Db = {
         sourceId: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding ?? null,
+        embeddingSpace: chunk.embeddingSpace ?? null,
       });
     }
   },
@@ -4446,9 +4489,12 @@ export const mockDb: Db = {
         similarity,
       });
     }
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, query.limit ?? 6);
+    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
+    // one Source may not take the whole window from the one that answers.
+    return capPerSource(
+      results.sort((a, b) => b.similarity - a.similarity),
+      query.limit ?? 6
+    );
   },
 
   async searchCollectionChunks(organizationId, collectionIds, query) {
@@ -4493,9 +4539,12 @@ export const mockDb: Db = {
         similarity,
       });
     }
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, query.limit ?? 6);
+    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
+    // one Source may not take the whole window from the one that answers.
+    return capPerSource(
+      results.sort((a, b) => b.similarity - a.similarity),
+      query.limit ?? 6
+    );
   },
 
   async searchSourceChunks(organizationId, sourceIds, query) {
@@ -4532,9 +4581,12 @@ export const mockDb: Db = {
         similarity,
       });
     }
-    return results
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, query.limit ?? 6);
+    // Same shaping rule the Supabase implementation applies (#801, CYB-14):
+    // one Source may not take the whole window from the one that answers.
+    return capPerSource(
+      results.sort((a, b) => b.similarity - a.similarity),
+      query.limit ?? 6
+    );
   },
 
   // --- Publications ---------------------------------------------------------
@@ -4718,6 +4770,12 @@ export const mockDb: Db = {
     const store = getStore();
     const conversation = store.conversations.get(id);
     if (conversation) store.conversations.set(id, { ...conversation, pinned });
+  },
+
+  async setConversationLegalHold(id, legalHold) {
+    const store = getStore();
+    const conversation = store.conversations.get(id);
+    if (conversation) store.conversations.set(id, { ...conversation, legalHold });
   },
 
   async updateConversationMetadata(id, patch) {
@@ -4918,11 +4976,7 @@ export const mockDb: Db = {
   },
 
   async deleteConversation(id) {
-    const store = getStore();
-    store.conversations.delete(id);
-    for (const [mid, m] of store.messages) {
-      if (m.conversationId === id) store.messages.delete(mid);
-    }
+    dropConversation(getStore(), id);
   },
 
   async listMessages(conversationId) {
@@ -5189,6 +5243,37 @@ export const mockDb: Db = {
       : [];
   },
 
+  async listTranscriptRetentionPolicies() {
+    const store = getStore();
+    const retentionDays = store.organization.transcriptRetentionDays;
+    return retentionDays
+      ? [{ organizationId: store.organization.id, retentionDays }]
+      : [];
+  },
+
+  async deleteExpiredConversations(organizationId, cutoffIso) {
+    const store = getStore();
+    const cutoff = Date.parse(cutoffIso);
+    let deleted = 0;
+    for (const [id, conversation] of [...store.conversations]) {
+      // Last activity, not creation: a thread still in use is not expired
+      // however long ago it was opened. `appendMessage` moves `updatedAt`.
+      if (Date.parse(conversation.updatedAt) >= cutoff) continue;
+      if (conversation.legalHold) continue;
+      const assistant = assistantOfConversation(conversation);
+      const teammate = conversation.teammateId
+        ? store.teammates.get(conversation.teammateId)
+        : undefined;
+      const owner = assistant?.organizationId ?? teammate?.organizationId;
+      if (owner !== organizationId) continue;
+      // Through the same deletion the button uses, so the sweep and a manual
+      // delete cannot leave different debris behind.
+      dropConversation(store, id);
+      deleted += 1;
+    }
+    return deleted;
+  },
+
   async clearExpiredTraces(organizationId, cutoffIso) {
     const store = getStore();
     const cutoff = Date.parse(cutoffIso);
@@ -5223,20 +5308,28 @@ export const mockDb: Db = {
   },
 
   async listImprovementsPage(organizationId, input) {
-    const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
-    const ordered = await this.listImprovements(organizationId);
-    const beforeSeq = input.cursor ? Number(input.cursor) : null;
-    const start =
-      beforeSeq !== null && Number.isSafeInteger(beforeSeq)
+    const { limit, beforeSeq, status } = normalizeImprovementPageInput(input);
+    const all = await this.listImprovements(organizationId);
+    const ordered = status ? all.filter((item) => item.status === status) : all;
+    const matchingIndex =
+      beforeSeq !== null
         ? ordered.findIndex((item) => item.seq < beforeSeq)
         : 0;
-    const slice = ordered.slice(Math.max(0, start), Math.max(0, start) + limit + 1);
-    const hasMore = slice.length > limit;
-    const items = slice.slice(0, limit);
-    return {
-      items,
-      nextCursor: hasMore ? String(items.at(-1)?.seq) : null,
-    };
+    const start = matchingIndex === -1 ? ordered.length : matchingIndex;
+    const slice = ordered.slice(start, start + limit + 1);
+    return finalizeImprovementPage(slice, limit);
+  },
+
+  async countImprovementsByStatus(organizationId) {
+    const counts = Object.fromEntries(
+      IMPROVEMENT_STATUS_VALUES.map((status) => [status, 0]),
+    ) as Record<ImprovementStatus, number>;
+    for (const improvement of getStore().improvements.values()) {
+      if (improvement.organizationId === organizationId) {
+        counts[improvement.status] += 1;
+      }
+    }
+    return counts;
   },
 
   async getImprovement(id) {
@@ -6011,6 +6104,67 @@ export const mockDb: Db = {
   async recordRuntimeEvent(event) {
     const store = getStore();
     store.runtimeEvents.push({ ...event, createdAt: new Date().toISOString() });
+  },
+
+  async recordObjectAccess(event) {
+    const store = getStore();
+    // Absent optionals normalize to null, matching what the table stores: a
+    // contract suite that lets the two implementations disagree about
+    // `undefined` vs `null` is a suite that proves nothing about either.
+    store.objectAccessEvents.push({
+      ...event,
+      actorId: event.actorId ?? null,
+      sourceId: event.sourceId ?? null,
+      bytes: event.bytes ?? null,
+      ip: event.ip ?? null,
+      userAgent: event.userAgent ?? null,
+      requestId: event.requestId ?? null,
+      id: shortId(),
+      createdAt: new Date().toISOString(),
+    });
+  },
+
+  async listObjectAccessEvents(organizationId, options) {
+    const offset = options?.offset ?? 0;
+    // `filter` already returns a fresh array, so reversing it in place is safe.
+    return getStore()
+      .objectAccessEvents.filter(
+        (item) =>
+          item.organizationId === organizationId &&
+          (!options?.objectPath || item.objectPath === options.objectPath) &&
+          (!options?.sinceIso || item.createdAt >= options.sinceIso)
+      )
+      .reverse()
+      .slice(offset, offset + (options?.limit ?? 100));
+  },
+
+  async purgeExpiredObjectAccessEvents(cutoffIso) {
+    const store = getStore();
+    const before = store.objectAccessEvents.length;
+    store.objectAccessEvents = store.objectAccessEvents.filter(
+      (event) => event.createdAt >= cutoffIso
+    );
+    return before - store.objectAccessEvents.length;
+  },
+
+  async recordRetentionSweep(event) {
+    const store = getStore();
+    // Absent optionals normalize to null, matching what the table stores.
+    store.retentionSweepEvents.push({
+      ...event,
+      deleted: event.deleted ?? null,
+      error: event.error ?? null,
+      id: shortId(),
+      createdAt: new Date().toISOString(),
+    });
+  },
+
+  async listRetentionSweepEvents(organizationId, options) {
+    return getStore()
+      .retentionSweepEvents.filter((item) => item.organizationId === organizationId)
+      .slice()
+      .reverse()
+      .slice(0, options?.limit ?? 100);
   },
 
   async getOrgBudget(organizationId) {
@@ -7043,7 +7197,11 @@ export const mockDb: Db = {
     const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
     const ordered = [...getStore().entities.values()]
       .filter((entity) => entity.organizationId === organizationId)
-      .sort((a, b) => a.id.localeCompare(b.id));
+      // Code-unit order, because the cursor filter below uses `>`. localeCompare
+      // here made the two comparisons disagree for ids containing "-" (locale
+      // collation shifts punctuation), so the page after the cursor could come
+      // back empty for an id the sort had placed later.
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
     const nextIndex = input.cursor
       ? ordered.findIndex((entity) => entity.id > input.cursor!)
       : 0;

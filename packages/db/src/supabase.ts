@@ -1,12 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  RETRIEVAL_OVERFETCH,
+  capPerSource,
   hybridRetrieve,
   lexicalTokens,
   LEXICAL_SIMILARITY,
 } from "./hybrid-search";
+import {
+  finalizeImprovementPage,
+  normalizeImprovementPageInput,
+} from "./improvement-pagination";
 import type {
   Alert,
   AlertStatus,
+  Organization,
   MemoryDocument,
   MemoryDocumentEntry,
   MemoryDocumentOwner,
@@ -118,6 +125,7 @@ import {
   estimateCostEur,
   FLOW_TRUST_EVENT_RETENTION,
   GOAL_RUN_RETENTION,
+  IMPROVEMENT_STATUS_VALUES,
   isProactiveMessage,
   MEMORIES_PER_SUBJECT_CAP,
   memoryDocumentScope,
@@ -155,6 +163,39 @@ function isSchemaLagError(error: unknown): boolean {
     value?.code === "PGRST204" ||
     /does not exist|schema cache/i.test(value?.message ?? "")
   );
+}
+
+/**
+ * The organization columns the current schema has, and the set one migration
+ * behind it (`transcript_retention_days` landed in 20260830130000). Every
+ * organization read tries the first and falls back to the second on a
+ * schema-lag error, because these reads run on every request and the Vercel
+ * deploy is live minutes before the CI migrate job (supabase/CLAUDE.md).
+ */
+const ORGANIZATION_COLUMNS =
+  "id, name, logo_url, trace_retention_days, transcript_retention_days, created_at";
+const ORGANIZATION_COLUMNS_LEGACY =
+  "id, name, logo_url, trace_retention_days, created_at";
+
+interface OrganizationRow {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  trace_retention_days: number | null;
+  /** Absent when the row was read with the legacy column list. */
+  transcript_retention_days?: number | null;
+  created_at: string;
+}
+
+function toOrganization(row: OrganizationRow): Organization {
+  return {
+    id: row.id,
+    name: row.name,
+    logoUrl: row.logo_url,
+    traceRetentionDays: row.trace_retention_days,
+    transcriptRetentionDays: row.transcript_retention_days ?? null,
+    createdAt: row.created_at,
+  };
 }
 
 interface AssistantRow {
@@ -282,6 +323,7 @@ interface ConversationRow {
   session_state: Record<string, unknown> | null;
   session_version?: number | null;
   pinned: boolean | null;
+  legal_hold?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -308,6 +350,126 @@ interface MessageRow {
  * must look identical whichever one produced it (ADR-0002). Passing a null
  * `assistantId` means there is no Direct access grant to read.
  */
+type ChunkRow = { concept_id: string; content: string; similarity: number };
+/** The query shape the three `Db.search*Chunks` methods accept. */
+type ChunkSearchQuery = Parameters<Db["searchChunks"]>[2];
+
+/**
+ * The one hybrid chunk search the three scoped searches share (#801 review):
+ * over-fetch for the per-Source cap, vector RPC with the embedding space,
+ * lexical top-up over the same scope, hydrate, cap back to the caller's
+ * limit. Three copies of this body had already grown three identical comment
+ * blocks; the differences are the RPC and the scope filter, so those are the
+ * parameters.
+ *
+ * Two schema-lag fallbacks live here, so every scope gets them:
+ *  - the vector RPC is retried without `p_embedding_space` when the database
+ *    still has the four-argument signature (PGRST202 / 42883), which is the
+ *    pre-20260830234500 behaviour, every space treated as one;
+ *  - the lexical query is retried without `is_active` when that column is
+ *    missing, the older fallback the copies already carried.
+ */
+async function searchChunkRows(
+  client: SupabaseClient,
+  query: ChunkSearchQuery,
+  scope: {
+    rpc: "match_chunks_linked" | "match_chunks_collections" | "match_chunks_sources";
+    rpcArgs: Record<string, unknown>;
+    /**
+     * Narrows the lexical `concept_chunks` query to the scope. Null when the
+     * scope is known to be empty, so the lexical half returns nothing.
+     */
+    lexicalScope:
+      | ((builder: ChunkLexicalBuilder) => ChunkLexicalBuilder)
+      | null;
+    /** The assistant whose Direct access grants hydration may honour. */
+    hydrateFor: string | null;
+  }
+): Promise<KnowledgeSearchResult[]> {
+  const limit = query.limit ?? 6;
+  // The per-Source cap below can only remove, so the index is asked for more
+  // than the caller wants (#801, CYB-14). Without this a query whose top hits
+  // all come from one Source comes back short instead of diverse.
+  const fetchLimit = limit * RETRIEVAL_OVERFETCH;
+
+  const lexicalSearch = async (): Promise<ChunkRow[]> => {
+    if (!scope.lexicalScope) return [];
+    const tokens = lexicalTokens(query.text, 5);
+    if (tokens.length === 0) return [];
+    const pattern = tokens.map((t) => `content.ilike.%${t}%`).join(",");
+    const build = (withActive: boolean) => {
+      const base = withActive
+        ? client
+            .from("concept_chunks")
+            .select("concept_id, content, concepts!inner(excluded,is_active)")
+            .eq("concepts.excluded", false)
+            .eq("concepts.is_active", true)
+        : client
+            .from("concept_chunks")
+            .select("concept_id, content, concepts!inner(excluded)")
+            .eq("concepts.excluded", false);
+      return scope
+        .lexicalScope!(base as unknown as ChunkLexicalBuilder)
+        .or(pattern)
+        .limit(fetchLimit);
+    };
+    let result = await build(true);
+    if (result.error && isSchemaLagError(result.error)) result = await build(false);
+    if (result.error) throw result.error;
+    return (result.data as Array<{ concept_id: string; content: string }>).map((r) => ({
+      concept_id: r.concept_id,
+      content: r.content,
+      similarity: LEXICAL_SIMILARITY,
+    }));
+  };
+
+  const rows = await hybridRetrieve<ChunkRow>({
+    embedding: query.embedding,
+    // The interim window, not the caller's: the per-Source cap runs after
+    // hydration below, and it can only remove, so truncating to `limit` here
+    // would leave it nothing to backfill from and defeat the over-fetch
+    // (#801, CYB-14). `capPerSource` cuts back to `limit`.
+    limit: fetchLimit,
+    vector: async () => {
+      const args = {
+        ...scope.rpcArgs,
+        p_query_embedding: query.embedding,
+        p_match_count: fetchLimit,
+      };
+      let result = await client.rpc(scope.rpc, {
+        ...args,
+        p_embedding_space: query.embeddingSpace ?? null,
+      });
+      if (result.error && isSchemaLagError(result.error)) {
+        result = await client.rpc(scope.rpc, args);
+      }
+      if (result.error) throw result.error;
+      return result.data as ChunkRow[];
+    },
+    lexical: lexicalSearch,
+    keyOf: (r) => `${r.concept_id}\n${r.content}`,
+    // The noise floor belongs here, where the cosine is (#801, CYB-14). The
+    // per-document cap does not: a Concept is not a document, one Source
+    // produces many, so it is applied after hydration below, where the Source
+    // is known.
+    similarityOf: (r) => r.similarity,
+  });
+
+  return capPerSource(await hydrateChunkHits(client, rows, scope.hydrateFor), limit);
+}
+
+/**
+ * The lexical builder's shape after the base select, before the scope filter.
+ * Structural on purpose: the real PostgREST builder type is deep enough that
+ * naming it here trips the compiler's instantiation limit.
+ */
+interface ChunkLexicalBuilder {
+  in(column: string, values: string[]): ChunkLexicalBuilder;
+  eq(column: string, value: unknown): ChunkLexicalBuilder;
+  or(filters: string): ChunkLexicalBuilder;
+  limit(count: number): PromiseLike<{ data: unknown; error: unknown }>;
+}
+
 async function hydrateChunkHits(
   client: SupabaseClient,
   rows: Array<{ concept_id: string; content: string; similarity: number }>,
@@ -397,6 +559,7 @@ function toConversation(row: ConversationRow): Conversation {
     sessionState: row.session_state ?? {},
     sessionVersion: row.session_version ?? 0,
     pinned: row.pinned ?? false,
+    legalHold: row.legal_hold ?? false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -1347,31 +1510,29 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const userId = await authenticatedUserId(client);
       if (!userId) return null;
 
-      let membership = client
-        .from("organization_members")
-        .select(
-          "role, organizations (id, name, logo_url, trace_retention_days, created_at)"
-        )
-        .eq("user_id", userId);
-      if (preferredOrgId) membership = membership.eq("organization_id", preferredOrgId);
-      const { data, error } = await membership.limit(1).maybeSingle();
+      const membershipFor = async (columns: string) => {
+        let membership = client
+          .from("organization_members")
+          .select(`role, organizations (${columns})`)
+          .eq("user_id", userId);
+        if (preferredOrgId) membership = membership.eq("organization_id", preferredOrgId);
+        return (await membership.limit(1).maybeSingle()) as unknown as {
+          data: { role: string; organizations: OrganizationRow | null } | null;
+          error: { code?: string; message?: string } | null;
+        };
+      };
+      // `getCurrentOrg` runs on every signed-in request, so a column the
+      // deploy knows and the database does not yet must not 500 the console
+      // for the window between the Vercel deploy and the migrate job.
+      let result = await membershipFor(ORGANIZATION_COLUMNS);
+      if (result.error && isSchemaLagError(result.error)) {
+        result = await membershipFor(ORGANIZATION_COLUMNS_LEGACY);
+      }
+      const { data, error } = result;
       if (error) throw error;
       if (data?.organizations) {
-        const org = data.organizations as unknown as {
-          id: string;
-          name: string;
-          logo_url: string | null;
-          trace_retention_days: number | null;
-          created_at: string;
-        };
         return {
-          organization: {
-            id: org.id,
-            name: org.name,
-            logoUrl: org.logo_url,
-            traceRetentionDays: org.trace_retention_days,
-            createdAt: org.created_at,
-          },
+          organization: toOrganization(data.organizations),
           role: data.role as Role,
         };
       }
@@ -1379,46 +1540,33 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       // No membership row for the requested org, a platform superuser
       // browsing an org they don't belong to. RLS still governs visibility:
       // this returns nothing for anyone who isn't actually a superuser.
-      let orgQuery = client
-        .from("organizations")
-        .select("id, name, logo_url, trace_retention_days, created_at");
-      orgQuery = preferredOrgId ? orgQuery.eq("id", preferredOrgId) : orgQuery;
-      const { data: orgRow, error: orgError } = await orgQuery.limit(1).maybeSingle();
+      const orgFor = (columns: string) => {
+        let orgQuery = client.from("organizations").select(columns);
+        orgQuery = preferredOrgId ? orgQuery.eq("id", preferredOrgId) : orgQuery;
+        return orgQuery.limit(1).maybeSingle();
+      };
+      let orgResult = await orgFor(ORGANIZATION_COLUMNS);
+      if (orgResult.error && isSchemaLagError(orgResult.error)) {
+        orgResult = await orgFor(ORGANIZATION_COLUMNS_LEGACY);
+      }
+      const { data: orgRow, error: orgError } = orgResult;
       if (orgError) throw orgError;
       if (!orgRow) return null;
       return {
-        organization: {
-          id: orgRow.id as string,
-          name: orgRow.name as string,
-          logoUrl: orgRow.logo_url as string | null,
-          traceRetentionDays: orgRow.trace_retention_days as number | null,
-          createdAt: orgRow.created_at as string,
-        },
+        organization: toOrganization(orgRow as unknown as OrganizationRow),
         role: "owner",
       };
     },
 
     async listOrganizations() {
-      const { data, error } = await client
-        .from("organizations")
-        .select("id, name, logo_url, trace_retention_days, created_at")
-        .order("name", { ascending: true });
-      if (error) throw error;
-      return (
-        data as Array<{
-          id: string;
-          name: string;
-          logo_url: string | null;
-          trace_retention_days: number | null;
-          created_at: string;
-        }>
-      ).map((org) => ({
-        id: org.id,
-        name: org.name,
-        logoUrl: org.logo_url,
-        traceRetentionDays: org.trace_retention_days,
-        createdAt: org.created_at,
-      }));
+      const listWith = (columns: string) =>
+        client.from("organizations").select(columns).order("name", { ascending: true });
+      let result = await listWith(ORGANIZATION_COLUMNS);
+      if (result.error && isSchemaLagError(result.error)) {
+        result = await listWith(ORGANIZATION_COLUMNS_LEGACY);
+      }
+      if (result.error) throw result.error;
+      return (result.data as unknown as OrganizationRow[]).map(toOrganization);
     },
 
     async updateOrganization(organizationId, patch: OrganizationPatch) {
@@ -1427,20 +1575,29 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (patch.logoUrl !== undefined) row.logo_url = patch.logoUrl;
       if (patch.traceRetentionDays !== undefined)
         row.trace_retention_days = patch.traceRetentionDays;
-      const { data, error } = await client
-        .from("organizations")
-        .update(row)
-        .eq("id", organizationId)
-        .select("id, name, logo_url, trace_retention_days, created_at")
-        .single();
-      if (error) throw error;
-      return {
-        id: data.id,
-        name: data.name,
-        logoUrl: data.logo_url,
-        traceRetentionDays: data.trace_retention_days,
-        createdAt: data.created_at,
-      };
+      if (patch.transcriptRetentionDays !== undefined)
+        row.transcript_retention_days = patch.transcriptRetentionDays;
+      const updateWith = (columns: string) =>
+        client
+          .from("organizations")
+          .update(row)
+          .eq("id", organizationId)
+          .select(columns)
+          .single();
+      let result = await updateWith(ORGANIZATION_COLUMNS);
+      if (result.error && isSchemaLagError(result.error)) {
+        // The column the patch names does not exist yet: refuse readably
+        // rather than report a saved window that nothing will enforce. A patch
+        // that does not touch it is served against the old shape.
+        if (patch.transcriptRetentionDays !== undefined) {
+          throw new Error(
+            "Conversation retention is temporarily unavailable while the database updates"
+          );
+        }
+        result = await updateWith(ORGANIZATION_COLUMNS_LEGACY);
+      }
+      if (result.error) throw result.error;
+      return toOrganization(result.data as unknown as OrganizationRow);
     },
 
     async getProfile() {
@@ -1502,6 +1659,17 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       });
       if (error) throw error;
       return data as string;
+    },
+
+    async getMemberRole(organizationId, userId) {
+      const { data, error } = await client
+        .from("organization_members")
+        .select("role")
+        .eq("organization_id", organizationId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.role as Role | undefined) ?? null;
     },
 
     async listMembers(organizationId) {
@@ -3748,90 +3916,52 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         source_id: chunk.sourceId ?? null,
         content: chunk.content,
         embedding: chunk.embedding,
+        embedding_space: chunk.embeddingSpace ?? null,
       }));
+      // Against a schema without `embedding_space` (20260830234500 not yet
+      // applied) the insert is retried without the column: the row is then a
+      // legacy null-space row, which the matchers treat as the current space,
+      // exactly what every chunk was before the column existed.
+      let withSpace = true;
       for (let offset = 0; offset < rows.length; offset += 100) {
-        const { error } = await client
-          .from("concept_chunks")
-          .insert(rows.slice(offset, offset + 100));
-        if (error) throw error;
+        const batch = rows.slice(offset, offset + 100);
+        let result = withSpace
+          ? await client.from("concept_chunks").insert(batch)
+          : { error: null };
+        if (!withSpace || (result.error && isSchemaLagError(result.error))) {
+          withSpace = false;
+          result = await client
+            .from("concept_chunks")
+            .insert(batch.map(({ embedding_space: _space, ...rest }) => rest));
+        }
+        if (result.error) throw result.error;
       }
     },
 
     async searchChunks(assistantId, collectionId, query) {
-      const limit = query.limit ?? 6;
-      type ChunkRow = { concept_id: string; content: string; similarity: number };
-
       // Lexical search: also the safety net for vector search, since chunks
       // ingested while no embedding key was configured have NULL embeddings
       // and are invisible to match_chunks_linked. Post-contract (#733) the
       // scope is exactly the assistant's linked Sources.
-      const lexicalSearch = async (): Promise<ChunkRow[]> => {
-        const tokens = lexicalTokens(query.text, 5);
-        if (tokens.length === 0) return [];
-        const linked = await linkedSourceIds(client, assistantId);
-        if (linked.length === 0) return [];
-
-        let builder = client
-          .from("concept_chunks")
-          .select("concept_id, content, concepts!inner(excluded,is_active)")
-          .eq("concepts.excluded", false)
-          .eq("concepts.is_active", true)
-          .in("source_id", linked)
-          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-          .limit(limit);
-        if (collectionId) builder = builder.eq("collection_id", collectionId);
-        const activeResult = await builder;
-        let data: unknown = activeResult.data;
-        let error = activeResult.error;
-        if (error && isSchemaLagError(error)) {
-          let legacy = client
-            .from("concept_chunks")
-            .select("concept_id, content, concepts!inner(excluded)")
-            .eq("concepts.excluded", false)
-            .in("source_id", linked)
-            .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-            .limit(limit);
-          if (collectionId) legacy = legacy.eq("collection_id", collectionId);
-          const legacyResult = await legacy;
-          data = legacyResult.data;
-          error = legacyResult.error;
-        }
-        if (error) throw error;
-        return (data as Array<{ concept_id: string; content: string }>).map(
-          (r) => ({
-            concept_id: r.concept_id,
-            content: r.content,
-            similarity: LEXICAL_SIMILARITY,
-          })
-        );
-      };
-
-      const rows = await hybridRetrieve<ChunkRow>({
-        embedding: query.embedding,
-        limit,
-        vector: async () => {
-          const { data, error } = await client.rpc("match_chunks_linked", {
-            p_assistant_id: assistantId,
-            p_collection_id: collectionId,
-            p_query_embedding: query.embedding,
-            p_match_count: limit,
-          });
-          if (error) throw error;
-          return data as ChunkRow[];
-        },
-        lexical: lexicalSearch,
-        keyOf: (r) => `${r.concept_id}\n${r.content}`,
+      const linked = await linkedSourceIds(client, assistantId);
+      if (linked.length === 0 && !query.embedding) return [];
+      return searchChunkRows(client, query, {
+        rpc: "match_chunks_linked",
+        rpcArgs: { p_assistant_id: assistantId, p_collection_id: collectionId },
+        lexicalScope: linked.length === 0
+          ? null
+          : (builder) => {
+              const scoped = builder.in("source_id", linked);
+              return collectionId ? scoped.eq("collection_id", collectionId) : scoped;
+            },
+        hydrateFor: assistantId,
       });
-
-      return hydrateChunkHits(client, rows, assistantId);
     },
 
     async searchCollectionChunks(organizationId, collectionIds, query) {
       // Saying "no Collections" is not the same as saying "everything": a
       // pure-persona Teammate must not fall through to an org-wide search.
       if (collectionIds.length === 0) return [];
-      const limit = query.limit ?? 6;
-      type ChunkRow = { concept_id: string; content: string; similarity: number };
 
       // Tenancy first: the caller names Collections, the database decides which
       // of them are this Organization's. A stale scope (a Collection deleted or
@@ -3845,66 +3975,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const scoped = (ownRows as Array<{ id: string }>).map((row) => row.id);
       if (scoped.length === 0) return [];
 
-      const lexicalSearch = async (): Promise<ChunkRow[]> => {
-        const tokens = lexicalTokens(query.text, 5);
-        if (tokens.length === 0) return [];
-        const activeResult = await client
-          .from("concept_chunks")
-          .select("concept_id, content, concepts!inner(excluded,is_active)")
-          .eq("concepts.excluded", false)
-          .eq("concepts.is_active", true)
-          .in("collection_id", scoped)
-          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-          .limit(limit);
-        let data: unknown = activeResult.data;
-        let error = activeResult.error;
-        if (error && isSchemaLagError(error)) {
-          const legacyResult = await client
-            .from("concept_chunks")
-            .select("concept_id, content, concepts!inner(excluded)")
-            .eq("concepts.excluded", false)
-            .in("collection_id", scoped)
-            .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-            .limit(limit);
-          data = legacyResult.data;
-          error = legacyResult.error;
-        }
-        if (error) throw error;
-        return (data as Array<{ concept_id: string; content: string }>).map(
-          (r) => ({
-            concept_id: r.concept_id,
-            content: r.content,
-            similarity: LEXICAL_SIMILARITY,
-          })
-        );
-      };
-
-      const rows = await hybridRetrieve<ChunkRow>({
-        embedding: query.embedding,
-        limit,
-        vector: async () => {
-          const { data, error } = await client.rpc("match_chunks_collections", {
-            p_collection_ids: scoped,
-            p_query_embedding: query.embedding,
-            p_match_count: limit,
-          });
-          if (error) throw error;
-          return data as ChunkRow[];
-        },
-        lexical: lexicalSearch,
-        keyOf: (r) => `${r.concept_id}\n${r.content}`,
-      });
-
       // No assistant, so no per-(assistant, source) Direct access grant: a
       // Teammate cites the file, it never hands out a signed original.
-      return hydrateChunkHits(client, rows, null);
+      return searchChunkRows(client, query, {
+        rpc: "match_chunks_collections",
+        rpcArgs: { p_collection_ids: scoped },
+        lexicalScope: (builder) => builder.in("collection_id", scoped),
+        hydrateFor: null,
+      });
     },
 
     async searchSourceChunks(organizationId, sourceIds, query) {
       // Same rule as the Collection half: "no Sources" is not "everything".
       if (sourceIds.length === 0) return [];
-      const limit = query.limit ?? 6;
-      type ChunkRow = { concept_id: string; content: string; similarity: number };
 
       // Tenancy first, and through the Collection: `sources` carries no
       // organization id of its own, so the join is what decides which of the
@@ -3919,57 +4002,12 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const scoped = (ownRows as Array<{ id: string }>).map((row) => row.id);
       if (scoped.length === 0) return [];
 
-      const lexicalSearch = async (): Promise<ChunkRow[]> => {
-        const tokens = lexicalTokens(query.text, 5);
-        if (tokens.length === 0) return [];
-        const activeResult = await client
-          .from("concept_chunks")
-          .select("concept_id, content, concepts!inner(excluded, is_active)")
-          .eq("concepts.excluded", false)
-          .eq("concepts.is_active", true)
-          .in("source_id", scoped)
-          .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-          .limit(limit);
-        let data: unknown = activeResult.data;
-        let error = activeResult.error;
-        if (error && isSchemaLagError(error)) {
-          const legacyResult = await client
-            .from("concept_chunks")
-            .select("concept_id, content, concepts!inner(excluded)")
-            .eq("concepts.excluded", false)
-            .in("source_id", scoped)
-            .or(tokens.map((t) => `content.ilike.%${t}%`).join(","))
-            .limit(limit);
-          data = legacyResult.data;
-          error = legacyResult.error;
-        }
-        if (error) throw error;
-        return (data as Array<{ concept_id: string; content: string }>).map(
-          (r) => ({
-            concept_id: r.concept_id,
-            content: r.content,
-            similarity: LEXICAL_SIMILARITY,
-          })
-        );
-      };
-
-      const rows = await hybridRetrieve<ChunkRow>({
-        embedding: query.embedding,
-        limit,
-        vector: async () => {
-          const { data, error } = await client.rpc("match_chunks_sources", {
-            p_source_ids: scoped,
-            p_query_embedding: query.embedding,
-            p_match_count: limit,
-          });
-          if (error) throw error;
-          return data as ChunkRow[];
-        },
-        lexical: lexicalSearch,
-        keyOf: (r) => `${r.concept_id}\n${r.content}`,
+      return searchChunkRows(client, query, {
+        rpc: "match_chunks_sources",
+        rpcArgs: { p_source_ids: scoped },
+        lexicalScope: (builder) => builder.in("source_id", scoped),
+        hydrateFor: null,
       });
-
-      return hydrateChunkHits(client, rows, null);
     },
 
     // --- Publications --------------------------------------------------------
@@ -4374,6 +4412,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (error) throw error;
     },
 
+    async setConversationLegalHold(id, legalHold) {
+      const { error } = await client
+        .from("conversations")
+        .update({ legal_hold: legalHold })
+        .eq("id", id);
+      if (error && isSchemaLagError(error)) {
+        // No silent success here: a hold the database cannot record is a hold
+        // the sweep would not honour, so the caller hears that it did not take.
+        throw new Error(
+          "Legal hold is temporarily unavailable while the database updates"
+        );
+      }
+      if (error) throw error;
+    },
+
     async updateConversationMetadata(id, patch) {
       const { error } = await client.rpc("merge_conversation_metadata", {
         p_id: id,
@@ -4733,51 +4786,102 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as number) ?? 0;
     },
 
+    async listTranscriptRetentionPolicies() {
+      // Filtered in code for the same reason the trace policies are: one row
+      // per organization, and it keeps the query inside the PostgREST subset
+      // the pglite contract shim implements.
+      const { data, error } = await client
+        .from("organizations")
+        .select("id, transcript_retention_days");
+      // No column yet means no policy anywhere: nothing to sweep.
+      if (error && isSchemaLagError(error)) return [];
+      if (error) throw error;
+      return (
+        data as Array<{ id: string; transcript_retention_days: number | null }>
+      )
+        .filter((org) => org.transcript_retention_days !== null)
+        .map((org) => ({
+          organizationId: org.id,
+          retentionDays: org.transcript_retention_days as number,
+        }));
+    },
+
+    async deleteExpiredConversations(organizationId, cutoffIso) {
+      const { data, error } = await client.rpc("delete_expired_conversations", {
+        p_organization_id: organizationId,
+        p_cutoff: cutoffIso,
+      });
+      // The sweep primitive is not there yet: nothing expired, nothing deleted.
+      if (error && isSchemaLagError(error)) return 0;
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
     // --- Improvements -------------------------------------------------
 
     async listImprovements(organizationId) {
       const { data, error } = await client
         .from("improvements")
-        .select("*, improvement_messages(id)")
+        .select("*, improvement_messages(id.count())")
         .eq("organization_id", organizationId)
         .order("seq", { ascending: false });
       if (error) throw error;
-      type Row = ImprovementRow & { improvement_messages: Array<{ id: string }> };
+      type Row = ImprovementRow & {
+        improvement_messages: Array<{ count: number }>;
+      };
       return (data as Row[]).map(
         (row): ImprovementListItem => ({
           ...toImprovement(row),
-          messageCount: (row.improvement_messages ?? []).length,
+          messageCount: row.improvement_messages?.[0]?.count ?? 0,
         })
       );
     },
 
     async listImprovementsPage(organizationId, input) {
-      const limit = Math.max(1, Math.min(Math.trunc(input.limit), 100));
-      const beforeSeq = input.cursor ? Number(input.cursor) : null;
+      const { limit, beforeSeq, status } = normalizeImprovementPageInput(input);
       let query = client
         .from("improvements")
-        .select("*, improvement_messages(id)")
+        .select("*, improvement_messages(id.count())")
         .eq("organization_id", organizationId)
         .order("seq", { ascending: false })
         .limit(limit + 1);
-      if (beforeSeq !== null && Number.isSafeInteger(beforeSeq)) {
+      if (beforeSeq !== null) {
         query = query.lt("seq", beforeSeq);
+      }
+      if (status) {
+        query = query.eq("status", status);
       }
       const { data, error } = await query;
       if (error) throw error;
-      type Row = ImprovementRow & { improvement_messages: Array<{ id: string }> };
+      type Row = ImprovementRow & {
+        improvement_messages: Array<{ count: number }>;
+      };
       const mapped = (data as Row[]).map(
         (row): ImprovementListItem => ({
           ...toImprovement(row),
-          messageCount: (row.improvement_messages ?? []).length,
+          messageCount: row.improvement_messages?.[0]?.count ?? 0,
         })
       );
-      const hasMore = mapped.length > limit;
-      const items = mapped.slice(0, limit);
-      return {
-        items,
-        nextCursor: hasMore ? String(items.at(-1)?.seq) : null,
-      };
+      return finalizeImprovementPage(mapped, limit);
+    },
+
+    async countImprovementsByStatus(organizationId) {
+      // Five indexed head counts in parallel rather than one grouped
+      // aggregate: `count: "exact", head: true` is plain PostgREST, so this
+      // read needs none of the aggregate configuration the embedded
+      // `id.count()` above depends on.
+      const counts = await Promise.all(
+        IMPROVEMENT_STATUS_VALUES.map(async (status) => {
+          const { count, error } = await client
+            .from("improvements")
+            .select("id", { count: "exact", head: true })
+            .eq("organization_id", organizationId)
+            .eq("status", status);
+          if (error) throw error;
+          return [status, count ?? 0] as const;
+        })
+      );
+      return Object.fromEntries(counts) as Record<ImprovementStatus, number>;
     },
 
     async getImprovement(id) {
@@ -5731,6 +5835,96 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         span_id: event.spanId ?? null,
       });
       if (error) throw error;
+    },
+
+    async recordObjectAccess(event) {
+      const { error } = await client.from("object_access_events").insert({
+        organization_id: event.organizationId,
+        actor_kind: event.actorKind,
+        actor_id: event.actorId ?? null,
+        object_kind: event.objectKind,
+        object_path: event.objectPath,
+        source_id: event.sourceId ?? null,
+        result: event.result,
+        bytes: event.bytes ?? null,
+        ip: event.ip ?? null,
+        user_agent: event.userAgent ?? null,
+        request_id: event.requestId ?? null,
+      });
+      if (error) throw error;
+    },
+
+    async listObjectAccessEvents(organizationId, options) {
+      const limit = options?.limit ?? 100;
+      const offset = options?.offset ?? 0;
+      let query = client
+        .from("object_access_events")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        // `now()` is transaction time, so two rows can share `created_at`;
+        // the id tie-break is what makes a paged read stable across pages.
+        .order("id", { ascending: false })
+        .range(offset, offset + limit - 1);
+      if (options?.objectPath) query = query.eq("object_path", options.objectPath);
+      if (options?.sinceIso) query = query.gte("created_at", options.sinceIso);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: String(row.id),
+        organizationId: String(row.organization_id),
+        actorKind: row.actor_kind,
+        actorId: row.actor_id ?? null,
+        objectKind: row.object_kind,
+        objectPath: String(row.object_path),
+        sourceId: row.source_id ?? null,
+        result: row.result,
+        bytes: row.bytes === null || row.bytes === undefined ? null : Number(row.bytes),
+        ip: row.ip ?? null,
+        userAgent: row.user_agent ?? null,
+        requestId: row.request_id ?? null,
+        createdAt: String(row.created_at),
+      }));
+    },
+
+    async purgeExpiredObjectAccessEvents(cutoffIso) {
+      const { data, error } = await client.rpc("purge_expired_object_access_events", {
+        p_cutoff: cutoffIso,
+      });
+      if (error) throw error;
+      return (data as number) ?? 0;
+    },
+
+    async recordRetentionSweep(event) {
+      const { error } = await client.from("retention_sweep_events").insert({
+        organization_id: event.organizationId,
+        policy: event.policy,
+        retention_days: event.retentionDays,
+        cutoff: event.cutoff,
+        deleted: event.deleted ?? null,
+        error: event.error ?? null,
+      });
+      if (error) throw error;
+    },
+
+    async listRetentionSweepEvents(organizationId, options) {
+      const { data, error } = await client
+        .from("retention_sweep_events")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(options?.limit ?? 100);
+      if (error) throw error;
+      return (data ?? []).map((row) => ({
+        id: String(row.id),
+        organizationId: String(row.organization_id),
+        policy: row.policy,
+        retentionDays: Number(row.retention_days),
+        cutoff: String(row.cutoff),
+        deleted: row.deleted === null || row.deleted === undefined ? null : Number(row.deleted),
+        error: row.error ?? null,
+        createdAt: String(row.created_at),
+      }));
     },
 
     async getOrgBudget(organizationId) {

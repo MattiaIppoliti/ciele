@@ -20,6 +20,7 @@ import type {
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
+  ImprovementStatus,
   InboxConversation,
   InboxConversationReview,
   InboxFacets,
@@ -44,6 +45,7 @@ import type {
   StoredMessage,
   SupportChannelInput,
   SupportChannelPatch,
+  TriageEvidence,
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
 import {
@@ -63,6 +65,10 @@ import {
   listEscalationDesks,
   type EscalationHelpDesk,
 } from "@/lib/escalation-desks";
+import {
+  IMPROVEMENT_LANE_PAGE_SIZE,
+  type ImprovementLanePage,
+} from "@/lib/improvements";
 import {
   beginWebsiteCrawl,
   embedConcept,
@@ -89,6 +95,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth";
 import { requireMember, requireSession } from "@/lib/authz";
+import { checkUploadAllowance, uploadThrottledMessage } from "@/lib/upload-limit";
 import { orgMutation } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
@@ -141,6 +148,7 @@ import {
   updateAssistantGoalOp,
   updateFlowOp,
   updateImprovementOp,
+  listImprovementsPageOp,
   setMemorySettingsOp,
   wipeSubjectMemoriesOp,
   disconnectTicketingIntegrationOp,
@@ -171,6 +179,7 @@ import {
   readConversationsForExportOp,
   readInboxSummaryWindowOp,
   sendConversationFeedbackOp,
+  setConversationLegalHoldOp,
   setConversationPinnedOp,
   setMessageFeedbackOp,
   validateSsoIdentityOp,
@@ -434,6 +443,11 @@ export async function updateProfileAction(patch: ProfilePatch) {
   await requireSession();
   const db = await getDb();
   const profile = await db.updateProfile(patch);
+  // Synchronous on purpose. The sidebar renders this Profile (name, avatar),
+  // and only a revalidation that runs before the response is flushed carries
+  // the refreshed tree back with it; inside `after()` the purge lands once the
+  // client has already stopped listening, so the shell stays stale until the
+  // next navigation. The form reconciles its fields from the returned Profile.
   revalidatePath("/", "layout");
   return profile;
 }
@@ -1029,12 +1043,18 @@ async function ingestNewSource(
   name: string,
   kind: "file" | "url" | "text",
   rawText: string,
-  original?: File,
-  /** The fetched URL for a `url` Source, retained so the OKF `sources` entry
-   *  its Concepts carry names a followable artifact rather than a descriptor
-   *  (the Source `name` is the page *title*, which is not addressable). */
-  sourceUrl?: string,
+  extras: {
+    /** The uploaded binary, persisted when object storage is configured. */
+    original?: File;
+    /** The fetched URL for a `url` Source, retained so the OKF `sources` entry
+     *  its Concepts carry names a followable artifact rather than a descriptor
+     *  (the Source `name` is the page *title*, which is not addressable). */
+    sourceUrl?: string;
+    /** The triage verdict for a file upload, persisted on the Source (#801, CYB-09). */
+    triage?: TriageEvidence;
+  } = {},
 ) {
+  const { original, sourceUrl, triage } = extras;
   // Original-binary storage stays at this surface (stateless, storage-bound);
   // guards + Source row + ingestion enqueue live in addSourceOp (#622).
   const { session } = await requireMember("edit");
@@ -1058,6 +1078,7 @@ async function ingestNewSource(
     rawText,
     sourceUrl,
     originalObjectPath,
+    triage,
   });
 }
 
@@ -1082,19 +1103,26 @@ export async function uploadFileSourceAction(
   if (!validation.ok) return { error: validation.error };
 
   try {
+    // Authorize before the parser sees a byte (#801, CYB-01). `ingestNewSource`
+    // asks again, but a check that runs *after* extraction is not a gate: a
+    // refused caller would still have spent PDF-parser CPU and memory on a
+    // 25 MiB document first. `requireMember` is request-memoized, so asking
+    // twice costs one lookup.
+    const { organizationId, session } = await requireMember("edit");
+    // An authorized member is still on a budget (#801, CYB-01): parsing is the
+    // expensive step, so the window is checked after authorization (anonymous
+    // callers are already refused) and before a byte reaches the parser.
+    const budget = checkUploadAllowance(organizationId, session.userId);
+    if (!budget.allowed) return { error: uploadThrottledMessage(budget.retryAfterMs) };
     const extracted = await extractSourceText({
       kind: "file",
       name: file.name,
       bytes: await file.arrayBuffer(),
     });
-    await ingestNewSource(
-      assistantId,
-      collectionId,
-      extracted.name,
-      "file",
-      extracted.text,
-      file,
-    );
+    await ingestNewSource(assistantId, collectionId, extracted.name, "file", extracted.text, {
+      original: file,
+      triage: extracted.triage,
+    });
   } catch (error) {
     return { error: thrownMessage(error, "Upload failed") };
   }
@@ -1397,26 +1425,6 @@ export async function listSourceConceptsAction(sourceId: string): Promise<{
   return runOperation(listSourceConceptsOp, { sourceId });
 }
 
-/**
- * Admin-side download of a file Source's retained original: a short-lived
- * signed URL against the private originals bucket (distinct from the
- * visitor-facing Direct access flow). Null when no original was retained or
- * the demo store has no object storage.
- */
-export async function downloadKnowledgeOriginalAction(
-  sourceId: string
-): Promise<{ url: string | null }> {
-  const source = await runOperation(getSourceOp, { id: sourceId });
-  if (!source.originalObjectPath || !isSupabaseConfigured())
-    return { url: null };
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.storage
-    .from(KNOWLEDGE_ORIGINALS_BUCKET)
-    .createSignedUrl(source.originalObjectPath, 600, { download: true });
-  if (error) return { url: null };
-  return { url: data?.signedUrl ?? null };
-}
-
 /** Replaces a Source's full linked-assistant set ("Manage linked assistants"). */
 export async function setSourceLinksAction(
   sourceId: string,
@@ -1540,6 +1548,10 @@ export async function uploadOrgFileSourceAction(
   if (!validation.ok) return { error: validation.error };
   try {
     const { db, organizationId, session } = await requireMember("edit");
+    // Same budget as the per-assistant upload (#801, CYB-01): one member, one
+    // window, whichever door the file comes through.
+    const budget = checkUploadAllowance(organizationId, session.userId);
+    if (!budget.allowed) return { error: uploadThrottledMessage(budget.retryAfterMs) };
     const library = await db.getOrCreateOrgLibraryCollection(organizationId);
     const extracted = await extractSourceText({
       kind: "file",
@@ -1561,6 +1573,7 @@ export async function uploadOrgFileSourceAction(
       rawText: extracted.text,
       originalObjectPath,
       assistantIds,
+      triage: extracted.triage,
     });
   } catch (error) {
     return { error: thrownMessage(error, "Upload failed") };
@@ -1699,7 +1712,9 @@ export async function reembedKnowledgeAction(assistantId: string) {
     });
     reembedded += 1;
   }
-  revalidatePath(`/assistants/${assistantId}`);
+  // "layout": the Knowledge section is the nested /assistants/{id}/knowledge
+  // route, which a bare page revalidation of the editor root never reaches.
+  revalidatePath(`/assistants/${assistantId}`, "layout");
   return { pending: conceptIds.length, reembedded };
 }
 
@@ -1860,6 +1875,14 @@ export async function setConversationPinnedAction(
   await runOperation(setConversationPinnedOp, { id: conversationId, pinned });
 }
 
+/** Legal hold (#801, CYB-12): exempts one conversation from the retention sweep. */
+export async function setConversationLegalHoldAction(
+  conversationId: string,
+  legalHold: boolean,
+) {
+  await runOperation(setConversationLegalHoldOp, { id: conversationId, legalHold });
+}
+
 export async function sendConversationFeedbackAction(
   conversationId: string,
   text: string,
@@ -1876,9 +1899,48 @@ export async function setMessageFeedbackAction(
 
 // --- Improvements -----------------------------------------------------------
 
-export async function listImprovementsAction(): Promise<ImprovementListItem[]> {
-  const { db, session } = await requireMember();
-  return db.listImprovements(session.organization.id);
+/**
+ * One bounded page of the tracker; the cursor is the last IMP sequence of the
+ * previous page. With `status` the page is one lane, which is how the board
+ * pages each lane independently instead of windowing the whole tracker.
+ */
+export async function listImprovementsPageAction(
+  input: {
+    cursor?: string | null;
+    status?: ImprovementStatus;
+    limit?: number;
+  } = {},
+) {
+  return runOperation(listImprovementsPageOp, {
+    limit: input.limit ?? IMPROVEMENT_LANE_PAGE_SIZE,
+    cursor: input.cursor,
+    status: input.status,
+  });
+}
+
+/**
+ * Every row of the tracker, or of one lane, for an export. Pages through
+ * `listImprovementsPage` until the cursor runs out, so the export is built
+ * from the same bounded read the board uses and never from what happens to be
+ * loaded in the browser.
+ */
+export async function listAllImprovementsAction(
+  status?: ImprovementStatus,
+): Promise<ImprovementListItem[]> {
+  const rows: ImprovementListItem[] = [];
+  let cursor: string | null = null;
+  do {
+    // The annotation is load-bearing: `cursor` is narrowed from `page`, and
+    // `page` is inferred from `cursor`, which tsc reports as TS7022 (a type
+    // that depends on its own initializer) without it.
+    const page: ImprovementLanePage = await runOperation(
+      listImprovementsPageOp,
+      { limit: 100, cursor, status },
+    );
+    rows.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return rows;
 }
 
 /**
@@ -2034,10 +2096,10 @@ export async function unlinkImprovementMessageAction(
 export async function updateImprovementAction(
   id: string,
   patch: ImprovementPatch,
-): Promise<void> {
+): Promise<Improvement> {
   // Guard + update in updateImprovementOp (#625); the assignment/closure
   // notifications ride the notifyImprovementUpdate port.
-  await runOperation(updateImprovementOp, { id, patch });
+  return runOperation(updateImprovementOp, { id, patch });
 }
 
 export async function deleteImprovementAction(id: string): Promise<void> {

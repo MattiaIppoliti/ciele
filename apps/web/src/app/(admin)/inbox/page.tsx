@@ -50,6 +50,9 @@ export default async function InboxPage({
       // The channel oversight read is `manageMembers`, so the link only appears
       // for the Roles that could follow it (#778).
       canOverseeChannels={canManageMembers(role)}
+      // Legal hold suspends a committed deletion; same rung as the retention
+      // setting it overrides (#801, CYB-12).
+      canManageRetention={canManageMembers(role)}
     />
   );
 }

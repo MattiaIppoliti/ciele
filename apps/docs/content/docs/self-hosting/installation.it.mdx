@@ -83,7 +83,7 @@ CIELE_IMAGE_TAG=v0.4.0
 
 Poiché entrambi risiedono in `deploy/.env`, un successivo `docker compose up -d`
 in quella directory rimane in modalità immagine. Cancella entrambe le
-impostazioni per tornare alla compilazione dal sorgente. Imposta
+impostazioni per tornare a compilare dal sorgente. Imposta
 `CIELE_IMAGE_REGISTRY` in modo che utilizzi un mirror o la tua ricostruzione.
 
 I profili, l'ordinamento dei servizi e il livello del database sono identici in
@@ -115,8 +115,19 @@ docker compose -f deploy/docker-compose.yml logs -f app
 ```
 
 La configurazione predefinita pubblica l'applicazione sulla porta `3000` e il
-gateway del database sulla porta `8000`. Non pubblica Postgres.
+gateway del database sulla porta `8000`. Entrambi si collegano a `127.0.0.1`,
+quindi non è possibile accedere a nulla da un'altra macchina finché non si
+inserisce un proxy inverso davanti. Imposta invece `BIND_ADDRESS=0.0.0.0` in
+`deploy/.env` per pubblicarli su ogni interfaccia. Postgres non viene mai
+pubblicato. La console del database (Studio) rimane sempre su loopback. Accedi
+tramite un tunnel SSH.
 
 <Callout type="warn" title="Add TLS before public use">
 The Compose stack serves plain HTTP. Put a trusted reverse proxy in front of every public origin.
 </Callout>
+
+Una volta che esiste un'origine pubblica, imposta `CIELE_PUBLIC_ORIGIN` in
+`deploy/.env` su quell'URL HTTPS. I link che vengono inseriti in un'e-mail, come
+la conferma della newsletter, vengono generati a partire da questo valore. Senza
+di esso, l'applicazione si rifiuta di inviare quelle e-mail. Non crea un link
+dall'intestazione `Host` della richiesta.

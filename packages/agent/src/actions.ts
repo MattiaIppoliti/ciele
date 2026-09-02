@@ -435,6 +435,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
       writeTimeStyle,
       narrate,
       showPart,
+      untrustedNonce,
     }) =>
       buildToolset({
         assistant,
@@ -465,6 +466,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
         writeTimeStyle,
         narrate,
         showPart,
+        untrustedNonce,
         emit,
         signal,
       }),

@@ -13,8 +13,9 @@ its own CLAUDE.md.
 ## Commands
 
 ```bash
-pnpm --filter @agent-hub/db test        # vitest run
-pnpm --filter @agent-hub/db typecheck   # tsc --noEmit
+pnpm --filter @agent-hub/db test           # vitest run, minus **/*.security.test.ts
+pnpm --filter @agent-hub/db test:security  # the *.security.test.ts suites, their own turbo task
+pnpm --filter @agent-hub/db typecheck      # tsc --noEmit
 ```
 
 ## Shape

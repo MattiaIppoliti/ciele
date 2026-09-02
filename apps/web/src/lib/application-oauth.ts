@@ -181,6 +181,35 @@ function challenge(verifier: string): string {
   return createHash("sha256").update(verifier).digest("base64url");
 }
 
+/**
+ * Which providers get S256 PKCE, stated once (#801, CYB-15).
+ *
+ * It used to be two separate negations, one in the authorization URL and one
+ * in the token form, and nothing stopped them from disagreeing: a challenge
+ * sent without a verifier fails the exchange, a verifier sent without a
+ * challenge is a no-op that looks like a control. One table, read by both
+ * halves, is what makes `applicationOAuthPkceContract` a real test.
+ *
+ * `unsupported` is an exception that has to be argued for, not a default.
+ */
+export const APPLICATION_OAUTH_PKCE: Record<
+  ApplicationOAuthProvider,
+  "s256" | "unsupported"
+> = {
+  salesforce: "s256",
+  // Enforced per OAuth application registry entry. An instance with PKCE off
+  // ignores both parameters, so sending them costs nothing and the control
+  // turns on the moment the tenant enables it.
+  servicenow: "s256",
+  // Slack's `oauth/v2` bot-token flow has no PKCE: the challenge is ignored
+  // and the verifier is never checked. Sending them would read like a control
+  // in the code and be none in the protocol, so the exception is explicit and
+  // the confidential client secret plus `state` carry the binding instead.
+  slack: "unsupported",
+  onedrive: "s256",
+  google_drive: "s256",
+};
+
 function trustedProviderOrigin(
   raw: string,
   provider: "salesforce" | "servicenow"
@@ -248,18 +277,15 @@ export function applicationAuthorizationUrl(input: {
             ? "api refresh_token"
             : "useraccount";
     url.searchParams.set("scope", scope);
-    if (transaction.provider !== "servicenow") {
-      url.searchParams.set(
-        "code_challenge",
-        challenge(transaction.codeVerifier)
-      );
-      url.searchParams.set("code_challenge_method", "S256");
-    }
     if (transaction.provider === "google_drive") {
       url.searchParams.set("access_type", "offline");
       url.searchParams.set("prompt", "consent");
       url.searchParams.set("include_granted_scopes", "true");
     }
+  }
+  if (APPLICATION_OAUTH_PKCE[transaction.provider] === "s256") {
+    url.searchParams.set("code_challenge", challenge(transaction.codeVerifier));
+    url.searchParams.set("code_challenge_method", "S256");
   }
   return url.toString();
 }
@@ -322,10 +348,7 @@ export async function exchangeApplicationOAuthCode(input: {
     redirect_uri: transaction.redirectUri,
     grant_type: "authorization_code",
   });
-  if (
-    transaction.provider !== "slack" &&
-    transaction.provider !== "servicenow"
-  ) {
+  if (APPLICATION_OAUTH_PKCE[transaction.provider] === "s256") {
     form.set("code_verifier", transaction.codeVerifier);
   }
   const token = await oauthJson(

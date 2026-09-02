@@ -161,7 +161,6 @@ export function AiSettingsClient({
       try {
         await updatePersonalAiSubscriptionsAllowedAction(next);
         toast.success(next ? "Personal AI subscriptions enabled" : "Personal AI subscriptions disabled");
-        router.refresh();
       } catch {
         setPersonalSubscriptionsOn(!next);
         toast.error("Could not update personal AI subscriptions");

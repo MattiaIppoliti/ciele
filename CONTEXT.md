@@ -342,6 +342,37 @@ A system-raised operational health notice (e.g. an integration whose credentials
 that persists until an admin resolves it or it auto-clears.
 _Avoid_: notification, warning.
 
+**Transcript Retention**:
+An Organization's window, in days, after which the nightly sweep deletes a Conversation whose last
+activity is older than the window, transcript and all. Null means keep forever. Distinct from the
+older trace retention, which strips only the Thinking trace and keeps the transcript.
+_Avoid_: purge policy, TTL.
+
+**Legal Hold**:
+A per-Conversation flag that exempts it from Transcript Retention while a preservation obligation
+applies. Placed and released by a Member who can manage members; the sweep skips held rows by
+construction.
+_Avoid_: pin (that is the Inbox's ordering flag), lock.
+
+**Object Access Event**:
+One row on the append-only ledger recording an attempt to read a private object (a knowledge
+original or an analytics export): who asked, from where, and what happened. `served` and `aborted`
+mean bytes moved (all of them, or some before the caller cancelled); `refused` is an authorization
+or policy no; `failed` is our side breaking. Written by the service role, readable by admins.
+_Avoid_: download log, audit log (generic).
+
+**Retention Sweep Event**:
+One row on the append-only audit recording a retention tick for one Organization: which policy ran
+(transcripts or traces), its window and cutoff, and how many rows it removed, or the error. Carries
+no personal data, which is what lets it outlive the transcripts it describes.
+_Avoid_: sweep log.
+
+**Triage Evidence**:
+The verdict persisted on a file Source when its bytes were checked before parsing: the scanner name,
+the rule-set version, the sha256 of the exact bytes the parser read, and when. Only `clean` is ever
+stored, because a refused file never becomes a Source.
+_Avoid_: scan result, virus check.
+
 **Course / LMS Connection**:
 A live integration with a Learning Management System (e.g. Moodle, Canvas) that syncs Courses as
 Knowledge and enables LTI publishing; each Course carries an indexing Status.

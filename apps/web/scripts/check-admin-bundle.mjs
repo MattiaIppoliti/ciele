@@ -9,12 +9,13 @@ import { fileURLToPath } from "node:url";
 const web = join(dirname(fileURLToPath(import.meta.url)), "..");
 const next = join(web, ".next");
 const shell = "[project]/apps/web/src/app/(admin)/layout";
+const shellBudgetKb = 300;
 const routes = [
   {
     label: "Inbox",
     manifest: "(admin)/inbox/page_client-reference-manifest.js",
     entry: "[project]/apps/web/src/app/(admin)/inbox/page",
-    budgetKb: 60,
+    budgetKb: 50,
   },
   {
     label: "Improvements",
@@ -42,6 +43,19 @@ function manifestOf(relativePath) {
 }
 
 let failed = false;
+const shellEntries = manifestOf(routes[0].manifest).entryJSFiles[shell] ?? [];
+const shellGzipKb =
+  shellEntries.reduce((total, chunk) => {
+    const contents = readFileSync(join(next, chunk));
+    return total + gzipSync(contents, { level: 9 }).length;
+  }, 0) / 1024;
+const shellStatus = shellGzipKb <= shellBudgetKb ? "PASS" : "FAIL";
+console.log(
+  `${shellStatus} Admin shell: ${shellGzipKb.toFixed(1)} KB gzip ` +
+    `(budget ${shellBudgetKb} KB, ${shellEntries.length} shared chunks)`,
+);
+failed ||= shellGzipKb > shellBudgetKb;
+
 for (const route of routes) {
   const entries = manifestOf(route.manifest).entryJSFiles;
   const shared = new Set(entries[shell] ?? []);

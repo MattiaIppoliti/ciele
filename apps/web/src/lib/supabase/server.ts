@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { withTransientRetry } from "./transient-retry";
 
@@ -29,4 +29,43 @@ export async function createSupabaseServerClient(): Promise<SupabaseClient> {
       },
     }
   );
+}
+
+/**
+ * Cookie-independent Supabase client that still executes as the authenticated
+ * Member, so Postgres RLS remains authoritative inside cross-request caches.
+ */
+export function createSupabaseRlsClient(accessToken: string): SupabaseClient {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+      global: {
+        fetch: withTransientRetry(fetch),
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    },
+  );
+}
+
+/**
+ * Read the already-authorized request's access token for an RLS cache reader.
+ * Callers still authorize through getSession/requirePageMember first; this
+ * function supplies database identity, it is not an authorization decision.
+ */
+export async function getSupabaseSessionRlsContext(): Promise<{
+  accessToken: string;
+  memberId: string;
+} | null> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getSession();
+  if (error) return null;
+  const session = data.session;
+  if (!session) return null;
+  return { accessToken: session.access_token, memberId: session.user.id };
 }

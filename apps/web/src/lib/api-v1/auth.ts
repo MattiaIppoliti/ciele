@@ -2,7 +2,7 @@ import type { Role } from "@agent-hub/core";
 import { API_KEY_PREFIX, hashApiKeySecret } from "@agent-hub/core";
 import { createOrgPinnedDb, type Db } from "@agent-hub/db";
 import type { OperationCapability } from "@ciele/ops";
-import { CAPABILITY_GUARDS } from "@/lib/rbac";
+import { CAPABILITY_GUARDS, roleRank } from "@/lib/rbac";
 import { getApiV1Db } from "@/lib/api-v1/db";
 import { apiError } from "@/lib/api-v1/http";
 
@@ -58,11 +58,31 @@ export async function resolveApiKeyContext(
   const key = await db.getApiKeyByHash(hashApiKeySecret(secret));
   if (!key || key.revokedAt) return unauthorized();
 
+  // A key is a delegation of the human who minted it, so it dies with their
+  // membership (#801, CYB-04). `removeMemberOp` revokes on the way out; this
+  // is what also covers a key minted before that revocation existed, and a
+  // membership that disappeared by some route other than the operation. A
+  // point read, not the roster: this runs on every keyed request, and
+  // `listMembers` here would make auth latency scale with org size.
+  const creatorRole = await db.getMemberRole(key.organizationId, key.createdBy);
+  if (!creatorRole) {
+    return unauthorized();
+  }
+
+  // And it delegates at most what its creator may *currently* do (#801,
+  // CYB-04, the demotion half): an admin who minted an admin key and was
+  // demoted to viewer must not keep admin reach through the key. Capped at
+  // auth time rather than re-written at demotion time, because a stored role
+  // is one more copy of a fact that can drift; the membership row is the
+  // original. The stored role still matters as the *ceiling* the key was
+  // minted with, a re-promotion never silently widens an old key past it.
+  const role = roleRank(creatorRole) < roleRank(key.role) ? creatorRole : key.role;
+
   await db.touchApiKeyLastUsed(key.id).catch(() => {});
 
   return {
     organizationId: key.organizationId,
-    role: key.role,
+    role,
     keyId: key.id,
     actorUserId: key.createdBy,
     db: createOrgPinnedDb(db, key.organizationId),

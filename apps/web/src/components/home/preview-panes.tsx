@@ -8,27 +8,41 @@ import {
 } from "react";
 import {
   Archive,
+  ArrowLeft,
+  ArrowUp,
+  BookText,
   ChartLine,
+  ChevronDown,
   ChevronRight,
   CircleHelp,
+  Copy,
   Ellipsis,
+  ExternalLink,
   FlaskConical,
+  Globe,
+  Hash,
   LayoutGrid,
+  Link2,
   MessageCircle,
   Plus,
   Search,
   ThumbsDown,
   ThumbsUp,
+  Trash2,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
+import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { PREVIEW_SETUP_SECTIONS } from "@/components/home/preview-nav";
 import { cn } from "@/lib/utils";
 import {
   ASSISTANTS,
   BARS,
+  CHANNEL_PARTICIPANTS,
   CONVERSATIONS,
+  channelParticipant,
   DONUT_GRADIENT,
   DONUT_SEGMENTS,
   ESCALATED_PATH,
@@ -38,9 +52,13 @@ import {
   INK_AREA_STRONG,
   INK_SOFT,
   INK_STRONG,
+  LIBRARY_TABS,
+  LIBRARY_WEBSITES,
   LINE_DOTS,
   RESOLVED_PATH,
   STATS,
+  TEAMMATE_CHANNEL,
+  TEAMMATE_MESSAGES,
   type GlobalView,
   type View,
 } from "@/components/home/preview-model";
@@ -400,6 +418,299 @@ function InboxPane() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Teammates, one group thread (the console's channel view)         */
+/* ---------------------------------------------------------------- */
+
+function TeammatesPane() {
+  const compact = useContext(CompactContext);
+  const { name, meta } = TEAMMATE_CHANNEL;
+  const teammates = CHANNEL_PARTICIPANTS.filter((p) => p.kind === "teammate");
+  // Compact keeps the first exchange only: the mock is scaled to a phone
+  // width and a full eight-message thread would run off its bottom edge.
+  const messages = compact ? TEAMMATE_MESSAGES.slice(0, 4) : TEAMMATE_MESSAGES;
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Thread header: back link, channel name, roster + actions. */}
+      <div
+        className={cn(
+          "flex h-14 shrink-0 items-center gap-3 border-b text-sm",
+          compact ? "px-4" : "px-6",
+        )}
+      >
+        <span className="text-muted-foreground flex items-center gap-1.5">
+          <ArrowLeft className="size-4" />
+          {!compact && "Teammates"}
+        </span>
+        <span className="text-muted-foreground/60 flex items-center gap-2">
+          <Hash className="size-4" />
+        </span>
+        <span className="leading-tight">
+          <span className="block font-medium">{name}</span>
+          <span className="text-muted-foreground block text-xs">{meta}</span>
+        </span>
+        {!compact && (
+          <div className="ml-auto flex items-center gap-2">
+            <span className="flex -space-x-1.5">
+              {CHANNEL_PARTICIPANTS.map((participant) => (
+                <GeneratedAvatar
+                  key={participant.id}
+                  seed={participant.seed}
+                  size="size-6"
+                  className="ring-background ring-2"
+                />
+              ))}
+            </span>
+            <span className="bg-primary text-primary-foreground flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium">
+              <UserPlus className="size-3.5" />
+              Add
+            </span>
+            <span className="flex size-8 items-center justify-center rounded-lg border">
+              <Ellipsis className="text-muted-foreground size-4" />
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Transcript */}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-3.5 overflow-hidden",
+          compact ? "p-4" : "mx-auto w-full max-w-3xl p-6",
+        )}
+      >
+        {messages.map((message, index) => {
+          const author = channelParticipant(message.from);
+          const mention = message.mention
+            ? channelParticipant(message.mention)
+            : null;
+
+          if (author.kind === "member") {
+            // The signed-in Member reads on the right, colleagues on the
+            // left, the way the console lays out a group thread.
+            const self = Boolean(author.self);
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "flex flex-col gap-1.5",
+                  self ? "items-end" : "items-start",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex items-center gap-2 text-sm font-medium",
+                    self && "flex-row-reverse",
+                  )}
+                >
+                  <GeneratedAvatar seed={author.seed} size="size-6" />
+                  {author.name}
+                </span>
+                <div
+                  className={cn(
+                    "flex max-w-[80%] items-center gap-2 rounded-2xl px-4 py-2.5 text-sm",
+                    self
+                      ? "bg-muted rounded-tr-sm"
+                      : "bg-card rounded-tl-sm border shadow-xs",
+                  )}
+                >
+                  {mention && (
+                    <span className="bg-background flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-1 text-xs font-medium">
+                      <GeneratedAvatar seed={mention.seed} size="size-4" />
+                      {mention.name}
+                    </span>
+                  )}
+                  {message.text}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={index} className="flex flex-col gap-1.5">
+              <span className="flex items-center gap-2 text-sm">
+                <GeneratedAvatar seed={author.seed} size="size-6" />
+                <span className="font-medium">{author.name}</span>
+                <span className="text-muted-foreground text-xs">
+                  {author.role}
+                </span>
+              </span>
+              <div className="text-muted-foreground flex items-center gap-2 pl-8 text-xs">
+                <span className="bg-muted flex items-center gap-1 rounded-full border px-2 py-0.5">
+                  <Search className="size-3" />
+                  <BookText className="size-3" />
+                </span>
+                {message.thought}
+                <ChevronDown className="size-3" />
+              </div>
+              <p className="pl-8 text-sm leading-relaxed">{message.text}</p>
+              <div className="text-muted-foreground flex items-center gap-3 pl-8 text-xs">
+                <Copy className="size-3.5" />
+                <span className="flex items-center gap-1.5">
+                  <span className="flex -space-x-1">
+                    <span className="bg-muted size-4 rounded-full border" />
+                    <span className="bg-muted size-4 rounded-full border" />
+                    <span className="bg-muted size-4 rounded-full border" />
+                  </span>
+                  {message.sources} sources
+                  <ChevronDown className="size-3" />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Composer */}
+      {!compact && (
+        <div className="mx-auto w-full max-w-3xl shrink-0 px-6 pb-5">
+          <div className="bg-card relative rounded-2xl border p-4 shadow-xs">
+            <span className="text-muted-foreground text-sm">
+              Write @{teammates.map((t) => t.name).join(" or @")} to ask a
+              teammate…
+            </span>
+            <span className="bg-muted absolute right-3 bottom-3 flex size-8 items-center justify-center rounded-full border">
+              <ArrowUp className="text-muted-foreground size-4" />
+            </span>
+            <div className="h-8" />
+          </div>
+          <p className="text-muted-foreground mt-2 text-center text-xs">
+            Teammates answer when you name them with @. One message runs at
+            most 10 teammate replies.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Library, the org-level knowledge hub (Websites tab)              */
+/* ---------------------------------------------------------------- */
+
+function LibraryPane() {
+  const compact = useContext(CompactContext);
+  const websites = compact ? LIBRARY_WEBSITES.slice(0, 2) : LIBRARY_WEBSITES;
+  return (
+    <div className={cn("flex-1 overflow-hidden", compact ? "p-4" : "p-6")}>
+      <PaneHeading
+        icon={BookText}
+        title="Websites"
+        description="Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions."
+      />
+
+      <div className="mt-4 flex items-center gap-5 border-b text-sm">
+        {(compact ? LIBRARY_TABS.slice(0, 3) : LIBRARY_TABS).map((tab, i) => (
+          <span
+            key={tab.label}
+            className={cn(
+              "-mb-px flex items-center gap-1.5 border-b-2 pb-2",
+              i === 0
+                ? "border-foreground font-medium"
+                : "text-muted-foreground border-transparent",
+            )}
+          >
+            {tab.label}
+            <span className="text-muted-foreground text-xs">{tab.count}</span>
+            {tab.live && (
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+            )}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="bg-background text-muted-foreground flex h-10 flex-1 items-center gap-2 rounded-xl border px-3 text-sm">
+          <PreviewIcon icon={Search} size={15} />
+          Search websites…
+        </div>
+        {!compact && (
+          <>
+            <span className="text-muted-foreground flex h-10 items-center gap-6 rounded-xl border px-3 text-sm">
+              Status
+              <ChevronDown className="size-3.5" />
+            </span>
+            <span className="text-muted-foreground flex h-10 items-center gap-6 rounded-xl border px-3 text-sm">
+              Filter by assistant
+              <ChevronDown className="size-3.5" />
+            </span>
+          </>
+        )}
+        <button
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          className="bg-primary text-primary-foreground flex h-10 items-center gap-1.5 rounded-xl px-4 text-sm font-medium"
+        >
+          <PreviewIcon icon={Plus} size={15} />
+          Add
+        </button>
+      </div>
+
+      <div className="bg-card mt-4 overflow-hidden rounded-xl border shadow-xs">
+        <div
+          className={cn(
+            "text-muted-foreground grid items-center gap-3 border-b px-4 py-2.5 text-xs font-medium",
+            compact
+              ? "grid-cols-[1fr_auto]"
+              : "grid-cols-[2fr_1fr_1.2fr_1fr_1fr_auto]",
+          )}
+        >
+          <span>Name</span>
+          <span>Content</span>
+          {!compact && (
+            <>
+              <span>Linked assistants</span>
+              <span>Created at</span>
+              <span>Last updated at</span>
+              <span className="w-4" />
+            </>
+          )}
+        </div>
+        {websites.map((site) => (
+          <div
+            key={site.url}
+            className={cn(
+              "hover:bg-muted/40 grid items-center gap-3 border-b px-4 py-3 text-sm transition-colors last:border-b-0",
+              compact
+                ? "grid-cols-[1fr_auto]"
+                : "grid-cols-[2fr_1fr_1.2fr_1fr_1fr_auto]",
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-2.5">
+              <Globe className="text-muted-foreground size-4 shrink-0" />
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate font-medium">{site.name}</span>
+                <span className="text-muted-foreground flex items-center gap-1 truncate text-xs">
+                  {site.url}
+                  <ExternalLink className="size-3 shrink-0" />
+                </span>
+              </span>
+            </span>
+            <span className="text-muted-foreground">{site.content}</span>
+            {!compact && (
+              <>
+                <span className="flex items-center gap-2">
+                  <span className="bg-muted text-muted-foreground truncate rounded-full border px-2 py-px text-[11px]">
+                    {site.assistant}
+                  </span>
+                  <Link2 className="text-muted-foreground size-3.5 shrink-0" />
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {site.created}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {site.updated}
+                </span>
+                <Trash2 className="text-muted-foreground size-4" />
+              </>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -813,12 +1124,16 @@ export function PreviewGrid() {
 /* Pane registry                                                     */
 /* ---------------------------------------------------------------- */
 
+/* Typed as a Record over GlobalView so adding a view without a pane is a
+   compile error here rather than an `undefined` element type at runtime. */
 export const GLOBAL_PANES: Record<GlobalView, () => React.ReactNode> = {
   Assistants: AssistantsPane,
   "Help Desks": HelpDesksPane,
   Inbox: InboxPane,
+  Teammates: TeammatesPane,
   Improvements: ImprovementsPane,
   Insights: InsightsPane,
+  Library: LibraryPane,
 };
 
 /* Render the pane for a given view (global pane or the shared setup picker). */

@@ -3,6 +3,12 @@ import { z } from "zod";
 import { appendAgentLearning, messageText } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { getClassifierModel } from "./models";
+import {
+  isSafeToPersist,
+  mintUntrustedNonce,
+  untrustedContentPolicy,
+  wrapUntrustedContent,
+} from "./untrusted-content";
 import { meterUsage } from "./usage";
 
 /**
@@ -78,16 +84,24 @@ export async function distillAgentLearning(input: {
   // outcome rather than a degraded one.
   if (!classifier) return { appended: false };
 
+  const nonce = mintUntrustedNonce();
   let result;
   try {
     result = await generateObject({
       model: classifier.model,
       schema: LEARNING_SCHEMA,
-      system: DISTILLER_SYSTEM,
+      // The exchange is someone else's text going to a model whose output is
+      // then written into a layer every later turn reads (#801, CYB-13). The
+      // persona above it is the organization's own words and stays unfenced.
+      system: `${DISTILLER_SYSTEM}\n\n${untrustedContentPolicy(nonce)}`,
       prompt: [
         `The teammate's standing role, in the organization's words:\n${teammate.roleDescription || "(none given)"}`,
         "",
-        `The exchange:\n${exchange}`,
+        "The exchange:",
+        wrapUntrustedContent(
+          { provenance: "conversation exchange", body: exchange },
+          nonce
+        ),
       ].join("\n"),
     });
   } catch (error) {
@@ -113,6 +127,15 @@ export async function distillAgentLearning(input: {
 
   const learning = result.object.learning.trim();
   if (!result.object.worthKeeping || !learning) return { appended: false };
+  // The exchange this was distilled from is untrusted text, and the Agent
+  // layer is injected whole into every later turn (#771), so a learning that
+  // carries an instruction is a persistent one (#801, CYB-13). The distiller
+  // is asked for an observation; anything that reads as a command to a future
+  // turn is not that, whoever wrote it.
+  if (!isSafeToPersist(learning)) {
+    console.warn("[agent-memory] refused a learning carrying instruction content");
+    return { appended: false };
+  }
 
   const existing = await db.getMemoryDocument(organizationId, {
     scope: "agent",

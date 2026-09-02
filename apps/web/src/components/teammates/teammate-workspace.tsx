@@ -106,8 +106,9 @@ export function TeammateWorkspace({
   /**
    * The settings drawer mounts only while this is true, so every open is a
    * fresh mount seeded from the props as they stand at that click. The props
-   * move between opens: `router.refresh()` runs from the history list and from
-   * the drawer's own save, and a colleague can be editing the same Teammate.
+   * move between opens: opening history refreshes the route, and the drawer's
+   * Server Actions revalidate it after a save. A colleague can be editing the
+   * same Teammate.
    * Nothing is lost by unmounting, because a closed drawer holds no draft
    * anybody meant to keep. The Agent memory layer needs more than this and
    * reads itself on open; see the drawer.

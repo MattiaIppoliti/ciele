@@ -9,6 +9,7 @@ import {
   LifeBuoy,
 } from "lucide-react";
 import type { AnimatedIcon } from "@/components/ui/animated-icon";
+import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import {
   PREVIEW_GLOBAL_NAV,
   PREVIEW_SETUP_SECTIONS,
@@ -54,7 +55,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
   const [scope, setScope] = useState<string | null>(null);
   const [scopeOpen, setScopeOpen] = useState(false);
   // Idle showcase: while the cursor is outside the mock it cycles through
-  // the five global views every 1.5s; hovering pauses it so visitors can
+  // every global view every 1.5s; hovering pauses it so visitors can
   // explore on their own. Wherever they left off, cycling resumes from
   // the next global view.
   const [hovered, setHovered] = useState(false);
@@ -204,9 +205,7 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
               </div>
             )}
             <div className="hover:bg-muted flex items-center gap-2 rounded-lg px-1.5 py-1.5">
-              <span className="bg-muted text-muted-foreground flex size-7 items-center justify-center rounded-full border text-xs">
-                AC
-              </span>
+              <GeneratedAvatar seed="alex.carter@acme.com" size="size-7" />
               <span className="leading-tight">
                 <span className="block text-sm font-medium">Alex Carter</span>
                 <span className="text-muted-foreground block text-xs">

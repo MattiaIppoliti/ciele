@@ -21,7 +21,7 @@ app's plain-TS module.
 - One primitive per file, kebab-case (`copy-feedback.tsx`), exported from `src/index.ts`.
   A component that isn't in the barrel isn't usable by the apps.
 - Deep import paths must be declared in `exports` in `package.json` (currently
-  `./use-resizable-width` and `./resize-geometry`). Adding one without the entry breaks the
+  `./use-resizable-width`, `./resize-geometry` and `./calendar`). Adding one without the entry breaks the
   consumer's build, and the failure is a `TS2307` at the import, not anything that names the
   exports map.
 - `sideEffects: false`: keep modules pure so app bundles can tree-shake.

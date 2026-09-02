@@ -1,0 +1,44 @@
+---
+title: Data retention
+description: Set how long conversations and reasoning traces are kept, and hold one conversation back.
+---
+
+An Organization sets two retention windows in **Settings**, on the **General** tab. Both are off by default: nothing is deleted until an administrator selects a window.
+
+## The two windows
+
+| Setting | What the nightly sweep does after the window |
+| --- | --- |
+| **Reasoning trace retention** | Removes the Thinking panel from old messages. The messages stay. |
+| **Conversation retention** | Deletes the whole conversation, transcript included. |
+
+The two windows are independent. An Organization can set either, both, or neither. For example, keep transcripts for one year but remove reasoning traces after 30 days.
+
+A sweep runs once per night. It measures the window from the conversation's last message, not from its first. A conversation that is still in use is not deleted, however long ago it started. The sweep is permanent: a deleted conversation does not go to a trash area.
+
+<Callout type="warn" title="Conversation retention deletes data">
+After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+</Callout>
+
+## Set a window
+
+1. Open **Settings**.
+2. Stay on the **General** tab.
+3. Select a window under **Reasoning trace retention** or **Conversation retention**.
+4. Select **Save changes**.
+
+Only a member who can manage members can change these settings.
+
+## Legal hold
+
+A legal hold exempts one conversation from the conversation-retention sweep. Use it when a preservation obligation applies to one conversation, without turning retention off for every other conversation.
+
+1. Open **Inbox** and select the conversation.
+2. Open the details panel.
+3. Select **Place legal hold** in the **Retention** card.
+
+The hold stays until a member selects **Release legal hold**. Every member sees the hold status. Only a member who can manage members can place or release a hold.
+
+## Self-hosted installations
+
+The nightly sweep runs from the bundled scheduler. No extra configuration is needed. The sweep calls `/api/cron/sweep-retention` with the `CRON_SECRET` credential.

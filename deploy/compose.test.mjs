@@ -31,6 +31,11 @@ function check(label, fn) {
 const compose = read("docker-compose.yml");
 const imagesOverlay = read("docker-compose.images.yml");
 const workersOverlay = read("docker-compose.workers.yml");
+const standaloneWorkers = {
+  "services/crawl4ai-worker/docker-compose.yml": read("../services/crawl4ai-worker/docker-compose.yml"),
+  "services/graph-worker/docker-compose.yml": read("../services/graph-worker/docker-compose.yml"),
+};
+const tlsOverlay = read("docker-compose.tls.yml");
 const envExample = read(".env.example");
 const crontab = read("cron/crontab");
 const vercel = JSON.parse(read("../apps/web/vercel.json"));
@@ -129,6 +134,182 @@ check("the base file names no worker, the overlay is the only way in", () => {
   assert.doesNotMatch(compose, /^ {2}graph-data:$/m);
 });
 
+// --- network exposure (#801, CYB-06 / CYB-16) -------------------------------
+//
+// A published port with no bind address is every interface, and both worker
+// files said "localhost" in a comment above a line that meant the internet.
+// This is the resolved-config policy the audit asked for, read off the files
+// so it holds without a Docker daemon.
+
+/** Every `- "…:…"` entry under a `ports:` key, as written. */
+function publishedPorts(yaml) {
+  const found = [];
+  let inPorts = false;
+  for (const line of yaml.split("\n")) {
+    if (/^\s*ports:\s*$/.test(line)) {
+      inPorts = true;
+      continue;
+    }
+    if (!inPorts) continue;
+    const entry = /^\s*-\s*"([^"]+)"\s*$/.exec(line);
+    if (entry) {
+      found.push(entry[1]);
+      continue;
+    }
+    // A non-comment, non-entry line ends the block.
+    if (line.trim() && !line.trim().startsWith("#")) inPorts = false;
+  }
+  return found;
+}
+
+/** Loopback literal, or the BIND_ADDRESS variable whose default is loopback. */
+function bindsToLoopback(entry) {
+  if (entry.startsWith("127.0.0.1:")) return true;
+  return entry.startsWith("${BIND_ADDRESS:-127.0.0.1}:");
+}
+
+check("nothing in the self-host stack publishes on every interface", () => {
+  const entries = publishedPorts(compose);
+  assert.ok(entries.length > 0, "the base file must still publish something");
+  for (const entry of entries) {
+    assert.ok(
+      bindsToLoopback(entry),
+      `${entry} binds every interface; give it a bind address (BIND_ADDRESS opts out)`
+    );
+  }
+  assert.match(
+    envExample,
+    /^BIND_ADDRESS=127\.0\.0\.1$/m,
+    ".env.example must document the loopback default operators opt out of"
+  );
+});
+
+check("the database console is loopback-only whatever BIND_ADDRESS says", () => {
+  const studio = publishedPorts(compose).filter((entry) => entry.includes("STUDIO_PORT"));
+  assert.equal(studio.length, 1);
+  assert.ok(
+    studio[0].startsWith("127.0.0.1:"),
+    "studio must not follow BIND_ADDRESS onto a public interface"
+  );
+});
+
+/**
+ * `networks: [a, b]` per service, same minimal-reader shape as
+ * `serviceProfiles`. Reachability in compose IS network membership, so this
+ * map is the stack's east-west policy.
+ */
+function serviceNetworks(yaml) {
+  const found = {};
+  let current = null;
+  let inServices = false;
+  for (const line of yaml.split("\n")) {
+    if (/^[a-z]/.test(line)) {
+      inServices = line.startsWith("services:");
+      current = null;
+      continue;
+    }
+    if (!inServices) continue;
+    const service = /^ {2}([a-z][a-z0-9-]*):\s*$/.exec(line);
+    if (service) {
+      current = service[1];
+      found[current] = null;
+      continue;
+    }
+    const networks = /^ {4}networks:\s*\[([^\]]*)\]/.exec(line);
+    if (networks && current) {
+      found[current] = networks[1].split(",").map((n) => n.trim()).sort();
+    }
+  }
+  return found;
+}
+
+check("every service sits in its declared zones, default-deny between them (#801, CYB-16)", () => {
+  // The whole map, not a sample: adding a service without placing it lands
+  // it on no network at all (compose only builds the default network when NO
+  // service declares one), which this catches as `null`.
+  assert.deepEqual(serviceNetworks(compose), {
+    postgres: ["data"],
+    auth: ["backend", "data"],
+    rest: ["backend", "data"],
+    storage: ["backend", "data"],
+    gateway: ["backend"],
+    migrate: ["data"],
+    app: ["backend", "workers"],
+    cron: ["backend"],
+    studio: ["backend"],
+    meta: ["backend", "data"],
+  });
+});
+
+check("the workers zone holds only the app and the workers (#801, CYB-16)", () => {
+  // A worker renders untrusted web pages; it must reach neither Postgres nor
+  // the gateway. The overlay places both workers on `workers` alone, and the
+  // only base service sharing that zone is the app that calls them.
+  assert.deepEqual(serviceNetworks(workersOverlay), {
+    "graph-worker": ["workers"],
+    crawl4ai: ["workers"],
+  });
+  const base = serviceNetworks(compose);
+  const sharing = Object.entries(base)
+    .filter(([, zones]) => zones.includes("workers"))
+    .map(([name]) => name);
+  assert.deepEqual(sharing, ["app"]);
+});
+
+check("the app plane can never open a socket to Postgres", () => {
+  const zones = serviceNetworks(compose);
+  for (const service of ["app", "cron", "studio", "gateway"]) {
+    assert.ok(
+      !zones[service].includes("data"),
+      `${service} must reach the database through the gateway's API surface, never directly`
+    );
+  }
+  // And the database is nowhere else: `data` is its only zone.
+  assert.deepEqual(zones.postgres, ["data"]);
+});
+
+check("the tls overlay is the one deliberate public listener (#801, CYB-16)", () => {
+  // 80/443 on every interface is the terminator's job; anything else joining
+  // it here would be a second public door nobody decided on.
+  assert.deepEqual(publishedPorts(tlsOverlay), ["80:80", "443:443", "443:443/udp"]);
+  // It reaches only the HTTP plane: on `backend`, never `data` or `workers`.
+  assert.deepEqual(serviceNetworks(tlsOverlay), { tls: ["backend"] });
+  // Refuses to start without the names it should answer for.
+  assert.match(tlsOverlay, /CIELE_DOMAIN:\s*\$\{CIELE_DOMAIN:\?/);
+  assert.match(tlsOverlay, /CIELE_SUPABASE_DOMAIN:\s*\$\{CIELE_SUPABASE_DOMAIN:\?/);
+  // And the base stack stays TLS-free: the overlay is the only way in, same
+  // rule as the workers.
+  assert.ok(!compose.includes("caddy"), "no caddy in the base file");
+  assert.match(envExample, /^CIELE_DOMAIN=$/m);
+  assert.match(envExample, /^CIELE_SUPABASE_DOMAIN=$/m);
+});
+
+check("the workers overlay publishes no host port at all", () => {
+  assert.deepEqual(
+    publishedPorts(workersOverlay),
+    [],
+    "the integrated workers are reachable on the compose network only"
+  );
+});
+
+check("the standalone worker files bind their dev ports to loopback", () => {
+  for (const [name, yaml] of Object.entries(standaloneWorkers)) {
+    const entries = publishedPorts(yaml);
+    assert.ok(entries.length > 0, `${name} must still publish its dev port`);
+    for (const entry of entries) {
+      assert.ok(
+        entry.startsWith("127.0.0.1:"),
+        `${name} publishes ${entry} on every interface`
+      );
+    }
+    assert.match(
+      yaml,
+      /security_opt:\n\s*- no-new-privileges:true/,
+      `${name} must set no-new-privileges`
+    );
+  }
+});
+
 check("a worker cannot start without its credential", () => {
   // Each worker token uses the `:?` form, so turning the overlay on without
   // one stops compose with a named error instead of starting a worker that
@@ -148,6 +329,30 @@ check("a worker cannot start without its credential", () => {
       `${variable} must use \${${variable}:?message} so the workers refuse to start without it`,
     );
   }
+});
+
+check("PUBLIC_URL has one default, and the app service receives it (#801, CYB-16)", () => {
+  // GoTrue's site URL and the app's origin check read the same variable. When
+  // the auth service interpolated `${PUBLIC_URL}` with no default while the
+  // app defaulted to localhost, an .env missing the line gave GoTrue an empty
+  // site URL and the app a passing one. Every reference carries the default
+  // `.env.example` ships, so the two can only disagree by editing `.env`.
+  const references = [...compose.matchAll(/\$\{PUBLIC_URL[^}]*\}/g)].map((m) => m[0]);
+  assert.ok(references.length >= 4, "auth (three lines) and app must both read PUBLIC_URL");
+  const shipped = /^PUBLIC_URL=(.+)$/m.exec(envExample)[1];
+  for (const reference of references) {
+    assert.equal(
+      reference,
+      `\${PUBLIC_URL:-${shipped}}`,
+      `${reference} must default to the value .env.example ships, like every other reference`
+    );
+  }
+  const appSection = /^ {2}app:$([\s\S]*?)(?=^ {2}[a-z]|^[a-z])/m.exec(compose)[1];
+  assert.match(
+    appSection,
+    /^ {6}PUBLIC_URL: \$\{PUBLIC_URL:-/m,
+    "the app service must receive PUBLIC_URL; the startup origin check reads it"
+  );
 });
 
 check("the image's deps stage copies every workspace manifest the app needs", () => {
@@ -375,6 +580,19 @@ check("the roles init never masks the image's own initdb directory", () => {
   assert.match(
     compose,
     /db-init\/99-roles\.sql:\/docker-entrypoint-initdb\.d\/init-scripts\/99-ciele-roles\.sql/
+  );
+});
+
+check("PostgREST accepts the aggregate the Improvements board reads with", () => {
+  // `packages/db/src/supabase.ts` selects `improvement_messages(id.count())`.
+  // PostgREST ships with aggregates off and answers that select with a 400,
+  // and the pglite contract shim accepts the syntax regardless, so the only
+  // thing standing between a green test run and a broken board on a fresh
+  // self-host is this line.
+  assert.match(
+    compose,
+    /^ {6}PGRST_DB_AGGREGATES_ENABLED: "true"$/m,
+    "the rest service must set PGRST_DB_AGGREGATES_ENABLED, or every Improvements list 400s"
   );
 });
 

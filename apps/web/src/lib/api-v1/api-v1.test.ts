@@ -90,6 +90,31 @@ describe("API key authentication", () => {
     expect(listed.find((k) => k.id === key.id)?.lastUsedAt).toBeTruthy();
   });
 
+  it("caps a key at its creator's current role after a demotion (CYB-04)", async () => {
+    const { secret } = await mintKey("admin");
+    const db = getMockDb();
+    try {
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, "viewer");
+      const ctx = await resolveApiKeyContext(request(LIST_URL, secret));
+      if (ctx instanceof Response) throw new Error("expected a context");
+      // The stored role is the ceiling the key was minted with; the
+      // membership row is the floor it lives under now.
+      expect(ctx.role).toBe("viewer");
+      expect(requireApiCapability(ctx, "edit")?.status).toBe(403);
+    } finally {
+      await db.updateMemberRole(DEMO_ORG.id, DEMO_MEMBER.userId, DEMO_MEMBER.role);
+    }
+  });
+
+  it("never widens a key past the role it was minted with", async () => {
+    // A viewer-scoped key stays viewer-scoped even though its creator is an
+    // owner: re-promotion (or a generous creator) must not grow old keys.
+    const { secret } = await mintKey("viewer");
+    const ctx = await resolveApiKeyContext(request(LIST_URL, secret));
+    if (ctx instanceof Response) throw new Error("expected a context");
+    expect(ctx.role).toBe("viewer");
+  });
+
   it("403s below the required capability, passes at or above it", async () => {
     const { secret } = await mintKey("viewer");
     const ctx = await resolveApiKeyContext(request(LIST_URL, secret));

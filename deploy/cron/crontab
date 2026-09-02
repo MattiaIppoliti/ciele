@@ -9,7 +9,8 @@
 #
 # min hour dom mon dow  command
 0 2 * * *   /usr/local/bin/run-job.sh /api/cron/rollup-usage
-30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-traces
+30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-retention
+45 2 * * *  /usr/local/bin/run-job.sh /api/cron/security-detections
 */5 * * * * /usr/local/bin/run-job.sh /api/cron/finalize-crawls
 # RUN_ROUTINES: hourly here, daily in vercel.json, and the difference is a
 # platform limit rather than a decision. A Routine carries a preferred hour

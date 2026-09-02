@@ -34,9 +34,56 @@ function assertMayManageTier(ctx: OperationContext, member: Member, nextRole?: R
   }
 }
 
+/**
+ * An Organization with no Owner cannot appoint one: Owner-tier changes need an
+ * Owner, so the last one leaving locks the Organization out of its own member
+ * management for good (#801, CYB-11). Refusing is the recoverable answer;
+ * hand the role over first.
+ */
+async function assertNotLastOwner(
+  ctx: OperationContext,
+  member: Member,
+  nextRole?: Role
+): Promise<void> {
+  if (member.role !== "owner" || nextRole === "owner") return;
+  const owners = (await ctx.db.listMembers(ctx.organizationId)).filter(
+    (item) => item.role === "owner"
+  );
+  if (owners.length > 1) return;
+  throw new OperationError(
+    "invalid_input",
+    "This is the last owner. Promote another member to owner first."
+  );
+}
+
+/**
+ * An API key is a delegation of the Member who minted it, so it must not
+ * outlive their membership (#801, CYB-04). Revoked *before* the membership row
+ * goes, because the failure to prefer is an over-revoked key, never a live key
+ * belonging to someone who has left.
+ */
+async function revokeKeysDelegatedBy(
+  ctx: OperationContext,
+  userId: string
+): Promise<void> {
+  const keys = await ctx.db.listApiKeys(ctx.organizationId);
+  for (const key of keys) {
+    if (key.createdBy === userId && !key.revokedAt) await ctx.db.revokeApiKey(key.id);
+  }
+}
+
+/**
+ * Zod strips what a schema does not declare, so a field missing from here is a
+ * field the console appears to save and does not. `traceRetentionDays` was
+ * missing: the Settings control wrote it, `runOperation` parsed it away, and
+ * the sweep never saw a policy (found while adding its transcript twin,
+ * #801/CYB-12).
+ */
 export const organizationPatchSchema = z.object({
   name: z.string().trim().min(1).max(200).optional(),
   logoUrl: z.string().max(2_000).nullable().optional(),
+  traceRetentionDays: z.number().int().positive().nullable().optional(),
+  transcriptRetentionDays: z.number().int().positive().nullable().optional(),
 }) satisfies z.ZodType<OrganizationPatch>;
 
 export const getOrganizationOp = defineOperation({
@@ -77,6 +124,7 @@ export const updateMemberRoleOp = defineOperation({
   run: async (ctx, { userId, role }) => {
     const member = await requireMemberRow(ctx, userId);
     assertMayManageTier(ctx, member, role);
+    await assertNotLastOwner(ctx, member, role);
     await ctx.db.updateMemberRole(ctx.organizationId, userId, role);
     return requireMemberRow(ctx, userId);
   },
@@ -86,25 +134,32 @@ export const removeMemberOp = defineOperation({
   name: "members.remove",
   capability: "manageMembers",
   input: z.object({ userId: idSchema }),
-  entities: () => [{ kind: "members" as const }],
+  entities: () => [{ kind: "members" as const }, { kind: "apiKeys" as const }],
   run: async (ctx, { userId }) => {
     const member = await requireMemberRow(ctx, userId);
     assertMayManageTier(ctx, member);
+    await assertNotLastOwner(ctx, member);
+    await revokeKeysDelegatedBy(ctx, userId);
     await ctx.db.removeMember(ctx.organizationId, userId);
   },
 });
 
-/** Signed-in web members may leave their own Organization regardless of role. */
+/**
+ * Signed-in web members may leave their own Organization, but not the last
+ * Owner: leaving is offboarding, so it revokes what the leaver delegated too.
+ */
 export const leaveOrganizationOp = defineOperation({
   name: "members.leave",
   capability: "member",
   input: z.object({}),
-  entities: () => [{ kind: "members" as const }],
+  entities: () => [{ kind: "members" as const }, { kind: "apiKeys" as const }],
   run: async (ctx) => {
     if (!ctx.userId) {
       throw new OperationError("invalid_input", "A human member is required");
     }
-    await requireMemberRow(ctx, ctx.userId);
+    const member = await requireMemberRow(ctx, ctx.userId);
+    await assertNotLastOwner(ctx, member);
+    await revokeKeysDelegatedBy(ctx, ctx.userId);
     await ctx.db.removeMember(ctx.organizationId, ctx.userId);
   },
 });

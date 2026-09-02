@@ -37,7 +37,8 @@
   },
   "scripts": {
     "lint": "eslint",
-    "test": "vitest run",
+    "test": "vitest run --exclude \"**/*.security.test.ts\"",
+    "test:security": "vitest run .security.test",
     "typecheck": "tsc --noEmit"
   }
 }

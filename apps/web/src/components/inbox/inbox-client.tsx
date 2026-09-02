@@ -45,6 +45,7 @@ import {
   getInboxConversationReviewAction,
   getInboxPageAction,
   listConversationImprovementLinksAction,
+  setConversationLegalHoldAction,
   setMessageFeedbackAction,
 } from "@/app/actions";
 import { transcriptDocument } from "@/lib/inbox/transcript-print";
@@ -54,7 +55,6 @@ import {
   subjectName,
   type InboxFilters,
 } from "@/lib/inbox/conversation-filter";
-import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { ProgressLine } from "@/components/chat/progress-line";
 import {
   storedTraceLabel,
@@ -63,7 +63,6 @@ import {
 } from "@/components/chat/stored-trace";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
-import { Calendar } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import {
@@ -85,7 +84,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 
 // Transcript-only UI stays out of the Inbox list's initial bundle. In
 // particular ChatMarkdown owns syntax highlighting, which is wasted until a
-// reviewer opens a conversation.
+// reviewer opens a conversation. Plain `dynamic()`, no `ssr: false`: these
+// render fine on the server, and the flag would only have hidden them from
+// the first paint of a transcript that was requested by URL.
 const CitationList = dynamic(() =>
   import("@/components/chat/citation-list").then((module) => module.CitationList),
 );
@@ -101,6 +102,23 @@ const ThinkingPanel = dynamic(() =>
   import("@/components/chat/thinking-panel").then(
     (module) => module.ThinkingPanel,
   ),
+);
+// Mounted only once a reviewer clicks "Improve Answer", so it never renders
+// on the server either way; the split keeps the dialog's form out of the list.
+const ImproveAnswerDialog = dynamic(() =>
+  import("@/components/inbox/improve-answer-dialog").then(
+    (module) => module.ImproveAnswerDialog,
+  ),
+);
+// The date picker's calendar carries react-day-picker (about 5 KB gzip, the
+// difference between the Inbox route passing and failing its 50 KB budget)
+// and opens only from the Filters popover, so it loads on demand. Through
+// the component's own module path: a dynamic import of the `@agent-hub/ui`
+// barrel this file already imports statically would defer nothing.
+// `ssr: false` because a popover is never open on the server.
+const Calendar = dynamic(
+  () => import("@agent-hub/ui/calendar").then((module) => module.Calendar),
+  { ssr: false },
 );
 
 interface AssistantOption {
@@ -435,6 +453,7 @@ export function InboxClient({
   canEdit = false,
   canViewReasoning = false,
   canOverseeChannels = false,
+  canManageRetention = false,
 }: {
   initialPage: InboxPage;
   assistants: AssistantOption[];
@@ -447,6 +466,12 @@ export function InboxClient({
    * Assistant, so it would be two empty columns in this table.
    */
   canOverseeChannels?: boolean;
+  /**
+   * Legal hold suspends a deletion the Organization has committed to, so the
+   * toggle is `manageMembers` like the retention setting itself (#801, CYB-12).
+   * Everyone still sees the status: a held conversation behaves differently.
+   */
+  canManageRetention?: boolean;
 }) {
   const [conversations, setConversations] = useState(
     initialPage.conversations,
@@ -588,6 +613,23 @@ export function InboxClient({
   // A selected conversation should show even if the current filters would hide
   // it (e.g. when opened via a deep link outside the default date range).
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
+
+  async function toggleLegalHold(conversationId: string, next: boolean) {
+    // Optimistic, then reconciled: the sweep runs nightly, so a stale flag for
+    // the duration of a failed request is recoverable, and the revert on error
+    // keeps the rail honest.
+    setConversations((current) =>
+      current.map((c) => (c.id === conversationId ? { ...c, legalHold: next } : c)),
+    );
+    try {
+      await setConversationLegalHoldAction(conversationId, next);
+    } catch {
+      setConversations((current) =>
+        current.map((c) => (c.id === conversationId ? { ...c, legalHold: !next } : c)),
+      );
+      toast.error("Could not update the legal hold");
+    }
+  }
   // Only the user's own dismissal animates. Switching conversation replaces the
   // whole pane, so animating that exit would delay content the user asked for.
   const { exiting: detailsExiting, beginExit: closeDetails } = useExitTransition(
@@ -787,7 +829,12 @@ export function InboxClient({
     <div className="flex h-full flex-col">
       {/* Header */}
       <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
+        <h1
+          className="text-2xl font-bold tracking-tight"
+          data-testid="inbox-heading"
+        >
+          Inbox
+        </h1>
         {canOverseeChannels && (
           <Link
             href="/inbox/channels"
@@ -1412,6 +1459,28 @@ export function InboxClient({
                   <p className="text-muted-foreground text-xs">User feedback</p>
                   <p className="text-sm whitespace-pre-wrap">{meta.feedbackText}</p>
                 </div>
+              )}
+            </Card>
+
+            <Card size="sm" className="gap-3 p-4">
+              <h3 className="font-semibold">Retention</h3>
+              <DetailRow
+                label="Legal hold"
+                value={
+                  selected.legalHold
+                    ? "Held: the retention sweep skips this conversation"
+                    : "Not held"
+                }
+              />
+              {canManageRetention && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => toggleLegalHold(selected.id, !selected.legalHold)}
+                >
+                  {selected.legalHold ? "Release legal hold" : "Place legal hold"}
+                </Button>
               )}
             </Card>
           </aside>

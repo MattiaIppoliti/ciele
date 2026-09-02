@@ -13,7 +13,8 @@ import { SettingsStore } from "./settings-store";
 import { checkForUpdate } from "./update-check";
 import { appVersion, registerSetupHandlers, setupConfig, setupPorts } from "./setup-handlers";
 import { createStackController, registerStackHandlers } from "./stack";
-import { showNative, showProduct, partitionForMode } from "./windows";
+import { ALL_PARTITIONS } from "./failure-reasons";
+import { showNative, showProduct } from "./windows";
 import {
   CHANNELS,
   normalizeBaseUrl,
@@ -84,9 +85,11 @@ function openForCurrentMode(): void {
  * shared machine must hold nothing after this.
  */
 async function signOut(): Promise<AppState> {
-  const mode = settings.get().mode;
-  if (mode) {
-    const partition = session.fromPartition(partitionForMode(mode));
+  // Every partition, the other mode's included (#801, CYB-17): someone who
+  // signs out on a shared machine means all of it, and clearing only the mode
+  // being left had been leaving the other mode's session alive.
+  for (const name of ALL_PARTITIONS) {
+    const partition = session.fromPartition(name);
     await partition.clearStorageData();
     await partition.clearCache();
     await partition.clearAuthCache();

@@ -98,11 +98,20 @@ export const createRoutineOp = defineOperation({
   },
 });
 
+/**
+ * Routines render on the Teammate's own page (`RoutinesPanel` reads its
+ * `routines` prop on /teammates/[teammateId]), so an edit or a delete names
+ * that Teammate, the same entity `createRoutineOp` declares. The input only
+ * carries the routine id; the Teammate comes back with the result, which is
+ * why `deleteRoutineOp` returns the row it removed instead of void.
+ */
 export const updateRoutineOp = defineOperation({
   name: "teammates.routines.update",
   capability: "edit",
   input: z.object({ id: z.string().min(1), patch: routinePatchSchema }),
-  entities: () => [{ kind: "teammateList" as const }],
+  entities: (_input, result: TeammateRoutine) => [
+    { kind: "teammate" as const, id: result.teammateId },
+  ],
   run: async (ctx, { id, patch }): Promise<TeammateRoutine> => {
     await requireRoutine(ctx, id);
     return ctx.db.table("teammateRoutines").update(id, patch);
@@ -113,9 +122,12 @@ export const deleteRoutineOp = defineOperation({
   name: "teammates.routines.delete",
   capability: "edit",
   input: z.object({ id: z.string().min(1) }),
-  entities: () => [{ kind: "teammateList" as const }],
-  run: async (ctx, { id }): Promise<void> => {
+  entities: (_input, result: TeammateRoutine) => [
+    { kind: "teammate" as const, id: result.teammateId },
+  ],
+  run: async (ctx, { id }): Promise<TeammateRoutine> => {
     const routine = await requireRoutine(ctx, id);
     await ctx.db.table("teammateRoutines").delete(routine.id);
+    return routine;
   },
 });

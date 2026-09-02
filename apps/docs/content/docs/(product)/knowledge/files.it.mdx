@@ -17,6 +17,20 @@ Ciele memorizza il file originale ed estrae il testo supportato per
 l'ingestione. Lo stato Source mostra se l'estrazione e l'indicizzazione sono
 state completate.
 
+## File rifiutati da Ciele
+
+Prima di leggere un documento, Ciele controlla il contenuto del file, non solo
+il nome. Rifiuta:
+
+- un file il cui contenuto non corrisponde alla sua estensione, ad esempio una
+  pagina HTML denominata `.pdf`
+- un programma, qualunque sia il nome del file
+- un file Office che contiene un progetto macro o un oggetto incorporato
+- un PDF con più di 2000 pagine
+
+Salva il documento senza macro o oggetti incorporati, oppure suddividi un PDF
+lungo e caricalo di nuovo.
+
 ## Aggiungi testo incollato
 
 Utilizza una Fonte di testo per contenuti brevi che non richiedono un file
@@ -35,7 +49,7 @@ visitatori.
 Elimina la vecchia Fonte prima di fare affidamento su una sostituzione. Quindi
 conferma che la nuova Fonte sia **Ready** e produca citazioni corrette.
 
-L'eliminazione di una fonte rimuove i suoi concetti dal grafo della conoscenza
+L'eliminazione della fonte rimuove i suoi concetti dal grafo della conoscenza
 attivo e dall'indice di ricerca.
 
 ## Rimuovere rispetto a eliminare
@@ -43,15 +57,15 @@ attivo e dall'indice di ricerca.
 Una Source di file può rispondere per più di un Assistente. L'editor Assistant
 offre quindi due operazioni.
 
-- **Remove from this Assistant** elimina un link. Gli altri Assistenti
-  mantengono il file.
+- **Remove from this Assistant** elimina un collegamento. Gli altri Assistenti
+  conservano il file.
 - **Delete** rimuove la Sorgente per ogni Assistente collegato. La conferma
-  assegna un nome a ciascuno di essi.
+  indica il nome di ciascuno.
 
 Quando solo questo Assistente risponde dal file, l'editor lo elimina
 direttamente.
 
-## Fornisci al Visitatore il file originale
+## Consegna il file originale al Visitatore
 
 Attiva **Direct access** nella [Libreria](/knowledge/library) per consentire
 all'Assistente di allegare il file originale alla sua citazione. L'impostazione

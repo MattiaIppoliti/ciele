@@ -1,0 +1,60 @@
+---
+title: Datenspeicherung
+description: Legen Sie fest, wie lange Gespräche und Reasoning-Traces aufbewahrt werden, und halten Sie ein Gespräch zurück.
+---
+
+Eine Organisation legt zwei Aufbewahrungszeiträume in **Settings** auf der
+Registerkarte **General** fest. Beide sind standardmäßig deaktiviert: Nichts
+wird gelöscht, bis ein Administrator ein Zeitfenster auswählt.
+
+## Die beiden Zeitfenster
+
+| Einstellung | Was die nächtliche Bereinigung nach Ablauf des Zeitfensters macht |
+| --- | --- |
+| **Reasoning trace retention** | Entfernt das Thinking-Panel aus alten Nachrichten. Die Nachrichten bleiben erhalten. |
+| **Conversation retention** | Löscht die gesamte Konversation, einschließlich des Transkripts. |
+
+Die beiden Fenster sind unabhängig voneinander. Eine Organisation kann eines der
+beiden, beide oder keines der beiden festlegen. Behalten Sie beispielsweise
+Transkripte ein Jahr lang, entfernen Sie aber nach 30 Tagen die Spuren der
+Argumentation.
+
+Ein Sweep wird einmal pro Nacht ausgeführt. Er wendet jedes Fenster auf
+Konversationen an, die älter als dieses Fenster sind. Der Sweep ist dauerhaft:
+Eine gelöschte Konversation wird nicht in einen Papierkorb verschoben.
+
+<Callout type="warn" title="Conversation retention deletes data">
+After the window, the conversation is gone from the Inbox, from exports, and from Insights history. Export what you must keep before you shorten the window.
+</Callout>
+
+## Legen Sie ein Zeitfenster fest
+
+1. Öffnen Sie **Settings**.
+2. Bleiben Sie auf der Registerkarte **General**.
+3. Wählen Sie ein Fenster unter **Reasoning trace retention** oder
+   **Conversation retention**.
+4. Wählen Sie **Save changes**.
+
+Nur ein Mitglied, das Mitglieder verwalten kann, kann diese Einstellungen
+ändern.
+
+## Gesetzliche Aufbewahrungspflicht
+
+Eine gesetzliche Aufbewahrungspflicht schließt eine Konversation von der
+Löschung aller Konversationen aus. Verwenden Sie diese Option, wenn für eine
+Konversation eine Aufbewahrungspflicht besteht, ohne die Aufbewahrung für alle
+anderen Konversationen zu deaktivieren.
+
+1. Öffnen Sie **Inbox** und wählen Sie die Konversation aus.
+2. Öffnen Sie das Detailfenster.
+3. Wählen Sie **Place legal hold** auf der Karte **Retention**.
+
+Die Sperre bleibt bestehen, bis ein Mitglied **Release legal hold** auswählt.
+Jedes Mitglied sieht den Sperrstatus. Nur ein Mitglied, das Mitglieder verwalten
+kann, kann eine Sperre setzen oder aufheben.
+
+## Selbst gehostete Installationen
+
+Der nächtliche Sweep wird vom mitgelieferten Scheduler ausgeführt. Es ist keine
+zusätzliche Konfiguration erforderlich. Der Sweep ruft
+`/api/cron/sweep-retention` mit dem Anmeldeinformationssatz `CRON_SECRET` auf.

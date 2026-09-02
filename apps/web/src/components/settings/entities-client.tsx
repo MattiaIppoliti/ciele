@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import type { Entity } from "@agent-hub/core";
 import { toast } from "sonner";
 import { Badge, Button, Card } from "@agent-hub/ui";
@@ -23,7 +22,6 @@ export function EntitiesClient({
   entities: EntityWithCount[];
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
@@ -57,7 +55,6 @@ export function EntitiesClient({
         open={createOpen}
         onClose={() => {
           setCreateOpen(false);
-          router.refresh();
         }}
       />
     </div>
@@ -71,7 +68,6 @@ function EntityCard({
   entity: EntityWithCount;
   canEdit: boolean;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [importOpen, setImportOpen] = useState(false);
   const [recordsOpen, setRecordsOpen] = useState(false);
@@ -79,16 +75,11 @@ function EntityCard({
   const [syncOpen, setSyncOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const closeAndRefresh = (close: (open: boolean) => void) => {
-    close(false);
-    router.refresh();
-  };
   const remove = () =>
     startTransition(async () => {
       try {
         await deleteEntityAction(entity.id);
         toast.success(`Deleted “${entity.name}” and its records.`);
-        router.refresh();
       } catch {
         toast.error("Couldn't delete the entity. Please try again.");
       }
@@ -128,10 +119,26 @@ function EntityCard({
         </div>
       </div>
 
-      <EntityImportDialog entity={entity} open={importOpen} onClose={() => closeAndRefresh(setImportOpen)} />
-      <EntityRecordsDialog entity={entity} open={recordsOpen} onClose={() => setRecordsOpen(false)} />
-      <EditEntityDialog entity={entity} open={editOpen} onClose={() => closeAndRefresh(setEditOpen)} />
-      <EntitySyncDialog entity={entity} open={syncOpen} onClose={() => closeAndRefresh(setSyncOpen)} />
+      <EntityImportDialog
+        entity={entity}
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+      />
+      <EntityRecordsDialog
+        entity={entity}
+        open={recordsOpen}
+        onClose={() => setRecordsOpen(false)}
+      />
+      <EditEntityDialog
+        entity={entity}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+      />
+      <EntitySyncDialog
+        entity={entity}
+        open={syncOpen}
+        onClose={() => setSyncOpen(false)}
+      />
     </Card>
   );
 }
