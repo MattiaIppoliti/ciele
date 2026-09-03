@@ -16,11 +16,27 @@
 -- runs there as well; the self-host stack additionally sets
 -- PGRST_DB_AGGREGATES_ENABLED on the rest container (see
 -- deploy/docker-compose.yml). Re-running it is a no-op.
+--
+-- Guarded on privilege too (#810, bring-your-own Postgres). `pgrst.*` is a
+-- placeholder GUC, and stock Postgres lets only a superuser, or a role granted
+-- SET on that parameter, write one onto a role. The image allows it through
+-- supautils; a managed Postgres (Azure, RDS, Cloud SQL, Neon) has neither, so
+-- the statement is refused there and, unguarded, stopped the whole chain at
+-- this file. The compose passes the same option to PostgREST as an environment
+-- variable, so on refusal the right outcome is a NOTICE and a completed
+-- migration, not a dead install. (Edited after it was applied to the hosted
+-- project: the ledger row is already recorded there, so this file only ever
+-- runs again on an empty database, which is exactly where the guard matters.
+-- Same reasoning as the baseline-file exception in supabase/CLAUDE.md.)
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'authenticator') then
-    execute 'alter role authenticator set pgrst.db_aggregates_enabled = ''true''';
-    perform pg_notify('pgrst', 'reload config');
+    begin
+      execute 'alter role authenticator set pgrst.db_aggregates_enabled = ''true''';
+      perform pg_notify('pgrst', 'reload config');
+    exception when insufficient_privilege then
+      raise notice 'postgrest_aggregates: cannot set pgrst.db_aggregates_enabled on role authenticator here (%). PostgREST reads PGRST_DB_AGGREGATES_ENABLED from its environment instead; the self-host compose sets it.', sqlerrm;
+    end;
   end if;
 end
 $$;

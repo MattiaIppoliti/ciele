@@ -10,6 +10,7 @@
     "desktop",
     "configuration",
     "database",
+    "external-database",
     "workers",
     "---Keep it running---",
     "upgrade",

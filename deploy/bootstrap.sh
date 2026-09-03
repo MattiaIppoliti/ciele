@@ -7,6 +7,13 @@
 #   ./deploy/bootstrap.sh --images vX.Y.Z
 #                                      run published images, no source build
 #   ./deploy/bootstrap.sh --workers    …and the heavy graph + crawler workers
+#   ./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/db
+#                                      run on a managed Postgres you already own
+#                                      (Azure, RDS/Aurora, Cloud SQL/AlloyDB, Neon);
+#                                      the postgres container never starts
+#   ./deploy/bootstrap.sh --database-url … --db-ca ./provider-ca.pem
+#                                      …and verify the server against that CA
+#                                      (verify-full; RDS and Cloud SQL need it)
 #
 # Generates every secret the stack needs (Postgres password, JWT secret and
 # the two API keys signed with it, the encryption key, the cron secret),
@@ -29,12 +36,35 @@ ENV_ONLY=0
 IMAGE_TAG=""
 WORKERS=0
 TLS=0
+DB_URL=""
+DB_CA=""
+# Resolved before the cd below, like $SELF: a relative --db-ca path names a
+# file where the operator stands, not inside deploy/.
+START_DIR="$PWD"
 while [ $# -gt 0 ]; do
   case "$1" in
     --seed) SEED=1 ;;
     --env-only) ENV_ONLY=1 ;;
     --workers) WORKERS=1 ;;
     --tls) TLS=1 ;;
+    --database-url)
+      shift
+      DB_URL="${1:-}"
+      [ -n "$DB_URL" ] || {
+        echo "--database-url needs the admin connection string, e.g. --database-url postgresql://admin:password@host:5432/db" >&2
+        exit 2
+      }
+      ;;
+    --database-url=*) DB_URL="${1#--database-url=}" ;;
+    --db-ca)
+      shift
+      DB_CA="${1:-}"
+      [ -n "$DB_CA" ] || {
+        echo "--db-ca needs the path of the provider's CA bundle (PEM), e.g. --db-ca ./global-bundle.pem" >&2
+        exit 2
+      }
+      ;;
+    --db-ca=*) DB_CA="${1#--db-ca=}" ;;
     --images)
       shift
       IMAGE_TAG="${1:-}"
@@ -192,6 +222,123 @@ if [ "$TLS" = "1" ]; then
   echo "TLS: Caddy will terminate HTTPS for CIELE_DOMAIN and CIELE_SUPABASE_DOMAIN on 80/443."
 fi
 
+# --- external database (#812) ---------------------------------------------------
+#
+# One admin connection string is the whole contract. It is split into the
+# EXTERNAL_DB_* lines the overlay reads, the one password the three service
+# logins share is minted here, and the rest (roles, schemas, helpers,
+# extensions) is the `provision` service's job at `up`. Refusals that need no
+# connection happen now; the ones that do happen in the preflight below,
+# before any container starts.
+db_fail() {
+  echo "Error: $1" >&2
+  [ -z "${2:-}" ] || echo "       $2" >&2
+  exit 2
+}
+
+# Sets db_user db_pass db_host db_port db_name from a postgresql:// URL.
+parse_database_url() {
+  local url="$1" rest userinfo hostpart pathq
+  case "$url" in
+    postgresql://* | postgres://*) ;;
+    *) db_fail "--database-url must be a postgresql:// connection string." ;;
+  esac
+  rest="${url#*://}"
+  # Split at the LAST @: a password with a stray @ then lands in the password
+  # check below (and is refused with the percent-encoding hint) instead of
+  # silently becoming part of the hostname.
+  userinfo="${rest%@*}"
+  [ "$userinfo" != "$rest" ] ||
+    db_fail "--database-url needs the admin login: postgresql://USER:PASSWORD@host:5432/db." \
+      "Use the admin the provider created with the server (Azure admin login, RDS master user, Cloud SQL 'postgres', the Neon console role)."
+  hostpart="${rest##*@}"
+  pathq="${hostpart#*/}"
+  [ "$pathq" != "$hostpart" ] || db_fail "--database-url has no database name: postgresql://user:password@host:5432/DATABASE."
+  hostpart="${hostpart%%/*}"
+  db_user="${userinfo%%:*}"
+  db_pass="${userinfo#*:}"
+  [ "$db_pass" != "$userinfo" ] && [ -n "$db_pass" ] ||
+    db_fail "--database-url has no password: postgresql://user:PASSWORD@host:5432/db."
+  db_host="${hostpart%%:*}"
+  db_port="${hostpart#*:}"
+  [ "$db_port" != "$hostpart" ] || db_port=5432
+  db_name="${pathq%%\?*}"
+  [ -n "$db_host" ] && [ -n "$db_name" ] || db_fail "--database-url is missing its host or database name."
+  # Hosted Supabase first: its pooler host would otherwise match the generic
+  # pooler pattern and get the less useful message.
+  case "$db_host" in
+    db.*.supabase.co | *.pooler.supabase.com)
+      db_fail "'$db_host' is a hosted Supabase project." \
+        "Its roles already exist with passwords you do not hold, and its own GoTrue/PostgREST/Storage own the auth and storage schemas. Point the app at that project instead of running these containers against it."
+      ;;
+    *-pooler.* | *.pooler.* | *pgbouncer*)
+      db_fail "'$db_host' looks like a connection pooler." \
+        "PostgREST and storage-api hold a LISTEN connection and GoTrue relies on the role's search_path; none of that survives transaction pooling. Use the direct endpoint (Neon: drop '-pooler' from the host)."
+      ;;
+  esac
+  case "$url" in
+    *sslmode=disable*) db_fail "sslmode=disable is not supported." "Every managed provider offers TLS and most require it; drop the parameter (the stack uses sslmode=require) or use --db-ca for verify-full." ;;
+  esac
+  # The parts are re-assembled into compose URLs by plain interpolation, so a
+  # character that ends a URL component would silently truncate the string.
+  # Percent-encoding passes through untouched (libpq decodes it).
+  case "$db_pass$db_user" in
+    *[@:/\#?\ ]*) db_fail "the user or password in --database-url contains one of @ : / # ? or a space." "Percent-encode it (%40 for @, %3A for :, %2F for /, %23 for #, %3F for ?, %20 for space) or set a simpler admin password." ;;
+  esac
+}
+
+if [ -n "$DB_URL" ]; then
+  parse_database_url "$DB_URL"
+  listed "$overlays" docker-compose.external-db.yml ||
+    overlays="$overlays:docker-compose.external-db.yml"
+  # The admin's coordinates are a choice the caller is re-making, so they are
+  # overwritten; the shared service password is a secret, minted once.
+  replace_var EXTERNAL_DB_HOST "$db_host"
+  replace_var EXTERNAL_DB_PORT "$db_port"
+  replace_var EXTERNAL_DB_NAME "$db_name"
+  replace_var EXTERNAL_DB_ADMIN_USER "$db_user"
+  replace_var EXTERNAL_DB_ADMIN_PASSWORD "$db_pass"
+  set_var EXTERNAL_DB_SERVICE_PASSWORD "$(random_secret)"
+  echo "External database: ${db_host}:${db_port}/${db_name} as ${db_user}; the postgres container will not start."
+fi
+
+# --db-ca (#814): one CA bundle, delivered to every consumer. GoTrue, PostgREST,
+# psql (provision and the applier) read `sslrootcert=` from the URL; storage-api
+# is Node and reads NODE_EXTRA_CA_CERTS. The overlay mounts the file at one
+# path inside every container and derives both from EXTERNAL_DB_CA_FILE, so
+# this only has to copy the bundle beside the compose files and flip the mode.
+if [ -n "$DB_CA" ]; then
+  listed "$overlays" docker-compose.external-db.yml ||
+    db_fail "--db-ca only makes sense with an external database." "Pass --database-url in the same run, or run it first."
+  case "$DB_CA" in /*) ca_src="$DB_CA" ;; *) ca_src="$START_DIR/$DB_CA" ;; esac
+  [ -f "$ca_src" ] || db_fail "--db-ca: '$DB_CA' is not a file."
+  grep -q 'BEGIN CERTIFICATE' "$ca_src" ||
+    db_fail "--db-ca: '$DB_CA' does not look like a PEM certificate bundle." \
+      "RDS: https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem. Cloud SQL: the instance's server-ca.pem. Azure: DigiCert Global Root G2 + Microsoft RSA Root CA 2017 concatenated."
+  mkdir -p external-db
+  cp "$ca_src" external-db/db-ca.pem
+  chmod 644 external-db/db-ca.pem
+  replace_var EXTERNAL_DB_CA_FILE ./external-db/db-ca.pem
+  replace_var EXTERNAL_DB_SSLMODE verify-full
+  echo "Database TLS: verify-full against $(grep -c 'BEGIN CERTIFICATE' external-db/db-ca.pem) certificate(s) from ${DB_CA}."
+fi
+
+# In image mode the provision service must pull the published migrate image
+# (it is the same image with a second entrypoint) rather than build it, which
+# would need the whole checkout. Decided from what .env ends up saying, so the
+# two switches may arrive in either order or in separate runs.
+if listed "$overlays" docker-compose.external-db.yml; then
+  if listed "$overlays" docker-compose.images.yml; then
+    registry=$(grep -E '^CIELE_IMAGE_REGISTRY=' "$ENV_FILE" | cut -d= -f2- || true)
+    tag=$(grep -E '^CIELE_IMAGE_TAG=' "$ENV_FILE" | cut -d= -f2- || true)
+    replace_var CIELE_PROVISION_IMAGE "${registry:-ghcr.io/mattiaippoliti/ciele}/migrate:${tag}"
+    replace_var CIELE_PROVISION_PULL_POLICY always
+  else
+    replace_var CIELE_PROVISION_IMAGE ""
+    replace_var CIELE_PROVISION_PULL_POLICY ""
+  fi
+fi
+
 [ "$overlays" = "$overlays_before" ] || replace_var COMPOSE_FILE "$overlays"
 
 # Which overlays are on is whatever .env says, whether this run set them or a
@@ -229,6 +376,19 @@ if [ "$SEED" = "1" ]; then
   echo "The sanitized demo seed will be loaded after migrations."
 fi
 
+# Preflight the external database before anything else starts: version,
+# extensions, privileges, connection budget, TLS, each refusal one actionable
+# line. The provision service in check-only mode is what runs it, so the
+# checks and the provisioning can never disagree about what they need.
+external_db=0
+case "$(compose_files)" in *docker-compose.external-db.yml*) external_db=1 ;; esac
+if [ "$external_db" = "1" ]; then
+  echo "Checking the external database…"
+  # shellcheck disable=SC2046,SC2086
+  compose --env-file "$ENV_FILE" $(compose_files) run --rm $(build_flag) \
+    -e PROVISION_MODE=preflight provision
+fi
+
 if [ -z "$(build_flag)" ]; then
   echo "Pulling published images and starting the stack…"
 else
@@ -240,12 +400,18 @@ compose --env-file "$ENV_FILE" $(compose_files) up -d $(build_flag)
 app_port=$(grep -E '^APP_PORT=' "$ENV_FILE" | cut -d= -f2)
 app_port="${app_port:-3000}"
 
+if [ "$external_db" = "1" ]; then
+  database_line="$(grep -E '^EXTERNAL_DB_HOST=' "$ENV_FILE" | cut -d= -f2-)/$(grep -E '^EXTERNAL_DB_NAME=' "$ENV_FILE" | cut -d= -f2-) (your Postgres; auth, data API and storage run here against it)"
+else
+  database_line="the Supabase OSS stack, in this compose project only"
+fi
+
 cat <<EOF
 
 Ciele is starting.
 
   App        http://localhost:${app_port}
-  Database   the Supabase OSS stack, in this compose project only
+  Database   ${database_line}
 
 The first account you sign up becomes the owner of its organization. Set
 PLATFORM_OWNER_EMAIL in deploy/.env before signing up if that account should

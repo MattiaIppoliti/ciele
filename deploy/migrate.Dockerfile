@@ -18,7 +18,11 @@ COPY supabase/migrations supabase/migrations
 COPY supabase/migrations-baseline.txt supabase/migrations-baseline.txt
 COPY supabase/seed.sql supabase/seed.sql
 COPY deploy/migrate-entrypoint.sh /usr/local/bin/migrate-entrypoint.sh
+# The external-database mode (#811) runs this same image once more, as the
+# `provision` service, with the other entrypoint: same psql, same repo layout.
+COPY deploy/external-db/provision.sql deploy/external-db/provision.sql
+COPY deploy/provision-entrypoint.sh /usr/local/bin/provision-entrypoint.sh
 
-RUN chmod +x scripts/apply-migrations.sh /usr/local/bin/migrate-entrypoint.sh
+RUN chmod +x scripts/apply-migrations.sh /usr/local/bin/migrate-entrypoint.sh /usr/local/bin/provision-entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/migrate-entrypoint.sh"]

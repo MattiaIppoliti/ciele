@@ -38,3 +38,8 @@ plans/**/.plan-url
 
 test-results/
 playwright-report/
+
+# The provider CA bundle bootstrap --db-ca copies beside the compose files (deploy/external-db/no-ca.pem is the committed placeholder).
+deploy/external-db/db-ca.pem
+
+!deploy/external-db/no-ca.pem

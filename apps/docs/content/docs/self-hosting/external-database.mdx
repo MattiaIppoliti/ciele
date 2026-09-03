@@ -1,0 +1,92 @@
+---
+title: External database
+description: Run the stack on a managed Postgres you already own.
+---
+
+By default the Compose stack runs its own Postgres container. You can run the same stack on a managed Postgres instead. The `postgres` container then never starts. Authentication, the data API, storage and the migration runner connect to your database.
+
+**Tested** on every release: a plain Postgres 16 with pgvector, in the continuous integration replay of the whole migration chain.
+
+**Expected to work**, from the provider documentation:
+
+- Azure Database for PostgreSQL Flexible Server
+- Amazon RDS for PostgreSQL and Amazon Aurora PostgreSQL
+- Google Cloud SQL for PostgreSQL and AlloyDB
+- Neon
+
+Any other Postgres that meets the requirements below also works. Report your result on the issue tracker so the list can move a provider to **tested**.
+
+## Requirements
+
+| Requirement | Reason |
+| --- | --- |
+| Postgres **16** or newer | On Postgres 15 only a superuser can create a role that bypasses row-level security. Managed providers do not give you a superuser. |
+| An admin login that holds `BYPASSRLS` | Ciele's service role must bypass row-level security. The admin logins of the providers above hold this attribute on Postgres 16. |
+| The `vector` and `pg_trgm` extensions | Knowledge search uses both. On Azure, add `vector,pg_trgm` to the `azure.extensions` server parameter first. |
+| The admin owns the database | Postgres gives the `public` schema to the database owner. Use the login that created the database. |
+| The **direct** hostname | Do not use a connection pooler hostname. The data API and storage hold a listening connection that pooling does not support. |
+| About 25 connections | The smallest Cloud SQL tier allows 25 connections in total. Select a larger tier. Neon Free, Azure B1ms and RDS t4g.micro are sufficient. |
+| TLS | Every connection uses `sslmode=require`. Providers with a private certificate authority need `--db-ca`, see below. |
+
+## Connect the stack
+
+Pass the admin connection string to the bootstrap script:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname
+```
+
+The script writes the `EXTERNAL_DB_*` settings and the `docker-compose.external-db.yml` overlay into `deploy/.env`. It creates one password for the three service logins. It then checks the database before it starts a container: the Postgres version, the two extensions, the admin privileges, the connection limit, and TLS. Each failed check prints one line that tells you what to change.
+
+The script refuses a pooler hostname, a hosted Supabase project, `sslmode=disable`, and a password with characters that a connection string cannot carry. Percent-encode such characters, or set a simpler admin password.
+
+On start, a one-shot `provision` service prepares the database as the admin. It creates the roles, the `auth`, `storage` and `extensions` schemas, the authentication helper functions, default privileges, and the two extensions. The service runs again on every start and changes nothing when the database is ready.
+
+The `--database-url` option combines with `--images`, `--workers` and `--tls`. Re-run the script with a new connection string to point the stack at a different database. The service password is kept.
+
+## Verify the certificate
+
+Providers with a private certificate authority need the bundle for full verification:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname --db-ca ./bundle.pem
+```
+
+The script copies the bundle to `deploy/external-db/db-ca.pem` and sets `sslmode=verify-full`. Every service then verifies the server against that bundle.
+
+| Provider | Bundle |
+| --- | --- |
+| Amazon RDS and Aurora | The global bundle from `truststore.pki.rds.amazonaws.com`, or the regional bundle |
+| Google Cloud SQL | The `server-ca.pem` file of the instance |
+| Azure | DigiCert Global Root G2 and Microsoft RSA Root CA 2017, in one file |
+| Neon | Not required. The server uses a public root. |
+
+## Provider notes
+
+### Neon
+
+Create the project in an EU region on Postgres 16 or newer. Copy the **direct** connection string, not the `-pooler` one. The Free plan suspends the compute after five idle minutes. The first request after a pause takes a few seconds while the services reconnect.
+
+### Azure Database for PostgreSQL Flexible Server
+
+Create the server on Postgres 16 or newer. Add `vector,pg_trgm` to the `azure.extensions` server parameter before you run the bootstrap script. Use the admin login you set at creation. Add your host's IP address to the firewall rules.
+
+### Amazon RDS and Aurora
+
+Use the master user. Download the certificate bundle and pass it with `--db-ca`. Allow your host in the security group. Aurora versions before 17 do not force TLS. The stack still uses TLS.
+
+### Google Cloud SQL and AlloyDB
+
+Use the `postgres` user. Select at least the `db-g1-small` tier on Cloud SQL. Download `server-ca.pem` from the instance and pass it with `--db-ca`. Add your host's public IP address to the authorized networks.
+
+### Hosted Supabase
+
+A hosted Supabase project cannot be the database under these containers. Its service roles exist with passwords you do not hold, and its own services own the `auth` and `storage` schemas. Point the application at that project instead, and do not run the `db` profile.
+
+## Backups
+
+The provider keeps the database backups. Uploaded files stay in the `storage-data` volume on your host. Back up the volume together with the database. Restore both to the same point in time. See [Database](/self-hosting/database) for the volume commands.
+
+## Upgrade
+
+Upgrades work as described in [Upgrade](/self-hosting/upgrade). The `migrate` service applies pending migrations to your database. The `provision` service runs first and confirms the roles and schemas.

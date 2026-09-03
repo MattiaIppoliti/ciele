@@ -40,8 +40,13 @@ Rules that follow from that:
   file through `20260710220000_compost.sql` is in `migrations-baseline.txt`, recorded and never run)
   may be edited to make an empty-database replay correct, because no fix-forward file can reach a
   failure that happens mid-chain. Two precedents: 0018 gained an existence **guard** around its
-  `join_demo_org` grants, and 0025–0028 became documented **no-ops**. Anything outside that baseline
-  is append-only, full stop.
+  `join_demo_org` grants, and 0025–0028 became documented **no-ops**. The same reasoning covers one
+  more shape, and only this one: a file already **recorded in the live project's ledger** whose
+  statement can only fail on a database that is not the `supabase/postgres` image, because the
+  failure is again mid-chain on an empty replay and unreachable by fix-forward. Third precedent:
+  `20260902090000_postgrest_aggregates.sql` gained an `insufficient_privilege` guard for the
+  bring-your-own Postgres mode (#810); the edit is behaviourally invisible everywhere the file has
+  already run. Anything else is append-only, full stop.
 
 ## What gates a migration on a PR
 
@@ -104,10 +109,15 @@ including the four findings deliberately left alone.
   pgrst.db_aggregates_enabled = 'true'` and notifies `pgrst`, guarded on the role existing so the
   chain still applies to the pglite harness, the one database in the chain's life that has no
   `authenticator` (the migrations gate and the self-host stack boot the `supabase/postgres`
-  image, which ships the role, so the alter-role branch runs there). The self-host stack also
+  image, which ships the role, so the alter-role branch runs there). Guarded on privilege too
+  (#810): `pgrst.*` is a placeholder GUC that stock Postgres lets only a superuser write onto a
+  role, so on a managed Postgres (the bring-your-own database mode) the statement is refused and
+  the migration logs a notice instead of stopping the chain. The self-host stack also
   sets `PGRST_DB_AGGREGATES_ENABLED` on the rest container, which PostgREST reads at start, and
-  `deploy/compose.test.mjs` asserts it. Reach for a new aggregate only when you have checked
-  both are still in place.
+  `deploy/compose.test.mjs` asserts it; on an external database that variable is the only thing
+  turning aggregates on. Reach for a new aggregate only when you have checked both are still in
+  place. The applier itself ends every run with `NOTIFY pgrst, 'reload schema'`: the image's
+  event triggers used to do that after each DDL, and nothing else does on any other Postgres.
 - A rule about *which column* changed cannot be a policy, which sees a row. That is a trigger; see
   `20260824120000_teammate_channels.sql` (the channel manage rule) and
   `20260823170000_teammate_routine_cap.sql` (a count over sibling rows).

@@ -30,6 +30,8 @@ this step: each build pins the images matching its own version.
 
 The `migrate` service applies only pending migrations. Inspect its result before you accept the application as healthy.
 
+With an [external database](/self-hosting/external-database), the same command applies the pending migrations to your managed Postgres. The `provision` service runs first and confirms the roles and schemas. Take a provider snapshot before the upgrade.
+
 ```bash
 docker compose -f deploy/docker-compose.yml ps
 docker compose -f deploy/docker-compose.yml logs migrate

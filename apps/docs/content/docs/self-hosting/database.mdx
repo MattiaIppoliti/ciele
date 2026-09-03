@@ -5,6 +5,8 @@ description: Operate the current Postgres and Supabase data services.
 
 Ciele uses Postgres with pgvector. The Compose `db` profile also runs authentication, PostgREST, storage, and one gateway.
 
+You can replace the Postgres container with a managed Postgres you already own. See [External database](/self-hosting/external-database). The other services stay the same.
+
 ## Apply migrations
 
 The one-shot `migrate` service applies pending SQL migrations and creates required storage buckets. The application starts after this service succeeds.
@@ -26,6 +28,8 @@ pnpm db:status
 The `postgres-data` volume contains the database. The `storage-data` volume contains uploaded objects.
 
 Back up both volumes for a complete data copy. Test restoration before you depend on a backup process.
+
+With an [external database](/self-hosting/external-database), the provider keeps the database backups. The `storage-data` volume still lives on your host. Back up the volume together with the database, and restore both to the same point in time.
 
 <Callout type="warn" title="Volume deletion removes data">
 `docker compose -f deploy/docker-compose.yml down -v` deletes the database and uploaded-file volumes. Use it only for an intentional reset.

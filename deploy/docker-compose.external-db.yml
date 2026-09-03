@@ -1,0 +1,148 @@
+# External database: run the stack on a managed Postgres you already own
+# (Azure Database for PostgreSQL, AWS RDS / Aurora, GCP Cloud SQL / AlloyDB,
+# Neon, or any Postgres 16+ with pgvector) instead of the `postgres` container.
+#
+# An *overlay*, never used on its own. Turn it on from `.env`:
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.external-db.yml
+#   EXTERNAL_DB_HOST=ep-xxx.eu-central-1.aws.neon.tech   # the DIRECT host
+#   EXTERNAL_DB_PORT=5432
+#   EXTERNAL_DB_NAME=neondb
+#   EXTERNAL_DB_ADMIN_USER=neondb_owner                  # the provider's admin login
+#   EXTERNAL_DB_ADMIN_PASSWORD=...
+#   EXTERNAL_DB_SERVICE_PASSWORD=<openssl rand -hex 32>  # shared by the three service logins
+#
+# or `./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/db`,
+# which writes those lines for you and runs a preflight first.
+#
+# What changes, and nothing else:
+#
+#   * `postgres` never starts. An overlay cannot delete a service, so it is
+#     moved into a profile nobody activates (needs Docker Compose >= 2.24 for
+#     the `!override` / `!reset` tags), and every `depends_on` that pointed at
+#     it is rewritten below.
+#   * A one-shot `provision` service (the migrate image, a different entrypoint)
+#     runs first, as the provider's admin, and recreates what the
+#     supabase/postgres image used to bake in at first init: the roles
+#     (anon, authenticated, service_role, authenticator, the two service
+#     owners, a NOLOGIN `postgres` GoTrue's grant migration names), the
+#     `auth` / `storage` / `extensions` schemas with their owners, the
+#     `auth.uid()` helpers every RLS policy calls, default privileges for the
+#     applier, the applier's memberships, and the vector + pg_trgm extensions.
+#     GoTrue and storage-api wait for it; the applier waits for them, as before.
+#     It refuses, before anything else starts, a server below 16 or an admin
+#     that cannot create a BYPASSRLS role: see deploy/external-db/provision.sql.
+#   * GoTrue, PostgREST, storage-api and the applier connect to the external
+#     host over TLS (`sslmode=require`), always to the DIRECT endpoint: PostgREST
+#     and storage-api hold a LISTEN connection and GoTrue's migrations lean on
+#     the role's search_path, none of which survives a transaction pooler.
+#   * Pools are capped for small managed tiers, and storage-api's role installer
+#     is off: the provisioner owns role creation, and the installer's
+#     `create role ... bypassrls` has no IF NOT EXISTS.
+#
+# The `data` network still exists for the four containers that speak to the
+# database; it is just empty of Postgres now, and egress to the external host
+# goes out through the Docker bridge like any other outbound connection.
+
+services:
+  postgres:
+    profiles: !override [external-db-disabled]
+
+  provision:
+    profiles: [db]
+    build:
+      context: ..
+      dockerfile: deploy/migrate.Dockerfile
+    # In image mode bootstrap points this at the published migrate image and
+    # sets the pull policy to `always`; from source, `build` always rebuilds.
+    image: ${CIELE_PROVISION_IMAGE:-ciele-provision}
+    pull_policy: ${CIELE_PROVISION_PULL_POLICY:-build}
+    entrypoint: ["/usr/local/bin/provision-entrypoint.sh"]
+    restart: "no"
+    networks: [data]
+    # One CA bundle for every consumer (#814): `--db-ca` copies it to
+    # external-db/db-ca.pem and sets EXTERNAL_DB_CA_FILE; that one variable
+    # adds `sslrootcert=` to every URL above (libpq, pgx, psql) and
+    # NODE_EXTRA_CA_CERTS on storage-api (Node). Unset, a never-read
+    # placeholder is mounted, because a bind mount needs a path that exists.
+    volumes:
+      - ${EXTERNAL_DB_CA_FILE:-./external-db/no-ca.pem}:/certs/db-ca.pem:ro
+    environment:
+      PROVISION_DB_URL: postgresql://${EXTERNAL_DB_ADMIN_USER:?set EXTERNAL_DB_ADMIN_USER, the provider admin login}:${EXTERNAL_DB_ADMIN_PASSWORD:?set EXTERNAL_DB_ADMIN_PASSWORD}@${EXTERNAL_DB_HOST:?set EXTERNAL_DB_HOST to the database's DIRECT hostname}:${EXTERNAL_DB_PORT:-5432}/${EXTERNAL_DB_NAME:?set EXTERNAL_DB_NAME}?sslmode=${EXTERNAL_DB_SSLMODE:-require}${EXTERNAL_DB_CA_FILE:+&sslrootcert=/certs/db-ca.pem}
+      PROVISION_SERVICE_PASSWORD: ${EXTERNAL_DB_SERVICE_PASSWORD:?set EXTERNAL_DB_SERVICE_PASSWORD, one password for the three service logins}
+
+  auth:
+    depends_on: !override
+      provision:
+        condition: service_completed_successfully
+    environment:
+      GOTRUE_DB_DATABASE_URL: postgresql://supabase_auth_admin:${EXTERNAL_DB_SERVICE_PASSWORD}@${EXTERNAL_DB_HOST}:${EXTERNAL_DB_PORT:-5432}/${EXTERNAL_DB_NAME}?sslmode=${EXTERNAL_DB_SSLMODE:-require}${EXTERNAL_DB_CA_FILE:+&sslrootcert=/certs/db-ca.pem}
+      # Default is 0 = unlimited; a capped tier wants a ceiling.
+      GOTRUE_DB_MAX_POOL_SIZE: "10"
+    volumes:
+      - ${EXTERNAL_DB_CA_FILE:-./external-db/no-ca.pem}:/certs/db-ca.pem:ro
+
+  rest:
+    depends_on: !override
+      provision:
+        condition: service_completed_successfully
+    environment:
+      PGRST_DB_URI: postgresql://authenticator:${EXTERNAL_DB_SERVICE_PASSWORD}@${EXTERNAL_DB_HOST}:${EXTERNAL_DB_PORT:-5432}/${EXTERNAL_DB_NAME}?sslmode=${EXTERNAL_DB_SSLMODE:-require}${EXTERNAL_DB_CA_FILE:+&sslrootcert=/certs/db-ca.pem}
+      PGRST_DB_POOL: "5"
+    volumes:
+      - ${EXTERNAL_DB_CA_FILE:-./external-db/no-ca.pem}:/certs/db-ca.pem:ro
+
+  storage:
+    depends_on: !override
+      provision:
+        condition: service_completed_successfully
+      rest:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://supabase_storage_admin:${EXTERNAL_DB_SERVICE_PASSWORD}@${EXTERNAL_DB_HOST}:${EXTERNAL_DB_PORT:-5432}/${EXTERNAL_DB_NAME}?sslmode=${EXTERNAL_DB_SSLMODE:-require}${EXTERNAL_DB_CA_FILE:+&sslrootcert=/certs/db-ca.pem}
+      DATABASE_MAX_CONNECTIONS: "5"
+      # Roles come from `provision`. The installer would run
+      # `create role service_role ... bypassrls` (superuser-only, no IF NOT
+      # EXISTS) and fail on the second boot even where the first succeeded.
+      DB_INSTALL_ROLES: "false"
+      # With the installer off nothing transfers ownership, so the owner of
+      # storage.* is whoever connects. Name it, so later grants agree.
+      DB_SUPER_USER: supabase_storage_admin
+      # storage-api builds its own TLS options rather than taking sslrootcert=
+      # from the URL, so the CA reaches Node through its trust store instead.
+      # Empty when no CA was given, which Node treats as unset.
+      NODE_EXTRA_CA_CERTS: ${EXTERNAL_DB_CA_FILE:+/certs/db-ca.pem}
+    volumes:
+      # The base file's storage-data volume stays (a merged list, not a replacement).
+      - ${EXTERNAL_DB_CA_FILE:-./external-db/no-ca.pem}:/certs/db-ca.pem:ro
+
+  migrate:
+    depends_on: !override
+      provision:
+        condition: service_completed_successfully
+      auth:
+        condition: service_started
+      storage:
+        condition: service_started
+    environment:
+      # The applier connects as the provider admin: `provision` made it a
+      # member of both service owners, which `create policy` on
+      # storage.objects and the triggers on auth.users need.
+      SUPABASE_DB_URL: postgresql://${EXTERNAL_DB_ADMIN_USER}:${EXTERNAL_DB_ADMIN_PASSWORD}@${EXTERNAL_DB_HOST}:${EXTERNAL_DB_PORT:-5432}/${EXTERNAL_DB_NAME}?sslmode=${EXTERNAL_DB_SSLMODE:-require}${EXTERNAL_DB_CA_FILE:+&sslrootcert=/certs/db-ca.pem}
+    volumes:
+      - ${EXTERNAL_DB_CA_FILE:-./external-db/no-ca.pem}:/certs/db-ca.pem:ro
+
+  # The opt-in database console follows the database.
+  studio:
+    depends_on: !reset []
+  meta:
+    depends_on: !override
+      provision:
+        condition: service_completed_successfully
+    environment:
+      PG_META_DB_HOST: ${EXTERNAL_DB_HOST}
+      PG_META_DB_PORT: ${EXTERNAL_DB_PORT:-5432}
+      PG_META_DB_NAME: ${EXTERNAL_DB_NAME}
+      PG_META_DB_USER: ${EXTERNAL_DB_ADMIN_USER}
+      PG_META_DB_PASSWORD: ${EXTERNAL_DB_ADMIN_PASSWORD}
+      PG_META_DB_SSL_MODE: ${EXTERNAL_DB_SSLMODE:-require}

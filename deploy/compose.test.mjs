@@ -12,7 +12,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHmac } from "node:crypto";
-import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
@@ -671,8 +671,17 @@ check("bootstrap fills in every generated secret the compose files require", () 
   // exception is an account credential nothing can mint locally: the graph
   // worker's LLM key. Everything else, including the workers' own shared
   // secrets, is a random string this stack invents for itself.
-  const cannotBeMinted = ["GRAPH_LLM_API_KEY", "CIELE_IMAGE_TAG"];
-  const required = [compose, workersOverlay, imagesOverlay].flatMap((file) =>
+  // …and the coordinates of a database the operator already owns, which
+  // `--database-url` copies in rather than invents.
+  const cannotBeMinted = [
+    "GRAPH_LLM_API_KEY",
+    "CIELE_IMAGE_TAG",
+    "EXTERNAL_DB_HOST",
+    "EXTERNAL_DB_NAME",
+    "EXTERNAL_DB_ADMIN_USER",
+    "EXTERNAL_DB_ADMIN_PASSWORD",
+  ];
+  const required = [compose, workersOverlay, imagesOverlay, read("docker-compose.external-db.yml")].flatMap((file) =>
     [...file.matchAll(/\$\{([A-Z][A-Z0-9_]*):\?/g)].map((m) => m[1])
   );
   const missing = [...new Set(required)]
@@ -842,5 +851,290 @@ try {
 } finally {
   rmSync(tmpOverlays, { recursive: true, force: true });
 }
+
+// --- external database (#811) ------------------------------------------------
+//
+// The overlay swaps the `postgres` container for a managed Postgres. What must
+// hold: postgres really is off, a provisioning step runs before any service
+// connects, every database URL points at the external host, the applier still
+// waits for GoTrue and storage-api, and the base file is untouched.
+
+const externalDbOverlay = read("docker-compose.external-db.yml");
+const externalDbSection = (name) =>
+  new RegExp(`^ {2}${name}:$([\\s\\S]*?)(?=^ {2}[a-z]|^[a-z]|$(?![\\s\\S]))`, "m").exec(externalDbOverlay)?.[1];
+
+check("the external-db overlay changes no network membership", () => {
+  // Reachability is network membership (the base file's zone map is asserted
+  // above). The overlay re-points URLs and adds one service on `data`; it
+  // must not move anything else, or the default-deny policy would silently
+  // differ between the two modes.
+  assert.deepEqual(serviceNetworks(externalDbOverlay), {
+    postgres: null,
+    provision: ["data"],
+    auth: null,
+    rest: null,
+    storage: null,
+    migrate: null,
+    studio: null,
+    meta: null,
+  });
+});
+
+check("the external-db overlay parks postgres in a profile nobody activates", () => {
+  // An overlay cannot delete a service; `!override` replaces the profile list
+  // wholesale (a plain `profiles:` would *merge* with `db` and postgres would
+  // still start).
+  assert.match(
+    externalDbSection("postgres"),
+    /^ {4}profiles: !override \[external-db-disabled\]$/m,
+    "postgres must be moved out of the db profile with !override, not merged"
+  );
+  assert.doesNotMatch(envExample, /^COMPOSE_PROFILES=.*external-db-disabled/m);
+});
+
+check("provisioning runs before anything connects to the external database", () => {
+  const provision = externalDbSection("provision");
+  assert.ok(provision, "the overlay must define a provision service");
+  assert.match(provision, /^ {4}profiles: \[db\]$/m, "provision belongs to the db profile like the services it gates");
+  assert.match(provision, /dockerfile: deploy\/migrate\.Dockerfile/, "provision reuses the migrate image");
+  assert.match(provision, /entrypoint: \["\/usr\/local\/bin\/provision-entrypoint\.sh"\]/);
+  assert.match(provision, /^ {4}networks: \[data\]$/m, "provision speaks only to the database");
+  for (const service of ["auth", "rest", "storage", "migrate", "meta"]) {
+    assert.match(
+      externalDbSection(service),
+      /^ {4}depends_on: !override\n {6}provision:\n {8}condition: service_completed_successfully/m,
+      `${service} must wait for provision to complete (and drop its dependency on postgres)`
+    );
+  }
+  // The applier still waits for the two services that own auth.users and
+  // storage.buckets; the base file's WAIT_FOR_TABLES does the rest.
+  assert.match(externalDbSection("migrate"), /^ {6}auth:\n {8}condition: service_started/m);
+  assert.match(externalDbSection("migrate"), /^ {6}storage:\n {8}condition: service_started/m);
+  assert.match(externalDbSection("studio"), /^ {4}depends_on: !reset \[\]$/m);
+});
+
+check("every database URL in the overlay points at the external host, over TLS", () => {
+  const urls = [...externalDbOverlay.matchAll(/^ {6}([A-Z_]+): (postgresql:\/\/[^\n]+)$/gm)];
+  const names = urls.map((m) => m[1]).sort();
+  assert.deepEqual(names, [
+    "DATABASE_URL",
+    "GOTRUE_DB_DATABASE_URL",
+    "PGRST_DB_URI",
+    "PROVISION_DB_URL",
+    "SUPABASE_DB_URL",
+  ]);
+  for (const [, name, url] of urls) {
+    assert.match(url, /@\$\{EXTERNAL_DB_HOST[^}]*\}:\$\{EXTERNAL_DB_PORT:-5432\}\/\$\{EXTERNAL_DB_NAME[^}]*\}/, `${name} must use the EXTERNAL_DB_* host, port and name`);
+    assert.match(
+      url,
+      /\?sslmode=\$\{EXTERNAL_DB_SSLMODE:-require\}\$\{EXTERNAL_DB_CA_FILE:\+&sslrootcert=\/certs\/db-ca\.pem\}$/,
+      `${name} must carry sslmode (default require) and, only with a CA file, sslrootcert`
+    );
+    assert.doesNotMatch(url, /@postgres:5432/, `${name} still points at the postgres container`);
+  }
+  // Provision and the applier connect as the admin; the services as their own
+  // logins with the one shared service password.
+  assert.match(externalDbSection("provision"), /PROVISION_DB_URL: postgresql:\/\/\$\{EXTERNAL_DB_ADMIN_USER:\?/);
+  assert.match(externalDbSection("migrate"), /SUPABASE_DB_URL: postgresql:\/\/\$\{EXTERNAL_DB_ADMIN_USER\}/);
+  assert.match(externalDbSection("auth"), /postgresql:\/\/supabase_auth_admin:\$\{EXTERNAL_DB_SERVICE_PASSWORD\}@/);
+  assert.match(externalDbSection("rest"), /postgresql:\/\/authenticator:\$\{EXTERNAL_DB_SERVICE_PASSWORD\}@/);
+  assert.match(externalDbSection("storage"), /postgresql:\/\/supabase_storage_admin:\$\{EXTERNAL_DB_SERVICE_PASSWORD\}@/);
+});
+
+check("storage-api's role installer is off and its owner role is named", () => {
+  // The installer runs `create role service_role ... bypassrls` with no IF NOT
+  // EXISTS: superuser-only on stock Postgres, and a failure on the second boot
+  // even where the first passed. Provision owns the roles.
+  const storage = externalDbSection("storage");
+  assert.match(storage, /^ {6}DB_INSTALL_ROLES: "false"$/m);
+  assert.match(storage, /^ {6}DB_SUPER_USER: supabase_storage_admin$/m);
+});
+
+check("the external-db overlay caps every pool for small managed tiers", () => {
+  assert.match(externalDbSection("auth"), /^ {6}GOTRUE_DB_MAX_POOL_SIZE: "\d+"$/m, "GoTrue's default pool is unbounded");
+  assert.match(externalDbSection("rest"), /^ {6}PGRST_DB_POOL: "\d+"$/m);
+  assert.match(externalDbSection("storage"), /^ {6}DATABASE_MAX_CONNECTIONS: "\d+"$/m);
+});
+
+check("the external-db overlay refuses to start without its inputs", () => {
+  // Same rule as the workers: the `:?` form names the missing variable instead
+  // of connecting to an empty hostname. Affordable only because this is an
+  // overlay nothing interpolates until an operator lists it.
+  for (const variable of [
+    "EXTERNAL_DB_HOST",
+    "EXTERNAL_DB_NAME",
+    "EXTERNAL_DB_ADMIN_USER",
+    "EXTERNAL_DB_ADMIN_PASSWORD",
+    "EXTERNAL_DB_SERVICE_PASSWORD",
+  ]) {
+    assert.match(
+      externalDbOverlay,
+      new RegExp(`\\$\\{${variable}:\\?[^}]+\\}`),
+      `${variable} must use \${${variable}:?message} somewhere in the overlay`
+    );
+    assert.match(envExample, new RegExp(`^${variable}=`, "m"), `${variable} must be documented in .env.example`);
+  }
+  assert.match(envExample, /docker-compose\.external-db\.yml/, ".env.example must name the external-db overlay");
+});
+
+check("the base file knows nothing about the external database", () => {
+  assert.doesNotMatch(compose, /EXTERNAL_DB_/, "the base file must not read EXTERNAL_DB_*; the overlay is the switch");
+  assert.doesNotMatch(compose, /^ {2}provision:$/m, "provision lives in the overlay only");
+  // The migrate image carries both entrypoints, so the overlay needs no second image.
+  const dockerfile = read("migrate.Dockerfile");
+  assert.match(dockerfile, /COPY deploy\/external-db\/provision\.sql/);
+  assert.match(dockerfile, /COPY deploy\/provision-entrypoint\.sh \/usr\/local\/bin\/provision-entrypoint\.sh/);
+});
+
+// `--database-url` is the whole user-facing contract (#812): one admin URL in,
+// the EXTERNAL_DB_* lines and the overlay out, a minted service password, and
+// the image-mode wiring for the provision service. Run the real script.
+const tmpExternal = mkdtempSync(path.join(tmpdir(), "ciele-external-db-"));
+try {
+  copyFileSync(path.join(here, "bootstrap.sh"), path.join(tmpExternal, "bootstrap.sh"));
+  copyFileSync(path.join(here, ".env.example"), path.join(tmpExternal, ".env.example"));
+  const run = (...args) =>
+    execFileSync("bash", ["bootstrap.sh", "--env-only", ...args], {
+      cwd: tmpExternal,
+      stdio: "pipe",
+    });
+  const envNow = () => parseEnv(readFileSync(path.join(tmpExternal, ".env"), "utf8"));
+  const refused = (...args) => {
+    try {
+      run(...args);
+    } catch (err) {
+      return String(err.stderr);
+    }
+    assert.fail(`bootstrap accepted ${args.join(" ")}`);
+  };
+
+  check("--database-url splits the admin URL into the overlay's inputs and mints the service password", () => {
+    run("--database-url", "postgresql://ciele_admin:s3cret@db.example.test:5433/cieledb?sslmode=require");
+    const env = envNow();
+    assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.external-db.yml");
+    assert.equal(env.EXTERNAL_DB_HOST, "db.example.test");
+    assert.equal(env.EXTERNAL_DB_PORT, "5433");
+    assert.equal(env.EXTERNAL_DB_NAME, "cieledb");
+    assert.equal(env.EXTERNAL_DB_ADMIN_USER, "ciele_admin");
+    assert.equal(env.EXTERNAL_DB_ADMIN_PASSWORD, "s3cret");
+    assert.match(env.EXTERNAL_DB_SERVICE_PASSWORD, /^[0-9a-f]{64}$/);
+    assert.notEqual(env.EXTERNAL_DB_SERVICE_PASSWORD, env.POSTGRES_PASSWORD);
+    // From source: the provision service builds; nothing points it at a registry.
+    assert.equal(env.CIELE_PROVISION_IMAGE, "");
+    assert.equal(env.CIELE_PROVISION_PULL_POLICY, "");
+  });
+
+  check("the port defaults to 5432 and a new URL replaces the coordinates but never the minted password", () => {
+    const before = envNow();
+    run("--database-url=postgres://other_admin:password@ep-cool.eu-central-1.aws.neon.tech/neondb");
+    const env = envNow();
+    assert.equal(env.EXTERNAL_DB_HOST, "ep-cool.eu-central-1.aws.neon.tech");
+    assert.equal(env.EXTERNAL_DB_PORT, "5432");
+    assert.equal(env.EXTERNAL_DB_NAME, "neondb");
+    assert.equal(env.EXTERNAL_DB_ADMIN_USER, "other_admin");
+    assert.equal(env.EXTERNAL_DB_SERVICE_PASSWORD, before.EXTERNAL_DB_SERVICE_PASSWORD, "the service logins already use it");
+    assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.external-db.yml", "the overlay is listed once");
+  });
+
+  check("adding --images points the provision service at the published migrate image", () => {
+    run("--images", "v9.9.9");
+    const env = envNow();
+    assert.equal(env.COMPOSE_FILE, "docker-compose.yml:docker-compose.external-db.yml:docker-compose.images.yml");
+    assert.equal(env.CIELE_PROVISION_IMAGE, "ghcr.io/mattiaippoliti/ciele/migrate:v9.9.9");
+    assert.equal(env.CIELE_PROVISION_PULL_POLICY, "always");
+  });
+
+  check("--db-ca copies the bundle beside the compose files and switches to verify-full (#814)", () => {
+    const bundle = path.join(tmpExternal, "provider-ca.pem");
+    const fakeCert = "-----BEGIN CERTIFICATE-----\nMIIBfake\n-----END CERTIFICATE-----\n";
+    writeFileSync(bundle, fakeCert + fakeCert);
+    run("--db-ca", "provider-ca.pem");
+    const env = envNow();
+    assert.equal(env.EXTERNAL_DB_SSLMODE, "verify-full");
+    assert.equal(env.EXTERNAL_DB_CA_FILE, "./external-db/db-ca.pem");
+    assert.equal(
+      readFileSync(path.join(tmpExternal, "external-db", "db-ca.pem"), "utf8"),
+      fakeCert + fakeCert,
+      "the bundle must be copied verbatim (two roots in, two roots out)"
+    );
+    // Not a PEM: refused before anything is copied.
+    writeFileSync(path.join(tmpExternal, "not-a-cert.txt"), "hello");
+    assert.match(refused("--db-ca", "not-a-cert.txt"), /PEM/);
+    assert.match(refused("--db-ca", "missing.pem"), /not a file/);
+  });
+
+  check("bootstrap refuses, before any container, the URLs the stack cannot run on", () => {
+    // Each refusal names the problem: the operator gets a sentence, not a
+    // crash-looping container ten minutes later.
+    assert.match(refused("--database-url", "postgresql://a:password@ep-x-pooler.eu-central-1.aws.neon.tech/db"), /pooler/);
+    assert.match(refused("--database-url", "postgresql://postgres:password@db.abcdefgh.supabase.co:5432/postgres"), /hosted Supabase project/);
+    assert.match(refused("--database-url", "postgresql://a:password@host/db?sslmode=disable"), /sslmode=disable/);
+    assert.match(refused("--database-url", "postgresql://a@host/db"), /password/);
+    assert.match(refused("--database-url", "postgresql://a:password@host"), /database name/);
+    assert.match(refused("--database-url", "mysql://a:b@host/db"), /postgresql:\/\//);
+    assert.match(refused("--database-url", "postgresql://a:password@word@host/db"), /Percent-encode/);
+  });
+} finally {
+  rmSync(tmpExternal, { recursive: true, force: true });
+}
+
+check("one CA variable reaches every database client in the external-db overlay (#814)", () => {
+  // Five containers open a connection: provision, auth, rest, storage and the
+  // applier. Each mounts the same file at the same path; the URL consumers get
+  // sslrootcert= from the `:+` expansion and the Node one gets
+  // NODE_EXTRA_CA_CERTS. A client left out would fail verify-full alone, late.
+  for (const service of ["provision", "auth", "rest", "storage", "migrate"]) {
+    assert.match(
+      externalDbSection(service),
+      /^ {6}- \$\{EXTERNAL_DB_CA_FILE:-\.\/external-db\/no-ca\.pem\}:\/certs\/db-ca\.pem:ro$/m,
+      `${service} must mount the CA bundle read-only at /certs/db-ca.pem`
+    );
+  }
+  assert.match(externalDbSection("storage"), /^ {6}NODE_EXTRA_CA_CERTS: \$\{EXTERNAL_DB_CA_FILE:\+\/certs\/db-ca\.pem\}$/m);
+  // The placeholder the mount falls back to must exist, or `up` fails on a
+  // missing host path the moment nobody passed --db-ca.
+  assert.ok(read("external-db/no-ca.pem").length > 0, "external-db/no-ca.pem must exist");
+  assert.match(envExample, /^EXTERNAL_DB_CA_FILE=$/m);
+});
+
+check("the provisioner enforces what the services silently assume", () => {
+  const sql = read("external-db/provision.sql");
+  const entrypoint = read("provision-entrypoint.sh");
+  // Postgres 16+: below it no non-superuser can create a BYPASSRLS role.
+  assert.match(sql, /server_version_num'\)::int;[\s\S]*?if v < 160000 then[\s\S]*?raise exception/);
+  assert.match(entrypoint, /-lt 160000/);
+  // service_role must end up BYPASSRLS, or the install fails now rather than
+  // serving RLS-gated service-key reads later.
+  assert.match(sql, /create role service_role nologin inherit bypassrls/);
+  assert.match(sql, /alter role service_role bypassrls/);
+  assert.match(sql, /exception when insufficient_privilege then\s+raise exception using\s+message = format\('cannot give role service_role BYPASSRLS/);
+  // Every role the three services and the chain name by hand.
+  for (const role of [
+    "anon",
+    "authenticated",
+    "authenticator",
+    "supabase_auth_admin",
+    "supabase_storage_admin",
+    "postgres",
+  ]) {
+    assert.match(sql, new RegExp(`rolname = '${role}'`), `provision.sql must guard/create role ${role}`);
+  }
+  // GoTrue's search_path trap, the storage owner's membership for set_config('role').
+  assert.match(sql, /alter role supabase_auth_admin set search_path = 'auth'/);
+  assert.match(sql, /grant authenticator to supabase_storage_admin/);
+  // The schemas and helpers the image used to create, owned by the services.
+  assert.match(sql, /create schema if not exists auth authorization supabase_auth_admin/);
+  assert.match(sql, /create schema if not exists storage authorization supabase_storage_admin/);
+  assert.match(sql, /create schema if not exists extensions/);
+  for (const fn of ["uid", "role", "email", "jwt"]) {
+    assert.match(sql, new RegExp(`alter function auth\\.${fn}\\(\\) +owner to supabase_auth_admin`));
+  }
+  // The chain's two extensions, created up front so its own copies are no-ops.
+  assert.match(sql, /create extension if not exists vector;/);
+  assert.match(sql, /create extension if not exists pg_trgm with schema extensions;/);
+  // A pooler hostname or a hosted Supabase project is refused before connecting.
+  assert.match(entrypoint, /\*-pooler\.\*/);
+  assert.match(entrypoint, /db\.\*\.supabase\.co/);
+});
 
 console.log(`\n${passed} checks passed.`);

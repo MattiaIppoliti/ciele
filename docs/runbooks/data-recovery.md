@@ -50,6 +50,31 @@ Do not treat a copy of the live `postgres-data` directory as a portable backup.
 Use `pg_dump`, a tested filesystem snapshot, or physical backup tooling built
 for the running Postgres version.
 
+## Self-hosted Compose on an external database
+
+With `--database-url` (ADR-0022) there is no `postgres` container. The database
+backup is the provider's: enable automated backups or point-in-time recovery on
+the Azure / RDS / Cloud SQL / Neon side, and take a manual snapshot before every
+upgrade. The uploaded files are **not** in that backup: storage-api keeps them
+in the `storage-data` volume on the Docker host, and the two are one dataset.
+`storage.objects` rows without a file are 404s; files without a row are
+invisible forever. Neither side reconciles the other.
+
+So:
+
+1. Archive the `storage-data` volume on the same cadence as the provider's
+   restore points, and record which restore point each archive pairs with.
+2. For a logical copy, run `pg_dump` against the external host from any machine
+   with `psql` (the migrate image has it):
+   `docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.external-db.yml run --rm --entrypoint pg_dump migrate "$SUPABASE_DB_URL" --format=custom --no-owner`.
+3. Restore the database to a new database on the provider, restore the volume
+   archive that pairs with it, then run `./deploy/bootstrap.sh --database-url`
+   against the new database: the `provision` service is idempotent and only
+   confirms roles and schemas that the dump already carries.
+4. The host is now the single point of failure for the files. A lost host with
+   an intact database is a data loss the database cannot detect; treat the
+   volume archive as the primary backup of the files, not a convenience.
+
 ## Monthly restore drill
 
 1. Create an isolated environment with the same Postgres major version as

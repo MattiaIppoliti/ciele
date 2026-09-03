@@ -134,6 +134,14 @@ if compgen -G "$EE_MIGRATIONS_DIR/*.sql" > /dev/null; then
   apply_dir "$EE_MIGRATIONS_DIR"
 fi
 
+# Tell PostgREST the schema may have changed. The supabase/postgres image
+# installs event triggers (pgrst_ddl_watch / pgrst_drop_watch) that NOTIFY on
+# every DDL; stock Postgres has none, CREATE EVENT TRIGGER is superuser-only,
+# so on any other database PostgREST served a stale schema cache after a
+# migration until someone restarted it (#810). One NOTIFY covers both, and
+# PostgREST ignores it when nothing changed. Unconditional on purpose: a run
+# that applied nothing still confirms the cache and the chain agree.
+"${PSQL[@]}" -c "notify pgrst, 'reload schema';"
 if [[ $pending -eq 0 ]]; then
   echo "No pending migrations."
 else

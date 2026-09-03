@@ -43,8 +43,55 @@ assistants) so you can see a populated product before adding your own.
 Realtime, Edge Functions, Analytics and Kong are not started; Ciele does not
 use them.
 
-Two things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
-prebuilt images and the heavy workers. Both are covered below.
+Three things are not profiles but **overlay files**, listed in `COMPOSE_FILE`:
+prebuilt images, the heavy workers, and an external database. All three are
+covered below.
+
+## Bring your own Postgres
+
+If your institution already runs a managed Postgres you would rather keep
+Ciele's data in, point the stack at it and the `postgres` container never
+starts:
+
+```sh
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname
+```
+
+The URL is the **admin login the provider created with the server** (the
+Azure admin user, the RDS master user, Cloud SQL's `postgres`, a Neon console
+role) on the **direct** hostname, never a pooler. Bootstrap splits it into the
+`EXTERNAL_DB_*` lines of `deploy/.env`, mints the one password the three
+service logins share, lists `docker-compose.external-db.yml` in `COMPOSE_FILE`,
+and runs a preflight before starting anything: Postgres 16 or newer, `vector`
+and `pg_trgm` available, an admin that can create roles, enough connections
+for the stack, TLS accepted. Each failure is one line saying what to change.
+
+On `up`, a one-shot `provision` service (the migrate image with a second
+entrypoint) recreates as that admin what the `supabase/postgres` image used to
+bake in: the roles, the `auth` / `storage` / `extensions` schemas, the
+`auth.uid()` helpers, default privileges, the two extensions. GoTrue,
+PostgREST, storage-api and the migration applier then run against your
+database exactly as they run against the container. Re-running `up` re-runs
+provisioning; it is idempotent.
+
+What it needs from the provider, and why:
+
+| Requirement | Reason |
+|---|---|
+| Postgres **16+** | On 15 only a superuser may create a `BYPASSRLS` role, and no managed provider gives you one |
+| An admin that holds **`BYPASSRLS`** | `service_role` must bypass row-level security; the service key's reads assume it. Azure 16+, Neon and the RDS/Aurora/Cloud SQL/AlloyDB master users qualify |
+| `vector` + `pg_trgm` creatable | Azure: add both to the `azure.extensions` server parameter first. RDS: the master user creates `vector`. Elsewhere the admin can |
+| The admin **owns the database** | Postgres 15+ gives the `public` schema to the database owner; the chain creates every table there |
+| The **direct** endpoint, TLS on | PostgREST and storage-api hold a `LISTEN` connection; GoTrue's migrations rely on the role's `search_path`. Neither survives transaction pooling. Every URL uses `sslmode=require`; `--db-ca <file>` upgrades to `verify-full` |
+| ~25 connections at peak | Cloud SQL `db-f1-micro` allows 25 in total; pick `db-g1-small` or larger. Neon Free, Azure B1ms and RDS t4g.micro are fine |
+
+Works with `--images` (the provision service pulls the published migrate image)
+and `--workers`. Uploaded files still live in the local `storage-data` volume:
+back it up together with the provider's database backups, they are one
+dataset. A hosted Supabase project cannot be the database *under* these
+containers (its roles exist with passwords you do not hold); point the app at
+such a project instead, with no `db` profile. Decision record:
+[`docs/adr/0022-self-host-database-pluggable-postgres.md`](../docs/adr/0022-self-host-database-pluggable-postgres.md).
 
 ## Prebuilt images instead of a source build
 
