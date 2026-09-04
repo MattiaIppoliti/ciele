@@ -21,7 +21,7 @@ import { createPortal } from "react-dom";
 import { EASE_DRAWER, SPRING_THROW } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 import { sheetReleaseFor } from "./projection";
-import { haptic } from "@/lib/haptics";
+import { haptic } from "@agent-hub/ui/feedback";
 
 // Vaul-style glide for the *arrival*: a long, fully-damped tween reads smoother
 // than a spring on open, no settle/overshoot, just one clean decel. Same curve

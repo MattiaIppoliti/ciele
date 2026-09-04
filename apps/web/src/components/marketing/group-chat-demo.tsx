@@ -365,6 +365,7 @@ export function GroupChatDemo({ className }: { className?: string }) {
     <div
       ref={frameRef}
       aria-hidden
+      data-foley-silent=""
       inert
       className={cn("mx-auto w-full max-w-3xl", className)}
     >

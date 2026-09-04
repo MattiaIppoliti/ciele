@@ -6,6 +6,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import { useFeedback } from "@agent-hub/ui/feedback";
 import { bridge, navigate } from "../lib/bridge";
 import { Button, Card, Field, Input, TitleBar } from "../components/ui";
 import { DEFAULT_SAAS_BASE_URL, type AppState } from "../../shared/state";
@@ -14,6 +15,7 @@ export function SettingsScreen({ state }: { state: AppState }): ReactNode {
   const [value, setValue] = useState(state.settings.saasBaseUrl);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const { muted, setMuted } = useFeedback();
 
   const save = async () => {
     setError(null);
@@ -68,6 +70,25 @@ export function SettingsScreen({ state }: { state: AppState }): ReactNode {
             </Button>
             {saved ? <span className="text-xs text-accent">Saved</span> : null}
           </div>
+        </Card>
+
+        <Card className="flex flex-col gap-3 p-6">
+          <label className="flex items-center justify-between gap-4 text-sm">
+            <span className="flex flex-col gap-1">
+              <span className="font-medium text-ink">Interface sounds</span>
+              <span className="text-xs text-ink-muted">
+                Soft cues on buttons, switches and outcomes, here and in the console.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="size-4 accent-accent"
+              checked={!muted}
+              data-foley-toggle=""
+              data-testid="sounds-toggle"
+              onChange={(event) => setMuted(!event.target.checked)}
+            />
+          </label>
         </Card>
 
         <Card className="flex flex-col gap-4 p-6">

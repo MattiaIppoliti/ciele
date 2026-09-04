@@ -5,7 +5,7 @@ import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { haptic } from "@/lib/haptics";
+import { haptic } from "@agent-hub/ui/feedback";
 import {
   SWIPE_START,
   maxSwipeFor,

@@ -103,6 +103,11 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
+      // Sound follows the same events as the visual press (see feedback/):
+      // pointerdown plays `press`, pointerup `release`, keyboard activation
+      // `tap`. Attribute-driven so a page gets it by using the primitive.
+      data-foley-press=""
+      data-foley-release=""
       className={cn(
         buttonBase,
         buttonVariantClasses[variant],

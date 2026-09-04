@@ -28,6 +28,7 @@ const bridge: CieleBridge & SetupBridge & StackBridge = {
   setSaasBaseUrl: (url: string) => ipcRenderer.invoke(CHANNELS.setSaasBaseUrl, url),
   dismissUpdate: () => ipcRenderer.invoke(CHANNELS.dismissUpdate),
   openExternal: (url: string) => ipcRenderer.invoke(CHANNELS.openExternal, url),
+  setSoundsMuted: (muted: boolean) => ipcRenderer.invoke(CHANNELS.setSoundsMuted, muted),
 
   setup: {
     getSnapshot: () => ipcRenderer.invoke(SETUP_CHANNELS.getSnapshot),

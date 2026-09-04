@@ -25,7 +25,7 @@ Both builds are unsigned. That means one extra step the first time you open the
 app (below) and no automatic updates. Linux is not part of the beta.
 </Callout>
 
-## Quel chemin choisir
+## Quel chemin choisir ?
 
 | | Se connecter | Utiliser localement |
 | --- | --- | --- |
@@ -79,14 +79,17 @@ contrôle sur l'écran d'accueil, ou avec `⌘,` sur macOS et `Ctrl+,` sur Windo
 Tout ce qui est `http://` ou `https://` fonctionne. L'application conserve
 l'origine et supprime tout chemin d'accès que vous collez avec elle.
 
-**Sign out** efface la session stockée par l'application pour ce serveur :
-cookies, cache et tout le reste. Cela ferme plus que la fenêtre. Sur un
+L'application diffuse les mêmes courts sons d'interface que la console.
+**Interface sounds** dans **Settings** les désactive pour cet ordinateur.
+
+**Sign out** efface la session stockée de l'application pour ce serveur :
+cookies, cache et tout le reste. Elle ferme plus que la fenêtre. Sur un
 ordinateur partagé, c'est ce qu'il faut faire.
 
 Si l'adresse ne se charge pas, l'application l'indique sur son propre écran.
 Elle affiche l'adresse qu'elle a essayée, ce qui a mal fonctionné, ainsi que des
-boutons pour réessayer ou corriger. Vous ne tombez jamais sur une page d'erreur
-de navigateur dans une fenêtre sans barre d'adresse.
+boutons pour réessayer ou corriger. Vous n'atterrissez jamais sur une page
+d'erreur de navigateur dans une fenêtre sans barre d'adresse.
 
 ## Configuration d'un Ciele local
 
@@ -124,15 +127,15 @@ pause-café et non celui d'un après-midi.
 
 ### 4. Démarrez la pile
 
-Lance la base de données, l'application et les tâches planifiées, en mode
-détaché ; elles continuent de s'exécuter après que vous avez quitté Ciele
+Lance la base de données, l'application et les tâches planifiées, de manière
+détachée ; elles continuent de s'exécuter après que vous avez quitté Ciele
 Desktop.
 
 ### 5. Préparation de la base de données
 
 Applique le schéma et attend la réponse de Ciele. « Les conteneurs ont démarré »
-et « Ciele est en service » sont des affirmations différentes, et cette étape
-attend la seconde.
+et « Ciele est en service » sont deux messages différents, et cette étape attend
+le second.
 
 ### 6. Contenu de démonstration (facultatif)
 
@@ -148,12 +151,12 @@ l'adresse est `http://host.docker.internal:11434/v1` : à l'intérieur d'un
 conteneur, `localhost` est le conteneur.
 
 Vous pouvez ignorer cette étape. Sans modèle, les assistants répondent à partir
-du moteur de mots-clés intégré et la recherche dans la base de connaissances se
-contente d'une correspondance lexicale. Tout le reste fonctionne.
+du moteur de mots-clés intégré, et la recherche de connaissances se rabaisse sur
+la correspondance lexicale. Tout le reste fonctionne.
 
 Lorsqu'une étape échoue, le système indique ce qui a échoué et conserve ses
-journaux **Show details**. **Try again** reprend à partir de cette étape au lieu
-de recommencer depuis le début.
+journaux dans **Show details**. **Try again** reprend à partir de cette étape au
+lieu de recommencer depuis le début.
 
 Une fois la configuration terminée, **Open Ciele** charge la console locale. Le
 premier compte que vous créez est propriétaire de l'organisation. Les lancements
@@ -191,7 +194,7 @@ automatiquement une application non signée.
 La mise à jour de l'application fait progresser votre pile locale. Chaque build
 fixe les images de conteneur correspondant à sa propre version, de sorte que la
 prochaine configuration ou le prochain démarrage les récupère et réexécute les
-migrations. Vos données restent à leur emplacement.
+migrations. Vos données restent là où elles sont.
 
 ### Recommencer
 
@@ -213,7 +216,7 @@ le début.
 lancée depuis le Dock ou le menu Démarrer n'hérite pas du `PATH` de votre shell.
 Ciele recherche donc la CLI Docker à l'emplacement où Docker Desktop l'installe.
 Sur macOS, il s'agit des emplacements Homebrew et `/usr/local/bin`. Sous
-Windows, il s'agit du dossier Program Files et du dossier Program individuel de
+Windows, il s'agit du dossier Program Files et du dossier Programs propre à
 chaque utilisateur. Il ne trouvera pas un Docker que vous avez installé
 ailleurs. Sur macOS, un lien symbolique vers `/usr/local/bin` résout ce
 problème.
@@ -226,7 +229,7 @@ mémoire.
 
 **"Impossible de télécharger les images."** L'opération de pull n'a pas pu
 atteindre le registre. Vérifiez votre connexion ou votre proxy, puis appuyez sur
-**Try again**. Aucune tâche en aval ne s'est exécutée, il n'y a donc rien à
+**Try again**. Aucune opération en aval n'a été exécutée ; il n'y a donc rien à
 annuler.
 
 **Assistants answer, but they ignore my knowledge.** Aucun modèle d'intégration
@@ -234,9 +237,9 @@ n'est configuré ; la récupération se fait donc par correspondance de mots-cl�
 Ajoutez un modèle d'intégration dans
 [Configuration](/self-hosting/configuration).
 
-**« Ciele ne s'est pas chargé » lors de la connexion.** L'adresse indiquée dans
-les paramètres ne dessert pas Ciele. L'écran indique ce qui a mal fonctionné.
-Une faute de frappe génère le message « cette adresse n'existe pas ». Un serveur
+**« Ciele n'a pas chargé » lors de la connexion.** L'adresse indiquée dans les
+paramètres ne dessert pas Ciele. L'écran indique ce qui a mal fonctionné. Une
+faute de frappe génère le message « that address does not exist ». Un serveur
 hors service renvoie le message « nothing is listening ». Une adresse qui répond
 sans être Ciele l'indique. **Change address** vous amène directement au
 paramètre.

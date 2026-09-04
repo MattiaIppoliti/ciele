@@ -180,6 +180,7 @@ export function CommandMenu({
           <Search className="text-muted-foreground size-4 shrink-0" />
           <input
             autoFocus
+            data-foley-type=""
             value={query}
             onChange={(e) => handleQueryChange(e.target.value)}
             onKeyDown={onKeyDown}

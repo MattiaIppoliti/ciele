@@ -9,9 +9,11 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from "react";
 import { usePathname } from "next/navigation";
+import { useFeedback } from "@agent-hub/ui/feedback";
 import { CommandMenu } from "@/components/shell/command-menu";
 import {
   assistantIdFromPath,
@@ -160,6 +162,19 @@ export function ShellProvider({
     const stored = parseSnippetTab(window.localStorage.getItem(SNIPPET_TAB_KEY));
     if (stored) dispatchRail({ type: "tab", tab: stored });
   }, []);
+
+  // The right rail is a layer like any other: an occupant arriving plays
+  // `open`, the rail emptying plays `close`; swapping occupants is neither.
+  // Derived from the reducer's state rather than from each dispatcher, because
+  // `toggle` and `claim` only know the outcome after the reducer has run.
+  const { play } = useFeedback();
+  const previousOccupant = useRef(rail.occupant);
+  useEffect(() => {
+    const before = previousOccupant.current;
+    previousOccupant.current = rail.occupant;
+    if (before === null && rail.occupant !== null) play("open");
+    else if (before !== null && rail.occupant === null) play("close");
+  }, [rail.occupant, play]);
 
   // `D` is only meaningful where the page has a programmatic surface at all.
   const pageHasApiDomains = panelDomainsForPath(pathname).length > 0;

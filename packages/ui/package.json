@@ -10,15 +10,18 @@
     ".": "./src/index.ts",
     "./calendar": "./src/calendar.tsx",
     "./use-resizable-width": "./src/use-resizable-width.ts",
-    "./resize-geometry": "./src/resize-geometry.ts"
+    "./resize-geometry": "./src/resize-geometry.ts",
+    "./feedback": "./src/feedback/index.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@foleyjs/core": "2.8.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.23.0",
     "morphicons": "^1.4.1",
     "react-day-picker": "^9.11.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.6.0",
+    "web-haptics": "0.0.6"
   },
   "peerDependencies": {
     "react": "^19",
@@ -26,7 +29,9 @@
   },
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
+    "@types/node": "^20.19.43",
     "@types/react": "^19",
+    "@types/react-dom": "^19.2.3",
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^9.39.4",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

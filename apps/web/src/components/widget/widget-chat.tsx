@@ -7,6 +7,7 @@ import type { QuickReplyButton, WidgetStyle } from "@agent-hub/core";
 import { googleFontHref, resolveWidgetStyle } from "@/lib/widget-style";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
+import { playFeedback } from "@agent-hub/ui/feedback";
 import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
@@ -696,6 +697,10 @@ export function WidgetChat({
     if (!message || pending) return;
     setDraft("");
     setPending(true);
+    // The two moments a Visitor hears (#817): the message going, and the
+    // answer coming back on `done` below. Both mechanical, from the shared
+    // vocabulary, so the widget and the console agree about this exchange.
+    playFeedback("send");
     setMessages((prev) => [
       ...prev,
       { role: "user", text: message, sentAt: new Date().toISOString() },
@@ -731,6 +736,7 @@ export function WidgetChat({
         onDone: ({ conversationId, messageId }) => {
           setConversationId(conversationId);
           updateLastBot((bot) => ({ ...bot, id: messageId }));
+          playFeedback("reply");
         },
       });
     } catch {

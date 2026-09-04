@@ -5,6 +5,7 @@ import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 
 import { cn } from "@/lib/utils";
 import { useSlidingPill } from "@/components/ui/hover-highlight";
+import { useOpenChangeFeedback } from "@agent-hub/ui/feedback";
 import { ChevronRightIcon, CheckIcon } from "lucide-react";
 
 /** Every focusable row kind the sliding highlight pill should track. */
@@ -15,8 +16,15 @@ const MENU_ROW_SELECTOR = [
   '[data-slot="dropdown-menu-sub-trigger"]',
 ].join(",");
 
-function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
-  return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+function DropdownMenu({ onOpenChange, ...props }: MenuPrimitive.Root.Props) {
+  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange);
+  return (
+    <MenuPrimitive.Root
+      data-slot="dropdown-menu"
+      onOpenChange={onOpenChangeWithFeedback}
+      {...props}
+    />
+  );
 }
 
 function DropdownMenuPortal({ ...props }: MenuPrimitive.Portal.Props) {
@@ -141,6 +149,7 @@ function DropdownMenuItem({
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
+      data-foley-click=""
       data-inset={inset}
       data-variant={variant}
       className={cn(

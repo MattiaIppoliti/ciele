@@ -11,6 +11,8 @@ import type {
 } from "@agent-hub/core";
 import { CHANNEL_CHAIN_TURN_CAP } from "@agent-hub/core";
 import { EMPTY_TURN_TRACE, consumeChannelStream } from "@agent-hub/agent/client";
+import { playFeedback } from "@agent-hub/ui/feedback";
+import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { ArrowLeft, Hash, Plus, Settings2, Trash2, UserRoundPlus } from "lucide-react";
 import {
   Button,
@@ -143,6 +145,7 @@ export function ChannelWorkspace({
     const message = text.trim();
     if (!message || pending) return;
     setPending(true);
+    playFeedback("send");
     setMessages((prev) => [
       ...prev,
       {
@@ -203,6 +206,12 @@ export function ChannelWorkspace({
           if (message.authorType === "teammate") {
             updateLastBot((bot) => ({ ...bot, id: message.id }));
           }
+        },
+        // One `reply` per finished Teammate turn in the chain, never per
+        // token; a cap marker is a notice and sounds like nothing.
+        onEvent: (event) => {
+          const cue = chatFeedbackForEvent(event);
+          if (cue) playFeedback(cue);
         },
         errorText: (text) => `⚠️ ${text}`,
       });

@@ -5,10 +5,19 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "./cn"
 import { Button } from "./button"
+import { useOpenChangeFeedback } from "./feedback/provider"
 import { XIcon } from "lucide-react"
 
-function Dialog({ ...props }: DialogPrimitive.Root.Props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+function Dialog({ onOpenChange, ...props }: DialogPrimitive.Root.Props) {
+  // A layer entering plays `pop`, leaving plays `drop` (feedback/).
+  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange)
+  return (
+    <DialogPrimitive.Root
+      data-slot="dialog"
+      onOpenChange={onOpenChangeWithFeedback}
+      {...props}
+    />
+  )
 }
 
 function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {

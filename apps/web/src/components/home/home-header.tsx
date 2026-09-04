@@ -87,6 +87,14 @@ function ThemeToggle() {
       // icon-sm (28px) matches the h-7 of the sm Log in / Get a demo pills.
       size="icon-sm"
       aria-label="Toggle theme"
+      // Dark is the pressed state. The cue is `sweep` rather than on/off
+      // (#817): this control moves the whole sky from day to night, so it
+      // sounds like air travelling, the same either way, and it replaces the
+      // Button's own press/release so one press is one cue.
+      aria-pressed={dark}
+      data-foley-toggle="sweep"
+      data-foley-press={undefined}
+      data-foley-release={undefined}
       className={DARK_CONTROL}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
@@ -308,6 +316,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
                     setMenuState(!menuState);
                   }}
                   aria-label={menuState ? "Close Menu" : "Open Menu"}
+                  data-foley-click={menuState ? "close" : "open"}
                   className="relative z-20 block cursor-pointer p-2.5"
                 >
                   {/* One mark that reshapes open to close: the bars of the
@@ -351,6 +360,7 @@ export function HomeHeader({ scrolled }: { scrolled: boolean }) {
                         }}
                         aria-expanded={openMenu === item.name}
                         aria-haspopup="true"
+                        data-foley-click="tick"
                         onMouseEnter={() => openPanel(item.name)}
                         onFocus={() => openPanel(item.name)}
                         onClick={() =>

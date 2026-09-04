@@ -15,11 +15,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useFeedback } from "@agent-hub/ui/feedback";
 import { bridge, navigate } from "../lib/bridge";
 import { Button, Field, Input } from "../components/ui";
 import { WizardShell } from "../components/wizard-shell";
+import { stepCues } from "../../shared/feedback";
 import type { SetupSnapshot } from "../../shared/setup-ipc";
-import type { StepView } from "../../setup/types";
+import type { StepStatus, StepView } from "../../setup/types";
 
 function StatusIcon({ status }: { status: StepView["status"] }): ReactNode {
   if (status === "running") return <Loader2 className="size-4 animate-spin text-accent" />;
@@ -146,6 +148,17 @@ export function WizardScreen(): ReactNode {
     return bridge().setup.onSnapshot(setSnapshot);
   }, []);
 
+  // A step settling is the wizard's outcome (#817): the check mark and the
+  // success cue arrive together, a failure sounds like a failed toast would.
+  const { play } = useFeedback();
+  const previousStatuses = useRef<StepStatus[] | null>(null);
+  useEffect(() => {
+    if (!snapshot) return;
+    const statuses = snapshot.steps.map((step) => step.status);
+    for (const cue of stepCues(previousStatuses.current, statuses)) play(cue);
+    previousStatuses.current = statuses;
+  }, [snapshot, play]);
+
   // Kick the required chain off as soon as the screen is up. There is nothing
   // to decide before the Docker check, and making the user press Start to
   // begin a check they cannot influence is ceremony.
@@ -192,6 +205,7 @@ export function WizardScreen(): ReactNode {
                 variant="ghost"
                 disabled={viewing === 0}
                 onClick={() => setViewIndex(viewing - 1)}
+                data-foley-click="tick"
                 data-testid="back"
               >
                 <ChevronLeft className="size-4" />
@@ -245,6 +259,7 @@ export function WizardScreen(): ReactNode {
                     onClick={() =>
                       setViewIndex(viewing + 1 >= snapshot.currentIndex ? null : viewing + 1)
                     }
+                    data-foley-click="tick"
                     data-testid="forward"
                   >
                     Forward <ChevronRight className="size-4" />

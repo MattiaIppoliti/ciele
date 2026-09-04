@@ -37,6 +37,13 @@ describe("normalizeBaseUrl", () => {
 });
 
 describe("parseSettings", () => {
+  it("reads the sounds mute and defaults it to sound on", () => {
+    expect(parseSettings({ soundsMuted: true }).soundsMuted).toBe(true);
+    expect(parseSettings({ soundsMuted: "yes" }).soundsMuted).toBe(false);
+    expect(parseSettings({}).soundsMuted).toBe(false);
+    expect(DEFAULT_SETTINGS.soundsMuted).toBe(false);
+  });
+
   it("returns the defaults for anything unusable, so the app still opens", () => {
     for (const raw of [null, undefined, "corrupt", 7, []]) {
       expect(parseSettings(raw)).toEqual(DEFAULT_SETTINGS);
@@ -51,6 +58,7 @@ describe("parseSettings", () => {
       saasBaseUrl: DEFAULT_SAAS_BASE_URL,
       setupComplete: true,
       dismissedUpdate: null,
+      soundsMuted: false,
     });
   });
 

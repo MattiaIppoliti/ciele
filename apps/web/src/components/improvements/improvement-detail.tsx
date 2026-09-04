@@ -39,6 +39,7 @@ import {
 } from "@/app/actions";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
 import { Button } from "@agent-hub/ui";
+import { playFeedback } from "@agent-hub/ui/feedback";
 import { Calendar } from "@/components/ui/calendar";
 import {
   isRedirectError,
@@ -995,6 +996,8 @@ function SuggestedFix({
   const accept = () =>
     startTransition(async () => {
       await acceptImprovementProposalAction(improvementId);
+      // Accepted into Knowledge: an outcome, so the outcome's cue (#817).
+      playFeedback("success");
     });
   const dismiss = () =>
     startTransition(async () => {

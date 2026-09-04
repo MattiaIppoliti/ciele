@@ -118,6 +118,7 @@ export function ThinkingPanel({
         onClick={() => setUserOpen(!userOpen)}
         className="flex min-h-7 w-full items-center gap-2 text-left"
         aria-expanded={open}
+        data-foley-toggle=""
       >
         <span
           className={`inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full border bg-background ${

@@ -96,6 +96,7 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
   return (
     <div
       aria-hidden
+      data-foley-silent=""
       /* Masked at the foot rather than cut: the screen is a window onto a
          product that keeps going, so it dissolves into the page instead of
          ending on a border. The mask takes the border and shadow with it,

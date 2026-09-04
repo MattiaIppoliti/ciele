@@ -3,6 +3,7 @@
 import { MorphIcon } from "morphicons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "./cn";
+import { playFeedback } from "./feedback/runtime";
 
 // Icon data, not components: morphicons samples these paths and springs
 // between them, so the copy mark reshapes into the check. Inlined from
@@ -40,6 +41,8 @@ export function useCopyFeedback<Key>(resetDelay = DEFAULT_RESET_DELAY) {
         await action();
         clearResetTimer();
         setCopiedKey(key);
+        // The check mark and the sound arrive together (feedback/).
+        playFeedback("copy");
         resetTimer.current = setTimeout(() => {
           setCopiedKey(null);
           resetTimer.current = null;

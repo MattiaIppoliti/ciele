@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Alert } from "@agent-hub/core";
 import type { ChannelMention } from "@ciele/ops";
+import { useFeedback } from "@agent-hub/ui/feedback";
 import { NotificationStack } from "@/components/motion/notification-stack";
 import { RIGHT_RAIL_TRANSITION_VAR } from "@/components/shell/right-rail";
 import {
@@ -91,6 +92,27 @@ export function NotificationCenter({
     setNotificationListener(push);
     return () => setNotificationListener(null);
   }, [push]);
+
+  // A new Alert or mention *arriving* while the page is open gets one `chime`
+  // (#817). The initial render is not an arrival, and neither is a re-render
+  // that carries the same ids, so the set of seen ids is the whole rule.
+  const { play } = useFeedback();
+  const seen = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const ids = [
+      ...alerts.map((alert) => `alert:${alert.id}`),
+      // One card per group, so a *new* mention in an already-mentioned group
+      // shows as the same card with a newer `at`; the key carries it.
+      ...mentions.map((mention) => `mention:${mention.channelId}:${mention.at}`),
+    ];
+    if (seen.current === null) {
+      seen.current = new Set(ids);
+      return;
+    }
+    const arrived = ids.some((id) => !seen.current!.has(id));
+    seen.current = new Set(ids);
+    if (arrived) play("arrive");
+  }, [alerts, mentions, play]);
 
   // An event pushed right before unmount must not leave a setTimeout holding
   // this tree alive, so sweep every pending auto-dismiss on the way out.

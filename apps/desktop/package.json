@@ -21,6 +21,7 @@
   "//": "Everything is a devDependency on purpose: electron-vite bundles main, preload and renderer, so the packaged app ships no node_modules at all. A runtime `dependencies` entry would be copied into the asar unused.",
   "devDependencies": {
     "@agent-hub/eslint-config": "workspace:*",
+    "@agent-hub/ui": "workspace:*",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "^4",
     "@types/node": "^20",

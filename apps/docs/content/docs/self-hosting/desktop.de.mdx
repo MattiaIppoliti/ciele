@@ -8,11 +8,11 @@ Ciele Desktop ist eine Anwendung für macOS und Windows, die sich nach Ihrer Wah
 
 - **Sign in to your organization**: Die App öffnet die Konsole Ihrer
   Organisation in einem eigenen Fenster, wobei die Sitzung auch nach einem
-  Neustart bestehen bleibt. Die Adresse ist konfigurierbar, sodass derselbe Pfad
+  Neustart fortbesteht. Die Adresse ist konfigurierbar, sodass derselbe Pfad
   auch zu einem selbst gehosteten Ciele auf Ihrem eigenen Server führt.
 - **Use locally (self-host)**: Eine geführte Einrichtung richtet auf diesem
   Rechner ein komplettes Ciele ein: Datenbank, Migrationen, geplante Jobs und
-  alles Weitere. Sie benötigen kein Terminal, und Docker Desktop ist das
+  alles Weitere. Es wird kein Terminal benötigt, und Docker Desktop ist das
   Einzige, was Sie selbst installieren.
 
 Beide können nebeneinander existieren, und Sie können jederzeit zwischen ihnen
@@ -32,7 +32,7 @@ app (below) and no automatic updates. Linux is not part of the beta.
 | Sie haben ein Ciele-Konto oder einen Server | Ja | |
 | Sie möchten das Produkt testen | | Ja |
 | Einrichtungszeit | Sekunden | Einige Minuten |
-| Wo die Daten gespeichert sind | Auf dem Server | Auf diesem Rechner |
+| Wo sich die Daten befinden | Auf dem Server | Auf diesem Rechner |
 | Bereitstellung von Produktions-Widgets | Ja | Nein: Lokale Widgets dienen zum Testen |
 | Benötigt Docker Desktop | Nein | Ja |
 
@@ -72,7 +72,7 @@ auf die Datei, öffnen Sie **Properties** und aktivieren Sie **Unblock**.
 ## Anmeldung bei Ihrer Organisation
 
 Wählen Sie **Sign in** auf dem Begrüßungsbildschirm. Die App lädt die Konsole
-Ihrer Organisation und merkt sich die Sitzung, sodass Sie beim späteren Start
+Ihrer Organisation und merkt sich die Sitzung, sodass Sie bei späteren Starts
 direkt dorthin gelangen.
 
 Um die App stattdessen auf einen selbst gehosteten Server zu verweisen, öffnen
@@ -81,13 +81,16 @@ Steuersymbol auf dem Begrüßungsbildschirm oder mit `⌘,` unter macOS und `Ctr
 unter Windows. Alles, was `http://` oder `https://` ist, funktioniert. Die App
 behält den Ursprung bei und entfernt jeden Pfad, den Sie damit einfügen.
 
-**Sign out** löscht die in der App gespeicherte Sitzung für diesen Server:
-Cookies, Cache und alles. Es schließt mehr als nur das Fenster. Auf einem
-gemeinsam genutzten Computer ist dies die richtige Vorgehensweise.
+Die App gibt dieselben kurzen Benutzeroberflächentöne wieder wie die Konsole.
+**Interface sounds** in **Settings** schaltet sie für diesen Rechner aus.
+
+**Sign out** löscht die gespeicherte Sitzung der App für diesen Server: Cookies,
+Cache und alles. Es schließt mehr als nur das Fenster. Auf einem gemeinsam
+genutzten Computer ist dies die richtige Vorgehensweise.
 
 Wenn die Adresse nicht geladen wird, zeigt die App dies auf ihrem eigenen
 Bildschirm an. Sie zeigt die Adresse an, die sie versucht hat, was
-schiefgelaufen ist, sowie Schaltflächen, um es erneut zu versuchen oder zu
+schiefgelaufen ist, und Schaltflächen, um es erneut zu versuchen oder zu
 korrigieren. Sie landen niemals auf einer Browser-Fehlerseite in einem Fenster
 ohne Adressleiste.
 
@@ -115,8 +118,7 @@ eine Umgebungsdatei.
 
 Wenn bereits eine Konfiguration vorhanden ist, behält die App diese bei, anstatt
 eine neue zu generieren. Ihre Datenbank ist mit den Secrets versiegelt, die sich
-bereits in diesem Ordner befinden. Neue Secrets würden Sie daran hindern, darauf
-zuzugreifen.
+bereits in diesem Ordner befinden. Neue Secrets würden Sie davon ausschließen.
 
 ### 3. Laden Sie Ciele herunter
 
@@ -130,7 +132,7 @@ nicht den ganzen Nachmittag in Anspruch nimmt.
 Startet die Datenbank, die App und die geplanten Jobs in einem separaten
 Prozess. Sie laufen weiter, nachdem Sie Ciele Desktop beendet haben.
 
-### 5. Vorbereiten der Datenbank
+### 5. Vorbereitung der Datenbank
 
 Wendet das Schema an und wartet auf die Antwort von Ciele. „Die Container wurden
 gestartet“ und „Ciele liefert“ sind unterschiedliche Aussagen, und dieser
@@ -139,8 +141,8 @@ Schritt wartet auf die zweite.
 ### 6. Demo-Inhalte (optional)
 
 Lädt eine Beispielorganisation mit Assistenten, sodass Sie ein bereits befülltes
-Produkt sehen, bevor Sie eigene Inhalte hinzufügen. **Skip** hinterlässt ein
-leeres, aber funktionsfähiges Ciele.
+Produkt sehen, bevor Sie eigene Inhalte hinzufügen. **Skip** hinterlässt Ihnen
+ein leeres, funktionsfähiges Ciele.
 
 ### 7. Verbinden Sie ein KI-Modell (optional)
 
@@ -149,13 +151,13 @@ gehosteten Anbieter. Für [Ollama](https://ollama.com) auf diesem Rechner lautet
 die Adresse `http://host.docker.internal:11434/v1`: innerhalb eines Containers
 ist `localhost` der Container.
 
-Sie können diesen Schritt überspringen. Ohne Modell antworten die Assistenten
-mithilfe der integrierten Schlüsselwort-Engine, und die Wissenssuche greift auf
-lexikalischen Abgleich zurück. Alles andere funktioniert.
+Überspringen ist in Ordnung. Ohne Modell antworten die Assistenten über die
+integrierte Schlüsselwort-Engine, und die Wissenssuche greift auf lexikalischen
+Abgleich zurück. Alles andere funktioniert.
 
-Wenn ein Schritt fehlschlägt, wird angezeigt, was fehlgeschlagen ist, und die
-Protokolle werden in **Show details** gespeichert. **Try again** setzt dann an
-diesem Schritt fort, anstatt von vorne zu beginnen.
+Wenn ein Schritt fehlschlägt, wird angegeben, was fehlgeschlagen ist, und die
+Protokolle werden unter **Show details** gespeichert. **Try again** setzt dann
+an diesem Schritt fort, anstatt von vorne zu beginnen.
 
 Sobald die Einrichtung abgeschlossen ist, lädt **Open Ciele** die lokale
 Konsole. Das erste Konto, das Sie erstellen, ist Eigentümer der Organisation.
@@ -169,13 +171,13 @@ den letzten Schritt des Assistenten, über die Einstellungen oder über das
 bedeutet dort, dass Ciele geantwortet hat, nicht, dass Container existieren.
 
 Das Stoppen ist reversibel und berührt keine Daten. Wenn Sie die App beenden,
-wird der Stack nicht gestoppt. Sie läuft absichtlich getrennt.
+wird der Stack nicht gestoppt. Sie läuft bewusst getrennt.
 
 ### Wo Ihre Daten gespeichert sind
 
 | Was | Wo | Überlebt |
 | --- | --- | --- |
-| Assistenten, Konversationen, Wissen | Docker-Volumes (`ciele_postgres-data`) | Neustarts und Updates der App |
+| Assistenten, Konversationen, Wissen | Docker-Volumes (`ciele_postgres-data`) | App-Neustarts und App-Updates |
 | Hochgeladene Dateien | Docker-Volume (`ciele_storage-data`) | Neustarts und Updates der App |
 | Generierte Konfiguration und Secrets | Der Datenordner der App (angezeigt auf dem Stack-Bildschirm) | App-Updates |
 
@@ -190,9 +192,9 @@ ausblendbaren Hinweis mit einem Download-Link an. Es gibt keine automatische
 Aktualisierung, da keine der Plattformen eine nicht signierte App automatisch
 aktualisiert.
 
-Durch das Aktualisieren der App wird Ihr lokaler Stack weiterentwickelt. Jeder
-Build fixiert die Container-Images, die zu seiner eigenen Version passen, sodass
-das nächste Setup oder der nächste Start diese abruft und die Migrationen erneut
+Durch das Aktualisieren der App wird Ihr lokaler Stack aktualisiert. Jeder Build
+fixiert die Container-Images, die zu seiner eigenen Version passen, sodass das
+nächste Setup oder der nächste Start diese abruft und die Migrationen erneut
 ausführt. Ihre Daten bleiben dort, wo sie sind.
 
 ### Neustart
@@ -215,7 +217,7 @@ ausgeführt.
 Anwendung, die über das Dock oder das Startmenü gestartet wird, übernimmt nicht
 die `PATH` Ihrer Shell. Ciele sucht daher nach der Docker-CLI dort, wo Docker
 Desktop sie installiert. Unter macOS sind dies die Speicherorte Homebrew und
-`/usr/local/bin`. Unter Windows sind dies der Ordner „Programme“ und der
+`/usr/local/bin`. Unter Windows ist dies der Ordner „Programme“ und der
 benutzerdefinierte Ordner „Programme“. Es wird nirgendwo anders einen Docker
 finden, den Sie installiert haben. Unter macOS behebt ein Symlink nach
 `/usr/local/bin` dieses Problem.
@@ -235,12 +237,12 @@ Embedding-Modell konfiguriert, daher greift der Abruf auf den
 Schlüsselwortabgleich zurück. Fügen Sie ein Embedding-Modell in
 [Configuration](/self-hosting/configuration) hinzu.
 
-**„Ciele wurde nicht geladen“ beim Anmelden.** Die Adresse in den Einstellungen
-liefert Ciele nicht. Der Bildschirm benennt, was schiefgelaufen ist. Ein
-Tippfehler führt zu der Meldung „Diese Adresse existiert nicht“. Ein
-ausgeschalteter Server meldet „nothing is listening“. Eine Adresse, die
-antwortet, ohne Ciele zu sein, sagt dies. **Change address** führt Sie direkt
-zur Einstellung.
+**„Ciele wurde nicht geladen“, als ich mich anmelden wollte.** Die Adresse in
+den Einstellungen liefert Ciele nicht. Der Bildschirm benennt, was
+schiefgelaufen ist. Ein Tippfehler führt zu der Meldung „Diese Adresse existiert
+nicht“. Ein ausgeschalteter Server meldet „nothing is listening“. Eine Adresse,
+die antwortet, ohne Ciele zu sein, sagt dies. **Change address** führt Sie
+direkt zur Einstellung.
 
 **macOS meldet, dass die App beschädigt ist oder nicht geöffnet werden kann.**
 Das ist Gatekeeper bei einer nicht signierten App. Klicken Sie mit der rechten

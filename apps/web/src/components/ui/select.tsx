@@ -5,11 +5,20 @@ import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useOpenChangeFeedback } from "@agent-hub/ui/feedback";
 
 function Select<Value = string, Multiple extends boolean | undefined = false>({
+  onOpenChange,
   ...props
 }: SelectPrimitive.Root.Props<Value, Multiple>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange);
+  return (
+    <SelectPrimitive.Root
+      data-slot="select"
+      onOpenChange={onOpenChangeWithFeedback}
+      {...props}
+    />
+  );
 }
 
 function SelectGroup({ ...props }: SelectPrimitive.Group.Props) {
@@ -142,6 +151,7 @@ function SelectItem({
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
+      data-foley-click=""
       className={cn(
         "relative flex w-full cursor-default items-center gap-2 rounded-md py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,

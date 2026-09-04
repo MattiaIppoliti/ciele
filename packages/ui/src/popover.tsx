@@ -3,9 +3,17 @@
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 
 import { cn } from "./cn"
+import { useOpenChangeFeedback } from "./feedback/provider"
 
-function Popover({ ...props }: PopoverPrimitive.Root.Props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+function Popover({ onOpenChange, ...props }: PopoverPrimitive.Root.Props) {
+  const onOpenChangeWithFeedback = useOpenChangeFeedback(onOpenChange)
+  return (
+    <PopoverPrimitive.Root
+      data-slot="popover"
+      onOpenChange={onOpenChangeWithFeedback}
+      {...props}
+    />
+  )
 }
 
 function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {

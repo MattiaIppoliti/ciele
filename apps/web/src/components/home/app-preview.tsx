@@ -102,6 +102,8 @@ export function HomeAppPreview({ compact = false }: { compact?: boolean }) {
     <PreviewIconContext.Provider value={animatedIcon}>
       <CompactContext.Provider value={compact}>
       <div
+        // A drawing of a UI: its fake rows must not sound like real ones.
+        data-foley-silent=""
         onPointerEnter={() => {
           setHovered(true);
           loadAnimatedIcons();

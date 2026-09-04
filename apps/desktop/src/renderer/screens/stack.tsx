@@ -5,10 +5,12 @@
 // Docker, polled while this screen is open.
 
 import { ArrowLeft, ExternalLink, Play, RotateCw, Square } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useFeedback } from "@agent-hub/ui/feedback";
 import { bridge, navigate } from "../lib/bridge";
 import { Button, Card, TitleBar } from "../components/ui";
 import { cn } from "../lib/cn";
+import { stackCue } from "../../shared/feedback";
 import type { StackHealth, StackStatus } from "../../shared/stack";
 
 const HEALTH: Record<StackHealth, { label: string; blurb: string; dot: string }> = {
@@ -41,6 +43,16 @@ export function StackScreen(): ReactNode {
     void bridge().stack.status().then(setStatus);
     return bridge().stack.onStatus(setStatus);
   }, []);
+
+  // The stack coming up is an arrival (#817), the same chime as a new Alert.
+  const { play } = useFeedback();
+  const previousHealth = useRef<StackHealth | null>(null);
+  useEffect(() => {
+    if (!status) return;
+    const cue = stackCue(previousHealth.current, status.health);
+    previousHealth.current = status.health;
+    if (cue) play(cue);
+  }, [status, play]);
 
   if (!status) return <div className="h-full" />;
   const health = HEALTH[status.health];

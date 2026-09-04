@@ -124,6 +124,22 @@ had to be a shared seam rather than a sweep:
   Where the parent owns mounting and `AnimatePresence` does not fit, `components/motion/
   use-exit-transition.ts` holds the unmount open long enough for the exit to play.
 
+**Sound and haptics come from the same seam as press feedback** (`@agent-hub/ui/feedback`, spec
+#817): the shared `Button` carries `data-foley-press`/`-release`, switches and checkboxes carry
+`data-foley-toggle` (bare for on/off, or naming an interaction, `switch`, for a radio option that has
+no off), and code plays the rest through `useFeedback().play(...)` inside a component or
+`playFeedback(...)` from a plain module or an event handler with no tree at hand (the `toast`
+facade, a stream consumer, a drag's release); both are no-ops where no provider is mounted. Never import `@foleyjs/core` or `web-haptics` directly and never call Foley's `bind()`,
+the module has its own binder (it reads `aria-checked`, honours `data-foley-silent` and mute). The
+provider is mounted **per segment**, never in the root layout, so a surface is silent because
+nothing above it mounts one: the two route groups mount it, and `widget/layout.tsx` mounts its own
+for the two chat cues, which leaves the auth pages and anything added later silent by
+construction. `src/lib/feedback-mount.test.ts` asserts all four facts. Inside the widget only
+sending a message and receiving an answer sound, and both are performed in Foley's `mechanical`
+identity, the one exception to the product's `soft`: a Visitor on somebody else's page did not
+choose Ciele, so the bar for adding a cue there is higher than in the console. Decorative mocks and
+demos sit under `data-foley-silent`.
+
 Reduced motion substitutes, it does not delete: the sheet cross-fades instead of sliding, `press`
 swaps its scale for an opacity change. The **animated icon set** (`ciele-animated-icons`, via
 `components/ui/animated-icon`) is deliberately left running under `prefers-reduced-motion` — those

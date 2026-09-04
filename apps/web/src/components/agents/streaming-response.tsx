@@ -214,6 +214,7 @@ export function StreamingResponse({
                   type="button"
                   aria-expanded={currentSourcesOpen}
                   aria-controls={sourcesContentId}
+                  data-foley-toggle=""
                   onClick={() => setSourcesOpen(!currentSourcesOpen)}
                   className="group ml-1 inline-flex min-h-7 items-center gap-2 rounded-md px-1.5 text-xs text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >

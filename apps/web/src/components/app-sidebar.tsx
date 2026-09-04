@@ -29,6 +29,7 @@ import { MorphIcon } from "morphicons/react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { signOutAction, switchOrganizationAction } from "@/app/actions";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { SoundSwitcher } from "@/components/sound-switcher";
 import { Badge } from "@agent-hub/ui";
 import {
   DropdownMenu,
@@ -52,6 +53,7 @@ import {
 } from "@/components/shell/sidebar-drag";
 import { SPRING_PANEL } from "@/lib/ease";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
+import { haptic, playFeedback } from "@agent-hub/ui/feedback";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   GLOBAL_NAV,
@@ -719,6 +721,7 @@ function SidebarContent({
                 Consent belongs to the public site, where the trackers are. */}
             <DropdownMenuSeparator />
             <ThemeSwitcher />
+            <SoundSwitcher />
             {!demo && (
               <DropdownMenuItem onClick={() => signOutAction()}>
                 <LogOut className="size-4" /> Sign out
@@ -863,6 +866,15 @@ export function AppSidebar(props: AppSidebarProps) {
       );
       setWidth(release.width);
       setSidebarDocked(release.docked);
+      // The snap is the felt end of the drag (#817): rail <-> full, or hidden.
+      // Same frame as the visual, same detent the bottom sheet uses.
+      if (
+        !release.docked ||
+        isRailWidth(release.width) !== isRailWidth(widthBeforeDragRef.current)
+      ) {
+        playFeedback("tick");
+        haptic("detent");
+      }
       setArmedToHide(false);
       setDragging(false);
       const id = pointerIdRef.current;

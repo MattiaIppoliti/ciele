@@ -354,6 +354,7 @@ export function TeammateChatDemo({
     <div
       ref={frameRef}
       aria-hidden
+      data-foley-silent=""
       // React 19 boolean `inert`: nothing inside is focusable or clickable.
       inert
       className={cn(

@@ -27,6 +27,8 @@ import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
 import { consumeTurnStream } from "@agent-hub/agent/client";
+import { playFeedback } from "@agent-hub/ui/feedback";
+import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import {
   completeFollowUp,
   initialFollowUpState,
@@ -383,6 +385,7 @@ export function PreviewPanel({
 
   async function executeTurn(message: string) {
     setPending(true);
+    playFeedback("send");
     setMessages((prev) => [
       ...prev,
       { role: "user", text: message, sentAt: new Date().toISOString() },
@@ -438,6 +441,10 @@ export function PreviewPanel({
           conversationIdRef.current = conversationId;
           setConversationId(conversationId);
           updateLastBot((bot) => ({ ...bot, id: messageId }));
+        },
+        onEvent: (event) => {
+          const cue = chatFeedbackForEvent(event);
+          if (cue) playFeedback(cue);
         },
         errorText: (message) => `⚠️ ${message}`,
       });

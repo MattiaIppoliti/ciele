@@ -5,7 +5,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     // TS 7 defaults `types` to []; the @types this workspace depends on are named here.
-    "types": ["react"],
+    "types": ["react", "react-dom", "node"],
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,

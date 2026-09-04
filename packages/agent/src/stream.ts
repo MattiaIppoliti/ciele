@@ -363,6 +363,12 @@ export interface ConsumeTurnOptions<T extends TurnView> {
   onDone?: (done: { conversationId: string; messageId: string | null }) => void;
   /** Renders the fallback text for an `error` event (default: generic). */
   errorText?: (message: string) => string;
+  /**
+   * Every event, raw, before it is applied. A tap for what the fold does not
+   * model and the view does not need to carry: a surface playing a cue when a
+   * tool finishes, a debug console. The runtime stays ignorant of both.
+   */
+  onEvent?: (event: RuntimeEvent) => void;
 }
 
 /**
@@ -384,6 +390,7 @@ export async function consumeTurnStream<T extends TurnView>(
   // transcript for the rest of the session.
   try {
     for await (const event of decodeRuntimeEvents(body)) {
+      options.onEvent?.(event);
       applyTurnEvent(event, options, state);
     }
   } finally {
@@ -583,6 +590,8 @@ export interface ConsumeChannelOptions<T extends TurnView> {
     capped: ChainCapReason | null;
   }) => void;
   errorText?: (message: string) => string;
+  /** Every turn event, raw, before it is applied; see `ConsumeTurnOptions.onEvent`. */
+  onEvent?: (event: RuntimeEvent) => void;
 }
 
 /**
@@ -631,6 +640,7 @@ export async function consumeChannelStream<T extends TurnView>(
           });
           break;
         default:
+          options.onEvent?.(event);
           applyTurnEvent(event, turnOptions(), state);
       }
     }

@@ -24,6 +24,7 @@ export function ThemeSwitcher() {
             role="radio"
             aria-checked={theme === value}
             aria-label={`${label} theme`}
+            data-foley-toggle="switch"
             title={label}
             onClick={() => setTheme(value)}
             className={`flex size-6 items-center justify-center rounded-full transition-colors ${

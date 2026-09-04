@@ -8,6 +8,7 @@ import { TopBar } from "@/components/shell/top-bar";
 import { DeveloperPanelLauncher } from "@/components/developer-panel/developer-panel-launcher";
 import { StaticIcons } from "@/components/ui/animated-icon";
 import { TooltipProvider } from "@agent-hub/ui";
+import { FeedbackProvider } from "@agent-hub/ui/feedback";
 import { requirePageMember } from "@/lib/authz";
 import { runOperation } from "@/lib/operations";
 import { listChannelMentionsOp } from "@ciele/ops";
@@ -60,6 +61,10 @@ export default function AdminLayout({
   return (
     <>
       <ThemeProvider>
+        {/* Interface sounds + haptics (#817). Here and in the marketing
+            layout, never in the root layout: the widget inherits only the
+            root, and that placement is what keeps it silent. */}
+        <FeedbackProvider>
         <TooltipProvider delay={300}>
           <ShellProvider assistants={assistants}>
             <div className="bg-background text-foreground flex h-full">
@@ -95,6 +100,7 @@ export default function AdminLayout({
             </div>
           </ShellProvider>
         </TooltipProvider>
+        </FeedbackProvider>
       </ThemeProvider>
     </>
   );

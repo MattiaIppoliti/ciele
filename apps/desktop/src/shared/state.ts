@@ -32,6 +32,12 @@ export interface Settings {
   setupComplete: boolean;
   /** Release the user has already been told about; suppresses a repeat notice. */
   dismissedUpdate: string | null;
+  /**
+   * Interface sounds off (#817). Kept here rather than in the renderer's own
+   * storage because the native screens and the product window are different
+   * origins, and one Mute should cover the machine.
+   */
+  soundsMuted: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saasBaseUrl: DEFAULT_SAAS_BASE_URL,
   setupComplete: false,
   dismissedUpdate: null,
+  soundsMuted: false,
 };
 
 /**
@@ -58,6 +65,7 @@ export function parseSettings(raw: unknown): Settings {
     setupComplete: record.setupComplete === true,
     dismissedUpdate:
       typeof record.dismissedUpdate === "string" ? record.dismissedUpdate : null,
+    soundsMuted: record.soundsMuted === true,
   };
 }
 
@@ -141,6 +149,8 @@ export interface CieleBridge {
   setSaasBaseUrl(url: string): Promise<AppState>;
   dismissUpdate(): Promise<AppState>;
   openExternal(url: string): Promise<void>;
+  /** Interface sounds on or off, persisted with the other settings. */
+  setSoundsMuted(muted: boolean): Promise<AppState>;
 }
 
 /** IPC channel names, in one place so main and preload cannot drift. */
@@ -154,4 +164,5 @@ export const CHANNELS = {
   setSaasBaseUrl: "ciele:set-saas-base-url",
   dismissUpdate: "ciele:dismiss-update",
   openExternal: "ciele:open-external",
+  setSoundsMuted: "ciele:set-sounds-muted",
 } as const;

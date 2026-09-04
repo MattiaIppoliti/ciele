@@ -45,6 +45,13 @@ the seams. This file is only the things that bite.
   shared by the engine tests and `--fake-ports`, and pinned to the real
   `deploy/.env.example` by `env-template.test.ts`. Change a key the wizard
   touches in either place and that test is what tells you about the other.
+- **Interface sounds come from `@agent-hub/ui/feedback`, the one shared import.** The
+  "own component set" rule above is about styling tokens, not logic: the renderer's
+  `Button` carries the same `data-foley-*` attributes as the console's, `App.tsx` mounts the
+  shared provider in *controlled* mode (mute lives in the main process's settings, not this
+  origin's storage, so one switch covers the native screens and the product window), and
+  `shared/feedback.ts` decides which snapshot changes sound. Never import Foley or
+  WebHaptics here directly.
 - The palette in `renderer/styles.css` is copied from `apps/web`'s dark theme
   token for token. It is greyscale product-wide; the only hue is `danger`.
   Do not introduce a brand accent here, the user crosses from these screens

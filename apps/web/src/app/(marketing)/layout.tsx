@@ -1,6 +1,7 @@
 import { HomeFooter } from "@/components/home/home-footer";
 import { HomeShell } from "@/components/home/home-shell";
 import { ThemeProvider } from "@/components/theme-provider";
+import { FeedbackProvider } from "@agent-hub/ui/feedback";
 import "./home.css";
 
 /* Every public page, the home, the Enterprise and Pricing pitches, security
@@ -31,10 +32,15 @@ export default function MarketingLayout({
           `display:contents` scopes the class without adding a layout box. */}
       <div className="marketing-serif contents">
         <ThemeProvider>
-          <HomeShell>
-            {children}
-            <HomeFooter />
-          </HomeShell>
+          {/* Interface sounds (#817), mounted per route group and never in the
+              root layout: the widget inherits only the root. Reads nothing, so
+              the group still prerenders; the libraries load on first gesture. */}
+          <FeedbackProvider>
+            <HomeShell>
+              {children}
+              <HomeFooter />
+            </HomeShell>
+          </FeedbackProvider>
         </ThemeProvider>
       </div>
     </>

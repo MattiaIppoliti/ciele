@@ -30,3 +30,5 @@ export * from "./skeleton";
 // Tooltip/TooltipTrigger/TooltipContent stay internal to Hint; the apps only
 // mount the provider.
 export { TooltipProvider } from "./tooltip";
+// Interface sounds + haptics (spec #817). Also reachable as `@agent-hub/ui/feedback`.
+export * from "./feedback";

@@ -131,6 +131,14 @@ function registerHandlers(): void {
     return state();
   });
 
+  ipcMain.handle(CHANNELS.setSoundsMuted, (_event, muted: unknown) => {
+    settings.update({ soundsMuted: muted === true });
+    // Pushed as well as returned: the toggle lives on one screen and the
+    // renderer's provider reads it on every screen.
+    broadcastState();
+    return state();
+  });
+
   ipcMain.handle(CHANNELS.openExternal, async (_event, url: string) => {
     // Only ever a web address: this is a hole straight out to the OS handler,
     // and the renderer is not the only thing that could reach it.

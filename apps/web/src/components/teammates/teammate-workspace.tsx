@@ -11,6 +11,8 @@ import { teammateSearchesKnowledge } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
+import { playFeedback } from "@agent-hub/ui/feedback";
+import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { ArrowLeft, Settings2, UserRoundPlus } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import Link from "next/link";
@@ -179,6 +181,7 @@ export function TeammateWorkspace({
     const message = text.trim();
     if (!message || pending) return;
     setPending(true);
+    playFeedback("send");
     const turnId = crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
@@ -216,6 +219,10 @@ export function TeammateWorkspace({
           conversationRef.current = done;
           setConversationId(done);
           updateLastBot((bot) => ({ ...bot, id: messageId }));
+        },
+        onEvent: (event) => {
+          const cue = chatFeedbackForEvent(event);
+          if (cue) playFeedback(cue);
         },
         errorText: (text) => `⚠️ ${text}`,
       });
@@ -295,6 +302,8 @@ export function TeammateWorkspace({
           teammateId: part.teammateId,
           summary: part.summary,
         });
+        // The handoff went through: an outcome, so the outcome's cue (#817).
+        playFeedback("success");
         router.push(`/teammates/${part.teammateId}?c=${opened}`);
       } catch (error) {
         toast.error(
