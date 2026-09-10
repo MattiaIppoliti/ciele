@@ -73,6 +73,8 @@ function needLinkTargets(args: Record<string, unknown>): string[] {
 const READ_ACTIONS = new Set([
   "list",
   "get",
+  "review_list",
+  "review_get",
   "status",
   "list_collections",
   "list_sources",
@@ -471,9 +473,13 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "read_inbox",
       description:
-        "Review and curate end-user Conversations: list/get/export transcripts, pin/unpin, send conversation feedback, set message feedback, or permanently delete a conversation.",
+        "Review and curate end-user Conversations: list/get/export transcripts, pin/unpin, send conversation feedback, set message feedback, or permanently delete a conversation. Also the Human review gate's requests: list them, read one, or decide one (approve/reject; an assignee or an Owner/Admin key).",
       schema: {
-        action: z.enum(["list", "get", "export", "pin", "unpin", "feedback", "message_feedback", "delete"]),
+        action: z.enum(["list", "get", "export", "pin", "unpin", "feedback", "message_feedback", "delete", "review_list", "review_get", "review_decide"]),
+        reviewId: z.string().optional().describe("Required for review_get and review_decide"),
+        status: z.string().optional().describe("review_list: pending | approved | rejected | expired"),
+        decision: z.enum(["approved", "rejected"]).optional().describe("Required for review_decide"),
+        inputs: z.record(z.string(), z.string()).optional().describe("review_decide: the reviewer inputs by field id"),
         conversationId: z.string().optional().describe("Required for get"),
         conversationIds: z.array(z.string()).optional().describe("Required for export"),
         messageId: z.string().optional(),
@@ -521,6 +527,24 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "delete":
             await client.conversations.delete(need(args, "conversationId"));
             return { deleted: args.conversationId };
+          case "review_list":
+            return client.reviews.list({
+              status: args.status as string | undefined,
+              conversationId: args.conversationId as string | undefined,
+              assistantId: args.assistantId as string | undefined,
+            });
+          case "review_get":
+            return client.reviews.get(need(args, "reviewId"));
+          case "review_decide": {
+            const decision = args.decision;
+            if (decision !== "approved" && decision !== "rejected") {
+              throw new ToolInputError('"decision" must be approved or rejected');
+            }
+            return client.reviews.decide(need(args, "reviewId"), {
+              decision,
+              inputs: (args.inputs ?? {}) as Record<string, string>,
+            });
+          }
           default:
             throw new ToolInputError(`Unknown action "${args.action}"`);
         }
@@ -729,16 +753,22 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_integrations",
       description:
-        "Manage an Assistant's API integration and Organization model Provider Connections, including the preferred embedding provider.",
+        "Manage an Assistant's API integration, Organization model Provider Connections (including the preferred embedding provider), and the Application Connections a Connector Flow action runs through: list them, read the Connector catalogue, or compute the re-consent a Connection needs.",
       schema: {
-        action: z.enum(["api_get", "api_set", "api_delete", "provider_list", "provider_create_api_key", "provider_create_compatible", "provider_create_federated", "provider_delete", "provider_set_embedding"]),
-        id: z.string().optional().describe("Assistant or Provider Connection id"),
+        action: z.enum(["api_get", "api_set", "api_delete", "provider_list", "provider_create_api_key", "provider_create_compatible", "provider_create_federated", "provider_delete", "provider_set_embedding", "application_list", "application_connectors", "application_reconsent"]),
+        id: z.string().optional().describe("Assistant, Provider Connection or Application Connection id"),
         input: z.record(z.string(), z.unknown()).optional(),
         connectionId: z.string().nullable().optional(),
+        provider: z.string().optional().describe("Filter Application Connections or Connector actions by provider"),
       },
-      mutates: (args) => !new Set(["api_get", "provider_list"]).has(String(args.action)),
+      // Re-consent computes a URL and writes nothing; the grant happens in a
+      // browser, which is why it stays readable under CIELE_MCP_READ_ONLY.
+      mutates: (args) => !new Set(["api_get", "provider_list", "application_list", "application_connectors", "application_reconsent"]).has(String(args.action)),
       run: async (args) => {
         switch (args.action) {
+          case "application_list": return client.applications.list(typeof args.provider === "string" ? args.provider : undefined);
+          case "application_connectors": return client.applications.connectors(typeof args.provider === "string" ? args.provider : undefined);
+          case "application_reconsent": return client.applications.reconsent(need(args, "id"), (args.input ?? {}) as never);
           case "api_get": return client.apiIntegrations.get(need(args, "id"));
           case "api_set": return client.apiIntegrations.set(need(args, "id"), needObject(args, "input") as never);
           case "api_delete": await client.apiIntegrations.delete(need(args, "id")); return { deleted: args.id };

@@ -36,6 +36,12 @@ export const GRANT_DOMAIN_COPY: readonly GrantDomainCopy[] = [
     label: "Inbox",
     detail: "Read visitor conversations and pin them. It never deletes one.",
   },
+  {
+    domain: "flows",
+    label: "Flows",
+    detail:
+      "Read an assistant's flows and hand back drafts and proposals. It never saves a flow; an editor does, from the Flow Canvas.",
+  },
 ];
 
 export interface CeilingCopy {

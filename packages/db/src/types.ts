@@ -30,13 +30,16 @@ import type {
   ApplicationSource,
   ApplicationSyncRun,
   Assistant,
-  AssistantShellSummary,
   AssistantGoal,
   AssistantInput,
   AssistantPatch,
+  AssistantShellSummary,
+  AssistantSourceLink,
   BackgroundJob,
   BackgroundJobKind,
   BudgetEnforcement,
+  ChannelAuthorType,
+  ChannelMessage,
   CompostDigest,
   Concept,
   ConceptFrontmatter,
@@ -73,16 +76,9 @@ import type {
   ImprovementMessageLink,
   ImprovementPatch,
   ImprovementProposal,
-  ImprovementStatus,
   ImprovementProposalPayload,
   ImprovementProposalStatus,
-  ChannelAuthorType,
-  ChannelMessage,
-  MemoryDocument,
-  MemoryDocumentEntry,
-  MemoryDocumentOwner,
-  RoutineRunStatus,
-  TeammateRoutine,
+  ImprovementStatus,
   InboxConversationReview,
   InboxFacets,
   InboxPage,
@@ -97,38 +93,44 @@ import type {
   LocalInferenceJob,
   Member,
   Memory,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
   MemorySearchResult,
   MemorySubjectRef,
   MemorySubjectSummary,
-  AssistantSourceLink,
+  ObjectAccessEvent,
+  ObjectAccessEventInput,
   OrgApiKey,
   OrgApiKeyInput,
   OrgBudget,
   OrgFaqEntry,
   OrgKnowledgeSourceFilter,
   OrgKnowledgeSourcePage,
+  OrgKnowledgeSourceOptions,
   Organization,
   OrganizationPatch,
   Profile,
   ProfilePatch,
   ProviderConnection,
   ProviderConnectionConfig,
-  ObjectAccessEvent,
-  RetentionSweepEvent,
-  RetentionSweepEventInput,
-  ObjectAccessEventInput,
   ProviderConnectionProvider,
   ProviderConnectionType,
   Publication,
   PublicationConfig,
   RecrawlSchedule,
+  RetentionSweepEvent,
+  RetentionSweepEventInput,
+  ReviewRequest,
+  WebhookSubscription,
   Role,
+  RoutineRunStatus,
   RuntimeEventInput,
   ServiceNowConfig,
   Skill,
   Source,
-  SourceKind,
   SourceConfig,
+  SourceKind,
   SourceStatus,
   SsoConnection,
   SsoConnectionConfig,
@@ -140,6 +142,7 @@ import type {
   SupportChannel,
   SupportChannelInput,
   SupportChannelPatch,
+  TeammateRoutine,
   TicketingPlatform,
   TrustSignal,
   TrustTier,
@@ -796,6 +799,8 @@ export interface Db {
     generationId: string;
   }): Promise<boolean>;
   listConcepts(collectionId: string): Promise<Concept[]>;
+  /** Active, non-excluded FAQ titles reachable through Assistant Knowledge Links; no bodies. */
+  listAssistantFaqOptions(assistantId: string): Promise<{ id: string; question: string }[]>;
   /** Stable id-cursor page of active Concepts for bounded inventory scans. */
   listConceptPage(
     collectionId: string,
@@ -905,6 +910,10 @@ export interface Db {
     organizationId: string,
     filter: OrgKnowledgeSourceFilter
   ): Promise<OrgKnowledgeSourcePage>;
+  listOrgKnowledgeSourceOptions(
+    organizationId: string,
+    filter: { kinds: SourceKind[]; limit: number }
+  ): Promise<OrgKnowledgeSourceOptions>;
   /**
    * The ids of the Sources linked to this Assistant, its retrieval corpus.
    * Post-contract (#733/#741) reach is the link set alone: a Collection is
@@ -1051,6 +1060,28 @@ export interface Db {
     id: string,
     patch: ConversationMetadata
   ): Promise<void>;
+  /**
+   * Close a Human review request (#841) only if it is still pending: the
+   * compare-and-set behind "first decision wins". Returns the closed row, or
+   * null when another decision (or the expiry sweep) got there first.
+   */
+  decideReviewRequest(
+    id: string,
+    patch: Pick<ReviewRequest, "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt">
+  ): Promise<ReviewRequest | null>;
+  /**
+   * Closes a pending webhook subscription (#842) exactly once: the row is
+   * written only while still `pending`, so of two racing callbacks, or a
+   * callback racing the expiry sweep, exactly one transition lands and the
+   * other reads null. The same compare-and-set as `decideReviewRequest`; a
+   * read-then-write here was the hole that let a sweep flip a just-received
+   * row to expired and drop its payload.
+   */
+  settleWebhookSubscription(
+    id: string,
+    patch: Pick<WebhookSubscription, "status"> &
+      Partial<Pick<WebhookSubscription, "payload" | "receivedAt">>
+  ): Promise<WebhookSubscription | null>;
   /** Atomically appends one forward referral link to conversation metadata. */
   appendConversationReferral(
     id: string,

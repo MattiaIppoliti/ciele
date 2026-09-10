@@ -56,6 +56,38 @@ _Avoid_: imported document, mirror, cache
 The provider adapter that lists and normalizes remote content for an Application Import. Connectors perform read-only API calls and return provider-neutral artifacts; the common sync service owns Source persistence, Assistant links, ingestion, checkpoints, retries, and run reports.
 _Avoid_: Application Connection (stored authorization), plugin
 
+**Connector Action**:
+The Flow Action that runs one catalogued operation (a ServiceNow record, a Salesforce query, a Slack message, a Drive file) against a connected system through an Application Connection the Organization holds; a Member-owned Drive connection may back it only on the operator surfaces (Preview, Teammate chat) and only for its owner, and Publish refuses such a Flow. It is the *write* counterpart of a Connector: the same Connection, a different catalogue, and the only way a Flow reaches those systems. Its settings name the Connection and the catalogue key, never a credential, so a Publication snapshot carries none. In the console palette it is the **Connector** category, one tile per provider.
+_Avoid_: integration action, webhook (that is the **HTTP Webhook** gate), API request (the generic HTTP action with its own credential)
+
+**Human Review**:
+The Flow Action that stops a turn and asks named Members for a decision by email (from the Editor's own Microsoft 365 mailbox) or Slack (the Organization's bot), then continues the Flow only on approval. A linear gate, not a branch: rejected or expired halts with a configured message. Its request is a **Review Request**. The Preview simulates it (nothing sent, decided inline); a Teammate chat has no Flows and never reaches it.
+_Avoid_: approval branch, escalation (that reaches a Help Desk), manual step
+
+**Review Request**:
+One approval a Human Review raised: the Conversation, the Flow and the action index it stopped at (the resumption cursor), the assignees, the Inputs schema, and its status, pending → approved | rejected | expired. Created by the runtime, closed exactly once by the first assignee's (or an Owner/Admin's) decision or by the clock, then resumed by a durable job. Decided through a signed link that opens a console page, never by parsing a reply.
+_Avoid_: ticket, task, approval record
+
+**HTTP Webhook**:
+The Flow Action that sends a **subscribe** call to another system, stops the turn, and continues the Flow when that system calls back a signed address the subscribe call carried (`{{webhook.callbackUrl}}`). The same gate shape as a Human Review, closed by an anonymous caller holding the address instead of by a Member. An **unsubscribe** call, resolved at subscribe time so an edit to the Flow during the wait cannot move it, fires on every exit (callback or timeout) before the Flow continues. A subscribe call that fails halts the Flow at once. Its row is a **Webhook Subscription**. The Preview sends the subscribe call for real; an inbound HTTP Flow may not contain one, because it has no Conversation to resume into.
+_Avoid_: callback action, listener, API request (the one-call action), hook
+
+**Webhook Subscription**:
+One awaited callback an HTTP Webhook raised: the Conversation, the Flow and the action index it stopped at, the resolved subscribe and unsubscribe calls, the expiry, and its status, pending → received | expired | failed (the subscribe call was refused). Created by the runtime before the subscribe call goes out, because the callback address names the row; closed exactly once by the first callback or by the clock, then resumed by a durable job. A second callback is acknowledged and changes nothing. Members read it in the Inbox; no Member writes it.
+_Avoid_: webhook (alone, that is the action), registration, hook
+
+**On HTTP request**:
+The fifth **Flow Trigger** (`http_request`): another system calls a Flow of a published Assistant at its own endpoint, authorized by an Organization API key, and holds the socket for the answer. A run is not a Conversation: no Visitor, no transcript, no Intent Classification (the URL names the Flow) and no conditions. The request reaches the actions as template variables (`{{request.body}}`, `{{request.query.*}}`, `{{request.header.*}}`, never the credential headers). It may run only the doing actions plus a **Response**; the two gates (Human Review, HTTP Webhook) are excluded because there is nowhere to resume to.
+_Avoid_: webhook trigger, endpoint Flow, API trigger
+
+**Response**:
+The Flow Action (`respond`) that answers an On HTTP request run: a status code, optional headers and an optional body, each accepting template variables. It ends the Flow, because what a caller has been told cannot be changed by a later action. A Flow that ends without one answers 204; a Flow whose action fails before one answers 500. Meaningless on any other trigger.
+_Avoid_: reply (that is the Assistant's), HTTP response (in UI), return
+
+**Flows Agent**:
+The system Teammate the console creates once per Assistant to build and edit that Assistant's Flows from the Flow Canvas. An ordinary Teammate to the runtime (persona layer, Conversations, grants, provider routing), marked `system_kind = flows_agent` and bound to its Assistant so the roster and the referral picker leave it out. Its one grant is the **flows** domain, whose two hand-back tools (`flows.draft`, `flows.propose`) validate a change and return it to the canvas; the Editor's unsaved draft takes it as one Undo step and Save stays the Editor's act. It never writes a Flow row.
+_Avoid_: copilot, assistant builder, a second chat runtime
+
 **Assistant Knowledge Link**:
 The M:N row tying one Assistant to one Source, what makes the Source answer for that Assistant. Replacing the set takes effect immediately in retrieval (knowledge is live, never snapshotted into Publications). Carries the per-assistant Direct access flag.
 _Avoid_: share, subscription
@@ -109,11 +141,11 @@ A rule attached to an Assistant that starts on a **Flow Trigger** and executes a
 _Avoid_: workflow, intent
 
 **Flow Trigger**:
-The event that starts a Flow: **User sends a message** (the reactive path) or one of the three **proactive** events, **On page load**, **Time on page** (after a configured dwell), **Chat opens**. Exactly one per Flow. A proactive Flow needs no Intent Classification and runs a single **Notification**.
+The event that starts a Flow: **User sends a message** (the reactive path), one of the three **proactive** events, **On page load**, **Time on page** (after a configured dwell), **Chat opens**, or **On HTTP request** (another system calls the Flow). Exactly one per Flow. A proactive Flow needs no Intent Classification and runs a single **Notification**; an inbound HTTP Flow needs none either and answers with a **Response**.
 _Avoid_: event (alone), hook
 
 **Flow Action**:
-One step a matched Flow executes: search knowledge, custom message, basic reply, suggest help desk, follow-up questions, notification.
+One step a matched Flow executes: search knowledge, custom message, basic reply, suggest help desk, follow-up questions, notification, and the doing actions (API request, Connector Action, send email, improvement), the two gates (**Human Review**, **HTTP Webhook**) and **Response**. Which actions a trigger may run is one rule (`actionAllowedForTrigger`), applied at save and again at dispatch.
 _Avoid_: step, tool
 
 **Basic Interaction**:
@@ -403,7 +435,7 @@ _Avoid_: permission, group.
 **Analytics API**:
 A public, org-scoped HTTP API (base path `/analytics`) for pulling Insights data programmatically,
 authenticated by **API keys** minted in Organization → API Keys.
-_Avoid_: export, webhook.
+_Avoid_: export, webhook (that is the **HTTP Webhook** Flow Action; this API pushes nothing).
 
 **API Integration**:
 An Assistant's one configured external HTTP API: a base URL, one sealed credential, and an
@@ -411,8 +443,8 @@ An Assistant's one configured external HTTP API: a base URL, one sealed credenti
 Turn: the model discovers it, reads endpoint contracts, and queries relative paths that the
 runtime prepends to the base URL. Its own table, never part of `assistants.tools`, so the
 credential can never travel into a Publication snapshot.
-_Avoid_: custom tool (the retired per-endpoint shape), connector (reserved for knowledge
-Applications).
+_Avoid_: custom tool (the retired per-endpoint shape), connector (the knowledge adapter, and the
+Connector Action that runs a catalogued operation over an Application Connection).
 
 **Endpoint Catalogue**:
 The admin-described list of endpoints inside an API Integration, each with its purpose, path

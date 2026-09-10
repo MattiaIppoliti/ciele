@@ -1,0 +1,185 @@
+---
+title: Lienzo de flujo
+description: Edita un flujo como una cadena de nodos, con los mismos campos que el formulario.
+---
+
+## Abre el lienzo
+
+1. Abre un Asistente.
+2. Selecciona **Flows**.
+3. Abre un Flow o crea uno.
+4. Selecciona **Canvas** en el encabezado.
+
+Selecciona **Form** para volver al formulario de tres pasos. Ambas vistas editan
+un borrador no guardado. Al cambiar de vista, se conservan todos los cambios. La
+consola recuerda tu última elección en este navegador.
+
+## Borradores
+
+Tus cambios no guardados se conservan en este navegador como borrador, en ambas
+vistas. El encabezado muestra **Draft saved** mientras haya cambios por
+conservar. Abandona el Flow, vuelve a cargar la página o cierra la pestaña, y el
+borrador te estará esperando cuando vuelvas.
+
+El borrador es solo tuyo: no se envía al servidor, por lo que nadie más lo ve y
+no se ejecuta nada a partir de él. Al guardar el Flow o al eliminarlo, se borra
+el borrador. Si vuelves al punto de partida, también se borrará, porque no queda
+nada que conservar.
+
+## Lee la cadena
+
+El lienzo dibuja el Flow de izquierda a derecha:
+
+| Nodo | Significado |
+| --- | --- |
+| Inicio | El desencadenante. Muestra el nombre del desencadenante. Para Tiempo en la página, muestra el retraso. |
+| Condiciones | Las condiciones opcionales y su lógica. No se muestra para los activadores proactivos ni para el comportamiento predeterminado. |
+| Acción | Una acción de respuesta, en el orden en que el flujo las ejecuta. |
+
+Una insignia **Needs setup** marca un nodo al que le faltan ajustes
+obligatorios. No se puede guardar el Flow hasta que desaparezcan todas las
+insignias.
+
+## Inicia un Flow vacío
+
+Se abre un nuevo Flow como un lienzo en blanco con un cuadro en el centro:
+**What should this flow do?** Escribe una descripción y pulsa Intro para que el
+Flows Agent cree el borrador del Flow. O selecciona **crearlo a mano** para
+colocar el nodo de Inicio y añadir los pasos tú mismo. Los nodos aparecen en
+cuanto el Flow tiene un desencadenante o una acción.
+
+## Añade un nodo
+
+Hay dos formas de añadir un paso.
+
+**From a node.** Mantén el puntero sobre cualquier nodo. Aparece un pequeño
+**+** en su borde derecho y abre el mismo menú. La ubicación del signo **+**
+determina dónde se inserta el paso. Desde un nodo en medio de la cadena, el paso
+se inserta después de ese nodo. Desde el último nodo, se añade al final. El
+nuevo paso se abre para su configuración.
+
+**From the bottom bar.** Selecciona **Add a step** en la barra de la parte
+inferior del lienzo. Busca en la lista o fíltrala con los chips **Trigger**,
+**Action** y **Connector**. Arrastra una fila al lienzo para insertarla entre
+dos pasos en lugar de añadirla al final.
+
+Ambos ofrecen solo los pasos que el desencadenante actual puede ejecutar, y
+ninguno muestra un paso que el flujo ya tenga. Solo aparece un desencadenante
+cuando el flujo no tiene ninguno. Para reemplazar uno, selecciona el nodo Start
+y cámbialo allí. A continuación, la consola te indica qué se elimina.
+
+## Pregunta desde el lienzo
+
+Una vez que el Flow tiene un paso, la barra de la parte inferior muestra un
+cuadro para el Flows Agent. Escribe lo que quieras cambiar y pulsa Intro. El
+agente se abre en el panel de la derecha y lo primero que responde es tu
+mensaje.
+
+## Configura un nodo
+
+Selecciona un nodo. Aparecerá un panel flotante a la derecha del lienzo con dos
+pestañas:
+
+- **Configure** muestra los mismos campos que el formulario para ese paso.
+- **Run node** ejecuta el nodo de forma independiente. Solicitud de API envía
+  una solicitud de prueba con valores de ejemplo. Buscar en el conocimiento abre
+  la Vista previa para que puedas hacer una pregunta.
+
+Su encabezado contiene tres controles. Los tres puntos contienen **Reset
+position**, **Open Preview** y **Remove step**. Las flechas amplían el panel
+para que ocupe toda la ventana y lo vuelven a reducir. La cruz cierra el panel.
+Cuando el panel ocupa toda la ventana, la cruz es lo primero en desaparecer de
+la pantalla completa.
+
+Esos dos controles también están en la parte inferior izquierda, debajo de los
+botones de zoom, mientras hay un paso seleccionado. Cuando el panel está en
+pantalla completa, su propio encabezado se sitúa en la esquina, lejos de los
+controles del lienzo. **Open full screen** también está en el menú contextual de
+un nodo.
+
+## Haz clic con el botón derecho para ver las acciones
+
+Haz clic con el botón derecho en el lienzo para acceder a los controles de
+vista: **Add a step**, **Fit to view**, **Tidy up**, **Switch to vertical
+layout** y **Open Preview**. Haz clic con el botón derecho en un nodo y el menú
+también se referirá a ese paso. **Configure** abre su configuración. **Open full
+screen** lo abre a pantalla completa. **Reset position** lo devuelve al diseño
+automático. **Remove step** lo elimina. `Delete` también elimina el paso
+seleccionado.
+
+En una pantalla táctil, mantén pulsado en lugar de hacer clic con el botón
+derecho.
+
+## Moverte por el lienzo
+
+Desplázate para mover el lienzo; en un trackpad, desliza dos dedos en cualquier
+dirección. Pellizca para hacer zoom o mantén pulsado `Ctrl` y desplázate. En una
+pantalla táctil, arrastra en cualquier lugar del lienzo para moverlo.
+
+Con un ratón, los dos botones en la parte inferior del lienzo determinan lo que
+ocurre al arrastrar sobre un espacio vacío. **Select** dibuja un cuadro
+alrededor de los nodos. **Hand** mueve el lienzo.
+
+## Reordenar y organizar
+
+- Arrastra un nodo de acción más allá de su vecino para cambiar el orden de las
+  acciones. El orden es el orden en el que el Flow las ejecuta.
+- Arrastra un nodo una distancia corta para ordenar la imagen. La posición solo
+  se guarda en tu navegador.
+- Utiliza los controles de la parte inferior izquierda para hacer zoom y ajustar
+  el Flow a la ventana. Cuando hay un paso seleccionado, también incluyen los
+  controles de pantalla completa y de los tres puntos de ese paso.
+- **Tidy up** (`Shift`+`T`) descarta todos los ajustes y vuelve a colocar la
+  cadena en el diseño automático.
+- **Switch to vertical layout** gira la cadena para que discurra a lo largo del
+  lienzo en lugar de a lo ancho. Un Flow largo se lee mejor así. Cada dirección
+  mantiene su propia disposición, por lo que al volver atrás encontrarás la
+  imagen que habías dejado. Tu navegador recuerda la elección.
+
+## Pregunta al Agente de Flows
+
+El **Flows Agent** crea y edita el Flow abierto a partir de una descripción. Es
+un compañero de equipo de IA que la consola crea para cada Asistente. No aparece
+en **Teammates**.
+
+Para abrirlo:
+
+- En un lienzo vacío, escribe lo que debe hacer el Flow en el cuadro del centro
+  y pulsa Intro.
+- En cualquier lienzo, selecciona **Agent** en el encabezado.
+
+El agente se abre en el panel de la derecha, donde se encuentra la Vista previa
+en vivo, y funciona de la misma manera. Arrastra su borde izquierdo para cambiar
+su tamaño. Utiliza los controles de la cabecera para ver conversaciones
+anteriores, iniciar un nuevo chat y activar la pantalla completa. Ambos
+comparten ese espacio, por lo que al abrir el agente se oculta la Vista previa y
+al abrir la Vista previa se oculta el agente. Selecciona **Show preview** en el
+borde derecho para volver atrás.
+
+El agente ve el borrador abierto, los demás flujos del asistente, sus centros de
+ayuda, las preguntas frecuentes y las conexiones de aplicaciones. Cada cambio
+que realiza aparece en el borrador no guardado como un paso. Puedes deshacerlo
+con **Undo**. El agente nunca guarda. Selecciona **Save changes** o **Create
+flow** cuando el borrador esté correcto.
+
+Cuando la solicitud describe una segunda intención, el agente propone un flujo
+separado en lugar de cambiar el que está abierto. La propuesta se muestra como
+una tarjeta. Selecciona **Create and open** para crear ese flujo, o **Dismiss**.
+
+Solo los editores y administradores pueden usar el agente. Las conversaciones
+anteriores sobre el mismo Flow se encuentran bajo el botón de historial en el
+encabezado del panel. El agente se ejecuta en las mismas Conexiones de proveedor
+que tus compañeros de equipo, incluida tu propia suscripción personal si
+conectaste una.
+
+## Deshacer y rehacer
+
+Utiliza **Undo** y **Redo** en el encabezado, o `Ctrl+Z` y `Ctrl+Shift+Z` (`Cmd`
+en macOS). Deshacer abarca los cambios no guardados en ambas vistas. Al guardar
+el Flow, el historial no se borra. Salir del Flow sí lo hace.
+
+## Guardar
+
+El pie de página muestra las mismas tres comprobaciones que el formulario.
+Selecciona **Save changes** o **Create flow**. El lienzo guarda el mismo flujo
+que el formulario.

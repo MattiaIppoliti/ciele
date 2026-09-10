@@ -6,8 +6,19 @@ import type {
   FlowConditionLogic,
   FlowTrigger,
   FlowTriggerSettings,
+  HttpFlowMethod,
 } from "@agent-hub/core";
-import { DEFAULT_DWELL_SECONDS, isProactiveTrigger } from "@agent-hub/core";
+import {
+  DEFAULT_DWELL_SECONDS,
+  connectorSettingsIssue,
+  DEFAULT_HTTP_FLOW_METHODS,
+  httpFlowMethods,
+  isHttpTrigger,
+  httpWebhookSettingsIssue,
+  humanReviewSettingsIssue,
+  respondSettingsIssue,
+  isProactiveTrigger,
+} from "@agent-hub/core";
 
 import {
   FLOW_ACTIONS,
@@ -38,11 +49,49 @@ export interface FlowDraft {
   name: string;
   trigger: FlowTrigger | null;
   dwell: FlowDwell;
+  /**
+   * "On HTTP request": the methods the Flow's endpoint answers (#843). Beside
+   * `dwell` rather than inside a generic settings blob, for the same reason
+   * `dwell` is: it belongs to one trigger, and the editor edits it as a field.
+   */
+  httpMethods: HttpFlowMethod[];
   conditionLogic: FlowConditionLogic;
   conditions: FlowCondition[];
   actions: FlowAction[];
   settings: FlowActionSettings;
   customMessage: string;
+}
+
+/**
+ * The draft a stored Flow opens as, or the empty draft for a new one. Both
+ * renderings of the builder start from this, so they start from the same place.
+ */
+export function draftFromFlow(flow: Flow | null): FlowDraft {
+  return {
+    name: flow?.name ?? "",
+    trigger: flow ? flow.trigger : null,
+    dwell: initialDwell(flow?.triggerSettings),
+    httpMethods: flow ? httpFlowMethods(flow) : DEFAULT_HTTP_FLOW_METHODS,
+    conditionLogic: flow?.conditionLogic ?? "any",
+    conditions: flow?.conditions ?? [],
+    actions: flow?.actions ?? [],
+    settings: flow?.actionSettings ?? {},
+    customMessage: flow?.customMessage ?? "",
+  };
+}
+
+/**
+ * Whether a Flow on this trigger has a Conditions step at all.
+ *
+ * Only a message-triggered Flow does. A proactive Flow fires on a widget event
+ * (#541) and an inbound Flow is named by its URL (#843): in neither case does a
+ * classifier pick the Flow, so there is nothing for a condition to narrow, and
+ * the runtime (`packages/core/src/http-flow.ts`, the proactive funnel) never
+ * evaluates one. The canvas, the palette, the trigger switch and the save
+ * payload all ask this one function, so they cannot disagree about it.
+ */
+export function triggerHasConditions(trigger: FlowTrigger | null): boolean {
+  return trigger === null || !(isProactiveTrigger(trigger) || isHttpTrigger(trigger));
 }
 
 /**
@@ -78,9 +127,27 @@ export function actionConfigured(
     return Boolean(button?.url?.trim());
   }
   if (action === "iframe") return Boolean(settings.iframe?.url?.trim());
-  if (action === "api_request") return Boolean(settings.api_request?.url?.trim());
+  if (action === "api_request") {
+    const api = settings.api_request;
+    // A Swagger-sourced step names an operation instead of a URL (#837).
+    return api?.endpoint === "swagger"
+      ? Boolean(api.swaggerUrl?.trim() && api.operationId?.trim())
+      : Boolean(api?.url?.trim());
+  }
+  // Same rules the runtime applies (#842, #843), so a step that reads
+  // "configured" here is one the dispatcher will actually run.
+  if (action === "http_webhook") {
+    return httpWebhookSettingsIssue(settings.http_webhook) === null;
+  }
+  if (action === "respond") return respondSettingsIssue(settings.respond) === null;
   if (action === "send_email") return Boolean(settings.send_email?.to?.trim());
   if (action === "handover") return Boolean(settings.handover?.assistantId);
+  // The catalogue decides (#839): a catalogued action, a connection, and its
+  // required fields. The connection's health is Publish's question, not the
+  // editor's, a saved Flow may outlive the connection it names.
+  if (action === "connector") return connectorSettingsIssue(settings.connector) === null;
+  // Same rule Publish applies (#841), minus roster and sender health.
+  if (action === "human_review") return humanReviewSettingsIssue(settings.human_review) === null;
   if (action === "follow_up_questions") {
     const followUp = settings.follow_up_questions;
     if (followUp?.mode !== "manual") return true;
@@ -94,6 +161,12 @@ export interface FlowDraftStatus {
   triggerOk: boolean;
   /** A proactive trigger collapses Conditions and the Response step (#541). */
   proactive: boolean;
+  /**
+   * An inbound-HTTP trigger (#843). Like a proactive one it has no conditions,
+   * because the caller named the Flow by its URL rather than being routed to
+   * it, but unlike one it has a whole catalogue of actions.
+   */
+  inbound: boolean;
   configuredActions: boolean;
   actionsMatchTrigger: boolean;
   responseOk: boolean;
@@ -123,6 +196,7 @@ export function flowDraftStatus(
   const dwellOk = trigger !== "time_on_page" || dwellSeconds > 0;
   const triggerOk = options.isDefaultFlow || (trigger !== null && dwellOk);
   const proactive = trigger !== null && isProactiveTrigger(trigger);
+  const inbound = trigger !== null && isHttpTrigger(trigger);
   const configuredActions = actions.every((action) =>
     actionConfigured(action, settings, customMessage)
   );
@@ -162,6 +236,7 @@ export function flowDraftStatus(
     dwellOk,
     triggerOk,
     proactive,
+    inbound,
     configuredActions,
     actionsMatchTrigger,
     responseOk,
@@ -179,7 +254,7 @@ export interface TriggerChangePlan {
   kept: FlowAction[];
   /** Actions the new trigger cannot run, what the confirmation names. */
   discarded: FlowAction[];
-  /** Crossing into proactive drops conditions and the custom message. */
+  /** Crossing into a proactive or an inbound trigger drops the conditions. */
   clearsConditions: boolean;
 }
 
@@ -195,8 +270,7 @@ export function triggerChangePlan(
   next: FlowTrigger
 ): TriggerChangePlan {
   const { kept, discarded } = partitionActionsForTrigger(draft.actions, next);
-  const clearsConditions =
-    isProactiveTrigger(next) && draft.conditions.length > 0;
+  const clearsConditions = !triggerHasConditions(next) && draft.conditions.length > 0;
   return {
     needsConfirmation: discarded.length > 0 || clearsConditions,
     kept,
@@ -207,12 +281,14 @@ export function triggerChangePlan(
 
 /**
  * Applies a (confirmed) trigger change: keeps whatever the new trigger can
- * still run, drops only what it cannot, and clears the proactive-incompatible
- * state (conditions, custom message, orphaned notification settings).
+ * still run, drops only what it cannot, and clears the state the new trigger
+ * has no step for: the conditions (proactive and inbound triggers have no
+ * Conditions step), the custom message (neither can run Message), and
+ * orphaned notification settings.
  */
 export function applyTriggerChange(draft: FlowDraft, next: FlowTrigger): FlowDraft {
   const { kept } = partitionActionsForTrigger(draft.actions, next);
-  const proactive = isProactiveTrigger(next);
+  const dropsMessage = isProactiveTrigger(next) || isHttpTrigger(next);
   const settings = kept.includes("notification")
     ? draft.settings
     : { ...draft.settings, notification: undefined };
@@ -220,8 +296,8 @@ export function applyTriggerChange(draft: FlowDraft, next: FlowTrigger): FlowDra
     ...draft,
     trigger: next,
     actions: kept,
-    conditions: proactive ? [] : draft.conditions,
-    customMessage: proactive ? "" : draft.customMessage,
+    conditions: triggerHasConditions(next) ? draft.conditions : [],
+    customMessage: dropsMessage ? "" : draft.customMessage,
     settings,
   };
 }
@@ -241,15 +317,19 @@ export interface FlowSavePayload {
 /**
  * Builds the save payload from a draft: conditions are cleaned, the flow
  * description is regenerated from them (the classifier catalogs flows by
- * description, keep it in sync with the builder's semantic conditions), and
- * only Time-on-page stores trigger-scoped settings, every other trigger
- * stores an empty object rather than a stale dwell from a previous choice.
+ * description, keep it in sync with the builder's semantic conditions), a
+ * trigger with no Conditions step saves none (a stale list on an inbound Flow
+ * would be stored and never evaluated), and only Time-on-page stores a dwell,
+ * every other trigger stores its own settings or an empty object rather than
+ * a stale dwell from a previous choice.
  */
 export function flowSavePayload(
   draft: FlowDraft,
   existing: Pick<Flow, "description"> | null
 ): FlowSavePayload {
-  const cleanedConditions = cleanFlowConditions(draft.conditions);
+  const cleanedConditions = triggerHasConditions(draft.trigger)
+    ? cleanFlowConditions(draft.conditions)
+    : [];
   const joined = flowConditionDescription(cleanedConditions);
   return {
     description: joined || existing?.description || "",
@@ -262,7 +342,9 @@ export function flowSavePayload(
               seconds: draft.dwell.seconds,
             },
           }
-        : {},
+        : draft.trigger === "http_request"
+          ? { httpRequest: { methods: draft.httpMethods } }
+          : {},
     conditionLogic: draft.conditionLogic,
     conditions: cleanedConditions,
     actions: draft.actions,

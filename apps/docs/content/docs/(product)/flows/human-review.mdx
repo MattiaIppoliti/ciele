@@ -1,0 +1,59 @@
+---
+title: Human review
+description: Pause a Flow until a colleague approves, by email or Slack, and continue with their answer.
+---
+
+## What a Human review does
+
+A **Human review** is a response action. When the Flow reaches it, the Assistant stops and asks named colleagues for a decision. The Visitor reads a waiting message. The Flow continues only after the first colleague approves. If a colleague rejects the request, or nobody answers in time, the Flow stops with a message you configure.
+
+The request is sent by **email** from your own Microsoft 365 mailbox, or by **Slack** through the Organization's Slack connection. Both carry the title, your message, a summary of the conversation, and a signed link to a decision page in the console.
+
+## Configure the action
+
+1. Add **Human review** from the palette or the action picker.
+2. Enter a **Title** and a **Message to the reviewer**. Template variables work in both.
+3. Enter the reviewers under **Assigned to**, as email addresses. Every address must belong to a Member of the Organization.
+4. Select the **Channel**.
+   - **Email**: connect your Microsoft 365 mailbox with **Connect**, then select it under **Sent from**. The request is sent from your account.
+   - **Slack**: enter the channel id or the member id. The Organization's Slack connection must have the `chat:write` scope.
+5. Add at least one **Input** for the reviewer to fill: short text, long text, a dropdown, or yes / no. Each input has an id.
+6. Set **Expires after** in hours. The default is 24.
+7. Enter what the Visitor reads **while waiting** and **if rejected or expired**.
+
+The node shows **Needs setup** until every required field is set. **Publish** refuses a Flow whose reviewers are not Members or whose sender is not connected.
+
+## Preview the request
+
+On the canvas, select the node and open **Run node**. The panel shows the email or Slack message as the reviewer will read it. Nothing is sent from there.
+
+## Decide a request
+
+The link opens a page in the console. You must be signed in. The page shows the message, the conversation so far, the inputs, and **Approve** / **Reject**.
+
+- Only an assignee, or an Owner or Admin, can decide.
+- The first decision closes the request. Later visitors see who decided.
+- Approving with an empty required input is refused.
+
+A pending request also appears in the **Inbox**. Open the conversation to see its status and the reviewer's inputs, or filter the Inbox by **Human review → Pending reviews**.
+
+## What happens after the decision
+
+- **Approved**: the actions after the Human review run. The reviewer's inputs are available as template variables, `{{review.<id>}}`, together with `{{review.decidedBy}}` and `{{review.approved}}`. The reply is added to the conversation as the next Assistant message.
+- **Rejected** or **expired**: the halt message is added instead.
+
+The Visitor sees the outcome the next time they write or reopen the chat.
+
+## Preview
+
+In the Preview, the request is **simulated**. Nothing is sent. The transcript shows the request with **Approve** and **Reject** buttons, and the Flow continues in the same chat. A Teammate chat has no Flows, so it never reaches a Human review.
+
+## API, CLI and MCP
+
+| Operation | API | CLI | MCP (`read_inbox`) |
+| --- | --- | --- | --- |
+| List requests | `GET /api/v1/reviews?status=pending` | `ciele reviews list --status pending` | `review_list` |
+| Read one | `GET /api/v1/reviews/{id}` | `ciele reviews get <id>` | `review_get` |
+| Decide | `POST /api/v1/reviews/{id}/decide` | `ciele reviews decide <id> --decision approved --inputs amount=50` | `review_decide` |
+
+An API key has no email, so it can decide only when its Role is Owner or Admin.

@@ -1,0 +1,188 @@
+---
+title: Zone de création de flux
+description: Modifiez un flux sous la forme d'une chaîne de nœuds, avec les mêmes champs que le formulaire.
+---
+
+## Ouvrez le canevas
+
+1. Ouvrez un Assistant.
+2. Sélectionnez **Flows**.
+3. Ouvrez un flux ou créez-en un.
+4. Sélectionnez **Canvas** dans l'en-tête.
+
+Sélectionnez **Form** pour revenir au formulaire en trois étapes. Les deux vues
+modifient un brouillon non enregistré. Le changement de vue conserve toutes les
+modifications. La console mémorise votre dernier choix sur ce navigateur.
+
+## Brouillons
+
+Vos modifications non enregistrées sont conservées dans ce navigateur sous forme
+de brouillon, dans les deux vues. L'en-tête affiche **Draft saved** tant qu'il y
+a des modifications à conserver. Quittez le Flow, rechargez la page ou fermez
+l'onglet : le brouillon vous attendra à votre retour.
+
+Le brouillon vous appartient en exclusivité : il n'est pas envoyé au serveur,
+donc personne d'autre ne le voit et rien n'est exécuté à partir de celui-ci.
+L'enregistrement ou la suppression du flux efface le brouillon. Si vous revenez
+à votre point de départ, le brouillon est également effacé, car il n'y a plus
+rien à conserver.
+
+## Lisez la chaîne
+
+Le canevas dessine le flux de gauche à droite :
+
+| Nœud | Signification |
+| --- | --- |
+| Démarrage | Le déclencheur. Affiche le nom du déclencheur. Pour Time on page, affiche le délai. |
+| Conditions | Les conditions facultatives et leur logique. Non affichée pour les déclencheurs proactifs ou le comportement par défaut. |
+| Action | Une action de réponse, dans l'ordre dans lequel le flux les exécute. |
+
+Un badge **Needs setup** indique qu'il manque des paramètres obligatoires à un
+nœud. Le flux ne peut pas être enregistré tant que tous les badges n'ont pas
+disparu.
+
+## Démarrer un flux vide
+
+Un nouveau flux s'ouvre sous la forme d'une toile vierge avec une case au centre
+: **What should this flow do?** Saisissez une description et appuyez sur Entrée
+pour laisser l'agent Flows rédiger le flux. Ou sélectionnez **le créer
+manuellement** pour placer le nœud de démarrage et ajouter vous-même les étapes.
+Les nœuds apparaissent dès que le flux dispose d'un déclencheur ou d'une action.
+
+## Ajouter un nœud
+
+Il existe deux façons d'ajouter une étape.
+
+**From a node.** Placez le pointeur sur n'importe quel nœud. Un petit **+**
+apparaît sur son bord droit et ouvre le même menu. L'emplacement du **+**
+détermine l'endroit où l'étape est insérée. À partir d'un nœud situé au milieu
+de la chaîne, l'étape est insérée après ce nœud. À partir du dernier nœud, elle
+est ajoutée à la fin. La nouvelle étape s'ouvre pour être configurée.
+
+**From the bottom bar.** Sélectionnez **Add a step** dans la barre située en bas
+du canevas. Recherchez dans la liste ou filtrez-la à l'aide des puces
+**Trigger**, **Action** et **Connector**. Faites glisser une ligne sur le
+canevas pour l'insérer entre deux étapes au lieu de l'ajouter à la fin.
+
+Tous deux ne proposent que les étapes que le déclencheur actuel peut exécuter,
+et aucun des deux n'affiche une étape que le flux possède déjà. Un déclencheur
+n'apparaît que lorsque le flux n'en a aucun. Pour en remplacer un, sélectionnez
+le nœud Start et modifiez-le à cet endroit. La console vous indique alors ce que
+cette action supprime.
+
+## Demander depuis le canevas
+
+Une fois que le flux comporte une étape, la barre en bas affiche une zone pour
+l'agent Flows. Saisissez ce que vous souhaitez modifier et appuyez sur Entrée.
+L'agent s'ouvre dans le panneau de droite et répond en premier à votre message.
+
+## Configurer un nœud
+
+Sélectionnez un nœud. Un panneau flottant apparaît à droite du canevas avec deux
+onglets :
+
+- **Configure** affiche les mêmes champs que le formulaire pour cette étape.
+- **Run node** exécute le nœud seul. La requête API envoie une requête de test
+  avec des valeurs d'exemple. Rechercher dans la base de connaissances ouvre
+  l'Aperçu pour que vous puissiez poser une question.
+
+Son en-tête comporte trois commandes. Les trois points contiennent **Reset
+position**, **Open Preview** et **Remove step**. Les flèches agrandissent le
+panneau pour qu'il remplisse la fenêtre, puis le réduisent. La croix ferme le
+panneau. Lorsque le panneau remplit la fenêtre, la croix est la première à
+disparaître du plein écran.
+
+Ces deux commandes se trouvent également en bas à gauche, sous les boutons de
+zoom, lorsqu'une étape est sélectionnée. Lorsque le panneau est en plein écran,
+son propre en-tête se trouve dans le coin, à l'écart des commandes du canevas.
+**Open full screen** est également disponible dans le menu contextuel d'un nœud.
+
+## Effectuez un clic droit pour accéder aux actions
+
+Faites un clic droit sur le canevas pour accéder aux commandes d'affichage :
+**Add a step**, **Fit to view**, **Tidy up**, **Switch to vertical layout** et
+**Open Preview**. Faites un clic droit sur un nœud et le menu concerne également
+cette étape. **Configure** ouvre ses paramètres. **Open full screen** l'ouvre en
+remplissant la fenêtre. **Reset position** le ramène à la mise en page
+automatique. **Remove step** le supprime. `Delete` supprime également l'étape
+sélectionnée.
+
+Sur un écran tactile, maintenez le doigt appuyé au lieu de faire un clic droit.
+
+## Déplacez-vous sur le canevas
+
+Faites défiler pour déplacer le canevas. Sur un trackpad, balayez avec deux
+doigts dans n'importe quelle direction. Pincez pour zoomer, ou maintenez `Ctrl`
+enfoncé et faites défiler. Sur un écran tactile, faites glisser n'importe où sur
+le canevas pour le déplacer.
+
+Avec une souris, les deux boutons situés en bas du canevas déterminent l'action
+associée au glissement sur un espace vide. **Select** dessine un cadre autour
+des nœuds. **Hand** déplace le canevas.
+
+## Réorganiser et disposer
+
+- Faites glisser un nœud d'action au-delà de son voisin pour modifier l'ordre
+  des actions. L'ordre est celui dans lequel le flux les exécute.
+- Faites glisser un nœud sur une courte distance pour réorganiser l'image. La
+  position est stockée uniquement dans votre navigateur.
+- Utilisez les commandes en bas à gauche pour zoomer et ajuster le flux à la
+  taille de la fenêtre. Lorsqu'une étape est sélectionnée, ils comportent
+  également les commandes plein écran et les trois points de cette étape.
+- **Tidy up** (`Shift`+`T`) abandonne chaque déplacement et remet la chaîne en
+  disposition automatique.
+- **Switch to vertical layout** fait pivoter la chaîne pour qu'elle descende le
+  long du canevas au lieu de le traverser. Un long flux se lit mieux de cette
+  façon. Chaque direction conserve sa propre disposition, de sorte que lorsque
+  vous revenez en arrière, vous retrouvez l'image que vous aviez laissée. Votre
+  choix est mémorisé dans votre navigateur.
+
+## Demandez à l'agent Flows
+
+Le **Flows Agent** crée et modifie le Flow ouvert à partir d'une description. Il
+s'agit d'un coéquipier IA que la console crée pour chaque Assistant. Il
+n'apparaît pas dans **Teammates**.
+
+Pour l'ouvrir :
+
+- Sur un canevas vide, saisissez ce que le Flow doit faire dans la zone au
+  centre, puis appuyez sur Entrée.
+- Sur n'importe quel canevas, sélectionnez **Agent** dans l'en-tête.
+
+L'agent s'ouvre dans le panneau de droite, où se trouve l'aperçu en direct, et
+fonctionne de la même manière. Faites glisser son bord gauche pour le
+redimensionner. Utilisez les commandes de l'en-tête pour accéder aux
+conversations précédentes, ouvrir un nouveau chat et passer en plein écran. Les
+deux partagent cet espace : ainsi, l'ouverture de l'agent masque l'aperçu et
+l'ouverture de l'aperçu masque l'agent. Sélectionnez **Show preview** sur le
+bord droit pour revenir en arrière.
+
+L'agent voit le brouillon ouvert, les autres flux de l'assistant, ses centres
+d'aide, ses FAQ et ses connexions d'application. Chaque modification qu'il
+effectue apparaît dans le brouillon non enregistré sous la forme d'une étape.
+Vous pouvez l'annuler avec **Undo**. L'agent n'enregistre jamais. Sélectionnez
+**Save changes** ou **Create flow** lorsque le brouillon est correct.
+
+Lorsque la demande décrit une deuxième intention, l'agent propose un flux
+distinct au lieu de modifier le flux ouvert. La proposition s'affiche sous la
+forme d'une carte. Sélectionnez **Create and open** pour créer ce flux, ou
+**Dismiss**.
+
+Seuls les éditeurs et les administrateurs peuvent utiliser l'agent. Les
+conversations précédentes concernant le même flux se trouvent sous le bouton
+Historique dans l'en-tête du panneau. L'agent s'exécute sur les mêmes connexions
+de fournisseur que vos coéquipiers, y compris votre propre abonnement personnel
+lorsque vous en avez connecté un.
+
+## Annuler et rétablir
+
+Utilisez **Undo** et **Redo** dans l'en-tête, ou `Ctrl+Z` et `Ctrl+Shift+Z`
+(`Cmd` sur macOS). L'annulation concerne les modifications non enregistrées dans
+les deux vues. L'enregistrement du flux n'efface pas l'historique. Quitter le
+flux, en revanche, l'efface.
+
+## Enregistrer
+
+Le pied de page affiche les trois mêmes cases à cocher que le formulaire.
+Sélectionnez **Save changes** ou **Create flow**. Le canevas enregistre le même
+flux que le formulaire.

@@ -22,6 +22,10 @@
 # hosted file asks for daily and the hour is approximate there until the plan
 # is Pro. Making the hosted one hourly is a one-line change in vercel.json.
 0 * * * *   /usr/local/bin/run-job.sh /api/cron/run-routines
+# RUN_REVIEWS (#841): hourly here for the same reason as routines, a review's
+# timeout is measured in hours; daily on Vercel's Hobby plan.
+15 * * * *  /usr/local/bin/run-job.sh /api/cron/run-reviews
+35 * * * *  /usr/local/bin/run-job.sh /api/cron/run-webhooks
 0 4 * * *   /usr/local/bin/run-job.sh /api/cron/verify-goals
 30 4 * * *  /usr/local/bin/run-job.sh /api/cron/learn-graph
 0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports

@@ -35,6 +35,7 @@ import {
   listOrgKnowledgeSourcesOp,
   updateOrgFaqOp,
 } from "./knowledge";
+import { draftFlowOp, getFlowOp, listFlowsOp, proposeFlowOp } from "./flows";
 
 /**
  * What a granted domain actually lets an AI Teammate do (#770).
@@ -96,6 +97,12 @@ export interface TeammateActionSpec {
    * amendment is a per-Teammate decision, not a domain.
    */
   requires?: (actor: TeammateActor) => boolean;
+  /**
+   * What the invoking surface, not the model, should receive from the result
+   * (#838). Only the two Flows Agent hand-backs declare one: the canvas applies
+   * the patch, the model only ever sees the summary.
+   */
+  clientPayload?: (result: unknown) => Record<string, unknown>;
 }
 
 const IMPROVEMENTS: TeammateActionSpec[] = [
@@ -279,6 +286,45 @@ export function teammateMemoryActions(
   );
 }
 
+/**
+ * The Flows Agent's domain (#838). Two reads and two hand-backs: `flows.draft`
+ * and `flows.propose` write no row, they return a validated change for the
+ * canvas to apply or the Editor to accept. `flows.create`, `flows.update`,
+ * `flows.delete` and `flows.reorder` are excluded by name: the agent must never
+ * change what a widget runs without the Editor pressing Save.
+ */
+const FLOWS: TeammateActionSpec[] = [
+  {
+    operation: listFlowsOp,
+    label: "List the assistant's flows",
+    domain: "flows",
+    description:
+      "List every flow of the assistant (name, trigger, actions), to avoid duplicating an intent another flow already routes.",
+  },
+  {
+    operation: getFlowOp,
+    label: "Read a flow",
+    domain: "flows",
+    description: "Read one flow in full: trigger, conditions, actions and their settings.",
+  },
+  {
+    operation: draftFlowOp,
+    label: "Change the open flow",
+    domain: "flows",
+    description:
+      "Change the flow open on the canvas. Pass only the fields you change (name, trigger, conditionLogic, conditions, actions, actionSettings, customMessage) and a one-sentence summary. The change lands in the editor's unsaved draft; you never save.",
+    clientPayload: (result) => result as Record<string, unknown>,
+  },
+  {
+    operation: proposeFlowOp,
+    label: "Propose a new flow",
+    domain: "flows",
+    description:
+      "Propose a complete new flow for a second intent that should not live in the open flow. The editor sees it as a card and decides whether to create it.",
+    clientPayload: (result) => result as Record<string, unknown>,
+  },
+];
+
 export const TEAMMATE_ACTION_CATALOG: Record<
   TeammateGrantDomain,
   readonly TeammateActionSpec[]
@@ -286,6 +332,7 @@ export const TEAMMATE_ACTION_CATALOG: Record<
   improvements: IMPROVEMENTS,
   knowledge: KNOWLEDGE,
   inbox: INBOX,
+  flows: FLOWS,
 };
 
 /**

@@ -1,0 +1,190 @@
+---
+title: HTTP et webhooks
+description: Appelez un point de terminaison HTTP depuis un Flow, attendez un rappel de webhook ou laissez un autre système appeler un Flow et lire sa réponse.
+---
+
+## Ce qu'un Flow peut faire via HTTP
+
+Un Flow communique avec les systèmes extérieurs à Ciele de trois manières.
+
+| Étape | Direction | Ce qu'il fait |
+| --- | --- | --- |
+| Requête API | Sortante | Effectue un appel HTTP et lit la réponse. |
+| Webhook HTTP | Sortant, puis entrant | S'abonne à un système, attend, puis continue lorsque ce système rappelle. |
+| Sur requête HTTP (déclencheur) + Réponse | Entrant | Un autre système appelle le Flow, et le Flow répond. |
+
+## Requête API
+
+La requête API effectue un appel et poursuit son exécution. Configurez-le sous
+**Endpoint** : saisissez une URL ou nommez une opération dans une définition
+Swagger/OpenAPI. Consultez [Actions](/flows/actions#api-request) pour la liste
+complète des champs.
+
+Utilisez la requête API lorsque l'autre système répond immédiatement.
+
+## Webhook HTTP
+
+Utilisez le webhook HTTP lorsque l'autre système accepte une requête
+immédiatement et répond ultérieurement.
+
+L'étape comporte deux appels avec une attente entre eux.
+
+**Subscribe** est envoyé lorsque le flux atteint l'étape. Placez
+`{{webhook.callbackUrl}}` dans son URI ou son corps. Ciele la remplace par une
+adresse signée pour cette conversation. Sans cela, l'autre système n'a nulle
+part où répondre et l'éditeur refuse de marquer l'étape comme configurée.
+
+Les deux appels prennent un paramètre **Authentication** et **Headers**, les
+mêmes champs que la requête API. Indiquez-y un identifiant, et non dans l'URI ou
+dans le corps. Ciele masque ces champs à chaque lecture et ne les stocke jamais
+dans une Publication ou une transcription.
+
+**Unsubscribe** est envoyé à la fin de l'attente, quelle qu'en soit la cause. Il
+est facultatif, mais sans lui, l'autre système continue d'appeler une adresse
+qui ne mène plus nulle part.
+
+L'appel de désabonnement est résolu après la réponse de l'appel d'abonnement. La
+réponse complète est à sa disposition sous la forme `{{webhook.subscribeBody}}`.
+Pour utiliser une valeur de la réponse, ajoutez une ligne **Response mapping** à
+l'appel de souscription. Attribuez-lui un chemin tel que `$.id` et un nom de
+variable tel que `subscriptionId`. Ensuite, écrivez `{{subscriptionId}}` dans
+l'URI de désabonnement.
+
+Entre les deux, la conversation est en attente. Le Visiteur lit le message
+d'attente que vous configurez, et la transcription enregistre l'attente plutôt
+qu'un blanc.
+
+Lorsque le rappel arrive, le flux reprend à l'étape qui suit le webhook. Le
+corps du rappel est disponible sous la forme `{{webhook.body}}`, et **Response
+mapping** en extrait les valeurs nommées de la même manière qu'une requête API.
+
+Si rien n'arrive avant l'expiration du délai, le flux s'arrête. Le Visiteur lit
+le message que vous configurez sous **If nothing arrives**. Le délai d'attente
+par défaut est de 15 minutes. Le délai maximal est de 24 heures.
+
+Un rappel qui arrive après le délai d'attente est refusé, que Ciele ait déjà
+marqué ou non l'attente comme expirée. Le visiteur peut lire le message
+d'expiration un certain temps après l'expiration. Sur le plan hébergé, la
+vérification est effectuée une fois par jour. Sur une installation
+auto-hébergée, il s'exécute une fois par heure. Le flux ne reprend jamais à
+partir d'un rappel tardif.
+
+### Ce que permet l'adresse de rappel
+
+L'adresse générée par Ciele nomme un abonnement et expire avec celui-ci. Il
+s'agit de l'autorisation complète : toute personne qui la détient peut répondre
+à cette seule attente, une seule fois.
+
+Seul le premier rappel compte. Certains systèmes effectuent au moins une
+livraison, ou réessaient lorsqu'ils ne reçoivent pas votre réponse. Ciele accuse
+réception de la nouvelle tentative. Le flux se poursuit tout de même une seule
+fois.
+
+La suppression d'une conversation alors qu'un webhook est en attente met fin à
+l'attente et envoie d'abord l'appel de désabonnement. Une conversation supprimée
+par une règle de rétention ne l'envoie pas.
+
+## Sur requête HTTP
+
+Sélectionnez **On HTTP request** comme déclencheur du flux pour lui donner un
+point de terminaison qu'un autre système peut appeler.
+
+Les paramètres propres au Flow affichent le point de terminaison et les méthodes
+qu'il accepte. Un flux enregistré répond `POST`, sauf si vous en décidez
+autrement. Un flux non enregistré n'a pas encore de point de terminaison.
+
+Appelez-le avec une clé API d'organisation en tant que jeton Bearer :
+
+```bash
+curl -X POST https://ciele.app/api/flows/<flowId>/trigger \
+  -H "Authorization: Bearer ciele_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "A-1"}'
+```
+
+Créez la clé sous **Settings → API Keys**. La clé détermine à quelle
+organisation appartient la requête. Par conséquent, une clé ne peut pas exécuter
+le flux d'une autre organisation. N'importe quelle clé de l'organisation peut
+effectuer un appel, quel que soit son rôle.
+
+Le flux qui s'exécute est celui de la dernière publication de l'assistant.
+Publiez l'Assistant après avoir enregistré le flux, ou le point de terminaison
+répond `404` avec le code `not_published`. Une modification que vous n'avez pas
+publiée ne change pas le comportement du point de terminaison.
+
+La requête est disponible à chaque étape sous forme de variables de modèle :
+
+| Variable | Valeur |
+| --- | --- |
+| `{{request.method}}` | La méthode HTTP. |
+| `{{request.body}}` | Le corps brut de la requête. |
+| `{{request.body.name}}` | Une valeur d'un corps JSON, par chemin d'accès. `{{request.body.order.id}}` lit `{"order":{"id":"A-1"}}`. Les tableaux utilisent un nombre : `{{request.body.items.0.sku}}`. |
+| `{{request.query.name}}` | Une valeur de chaîne de requête. |
+| `{{request.header.name}}` | Un en-tête, en minuscules. |
+
+Les chemins d'accès au corps peuvent atteindre quatre niveaux de profondeur et
+s'arrêtent après 200 valeurs. Le corps brut est toujours disponible dans son
+intégralité.
+
+Les en-têtes `Authorization`, `Proxy-Authorization` et `Cookie` ne sont pas
+disponibles. C'est ainsi que l'appelant a prouvé qu'il pouvait exécuter le Flow.
+Un Flow capable de les lire pourrait envoyer votre propre clé API ailleurs.
+
+### Ce qu'un flux entrant peut contenir
+
+Un flux entrant n'a pas de fenêtre de chat. Il ne propose que les étapes qui
+effectuent une action.
+
+- Requête API
+- Connecteur
+- Envoyer un e-mail
+- Amélioration
+- Réponse
+
+Le webhook HTTP et la révision humaine ne sont pas proposés. Voir
+[Limites](#limits). L'éditeur les refuse lorsque vous enregistrez, et le moteur
+d'exécution les ignore si un flux enregistré en contient encore un.
+
+Il n'a pas non plus de conditions. L'appelant a déjà choisi le Flow par son URL.
+
+## Réponse
+
+**Response** est ce que l'appelant lit : un code d'état, des en-têtes
+facultatifs et un corps facultatif. Les en-têtes et le corps acceptent les
+variables de modèle, ce qui permet à un Flow d'appeler une API et de répondre
+avec le résultat renvoyé.
+
+Le code d'état est obligatoire. Il doit être compris entre 200 et 599. L'éditeur
+ne marque pas l'étape configurée sans code d'état.
+
+La réponse met fin au flux. Rien n'est configuré après son exécution, car ce qui
+a été communiqué à l'appelant ne peut pas être modifié par la suite.
+
+Un flux qui se termine sans réponse renvoie `204 No Content`. Un flux dont
+l'étape échoue avant qu'il puisse répondre renvoie `500`.
+
+### Historique des exécutions
+
+Chaque appel est enregistré. Ouvrez le flux et sélectionnez le déclencheur pour
+afficher les 20 dernières exécutions. Chaque exécution indique l'heure d'arrivée
+de l'appel, sa méthode, le statut reçu par l'appelant, les étapes exécutées et
+la durée de l'exécution. Une étape ayant échoué est nommée. Une exécution n'est
+pas une conversation. Elle n'apparaît ni dans la boîte de réception ni dans
+Insights.
+
+L'enregistrement ne conserve ni le corps de la requête ni celui de la réponse.
+
+## Limites
+
+- Chaque clé API peut déclencher 60 requêtes entrantes par minute. Une adresse
+  de rappel accepte 120 appels par minute provenant d'une même adresse réseau.
+- Les appels d'abonnement et de désabonnement suivent les mêmes règles réseau
+  que tous les autres appels sortants : HTTPS uniquement, pas de redirections,
+  pas d'adresses privées. Un rappel est une requête entrante ; ces règles ne s'y
+  appliquent donc pas.
+- Un flux entrant ne peut pas contenir de webhook HTTP ni de vérification
+  humaine. Tous deux interrompent un tour et le reprennent plus tard dans une
+  conversation, alors qu'un flux entrant n'en comporte pas.
+- Une conversation supprimée par une règle de rétention emporte avec elle ses
+  webhooks en attente et n'envoie pas d'appel de désabonnement. Annulez
+  vous-même ces abonnements dans l'autre système.

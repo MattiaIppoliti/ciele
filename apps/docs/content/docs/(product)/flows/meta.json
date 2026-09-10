@@ -1,4 +1,4 @@
 {
   "title": "Flows",
-  "pages": ["index", "building-a-flow", "actions", "notifications"]
+  "pages": ["index", "building-a-flow", "canvas", "actions", "connector", "http", "human-review", "notifications"]
 }

@@ -3439,6 +3439,30 @@ export function describeDbContract(
         expect(unlinked.items).toEqual([]);
       });
 
+      it("returns count-only pages and narrow Knowledge Scope options", async () => {
+        const { source, collection } = await newKnowledgeFixture("file", "Hub Scope Option");
+        const counted = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["file"], query: "Hub Scope Option", pageSize: 0,
+        });
+        expect(counted.items).toEqual([]);
+        expect(counted.total).toBe(1);
+        expect(Object.values(counted.statusCounts).reduce((a, b) => a + b, 0)).toBe(1);
+        const options = await db.listOrgKnowledgeSourceOptions(ctx.organizationId, {
+          kinds: ["file"], limit: 500,
+        });
+        expect(options.items).toContainEqual({
+          id: source.id, name: source.name, kind: "file", collectionId: collection.id,
+        });
+        const capped = await db.listOrgKnowledgeSourceOptions(ctx.organizationId, {
+          kinds: ["file"], limit: 1,
+        });
+        expect(capped.items).toHaveLength(1);
+        expect(capped.total).toBe(options.total);
+        expect(await db.listOrgKnowledgeSourceOptions(ctx.missingOrganizationId, {
+          kinds: ["file"], limit: 500,
+        })).toEqual({ items: [], total: 0 });
+      });
+
       it("never surfaces another organization's rows", async () => {
         await newKnowledgeFixture("website", "Hub Tenancy Site");
         const foreign = await db.listOrgKnowledgeSources(
@@ -3834,6 +3858,61 @@ export function describeDbContract(
         expect(await db.listNullEmbeddingConceptIds(assistant.id)).toEqual([
           missing.id,
         ]);
+      });
+
+      it("lists only reachable active FAQ titles without loading knowledge bodies", async () => {
+        const assistant = await newAssistant();
+        const other = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "FAQ options" });
+        const source = await db.createSource({ collectionId: collection.id, name: "FAQs", kind: "faq" });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        const make = (path: string, title: string, type = "FAQ", generationId?: string) => db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path,
+          frontmatter: { type, title },
+          body: "A full answer must never be part of the option.",
+          ...(generationId ? { generationId } : {}),
+        });
+        const faq = await make("faq.md", "Opening hours?");
+        const excluded = await make("excluded.md", "Excluded?");
+        await db.setConceptExcluded(excluded.id, true);
+        await make("blank.md", "  ");
+        await make("note.md", "A Note", "Note");
+        const generationId = crypto.randomUUID();
+        const staged = await make("faq.md", "New hours?", "FAQ", generationId);
+        expect(await db.listAssistantFaqOptions(assistant.id)).toEqual([
+          { id: faq.id, question: "Opening hours?" },
+        ]);
+        expect(await db.listAssistantFaqOptions(other.id)).toEqual([]);
+        expect(await db.listAssistantFaqOptions(ctx.foreignAssistantId)).not.toContainEqual(
+          { id: faq.id, question: "Opening hours?" }
+        );
+        await db.commitSourceKnowledgeGeneration({
+          sourceId: source.id, expectedActiveGenerationId: source.activeGenerationId,
+          generationId,
+        });
+        expect(await db.listAssistantFaqOptions(assistant.id)).toEqual([
+          { id: staged.id, question: "New hours?" },
+        ]);
+        await db.setSourceAssistantLinks(source.id, []);
+        expect(await db.listAssistantFaqOptions(assistant.id)).toEqual([]);
+        await db.deleteAssistant(assistant.id);
+        await db.deleteSource(source.id);
+      });
+
+      it("walks FAQ option pages instead of truncating a large catalogue", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name: "Large FAQ catalogue" });
+        const source = await db.createSource({ collectionId: collection.id, name: "FAQs", kind: "faq" });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        const concepts = await Promise.all(Array.from({ length: 201 }, (_, i) => db.createConcept({
+          collectionId: collection.id, sourceId: source.id, path: `faq-${i}.md`,
+          frontmatter: { type: "FAQ", title: `Question ${i}?` }, body: "Answer",
+        })));
+        const options = await db.listAssistantFaqOptions(assistant.id);
+        expect(options).toHaveLength(concepts.length);
+        expect(new Set(options.map((option) => option.id))).toEqual(new Set(concepts.map((concept) => concept.id)));
       });
 
       it("finds an FAQ Concept by question, case-insensitively (#313)", async () => {
@@ -8072,6 +8151,129 @@ export function describeDbContract(
         await db.deleteApplicationImport(applicationImport.id);
         expect(await db.getApplicationImport(applicationImport.id)).toBeNull();
         expect(await db.getSource(restoredSource.id)).toBeNull();
+      });
+    });
+
+    describe("webhook subscriptions (#842)", () => {
+      it("settles a pending subscription exactly once, whichever side gets there first", async () => {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Gate" });
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-webhook-cas",
+          title: "Order",
+        });
+        const subscription = await db.table("webhookSubscriptions").insert({
+          organizationId: ctx.organizationId,
+          assistantId: assistant.id,
+          conversationId: conversation.id,
+          flowId: "flow-1",
+          actionIndex: 0,
+          subscribeMethod: "POST",
+          subscribeUrl: "https://api.example.com/subscribe",
+          unsubscribeMethod: null,
+          unsubscribeUrl: null,
+          unsubscribeBody: null,
+          expiresAt: new Date(Date.now() + 900_000).toISOString(),
+          haltMessage: "",
+          simulated: false,
+        });
+        const received = await db.settleWebhookSubscription(subscription.id, {
+          status: "received",
+          payload: '{"state":"done"}',
+          receivedAt: new Date().toISOString(),
+        });
+        expect(received).toMatchObject({ status: "received", payload: '{"state":"done"}' });
+        // The sweep arriving second finds nothing pending and writes nothing:
+        // the payload the caller sent is kept, and the row is not flipped to
+        // expired under the continuation's feet.
+        expect(
+          await db.settleWebhookSubscription(subscription.id, { status: "expired" })
+        ).toBeNull();
+        expect((await db.table("webhookSubscriptions").get(subscription.id))?.status).toBe(
+          "received"
+        );
+      });
+    });
+
+    describe("inbound HTTP flow runs (#843)", () => {
+      it("records a run and lists the latest ones for a Flow, newest first", async () => {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Endpoint" });
+        const first = await db.table("httpFlowRuns").insert({
+          organizationId: ctx.organizationId,
+          assistantId: assistant.id,
+          flowId: "flow-http",
+          publicationId: null,
+          method: "POST",
+          status: 200,
+          ran: ["api_request", "respond"],
+          failedAction: null,
+          failedMessage: null,
+          durationMs: 120,
+        });
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        const second = await db.table("httpFlowRuns").insert({
+          organizationId: ctx.organizationId,
+          assistantId: assistant.id,
+          flowId: "flow-http",
+          publicationId: null,
+          method: "POST",
+          status: 500,
+          ran: ["api_request"],
+          failedAction: "api_request",
+          failedMessage: "boom",
+          durationMs: 40,
+        });
+        const runs = await db.table("httpFlowRuns").list({ flowId: "flow-http" }, { limit: 10 });
+        expect(runs.map((run) => run.id)).toEqual([second.id, first.id]);
+        expect(runs[0]).toMatchObject({ status: 500, failedAction: "api_request", ran: ["api_request"] });
+      });
+    });
+
+    describe("human review requests (#841)", () => {
+      it("closes a pending request exactly once", async () => {
+        const assistant = await db.createAssistant(ctx.organizationId, { title: "Gate" });
+        const conversation = await db.createConversation({
+          assistantId: assistant.id,
+          subjectType: "visitor",
+          subjectId: "visitor-cas",
+          title: "Refund",
+        });
+        const review = await db.table("reviewRequests").insert({
+          organizationId: ctx.organizationId,
+          assistantId: assistant.id,
+          conversationId: conversation.id,
+          flowId: "flow-1",
+          actionIndex: 0,
+          title: "Approve",
+          message: "",
+          summary: "",
+          channel: "email",
+          assignees: ["ann@test"],
+          inputs: [],
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          haltMessage: "",
+          simulated: false,
+        });
+        const decided = await db.decideReviewRequest(review.id, {
+          status: "approved",
+          decision: { amount: "5" },
+          decidedBy: null,
+          decidedByName: "Ann",
+          decidedAt: new Date().toISOString(),
+        });
+        expect(decided).toMatchObject({ status: "approved", decidedByName: "Ann" });
+        // A second decision finds nothing pending and writes nothing.
+        expect(
+          await db.decideReviewRequest(review.id, {
+            status: "rejected",
+            decision: {},
+            decidedBy: null,
+            decidedByName: "Bob",
+            decidedAt: new Date().toISOString(),
+          })
+        ).toBeNull();
+        expect((await db.table("reviewRequests").get(review.id))?.decidedByName).toBe("Ann");
       });
     });
 

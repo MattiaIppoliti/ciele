@@ -1,0 +1,192 @@
+---
+title: HTTP e webhook
+description: Chiama un endpoint HTTP da un Flow, attendi una callback del webhook o lascia che un altro sistema chiami un Flow e legga la sua risposta.
+---
+
+## Cosa può fare un Flow tramite HTTP
+
+Un Flow comunica con i sistemi esterni a Ciele in tre modi.
+
+| Passaggio | Direzione | Cosa fa |
+| --- | --- | --- |
+| Richiesta API | In uscita | Esegue una chiamata HTTP e legge la risposta. |
+| Webhook HTTP | In uscita, poi in entrata | Si iscrive a un sistema, attende e riprende quando quel sistema richiama. |
+| Su richiesta HTTP (trigger) + Risposta | In entrata | Un altro sistema chiama il Flow e il Flow risponde. |
+
+## Richiesta API
+
+La richiesta API effettua una chiamata e prosegue. Configuralo in **Endpoint**:
+inserisci un URL o assegna un nome a un'operazione in una definizione
+Swagger/OpenAPI. Vedi [Actions](/flows/actions#api-request) per l'elenco
+completo dei campi.
+
+Utilizza la richiesta API quando l'altro sistema risponde immediatamente.
+
+## Webhook HTTP
+
+Utilizza l'HTTP webhook quando l'altro sistema accetta subito una richiesta e
+risponde in un secondo momento.
+
+Il passaggio prevede due chiamate con un'attesa tra di esse.
+
+**Subscribe** viene inviato quando il Flow raggiunge il passaggio. Inserisci
+`{{webhook.callbackUrl}}` nel suo URI o nel suo corpo. Ciele lo sostituisce con
+un indirizzo firmato per questa conversazione. Senza di esso, l'altro sistema
+non ha un indirizzo a cui rispondere e l'editor non contrassegna il passaggio
+come configurato.
+
+Entrambe le chiamate accettano un'impostazione **Authentication** e **Headers**,
+gli stessi campi della richiesta API. Inserisci lì una credenziale, non nell'URI
+o nel corpo. Ciele nasconde questi campi a ogni lettura e non li memorizza mai
+in una Pubblicazione o in una trascrizione.
+
+**Unsubscribe** viene inviato al termine dell'attesa, in qualunque modo questa
+termini. È facoltativo, ma senza di esso l'altro sistema continua a chiamare un
+indirizzo che non porta più da nessuna parte.
+
+La chiamata di annullamento dell'iscrizione viene risolta dopo che la chiamata
+di iscrizione ha ricevuto risposta. La risposta completa è disponibile come
+`{{webhook.subscribeBody}}`. Per utilizzare un valore della risposta, aggiungi
+una riga **Response mapping** alla chiamata di iscrizione. Assegnagli un
+percorso come `$.id` e un nome di variabile come `subscriptionId`. Quindi scrivi
+`{{subscriptionId}}` nell'URI di annullamento dell'iscrizione.
+
+Tra i due, la conversazione resta in attesa. Il Visitatore legge il messaggio di
+attesa che hai configurato e la trascrizione registra l'attesa anziché un
+intervallo.
+
+Quando arriva il callback, il Flow riprende dal passaggio successivo al webhook.
+Il corpo del callback è disponibile come `{{webhook.body}}` e **Response
+mapping** estrae da esso i valori con nome nello stesso modo in cui lo fa una
+richiesta API.
+
+Se non arriva nulla prima del timeout, il Flow si interrompe. Il Visitatore
+legge il messaggio che configuri in **If nothing arrives**. L'attesa predefinita
+è di 15 minuti. Il tempo massimo è di 24 ore.
+
+Una callback che arriva dopo il timeout viene rifiutata, indipendentemente dal
+fatto che Ciele abbia già contrassegnato l'attesa come scaduta. Il Visitatore
+potrebbe leggere il messaggio di timeout qualche tempo dopo il timeout. Nel
+piano in hosting, il controllo viene eseguito una volta al giorno. In
+un'installazione self-hosted viene eseguito una volta all'ora. Il Flow non
+riprende mai da un callback in ritardo.
+
+### Cosa consente l'indirizzo di callback
+
+L'indirizzo Ciele genera un abbonamento e scade con esso. È l'autorizzazione
+completa: chiunque la possieda può rispondere a quell'unica attesa, una volta
+sola.
+
+Conta solo il primo callback. Alcuni sistemi effettuano almeno una consegna o
+riprovano quando non ricevono la tua risposta. Ciele conferma il nuovo
+tentativo. Il Flow continua comunque esattamente una volta.
+
+L'eliminazione di una conversazione mentre un webhook è in attesa chiude
+l'attesa e invia prima la chiamata di annullamento dell'iscrizione. Una
+conversazione rimossa da una regola di conservazione non la invia.
+
+## Su richiesta HTTP
+
+Seleziona **On HTTP request** come trigger del Flow per assegnargli un endpoint
+che un altro sistema possa chiamare.
+
+Le impostazioni del Flow mostrano l'endpoint e i metodi che accetta. Un Flow
+salvato risponde `POST` a meno che tu non scelga diversamente. Un Flow non
+salvato non ha ancora un endpoint.
+
+Chiamalo con una chiave API dell'organizzazione come token Bearer:
+
+```bash
+curl -X POST https://ciele.app/api/flows/<flowId>/trigger \
+  -H "Authorization: Bearer ciele_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "A-1"}'
+```
+
+Crea la chiave in **Settings → API Keys**. La chiave determina a quale
+Organizzazione appartiene la richiesta, quindi una chiave non può eseguire il
+Flow di un'altra Organizzazione. Qualsiasi chiave dell'Organizzazione può
+effettuare chiamate, indipendentemente dal suo ruolo.
+
+Il Flow in esecuzione è quello presente nell'ultima pubblicazione
+dell'Assistant. Pubblica l'Assistente dopo aver salvato il Flow, oppure
+l'endpoint risponde `404` con il codice `not_published`. Una modifica che non
+hai pubblicato non cambia il comportamento dell'endpoint.
+
+La richiesta è disponibile per ogni passaggio come variabili del modello:
+
+| Variabile | Valore |
+| --- | --- |
+| `{{request.method}}` | Il metodo HTTP. |
+| `{{request.body}}` | Il corpo della richiesta non elaborato. |
+| `{{request.body.name}}` | Un valore da un corpo JSON, per percorso. `{{request.body.order.id}}` legge `{"order":{"id":"A-1"}}`. Le matrici utilizzano un numero: `{{request.body.items.0.sku}}`. |
+| `{{request.query.name}}` | Un valore della stringa di query. |
+| `{{request.header.name}}` | Un'intestazione, in minuscolo. |
+
+I percorsi del corpo possono arrivare fino a quattro livelli di profondità e si
+fermano dopo 200 valori. Il corpo grezzo è sempre disponibile per intero.
+
+Le intestazioni `Authorization`, `Proxy-Authorization` e `Cookie` non sono
+disponibili. È così che il chiamante ha dimostrato di poter eseguire il Flow. Un
+Flow in grado di leggerli potrebbe inviare la tua chiave API altrove.
+
+### Cosa può contenere un Flow in entrata
+
+Un Flow in entrata non ha una finestra di chat. Offre solo i passaggi che fanno
+qualcosa.
+
+- Richiesta API
+- Connettore
+- Invia e-mail
+- Miglioramento
+- Risposta
+
+Non sono disponibili il webhook HTTP e la revisione umana. Vedi
+[Limiti](#limits). L'editor li rifiuta quando salvi e il runtime li salta se un
+Flow salvato ne contiene ancora uno.
+
+Inoltre, non ha condizioni. Il chiamante ha già scelto il Flow tramite il suo
+URL.
+
+## Risposta
+
+**Response** è ciò che legge il chiamante: un codice di stato, intestazioni
+opzionali e un corpo opzionale. Le intestazioni e il corpo accettano variabili
+di template, quindi un Flow può chiamare un'API e rispondere con ciò che è stato
+restituito.
+
+Il codice di stato è obbligatorio. Deve essere compreso tra 200 e 599. L'editor
+non contrassegna il passaggio configurato senza uno.
+
+La risposta termina il Flow. Dopo la sua esecuzione, non viene configurato
+nulla, perché ciò che è stato comunicato al chiamante non può essere modificato
+in seguito.
+
+Un Flow che termina senza una Response risponde `204 No Content`. Un Flow il cui
+passaggio fallisce prima che possa rispondere restituisce `500`.
+
+### Cronologia delle esecuzioni
+
+Ogni chiamata viene registrata. Apri il Flow e seleziona il trigger per
+visualizzare le ultime 20 esecuzioni. Ogni esecuzione mostra quando è arrivata
+la chiamata, il suo metodo, lo stato ricevuto dal chiamante, quali passaggi sono
+stati eseguiti e quanto tempo ci è voluto. Un passaggio non riuscito viene
+denominato. Un'esecuzione non è una conversazione. Non compare né nella Posta in
+arrivo né in Insights.
+
+Il record non conserva il corpo della richiesta né il corpo della risposta.
+
+## Limiti
+
+- Ogni chiave API può attivare 60 richieste in entrata al minuto. Un indirizzo
+  di callback accetta 120 chiamate al minuto da un indirizzo di rete.
+- Le chiamate di iscrizione e disiscrizione seguono le stesse regole di rete di
+  qualsiasi altra chiamata in uscita: solo HTTPS, nessun reindirizzamento,
+  nessun indirizzo privato. Un callback è una richiesta in entrata, quindi
+  queste regole non si applicano a esso.
+- Un Flow in entrata non può contenere un webhook HTTP o una revisione umana.
+  Entrambi interrompono un turno e lo riprendono in un secondo momento in una
+  conversazione, mentre un flusso in entrata non ne ha.
+- Una conversazione rimossa da una regola di conservazione porta con sé i suoi
+  webhook in attesa e non invia la chiamata di annullamento dell'iscrizione.
+  Annulla tu stesso quegli abbonamenti nell'altro sistema.

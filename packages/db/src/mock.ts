@@ -26,6 +26,7 @@ import type {
   AssistantInput,
   AssistantPatch,
   BackgroundJob,
+  ChannelMessage,
   CompostDigest,
   Concept,
   ConceptFrontmatter,
@@ -61,33 +62,35 @@ import type {
   LocalInferenceJob,
   Member,
   Memory,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
   MemorySearchResult,
   MemorySubjectSummary,
+  ObjectAccessEvent,
   OrgApiKey,
   OrgApiKeyInput,
+  OrgBudget,
   Organization,
   OrganizationPatch,
-  OrgBudget,
   Profile,
   ProfilePatch,
-  ObjectAccessEvent,
-  RetentionSweepEvent,
+  Project,
   ProviderConnection,
   Publication,
+  RetentionSweepEvent,
+  ReviewRequest,
+  HttpFlowRun,
+  WebhookSubscription,
   RuntimeEventInput,
   Skill,
   Source,
   SsoConnection,
   StoredMessage,
   SupportChannel,
-  Project,
-  MemoryDocument,
-  MemoryDocumentEntry,
-  MemoryDocumentOwner,
   Teammate,
   TeammateChannel,
   TeammateChannelParticipant,
-  ChannelMessage,
   TeammateGrant,
   TeammateRosterHidden,
   TeammateRoutine,
@@ -256,6 +259,9 @@ interface MockStore {
   /** organizationId -> serialized conservative euro spend for one UTC day. */
   orgBudgetSpentEur: Map<string, { day: string; eur: number }>;
   goals: Map<string, AssistantGoal>;
+  reviewRequests: Map<string, ReviewRequest>;
+  webhookSubscriptions: Map<string, WebhookSubscription>;
+  httpFlowRuns: Map<string, HttpFlowRun>;
   /** messageId → verdict row (one per message). */
   answerVerdicts: Map<string, AnswerVerdictInput & { createdAt: string }>;
   /** messageId → verifier claim stamp (lease before grading). */
@@ -587,6 +593,9 @@ function emptyStore(): MockStore {
     orgBudgetReservations: new Map(),
     orgBudgetSpentEur: new Map(),
     goals: new Map(),
+    reviewRequests: new Map(),
+    webhookSubscriptions: new Map(),
+    httpFlowRuns: new Map(),
     goalRuns: [],
     answerVerdicts: new Map(),
     answerVerifierClaims: new Map(),
@@ -1811,6 +1820,9 @@ const MOCK_TABLE_STORES: {
   localConnectorDevices: () => getStore().localConnectorDevices,
   localInferenceJobs: () => getStore().localInferenceJobs,
   assistantGoals: () => getStore().goals,
+  reviewRequests: () => getStore().reviewRequests,
+  webhookSubscriptions: () => getStore().webhookSubscriptions,
+  httpFlowRuns: () => getStore().httpFlowRuns,
 };
 
 /**
@@ -4267,6 +4279,24 @@ export const mockDb: Db = {
       .sort((a, b) => (a.path < b.path ? -1 : 1));
   },
 
+  async listAssistantFaqOptions(assistantId) {
+    const store = getStore();
+    return [...store.concepts.values()]
+      .filter((concept) =>
+        concept.sourceId &&
+        store.assistantSources.has(`${assistantId}:${concept.sourceId}`) &&
+        concept.generationId === store.sources.get(concept.sourceId)?.activeGenerationId &&
+        !concept.excluded && concept.frontmatter.type === "FAQ"
+      )
+      .flatMap((concept) => {
+        const question = concept.frontmatter.title;
+        return typeof question === "string" && question.trim()
+          ? [{ id: concept.id, question }]
+          : [];
+      })
+      .sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  },
+
   async listConceptPage(collectionId, input) {
     return [...getStore().concepts.values()]
       .filter((concept) => concept.collectionId === collectionId)
@@ -4787,6 +4817,24 @@ export const mockDb: Db = {
         metadata: { ...conversation.metadata, ...patch },
       });
     }
+  },
+
+  async decideReviewRequest(id, patch) {
+    const store = getStore();
+    const current = store.reviewRequests.get(id);
+    if (!current || current.status !== "pending") return null;
+    const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
+    store.reviewRequests.set(id, next);
+    return next;
+  },
+
+  async settleWebhookSubscription(id, patch) {
+    const store = getStore();
+    const current = store.webhookSubscriptions.get(id);
+    if (!current || current.status !== "pending") return null;
+    const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
+    store.webhookSubscriptions.set(id, next);
+    return next;
   },
 
   async updateConversationSessionState(id, state) {
@@ -5694,7 +5742,7 @@ export const mockDb: Db = {
         return false;
       return true;
     });
-    matches.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+    matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
 
     const statusCounts = { processing: 0, ready: 0, error: 0 };
     for (const source of matches) statusCounts[source.status] += 1;
@@ -5740,6 +5788,25 @@ export const mockDb: Db = {
     });
 
     return { items, total: matches.length, statusCounts };
+  },
+
+  async listOrgKnowledgeSourceOptions(organizationId, filter) {
+    const store = getStore();
+    const sources = [...store.sources.values()]
+      .filter((source) =>
+        filter.kinds.includes(source.kind) &&
+        store.collections.get(source.collectionId)?.organizationId === organizationId
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+    return {
+      items: sources.slice(0, filter.limit).map((source) => ({
+        id: source.id,
+        name: source.name,
+        kind: source.kind,
+        collectionId: source.collectionId,
+      })),
+      total: sources.length,
+    };
   },
 
   async listOrgFaqs(organizationId) {

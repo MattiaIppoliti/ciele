@@ -19,6 +19,8 @@ export interface InboxFilters {
    * assistant, are hidden by default (#668); "include" opts them in.
    */
   staff: "" | "include" | "only";
+  /** Human review (#841): only Conversations waiting on a decision. */
+  review: "" | "pending";
 }
 
 /** The Inbox opens on the last 30 days with everything else wide open. */
@@ -39,6 +41,7 @@ export function defaultInboxFilters(): InboxFilters {
     feedback: "",
     escalation: "",
     staff: "",
+    review: "",
   };
 }
 

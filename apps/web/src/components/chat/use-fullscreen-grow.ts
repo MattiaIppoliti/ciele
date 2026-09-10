@@ -2,6 +2,8 @@
 
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 
+import { EASE_GROW_CSS, GROW_DURATION_MS } from "@/lib/ease";
+
 /**
  * Grow a panel from where it sits to the whole viewport (and back), on the same
  * curve the embed host uses (`public/widget.js`).
@@ -19,9 +21,8 @@ import { useCallback, useLayoutEffect, useRef, useState } from "react";
  *
  * `prefers-reduced-motion` skips straight to the end state.
  */
-const DURATION_MS = 420;
-/** easeOutBack, overshoots ~8% before settling; the bounce. */
-const EASE = "cubic-bezier(.34,1.42,.64,1)";
+const DURATION_MS = GROW_DURATION_MS;
+const EASE = EASE_GROW_CSS;
 
 type Frame = {
   top: number;

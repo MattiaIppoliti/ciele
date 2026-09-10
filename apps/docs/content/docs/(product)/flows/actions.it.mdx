@@ -14,11 +14,15 @@ generative utilizzano il contenuto configurato senza riscrivere il modello.
 | Pulsante | No | Aggiunge un pulsante di collegamento o un pulsante che invia testo nella chat. |
 | Cerca nella conoscenza | Sì | Esegue il ciclo dell'agente Knowledge e restituisce citazioni. |
 | Follow-up | Opzionale | Utilizza le domande configurate o genera domande suggerite. |
-| Iframe | No | Incorpora nella chat il contenuto esterno configurato. |
-| Richiesta API | No | Chiama un endpoint HTTP configurato e mappa il suo risultato. |
+| Iframe | No | Incorpora nel chat il contenuto esterno configurato. |
+| Richiesta API | No | Chiama un endpoint HTTP, inserito come URL o denominato in una definizione Swagger/OpenAPI, e mappa il suo risultato. |
 | Invia e-mail | No | Invia un'e-mail tramite il trasporto Resend configurato. |
 | Miglioramento | No | Crea un Miglioramento per la risposta pertinente. |
 | Passaggio di consegne | Dipende dalla destinazione | Continua una volta in un altro Assistente pubblicato. |
+| Webhook HTTP | No | Si iscrive a un sistema e attende il suo callback. Vedi [HTTP e webhook](/flows/http). |
+| Risposta | No | Risponde alla richiesta HTTP in entrata che ha avviato il Flow. Vedi [HTTP e webhook](/flows/http). |
+| Connettore | No | Esegue un'azione in ServiceNow, Salesforce, Slack, OneDrive o Google Drive tramite un'applicazione connessa. Vedi [Connector](/flows/connector). |
+| Revisione umana | No | Interrompe il flusso fino a quando un collega non lo approva via e-mail o Slack. Vedi [Revisione umana](/flows/human-review). |
 
 Anche il flusso di interazione di base integrato utilizza **Basic reply**. La
 raccomandazione dell'Help Desk utilizza un'azione di runtime che il selettore di
@@ -27,22 +31,23 @@ azioni dirette non mostra.
 ## Messaggio
 
 Inserisci il testo esatto che Ciele deve inviare. Il runtime non parafrasa
-questo testo.
+questo testo. Le variabili del modello come `{{user.name}}` o
+`{{review.amount}}` vengono sostituite con i loro valori.
 
 ## Risposta di base
 
 La risposta di base gestisce brevi saluti, ringraziamenti e congedi. Utilizza
-una chiamata al modello e non utilizza strumenti Knowledge, citazioni o eventi
-Thinking.
+una sola chiamata al modello e non fa uso di strumenti Knowledge, citazioni o
+eventi Thinking.
 
 Inserisci il testo dell'azione fissa per saltare il modello. Lo stesso testo
 fornisce il fallback quando non è disponibile alcun modello di chat.
 
-## Cerca nella Knowledge Base
+## Cerca nella conoscenza
 
 Search knowledge utilizza gli strumenti Knowledge disponibili fino al limite di
-passaggi del runtime. Può restituire citazioni di fonti nominate e passaggi di
-ragionamento.
+passaggi di runtime. Può restituire citazioni di fonti e passaggi di
+ragionamento con nome.
 
 Utilizza le impostazioni per le query non risolte per offrire l'escalation
 all'Help Desk o creare un Miglioramento.
@@ -65,16 +70,53 @@ sicurezza.
 
 ## Richiesta API
 
-Configura il metodo, l'endpoint, l'autenticazione, le intestazioni, i parametri
-di query, il corpo JSON e il percorso JSON di risposta.
+La richiesta API effettua una chiamata HTTP. Configura l'autenticazione, le
+intestazioni, i parametri di query, il corpo JSON e il percorso JSON di
+risposta, e scegli la provenienza dell'endpoint in **Endpoint**.
 
-Le variabili del template possono fornire valori dal contesto corrente. Usa
+**A URL** accetta un metodo e un URL dell'endpoint che inserisci tu.
+
+**An operation in a Swagger/OpenAPI definition** accetta un **Swagger URL** e un
+**Operation ID**. Ciele legge la definizione quando l'azione viene eseguita e ne
+ricava il metodo e l'URL. Il Flow continua a funzionare quando l'API si sposta.
+La definizione viene letta a ogni esecuzione e non viene memorizzata nella
+cache. Un parametro path come `{refundId}` diventa la variabile template
+`{{refundId}}`, quindi un'azione precedente può fornirne il valore. La
+definizione deve posizionare l'API sullo stesso sito della definizione stessa.
+Una definizione fornita da `docs.example.com` può chiamarsi `api.example.com`.
+Un altro dominio viene rifiutato. In questo modo le credenziali dell'azione
+rimangono sul sito che hai configurato.
+
+Le variabili del modello possono fornire valori dal contesto corrente. Usa
 **Test API** prima di salvare il Flow.
 
 L'azione può mostrare messaggi separati di successo e di errore. Le regole di
-uscita della rete si applicano comunque all'URL finale.
+uscita di rete si applicano all'URL finale e all'URL Swagger.
 
-## Invia e-mail
+## Webhook HTTP
+
+L'HTTP webhook si iscrive a un sistema esterno, interrompe il Flow e riprende
+quando quel sistema richiama. Configura la chiamata di iscrizione, la chiamata
+di disiscrizione, il tempo di attesa e il messaggio che il Visitatore legge nel
+frattempo.
+
+Inserisci `{{webhook.callbackUrl}}` nell'URI di iscrizione o nel corpo. È così
+che l'altro sistema impara dove rispondere. Il corpo del callback raggiunge le
+azioni successive come `{{webhook.body}}`. **Response mapping** estrae da esso i
+valori con nome.
+
+Il comportamento completo, compreso ciò che l'indirizzo di callback consente, è
+disponibile in [HTTP e webhook](/flows/http).
+
+## Risposta
+
+La risposta risponde alla richiesta HTTP in entrata che ha avviato il Flow, con
+un codice di stato e intestazioni e corpo opzionali. È disponibile solo sul
+trigger **On HTTP request** e termina il Flow.
+
+Vedi [HTTP e webhook](/flows/http).
+
+## Invia email
 
 Configura i destinatari, l'oggetto, il corpo e il comportamento di risposta. Il
 runtime utilizza Resend quando il suo trasporto è configurato.
@@ -92,11 +134,27 @@ risposta visibile.
 Seleziona un altro Assistente nella stessa Organizzazione. La destinazione deve
 avere una Pubblicazione corrente.
 
-Ciele fa passare lo stesso messaggio del Visitatore attraverso l'Assistente di
-destinazione una sola volta. Non prosegue con un secondo passaggio di consegne
+Ciele fa passare una sola volta lo stesso messaggio del Visitatore attraverso
+l'Assistente di destinazione. Non prosegue con un secondo passaggio di consegne
 da quel turno di destinazione.
+
+## Connettore
+
+Seleziona un'applicazione connessa, una connessione e un'azione catalogata. Il
+Flow memorizza l'ID della connessione e l'azione, mai una credenziale.
+
+I risultati diventano variabili del modello `{{connector.*}}` per le azioni
+successive. Vedi [Connector](/flows/connector) per il catalogo, i campi e ciò
+che vede il Visitatore.
+
+## Revisione umana
+
+Assegna un nome ai revisori, al canale e agli input che compilano. Il Flow si
+ferma a questa azione e prosegue solo dopo l'approvazione. Gli input del
+revisore diventano variabili del modello `{{review.*}}`. Vedi
+[Revisione umana](/flows/human-review).
 
 ## Ordine delle azioni
 
-Inserisci il testo di introduzione prima di Cerca nella knowledge base. Metti i
+Inserisci il testo di contesto prima di Cerca nella knowledge base. Metti i
 pulsanti e i follow-up dopo la risposta che supportano.

@@ -29,7 +29,7 @@ export default async function LibraryTabPage({
   const { tab } = await params;
   if (!isKnowledgeTabSlug(tab)) notFound();
   const filters = parseHubSearchParams(await searchParams);
-  const { organizationId, role, db, session } = await requirePageMember();
+  const { organizationId, role, db, session, reads } = await requirePageMember();
 
   const showApplications = tab === "applications";
   const [
@@ -38,6 +38,7 @@ export default async function LibraryTabPage({
     applicationConnections,
     applicationImports,
     applicationHealthSummary,
+    applicationOperationalRows,
     ...navPages
   ] = await Promise.all([
     db.listOrgKnowledgeSources(organizationId, {
@@ -48,24 +49,23 @@ export default async function LibraryTabPage({
       page: filters.page,
       pageSize: HUB_PAGE_SIZE,
     }),
-    db.listAssistants(organizationId),
+    reads.assistantShellSummaries(),
     showApplications ? db.listApplicationConnections(organizationId) : Promise.resolve([]),
     showApplications ? db.listApplicationImports(organizationId) : Promise.resolve([]),
     db.getApplicationHealthSummary(organizationId),
-    // One cheap read per tab for the sub-nav counts + health dots.
+    showApplications ? db.listApplicationOperationalState(organizationId) : Promise.resolve([]),
+    // Counts only: navigation never hydrates a discarded Source row.
     ...KNOWLEDGE_TAB_SLUGS.map((slug) =>
       db.listOrgKnowledgeSources(organizationId, {
         kinds: KNOWLEDGE_TAB_KINDS[slug],
         page: 1,
-        pageSize: 1,
+        pageSize: 0,
       })
     ),
   ]);
-  const applicationOperationalState = showApplications
-    ? (await db.listApplicationOperationalState(organizationId)).map(
-        (state) => [state.importId, state] as const
-      )
-    : [];
+  const applicationOperationalState = applicationOperationalRows.map(
+    (state) => [state.importId, state] as const
+  );
 
   return (
     <KnowledgeHubClient

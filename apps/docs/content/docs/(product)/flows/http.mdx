@@ -1,0 +1,120 @@
+---
+title: HTTP and webhooks
+description: Call an HTTP endpoint from a Flow, wait for a webhook callback, or let another system call a Flow and read its answer.
+---
+
+## What a Flow can do over HTTP
+
+A Flow talks to systems outside Ciele three ways.
+
+| Step | Direction | What it does |
+| --- | --- | --- |
+| API request | Outbound | Makes one HTTP call and reads the reply. |
+| HTTP webhook | Outbound, then inbound | Subscribes to a system, waits, and continues when that system calls back. |
+| On HTTP request (trigger) + Response | Inbound | Another system calls the Flow, and the Flow answers. |
+
+## API request
+
+API request makes one call and continues. Configure it under **Endpoint**: enter a URL, or name an operation in a Swagger/OpenAPI definition. See [Actions](/flows/actions#api-request) for the full field list.
+
+Use API request when the other system answers immediately.
+
+## HTTP webhook
+
+Use HTTP webhook when the other system accepts a request now and answers later.
+
+The step has two calls with a wait between them.
+
+**Subscribe** is sent when the Flow reaches the step. Put `{{webhook.callbackUrl}}` in its URI or its body. Ciele replaces it with a signed address for this conversation. Without it the other system has nowhere to answer, and the editor refuses to mark the step configured.
+
+Both calls take an **Authentication** setting and **Headers**, the same fields as API request. Put a credential there, not in the URI or the body. Ciele hides those fields on every read and never stores them in a Publication or a transcript.
+
+**Unsubscribe** is sent when the wait ends, however it ends. It is optional, but without it the other system keeps calling an address that no longer leads anywhere.
+
+The unsubscribe call is resolved after the subscribe call has answered. The full reply is available to it as `{{webhook.subscribeBody}}`. To use one value from the reply, add a **Response mapping** row to the subscribe call. Give it a path such as `$.id` and a variable name such as `subscriptionId`. Then write `{{subscriptionId}}` in the unsubscribe URI.
+
+Between the two, the conversation waits. The Visitor reads the waiting message you configure, and the transcript records the wait rather than a gap.
+
+When the callback arrives, the Flow continues from the step after the webhook. The callback body is available as `{{webhook.body}}`, and **Response mapping** extracts named values from it the same way API request does.
+
+If nothing arrives before the timeout, the Flow stops. The Visitor reads the message you configure under **If nothing arrives**. The default wait is 15 minutes. The maximum is 24 hours.
+
+A callback that arrives after the timeout is refused, whether or not Ciele has already marked the wait as expired. The Visitor may read the timeout message some time after the timeout. On the hosted plan the check runs once a day. On a self-hosted install it runs once an hour. The Flow never continues from a late callback.
+
+### What the callback address allows
+
+The address Ciele generates names one subscription and expires with it. It is the whole authorization: anyone holding it can answer that one wait, once.
+
+Only the first callback counts. Some systems deliver at least once, or retry when they do not see your response. Ciele acknowledges the retry. The Flow still continues exactly once.
+
+Deleting a conversation while a webhook is waiting closes the wait and sends the unsubscribe call first. A conversation removed by a retention rule does not send it.
+
+## On HTTP request
+
+Select **On HTTP request** as the Flow's trigger to give it an endpoint another system can call.
+
+The Flow's own settings show the endpoint and the methods it accepts. A saved Flow answers `POST` unless you choose otherwise. An unsaved Flow has no endpoint yet.
+
+Call it with an Organization API key as a Bearer token:
+
+```bash
+curl -X POST https://ciele.app/api/flows/<flowId>/trigger \
+  -H "Authorization: Bearer ciele_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "A-1"}'
+```
+
+Create the key under **Settings → API Keys**. The key decides which Organization the request belongs to, so a key cannot run another Organization's Flow. Any key of the Organization may call, whatever its role.
+
+The Flow that runs is the one in the Assistant's latest Publication. Publish the Assistant after you save the Flow, or the endpoint answers `404` with the code `not_published`. An edit you have not published does not change what the endpoint does.
+
+The request is available to every step as template variables:
+
+| Variable | Value |
+| --- | --- |
+| `{{request.method}}` | The HTTP method. |
+| `{{request.body}}` | The raw request body. |
+| `{{request.body.name}}` | One value from a JSON body, by path. `{{request.body.order.id}}` reads `{"order":{"id":"A-1"}}`. Arrays use a number: `{{request.body.items.0.sku}}`. |
+| `{{request.query.name}}` | One query-string value. |
+| `{{request.header.name}}` | One header, lower-cased. |
+
+Body paths reach four levels deep and stop after 200 values. The raw body is always available whole.
+
+The `Authorization`, `Proxy-Authorization`, and `Cookie` headers are not available. They are how the caller proved it may run the Flow. A Flow that could read them could send your own API key elsewhere.
+
+### What an inbound Flow may contain
+
+An inbound Flow has no chat window. It offers only the steps that do something.
+
+- API request
+- Connector
+- Send email
+- Improvement
+- Response
+
+HTTP webhook and Human review are not offered. See [Limits](#limits). The editor refuses them when you save, and the runtime skips them if a saved Flow still contains one.
+
+It has no conditions either. The caller already chose the Flow by its URL.
+
+## Response
+
+**Response** is what the caller reads: a status code, optional headers, and an optional body. The headers and the body accept template variables, so a Flow can call an API and answer with what came back.
+
+The status code is required. It must be between 200 and 599. The editor does not mark the step configured without one.
+
+Response ends the Flow. Nothing configured after it runs, because what the caller was told cannot be changed afterwards.
+
+A Flow that finishes without a Response answers `204 No Content`. A Flow whose step fails before it can answer returns `500`.
+
+### Run history
+
+Each call is recorded. Open the Flow and select the trigger to see the latest 20 runs. Each run shows when the call came in, its method, the status the caller received, which steps ran, and how long it took. A failed step is named. A run is not a conversation. It does not appear in the Inbox or in Insights.
+
+The record does not keep the request body or the response body.
+
+## Limits
+
+- Each API key may trigger 60 inbound requests per minute. A callback address accepts 120 calls per minute from one network address.
+- The subscribe and unsubscribe calls follow the same network rules as every other outbound call: HTTPS only, no redirects, no private addresses. A callback is an inbound request, so these rules do not apply to it.
+- An inbound Flow cannot contain HTTP webhook or Human review. Both stop a turn and continue it later in a conversation, and an inbound Flow has none.
+- A conversation removed by a retention rule takes its waiting webhooks with it and does not send the unsubscribe call. Cancel those subscriptions in the other system yourself.

@@ -10,6 +10,8 @@ import type {
   InboxConversation,
   InboxFacets,
   InboxPage,
+  InboxQuery,
+  ReviewRequest,
   StoredMessage,
 } from "@agent-hub/core";
 import { isoDay, messageText } from "@agent-hub/core";
@@ -27,6 +29,7 @@ import {
   Info,
   ListFilter,
   MessageSquareDashed,
+  Radio,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -48,6 +51,10 @@ import {
   setConversationLegalHoldAction,
   setMessageFeedbackAction,
 } from "@/app/actions";
+import {
+  listConversationReviewsAction,
+  listPendingReviewConversationIdsAction,
+} from "@/app/(admin)/reviews/actions";
 import { transcriptDocument } from "@/lib/inbox/transcript-print";
 import {
   defaultInboxFilters,
@@ -80,6 +87,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatDateTime } from "@/lib/format";
+import { reviewDecisionLabel } from "@/lib/review-status";
 import { EmptyState } from "@/components/ui/empty-state";
 
 // Transcript-only UI stays out of the Inbox list's initial bundle. In
@@ -310,6 +318,24 @@ function DetailRow({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+/**
+ * The "Pending reviews" filter (#841): the Inbox query has no review column,
+ * so the ids of Conversations waiting on a Human review are read from the
+ * review rows and passed through the existing `conversationIds` narrowing. An
+ * empty set has to yield an empty page, hence the impossible id.
+ */
+async function withPendingReviews(
+  query: InboxQuery,
+  review: InboxFilters["review"],
+): Promise<InboxQuery> {
+  if (review !== "pending") return query;
+  const ids = await listPendingReviewConversationIdsAction();
+  const narrowed = query.conversationIds
+    ? ids.filter((id) => query.conversationIds!.includes(id))
+    : ids;
+  return { ...query, conversationIds: narrowed.length > 0 ? narrowed : ["__no_pending_reviews__"] };
+}
+
 function MessagePart({ part }: { part: ChatReplyPart }) {
   if (part.type === "text") {
     return <ChatMarkdown text={part.text} className="max-w-[85%] text-sm" />;
@@ -319,6 +345,43 @@ function MessagePart({ part }: { part: ChatReplyPart }) {
     // transcript shows exactly what they saw, and stays distinguishable from
     // the answer itself (#560).
     return <ProgressLine text={part.text} className="max-w-[85%]" />;
+  }
+  if (part.type === "human_review") {
+    // The gate (#841): the human step is part of the transcript.
+    return (
+      <div className="max-w-[85%] space-y-1 rounded-2xl border-l-2 bg-muted/50 px-3.5 py-3 text-sm">
+        <p className="text-muted-foreground text-xs font-medium uppercase">Human review</p>
+        <p className="font-medium">{part.title}</p>
+        <p className="text-muted-foreground text-xs">
+          {reviewDecisionLabel(part)}
+          {part.simulated ? " · simulated" : ""}
+        </p>
+      </div>
+    );
+  }
+  if (part.type === "webhook") {
+    // The callback gate (#842): the wait is part of the transcript. Written
+    // once when the gate opened; how it closed arrives as the continuation's
+    // own parts, so this card never changes state.
+    let host = part.subscribeUrl;
+    try {
+      host = new URL(part.subscribeUrl).host;
+    } catch {
+      /* an unresolved template; the raw string is still informative */
+    }
+    return (
+      <div className="max-w-[85%] space-y-1 rounded-2xl border-l-2 bg-muted/50 px-3.5 py-3 text-sm">
+        <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium uppercase">
+          <Radio className="size-3.5" />
+          HTTP webhook
+        </p>
+        <p className="font-medium">Waited on {host}</p>
+        <p className="text-muted-foreground text-xs">
+          Until {new Date(part.expiresAt).toLocaleString()}
+          {part.simulated ? " · simulated" : ""}
+        </p>
+      </div>
+    );
   }
   if (part.type === "notification") {
     // A proactive nudge: the assistant spoke first, so the transcript marks it
@@ -494,6 +557,7 @@ export function InboxClient({
   const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [messages, setMessages] = useState<StoredMessage[] | null>(null);
   const [links, setLinks] = useState<ImprovementMessageLink[]>([]);
+  const [reviews, setReviews] = useState<ReviewRequest[]>([]);
   const [verdicts, setVerdicts] = useState<AnswerVerdict[]>([]);
   const [improveMessageId, setImproveMessageId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -536,7 +600,10 @@ export function InboxClient({
       setLoadingList(true);
       try {
         const page = await getInboxPageAction(
-          inboxQueryFromFilters({ ...filters, search }, { limit: 50 }),
+          await withPendingReviews(
+            inboxQueryFromFilters({ ...filters, search }, { limit: 50 }),
+            filters.review,
+          ),
         );
         if (cancelled || generation !== listGeneration.current) return;
         setConversations((current) => {
@@ -570,9 +637,12 @@ export function InboxClient({
     setLoadingList(true);
     try {
       const page = await getInboxPageAction(
-        inboxQueryFromFilters(
-          { ...filters, search },
-          { cursor: nextCursor, limit: 50 },
+        await withPendingReviews(
+          inboxQueryFromFilters(
+            { ...filters, search },
+            { cursor: nextCursor, limit: 50 },
+          ),
+          filters.review,
         ),
       );
       if (generation !== listGeneration.current) return;
@@ -692,6 +762,7 @@ export function InboxClient({
     if (!selectedId) return;
     try {
       setLinks(await listConversationImprovementLinksAction(selectedId));
+      setReviews(await listConversationReviewsAction(selectedId));
     } catch {
       /* keep stale links on failure */
     }
@@ -1049,6 +1120,15 @@ export function InboxClient({
                     ...filters,
                     escalation: escalation as InboxFilters["escalation"],
                   })
+                }
+              />
+              <FilterSelect
+                label="Human review"
+                value={filters.review}
+                placeholder="Any"
+                options={[{ value: "pending", label: "Pending reviews" }]}
+                onChange={(review) =>
+                  setFilters({ ...filters, review: review as InboxFilters["review"] })
                 }
               />
               <FilterSelect
@@ -1461,6 +1541,39 @@ export function InboxClient({
                 </div>
               )}
             </Card>
+
+            {reviews.length > 0 && (
+              <Card size="sm" className="gap-3 p-4">
+                <h3 className="font-semibold">Human review</h3>
+                {reviews.map((review) => (
+                  <div key={review.id} className="space-y-1">
+                    <DetailRow
+                      label={review.title}
+                      value={`${reviewDecisionLabel(review)}${review.decidedAt ? ` · ${formatDateTime(review.decidedAt)}` : ""}`}
+                    />
+                    {review.decision && Object.keys(review.decision).length > 0 && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {review.inputs.map((field) => (
+                          <DetailRow
+                            key={field.id}
+                            label={field.label}
+                            value={review.decision?.[field.id] ?? ""}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {review.status === "pending" && (
+                      <Link
+                        href={`/reviews/${review.id}`}
+                        className="text-primary text-sm hover:underline"
+                      >
+                        Open the decision page →
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </Card>
+            )}
 
             <Card size="sm" className="gap-3 p-4">
               <h3 className="font-semibold">Retention</h3>

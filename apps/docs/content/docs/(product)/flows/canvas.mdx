@@ -1,0 +1,105 @@
+---
+title: Flow Canvas
+description: Edit a Flow as a chain of nodes, with the same fields as the form.
+---
+
+## Open the canvas
+
+1. Open an Assistant.
+2. Select **Flows**.
+3. Open a Flow, or create one.
+4. Select **Canvas** in the header.
+
+Select **Form** to return to the three-step form. Both views edit one unsaved draft. Switching views keeps every change. The console remembers your last choice on this browser.
+
+## Drafts
+
+Your unsaved changes are kept in this browser as a draft, in both views. The header shows **Draft saved** while there are changes to keep. Leave the Flow, reload the page or close the tab, and the draft is waiting when you come back.
+
+The draft is yours alone: it is not sent to the server, so nobody else sees it and nothing runs from it. Saving the Flow, or deleting it, clears the draft. Undoing back to where you started clears it too, because there is nothing left to keep.
+
+## Read the chain
+
+The canvas draws the Flow from left to right:
+
+| Node | Meaning |
+| --- | --- |
+| Start | The trigger. Shows the trigger name. For Time on page, shows the delay. |
+| Conditions | The optional conditions and their logic. Not shown for proactive triggers or the Default behavior. |
+| Action | One response action, in the order the Flow runs them. |
+
+A **Needs setup** badge marks a node with missing required settings. The Flow cannot be saved until every badge is gone.
+
+## Start an empty Flow
+
+A new Flow opens as a blank canvas with one box in the middle: **What should this flow do?** Type a description and press Enter to let the Flows Agent draft the Flow. Or select **build it by hand** to place the Start node and add steps yourself. The nodes appear as soon as the Flow has a trigger or an action.
+
+## Add a node
+
+There are two ways to add a step.
+
+**From a node.** Hold the pointer over any node. A small **+** appears at its right edge and opens the same menu. Where the **+** is decides where the step goes. From a node in the middle of the chain, the step is inserted after that node. From the last node, it is added at the end. The new step opens for configuration.
+
+**From the bottom bar.** Select **Add a step** in the bar at the bottom of the canvas. Search the list, or filter it with the **Trigger**, **Action** and **Connector** chips. Drag a row onto the canvas to insert it between two steps instead of adding it at the end.
+
+Both offer only the steps the current trigger can run, and neither shows a step the Flow already has. A trigger appears only while the Flow has none. To replace one, select the Start node and change it there. The console then tells you what that removes.
+
+## Ask from the canvas
+
+Once the Flow has a step, the bar at the bottom carries a box for the Flows Agent. Type what you want changed and press Enter. The agent opens in the panel on the right with your message as the first thing it answers.
+
+## Configure a node
+
+Select a node. A panel floats over the right of the canvas with two tabs:
+
+- **Configure** shows the same fields as the form for that step.
+- **Run node** runs the node alone. API request sends a test request with sample values. Search knowledge opens the Preview so you can ask a question.
+
+Its header carries three controls. The three dots hold **Reset position**, **Open Preview**, and **Remove step**. The arrows grow the panel to fill the window, and bring it back. The cross closes the panel. When the panel fills the window, the cross leaves full screen first.
+
+Those two controls are also at the bottom left, under the zoom buttons, while a step is selected. With the panel full screen, its own header sits in the corner, away from the canvas controls. **Open full screen** is in the right-click menu of a node as well.
+
+## Right-click for actions
+
+Right-click the canvas for the view controls: **Add a step**, **Fit to view**, **Tidy up**, **Switch to vertical layout** and **Open Preview**. Right-click a node and the menu is about that step as well. **Configure** opens its settings. **Open full screen** opens it filling the window. **Reset position** returns it to the automatic layout. **Remove step** deletes it. `Delete` removes the selected step too.
+
+On a touch screen, hold instead of right-clicking.
+
+## Move around the canvas
+
+Scroll to move the canvas, which on a trackpad is a two-finger swipe in any direction. Pinch to zoom, or hold `Ctrl` and scroll. On a touch screen, drag anywhere on the canvas to move it.
+
+With a mouse, the two buttons at the bottom of the canvas choose what dragging on empty space does. **Select** draws a box around nodes. **Hand** moves the canvas.
+
+## Reorder and arrange
+
+- Drag an action node past its neighbor to change the order of the actions. The order is the order the Flow runs them.
+- Drag a node a short distance to tidy the picture. The position is stored only in your browser.
+- Use the controls at the bottom left to zoom and to fit the Flow in the window. While a step is selected they also carry that step's full-screen and three-dots controls.
+- **Tidy up** (`Shift`+`T`) drops every nudge and puts the chain back on the automatic layout.
+- **Switch to vertical layout** turns the chain to run down the canvas instead of across it. A long Flow reads better that way. Each direction keeps its own arrangement, so switching back finds the picture you left. The choice is remembered in your browser.
+
+## Ask the Flows Agent
+
+The **Flows Agent** builds and edits the open Flow from a description. It is an AI Teammate that the console creates for each Assistant. It does not appear in **Teammates**.
+
+To open it:
+
+- On an empty canvas, type what the Flow should do in the box in the middle and press Enter.
+- On any canvas, select **Agent** in the header.
+
+The agent opens in the panel on the right, where the live Preview sits, and works the same way. Drag its left edge to resize it. Use the header controls for earlier conversations, a new chat, and full screen. The two share that space, so opening the agent hides the Preview and opening the Preview hides the agent. Select **Show preview** on the right edge to switch back.
+
+The agent sees the open draft, the Assistant's other Flows, its Help Desks, FAQs and Application Connections. Each change it makes lands in the unsaved draft as one step. You can undo it with **Undo**. The agent never saves. Select **Save changes** or **Create flow** when the draft is right.
+
+When the request describes a second intent, the agent proposes a separate Flow instead of changing the open one. The proposal shows as a card. Select **Create and open** to create that Flow, or **Dismiss**.
+
+Only editors and admins can use the agent. Earlier conversations about the same Flow are under the history button in the panel header. The agent runs on the same Provider Connections as your Teammates, including your own personal subscription when you connected one.
+
+## Undo and redo
+
+Use **Undo** and **Redo** in the header, or `Ctrl+Z` and `Ctrl+Shift+Z` (`Cmd` on macOS). Undo covers unsaved changes in both views. Saving the Flow does not clear the history. Leaving the Flow does.
+
+## Save
+
+The footer shows the same three checks as the form. Select **Save changes** or **Create flow**. The canvas saves the same Flow the form saves.

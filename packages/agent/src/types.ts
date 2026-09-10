@@ -17,11 +17,17 @@ import type {
   KnowledgeSearchResult,
   Provider,
   ReferralCandidate,
+  ReviewRequest,
+  ReviewRequestInput,
+  WebhookSubscription,
+  WebhookSubscriptionInput,
+  ReviewStatus,
   SkillSnapshot,
   TeammateActionDomain,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
+import type { ConnectorRuntime } from "./connector-request";
 
 /**
  * One renderable piece of a bot reply, tagged with the action that produced
@@ -182,6 +188,46 @@ export type ChatReplyPart =
    * (#576) all say `search_knowledge`; rendering never discriminates on it.
    */
   | { type: "progress"; action: string; text: string }
+  /**
+   * The Human review gate (#841): the turn stopped here and named colleagues
+   * were asked. `pending` while the request waits; the closing status once a
+   * Member decided or the clock ran out. `simulated` on a Preview / Teammate
+   * turn, where nothing was sent and the transcript decides inline.
+   */
+  | {
+      type: "human_review";
+      action: "human_review";
+      reviewId: string;
+      title: string;
+      status: ReviewStatus;
+      decidedByName?: string | null;
+      simulated: boolean;
+    }
+  /**
+   * The open callback gate (#842), for the transcript: which system was asked,
+   * and when the wait runs out. The card is written once, when the gate opens;
+   * how it closed arrives as the continuation's own parts.
+   */
+  | {
+      type: "webhook";
+      action: "http_webhook";
+      subscriptionId: string;
+      subscribeUrl: string;
+      expiresAt: string;
+      simulated: boolean;
+    }
+  /**
+   * The answer to an inbound HTTP request (#843). Not a chat part in any real
+   * sense: it exists because the action pipeline speaks in parts, and the
+   * route lifts the status, headers and body off this one. Never rendered.
+   */
+  | {
+      type: "http_response";
+      action: "respond";
+      status: number;
+      headers: Record<string, string>;
+      body: string;
+    }
   | {
       type: "sources";
       action: "search_knowledge";
@@ -473,11 +519,69 @@ export interface TeammateActionOutcome {
    */
   entities: readonly { kind: string; id?: string }[];
   result: unknown;
+  /**
+   * What the host surface should receive alongside the transcript card (#838):
+   * a Flows Agent's draft patch or proposed Flow, which the canvas applies
+   * client-side. Carried on the tool-end event's `result`, never in the model's
+   * view of the outcome, so the model sees the same summary either way.
+   */
+  payload?: Record<string, unknown>;
+}
+
+/**
+ * The Human review action's port (#841): raise a request for the Conversation
+ * this turn belongs to. Bound by the host to the turn's Db; simulated on the
+ * operator surfaces, where the row exists but nobody is notified.
+ */
+export interface ReviewRuntime {
+  simulated: boolean;
+  conversationId: string;
+  create(
+    input: Omit<
+      ReviewRequestInput,
+      "organizationId" | "assistantId" | "conversationId" | "simulated"
+    >
+  ): Promise<ReviewRequest>;
+}
+
+/**
+ * The HTTP webhook action's port (#842): open a callback gate for the
+ * Conversation this turn belongs to. Bound by the host to the turn's Db.
+ *
+ * `callbackUrl` is on the port rather than computed in the action because it
+ * is minted from a signing key the runtime holds, and the action's job is to
+ * put it in the subscribe request, not to know how it is signed.
+ */
+export interface WebhookRuntime {
+  simulated: boolean;
+  conversationId: string;
+  create(
+    input: Omit<
+      WebhookSubscriptionInput,
+      "organizationId" | "assistantId" | "conversationId" | "simulated"
+    >
+  ): Promise<WebhookSubscription>;
+  /**
+   * Store the unsubscribe call once the subscribe reply is in hand: the id the
+   * other system returned is what the unsubscribe URL usually needs, and it
+   * is not known until then.
+   */
+  configureUnsubscribe(
+    subscriptionId: string,
+    call: { method: string; url: string; body: string | null }
+  ): Promise<WebhookSubscription>;
+  /** Close a gate whose subscribe request never landed. */
+  fail(subscriptionId: string): Promise<void>;
+  callbackUrl(subscription: Pick<WebhookSubscription, "id" | "expiresAt">): string;
 }
 
 export interface ActionContext {
   /** Stable key rooted in the durable turn claim, unique to this action slot. */
   idempotencyKey?: string;
+  /** Position of the running action in the Flow; the review gate stores it as its cursor. */
+  actionIndex?: number;
+  reviewRuntime?: ReviewRuntime;
+  webhookRuntime?: WebhookRuntime;
   assistant: Assistant;
   /**
    * The immutable platform (Ciele) system-prompt layer, always composed
@@ -573,6 +677,12 @@ export interface ActionContext {
   entities?: EntitySnapshot[];
   /** Live Record read for the Entity tools, bound over the turn's Db. */
   queryEntityRecords?: EntityRecordsFetcher;
+  /**
+   * What the Connector action needs from the host (#839): the Application
+   * Connection row and the two writes a call may make. Absent leaves the
+   * action reporting "not configured" rather than reaching for a Db it lacks.
+   */
+  connectorRuntime?: ConnectorRuntime;
   /**
    * Who the turn verifiably speaks for (#667/#668): the registration
    * policy, not the model, reads this to decide which tool variants

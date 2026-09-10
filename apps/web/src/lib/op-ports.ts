@@ -10,9 +10,12 @@ import {
   sendEmail,
   validateProviderApiKey,
   InvalidProviderKeyError,
+  enqueueReviewResumptionJob,
+  resumeReviewedConversation,
+  unsubscribePendingWebhooks,
 } from "@agent-hub/agent";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
-import { invalidatePublication } from "@/lib/widget-db";
+import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
 import { getSsoProvider } from "@/lib/sso";
 
 /**
@@ -37,6 +40,53 @@ export function webOperationPorts(
   return {
     listPublicationEntities: (organizationId) =>
       db.table("entities").list({ organizationId }),
+    // The Flows Agent's creation grant (#838). Only meaningful when `db` is the
+    // system Db: the grant table's RLS is admin-only and the canvas is an
+    // Editor's surface. Pinned to the caller's Organization regardless of what
+    // the operation passed, so a port wired with the wrong org cannot grant
+    // across tenants.
+    grantSystemTeammate: async (grant) => {
+      if (grant.organizationId !== opts.organizationId) {
+        throw new Error("grantSystemTeammate: organization mismatch");
+      }
+      await db.table("teammateGrants").insert(grant);
+    },
+    // The webhook gate's exit on delete (#842): the subscription table has no
+    // member write policy, so the settle-and-unsubscribe runs on the system
+    // Db. The operation already checked the Conversation's Organization; the
+    // read here checks it again before anything leaves.
+    unsubscribeWebhooks: async (conversationId) => {
+      const system = getWidgetDb();
+      const conversation = await system.getConversation(conversationId);
+      if (!conversation?.assistantId) return;
+      const assistant = await system.getAssistant(conversation.assistantId);
+      if (assistant?.organizationId !== opts.organizationId) return;
+      await unsubscribePendingWebhooks({ db: system }, conversationId);
+    },
+    // The decision write (#841): a compare-and-set on the system Db, because
+    // the table has no member write policy; the operation already checked the
+    // row's Organization, and the pinned read below checks it again.
+    decideReviewRequest: async (id, patch) => {
+      const system = getWidgetDb();
+      const current = await system.table("reviewRequests").get(id);
+      if (!current || current.organizationId !== opts.organizationId) return null;
+      return system.decideReviewRequest(id, patch);
+    },
+    // Human review continuation (#841). A simulated (Preview) request resumes
+    // inline so the transcript shows the next message; a real one rides the
+    // job ledger like every other unattended turn. Both run on the system Db
+    // the caller wired here: the resumption is a Conversation Turn on a
+    // Conversation the deciding Member does not own.
+    afterReviewDecided: async (review) => {
+      if (review.organizationId !== opts.organizationId) {
+        throw new Error("afterReviewDecided: organization mismatch");
+      }
+      if (review.simulated) {
+        return resumeReviewedConversation({ db: getWidgetDb() }, review.id);
+      }
+      await enqueueReviewResumptionJob({ db: getWidgetDb() }, review);
+      return null;
+    },
     validateProviderApiKey: async (provider, apiKey) => {
       try {
         await validateProviderApiKey(provider, apiKey);

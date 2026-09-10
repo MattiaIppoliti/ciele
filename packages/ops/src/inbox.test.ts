@@ -128,3 +128,31 @@ describe("legal hold (#801, CYB-12)", () => {
     ).rejects.toMatchObject({ code: "not_found" });
   });
 });
+
+describe("deleting a Conversation with an open webhook gate (#842)", () => {
+  it("tells the other system to stop before the row cascades away", async () => {
+    const ctx = context();
+    const assistant = await ctx.db.createAssistant(DEMO_ORG.id, { title: "Gate" });
+    const conversation = await ctx.db.createConversation({
+      assistantId: assistant.id,
+      subjectType: "visitor",
+      subjectId: "v-1",
+      title: "Waiting",
+    });
+    const order: string[] = [];
+    const deleteConversation = ctx.db.deleteConversation.bind(ctx.db);
+    ctx.db.deleteConversation = async (id) => {
+      order.push(`delete:${id}`);
+      await deleteConversation(id);
+    };
+    ctx.ports = {
+      unsubscribeWebhooks: async (id) => {
+        order.push(`unsubscribe:${id}`);
+      },
+    };
+    const { deleteConversationOp } = await import("./inbox");
+    await deleteConversationOp.run(ctx, { id: conversation.id });
+    expect(order).toEqual([`unsubscribe:${conversation.id}`, `delete:${conversation.id}`]);
+    expect(await ctx.db.getConversation(conversation.id)).toBeNull();
+  });
+});

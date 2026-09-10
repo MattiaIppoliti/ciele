@@ -129,6 +129,7 @@ export async function resolveTeammateActions(args: {
                 : undefined,
         })),
         result: outcome.result,
+        payload: spec.clientPayload?.(outcome.result),
       };
     },
   }));

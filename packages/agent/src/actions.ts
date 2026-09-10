@@ -2,7 +2,26 @@ import { generateObject, streamText } from "ai";
 import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Assistant, FlowAction, FlowActionSettings } from "@agent-hub/core";
-import { DEFAULT_BASIC_REPLY, externalLinkUrl } from "@agent-hub/core";
+import {
+  CONNECTOR_PROVIDER_LABELS,
+  connectorAction,
+  DEFAULT_BASIC_REPLY,
+  DEFAULT_REVIEW_WAITING_MESSAGE,
+  externalLinkUrl,
+  humanReviewSettingsIssue,
+  normalizeAssignees,
+  reviewExpiresAt,
+  reviewTimeoutHours,
+  DEFAULT_WEBHOOK_WAITING_MESSAGE,
+  httpWebhookSettingsIssue,
+  respondHeaders,
+  respondSettingsIssue,
+  respondStatus,
+  webhookExpiresAt,
+  webhookHaltMessage,
+  webhookTimeoutMinutes,
+} from "@agent-hub/core";
+import { connectorFailure, connectorTemplatePatch, executeConnectorAction } from "./connector-request";
 import type { ChatReplyPart } from "./types";
 import { buildToolset } from "./tools";
 import { createApiResponseStore } from "./api-catalog-tools";
@@ -44,14 +63,20 @@ export const contactLabel = (assistant: Assistant): string =>
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
-/** Verbatim custom message, never model-rewritten (runtime invariant). */
-const customMessage: ActionHandler = async ({ flow, emit }) => {
+/**
+ * Verbatim custom message, never model-rewritten (runtime invariant).
+ * Template variables are substituted (#841): `{{review.amount}}` after a Human
+ * review, `{{user.name}}` anywhere. Substitution is not rewriting: the Editor's
+ * words reach the Visitor exactly, with the values they named filled in.
+ */
+const customMessage: ActionHandler = async ({ flow, emit, templateContext }) => {
+  const configured = (flow.customMessage ?? "").trim();
   const part: ChatReplyPart = {
     type: "text",
     action: "custom_message",
-    text:
-      (flow.customMessage ?? "").trim() ||
-      `(This flow has no custom message yet, add one from the "${flow.name}" flow settings.)`,
+    text: configured
+      ? resolveTemplate(configured, templateContext ?? {})
+      : `(This flow has no custom message yet, add one from the "${flow.name}" flow settings.)`,
   };
   emit({ type: "part", part });
   return { parts: [part] };
@@ -573,6 +598,62 @@ const apiRequest: ActionHandler = async ({
   return { parts: [part], templatePatch };
 };
 
+const DEFAULT_CONNECTOR_SUCCESS = "Your request was submitted successfully.";
+const DEFAULT_CONNECTOR_FAILURE = "Sorry, that request couldn't be completed right now.";
+
+/**
+ * Runs one catalogued operation against a connected system through an
+ * Application Connection (#839). The execution core is `connector-request.ts`,
+ * shared with the builder's Run node; this adapter only chooses the Visitor's
+ * sentence and hands the outputs to later actions as `{{connector.*}}`.
+ *
+ * A read action that succeeds says nothing: its point is the outputs a Message
+ * action after it can render. A write confirms with the configured sentence.
+ * Any failure reads the configured failure message, never the provider's
+ * error, which the admin sees in the run panel and the Alert instead.
+ */
+const connector: ActionHandler = async ({
+  flow,
+  message,
+  emit,
+  signal,
+  templateContext,
+  connectorRuntime,
+}) => {
+  const settings = flow.actionSettings?.connector;
+  const action = connectorAction(settings?.action);
+  if (!settings || !action) return { parts: [] };
+  emit({ type: "notice", label: `Calling ${CONNECTOR_PROVIDER_LABELS[action.provider]}` });
+
+  const ctx = { ...(templateContext ?? {}) };
+  if (ctx["workflow.message"] === undefined) ctx["workflow.message"] = message;
+
+  const outcome = connectorRuntime
+    ? await executeConnectorAction(settings, ctx, connectorRuntime, { signal })
+    : connectorFailure(
+        action.provider,
+        action.key,
+        "unavailable",
+        "Connector actions are not available on this surface."
+      );
+  if (outcome.error) {
+    emit({ type: "notice", label: `${CONNECTOR_PROVIDER_LABELS[action.provider]}: ${outcome.error.message}` });
+  }
+  const templatePatch = connectorTemplatePatch(outcome);
+
+  if (outcome.ok && action.effect === "read") return { parts: [], templatePatch };
+  const text = outcome.ok
+    ? settings.successMessage?.trim() || DEFAULT_CONNECTOR_SUCCESS
+    : settings.failureMessage?.trim() || DEFAULT_CONNECTOR_FAILURE;
+  const part: ChatReplyPart = {
+    type: "text",
+    action: "connector",
+    text: resolveTemplate(text, { ...ctx, ...templatePatch }),
+  };
+  emit({ type: "part", part });
+  return { parts: [part], templatePatch };
+};
+
 /**
  * Acknowledges the handover and halts the flow, signalling the target so the
  * Conversation Turn continues this same message inside the target Assistant's
@@ -809,6 +890,262 @@ const basicReply: ActionHandler = async ({
   return { parts: [{ type: "text", action: "basic_reply", text: trimmed }] };
 };
 
+/**
+ * Human review (#841): stop here and ask a person.
+ *
+ * Creates the Review Request through the host's port, tells the Visitor a
+ * colleague was asked, and halts: nothing after this action runs until the
+ * request closes, at which point the resumption job continues the Flow from
+ * `actionIndex + 1` (approved) or persists the halt message. The conversation
+ * summary the assignee reads is the recent transcript, plain text, capped.
+ */
+const humanReview: ActionHandler = async ({
+  flow,
+  message,
+  history,
+  emit,
+  reviewRuntime,
+  actionIndex,
+  templateContext,
+  previewSurface,
+}) => {
+  const settings = flow.actionSettings?.human_review;
+  const issue = humanReviewSettingsIssue(settings);
+  if (issue || !settings) {
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: previewSurface
+        ? `The Human review step is not configured: ${issue}`
+        : "Sorry, I can't continue with this request right now.",
+    };
+    emit({ type: "part", part });
+    return { parts: [part], halt: true };
+  }
+  if (!reviewRuntime) {
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: "Human review is not available on this surface.",
+    };
+    emit({ type: "part", part });
+    return { parts: [part], halt: true };
+  }
+  emit({ type: "notice", label: "Asking a colleague to review" });
+  const ctx = { ...(templateContext ?? {}) };
+  if (ctx["workflow.message"] === undefined) ctx["workflow.message"] = message;
+  const summary = [...history.slice(-6), { role: "user" as const, text: message }]
+    .filter((entry) => entry.text.trim())
+    .map((entry) => `${entry.role === "user" ? "Visitor" : "Assistant"}: ${entry.text.trim()}`)
+    .join("\n")
+    .slice(0, 4000);
+  const now = new Date();
+  const review = await reviewRuntime.create({
+    flowId: flow.id,
+    actionIndex: actionIndex ?? flow.actions.indexOf("human_review"),
+    title: resolveTemplate(settings.title ?? "", ctx).trim() || "Review request",
+    message: resolveTemplate(settings.message ?? "", ctx),
+    summary,
+    channel: settings.channel ?? "email",
+    assignees: normalizeAssignees(settings.assignees),
+    inputs: settings.inputs ?? [],
+    expiresAt: reviewExpiresAt(now, reviewTimeoutHours(settings)),
+    haltMessage: settings.haltMessage ?? "",
+  });
+  const card: ChatReplyPart = {
+    type: "human_review",
+    action: "human_review",
+    reviewId: review.id,
+    title: review.title,
+    status: review.status,
+    decidedByName: null,
+    simulated: reviewRuntime.simulated,
+  };
+  const waiting: ChatReplyPart = {
+    type: "text",
+    action: "human_review",
+    text: resolveTemplate(settings.waitingMessage?.trim() || DEFAULT_REVIEW_WAITING_MESSAGE, ctx),
+  };
+  emit({ type: "part", part: waiting });
+  emit({ type: "part", part: card });
+  return { parts: [waiting, card], halt: true };
+};
+
+
+/**
+ * The callback gate (#842). Open a subscription, tell the other system where
+ * to call back, and stop the turn until it does.
+ *
+ * The row is created *before* the subscribe request goes out, because the
+ * callback URL names the row: there is nothing to put in the request until it
+ * exists. A subscribe that then fails closes the row `failed` and halts, so a
+ * Visitor is never left waiting on a request that was never accepted.
+ */
+const httpWebhook: ActionHandler = async ({
+  flow,
+  message,
+  emit,
+  signal,
+  webhookRuntime,
+  actionIndex,
+  templateContext,
+  previewSurface,
+}) => {
+  const settings = flow.actionSettings?.http_webhook;
+  const issue = httpWebhookSettingsIssue(settings);
+  if (issue || !settings?.subscribe?.url) {
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: previewSurface
+        ? `The HTTP webhook step is not configured: ${issue}`
+        : "Sorry, I can't continue with this request right now.",
+    };
+    emit({ type: "part", part });
+    return { parts: [part], halt: true };
+  }
+  if (!webhookRuntime) {
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: "Webhooks are not available on this surface.",
+    };
+    emit({ type: "part", part });
+    return { parts: [part], halt: true };
+  }
+
+  emit({ type: "notice", label: "Subscribing to an external system" });
+  const ctx = { ...(templateContext ?? {}) };
+  if (ctx["workflow.message"] === undefined) ctx["workflow.message"] = message;
+
+  const now = new Date();
+  const timeout = webhookTimeoutMinutes(settings);
+  const subscription = await webhookRuntime.create({
+    flowId: flow.id,
+    actionIndex: actionIndex ?? flow.actions.indexOf("http_webhook"),
+    subscribeMethod: settings.subscribe.method ?? "POST",
+    subscribeUrl: settings.subscribe.url,
+    // The unsubscribe call is stored once the subscribe has answered (below):
+    // the id the other system hands back is usually what its URL needs.
+    unsubscribeMethod: null,
+    unsubscribeUrl: null,
+    unsubscribeBody: null,
+    expiresAt: webhookExpiresAt(now, timeout),
+    haltMessage: settings.haltMessage ?? "",
+  });
+
+  // The one variable the subscribe call exists to carry.
+  const subscribeCtx = {
+    ...ctx,
+    "webhook.callbackUrl": webhookRuntime.callbackUrl(subscription),
+  };
+  const outcome = await executeApiRequest(
+    {
+      method: settings.subscribe.method ?? "POST",
+      url: settings.subscribe.url,
+      bodyTemplate: settings.subscribe.bodyTemplate,
+      auth: settings.subscribe.auth,
+      headers: settings.subscribe.headers,
+    },
+    subscribeCtx,
+    signal
+  );
+  if (!outcome.ok) {
+    await webhookRuntime.fail(subscription.id);
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "http_webhook",
+      // A policy block and a system that is down read the same to a Visitor.
+      text: webhookHaltMessage({ status: "failed", haltMessage: settings.haltMessage ?? "" }),
+    };
+    emit({ type: "part", part });
+    return { parts: [part], halt: true };
+  }
+
+  // Resolved now, with the subscribe reply in hand, and stored: the
+  // unsubscribe has to fire even if the Flow is edited during the wait, and it
+  // runs when no template context is left. `{{webhook.subscribeBody}}` is the
+  // whole reply; the subscribe call's own JSON paths name pieces of it.
+  if (settings.unsubscribe?.url) {
+    const unsubscribeCtx: Record<string, string> = {
+      ...ctx,
+      "webhook.subscribeBody": outcome.bodyText ?? "",
+    };
+    if (settings.subscribe.jsonPaths?.length) {
+      const { extracted } = extractApiJsonPaths(
+        { jsonPaths: settings.subscribe.jsonPaths },
+        outcome.bodyText
+      );
+      for (const value of extracted) unsubscribeCtx[value.variable] = value.value;
+    }
+    await webhookRuntime.configureUnsubscribe(subscription.id, {
+      method: settings.unsubscribe.method ?? "DELETE",
+      url: resolveTemplate(settings.unsubscribe.url, unsubscribeCtx),
+      body: settings.unsubscribe.bodyTemplate
+        ? resolveTemplate(settings.unsubscribe.bodyTemplate, unsubscribeCtx, "json-string")
+        : null,
+    });
+  }
+
+  const waiting: ChatReplyPart = {
+    type: "text",
+    action: "http_webhook",
+    text: resolveTemplate(
+      settings.waitingMessage?.trim() || DEFAULT_WEBHOOK_WAITING_MESSAGE,
+      ctx
+    ),
+  };
+  const card: ChatReplyPart = {
+    type: "webhook",
+    action: "http_webhook",
+    subscriptionId: subscription.id,
+    subscribeUrl: subscription.subscribeUrl,
+    expiresAt: subscription.expiresAt,
+    simulated: webhookRuntime.simulated,
+  };
+  emit({ type: "part", part: waiting });
+  emit({ type: "part", part: card });
+  return { parts: [waiting, card], halt: true };
+};
+
+/**
+ * The answer to an inbound HTTP request (#843).
+ *
+ * Halts, always: what a caller was told cannot be changed by an action that
+ * runs afterwards, so a Flow that continued past its Response would be
+ * describing a reply it can no longer send.
+ */
+const respond: ActionHandler = ({ flow, emit, templateContext }) => {
+  const settings = flow.actionSettings?.respond;
+  const ctx = templateContext ?? {};
+  const resolve = (value: string) => resolveTemplate(value, ctx);
+  const status = respondStatus(settings);
+  // A Response without a status the route can send is misconfigured, and the
+  // save-time rule says so; a Flow that reached here anyway (a snapshot older
+  // than the rule) answers 500 and names the problem rather than inventing a
+  // 200 the author never chose.
+  const part: ChatReplyPart =
+    status === null
+      ? {
+          type: "http_response",
+          action: "respond",
+          status: 500,
+          headers: {},
+          body: JSON.stringify({
+            error: { code: "respond_not_configured", message: respondSettingsIssue(settings) },
+          }),
+        }
+      : {
+          type: "http_response",
+          action: "respond",
+          status,
+          headers: respondHeaders(settings, resolve),
+          body: settings?.bodyTemplate?.trim() ? resolve(settings.bodyTemplate) : "",
+        };
+  emit({ type: "part", part });
+  return Promise.resolve({ parts: [part], halt: true });
+};
+
 /** The registry: FlowAction → Adapter. Complete (no fall-through). */
 export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   custom_message: customMessage,
@@ -823,6 +1160,10 @@ export const ACTION_HANDLERS: Record<FlowAction, ActionHandler> = {
   handover,
   send_email: sendEmail,
   notification,
+  connector,
+  human_review: humanReview,
+  http_webhook: httpWebhook,
+  respond,
 };
 
 export type { ActionContext, ActionHandler };

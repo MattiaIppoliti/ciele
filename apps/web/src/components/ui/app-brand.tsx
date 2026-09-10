@@ -1,4 +1,4 @@
-import { Cloud, Cloudy, HardDrive, Hash, Workflow } from "lucide-react";
+import { Cloud, Cloudy, HardDrive, Hash, Mail, Workflow } from "lucide-react";
 import type { ApplicationProvider } from "@agent-hub/core";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +68,15 @@ export const APP_BRANDS: Record<ApplicationProvider, AppBrand> = {
     color: "#1FA463",
     onColor: "#FFFFFF",
     mark: HardDrive,
+  },
+  // Not a knowledge source (#841): the Human review sender. Branded so the
+  // Applications list and the Flow Builder draw it the same way, but kept out
+  // of APP_BRAND_ORDER, which is the import catalogue.
+  microsoft_mail: {
+    label: "Microsoft 365 mail",
+    color: "#0078D4",
+    onColor: "#FFFFFF",
+    mark: Mail,
   },
 };
 

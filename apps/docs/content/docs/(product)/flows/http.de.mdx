@@ -1,0 +1,196 @@
+---
+title: HTTP und Webhooks
+description: Rufen Sie einen HTTP-Endpunkt aus einem Flow auf, warten Sie auf einen Webhook-Rückruf oder lassen Sie ein anderes System einen Flow aufrufen und dessen Antwort lesen.
+---
+
+## Was ein Flow über HTTP leisten kann
+
+Ein Flow kommuniziert auf drei Arten mit Systemen außerhalb von Ciele.
+
+| Schritt | Richtung | Was er tut |
+| --- | --- | --- |
+| API-Anforderung | Ausgehend | Führt einen HTTP-Aufruf durch und liest die Antwort. |
+| HTTP-Webhook | Ausgehend, dann eingehend | Abonniert ein System, wartet und fährt fort, wenn dieses System zurückruft. |
+| Auf HTTP-Anfrage (Trigger) + Antwort | Eingehend | Ein anderes System ruft den Flow auf, und der Flow antwortet. |
+
+## API-Anforderung
+
+Die API-Anforderung führt einen Aufruf durch und fährt fort. Konfigurieren Sie
+ihn unter **Endpoint**: Geben Sie eine URL ein oder benennen Sie eine Operation
+in einer Swagger-/OpenAPI-Definition. Die vollständige Feldliste finden Sie
+unter [Aktionen](/flows/actions#api-request).
+
+Verwenden Sie API-Anforderung, wenn das andere System sofort antwortet.
+
+## HTTP-Webhook
+
+Verwenden Sie einen HTTP-Webhook, wenn das andere System eine Anfrage jetzt
+annimmt und später antwortet.
+
+Der Schritt hat zwei Aufrufe mit einer Wartezeit dazwischen.
+
+**Subscribe** wird gesendet, wenn der Flow den Schritt erreicht. Fügen Sie
+`{{webhook.callbackUrl}}` in die URI oder in den Textkörper ein. Ciele ersetzt
+sie durch eine signierte Adresse für diese Konversation. Ohne diese kann das
+andere System nirgendwo antworten, und der Editor markiert den Schritt nicht als
+konfiguriert.
+
+Beide Aufrufe benötigen eine **Authentication**-Einstellung und **Headers**,
+also dieselben Felder wie bei einer API-Anforderung. Fügen Sie dort
+Anmeldeinformationen ein, nicht in der URI oder im Textkörper. Ciele blendet
+diese Felder bei jedem Lesen aus und speichert sie niemals in einer
+Veröffentlichung oder einem Transkript.
+
+**Unsubscribe** wird gesendet, wenn die Wartezeit endet, wie auch immer sie
+endet. Dies ist optional, aber ohne diese Option ruft das andere System
+weiterhin eine Adresse auf, die nirgendwo mehr hinführt.
+
+Der Abmeldeaufruf wird aufgelöst, nachdem der Anmeldeaufruf beantwortet wurde.
+Die vollständige Antwort steht ihm als `{{webhook.subscribeBody}}` zur
+Verfügung. Um einen Wert aus der Antwort zu verwenden, fügen Sie dem
+Subscribe-Aufruf eine **Response mapping**-Zeile hinzu. Geben Sie ihm einen Pfad
+wie `$.id` und einen Variablennamen wie `subscriptionId`. Schreiben Sie dann
+`{{subscriptionId}}` in die Abmelde-URI.
+
+Zwischen den beiden wartet die Konversation. Der Besucher liest die von Ihnen
+konfigurierte Wartemeldung, und das Transkript zeichnet die Wartezeit anstelle
+einer Lücke auf.
+
+Wenn der Rückruf eintrifft, wird der Flow ab dem Schritt nach dem Webhook
+fortgesetzt. Der Callback-Text ist als `{{webhook.body}}` verfügbar, und
+**Response mapping** extrahiert daraus benannte Werte auf die gleiche Weise wie
+eine API-Anforderung.
+
+Wenn vor dem Timeout nichts eintrifft, wird der Flow gestoppt. Der Besucher
+liest die Nachricht, die Sie unter **If nothing arrives** konfiguriert haben.
+Die Standardwartezeit beträgt 15 Minuten. Die maximale Wartezeit beträgt 24
+Stunden.
+
+Ein Callback, der nach dem Timeout eintrifft, wird abgelehnt, unabhängig davon,
+ob Ciele die Wartezeit bereits als abgelaufen markiert hat oder nicht. Der
+Besucher kann die Timeout-Nachricht einige Zeit nach dem Timeout lesen. Beim
+gehosteten Plan wird die Prüfung einmal täglich ausgeführt. Bei einer selbst
+gehosteten Installation wird er einmal pro Stunde ausgeführt. Der Flow wird nach
+einem verspäteten Callback niemals fortgesetzt.
+
+### Was die Callback-Adresse ermöglicht
+
+Die Adresse, die Ciele generiert, benennt ein Abonnement und läuft mit diesem
+ab. Sie stellt die gesamte Autorisierung dar: Jeder, der sie besitzt, kann
+einmalig auf dieses eine Warten antworten.
+
+Nur der erste Rückruf zählt. Einige Systeme liefern mindestens einmal oder
+versuchen es erneut, wenn sie Ihre Antwort nicht sehen. Ciele quittiert den
+Wiederholungsversuch. Der Flow wird trotzdem genau einmal fortgesetzt.
+
+Wenn Sie eine Konversation löschen, während ein Webhook wartet, wird die
+Wartezeit geschlossen und zuerst der Abmeldeaufruf gesendet. Eine Konversation,
+die durch eine Aufbewahrungsregel entfernt wurde, sendet diesen nicht.
+
+## Bei HTTP-Anforderung
+
+Wählen Sie **On HTTP request** als Trigger für den Flow aus, um ihm einen
+Endpunkt zu geben, den ein anderes System aufrufen kann.
+
+Die eigenen Einstellungen des Flows zeigen den Endpunkt und die Methoden, die er
+akzeptiert. Ein gespeicherter Flow antwortet mit `POST`, sofern Sie nichts
+anderes auswählen. Ein nicht gespeicherter Flow hat noch keinen Endpunkt.
+
+Rufen Sie ihn mit einem Organisations-API-Schlüssel als Bearer-Token auf:
+
+```bash
+curl -X POST https://ciele.app/api/flows/<flowId>/trigger \
+  -H "Authorization: Bearer ciele_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "A-1"}'
+```
+
+Erstellen Sie den Schlüssel unter **Settings → API Keys**. Der Schlüssel
+bestimmt, zu welcher Organisation die Anfrage gehört. Ein Schlüssel kann also
+nicht den Flow einer anderen Organisation ausführen. Jeder Schlüssel der
+Organisation kann einen Aufruf tätigen, unabhängig von seiner Rolle.
+
+Der Flow, der ausgeführt wird, ist derjenige in der neuesten Veröffentlichung
+des Assistenten. Veröffentlichen Sie den Assistenten, nachdem Sie den Flow
+gespeichert haben, oder der Endpunkt antwortet `404` mit dem Code
+`not_published`. Eine Bearbeitung, die Sie nicht veröffentlicht haben, ändert
+nichts an der Funktionsweise des Endpunkts.
+
+Die Anfrage steht jedem Schritt als Vorlagenvariable zur Verfügung:
+
+| Variable | Wert |
+| --- | --- |
+| `{{request.method}}` | Die HTTP-Methode. |
+| `{{request.body}}` | Der unformatierte Anforderungstext. |
+| `{{request.body.name}}` | Ein Wert aus einem JSON-Textkörper, nach Pfad. `{{request.body.order.id}}` liest `{"order":{"id":"A-1"}}`. Arrays verwenden eine Zahl: `{{request.body.items.0.sku}}`. |
+| `{{request.query.name}}` | Ein Wert aus einer Abfragezeichenfolge. |
+| `{{request.header.name}}` | Eine Kopfzeile in Kleinbuchstaben. |
+
+Body-Pfade reichen bis zu vier Ebenen tief und enden nach 200 Werten. Der
+Rohtext des Inhalts ist immer vollständig verfügbar.
+
+Die Header `Authorization`, `Proxy-Authorization` und `Cookie` sind nicht
+verfügbar. Damit hat der Aufrufer bewiesen, dass er den Flow ausführen darf. Ein
+Flow, der sie lesen könnte, könnte Ihren eigenen API-Schlüssel an eine andere
+Stelle senden.
+
+### Was ein eingehender Flow enthalten kann
+
+Ein eingehender Flow hat kein Chat-Fenster. Er bietet nur die Schritte an, die
+etwas bewirken.
+
+- API-Anforderung
+- Konnektor
+- E-Mail senden
+- Verbesserung
+- Antwort
+
+HTTP-Webhook und menschliche Überprüfung werden nicht angeboten. Siehe
+[Einschränkungen](#limits). Der Editor lehnt sie beim Speichern ab, und die
+Laufzeit überspringt sie, wenn ein gespeicherter Flow sie noch enthält.
+
+Es gibt auch keine Bedingungen. Der Aufrufer hat den Flow bereits anhand seiner
+URL ausgewählt.
+
+## Antwort
+
+**Response** ist das, was der Aufrufer liest: einen Statuscode, optionale Header
+und einen optionalen Body. Die Header und der Body akzeptieren
+Template-Variablen, sodass ein Flow eine API aufrufen und mit der Rückgabe
+antworten kann.
+
+Der Statuscode ist erforderlich. Er muss zwischen 200 und 599 liegen. Der Editor
+markiert den konfigurierten Schritt ohne Statuscode nicht.
+
+Die Antwort beendet den Flow. Nach der Ausführung wird nichts mehr konfiguriert,
+da das, was dem Aufrufer mitgeteilt wurde, danach nicht mehr geändert werden
+kann.
+
+Ein Flow, der ohne Response endet, antwortet mit `204 No Content`. Ein Flow,
+dessen Schritt fehlschlägt, bevor er antworten kann, gibt `500` zurück.
+
+### Ausführungsverlauf
+
+Jeder Aufruf wird aufgezeichnet. Öffnen Sie den Flow und wählen Sie den Trigger
+aus, um die letzten 20 Ausführungen anzuzeigen. Jeder Durchlauf zeigt an, wann
+der Aufruf eingegangen ist, welche Methode verwendet wurde, welchen Status der
+Aufrufer erhalten hat, welche Schritte ausgeführt wurden und wie lange es
+gedauert hat. Ein fehlgeschlagener Schritt wird benannt. Ein Durchlauf ist keine
+Konversation. Er wird weder im Posteingang noch in Insights angezeigt.
+
+Der Datensatz speichert weder den Anforderungstext noch den Antworttext.
+
+## Limits
+
+- Jeder API-Schlüssel kann 60 eingehende Anfragen pro Minute auslösen. Eine
+  Callback-Adresse akzeptiert 120 Aufrufe pro Minute von einer Netzwerkadresse.
+- Die Abonnement- und Abmeldeaufrufe unterliegen denselben Netzwerkregeln wie
+  jeder andere ausgehende Aufruf: Nur HTTPS, keine Weiterleitungen, keine
+  privaten Adressen. Ein Callback ist eine eingehende Anfrage, daher gelten
+  diese Regeln nicht für ihn.
+- Ein eingehender Flow darf weder einen HTTP-Webhook noch eine menschliche
+  Überprüfung enthalten. Beide stoppen einen Turn und setzen ihn später in einer
+  Konversation fort, und ein eingehender Flow hat keinen.
+- Eine Konversation, die durch eine Aufbewahrungsregel entfernt wird, nimmt ihre
+  wartenden Webhooks mit und sendet keinen Abmeldeaufruf. Kündigen Sie diese
+  Abonnements im anderen System selbst.

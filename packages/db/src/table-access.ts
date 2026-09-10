@@ -1,16 +1,24 @@
 import type {
-  CookieConsentRecord,
   AssistantGoal,
+  CookieConsentRecord,
+  Entity,
+  EntityInput,
   GoalExpectations,
   LocalConnectorDevice,
   LocalConnectorPairing,
   LocalInferenceJob,
-  Entity,
-  EntityInput,
-  Skill,
   Project,
   ProjectInput,
   ProjectPatch,
+  ReviewRequest,
+  ReviewRequestInput,
+  ReviewRequestPatch,
+  WebhookSubscription,
+  WebhookSubscriptionInput,
+  WebhookSubscriptionPatch,
+  HttpFlowRun,
+  HttpFlowRunInput,
+  Skill,
   Teammate,
   TeammateChannel,
   TeammateChannelInput,
@@ -18,14 +26,14 @@ import type {
   TeammateChannelParticipantInput,
   TeammateChannelPatch,
   TeammateGovernancePatch,
-  TeammateRoutine,
-  TeammateRoutineInput,
-  TeammateRoutinePatch,
   TeammateGrant,
-  TeammateRosterHidden,
   TeammateGrantDomain,
   TeammateInput,
   TeammatePatch,
+  TeammateRosterHidden,
+  TeammateRoutine,
+  TeammateRoutineInput,
+  TeammateRoutinePatch,
 } from "@agent-hub/core";
 import { shortId } from "@agent-hub/core";
 
@@ -222,6 +230,34 @@ export interface DbTableMap {
     };
     update: Partial<Pick<AssistantGoal, "question" | "expectations" | "status">>;
   };
+  /**
+   * Human review requests (#841). Created by the runtime, closed once by the
+   * decide operation or the expiry sweep; the state machine lives in core.
+   */
+  reviewRequests: {
+    row: ReviewRequest;
+    insert: ReviewRequestInput;
+    update: ReviewRequestPatch;
+  };
+  /**
+   * Awaited webhook callbacks (#842). Created by the runtime, closed once by
+   * the first callback or the expiry sweep; the state machine lives in core.
+   */
+  webhookSubscriptions: {
+    row: WebhookSubscription;
+    insert: WebhookSubscriptionInput;
+    update: WebhookSubscriptionPatch;
+  };
+  /**
+   * Inbound runs of an HTTP-triggered Flow (#843). Written by the runtime once
+   * per call, read from the trigger's panel; never updated, so the update
+   * shape is empty.
+   */
+  httpFlowRuns: {
+    row: HttpFlowRun;
+    insert: HttpFlowRunInput;
+    update: Record<never, never>;
+  };
 }
 
 export type DbTableName = keyof DbTableMap;
@@ -318,6 +354,8 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
       capabilityCeiling: "edit",
       approvalBypass: false,
       projectId: null,
+      systemKind: null,
+      assistantId: null,
       deletedAt: null,
     },
     orderBy: "createdAt",
@@ -427,6 +465,57 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     },
     orderBy: "createdAt",
     ascending: true,
+    touchesUpdatedAt: false,
+  },
+  webhookSubscriptions: {
+    table: "webhook_subscriptions",
+    id: "shortId",
+    defaults: {
+      status: "pending",
+      unsubscribeMethod: null,
+      unsubscribeUrl: null,
+      unsubscribeBody: null,
+      unsubscribedAt: null,
+      payload: null,
+      receivedAt: null,
+      haltMessage: "",
+      simulated: false,
+      resumedAt: null,
+    },
+    orderBy: "createdAt",
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
+  reviewRequests: {
+    table: "review_requests",
+    id: "shortId",
+    defaults: {
+      status: "pending",
+      message: "",
+      summary: "",
+      decision: null,
+      decidedBy: null,
+      decidedByName: null,
+      decidedAt: null,
+      haltMessage: "",
+      simulated: false,
+      resumedAt: null,
+    },
+    orderBy: "createdAt",
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
+  httpFlowRuns: {
+    table: "http_flow_runs",
+    id: "shortId",
+    defaults: {
+      publicationId: null,
+      ran: [],
+      failedAction: null,
+      failedMessage: null,
+    },
+    orderBy: "createdAt",
+    ascending: false,
     touchesUpdatedAt: false,
   },
 };

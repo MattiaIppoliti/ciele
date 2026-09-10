@@ -1,5 +1,5 @@
 ---
-title: Crea un Flow
+title: Crea un flusso
 description: Configura un trigger, le condizioni disponibili e le azioni di risposta ordinate.
 ---
 
@@ -11,12 +11,18 @@ description: Configura un trigger, le condizioni disponibili e le azioni di risp
 4. Inserisci un nome e una descrizione chiari.
 5. Seleziona un trigger.
 
-La descrizione aiuta Intent Classification a selezionare un flusso di messaggi.
-Indica l'intento del Visitatore e l'ambito richiesto.
+La descrizione aiuta Intent Classification a selezionare un Flow per il
+messaggio. Indica l'intento del Visitatore e l'ambito richiesto.
+
+Un Flow si attiva in seguito a un messaggio di un Visitatore, a un evento widget
+o a una richiesta HTTP in entrata. Gli eventi del widget sono il caricamento
+della pagina, il tempo trascorso sulla pagina e l'apertura della chat. Il
+trigger decide quali condizioni e quali azioni può utilizzare il Flow. Vedi
+[HTTP e webhook](/flows/http) per il trigger in entrata.
 
 ## Aggiungi condizioni per i messaggi
 
-I flussi di messaggi supportano questi tipi di condizione:
+I Message Flow supportano questi tipi di condizione:
 
 | Condizione | Comportamento attuale |
 | --- | --- |
@@ -38,7 +44,7 @@ classificazione. Una condizione soddisfatta non obbliga il Flow a vincere.
 4. Salva il Flow.
 5. Testa un messaggio corrispondente e uno non corrispondente.
 
-L'editor limita i Flow proattivi a una sola azione di notifica. Il server
+L'editor limita i Flussi proattivi a una sola azione di Notifica. Il server
 applica la stessa regola quando salva o invia un Flow.
 
 ## Riordina i flussi

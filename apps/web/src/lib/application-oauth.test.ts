@@ -23,6 +23,7 @@ describe("Application OAuth", () => {
       "slack",
       "onedrive",
       "google_drive",
+      "microsoft_mail",
     ]);
   });
 
@@ -128,6 +129,7 @@ describe("Application OAuth", () => {
         slack: "unsupported",
         onedrive: "s256",
         google_drive: "s256",
+        microsoft_mail: "s256",
       });
     });
 

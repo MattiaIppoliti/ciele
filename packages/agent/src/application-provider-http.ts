@@ -180,7 +180,7 @@ export async function refreshApplicationCredentials(
     current.tokenUrl ??
     (provider === "google_drive"
       ? "https://oauth2.googleapis.com/token"
-      : provider === "onedrive"
+      : provider === "onedrive" || provider === "microsoft_mail"
         ? `https://login.microsoftonline.com/${current.tenantId ?? "organizations"}/oauth2/v2.0/token`
         : provider === "slack"
           ? "https://slack.com/api/oauth.v2.access"
@@ -190,7 +190,7 @@ export async function refreshApplicationCredentials(
   const allowedHosts =
     provider === "google_drive"
       ? ["oauth2.googleapis.com"]
-      : provider === "onedrive"
+      : provider === "onedrive" || provider === "microsoft_mail"
         ? ["login.microsoftonline.com"]
         : provider === "slack"
           ? ["slack.com"]

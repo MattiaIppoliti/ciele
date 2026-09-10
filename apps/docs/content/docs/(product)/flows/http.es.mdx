@@ -1,0 +1,190 @@
+---
+title: HTTP y webhooks
+description: Llama a un punto de conexión HTTP desde un Flow, espera una devolución de llamada de webhook o deja que otro sistema llame a un Flow y lea su respuesta.
+---
+
+## Qué puede hacer un Flow a través de HTTP
+
+Un Flow se comunica con sistemas externos a Ciele de tres maneras.
+
+| Paso | Dirección | Qué hace |
+| --- | --- | --- |
+| Solicitud de API | Saliente | Realiza una llamada HTTP y lee la respuesta. |
+| Webhook HTTP | Saliente, luego entrante | Se suscribe a un sistema, espera y continúa cuando ese sistema devuelve la llamada. |
+| A petición HTTP (activador) + Respuesta | Entrante | Otro sistema llama al Flow y el Flow responde. |
+
+## Solicitud de API
+
+La solicitud de API realiza una llamada y continúa. Configúralo en **Endpoint**:
+introduce una URL o nombra una operación en una definición Swagger/OpenAPI.
+Consulta [Acciones](/flows/actions#api-request) para ver la lista completa de
+campos.
+
+Utiliza la solicitud API cuando el otro sistema responda de inmediato.
+
+## Webhook HTTP
+
+Utiliza el webhook HTTP cuando el otro sistema acepte una solicitud ahora y
+responda más tarde.
+
+El paso tiene dos llamadas con una espera entre ellas.
+
+**Subscribe** se envía cuando el flujo llega al paso. Pon
+`{{webhook.callbackUrl}}` en su URI o en su cuerpo. Ciele lo reemplaza por una
+dirección firmada para esta conversación. Sin ella, el otro sistema no tiene
+adónde responder y el editor se niega a marcar el paso como configurado.
+
+Ambas llamadas aceptan una configuración **Authentication** y **Headers**, los
+mismos campos que la solicitud de API. Pon ahí una credencial, no en la URI ni
+en el cuerpo. Ciele oculta esos campos en cada lectura y nunca los almacena en
+una Publicación o en una transcripción.
+
+**Unsubscribe** se envía cuando finaliza la espera, independientemente de cómo
+termine. Es opcional, pero sin él el otro sistema sigue llamando a una dirección
+que ya no conduce a ninguna parte.
+
+La llamada de cancelación de suscripción se resuelve después de que la llamada
+de suscripción haya respondido. La respuesta completa está disponible para ella
+como `{{webhook.subscribeBody}}`. Para usar un valor de la respuesta, añade una
+fila **Response mapping** a la llamada de suscripción. Asígnale una ruta como
+`$.id` y un nombre de variable como `subscriptionId`. A continuación, escribe
+`{{subscriptionId}}` en el URI de cancelación de suscripción.
+
+Entre las dos, la conversación está en espera. El visitante lee el mensaje de
+espera que configures y la transcripción registra la espera en lugar de un
+espacio en blanco.
+
+Cuando llega la devolución de llamada, el flujo continúa desde el paso posterior
+al webhook. El cuerpo de la devolución de llamada está disponible como
+`{{webhook.body}}`, y **Response mapping** extrae de él valores con nombre de la
+misma manera que lo hace una solicitud API.
+
+Si no llega nada antes de que se agote el tiempo de espera, el flujo se detiene.
+El visitante lee el mensaje que configures en **If nothing arrives**. El tiempo
+de espera predeterminado es de 15 minutos. El máximo es de 24 horas.
+
+Se rechaza una devolución de llamada que llegue después del tiempo de espera,
+independientemente de que Ciele ya haya marcado o no la espera como expirada. El
+visitante puede leer el mensaje de tiempo de espera pasado algún tiempo después
+de que haya finalizado el tiempo de espera. En el plan alojado, la comprobación
+se ejecuta una vez al día. En una instalación autoalojada, se ejecuta una vez
+por hora. El flujo nunca continúa a partir de una devolución de llamada tardía.
+
+### Lo que permite la dirección de devolución de llamada
+
+La dirección que genera Ciele nombra una suscripción y caduca con ella. Es la
+autorización completa: cualquiera que la tenga puede responder a esa única
+espera, una vez.
+
+Solo cuenta la primera devolución de llamada. Algunos sistemas realizan la
+entrega al menos una vez o vuelven a intentarlo cuando no ven tu respuesta.
+Ciele reconoce el reintento. El flujo continúa exactamente una vez.
+
+Al eliminar una conversación mientras un webhook está en espera, se cierra la
+espera y se envía primero la llamada de cancelación de suscripción. Una
+conversación eliminada por una regla de retención no la envía.
+
+## En solicitud HTTP
+
+Selecciona **On HTTP request** como activador del flujo para proporcionarle un
+punto final al que otro sistema pueda llamar.
+
+La configuración propia del Flow muestra el punto de conexión y los métodos que
+acepta. Un Flow guardado responde `POST` a menos que elijas lo contrario. Un
+Flow no guardado aún no tiene ningún punto de conexión.
+
+Llámalo con una clave API de organización como token de portador:
+
+```bash
+curl -X POST https://ciele.app/api/flows/<flowId>/trigger \
+  -H "Authorization: Bearer ciele_sk_..." \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "A-1"}'
+```
+
+Crea la clave en **Settings → API Keys**. La clave decide a qué organización
+pertenece la solicitud, por lo que una clave no puede ejecutar el flujo de otra
+organización. Cualquier clave de la Organización puede realizar la llamada,
+independientemente de su rol.
+
+El Flow que se ejecuta es el de la última publicación del Asistente. Publica el
+Asistente después de guardar el Flujo, o el punto de conexión responderá `404`
+con el código `not_published`. Una edición que no hayas publicado no cambia lo
+que hace el punto de conexión.
+
+La solicitud está disponible para cada paso como variables de plantilla:
+
+| Variable | Valor |
+| --- | --- |
+| `{{request.method}}` | El método HTTP. |
+| `{{request.body}}` | El cuerpo de la solicitud sin procesar. |
+| `{{request.body.name}}` | Un valor de un cuerpo JSON, por ruta. `{{request.body.order.id}}` lee `{"order":{"id":"A-1"}}`. Las matrices usan un número: `{{request.body.items.0.sku}}`. |
+| `{{request.query.name}}` | Un valor de cadena de consulta. |
+| `{{request.header.name}}` | Un encabezado, en minúsculas. |
+
+Las rutas del cuerpo tienen una profundidad de cuatro niveles y se detienen
+después de 200 valores. El cuerpo sin procesar siempre está disponible en su
+totalidad.
+
+Los encabezados `Authorization`, `Proxy-Authorization` y `Cookie` no están
+disponibles. Así es como el llamador demostró que puede ejecutar el Flow. Un
+Flow que pudiera leerlos podría enviar tu propia clave de API a otro lugar.
+
+### Qué puede contener un Flow entrante
+
+Un Flow entrante no tiene ventana de chat. Ofrece únicamente los pasos que
+realizan alguna acción.
+
+- Solicitud de API
+- Conector
+- Enviar correo electrónico
+- Mejora
+- Respuesta
+
+No se ofrecen el webhook HTTP ni la revisión humana. Consulta
+[Límites](#limits). El editor los rechaza cuando guardas, y el tiempo de
+ejecución los omite si un Flow guardado todavía contiene uno.
+
+Tampoco tiene condiciones. El llamante ya ha elegido el Flow por su URL.
+
+## Respuesta
+
+**Response** es lo que lee el llamante: un código de estado, encabezados
+opcionales y un cuerpo opcional. Los encabezados y el cuerpo aceptan variables
+de plantilla, por lo que un Flow puede llamar a una API y responder con lo que
+se haya devuelto.
+
+El código de estado es obligatorio. Debe estar entre 200 y 599. El editor no
+marca el paso configurado sin uno.
+
+La respuesta finaliza el flujo. No se configura nada después de su ejecución,
+porque lo que se le dijo al llamante no se puede cambiar posteriormente.
+
+Un flujo que finaliza sin una respuesta responde `204 No Content`. Un Flow cuyo
+paso falla antes de que pueda responder devuelve `500`.
+
+### Historial de ejecuciones
+
+Cada llamada se registra. Abre el Flow y selecciona el desencadenante para ver
+las últimas 20 ejecuciones. Cada ejecución muestra cuándo entró la llamada, su
+método, el estado que recibió el llamante, qué pasos se ejecutaron y cuánto
+tiempo llevó. Se nombra un paso fallido. Una ejecución no es una conversación.
+No aparece en la bandeja de entrada ni en Insights.
+
+El registro no conserva el cuerpo de la solicitud ni el cuerpo de la respuesta.
+
+## Límites
+
+- Cada clave API puede activar 60 solicitudes entrantes por minuto. Una
+  dirección de devolución de llamada acepta 120 llamadas por minuto desde una
+  dirección de red.
+- Las llamadas de suscripción y cancelación de suscripción siguen las mismas
+  reglas de red que cualquier otra llamada saliente: solo HTTPS, sin
+  redirecciones y sin direcciones privadas. Una devolución de llamada es una
+  solicitud entrante, por lo que estas reglas no se le aplican.
+- Un flujo entrante no puede contener un webhook HTTP ni una revisión humana.
+  Ambos detienen un turno y lo continúan más tarde en una conversación, y un
+  flujo entrante no tiene ninguno.
+- Una conversación eliminada por una regla de retención se lleva consigo sus
+  webhooks en espera y no envía la llamada de cancelación de suscripción.
+  Cancela tú mismo esas suscripciones en el otro sistema.

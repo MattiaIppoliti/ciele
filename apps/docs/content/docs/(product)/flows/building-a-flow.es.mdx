@@ -14,15 +14,21 @@ description: Configura un desencadenante, las condiciones disponibles y las acci
 La descripción ayuda a Intent Classification a seleccionar un flujo de mensajes.
 Indica la intención del visitante y el ámbito requerido.
 
+Un Flow se activa con un mensaje de un visitante, con un evento de widget o con
+una solicitud HTTP entrante. Los eventos del widget son la carga de la página,
+el tiempo en la página y la apertura del chat. El desencadenante decide qué
+condiciones y qué acciones puede usar el flujo. Consulta
+[HTTP y webhooks](/flows/http) para el desencadenante entrante.
+
 ## Añade condiciones de mensaje
 
 Los flujos de mensajes admiten estos tipos de condiciones:
 
 | Condición | Comportamiento actual |
 | --- | --- |
-| Contexto de la conversación | Añade ejemplos semánticos a la clasificación de intenciones. No es una puerta rígida. |
+| Contexto de conversación | Añade ejemplos semánticos a la clasificación de intenciones. No es una puerta rígida. |
 | URL | Aplica una puerta dura de Coincidencia, Contiene o Regex. |
-| Programación | Aplica una puerta rígida de inicio, finalización y zona horaria. |
+| Programación | Aplica una puerta dura de inicio, finalización y zona horaria. |
 
 Selecciona **Any condition matches** o **All conditions match** cuando el flujo
 contenga más de una condición.
@@ -41,10 +47,10 @@ clasificación. Una condición satisfecha no obliga al flujo a ganar.
 El editor limita los Flows proactivos a una acción de Notificación. El servidor
 aplica la misma regla cuando guarda o envía un Flow.
 
-## Reordena los flujos
+## Reordenar flujos
 
-Arrastra un flujo para cambiar la prioridad de enrutamiento de los mensajes. El
+Arrastra un Flow para cambiar la prioridad de enrutamiento de los mensajes. El
 flujo de comportamiento predeterminado permanece en último lugar.
 
-Desactiva un flujo cuando debas detener su enrutamiento sin eliminar su
+Desactiva un Flow cuando debas detener su enrutamiento sin eliminar su
 configuración.

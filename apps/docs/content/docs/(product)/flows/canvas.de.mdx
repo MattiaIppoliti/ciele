@@ -1,0 +1,199 @@
+---
+title: Flow-Canvas
+description: Bearbeiten Sie einen Flow als Knotenkette mit denselben Feldern wie im Formular.
+---
+
+## Öffnen Sie die Canvas
+
+1. Öffnen Sie einen Assistenten.
+2. Wählen Sie **Flows**.
+3. Öffnen Sie einen Flow oder erstellen Sie einen.
+4. Wählen Sie **Canvas** in der Kopfzeile aus.
+
+Wählen Sie **Form**, um zum dreistufigen Formular zurückzukehren. In beiden
+Ansichten wird ein nicht gespeicherter Entwurf bearbeitet. Beim Wechseln der
+Ansicht bleiben alle Änderungen erhalten. Die Konsole merkt sich Ihre letzte
+Auswahl in diesem Browser.
+
+## Entwürfe
+
+Ihre nicht gespeicherten Änderungen werden in diesem Browser in beiden Ansichten
+als Entwurf beibehalten. In der Kopfzeile wird **Draft saved** angezeigt,
+solange es Änderungen gibt, die beibehalten werden sollen. Verlassen Sie den
+Flow, laden Sie die Seite neu oder schließen Sie den Tab, und der Entwurf wartet
+auf Sie, wenn Sie zurückkommen.
+
+Der Entwurf gehört nur Ihnen: Er wird nicht an den Server gesendet, sodass
+niemand anderes ihn sieht und nichts daraus ausgeführt wird. Wenn Sie den Flow
+speichern oder löschen, wird der Entwurf gelöscht. Wenn Sie zum Ausgangspunkt
+zurückkehren, wird er ebenfalls gelöscht, da nichts mehr zu speichern ist.
+
+## Lesen Sie die Kette
+
+Die Canvas zeichnet den Flow von links nach rechts:
+
+| Knoten | Bedeutung |
+| --- | --- |
+| Start | Der Auslöser. Zeigt den Namen des Auslösers an. Zeigt für Time on page die Verzögerung an. |
+| Bedingungen | Die optionalen Bedingungen und deren Logik. Wird nicht für proaktive Trigger oder das Standardverhalten angezeigt. |
+| Aktion | Eine Antwortaktion in der Reihenfolge, in der der Flow sie ausführt. |
+
+Ein **Needs setup**-Badge kennzeichnet einen Knoten, bei dem erforderliche
+Einstellungen fehlen. Der Flow kann erst gespeichert werden, wenn alle Badges
+verschwunden sind.
+
+## Einen leeren Flow starten
+
+Ein neuer Flow öffnet sich als leere Leinwand mit einem Feld in der Mitte:
+**What should this flow do?** Geben Sie eine Beschreibung ein und drücken Sie
+die Eingabetaste, damit der Flows Agent den Flow entwerfen kann. Oder wählen Sie
+**manuell erstellen**, um den Start-Knoten zu platzieren und die Schritte selbst
+hinzuzufügen. Die Knoten werden angezeigt, sobald der Flow einen Trigger oder
+eine Aktion hat.
+
+## Einen Knoten hinzufügen
+
+Es gibt zwei Möglichkeiten, einen Schritt hinzuzufügen.
+
+**From a node.** Halten Sie den Mauszeiger über einen beliebigen Knoten. Ein
+kleines **+** erscheint am rechten Rand und öffnet das gleiche Menü. Die
+Position des **+** bestimmt, wo der Schritt eingefügt wird. Von einem Knoten in
+der Mitte der Kette wird der Schritt nach diesem Knoten eingefügt. Vom letzten
+Knoten aus wird er am Ende hinzugefügt. Der neue Schritt wird zur Konfiguration
+geöffnet.
+
+**From the bottom bar.** Wählen Sie **Add a step** in der Leiste am unteren Rand
+der Arbeitsfläche aus. Durchsuchen Sie die Liste oder filtern Sie sie mit den
+Chips **Trigger**, **Action** und **Connector**. Ziehen Sie eine Zeile auf die
+Arbeitsfläche, um sie zwischen zwei Schritten einzufügen, anstatt sie am Ende
+hinzuzufügen.
+
+Beide zeigen nur die Schritte an, die der aktuelle Trigger ausführen kann, und
+keiner von beiden zeigt einen Schritt an, den der Flow bereits hat. Ein Trigger
+wird nur angezeigt, wenn der Flow keinen hat. Um einen zu ersetzen, wählen Sie
+den Start-Knoten aus und ändern Sie ihn dort. Die Konsole teilt Ihnen dann mit,
+was dadurch entfernt wird.
+
+## Fragen Sie vom Canvas aus
+
+Sobald der Flow einen Schritt enthält, zeigt die Leiste unten ein Feld für den
+Flows Agent an. Geben Sie ein, was geändert werden soll, und drücken Sie die
+Eingabetaste. Der Agent öffnet sich im Bereich auf der rechten Seite und
+beantwortet als Erstes Ihre Nachricht.
+
+## Einen Knoten konfigurieren
+
+Wählen Sie einen Knoten aus. Ein Bedienfeld mit zwei Registerkarten schwebt über
+der rechten Seite der Arbeitsfläche:
+
+- **Configure** zeigt dieselben Felder wie das Formular für diesen Schritt an.
+- **Run node** führt den Knoten allein aus. API-Anforderung sendet eine
+  Testanforderung mit Beispielwerten. Mit „Search knowledge“ öffnen Sie die
+  Vorschau, um eine Frage zu stellen.
+
+In der Kopfzeile befinden sich drei Steuerelemente. Die drei Punkte enthalten
+**Reset position**, **Open Preview** und **Remove step**. Mit den Pfeilen
+vergrößern Sie das Panel auf die gesamte Fenstergröße und verkleinern es wieder.
+Das Kreuz schließt das Panel. Wenn das Panel das Fenster ausfüllt, verschwindet
+zuerst das Kreuz aus dem Vollbildmodus.
+
+Diese beiden Steuerelemente befinden sich auch unten links unter den
+Zoom-Schaltflächen, während ein Schritt ausgewählt ist. Wenn das Panel im
+Vollbildmodus angezeigt wird, befindet sich seine eigene Kopfzeile in der Ecke,
+getrennt von den Leinwand-Steuerelementen. **Open full screen** ist auch im
+Kontextmenü eines Knotens verfügbar.
+
+## Rechtsklick für Aktionen
+
+Klicken Sie mit der rechten Maustaste auf die Zeichenfläche, um die
+Ansichtssteuerelemente aufzurufen: **Add a step**, **Fit to view**, **Tidy up**,
+**Switch to vertical layout** und **Open Preview**. Klicken Sie mit der rechten
+Maustaste auf einen Knoten, und das Menü bezieht sich ebenfalls auf diesen
+Schritt. **Configure** öffnet seine Einstellungen. **Open full screen** öffnet
+ihn, wobei er das Fenster ausfüllt. **Reset position** stellt das automatische
+Layout wieder her. **Remove step** löscht ihn. `Delete` entfernt auch den
+ausgewählten Schritt.
+
+Halten Sie auf einem Touchscreen gedrückt, anstatt mit der rechten Maustaste zu
+klicken.
+
+## Bewegen Sie sich auf der Leinwand
+
+Scrollen Sie, um die Zeichenfläche zu verschieben. Auf einem Trackpad wischen
+Sie dazu mit zwei Fingern in eine beliebige Richtung. Zoomen Sie durch Auf- und
+Zuziehen der Finger oder halten Sie `Ctrl` gedrückt und scrollen Sie. Ziehen Sie
+auf einem Touchscreen an einer beliebigen Stelle auf der Leinwand, um sie zu
+verschieben.
+
+Mit einer Maus bestimmen die beiden Schaltflächen unten auf der Leinwand, was
+das Ziehen auf leeren Bereich bewirkt. **Select** zeichnet einen Rahmen um
+Knoten. **Hand** verschiebt die Leinwand.
+
+## Neu anordnen und ausrichten
+
+- Ziehen Sie einen Aktionsknoten über seinen Nachbarn, um die Reihenfolge der
+  Aktionen zu ändern. Die Reihenfolge ist die Reihenfolge, in der der Flow sie
+  ausführt.
+- Ziehen Sie einen Knoten ein kleines Stück, um das Bild zu ordnen. Die Position
+  wird nur in Ihrem Browser gespeichert.
+- Verwenden Sie die Steuerelemente unten links, um zu zoomen und den Flow an das
+  Fenster anzupassen. Wenn ein Schritt ausgewählt ist, enthalten sie auch die
+  Vollbild- und Drei-Punkte-Steuerelemente dieses Schritts.
+- **Tidy up** (`Shift`+`T`) lässt jedes Verschieben fallen und setzt die Kette
+  wieder auf das automatische Layout.
+- **Switch to vertical layout** dreht die Kette so, dass sie die Leinwand
+  entlang verläuft, anstatt quer darüber. Ein langer Flow lässt sich auf diese
+  Weise besser lesen. Jede Richtung behält ihre eigene Anordnung, sodass Sie
+  beim Zurückschalten das Bild vorfinden, das Sie zuletzt hinterlassen haben.
+  Die Auswahl wird in Ihrem Browser gespeichert.
+
+## Fragen Sie den Flows Agent
+
+Der **Flows Agent** erstellt und bearbeitet den geöffneten Flow anhand einer
+Beschreibung. Es ist ein KI-Teamkollege, den die Konsole für jeden Assistenten
+erstellt. Es erscheint nicht in **Teammates**.
+
+So öffnen Sie ihn:
+
+- Geben Sie auf einer leeren Leinwand in das Feld in der Mitte ein, was der Flow
+  tun soll, und drücken Sie die Eingabetaste.
+- Wählen Sie auf einer beliebigen Canvas **Agent** in der Kopfzeile aus.
+
+Der Agent öffnet sich im Bereich auf der rechten Seite, wo sich auch die
+Live-Vorschau befindet, und funktioniert auf die gleiche Weise. Ziehen Sie an
+der linken Kante, um die Größe zu ändern. Verwenden Sie die Steuerelemente in
+der Kopfzeile für frühere Konversationen, einen neuen Chat und den
+Vollbildmodus. Die beiden teilen sich diesen Bereich, sodass beim Öffnen des
+Agenten die Vorschau ausgeblendet wird und beim Öffnen der Vorschau der Agent
+ausgeblendet wird. Wählen Sie **Show preview** am rechten Rand, um
+zurückzuwechseln.
+
+Der Agent sieht den geöffneten Entwurf, die anderen Flows des Assistenten, seine
+Helpdesks, FAQs und Anwendungsverbindungen. Jede Änderung, die er vornimmt,
+landet als ein Schritt im nicht gespeicherten Entwurf. Sie können dies mit
+**Undo** rückgängig machen. Der Agent speichert nie. Wählen Sie **Save changes**
+oder **Create flow**, wenn der Entwurf in Ordnung ist.
+
+Wenn die Anfrage eine zweite Absicht beschreibt, schlägt der Agent einen
+separaten Flow vor, anstatt den geöffneten zu ändern. Der Vorschlag wird als
+Karte angezeigt. Wählen Sie **Create and open**, um diesen Flow zu erstellen,
+oder **Dismiss**.
+
+Nur Editoren und Administratoren können den Agenten verwenden. Frühere Gespräche
+zum selben Flow finden Sie unter der Schaltfläche „Verlauf“ in der Kopfzeile des
+Panels. Der Agent läuft auf denselben Provider-Verbindungen wie Ihre
+Teamkollegen, einschließlich Ihres persönlichen Abonnements, sofern Sie eines
+verbunden haben.
+
+## Rückgängig machen und Wiederherstellen
+
+Verwenden Sie **Undo** und **Redo** in der Kopfzeile oder `Ctrl+Z` und
+`Ctrl+Shift+Z` (`Cmd` unter macOS). Rückgängig macht nicht gespeicherte
+Änderungen in beiden Ansichten rückgängig. Durch das Speichern des Flows wird
+der Verlauf nicht gelöscht. Das Verlassen des Flows hingegen schon.
+
+## Speichern
+
+Die Fußzeile zeigt dieselben drei Kontrollkästchen wie das Formular. Wählen Sie
+**Save changes** oder **Create flow**. Die Canvas speichert denselben Flow, den
+das Formular speichert.

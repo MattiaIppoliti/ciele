@@ -1,5 +1,5 @@
 ---
-title: Erstellen Sie einen Flow
+title: Einen Flow erstellen
 description: Konfigurieren Sie einen Trigger, verfügbare Bedingungen und geordnete Antwortaktionen.
 ---
 
@@ -15,20 +15,26 @@ Die Beschreibung hilft der Intent Classification, einen Nachrichten-Flow
 auszuwählen. Geben Sie die Absicht des Besuchers und den erforderlichen
 Geltungsbereich an.
 
-## Fügen Sie Nachrichtenbedingungen hinzu
+Ein Flow wird durch eine Besuchernachricht, ein Widget-Ereignis oder eine
+eingehende HTTP-Anforderung ausgelöst. Die Widget-Ereignisse sind Seitenladen,
+Verweildauer auf der Seite und Chat-Öffnung. Der Trigger entscheidet, welche
+Bedingungen und welche Aktionen der Flow verwenden darf. Informationen zum
+eingehenden Trigger finden Sie unter [HTTP und Webhooks](/flows/http).
+
+## Nachrichtenbedingungen hinzufügen
 
 Message Flows unterstützen diese Bedingungstypen:
 
 | Bedingung | Aktuelles Verhalten |
 | --- | --- |
-| Konversationskontext | Fügt der Intent Classification semantische Beispiele hinzu. Es handelt sich nicht um ein Hard Gate. |
+| Konversationskontext | Fügt der Intent-Klassifizierung semantische Beispiele hinzu. Es handelt sich nicht um ein Hard Gate. |
 | URL | Wendet ein Hard-Gate vom Typ „Matches“, „Contains“ oder „Regex“ an. |
 | Zeitplan | Wendet ein Hard-Gate für Start, Ende und Zeitzone an. |
 
 Wählen Sie **Any condition matches** oder **All conditions match**, wenn der
 Flow mehr als eine Bedingung enthält.
 
-Die Bedingungen URL und Schedule entfernen einen nicht zulässigen Flow vor der
+Die Bedingungen URL und Schedule entfernen einen nicht berechtigten Flow vor der
 Klassifizierung. Eine erfüllte Bedingung führt nicht zwingend dazu, dass der
 Flow gewinnt.
 

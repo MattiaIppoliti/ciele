@@ -1,0 +1,183 @@
+---
+title: Area di disegno del flusso
+description: Modifica un Flow come una catena di nodi, con gli stessi campi del modulo.
+---
+
+## Apri la canvas
+
+1. Apri un Assistente.
+2. Seleziona **Flows**.
+3. Apri un Flow o creane uno.
+4. Seleziona **Canvas** nell'intestazione.
+
+Seleziona **Form** per tornare al modulo in tre passaggi. Entrambe le
+visualizzazioni modificano un'unica bozza non salvata. Passando da una vista
+all'altra, tutte le modifiche vengono mantenute. La console ricorda la tua
+ultima scelta su questo browser.
+
+## Bozze
+
+Le tue modifiche non salvate vengono mantenute in questo browser come bozza, in
+entrambe le visualizzazioni. L'intestazione mostra **Draft saved** quando ci
+sono modifiche da salvare. Esci dal Flow, ricarica la pagina o chiudi la scheda:
+al tuo ritorno, la bozza sarà ancora lì ad aspettarti.
+
+La bozza è solo tua: non viene inviata al server, quindi nessun altro la vede e
+non viene eseguito nulla partendo da essa. Se salvi il Flow o lo elimini, la
+bozza viene cancellata. Anche l'annullamento fino al punto di partenza lo
+cancella, perché non c'è più nulla da salvare.
+
+## Leggi la catena
+
+La canvas disegna il Flow da sinistra a destra:
+
+| Nodo | Significato |
+| --- | --- |
+| Start | Il trigger. Mostra il nome del trigger. Per Time on page, mostra il ritardo. |
+| Condizioni | Le condizioni opzionali e la loro logica. Non visualizzato per i trigger proattivi o per il comportamento predefinito. |
+| Azione | Un'azione di risposta, nell'ordine in cui il Flow le esegue. |
+
+Un badge **Needs setup** indica un nodo con impostazioni obbligatorie mancanti.
+Non puoi salvare il Flow finché non scompaiono tutti i badge.
+
+## Avvia un Flow vuoto
+
+Si apre un nuovo Flow come una tela bianca con una casella al centro: **What
+should this flow do?** Digita una descrizione e premi Invio per consentire al
+Flows Agent di creare la bozza del Flow. Oppure seleziona **crealo manualmente**
+per posizionare il nodo Start e aggiungere i passaggi personalmente. I nodi
+vengono visualizzati non appena il Flow ha un trigger o un'azione.
+
+## Aggiungi un nodo
+
+Ci sono due modi per aggiungere un passaggio.
+
+**From a node.** Passa il puntatore su qualsiasi nodo. Un piccolo **+** appare
+sul bordo destro e apre lo stesso menu. La posizione del simbolo **+** determina
+dove verrà inserito il passaggio. Da un nodo al centro della catena, il
+passaggio viene inserito dopo quel nodo. Dall'ultimo nodo, viene aggiunto alla
+fine. Il nuovo passaggio si apre per la configurazione.
+
+**From the bottom bar.** Seleziona **Add a step** nella barra in fondo alla
+canvas. Cerca nell'elenco o filtralo con i chip **Trigger**, **Action** e
+**Connector**. Trascina una riga sull'area di lavoro per inserirla tra due
+passaggi invece di aggiungerla alla fine.
+
+Entrambi offrono solo i passaggi che il trigger corrente può eseguire e nessuno
+dei due mostra un passaggio già presente nel Flow. Un trigger appare solo quando
+il Flow non ne ha nessuno. Per sostituirne uno, seleziona il nodo Start e
+modificalo lì. La console ti indica quindi cosa viene rimosso.
+
+## Chiedi dalla canvas
+
+Una volta che il Flow ha un passaggio, la barra in basso mostra una casella per
+il Flows Agent. Digita ciò che vuoi modificare e premi Invio. L'agente si apre
+nel pannello a destra e risponde per prima cosa al tuo messaggio.
+
+## Configura un nodo
+
+Seleziona un nodo. Un pannello fluttua sulla destra della canvas con due schede:
+
+- **Configure** mostra gli stessi campi del modulo per quel passaggio.
+- **Run node** esegue il nodo da solo. La richiesta API invia una richiesta di
+  prova con valori di esempio. Cerca nella knowledge base apre l'Anteprima in
+  modo che tu possa porre una domanda.
+
+La sua intestazione contiene tre controlli. I tre punti contengono **Reset
+position**, **Open Preview** e **Remove step**. Le frecce ingrandiscono il
+pannello fino a riempire la finestra e lo riducono. La croce chiude il pannello.
+Quando il pannello riempie la finestra, la croce è il primo elemento a
+scomparire dalla modalità a schermo intero.
+
+Questi due controlli si trovano anche in basso a sinistra, sotto i pulsanti di
+zoom, quando è selezionata una fase. Quando il pannello è a schermo intero, la
+sua intestazione si trova nell'angolo, lontano dai controlli della canvas.
+**Open full screen** è presente anche nel menu di scelta rapida di un nodo.
+
+## Clicca con il pulsante destro del mouse per eseguire azioni
+
+Fai clic con il pulsante destro del mouse sulla tela per accedere ai controlli
+di visualizzazione: **Add a step**, **Fit to view**, **Tidy up**, **Switch to
+vertical layout** e **Open Preview**. Fai clic con il pulsante destro del mouse
+su un nodo e il menu riguarderà anche quel passaggio. **Configure** apre le sue
+impostazioni. **Open full screen** lo apre a schermo intero. **Reset position**
+lo riporta al layout automatico. **Remove step** lo elimina. `Delete` rimuove
+anche il passaggio selezionato.
+
+Su un touch screen, tieni premuto invece di fare clic con il pulsante destro del
+mouse.
+
+## Spostati sulla tela
+
+Scorri per spostare la tela: su un trackpad, fai scorrere due dita in qualsiasi
+direzione. Pizzica per ingrandire o tieni premuto `Ctrl` e scorri. Su un touch
+screen, trascina in qualsiasi punto della tela per spostarla.
+
+Con il mouse, i due pulsanti in fondo alla tela determinano l'effetto del
+trascinamento su uno spazio vuoto. **Select** disegna un riquadro attorno ai
+nodi. **Hand** sposta la tela.
+
+## Riordina e disponi
+
+- Trascina un nodo azione oltre il suo vicino per modificare l'ordine delle
+  azioni. L'ordine è quello in cui il Flow le esegue.
+- Trascina un nodo di poco per riordinare l'immagine. La posizione viene
+  memorizzata solo nel tuo browser.
+- Usa i controlli in basso a sinistra per ingrandire e adattare il Flow alla
+  finestra. Quando un passaggio è selezionato, mostrano anche i relativi
+  controlli a schermo intero e i tre punti.
+- **Tidy up** (`Shift`+`T`) abbandona ogni spostamento e riporta la catena al
+  layout automatico.
+- **Switch to vertical layout** ruota la catena in modo che scorra lungo la tela
+  anziché attraverso di essa. Un Flow lungo si legge meglio in questo modo. Ogni
+  direzione mantiene la propria disposizione, quindi tornando indietro troverai
+  l'immagine che avevi lasciato. La scelta viene memorizzata nel tuo browser.
+
+## Chiedi all'agente Flows
+
+Il **Flows Agent** crea e modifica il Flow aperto a partire da una descrizione.
+È un AI Teammate che la console crea per ogni Assistente. Non appare in
+**Teammates**.
+
+Per aprirlo:
+
+- Su una canvas vuota, digita ciò che il Flow deve fare nella casella al centro
+  e premi Invio.
+- Su qualsiasi canvas, seleziona **Agent** nell'intestazione.
+
+L'agente si apre nel pannello a destra, dove si trova l'Anteprima in tempo
+reale, e funziona allo stesso modo. Trascina il bordo sinistro per
+ridimensionarlo. Utilizza i controlli dell'intestazione per accedere alle
+conversazioni precedenti, avviare una nuova chat e attivare la modalità a
+schermo intero. I due condividono quello spazio, quindi aprendo l'agente si
+nasconde l'anteprima e aprendo l'anteprima si nasconde l'agente. Seleziona
+**Show preview** sul bordo destro per tornare indietro.
+
+L'agente visualizza la bozza aperta, gli altri flussi dell'Assistente, i suoi
+Help Desk, le FAQ e le connessioni alle applicazioni. Ogni modifica che apporta
+finisce nella bozza non salvata come un singolo passaggio. Puoi annullarla con
+**Undo**. L'agente non salva mai. Seleziona **Save changes** o **Create flow**
+quando la bozza è corretta.
+
+Quando la richiesta descrive un secondo intento, l'agente propone un Flow
+separato invece di modificare quello aperto. La proposta viene visualizzata come
+una scheda. Seleziona **Create and open** per creare quel Flow, oppure
+**Dismiss**.
+
+Solo gli editor e gli amministratori possono utilizzare l'agente. Le
+conversazioni precedenti relative allo stesso Flow si trovano sotto il pulsante
+della cronologia nell'intestazione del pannello. L'agente funziona con le stesse
+Connessioni del provider dei tuoi colleghi, incluso il tuo abbonamento
+personale, se ne hai collegato uno.
+
+## Annulla e ripeti
+
+Usa **Undo** e **Redo** nell'intestazione, oppure `Ctrl+Z` e `Ctrl+Shift+Z`
+(`Cmd` su macOS). L'annullamento copre le modifiche non salvate in entrambe le
+visualizzazioni. Salvando il Flow, la cronologia non viene cancellata. Uscire
+dal Flow lo fa.
+
+## Salva
+
+Il piè di pagina mostra le stesse tre spunte del modulo. Seleziona **Save
+changes** o **Create flow**. La canvas salva lo stesso Flow salvato dal modulo.

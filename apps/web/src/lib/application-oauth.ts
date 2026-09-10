@@ -11,6 +11,7 @@ export const APPLICATION_OAUTH_PROVIDERS: ApplicationOAuthProvider[] = [
   "slack",
   "onedrive",
   "google_drive",
+  "microsoft_mail",
 ];
 
 export const APPLICATION_OAUTH_COOKIE = "application_oauth_txn";
@@ -39,6 +40,12 @@ export interface ApplicationOAuthTransaction {
   providerSettings: ApplicationOAuthProviderSettings;
   /** Existing authorization to refresh in place, after server-side ownership check. */
   connectionId?: string;
+  /**
+   * Scopes to request beyond the provider's defaults (#839): a re-consent that
+   * adds what a Connector action needs. Unioned with the defaults, never
+   * replacing them, so a re-consent can only widen what the import already had.
+   */
+  scopes?: string[];
   createdAt: number;
 }
 
@@ -85,11 +92,21 @@ export function openApplicationOAuthTransaction(
   }
 }
 
+/**
+ * The two Entra-backed providers (#841): one app registration, one
+ * authorization and token endpoint, one Graph profile call; only the consent
+ * differs. Every branch that treats them alike asks this rather than spelling
+ * the pair out, so a third Microsoft provider is one edit here.
+ */
+export function isMicrosoftProvider(provider: ApplicationOAuthProvider): boolean {
+  return provider === "onedrive" || provider === "microsoft_mail";
+}
+
 function providerPrefix(
   provider: Exclude<ApplicationOAuthProvider, "salesforce" | "servicenow">
 ) {
   if (provider === "slack") return "SLACK";
-  if (provider === "onedrive") return "MICROSOFT";
+  if (isMicrosoftProvider(provider)) return "MICROSOFT";
   return "GOOGLE";
 }
 
@@ -156,6 +173,12 @@ export function applicationOAuthAvailability(): ApplicationOAuthAvailability {
       guidance:
         "Configure GOOGLE_APPLICATION_CLIENT_ID and GOOGLE_APPLICATION_CLIENT_SECRET.",
     },
+    // Same Entra app registration as OneDrive (#841); the consent differs.
+    microsoft_mail: {
+      configured: configured("MICROSOFT"),
+      guidance:
+        "Configure MICROSOFT_APPLICATION_CLIENT_ID and MICROSOFT_APPLICATION_CLIENT_SECRET.",
+    },
   };
 }
 
@@ -167,6 +190,7 @@ export function newApplicationOAuthTransaction(input: {
   redirectUri: string;
   providerSettings?: ApplicationOAuthProviderSettings;
   connectionId?: string;
+  scopes?: string[];
 }): ApplicationOAuthTransaction {
   return {
     ...input,
@@ -208,6 +232,7 @@ export const APPLICATION_OAUTH_PKCE: Record<
   slack: "unsupported",
   onedrive: "s256",
   google_drive: "s256",
+  microsoft_mail: "s256",
 };
 
 function trustedProviderOrigin(
@@ -246,10 +271,52 @@ function authorizationEndpoint(transaction: ApplicationOAuthTransaction): string
   if (transaction.provider === "slack") {
     return "https://slack.com/oauth/v2/authorize";
   }
-  if (transaction.provider === "onedrive") {
+  if (isMicrosoftProvider(transaction.provider)) {
     return "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
   }
   return "https://accounts.google.com/o/oauth2/v2/auth";
+}
+
+/** The scopes the Knowledge import needs from each provider, the floor of every grant. */
+export const APPLICATION_OAUTH_DEFAULT_SCOPES: Record<ApplicationOAuthProvider, string[]> = {
+  slack: ["channels:history", "channels:read", "groups:history", "groups:read", "users:read"],
+  onedrive: ["offline_access", "Files.Read", "User.Read"],
+  google_drive: ["https://www.googleapis.com/auth/drive.readonly"],
+  // The Human review sender (#841): delegated send from the Member's own mailbox.
+  microsoft_mail: ["offline_access", "Mail.Send", "User.Read"],
+  salesforce: ["api", "refresh_token"],
+  servicenow: ["useraccount"],
+};
+
+/**
+ * The first extra scope that is not a bare token, or null when every one is.
+ * A scope carrying whitespace or a comma would splice into the provider's
+ * query string, and one over 200 characters is nobody's scope. The start route
+ * asks this before it does anything else, so a caller's typo is a 400 and not
+ * the 503 the same check used to surface as from inside the URL builder.
+ */
+export function invalidApplicationOAuthScope(scopes: readonly string[] | undefined): string | null {
+  for (const scope of scopes ?? []) {
+    const trimmed = scope.trim();
+    if (!trimmed) continue;
+    if (/[\s,]/.test(trimmed) || trimmed.length > 200) return trimmed;
+  }
+  return null;
+}
+
+/**
+ * What one authorization asks for: the provider's defaults plus the
+ * transaction's extra scopes (a Connector re-consent, #839), deduplicated in
+ * request order. A scope is a bare token; anything with whitespace or a comma
+ * is refused here rather than spliced into the provider's query string.
+ */
+export function applicationOAuthScopes(
+  transaction: Pick<ApplicationOAuthTransaction, "provider" | "scopes">
+): string[] {
+  const invalid = invalidApplicationOAuthScope(transaction.scopes);
+  if (invalid !== null) throw new Error(`Invalid OAuth scope "${invalid}"`);
+  const extra = (transaction.scopes ?? []).map((scope) => scope.trim()).filter(Boolean);
+  return [...new Set([...APPLICATION_OAUTH_DEFAULT_SCOPES[transaction.provider], ...extra])];
 }
 
 export function applicationAuthorizationUrl(input: {
@@ -262,21 +329,11 @@ export function applicationAuthorizationUrl(input: {
   url.searchParams.set("redirect_uri", transaction.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", transaction.nonce);
+  const requested = applicationOAuthScopes(transaction);
   if (transaction.provider === "slack") {
-    url.searchParams.set(
-      "scope",
-      "channels:history,channels:read,groups:history,groups:read,users:read"
-    );
+    url.searchParams.set("scope", requested.join(","));
   } else {
-    const scope =
-      transaction.provider === "onedrive"
-        ? "offline_access Files.Read User.Read"
-        : transaction.provider === "google_drive"
-          ? "https://www.googleapis.com/auth/drive.readonly"
-          : transaction.provider === "salesforce"
-            ? "api refresh_token"
-            : "useraccount";
-    url.searchParams.set("scope", scope);
+    url.searchParams.set("scope", requested.join(" "));
     if (transaction.provider === "google_drive") {
       url.searchParams.set("access_type", "offline");
       url.searchParams.set("prompt", "consent");
@@ -327,7 +384,7 @@ function tokenEndpoint(transaction: ApplicationOAuthTransaction): string {
   if (transaction.provider === "slack") {
     return "https://slack.com/api/oauth.v2.access";
   }
-  if (transaction.provider === "onedrive") {
+  if (isMicrosoftProvider(transaction.provider)) {
     return "https://login.microsoftonline.com/organizations/oauth2/v2.0/token";
   }
   return "https://oauth2.googleapis.com/token";
@@ -392,7 +449,7 @@ export async function exchangeApplicationOAuthCode(input: {
       providerAccountId:
         String(token.id ?? "") || new URL(instanceUrl).hostname,
       scopes,
-      metadata: { instanceUrl },
+      metadata: { instanceUrl, apiVersion: "v65.0" },
     };
   }
 
@@ -431,7 +488,7 @@ export async function exchangeApplicationOAuthCode(input: {
     };
   }
 
-  if (transaction.provider === "onedrive") {
+  if (isMicrosoftProvider(transaction.provider)) {
     credentials.tenantId = "organizations";
     const profile = await oauthJson(
       "https://graph.microsoft.com/v1.0/me?$select=id,displayName,userPrincipalName",
@@ -440,9 +497,12 @@ export async function exchangeApplicationOAuthCode(input: {
     );
     return {
       credentials,
-      name: String(
-        profile.displayName ?? profile.userPrincipalName ?? "OneDrive"
-      ),
+      // A mailbox is named after its address: that is what colleagues will
+      // see in the From line of a review request.
+      name:
+        transaction.provider === "microsoft_mail"
+          ? String(profile.userPrincipalName ?? profile.displayName ?? "Microsoft 365 mail")
+          : String(profile.displayName ?? profile.userPrincipalName ?? "OneDrive"),
       providerAccountId: String(profile.id ?? "") || null,
       scopes,
       metadata: { principal: String(profile.userPrincipalName ?? "") },

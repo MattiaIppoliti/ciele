@@ -7,6 +7,8 @@ import type {
   AssistantPatch,
   ApplicationProvider,
   Conversation,
+  ConnectorActionSettings,
+  ConnectorLoader,
   FlowActionSettings,
   FlowInput,
   FlowPatch,
@@ -48,6 +50,7 @@ import type {
   TriageEvidence,
   WebsiteCrawlerProvider,
 } from "@agent-hub/core";
+import { connectorAction } from "@agent-hub/core";
 import {
   okfActor,
   sealSecret,
@@ -84,6 +87,14 @@ import {
   forwardGraphFeedback,
   finalizeWebsiteCrawl,
   testApiRequest,
+  connectorAlertKey,
+  dbConnectorRuntime,
+  loadConnectorOptions,
+  testConnectorAction,
+  testConnectorConnection,
+  type ConnectorError,
+  type ConnectorOption,
+  type ConnectorOutcome,
   testOpenAiCompatibleConnection,
   updateWebsiteSourceConfiguration,
   type ApiRequestTestResult,
@@ -96,7 +107,7 @@ import { redirect } from "next/navigation";
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth";
 import { requireMember, requireSession } from "@/lib/authz";
 import { checkUploadAllowance, uploadThrottledMessage } from "@/lib/upload-limit";
-import { orgMutation } from "@/lib/org-mutation";
+import { orgMutation, revalidateEntities } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
   acceptSuggestedFixOp,
@@ -133,6 +144,8 @@ import {
   listEntityRecordsOp,
   listSubjectMemoriesOp,
   publishAssistantOp,
+  requestApplicationReconsentOp,
+  OperationError,
   recrawlSourceOp,
   setDirectAccessOp,
   setSourceLinksOp,
@@ -525,6 +538,65 @@ export async function testApiRequestAction(
   return testApiRequest(settings);
 }
 
+/**
+ * The Connector runtime for the builder (#839): the service Db so a refreshed
+ * token or a reauthorization mark can be written back, scoped to the Member's
+ * Organization by the runtime itself; personal Connections allowed, the
+ * builder is an operator surface.
+ */
+async function builderConnectorRuntime() {
+  const { organizationId, session } = await requireMember("edit");
+  return dbConnectorRuntime(getWidgetDb(), organizationId, {
+    allowPersonal: true,
+    memberId: session.userId,
+  });
+}
+
+/** Values from the connected system for one dynamic Connector field. */
+export async function connectorOptionsAction(
+  connectionId: string,
+  loader: ConnectorLoader,
+  arg: string,
+): Promise<{ options: ConnectorOption[]; error: ConnectorError | null }> {
+  return loadConnectorOptions(loader, connectionId, arg, await builderConnectorRuntime());
+}
+
+/**
+ * Run node for a Connector action: the real call, with sample template values.
+ * A write action must be confirmed by the caller; the refusal here is what
+ * makes the confirmation a rule rather than a courtesy.
+ */
+export async function runConnectorNodeAction(
+  settings: ConnectorActionSettings,
+  options: { confirmWrite?: boolean } = {},
+): Promise<ConnectorOutcome> {
+  const runtime = await builderConnectorRuntime();
+  const action = connectorAction(settings.action);
+  if (action?.effect === "write" && !options.confirmWrite) {
+    return {
+      ok: false,
+      action: action.key,
+      status: null,
+      error: {
+        provider: action.provider,
+        code: "unconfirmed",
+        message: "Confirm the write before running it.",
+        status: null,
+      },
+      outputs: {},
+      excerpt: null,
+    };
+  }
+  return testConnectorAction(settings, runtime);
+}
+
+/** "Needs setup" also means "token dead": the catalogued test call. */
+export async function testConnectorConnectionAction(
+  connectionId: string,
+): Promise<{ ok: boolean; error: ConnectorError | null }> {
+  return testConnectorConnection(connectionId, await builderConnectorRuntime());
+}
+
 export async function uploadAssistantAvatarAction(
   id: string,
   formData: FormData,
@@ -627,7 +699,7 @@ export async function duplicateAssistantAction(id: string): Promise<Assistant> {
 // lock) live in @ciele/ops (#621), shared with /api/v1.
 
 export async function createFlowAction(assistantId: string, input: FlowInput) {
-  await runOperation(createFlowOp, { assistantId, input });
+  return runOperation(createFlowOp, { assistantId, input });
 }
 
 export async function updateFlowAction(
@@ -906,9 +978,24 @@ export async function deleteApiIntegrationAction(assistantId: string) {
 // Bodies live in @ciele/ops (#623); the widget cache learns about the new
 // latest version through the invalidatePublication port.
 
-export async function publishAssistantAction(assistantId: string) {
-  const { version } = await runOperation(publishAssistantOp, { assistantId });
-  return version;
+/**
+ * Publish, or the reason it was refused. A refusal (a Connector naming a dead
+ * or personal Connection, #839) is a result, not a thrown error: Next strips
+ * a thrown server-action message in production, and the reason names the Flow
+ * the Owner has to fix.
+ */
+export async function publishAssistantAction(
+  assistantId: string,
+): Promise<number | { error: string }> {
+  try {
+    const { version } = await runOperation(publishAssistantOp, { assistantId });
+    return version;
+  } catch (error) {
+    if (error instanceof OperationError && error.code === "invalid_input") {
+      return { error: error.message };
+    }
+    throw error;
+  }
 }
 
 export async function unpublishAssistantAction(assistantId: string) {
@@ -2767,5 +2854,25 @@ export async function deleteApplicationConnectionAction(
   }
   await revokeApplicationConnectionCredentials(connection).catch(() => undefined);
   await mutationDb.deleteApplicationConnection(connectionId);
+  // A deleted Connection can no longer be reconnected, so the Alert a failed
+  // Connector call raised for it (#839) would otherwise stay open forever. The
+  // Alerts page and the sidebar badge render that row: revalidate them too.
+  await mutationDb.resolveAlertsByKey(organizationId, connectorAlertKey(connectionId));
+  revalidateEntities([{ kind: "alerts" }], organizationId);
   revalidateApplicationKnowledge(imports.flatMap((item) => item.assistantIds));
+}
+
+/**
+ * Re-consent for a Connector action (#839): the same operation the API runs,
+ * so the console and a script compute one scope union and open one start path.
+ */
+export async function requestConnectorReconsentAction(
+  connectionId: string,
+  actions: string[],
+): Promise<{ startPath: string; scopes: string[] }> {
+  const result = await runOperation(requestApplicationReconsentOp, {
+    id: connectionId,
+    actions,
+  });
+  return { startPath: result.startPath, scopes: result.scopes };
 }

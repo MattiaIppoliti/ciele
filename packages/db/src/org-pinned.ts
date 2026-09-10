@@ -30,6 +30,7 @@ import type { Db } from "./types";
 
 /** Methods whose first parameter is an organizationId, pinned on call. */
 const ORG_SCOPED_METHODS = new Set<keyof Db>([
+  "listApplicationConnections",
   // Filing an Improvement from an unattended triage run (#772).
   "createImprovement",
   "listAssistants",
@@ -60,6 +61,7 @@ const ORG_SCOPED_METHODS = new Set<keyof Db>([
   "listApiKeys",
   "createApiKey",
   "listOrgKnowledgeSources",
+  "listOrgKnowledgeSourceOptions",
   "listOrgFaqs",
   "getOrCreateOrgLibraryCollection",
   "clearSsoConnection",
@@ -207,6 +209,14 @@ const providerConnectionOwner: OwnerResolver = async (
     ? organizationId
     : null;
 
+/** Application Connections carry their organizationId directly (#839). */
+const applicationConnectionOwner: OwnerResolver = async (inner, id) =>
+  (await inner.getSafeApplicationConnection(id))?.organizationId ?? null;
+
+/** Human review requests carry their organizationId directly (#841). */
+const reviewRequestOwner: OwnerResolver = async (inner, id) =>
+  (await inner.table("reviewRequests").get(id))?.organizationId ?? null;
+
 const alertOwner: OwnerResolver = async (inner, id, organizationId) =>
   (await inner.listAlerts(organizationId)).some((alert) => alert.id === id)
     ? organizationId
@@ -314,6 +324,10 @@ const GUARDED_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
  */
 const NULL_READ_METHODS: Partial<Record<keyof Db, OwnerResolver>> = {
   getAssistant: assistantOwner,
+  // Applications domain (#839): the safe read only, never the sealed
+  // credential, which no key surface returns.
+  getSafeApplicationConnection: applicationConnectionOwner,
+  decideReviewRequest: reviewRequestOwner,
   getFlow: flowOwner,
   getCollection: collectionOwner,
   getSource: sourceOwner,
@@ -346,6 +360,8 @@ const PINNED_TABLES = new Set([
   "teammateChannels",
   "teammateChannelParticipants",
   "assistantGoals",
+  // Human review requests (#841): `/api/v1/reviews` lists and decides them.
+  "reviewRequests",
 ] as const);
 type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
 

@@ -230,6 +230,9 @@ export const deleteConversationOp = defineOperation({
   entities: () => [{ kind: "inbox" as const }],
   run: async (ctx, { id }) => {
     await requireConversation(ctx, id);
+    // The one exit of a webhook gate nobody configured (#842): the row
+    // cascades with the Conversation, so the unsubscribe has to go first.
+    await ctx.ports?.unsubscribeWebhooks?.(id);
     await ctx.db.deleteConversation(id);
   },
 });

@@ -14,16 +14,20 @@ Message Flow actions run in order. Non-generative actions use the configured con
 | Search knowledge | Yes | Runs the Knowledge agent loop and returns citations. |
 | Follow-ups | Optional | Uses configured questions or generates suggested questions. |
 | Iframe | No | Embeds configured external content in the chat. |
-| API request | No | Calls a configured HTTP endpoint and maps its result. |
+| API request | No | Calls an HTTP endpoint, entered as a URL or named in a Swagger/OpenAPI definition, and maps its result. |
 | Send email | No | Sends mail through the configured Resend transport. |
 | Improvement | No | Creates an Improvement for the applicable answer. |
 | Handover | Depends on target | Continues one time in another published Assistant. |
+| HTTP webhook | No | Subscribes to a system and waits for its callback. See [HTTP and webhooks](/flows/http). |
+| Response | No | Answers the inbound HTTP request that started the Flow. See [HTTP and webhooks](/flows/http). |
+| Connector | No | Runs one action in ServiceNow, Salesforce, Slack, OneDrive, or Google Drive through a connected application. See [Connector](/flows/connector). |
+| Human review | No | Stops the Flow until a colleague approves by email or Slack. See [Human review](/flows/human-review). |
 
 The built-in Basic Interaction Flow also uses **Basic reply**. Help Desk recommendation uses a runtime action that the direct action picker does not show.
 
 ## Message
 
-Enter the exact text that Ciele must send. The runtime does not paraphrase this text.
+Enter the exact text that Ciele must send. The runtime does not paraphrase this text. Template variables such as `{{user.name}}` or `{{review.amount}}` are replaced with their values.
 
 ## Basic reply
 
@@ -51,11 +55,29 @@ Configure the title, HTTPS link, lightbox preference, and height. The host site 
 
 ## API request
 
-Configure the method, endpoint, authentication, headers, query parameters, JSON body, and response JSON path.
+API request makes one HTTP call. Configure the authentication, headers, query parameters, JSON body, and response JSON path, and choose where the endpoint comes from under **Endpoint**.
+
+**A URL** takes a method and an endpoint URL that you enter.
+
+**An operation in a Swagger/OpenAPI definition** takes a **Swagger URL** and an **Operation ID**. Ciele reads the definition when the action runs, and takes the method and the URL from it. The Flow keeps working when the API moves. The definition is read on every run and is not cached. A path parameter such as `{refundId}` becomes the template variable `{{refundId}}`, so an earlier action can supply its value. The definition must place the API on the same site as the definition itself. A definition served from `docs.example.com` may name `api.example.com`. Another domain is refused. This keeps the action's credential on the site you configured.
 
 Template variables can supply values from the current context. Use **Test API** before you save the Flow.
 
-The action can show separate success and failure messages. Network egress rules still apply to the final URL.
+The action can show separate success and failure messages. Network egress rules apply to the final URL and to the Swagger URL.
+
+## HTTP webhook
+
+HTTP webhook subscribes to an external system, stops the Flow, and continues when that system calls back. Configure the subscribe call, the unsubscribe call, how long to wait, and what the Visitor reads meanwhile.
+
+Put `{{webhook.callbackUrl}}` in the subscribe URI or body. It is how the other system learns where to answer. The callback body reaches later actions as `{{webhook.body}}`. **Response mapping** extracts named values from it.
+
+Full behavior, including what the callback address allows, is in [HTTP and webhooks](/flows/http).
+
+## Response
+
+Response answers the inbound HTTP request that started the Flow, with a status code and optional headers and body. It is available only on the **On HTTP request** trigger, and it ends the Flow.
+
+See [HTTP and webhooks](/flows/http).
 
 ## Send email
 
@@ -72,6 +94,16 @@ The action creates an Improvement task. It does not add visible reply text by it
 Select another Assistant in the same Organization. The target must have a current Publication.
 
 Ciele runs the same Visitor message through the target Assistant one time. It does not continue a second handover from that target turn.
+
+## Connector
+
+Select a connected application, a connection, and one catalogued action. The Flow stores the connection id and the action, never a credential.
+
+Results become `{{connector.*}}` template variables for later actions. See [Connector](/flows/connector) for the catalogue, the fields, and what the Visitor sees.
+
+## Human review
+
+Name the reviewers, the channel, and the inputs they fill. The Flow stops at this action and continues only on approval. The reviewer's inputs become `{{review.*}}` template variables. See [Human review](/flows/human-review).
 
 ## Action order
 

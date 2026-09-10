@@ -1,61 +1,24 @@
 import { z } from "zod";
-import type {
-  Assistant,
-  Flow,
-  FlowAction,
-  FlowActionSettings,
-  FlowCondition,
-  FlowConditionLogic,
-  FlowInput,
-  FlowPatch,
-  FlowTrigger,
-  FlowTriggerSettings,
-} from "@agent-hub/core";
+import type { Assistant, Flow, FlowAction, FlowTrigger } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
   mergeFlowSecrets,
   redactFlowSecrets,
   redactFlowsSecrets,
+  withReviewBeforeConnectorWrites,
 } from "@agent-hub/core";
+import { flowInputSchema, flowPatchSchema, flowTriggerSchema } from "./flow-schema";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
 
+export { flowInputSchema, flowPatchSchema, flowTriggerSchema } from "./flow-schema";
+
 /**
- * The Flows domain (#621). Same shape as assistants.ts: scalars validated,
- * structured router config (trigger settings, conditions, action settings)
- * shape-trusted via z.custom, the Flow Builder authors it, and the
- * trigger/action pairing rule below is the invariant that must hold no
- * matter which surface stored the flow.
+ * The Flows domain (#621). The router configuration (trigger settings,
+ * conditions, action settings) is validated structurally by `flow-schema.ts`
+ * (#837), and the trigger/action pairing rule below is the invariant that must
+ * hold no matter which surface stored the flow.
  */
-
-const flowTriggerSchema = z.custom<FlowTrigger>((v) => typeof v === "string");
-const flowActionsSchema = z.custom<FlowAction[]>(Array.isArray);
-
-const flowConfigShape = {
-  description: z.string().max(2000),
-  trigger: flowTriggerSchema,
-  triggerSettings: z.custom<FlowTriggerSettings>(
-    (v) => typeof v === "object" && v !== null
-  ),
-  conditionLogic: z.custom<FlowConditionLogic>((v) => typeof v === "string"),
-  conditions: z.custom<FlowCondition[]>(Array.isArray),
-  actions: flowActionsSchema,
-  actionSettings: z.custom<FlowActionSettings>(
-    (v) => typeof v === "object" && v !== null
-  ),
-  customMessage: z.string().max(10000),
-};
-
-export const flowInputSchema = z.object({
-  name: z.string().min(1).max(200),
-  ...Object.fromEntries(
-    Object.entries(flowConfigShape).map(([k, s]) => [k, s.optional()])
-  ),
-}) as z.ZodType<FlowInput, FlowInput>;
-
-export const flowPatchSchema = z
-  .object({ name: z.string().min(1).max(200), enabled: z.boolean(), ...flowConfigShape })
-  .partial() satisfies z.ZodType<FlowPatch, FlowPatch>;
 
 /**
  * The trigger/action pairing rule (#541), enforced where it can't be
@@ -63,7 +26,7 @@ export const flowPatchSchema = z
  * flow that runs generative actions, or a message flow that answers with an
  * unprompted notification.
  */
-function assertTriggerActions(
+export function assertTriggerActions(
   trigger: FlowTrigger,
   actions: FlowAction[] | undefined
 ) {
@@ -179,6 +142,94 @@ export const deleteFlowOp = defineOperation({
     }
     await ctx.db.deleteFlow(id);
     return flow;
+  },
+});
+
+/**
+ * The Flows Agent's two tools (#838). Neither writes a row.
+ *
+ * `flows.draft` validates a change to the **open** Flow and hands it back: the
+ * canvas applies it to the Editor's unsaved draft, where it enters the Undo
+ * history like a manual edit, and Save stays the Editor's act. `flows.propose`
+ * validates a whole new Flow and hands it back as a proposal card; the Editor
+ * creates it with one click, or does not. Both run the same structural schema
+ * and the same trigger/action pairing rule the save path enforces, so what the
+ * agent drafts is always something the runtime could run.
+ */
+export const draftFlowOp = defineOperation({
+  name: "flows.draft",
+  capability: "edit",
+  input: z.object({
+    /** One sentence for the transcript: what changed and why. */
+    summary: z.string().min(1).max(500),
+    /**
+     * The open flow's trigger when the patch keeps it. The op never sees the
+     * draft, so the pairing rule needs the model to say which trigger the
+     * actions will run on; the canvas re-checks on apply regardless.
+     */
+    currentTrigger: flowTriggerSchema.optional(),
+    patch: flowPatchSchema,
+  }),
+  entities: () => [],
+  run: async (_ctx, { summary, currentTrigger, patch: raw }) => {
+    // Enabling is the Editor's switch on the list, never part of a draft.
+    const { enabled: _enabled, ...patch } = raw;
+    if (patch.trigger !== undefined || patch.actions !== undefined) {
+      assertTriggerActions(patch.trigger ?? currentTrigger ?? "message", patch.actions);
+    }
+    // Human review before a Connector write (#841) is a rule the draft passes
+    // through, not a sentence the model may forget. Applied only when the
+    // patch carries the actions: a patch to settings alone leaves order alone.
+    // An inbound Flow cannot hold the gate, so the rule steps aside there.
+    const trigger = patch.trigger ?? currentTrigger ?? "message";
+    const gated =
+      patch.actions && trigger !== "http_request"
+        ? { ...patch, actions: withReviewBeforeConnectorWrites(patch.actions, patch.actionSettings) }
+        : patch;
+    return { applied: "draft" as const, summary, patch: gated };
+  },
+});
+
+export const proposeFlowOp = defineOperation({
+  name: "flows.propose",
+  capability: "edit",
+  input: z.object({
+    assistantId: z.string().min(1),
+    /** Why this belongs in its own Flow rather than the open one. */
+    rationale: z.string().min(1).max(1000),
+    flow: flowInputSchema,
+  }),
+  entities: () => [],
+  run: async (ctx, { assistantId, rationale, flow }) => {
+    await requireAssistant(ctx, assistantId);
+    assertTriggerActions(flow.trigger ?? "message", flow.actions);
+    const proposal =
+      flow.actions && (flow.trigger ?? "message") !== "http_request"
+        ? { ...flow, actions: withReviewBeforeConnectorWrites(flow.actions, flow.actionSettings) }
+        : flow;
+    return { proposal, rationale, assistantId };
+  },
+});
+
+/**
+ * The latest inbound runs of one HTTP-triggered Flow (#843): what an operator
+ * reads from the trigger's own panel to see whether the endpoint is being
+ * called, what it answered, and which action failed. Not the Inbox, by
+ * decision: a run is not a Conversation.
+ */
+export const listHttpFlowRunsOp = defineOperation({
+  name: "flows.http.runs",
+  capability: "member",
+  input: z.object({
+    flowId: z.string().min(1),
+    limit: z.number().int().min(1).max(100).default(20),
+  }),
+  entities: () => [],
+  run: async (ctx, { flowId, limit }) => {
+    const flow = await ctx.db.getFlow(flowId);
+    if (!flow) throw new OperationError("not_found", "Flow not found");
+    await requireAssistant(ctx, flow.assistantId);
+    return ctx.db.table("httpFlowRuns").list({ flowId }, { limit });
   },
 });
 

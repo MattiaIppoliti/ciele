@@ -174,12 +174,18 @@ async function dispatchActions(options: {
   parts: ChatReplyPart[];
   effects: ActionEffect[];
   signal?: AbortSignal;
+  /**
+   * First action to run (#841): a resumed Conversation continues after the
+   * Human review gate rather than replaying what already ran. Default 0.
+   */
+  startIndex?: number;
   onActionError: (
     action: FlowAction,
     error: unknown
   ) => Promise<ChatReplyPart | null> | ChatReplyPart | null;
 }): Promise<{ handoverTo: string | null }> {
   const { ctx, parts, effects, signal, onActionError } = options;
+  const startIndex = options.startIndex ?? 0;
   let handoverTo: string | null = null;
   const effectKeyPrefix = ctx.idempotencyKey;
   // Built-in catch-alls (Default behavior, Assistant Information, …) ship with
@@ -193,7 +199,9 @@ async function dispatchActions(options: {
       ? (["search_knowledge"] as FlowAction[])
       : ctx.flow.actions;
   for (const [actionIndex, action] of actions.entries()) {
+    if (actionIndex < startIndex) continue;
     if (signal?.aborted) break;
+    ctx.actionIndex = actionIndex;
     ctx.idempotencyKey = effectKeyPrefix
       ? `${effectKeyPrefix}/action-${actionIndex}`
       : undefined;
@@ -217,8 +225,13 @@ async function dispatchActions(options: {
   if (parts.length === 0 && effects.length === 0) {
     const part: ChatReplyPart = {
       type: "text",
-      action: "fallback",
-      text: `The flow "${ctx.flow.name}" matched, but it has no actions configured yet.`,
+      action: startIndex > 0 ? "human_review" : "fallback",
+      text:
+        startIndex > 0
+          ? // A resumed Flow whose remaining actions produced no reply: the
+            // Visitor still needs to hear the gate opened.
+            "Your request was approved."
+          : `The flow "${ctx.flow.name}" matched, but it has no actions configured yet.`,
     };
     ctx.emit({ type: "part", part });
     parts.push(part);
@@ -414,6 +427,12 @@ export async function runAssistantChat(options: {
   entities?: EntitySnapshot[];
   /** Live Record read for the auto-generated Entity tools (#665). */
   queryEntityRecords?: ActionContext["queryEntityRecords"];
+  /** The Connector action's host port (#839), bound over the turn's Db. */
+  connectorRuntime?: ActionContext["connectorRuntime"];
+  /** The Human review gate's host port (#841), bound over the turn's Conversation. */
+  reviewRuntime?: ActionContext["reviewRuntime"];
+  /** The callback gate's host port (#842), bound over the turn's Conversation. */
+  webhookRuntime?: ActionContext["webhookRuntime"];
   /** Who the turn verifiably speaks for, Entity tool policy input (#667). */
   toolSubject?: ActionContext["toolSubject"];
   /**
@@ -435,6 +454,22 @@ export async function runAssistantChat(options: {
   getFlowTrust?: (flowId: string) => Promise<TrustTier | null>;
   /** Stable prefix rooted in the durable Conversation Turn claim. */
   effectKeyPrefix?: string;
+  /**
+   * Continue a Flow after one of its gates (#841 Human review, #842 the
+   * callback gate): no classification, the named Flow, dispatch from the
+   * action after the gate, with the gate's outcome in the template context. A
+   * system-initiated turn: `message` is empty and nothing is persisted as the
+   * Visitor's words.
+   *
+   * `action` names the gate being resumed, and is checked against the live
+   * Flow below. Two gates share this seam rather than each adding a branch.
+   */
+  resumeFrom?: {
+    flowId: string;
+    actionIndex: number;
+    action: FlowAction;
+    templatePatch: Record<string, string>;
+  };
 }): Promise<RunResult> {
   const {
     assistant,
@@ -460,14 +495,45 @@ export async function runAssistantChat(options: {
     searchMemories,
     entities = [],
     queryEntityRecords,
+    connectorRuntime,
+    reviewRuntime,
+    webhookRuntime,
     toolSubject,
     escalationDesks = [],
     emit,
     signal,
     keyResolution = {},
+    resumeFrom,
     onProviderHealth,
     effectKeyPrefix,
   } = options;
+  // A resumed Conversation (#841, #842) names its Flow and the index of its
+  // gate. A Flow deleted, disabled or re-arranged between the gate and its
+  // outcome resumes nothing: the cursor is an index, and an index into a chain
+  // that changed would run the wrong action, or the gate itself again. The
+  // action name is what makes that check possible.
+  const resumedFlow = resumeFrom
+    ? (flows.find(
+        (candidate) =>
+          candidate.id === resumeFrom.flowId &&
+          candidate.enabled &&
+          candidate.actions[resumeFrom.actionIndex] === resumeFrom.action
+      ) ?? null)
+    : null;
+  if (resumeFrom && !resumedFlow) {
+    const part: ChatReplyPart = {
+      type: "text",
+      action: "fallback",
+      text: "This flow changed while I was waiting, so I can't continue with it.",
+    };
+    emit({ type: "flow", flowId: null, flowName: "No flow", isDefault: true });
+    emit({ type: "part", part });
+    return { parts: [part], effects: [], flowId: null, flowName: "No flow", usage: [] };
+  }
+  const resumeIndex = resumeFrom ? resumeFrom.actionIndex + 1 : 0;
+  const resumeContext = (base: ActionContext["templateContext"]) =>
+    resumeFrom ? { ...(base ?? {}), ...resumeFrom.templatePatch } : base;
+
 
   // Cross-provider fallback: a missing credential for the assistant's
   // configured provider answers with another credentialed provider instead of
@@ -559,7 +625,7 @@ export async function runAssistantChat(options: {
           "No AI provider credential configured for this organization, using keyword matching (add a provider connection in Settings → AI)",
       });
     }
-    const flow = matchFlow(message, flows, routing);
+    const flow = resumedFlow ?? matchFlow(message, flows, routing);
     if (!flow) {
       const part: ChatReplyPart = {
         type: "text",
@@ -594,7 +660,7 @@ export async function runAssistantChat(options: {
       message,
       history,
       collectionId,
-      templateContext: withWorkflowName(templateContext, flow.name),
+      templateContext: resumeContext(withWorkflowName(templateContext, flow.name)),
       chatModel: null,
       searchKnowledge,
       session,
@@ -603,6 +669,9 @@ export async function runAssistantChat(options: {
       searchMemories,
       entities,
       queryEntityRecords,
+      connectorRuntime,
+      reviewRuntime,
+      webhookRuntime,
       toolSubject,
       priorParts: parts,
       emit,
@@ -616,6 +685,7 @@ export async function runAssistantChat(options: {
       parts,
       effects,
       signal,
+      startIndex: resumeIndex,
       onActionError: (action) => ({
         type: "text",
         action: "fallback",
@@ -633,6 +703,7 @@ export async function runAssistantChat(options: {
   }
 
   const flow =
+    resumedFlow ??
     courtesyFlow ??
     (await classifyIntent(
       message,
@@ -674,7 +745,7 @@ export async function runAssistantChat(options: {
   // later event patching an earlier row (#560). Skipped for a courtesy turn:
   // no classification happened, and the one notice would be the only thing
   // standing between that turn and a null trace (#566).
-  if (!courtesyFlow) {
+  if (!courtesyFlow && !resumedFlow) {
     emit({
       type: "notice",
       label: "Classifying intent",
@@ -704,7 +775,7 @@ export async function runAssistantChat(options: {
     message,
     history,
     collectionId,
-    templateContext: withWorkflowName(templateContext, flow.name),
+    templateContext: resumeContext(withWorkflowName(templateContext, flow.name)),
     chatModel,
     fastModel: classifier?.model ?? null,
     searchKnowledge,
@@ -720,6 +791,9 @@ export async function runAssistantChat(options: {
     searchMemories,
     entities,
     queryEntityRecords,
+    connectorRuntime,
+    reviewRuntime,
+    webhookRuntime,
     toolSubject,
     priorParts: parts,
     emit,
@@ -762,6 +836,7 @@ export async function runAssistantChat(options: {
     parts,
     effects,
     signal,
+    startIndex: resumeIndex,
     onActionError: async (action, error) => {
       if (signal?.aborted) return null;
       const providerBacked =

@@ -156,12 +156,27 @@ export function withWorkflowName(
 }
 
 /** How a resolved value is escaped for the slot it lands in. */
-export type EscapeMode = "plain" | "url-component" | "header" | "json-string";
+export type EscapeMode =
+  | "plain"
+  | "url-component"
+  | "header"
+  | "json-string"
+  /** Inside a SOQL single-quoted literal (#839): backslash and quote escaped. */
+  | "soql-string"
+  /**
+   * Inside a ServiceNow encoded query (#839): `^` separates clauses and has no
+   * escape, so it is removed from the value, along with line breaks.
+   */
+  | "servicenow-query";
 
 function escapeValue(value: string, mode: EscapeMode): string {
   switch (mode) {
     case "url-component":
       return encodeURIComponent(value);
+    case "soql-string":
+      return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    case "servicenow-query":
+      return value.replace(/[\^\r\n]/g, "");
     case "header":
       // Header values are opaque bytes except line breaks (injection guard).
       return value.replace(/[\r\n\0]/g, "");

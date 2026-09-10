@@ -38,7 +38,319 @@ export type FlowAction =
    * only action a proactively-triggered Flow may run, and never available to a
    * message-triggered one (see `actionAllowedForTrigger` in `engine.ts`).
    */
-  | "notification";
+  | "notification"
+  /**
+   * One catalogued operation against a connected external system (spec #836,
+   * #839): a ServiceNow record, a Salesforce query, a Slack message. Runs
+   * through an Application Connection the Organization already holds; the
+   * action settings name the connection and the catalogue key, never a
+   * credential, so a Publication snapshot carries none.
+   */
+  | "connector"
+  /**
+   * The approval gate (spec #836, #841): the turn stops, named Members are
+   * asked by email or Slack, and the Flow's remaining actions run only after
+   * the first of them approves. Linear, not a branch: rejected or expired
+   * halts with a configured message.
+   */
+  | "human_review"
+  /**
+   * The callback gate (#842): subscribe to an external system, stop the turn,
+   * and continue when that system calls back. The same shape as
+   * `human_review` with a machine in the middle instead of a person, which is
+   * why it reuses the gate's cursor-and-resume machinery rather than a second
+   * copy of it.
+   */
+  | "http_webhook"
+  /**
+   * The reply to an inbound HTTP request (#843): status code, headers, body.
+   * Only meaningful on the `http_request` trigger, because it answers the
+   * caller that trigger has waiting, and it ends the Flow, since nothing after
+   * it can change what that caller was told.
+   */
+  | "respond";
+
+/** How a Human review reaches its assignees. */
+export type ReviewChannel = "email" | "slack";
+
+/**
+ * The Inputs an assignee fills on the decision page. A subset of the Help Desk
+ * form builder's field types: the four an approval actually needs, and every
+ * one of them renders as a plain control with no upload or lookup behind it.
+ */
+export type ReviewInputType = "short_text" | "long_text" | "dropdown" | "yes_no";
+
+export interface ReviewInputField {
+  id: string;
+  label: string;
+  type: ReviewInputType;
+  required?: boolean;
+  placeholder?: string;
+  /** Dropdown choices. */
+  options?: string[];
+}
+
+export interface HumanReviewSettings {
+  title?: string;
+  /** What the assignee reads under the title; supports template variables. */
+  message?: string;
+  /** Member email addresses; resolved against the roster at Publish. */
+  assignees?: string[];
+  channel?: ReviewChannel;
+  /** The Editor's own Microsoft 365 mail Connection the request is sent from. */
+  senderConnectionId?: string;
+  /** Slack channel id or user id the request is posted to. */
+  slackTarget?: string;
+  inputs?: ReviewInputField[];
+  /** Hours until an undecided request expires. Default 24. */
+  timeoutHours?: number;
+  /** What the Visitor reads when the request is rejected or expires. */
+  haltMessage?: string;
+  /** What the Visitor reads while the request waits. */
+  waitingMessage?: string;
+}
+
+export type ReviewStatus = "pending" | "approved" | "rejected" | "expired";
+export type ReviewDecision = "approved" | "rejected";
+
+/**
+ * One approval request a Human review action raised. The row is the gate's
+ * state: the runtime creates it `pending`, a Member's decision or the expiry
+ * sweep closes it exactly once, and the resumption job reads the cursor
+ * (`actionIndex`) to continue the Flow after the gate.
+ */
+export interface ReviewRequest {
+  id: string;
+  organizationId: string;
+  assistantId: string;
+  conversationId: string;
+  flowId: string;
+  /** Index of the `human_review` action in the Flow; resumption starts after it. */
+  actionIndex: number;
+  status: ReviewStatus;
+  title: string;
+  message: string;
+  /** What the assignee reads about the conversation so far. */
+  summary: string;
+  channel: ReviewChannel;
+  /** Lower-cased Member emails. */
+  assignees: string[];
+  inputs: ReviewInputField[];
+  /** The assignee's Inputs, keyed by field id. Null until decided. */
+  decision: Record<string, string> | null;
+  decidedBy: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  expiresAt: string;
+  /** What the Visitor reads on rejection or expiry. */
+  haltMessage: string;
+  /** Preview / Teammate turns: nothing was sent, the transcript decides inline. */
+  simulated: boolean;
+  /** Set once the approval turn (or the halt message) has been persisted. */
+  resumedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReviewRequestInput = Omit<
+  ReviewRequest,
+  "id" | "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt" | "resumedAt" | "createdAt" | "updatedAt"
+> & { id?: string };
+
+export type ReviewRequestPatch = Partial<
+  Pick<ReviewRequest, "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt" | "resumedAt">
+>;
+
+/** One half of an `http_webhook` action's pair of calls. */
+export interface WebhookCall {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  url?: string;
+  /** Template-resolved request body. Not sent for GET. */
+  bodyTemplate?: string;
+  /**
+   * How the call authenticates, the same shape `api_request` uses. Here
+   * rather than in the URL or body, because `redactFlowSecrets` knows this
+   * slot and blanks it on every read, and a secret typed into the URL would
+   * travel into the Publication snapshot and the transcript card in clear.
+   */
+  auth?: ApiRequestAuth;
+  /** Admin-set request headers; values are redacted on read like `api_request`'s. */
+  headers?: KeyValuePair[];
+  /**
+   * Values read from this call's own reply. On the subscribe call they are
+   * what the unsubscribe call may interpolate (`{{subscriptionId}}`), because
+   * the id the other system hands back is the one thing the unsubscribe needs
+   * and the one thing not known before the subscribe has answered.
+   */
+  jsonPaths?: ApiRequestJsonPath[];
+}
+
+/**
+ * The `http_webhook` action's settings (#842).
+ *
+ * Two calls and a wait between them. The subscribe call tells the other system
+ * where to call back, which is why `{{webhook.callbackUrl}}` is available to
+ * its body and to its query; the unsubscribe call is what stops that system
+ * calling an endpoint whose turn ended, and is resolved and stored when the
+ * subscription is made so it still fires if the Flow is edited meanwhile.
+ */
+export interface HttpWebhookSettings {
+  subscribe?: WebhookCall;
+  unsubscribe?: WebhookCall;
+  /** Minutes until an unanswered subscription expires. Default 15, max 1440. */
+  timeoutMinutes?: number;
+  /** What the Visitor reads while the callback is awaited. */
+  waitingMessage?: string;
+  /** What the Visitor reads when it expires or the subscribe call fails. */
+  haltMessage?: string;
+  /**
+   * Extracts values from the callback body into `{{variable}}` template
+   * variables for the actions after the gate. A blank `path` binds the whole
+   * body, the same rule `api_request` uses.
+   */
+  jsonPaths?: ApiRequestJsonPath[];
+}
+
+/** The `respond` action's settings (#843). */
+export interface RespondSettings {
+  /**
+   * HTTP status the caller receives. Required: a Response without one is not
+   * configured (`respondSettingsIssue`), and the runtime answers 500 rather
+   * than inventing a 200 for a Flow that never said what it meant.
+   */
+  status?: number;
+  /** Response headers; values may carry template variables. */
+  headers?: KeyValuePair[];
+  /** Response body, template-resolved. Sent as JSON unless a header says otherwise. */
+  bodyTemplate?: string;
+}
+
+export type WebhookSubscriptionStatus = "pending" | "received" | "expired" | "failed";
+
+/**
+ * One awaited callback (#842). The row is the gate's state: created `pending`
+ * by the runtime before the subscribe call goes out (the callback URL names
+ * it, so it has to exist first), closed exactly once by the first callback or
+ * by the expiry sweep, and read back by the resumption job for where to
+ * continue (`actionIndex`) and what the caller sent (`payload`).
+ */
+export interface WebhookSubscription {
+  id: string;
+  organizationId: string;
+  assistantId: string;
+  conversationId: string;
+  flowId: string;
+  /** Index of the `http_webhook` action in the Flow; resumption starts after it. */
+  actionIndex: number;
+  status: WebhookSubscriptionStatus;
+  /** The resolved subscribe call, for the transcript and for diagnosis. */
+  subscribeMethod: string;
+  subscribeUrl: string;
+  /**
+   * The resolved unsubscribe call, stored rather than re-read from the Flow:
+   * it must still fire when the Flow was edited during the wait, and an
+   * unsubscribe pointed at the wrong URL is a subscription nobody stops.
+   */
+  unsubscribeMethod: string | null;
+  unsubscribeUrl: string | null;
+  unsubscribeBody: string | null;
+  unsubscribedAt: string | null;
+  /** The callback body, capped. Null until one arrives. */
+  payload: string | null;
+  receivedAt: string | null;
+  expiresAt: string;
+  haltMessage: string;
+  /** Preview / Teammate turns: the subscribe call is still made, nothing else differs. */
+  simulated: boolean;
+  /** Set once the continuation (or the halt message) has been persisted. */
+  resumedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WebhookSubscriptionInput = Omit<
+  WebhookSubscription,
+  | "id"
+  | "status"
+  | "payload"
+  | "receivedAt"
+  | "unsubscribedAt"
+  | "resumedAt"
+  | "createdAt"
+  | "updatedAt"
+> & { id?: string };
+
+/**
+ * One inbound run of an HTTP-triggered Flow (#843). Not a Conversation, by
+ * decision: a machine-to-machine call has no Visitor, and a Conversation for
+ * it would enter the Inbox and the Insights population ADR-0010 keeps for
+ * people. So the record is its own row, read from the trigger's own panel.
+ * It keeps what an operator needs to diagnose a silent or failing endpoint,
+ * never the request body: that may carry a caller's data and is not ours to
+ * archive.
+ */
+export interface HttpFlowRun {
+  id: string;
+  organizationId: string;
+  assistantId: string;
+  flowId: string;
+  /** The Publication the Flow was read from. */
+  publicationId: string | null;
+  method: string;
+  /** What the caller was answered. */
+  status: number;
+  /** Actions that ran, in order. */
+  ran: FlowAction[];
+  /** The action that threw and its message, when one did. */
+  failedAction: string | null;
+  failedMessage: string | null;
+  durationMs: number;
+  createdAt: string;
+}
+
+export type HttpFlowRunInput = Omit<HttpFlowRun, "id" | "createdAt"> & { id?: string };
+
+export type WebhookSubscriptionPatch = Partial<
+  Pick<
+    WebhookSubscription,
+    | "status"
+    | "payload"
+    | "receivedAt"
+    | "resumedAt"
+    | "unsubscribedAt"
+    | "unsubscribeMethod"
+    | "unsubscribeUrl"
+    | "unsubscribeBody"
+  >
+>;
+
+/**
+ * The Application providers a Connector action can target. The two Drives are
+ * Member-owned Connections (ADR-0021) and therefore run only on the operator
+ * surfaces (#840); Publish refuses them until an Organization-owned mode exists.
+ */
+export type ConnectorProvider =
+  | "salesforce"
+  | "servicenow"
+  | "slack"
+  | "onedrive"
+  | "google_drive";
+
+/**
+ * A Connector action's settings. `params` are the catalogued action's fields,
+ * template variables allowed; `failureMessage` is what the Visitor reads when
+ * the call fails, so a provider error never reaches the chat verbatim.
+ */
+export interface ConnectorActionSettings {
+  provider?: ConnectorProvider;
+  connectionId?: string;
+  /** A key from the Connector catalogue, e.g. `servicenow.record.create`. */
+  action?: string;
+  params?: Record<string, string>;
+  /** What the Visitor reads after a write succeeds; read actions stay silent. */
+  successMessage?: string;
+  failureMessage?: string;
+}
 
 export type FlowButtonType =
   | "external_link"
@@ -63,7 +375,19 @@ export type FlowButtonIcon =
  * fired by a client event, with no Visitor message to classify. See
  * `isProactiveTrigger` in `engine.ts`.
  */
-export type FlowTrigger = "message" | "page_load" | "time_on_page" | "chat_open";
+export type FlowTrigger =
+  | "message"
+  | "page_load"
+  | "time_on_page"
+  | "chat_open"
+  /**
+   * An inbound HTTP request to the Flow's own endpoint (#843). Not a Visitor
+   * and not a widget event: another system calls, the Flow runs, and the
+   * `respond` action is what the caller reads. The only trigger with a caller
+   * waiting on a status code, which is why it is its own kind rather than a
+   * fifth proactive one.
+   */
+  | "http_request";
 
 /**
  * Configuration owned by the *trigger* rather than by an action. Separate from
@@ -75,6 +399,15 @@ export interface FlowTriggerSettings {
   timeOnPage?: {
     minutes?: number;
     seconds?: number;
+  };
+  /**
+   * "On HTTP request" (#843). No credential lives here: the endpoint is
+   * authorized by an Organization API key, so nothing about this trigger is a
+   * secret and a Publication snapshot may carry it whole.
+   */
+  httpRequest?: {
+    /** Methods the endpoint accepts. Empty or unset means POST only. */
+    methods?: ("GET" | "POST" | "PUT" | "PATCH" | "DELETE")[];
   };
 }
 
@@ -250,6 +583,20 @@ export interface FlowActionSettings {
     heightUnit?: "vh" | "px";
   };
   api_request?: {
+    /**
+     * Where the endpoint comes from (#837). `"url"` is the one typed into the
+     * builder. `"swagger"` names an `operationId` in the OpenAPI / Swagger
+     * document at `swaggerUrl`, and the method and URL come from there, so an
+     * organization that already publishes a spec does not hand-copy a path
+     * that the spec states, and does not silently keep calling it once the
+     * API moves. Unset means `"url"`, which is what every Flow written before
+     * this meant.
+     */
+    endpoint?: "url" | "swagger";
+    /** The OpenAPI / Swagger document, when `endpoint` is `"swagger"`. */
+    swaggerUrl?: string;
+    /** The operation to invoke, by its `operationId` in that document. */
+    operationId?: string;
     method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
     url?: string;
     /**
@@ -277,6 +624,10 @@ export interface FlowActionSettings {
   };
   send_email?: { to?: string };
   handover?: { assistantId?: string };
+  connector?: ConnectorActionSettings;
+  human_review?: HumanReviewSettings;
+  http_webhook?: HttpWebhookSettings;
+  respond?: RespondSettings;
   follow_up_questions?: {
     /**
      * How follow-up chips are produced. "ai_generated" (default) lets the
@@ -1329,6 +1680,14 @@ export interface Teammate {
   modelProvider: Provider;
   modelId: string;
   /**
+   * Null for a Member-created Teammate. A system Teammate (#838) belongs to
+   * the surface that created it, is hidden from the roster and from referral
+   * candidates, and is never a channel participant.
+   */
+  systemKind: TeammateSystemKind | null;
+  /** The Assistant a system Teammate belongs to; null otherwise. */
+  assistantId: string | null;
+  /**
    * The ceiling on what any granted operation may do (#770). Grants say *which*
    * domains a Teammate acts in; this says how far inside them, and it is a
    * separate knob because the two are set by different people for different
@@ -1369,13 +1728,25 @@ export interface Teammate {
  * here, one row in the action catalogue, and the check constraint, which is the
  * point of keeping the mapping data rather than code.
  */
-export type TeammateGrantDomain = "improvements" | "knowledge" | "inbox";
+export type TeammateGrantDomain = "improvements" | "knowledge" | "inbox" | "flows";
 
 export const TEAMMATE_GRANT_DOMAINS: readonly TeammateGrantDomain[] = [
   "improvements",
   "knowledge",
   "inbox",
+  /**
+   * The Flows Agent's domain (#838): read an Assistant's Flows, draft changes
+   * to the open one, propose another. Never delete or reorder.
+   */
+  "flows",
 ];
+
+/**
+ * A Teammate the product creates for its own purposes (#838), as opposed to
+ * one a Member created. Kept off the roster and out of referral candidates;
+ * chatted with from the surface that owns it.
+ */
+export type TeammateSystemKind = "flows_agent";
 
 /** How far inside a granted domain a Teammate may go. */
 export type TeammateCapabilityCeiling = "member" | "edit";
@@ -1666,6 +2037,9 @@ export interface TeammateInput {
   visibility?: TeammateVisibility;
   collectionIds?: string[];
   sourceIds?: string[];
+  /** Set only by the product, for a system Teammate (#838). */
+  systemKind?: TeammateSystemKind | null;
+  assistantId?: string | null;
 }
 
 export type TeammatePatch = Partial<
@@ -1730,7 +2104,16 @@ export type BackgroundJobKind =
   | "promote_memories"
   | "distill_agent_memory"
   | "sync_entity_records"
-  | "sync_application_import";
+  | "sync_application_import"
+  /** Human review (#841): deliver the request, then resume or halt the Flow. */
+  | "deliver_review_request"
+  | "resume_reviewed_conversation"
+  /**
+   * The callback gate (#842): resume or halt the Flow once the subscription
+   * settles. There is no delivery job to pair with it, the subscribe call runs
+   * inline in the action so a failure can halt the turn that made it.
+   */
+  | "resume_webhook_conversation";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface CrawlFinalizeClaim {
@@ -1875,7 +2258,13 @@ export type ApplicationProvider =
   | "servicenow"
   | "slack"
   | "onedrive"
-  | "google_drive";
+  | "google_drive"
+  /**
+   * A Member's own Microsoft 365 mailbox with the delegated mail-send scope
+   * (#841): the sender of a Human review's email. Same Entra app registration
+   * as OneDrive, a different consent, and never a knowledge source.
+   */
+  | "microsoft_mail";
 
 export type ApplicationConnectionStatus =
   | "pending"
@@ -2013,7 +2402,19 @@ export interface OrgKnowledgeSourceFilter {
   query?: string;
   /** 1-based page. */
   page?: number;
+  /** Zero requests only totals/status tallies, without hydrating Source rows. */
   pageSize?: number;
+}
+
+/** Source identity for Knowledge Scope pickers, without content or link details. */
+export type OrgKnowledgeSourceOption = Pick<
+  OrgKnowledgeSourceListItem,
+  "id" | "name" | "kind" | "collectionId"
+>;
+
+export interface OrgKnowledgeSourceOptions {
+  items: OrgKnowledgeSourceOption[];
+  total: number;
 }
 
 /** Ingest-status tallies across every row matching the filter (not the page). */
@@ -2169,6 +2570,24 @@ export interface ConversationMetadata {
    * of timing.
    */
   referredTo?: { conversationId: string; teammateId: string; teammateName: string }[];
+  /**
+   * Set on a Flows Agent conversation (#838): which Assistant's Flow the chat
+   * was building. `flowId` is null while the Flow is still unsaved, so the
+   * new-Flow canvas lists those threads and a saved Flow lists its own.
+   */
+  flowsAgent?: { assistantId: string; flowId: string | null };
+  /**
+   * The Human review this Conversation is waiting on (#841), set when the gate
+   * raises it and cleared when the gate closes. A marker rather than a join so
+   * the Inbox's "Pending reviews" filter is the same metadata read as
+   * "Escalated".
+   */
+  pendingReviewId?: string | null;
+  /**
+   * The open callback gate (#842), while one is waiting. Same role as
+   * `pendingReviewId`: the surfaces read it to know the turn is not over.
+   */
+  pendingWebhookId?: string | null;
   userName?: string;
   userEmail?: string;
   userRole?: string;

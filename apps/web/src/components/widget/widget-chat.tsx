@@ -5,6 +5,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation";
 import type { QuickReplyButton, WidgetStyle } from "@agent-hub/core";
 import { googleFontHref, resolveWidgetStyle } from "@/lib/widget-style";
+import { reviewStatusSentence } from "@/lib/review-status";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { consumeTurnStream, type TurnView } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
@@ -274,6 +275,18 @@ function BotMessageView({
                 <span className="text-sm font-medium">{part.label}</span>
                 <ArrowRight className="text-muted-foreground ml-auto size-4" />
               </button>
+            );
+          }
+          if (part.type === "human_review") {
+            // The gate's state, honest about the pause (#841): the waiting
+            // text above it is the Flow's own words, this line is the status.
+            return (
+              <div
+                key={j}
+                className="text-muted-foreground max-w-[90%] rounded-2xl rounded-tl-sm border border-dashed px-3.5 py-2 text-xs"
+              >
+                {reviewStatusSentence(part.status)}
+              </div>
             );
           }
           if (part.type === "clarify") {

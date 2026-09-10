@@ -2,6 +2,7 @@ import {
   flowConditionsAllowRouting,
   type FlowRoutingContext,
 } from "./flow-conditions";
+import { flowTriggerKind, HTTP_FLOW_ACTIONS } from "./http-flow";
 import { normalize, stem, tokenize } from "./text";
 import type {
   Flow,
@@ -174,25 +175,37 @@ export function messageFlowCandidates(
     .sort((a, b) => a.position - b.position);
 }
 
-/** Whether a trigger fires from a client event rather than a Visitor message. */
+/**
+ * Whether a trigger fires from a **widget event** rather than a Visitor
+ * message. An explicit kind rather than `!== "message"`, because the inbound
+ * HTTP trigger (#843) is neither: reading it as proactive would offer it the
+ * notification-only catalogue and put its runs in the proactive funnel.
+ */
 export function isProactiveTrigger(trigger: FlowTrigger): boolean {
-  return trigger !== "message";
+  return flowTriggerKind(trigger) === "proactive";
 }
 
 /**
- * Which Flow Actions a trigger may run. A proactive Flow has no message to
- * answer, so the reactive catalog (retrieval, escalation, handover, …) cannot
- * apply; conversely a Notification is unprompted by definition and has no
- * meaning as a reply. Enforced at save time *and* at dispatch, the editor is
- * only the first of the two gates.
+ * Which Flow Actions a trigger may run, by kind. A proactive Flow has no
+ * message to answer, so the reactive catalog (retrieval, escalation, handover,
+ * …) cannot apply; conversely a Notification is unprompted by definition and
+ * has no meaning as a reply. An inbound HTTP Flow has no chat window at all,
+ * so it runs the doing actions and answers with `respond`, which in turn means
+ * nothing anywhere else. Enforced at save time *and* at dispatch, the editor
+ * is only the first of the two gates.
  */
 export function actionAllowedForTrigger(
   action: FlowAction,
   trigger: FlowTrigger
 ): boolean {
-  return isProactiveTrigger(trigger)
-    ? action === "notification"
-    : action !== "notification";
+  switch (flowTriggerKind(trigger)) {
+    case "http":
+      return HTTP_FLOW_ACTIONS.includes(action);
+    case "proactive":
+      return action === "notification";
+    case "message":
+      return action !== "notification" && action !== "respond";
+  }
 }
 
 /** Shipped dwell for a new Time-on-page flow, in seconds. */

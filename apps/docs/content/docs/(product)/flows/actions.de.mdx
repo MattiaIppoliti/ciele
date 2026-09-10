@@ -15,19 +15,24 @@ Aktionen verwenden den konfigurierten Inhalt, ohne das Modell umzuschreiben.
 | Knowledge durchsuchen | Ja | Führt die Knowledge-Agent-Schleife aus und gibt Zitate zurück. |
 | Follow-ups | Optional | Verwendet konfigurierte Fragen oder generiert vorgeschlagene Fragen. |
 | Iframe | Nein | Betten Sie konfigurierte externe Inhalte in den Chat ein. |
-| API-Anforderung | Nein | Ruft einen konfigurierten HTTP-Endpunkt auf und bildet dessen Ergebnis ab. |
+| API-Anforderung | Nein | Ruft einen HTTP-Endpunkt auf, der als URL eingegeben oder in einer Swagger-/OpenAPI-Definition benannt ist, und bildet sein Ergebnis ab. |
 | E-Mail senden | Nein | Sendet E-Mails über den konfigurierten Resend-Transport. |
 | Verbesserung | Nein | Erstellt eine Verbesserung für die entsprechende Antwort. |
 | Übergabe | Abhängig vom Ziel | Wird einmal in einem anderen veröffentlichten Assistenten fortgesetzt. |
+| HTTP-Webhook | Nein | Abonniert ein System und wartet auf dessen Rückruf. Siehe [HTTP und Webhooks](/flows/http). |
+| Antwort | Nein | Beantwortet die eingehende HTTP-Anfrage, die den Flow gestartet hat. Siehe [HTTP und Webhooks](/flows/http). |
+| Connector | Nein | Führt eine Aktion in ServiceNow, Salesforce, Slack, OneDrive oder Google Drive über eine verbundene Anwendung aus. Siehe [Connector](/flows/connector). |
+| Menschliche Überprüfung | Nein | Stoppt den Flow, bis ein Kollege per E-Mail oder Slack genehmigt. Siehe [Menschliche Überprüfung](/flows/human-review). |
 
 Der integrierte Basic Interaction Flow verwendet ebenfalls **Basic reply**. Die
-Helpdesk-Empfehlung verwendet eine Laufzeitaktion, die die Direktaktionsauswahl
-nicht anzeigt.
+Helpdesk-Empfehlung verwendet eine Laufzeitaktion, die die direkte
+Aktionsauswahl nicht anzeigt.
 
 ## Nachricht
 
-Geben Sie den genauen Text ein, den Ciele senden muss. Die Laufzeit umformuliert
-diesen Text nicht.
+Geben Sie den genauen Text ein, den Ciele versenden muss. Die Laufzeit
+umformuliert diesen Text nicht. Vorlagenvariablen wie `{{user.name}}` oder
+`{{review.amount}}` werden durch ihre Werte ersetzt.
 
 ## Einfache Antwort
 
@@ -65,23 +70,61 @@ verhindern.
 
 ## API-Anforderung
 
-Konfigurieren Sie die Methode, den Endpunkt, die Authentifizierung, die Header,
-die Abfrageparameter, den JSON-Body und den JSON-Pfad der Antwort.
+Die API-Anforderung führt einen HTTP-Aufruf durch. Konfigurieren Sie die
+Authentifizierung, die Header, die Abfrageparameter, den JSON-Text und den
+JSON-Pfad der Antwort und wählen Sie unter **Endpoint** aus, woher der Endpunkt
+kommt.
+
+**A URL** benötigt eine Methode und eine Endpunkt-URL, die Sie eingeben.
+
+**An operation in a Swagger/OpenAPI definition** benötigt ein **Swagger URL**
+und ein **Operation ID**. Ciele liest die Definition, wenn die Aktion ausgeführt
+wird, und entnimmt ihr die Methode und die URL. Der Flow arbeitet weiter, wenn
+die API verschoben wird. Die Definition wird bei jeder Ausführung gelesen und
+nicht zwischengespeichert. Ein Pfadparameter wie `{refundId}` wird zur
+Vorlagenvariablen `{{refundId}}`, sodass eine frühere Aktion seinen Wert liefern
+kann. Die Definition muss die API auf derselben Site platzieren wie die
+Definition selbst. Eine Definition, die von `docs.example.com` bereitgestellt
+wird, kann `api.example.com` benennen. Eine andere Domain wird abgelehnt.
+Dadurch bleiben die Anmeldeinformationen der Aktion auf der von Ihnen
+konfigurierten Website.
 
 Vorlagenvariablen können Werte aus dem aktuellen Kontext liefern. Verwenden Sie
 **Test API**, bevor Sie den Flow speichern.
 
-Die Aktion kann separate Erfolgs- und Fehlermeldungen anzeigen. Für die
-endgültige URL gelten weiterhin die Regeln für den Netzwerkausgang.
+Die Aktion kann separate Erfolgs- und Fehlermeldungen anzeigen. Die
+Netzwerk-Ausgangsregeln gelten für die endgültige URL und für die Swagger-URL.
+
+## HTTP-Webhook
+
+Der HTTP-Webhook meldet sich bei einem externen System an, stoppt den Flow und
+fährt fort, wenn dieses System zurückruft. Konfigurieren Sie den
+Abonnement-Aufruf, den Abmelde-Aufruf, die Wartezeit und was der Besucher in der
+Zwischenzeit liest.
+
+Fügen Sie `{{webhook.callbackUrl}}` in die Subscribe-URI oder in den Body ein.
+So erfährt das andere System, wohin es antworten soll. Der Callback-Body
+erreicht spätere Aktionen als `{{webhook.body}}`. **Response mapping**
+extrahiert daraus benannte Werte.
+
+Das vollständige Verhalten, einschließlich dessen, was die Callback-Adresse
+zulässt, finden Sie unter [HTTP und Webhooks](/flows/http).
+
+## Antwort
+
+Response beantwortet die eingehende HTTP-Anfrage, die den Flow gestartet hat,
+mit einem Statuscode sowie optionalen Headern und einem optionalen Body. Sie ist
+nur für den **On HTTP request**-Trigger verfügbar und beendet den Flow.
+
+Siehe [HTTP und Webhooks](/flows/http).
 
 ## E-Mail senden
 
-Konfigurieren Sie Empfänger, Betreff, Text und das Verhalten für die
-Antwortadresse. Die Laufzeitumgebung verwendet Resend, wenn ihr Transport
-konfiguriert ist.
+Konfigurieren Sie Empfänger, Betreff, Text und das Verhalten bei Antworten. Die
+Laufzeitumgebung verwendet Resend, wenn ihr Transport konfiguriert ist.
 
 Wenn der Transport nicht konfiguriert ist, meldet die Aktion, dass sie die
-E-Mail nicht gesendet hat. Sie bestätigt die Zustellung nicht.
+E-Mail nicht gesendet hat. Sie beansprucht keine Zustellung.
 
 ## Verbesserung
 
@@ -94,7 +137,24 @@ Wählen Sie einen anderen Assistenten in derselben Organisation aus. Das Ziel
 muss über eine aktuelle Veröffentlichung verfügen.
 
 Ciele führt dieselbe Besuchernachricht einmal durch den Ziel-Assistenten. Es
-führt keine zweite Übergabe von diesem Zielzug aus fort.
+führt keine zweite Übergabe ab diesem Zielzug fort.
+
+## Konnektor
+
+Wählen Sie eine verbundene Anwendung, eine Verbindung und eine katalogisierte
+Aktion aus. Der Flow speichert die Verbindungs-ID und die Aktion, niemals ein
+Anmeldeinformations-Element.
+
+Die Ergebnisse werden zu `{{connector.*}}`-Vorlagenvariablen für spätere
+Aktionen. Unter [Connector](/flows/connector) finden Sie den Katalog, die Felder
+und was der Besucher sieht.
+
+## Menschliche Überprüfung
+
+Benennen Sie die Prüfer, den Kanal und die von ihnen ausgefüllten Eingaben. Der
+Flow stoppt bei dieser Aktion und wird erst nach Genehmigung fortgesetzt. Die
+Eingaben des Prüfers werden zu `{{review.*}}`-Vorlagenvariablen. Siehe
+[Human review](/flows/human-review).
 
 ## Reihenfolge der Aktionen
 

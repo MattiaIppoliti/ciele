@@ -15,10 +15,14 @@ génératives utilisent le contenu configuré sans réécriture du modèle.
 | Recherche de connaissances | Oui | Exécute la boucle de l'agent Knowledge et renvoie des citations. |
 | Suivis | Facultatif | Utilise les questions configurées ou génère des suggestions de questions. |
 | Iframe | Non | Incorpore le contenu externe configuré dans le chat. |
-| Requête API | Non | Appelle un point de terminaison HTTP configuré et mappe son résultat. |
+| Requête API | Non | Appelle un point de terminaison HTTP, saisi sous forme d'URL ou nommé dans une définition Swagger/OpenAPI, et mappe son résultat. |
 | Envoyer un e-mail | Non | Envoie un e-mail via le transport Resend configuré. |
 | Amélioration | Non | Crée une amélioration pour la réponse concernée. |
 | Transfert | Dépend de la cible | Se poursuit une fois dans un autre Assistant publié. |
+| Webhook HTTP | Non | S'abonne à un système et attend son rappel. Voir [HTTP et webhooks](/flows/http). |
+| Réponse | Non | Répond à la requête HTTP entrante qui a lancé le flux. Voir [HTTP et webhooks](/flows/http). |
+| Connecteur | Non | Exécute une action dans ServiceNow, Salesforce, Slack, OneDrive ou Google Drive via une application connectée. Voir [Connector](/flows/connector). |
+| Révision humaine | Non | Arrête le flux jusqu'à ce qu'un collègue l'approuve par e-mail ou Slack. Voir [Révision humaine](/flows/human-review). |
 
 Le flux d'interaction de base intégré utilise également **Basic reply**. La
 recommandation du service d'assistance utilise une action d'exécution que le
@@ -26,15 +30,15 @@ sélecteur d'action directe n'affiche pas.
 
 ## Message
 
-Saisissez le texte exact que Ciele doit envoyer. Le moteur d'exécution ne
-paraphrase pas ce texte.
+Saisissez le texte exact que Ciele doit envoyer. Le runtime ne paraphrase pas ce
+texte. Les variables de modèle telles que `{{user.name}}` ou `{{review.amount}}`
+sont remplacées par leurs valeurs.
 
 ## Réponse de base
 
-La réponse de base gère les courtes salutations, les remerciements et les
+La réponse de base gère les salutations courtes, les remerciements et les
 formules de prise de congé. Elle utilise un seul appel de modèle et ne fait
-appel à aucun outil de connaissance, aucune citation ni aucun événement de
-réflexion.
+appel à aucun outil Knowledge, à aucune citation ni à aucun événement Thinking.
 
 Saisissez un texte d'action fixe pour ignorer le modèle. Le même texte sert de
 solution de secours lorsqu'aucun modèle de chat n'est disponible.
@@ -66,22 +70,59 @@ sécurité.
 
 ## Requête API
 
-Configurez la méthode, le point de terminaison, l'authentification, les
+La requête API effectue un appel HTTP. Configurez l'authentification, les
 en-têtes, les paramètres de requête, le corps JSON et le chemin JSON de la
-réponse.
+réponse, puis choisissez la provenance du point de terminaison sous
+**Endpoint**.
+
+**A URL** prend une méthode et une URL de point de terminaison que vous
+saisissez.
+
+**An operation in a Swagger/OpenAPI definition** prend un **Swagger URL** et un
+**Operation ID**. Ciele lit la définition lorsque l'action s'exécute, et en
+extrait la méthode et l'URL. Le flux continue de fonctionner lorsque l'API se
+déplace. La définition est lue à chaque exécution et n'est pas mise en cache. Un
+paramètre de chemin d'accès tel que `{refundId}` devient la variable de modèle
+`{{refundId}}`, de sorte qu'une action antérieure peut fournir sa valeur. La
+définition doit placer l'API sur le même site que la définition elle-même. Une
+définition fournie par `docs.example.com` peut porter le nom `api.example.com`.
+Un autre domaine est refusé. Cela permet de conserver les informations
+d'identification de l'action sur le site que vous avez configuré.
 
 Les variables de modèle peuvent fournir des valeurs issues du contexte actuel.
 Utilisez **Test API** avant d'enregistrer le flux.
 
-L'action peut afficher des messages distincts de réussite et d'échec. Les règles
-de sortie réseau s'appliquent toujours à l'URL finale.
+L'action peut afficher des messages distincts en cas de succès ou d'échec. Les
+règles de sortie réseau s'appliquent à l'URL finale et à l'URL Swagger.
+
+## Webhook HTTP
+
+Le webhook HTTP s'abonne à un système externe, arrête le flux et reprend lorsque
+ce système rappelle. Configurez l'appel d'abonnement, l'appel de désabonnement,
+le temps d'attente et ce que le visiteur lit pendant ce temps.
+
+Placez `{{webhook.callbackUrl}}` dans l'URI ou le corps de la demande
+d'abonnement. C'est ainsi que l'autre système apprend où répondre. Le corps du
+rappel atteint les actions ultérieures sous la forme de `{{webhook.body}}`.
+**Response mapping** en extrait des valeurs nommées.
+
+Le comportement complet, y compris ce que l'adresse de rappel autorise, se
+trouve dans [HTTP et webhooks](/flows/http).
+
+## Réponse
+
+Response répond à la requête HTTP entrante qui a lancé le Flow, avec un code
+d'état, ainsi que des en-têtes et un corps facultatifs. Elle n'est disponible
+que sur le déclencheur **On HTTP request** et met fin au flux.
+
+Voir [HTTP et webhooks](/flows/http).
 
 ## Envoyer un e-mail
 
 Configurez les destinataires, l'objet, le corps et le comportement de réponse.
 Le runtime utilise Resend lorsque son transport est configuré.
 
-Lorsque le transport n'est pas configuré, l'action signale qu'elle n'a pas
+Lorsque le transport n'est pas configuré, l'action indique qu'elle n'a pas
 envoyé l'e-mail. Elle ne confirme pas la livraison.
 
 ## Amélioration
@@ -97,8 +138,23 @@ une publication en cours.
 Ciele fait passer une seule fois le même message de visiteur à l'assistant
 cible. Il ne poursuit pas un deuxième transfert à partir de ce tour de cible.
 
+## Connecteur
+
+Sélectionnez une application connectée, une connexion et une action cataloguée.
+Le flux stocke l'identifiant de connexion et l'action, jamais un identifiant.
+
+Les résultats deviennent des variables de modèle `{{connector.*}}` pour les
+actions ultérieures. Consultez [Connector](/flows/connector) pour le catalogue,
+les champs et ce que voit le visiteur.
+
+## Révision humaine
+
+Nommez les réviseurs, le canal et les champs qu'ils remplissent. Le flux
+s'arrête à cette action et ne se poursuit qu'après approbation. Les entrées du
+réviseur deviennent des variables de modèle `{{review.*}}`. Voir
+[Révision humaine](/flows/human-review).
+
 ## Ordre des actions
 
-Placez le texte d'encadrement avant Rechercher dans la base de connaissances.
-Placez les boutons et les actions de suivi après la réponse qu'ils prennent en
-charge.
+Placez le texte d'encadrement avant Rechercher des connaissances. Placez les
+boutons et les suivis après la réponse qu'ils prennent en charge.

@@ -9,6 +9,7 @@ import {
   APPLICATION_OAUTH_COOKIE,
   APPLICATION_OAUTH_MAX_AGE,
   applicationAuthorizationUrl,
+  invalidApplicationOAuthScope,
   isApplicationOAuthProvider,
   newApplicationOAuthTransaction,
   safeApplicationReturnTo,
@@ -30,6 +31,8 @@ async function beginOAuth(input: {
   };
   responseKind: "redirect" | "json";
   connectionId?: string;
+  /** Extra scopes for a Connector re-consent (#839); unioned with the defaults. */
+  scopes?: string[];
 }) {
   const { request, provider } = input;
   if (!isApplicationOAuthProvider(provider)) {
@@ -39,6 +42,15 @@ async function beginOAuth(input: {
   if (!session?.organization) return new Response("Unauthorized", { status: 401 });
   if (!canAuthorizeApplicationProvider(provider, session.role)) {
     return new Response("Forbidden", { status: 403 });
+  }
+  // Widening a grant is a re-consent of an existing row; a fresh connection
+  // always starts from the provider's defaults, so its scopes are ignored.
+  const scopes = input.connectionId ? input.scopes : undefined;
+  // The caller's input, checked before any I/O: a malformed scope is the
+  // caller's mistake (400), not a provider outage (503).
+  const invalidScope = invalidApplicationOAuthScope(scopes);
+  if (invalidScope !== null) {
+    return new Response(`Invalid OAuth scope "${invalidScope}"`, { status: 400 });
   }
   try {
     if (input.connectionId) {
@@ -70,6 +82,7 @@ async function beginOAuth(input: {
       redirectUri,
       providerSettings: input.providerSettings,
       connectionId: input.connectionId,
+      scopes,
     });
     const authorizationUrl = applicationAuthorizationUrl({ transaction });
     await (await getDb()).createApplicationOAuthNonce({
@@ -119,6 +132,7 @@ export async function GET(
     responseKind: "redirect",
     connectionId:
       request.nextUrl.searchParams.get("connectionId") ?? undefined,
+    scopes: request.nextUrl.searchParams.get("scopes")?.split(/\s+/).filter(Boolean),
   });
 }
 
@@ -149,5 +163,8 @@ export async function POST(
     responseKind: "json",
     connectionId:
       typeof body.connectionId === "string" ? body.connectionId : undefined,
+    scopes: Array.isArray(body.scopes)
+      ? body.scopes.filter((scope): scope is string => typeof scope === "string")
+      : undefined,
   });
 }

@@ -16,6 +16,7 @@ distance and cold functions.
 | Inbox route increment | 50 KB gzip or less | same |
 | Improvements route increment | 35 KB gzip or less | same |
 | Insights route increment | 50 KB gzip or less | same |
+| New/Edit Flow route increment | 80 KB gzip or less each | same |
 | Admin route document | cold 1,000 ms or less; warm p50 150 ms, p95 300 ms | `check:admin-latency`, manual |
 | Cold Insights document | 1,000 ms or less after the cache is expired | `check:admin-latency`, manual |
 | Simple mutation, click to visible result | p50 250 ms, p95 600 ms | `check:admin-interactions`, manual |
@@ -57,6 +58,20 @@ twenty. The one-second cold ceiling keeps a cold Insights load, which runs the
   search, priority and assignee filters run over the loaded rows only, and a
   filtered lane count is the matches among them; the empty state says so, and
   an export applies the same filters to the whole lane read from the server.
+- The Library read runs filtering, totals, paging and page-scoped Concept
+  counts in one RLS-preserving SQL call (`get_org_knowledge_source_page`). Tab
+  navigation requests only totals with `pageSize: 0`. Teammate Knowledge Scope
+  pickers use a compact Source identity projection, so displaying a picker
+  does not fetch FAQ bodies, Assistant links or per-Source Concept counts.
+  Apply `20260909221722_knowledge_library_page_reads.sql` to enable the Library
+  SQL path; an older database keeps the previous read during deployment.
+- The Flow catalogue reads active, non-excluded FAQ titles through Assistant
+  Knowledge Links, without scanning Collection bodies. Library and Flow
+  pickers share the shell's request-local Assistant summaries.
+- The Flow Builder loads the Canvas and Flows Agent only when selected, with
+  loading feedback. The draft stays in the Builder across both renderings.
+  On 2026-09-10, the production build's Flow route increment fell from
+  268.9 KB to 63.6 KB gzip (76%). Both new and edit routes have an 80 KB budget.
 
 ## Run the probes
 
@@ -104,7 +119,7 @@ the original name with a second confirmed action.
 
 ## Evidence
 
-- Enforced in CI: the four bundle budgets, on every `next build`.
+- Enforced in CI: the six bundle budgets, on every `next build`.
 - Manual, reproducible: `check:admin-perf` prints local mock-mode numbers with
   20 samples per route and per mutation. Run it before and after a change to a
   shell component and compare. On 2026-09-02, on the reviewer's laptop against
@@ -119,3 +134,9 @@ the original name with a second confirmed action.
 - Unknown until staging runs: real-data p50 and p95, mutation-visible latency
   with the synchronous layout revalidation, database saturation, cache hit
   rate, tenant skew. Nobody has run the probes against staging yet.
+- On 2026-09-10, after the Library/Flow changes, an idle local production run
+  passed all budgets with 20 samples: warm navigation p50 77–84 ms, p95
+  81–108 ms; profile save p50 207 ms, p95 409 ms. An earlier run concurrent
+  with the database suite missed the cold Insights and profile p95 budgets;
+  run timing probes separately from builds and test suites. These mock-mode
+  timings do not measure the new SQL read's production latency.

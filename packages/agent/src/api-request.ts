@@ -1,4 +1,5 @@
 import type { FlowActionSettings } from "@agent-hub/core";
+import { resolveOpenApiOperation } from "@agent-hub/core";
 import {
   assertAllowedHeaders,
   egressFetch,
@@ -36,7 +37,13 @@ export type ApiRequestErrorCode =
   | "resolution_failed"
   | "redirect"
   | "forbidden_header"
-  | "network";
+  | "network"
+  /** The OpenAPI document could not be fetched, or is not a document. */
+  | "swagger_unreadable"
+  /** The document does not describe the operation the step names. */
+  | "swagger_no_operation"
+  /** The document places the API on another site than the one it is served from. */
+  | "swagger_foreign_origin";
 
 export interface ApiRequestOutcome {
   ok: boolean;
@@ -88,6 +95,76 @@ function stringifyExtracted(value: unknown): string {
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 
+/** How long to wait for the OpenAPI document itself. */
+const SWAGGER_TIMEOUT_MS = 10_000;
+/** A spec is text, and a large one is a mistake rather than a large API. */
+const SWAGGER_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * A Swagger-sourced step's endpoint, resolved into the `method`/`url` a typed
+ * step carries directly. A typed step is returned untouched.
+ *
+ * The document is fetched through the same egress guard as the request itself,
+ * because it is the same kind of thing: an admin-configured URL the server
+ * fetches. It is *not* cached: a spec is the authority on where the operation
+ * lives, and a cached one is exactly the stale path this feature exists to
+ * stop. One extra round trip per run is the price of that.
+ */
+async function resolveSettingsEndpoint(
+  settings: ApiRequestSettings,
+  signal?: AbortSignal
+): Promise<{ settings: ApiRequestSettings } | { errorCode: ApiRequestErrorCode }> {
+  if (settings.endpoint !== "swagger") return { settings };
+  const documentUrl = settings.swaggerUrl?.trim();
+  if (!documentUrl) return { errorCode: "swagger_unreadable" };
+
+  let document: unknown;
+  try {
+    const { response } = await egressFetch(documentUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      timeoutMs: SWAGGER_TIMEOUT_MS,
+      maxResponseBytes: SWAGGER_MAX_BYTES,
+      signal,
+      allowHttp: getRuntimeHost().allowRelaxedEgress(),
+      allowLoopback: getRuntimeHost().allowRelaxedEgress(),
+    });
+    if (!response.ok) return { errorCode: "swagger_unreadable" };
+    document = JSON.parse(response.text) as unknown;
+  } catch (error) {
+    // A policy refusal on the document is still that policy's refusal: report
+    // it as itself rather than flattening every failure into "unreadable".
+    if (error instanceof EgressPolicyError) return { errorCode: error.code };
+    return { errorCode: "swagger_unreadable" };
+  }
+
+  const operation = resolveOpenApiOperation(
+    document,
+    settings.operationId ?? "",
+    documentUrl
+  );
+  if (!operation.ok) {
+    return {
+      errorCode:
+        operation.error === "no_operation"
+          ? "swagger_no_operation"
+          : operation.error === "foreign_origin"
+            ? "swagger_foreign_origin"
+            : "swagger_unreadable",
+    };
+  }
+  // The document's method wins over any left on the step: the operation is
+  // what was chosen, and a POST cannot be talked into being a GET by a stale
+  // field the builder hid.
+  return {
+    settings: {
+      ...settings,
+      method: operation.operation.method as ApiRequestSettings["method"],
+      url: operation.operation.url,
+    },
+  };
+}
+
 /**
  * Builds and sends the configured request through the shared egress guard.
  * Never throws for policy/network failures, they come back as `errorCode`
@@ -99,6 +176,16 @@ export async function executeApiRequest(
   signal?: AbortSignal,
   idempotencyKey?: string
 ): Promise<ApiRequestOutcome> {
+  // A Swagger-sourced step carries an operation, not a URL: resolve it into
+  // the same method-and-URL pair a typed step already has, then run the one
+  // request path below. Everything after this point is unaware of which of the
+  // two the step was configured as, which is the point of resolving here.
+  const resolved = await resolveSettingsEndpoint(settings, signal);
+  if ("errorCode" in resolved) {
+    return { ok: false, status: null, bodyText: null, errorCode: resolved.errorCode };
+  }
+  settings = resolved.settings;
+
   if (!settings.url) {
     return { ok: false, status: null, bodyText: null, errorCode: "invalid_url" };
   }
@@ -334,10 +421,16 @@ const ERROR_MESSAGES: Record<ApiRequestErrorCode, string> = {
   redirect: "The endpoint redirected, which is not allowed.",
   forbidden_header: "One of the configured headers is not allowed.",
   network: "The request could not be completed.",
+  swagger_unreadable:
+    "The Swagger/OpenAPI definition could not be read from that URL.",
+  swagger_no_operation:
+    "That definition does not describe an operation with this Operation ID.",
+  swagger_foreign_origin:
+    "That definition places the API on a different site than the one it is served from. Type the endpoint URL instead.",
 };
 
 /** Distinguishable placeholder values for every catalog variable. */
-function sampleContext(): TemplateContext {
+export function sampleContext(): TemplateContext {
   const context: TemplateContext = {};
   for (const variable of TEMPLATE_VARIABLES) {
     const name = variable.token.slice(2, variable.token.length - 2);

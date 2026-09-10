@@ -8,7 +8,9 @@ export type TeammateReferralPart = Extract<
   ChatReplyPart,
   { type: "teammate_referral" }
 >;
-import { HelpCircle, ThumbsDown, ThumbsUp, UserRoundPlus } from "lucide-react";
+/** The Human review gate's card (#841). */
+export type HumanReviewPart = Extract<ChatReplyPart, { type: "human_review" }>;
+import { HelpCircle, Radio, ThumbsDown, ThumbsUp, UserCheck, UserRoundPlus } from "lucide-react";
 import { Hint } from "@agent-hub/ui";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -16,6 +18,7 @@ import { ComponentReplyPart } from "@/components/chat/component-part";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { ThinkingPanel } from "@/components/chat/thinking-panel";
 import { visibleReplyParts } from "@/components/chat/visible-reply-parts";
+import { reviewDecisionLabel } from "@/lib/review-status";
 import {
   Message,
   MessageBubble,
@@ -78,6 +81,7 @@ function PartView({
   onSend,
   onOpenSupport,
   onAcceptReferral,
+  onDecideReview,
 }: {
   part: ChatReplyPart;
   onSend: (text: string) => void;
@@ -88,6 +92,7 @@ function PartView({
    * card then renders without its button rather than with a dead one.
    */
   onAcceptReferral?: (part: TeammateReferralPart) => void;
+  onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
 }) {
   // `text` and `sources` parts are rendered by the message body itself (a
   // beui StreamingResponse with the sources disclosure folded in), not here.
@@ -152,6 +157,74 @@ function PartView({
           >
             Continue with {part.teammateName} →
           </button>
+        )}
+      </div>
+    );
+  }
+  if (part.type === "webhook") {
+    // The open callback gate (#842). Written once, when the gate opens; how it
+    // closed arrives as the continuation's own parts, so this card never
+    // changes state and needs no controls. Without it the transcript shows the
+    // waiting sentence and then a gap, which reads as a turn that gave up.
+    let host = part.subscribeUrl;
+    try {
+      host = new URL(part.subscribeUrl).host;
+    } catch {
+      /* a template that has not resolved; the raw string is still informative */
+    }
+    return (
+      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+            <Radio className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">Waiting on {host}</p>
+            <p className="text-muted-foreground text-xs">
+              {part.simulated ? "Simulated turn. " : ""}
+              Until {new Date(part.expiresAt).toLocaleTimeString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (part.type === "human_review") {
+    const closed = part.status !== "pending";
+    return (
+      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+            <UserCheck className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{part.title}</p>
+            <p className="text-muted-foreground text-xs">
+              {closed
+                ? reviewDecisionLabel(part)
+                : part.simulated
+                  ? "Waiting for a decision (simulated, nothing was sent)"
+                  : "Waiting for a colleague to decide"}
+            </p>
+          </div>
+        </div>
+        {!closed && part.simulated && onDecideReview && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="text-primary text-sm font-semibold hover:underline"
+              onClick={() => onDecideReview(part, "approved")}
+            >
+              Approve
+            </button>
+            <button
+              type="button"
+              className="text-muted-foreground text-sm font-semibold hover:underline"
+              onClick={() => onDecideReview(part, "rejected")}
+            >
+              Reject
+            </button>
+          </div>
         )}
       </div>
     );
@@ -333,6 +406,11 @@ export function ChatThread({
    */
   onAcceptReferral,
   /**
+   * Decide a simulated Human review inline (#841): the Preview and the
+   * Teammate chat pass one; the widget never sees a simulated request.
+   */
+  onDecideReview,
+  /**
    * How a person's own words are drawn, when the surface knows something about
    * them that plain text cannot say. A channel passes a renderer that turns a
    * resolved `@name` into a chip (#778); the widget, the Preview and a 1:1
@@ -348,6 +426,7 @@ export function ChatThread({
   onOpenSupport?: (helpDeskId?: string) => void;
   hasPersistentSupport?: boolean;
   onAcceptReferral?: (part: TeammateReferralPart) => void;
+  onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
   renderUserText?: (text: string) => ReactNode;
 }) {
   return (
@@ -449,6 +528,7 @@ export function ChatThread({
                             onSend={onSend}
                             onOpenSupport={onOpenSupport ?? (() => {})}
                             onAcceptReferral={onAcceptReferral}
+                        onDecideReview={onDecideReview}
                           />
                         );
                       })}

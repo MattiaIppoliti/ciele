@@ -279,10 +279,15 @@ export function canAddTeammateToChannel(
   teammate: Pick<
     Teammate,
     "ownerId" | "editorIds" | "visibility" | "deletedAt"
-  >,
+  > &
+    Partial<Pick<Teammate, "systemKind">>,
   viewer: TeammateViewer
 ): boolean {
   if (teammate.deletedAt) return false;
+  // A system Teammate (#838) works from the surface that owns it and nowhere
+  // else: seating the Flows Agent in a thread would give it a mention with no
+  // canvas to draft into.
+  if (teammate.systemKind) return false;
   if (teammate.visibility === "org") return true;
   return (
     teammate.ownerId === viewer.userId ||

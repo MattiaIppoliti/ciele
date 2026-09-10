@@ -145,11 +145,25 @@ export function canEditTeammate(
  * invitation to a dead end.
  */
 export function visibleTeammates<
-  T extends Pick<Teammate, "ownerId" | "editorIds" | "visibility" | "deletedAt">,
+  T extends Pick<Teammate, "ownerId" | "editorIds" | "visibility" | "deletedAt"> &
+    Partial<Pick<Teammate, "systemKind">>,
 >(teammates: readonly T[], viewer: TeammateViewer): T[] {
   return teammates.filter(
-    (teammate) => !isTeammateRetired(teammate) && canViewTeammate(teammate, viewer)
+    (teammate) =>
+      !isTeammateRetired(teammate) &&
+      // A system Teammate (#838) is chatted with from the surface that owns it,
+      // never from the roster: listing it there would offer a colleague with no
+      // job outside that surface, and make it a referral target.
+      !isSystemTeammate(teammate) &&
+      canViewTeammate(teammate, viewer)
   );
+}
+
+/** Whether the product, not a Member, created this Teammate (#838). */
+export function isSystemTeammate(
+  teammate: Partial<Pick<Teammate, "systemKind">>
+): boolean {
+  return Boolean(teammate.systemKind);
 }
 
 /**

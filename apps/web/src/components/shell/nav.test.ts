@@ -122,9 +122,9 @@ describe("Developer Panel domain claims (#754)", () => {
   });
 
   it("answers an Assistant section from its own claim", () => {
-    expect(apiDomainsForPath("/assistants/asst-1/flows")).toEqual(["flows"]);
+    expect(apiDomainsForPath("/assistants/asst-1/flows")).toEqual(["flows", "applications", "reviews"]);
     // A nested route inside the section is still that section.
-    expect(apiDomainsForPath("/assistants/asst-1/flows/flow-2")).toEqual(["flows"]);
+    expect(apiDomainsForPath("/assistants/asst-1/flows/flow-2")).toEqual(["flows", "applications", "reviews"]);
   });
 
   it("answers a global page from its nav entry, at the entry's own route", () => {

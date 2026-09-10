@@ -12,6 +12,18 @@ const shell = "[project]/apps/web/src/app/(admin)/layout";
 const shellBudgetKb = 300;
 const routes = [
   {
+    label: "New Flow",
+    manifest: "(admin)/assistants/[id]/flows/new/page_client-reference-manifest.js",
+    entry: "[project]/apps/web/src/app/(admin)/assistants/[id]/flows/new/page",
+    budgetKb: 80,
+  },
+  {
+    label: "Edit Flow",
+    manifest: "(admin)/assistants/[id]/flows/[flowId]/page_client-reference-manifest.js",
+    entry: "[project]/apps/web/src/app/(admin)/assistants/[id]/flows/[flowId]/page",
+    budgetKb: 80,
+  },
+  {
     label: "Inbox",
     manifest: "(admin)/inbox/page_client-reference-manifest.js",
     entry: "[project]/apps/web/src/app/(admin)/inbox/page",

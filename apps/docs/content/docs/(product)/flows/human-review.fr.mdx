@@ -1,0 +1,93 @@
+---
+title: Révision humaine
+description: Mettez un flux en pause jusqu'à ce qu'un collègue l'approuve, par e-mail ou Slack, et poursuivez avec sa réponse.
+---
+
+## Ce qu'effectue une révision humaine
+
+Une **Human review** est une action de réponse. Lorsque le flux y parvient,
+l'assistant s'arrête et demande à des collègues désignés de prendre une
+décision. Le Visiteur lit un message d'attente. Le flux ne se poursuit qu'après
+l'approbation du premier collègue. Si un collègue rejette la demande ou si
+personne ne répond à temps, le flux s'arrête avec un message que vous
+configurez.
+
+La demande est envoyée par **e-mail** depuis votre propre boîte aux lettres
+Microsoft 365, ou par **Slack** via la connexion Slack de l'organisation. Les
+deux comportent le titre, votre message, un résumé de la conversation et un lien
+signé vers une page de décision dans la console.
+
+## Configurez l'action
+
+1. Ajoutez **Human review** depuis la palette ou le sélecteur d'actions.
+2. Saisissez un **Title** et un **Message to the reviewer**. Les variables de
+   modèle fonctionnent dans les deux cas.
+3. Saisissez les réviseurs sous **Assigned to**, sous forme d'adresses e-mail.
+   Chaque adresse doit appartenir à un membre de l'organisation.
+4. Sélectionnez le **Channel**.
+   - **Email** : connectez votre boîte aux lettres Microsoft 365 à **Connect**,
+     puis sélectionnez-la sous **Sent from**. La demande est envoyée depuis
+     votre compte.
+   - **Slack** : saisissez l'identifiant du canal ou l'identifiant du membre. La
+     connexion Slack de l'organisation doit avoir la portée `chat:write`.
+5. Ajoutez au moins un **Input** que le réviseur devra remplir : texte court,
+   texte long, liste déroulante ou oui/non. Chaque entrée possède un
+   identifiant.
+6. Définissez **Expires after** en heures. La valeur par défaut est 24.
+7. Saisissez ce que le visiteur lit **pendant qu'il attend** et **en cas de
+   rejet ou d'expiration**.
+
+Le nœud affiche **Needs setup** jusqu'à ce que tous les champs obligatoires
+soient renseignés. **Publish** refuse un flux dont les réviseurs ne sont pas
+membres ou dont l'expéditeur n'est pas connecté.
+
+## Prévisualisez la demande
+
+Sur le canevas, sélectionnez le nœud et ouvrez **Run node**. Le panneau affiche
+l'e-mail ou le message Slack tel que le réviseur le lira. Rien n'est envoyé à
+partir de cet endroit.
+
+## Décidez d'une demande
+
+Le lien ouvre une page dans la console. Vous devez être connecté(e). La page
+affiche le message, la conversation jusqu'à présent, les entrées et **Approve**
+/ **Reject**.
+
+- Seul un responsable, un propriétaire ou un administrateur peut prendre une
+  décision.
+- La première décision clôt la demande. Les visiteurs ultérieurs voient qui a
+  pris la décision.
+- L'approbation avec une entrée obligatoire vide est refusée.
+
+Une demande en attente apparaît également dans la **Inbox**. Ouvrez la
+conversation pour voir son statut et les commentaires du réviseur, ou filtrez la
+boîte de réception par **Human review → Pending reviews**.
+
+## Ce qui se passe après la décision
+
+- **Approved** : les actions qui suivent l'exécution de la revue humaine. Les
+  entrées du réviseur sont disponibles en tant que variables de modèle,
+  `{{review.<id>}}`, ainsi que `{{review.decidedBy}}` et `{{review.approved}}`.
+  La réponse est ajoutée à la conversation en tant que message suivant de
+  l'Assistant.
+- **Rejected** ou **expiré** : le message d'arrêt est ajouté à la place.
+
+Le visiteur voit le résultat la prochaine fois qu'il écrit ou rouvre le chat.
+
+## Aperçu
+
+Dans l'aperçu, la demande est **simulée**. Rien n'est envoyé. La transcription
+affiche la demande avec les boutons **Approve** et **Reject**, et le flux se
+poursuit dans le même chat. Un chat Teammate n'a pas de flux, il ne fait donc
+jamais l'objet d'une vérification humaine.
+
+## API, CLI et MCP
+
+| Opération | API | CLI | MCP (`read_inbox`) |
+| --- | --- | --- | --- |
+| Lister les requêtes | `GET /api/v1/reviews?status=pending` | `ciele reviews list --status pending` | `review_list` |
+| Lire un | `GET /api/v1/reviews/{id}` | `ciele reviews get <id>` | `review_get` |
+| Décider | `POST /api/v1/reviews/{id}/decide` | `ciele reviews decide <id> --decision approved --inputs amount=50` | `review_decide` |
+
+Une clé API n'a pas d'adresse e-mail ; elle ne peut donc prendre de décision que
+si son rôle est celui de Propriétaire ou d'Administrateur.

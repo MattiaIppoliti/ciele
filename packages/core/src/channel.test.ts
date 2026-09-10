@@ -61,6 +61,8 @@ function teammate(over: Partial<Teammate> = {}): Teammate {
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
     capabilityCeiling: "edit",
+    systemKind: null,
+    assistantId: null,
     approvalBypass: false,
     projectId: null,
     deletedAt: null,
@@ -206,6 +208,13 @@ describe("channel membership", () => {
     expect(canAddToChannel(roster, channel, { userId: "m-bob", role: "admin" })).toBe(
       true
     );
+  });
+
+  it("never seats a system Teammate, whatever its visibility (#838)", () => {
+    const viewer = { userId: "m-bob", role: "admin" as const };
+    expect(
+      canAddTeammateToChannel(teammate({ systemKind: "flows_agent" }), viewer)
+    ).toBe(false);
   });
 
   it("adds org-visible teammates, and private ones only to their own people", () => {

@@ -618,6 +618,10 @@ check("GoTrue never receives an empty SMTP port", () => {
 const SCHEDULE_EXCEPTIONS = new Set([
   "/api/cron/finalize-crawls",
   "/api/cron/run-routines",
+  // Human review expiry (#841) is measured in hours, so the self-host ticks
+  // hourly; the Hobby plan gets daily.
+  "/api/cron/run-reviews",
+  "/api/cron/run-webhooks",
 ]);
 
 function cronEntries(text) {

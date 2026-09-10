@@ -20,6 +20,11 @@ export async function runOperation<In, Out>(
     organizationId: session.organization.id,
     userId: session.userId,
     role: session.role ?? "viewer",
+    actorEmail: session.email,
+    actorName:
+      [session.profile?.firstName, session.profile?.lastName].filter(Boolean).join(" ") ||
+      session.profile?.username ||
+      null,
     db,
     ports: webOperationPorts(db, {
       organizationId: session.organization.id,

@@ -57,6 +57,10 @@ describe("runtime public interface", () => {
       "alertKeys",
       "backfillCollectionToGraph",
       "beginWebsiteCrawl",
+      "connectorAlertKey",
+      "dbConnectorRuntime",
+      "dbReviewRuntime",
+      "deliverWebhookCallback",
       // The pure detection rules over the object-access ledger (#801,
       // CYB-19); the cron tick composing them is runSecurityDetections.
       "detectBulkDownloads",
@@ -72,6 +76,9 @@ describe("runtime public interface", () => {
       "enqueueEntitySyncJob",
       "enqueueGraphSyncJob",
       "enqueueIngestJob",
+      "enqueueReviewResumptionJob",
+      "expireDueReviews",
+      "expireDueWebhooks",
       "extractSourceText",
       "feedbackScore",
       // The two scheduled drains. The cron endpoints in apps/web are auth-and-
@@ -80,13 +87,18 @@ describe("runtime public interface", () => {
       "finalizeWebsiteCrawl",
       "forwardGraphFeedback",
       "getEnterpriseCapabilities",
+      "loadConnectorOptions",
       "persistConcept",
       "providerAvailability",
+      "refuseHttpFlow",
       "registerEnterpriseCapabilities",
       // The host port registry: how a framework-free package gets the two
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
       "restartWebsiteCrawl",
+      "resumeReviewedConversation",
+      "resumeWebhookConversation",
+      "reviewLinkUrl",
       "revokeApplicationConnectionCredentials",
       // The nightly agentic-ops drain, one export for the verify-goals cron
       // route; the four loops it sequences (goals, verifier, trust, compost)
@@ -99,8 +111,11 @@ describe("runtime public interface", () => {
       "runDueIngestJobs",
       // The unattended Routine drain (#772): its own schedule, so it is not a
       // job-ledger kind, and the cron tick composes it directly.
+      "runDueReviewJobs",
       "runDueRoutines",
+      "runDueWebhookJobs",
       "runGraphLearning",
+      "runHttpFlow",
       "runSecurityDetections",
       "sendEmail",
       "sendEscalationApiRequest",
@@ -116,11 +131,21 @@ describe("runtime public interface", () => {
       "sweepExpiredTraces",
       "sweepExpiredTranscripts",
       "testApiRequest",
+      // The Connector action's shared core (#839): Run node, option loaders,
+      // connection test and the Db-bound runtime the hosts pass in.
+      "testConnectorAction",
+      "testConnectorConnection",
       // "Test connection" for OpenAI-compatible endpoints, a deliberate
       // widening for the connection form (#436).
       "testOpenAiCompatibleConnection",
+      // The exit nobody configured (#842): a Conversation deleted while its
+      // gate is open; the ops layer calls it through a port before the delete.
+      "unsubscribePendingWebhooks",
       "updateWebsiteSourceConfiguration",
       "validateProviderApiKey",
+      "verifyReviewLinkToken",
+      "verifyWebhookCallbackToken",
+      "webhookCallbackUrl",
       "websiteCrawlerCapabilities",
     ]);
   });

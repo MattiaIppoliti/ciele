@@ -91,7 +91,15 @@ export interface EndpointSpec {
 }
 
 const reorderBody = z.object({ orderedIds: z.array(z.string()) });
+const reconsentBody = z.object({
+  actions: z.array(z.string()).optional(),
+  scopes: z.array(z.string()).optional(),
+});
 const republishBody = z.object({ publicationId: z.string() });
+const decideReviewBody = z.object({
+  decision: z.enum(["approved", "rejected"]),
+  inputs: z.record(z.string(), z.string()).optional(),
+});
 const exportBody = z.object({ conversationIds: z.array(z.string()) });
 const faqBody = createFaqOp.input;
 const orgFaqBody = createOrgFaqOp.input;
@@ -1318,6 +1326,65 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: embeddingConnectionBody,
     cli: "ciele providers set-embedding {providerId}",
     mcp: '{"action":"provider_set_embedding","connectionId":"{providerId}"}',
+  },
+
+  // Applications (#839): the Connections a Connector action runs through.
+  {
+    method: "get",
+    path: "/applications/connections",
+    domain: "applications",
+    capability: "member",
+    summary: "List the Organization's Application Connections (no credentials)",
+    cli: "ciele applications list",
+    mcp: '{"action":"application_list"}',
+  },
+  {
+    method: "get",
+    path: "/applications/connectors",
+    domain: "applications",
+    capability: "member",
+    summary: "The Connector action catalogue: keys, effects, fields, outputs",
+    cli: "ciele applications connectors",
+    mcp: '{"action":"application_connectors"}',
+  },
+  {
+    method: "post",
+    path: "/applications/connections/{id}/reconsent",
+    domain: "applications",
+    capability: "publish",
+    summary: "Compute the scope union for named Connector actions and the OAuth start path to open",
+    body: reconsentBody,
+    cli: "ciele applications reconsent {connectionId} --actions slack.message.post",
+    mcp: '{"action":"application_reconsent","id":"{connectionId}","input":{"actions":["slack.message.post"]}}',
+  },
+  // Human review (#841): the gate's requests, listed and decided.
+  {
+    method: "get",
+    path: "/reviews",
+    domain: "reviews",
+    capability: "member",
+    summary: "Human review requests, newest first (filter by status, conversation or assistant)",
+    cli: "ciele reviews list --status pending",
+    mcp: '{"action":"review_list","status":"pending"}',
+  },
+  {
+    method: "get",
+    path: "/reviews/{id}",
+    domain: "reviews",
+    capability: "member",
+    summary: "One Human review request",
+    cli: "ciele reviews get {reviewId}",
+    mcp: '{"action":"review_get","reviewId":"{reviewId}"}',
+  },
+  {
+    method: "post",
+    path: "/reviews/{id}/decide",
+    domain: "reviews",
+    capability: "member",
+    summary: "Approve or reject a Human review (an assignee, or an Owner/Admin key); first decision wins",
+    body: decideReviewBody,
+    cli: "ciele reviews decide {reviewId} --decision approved --inputs amount=50",
+    mcp: '{"action":"review_decide","reviewId":"{reviewId}","decision":"approved","inputs":{"amount":"50"}}',
   },
 ];
 

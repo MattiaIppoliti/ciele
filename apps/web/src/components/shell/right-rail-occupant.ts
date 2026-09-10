@@ -20,7 +20,19 @@ import { SNIPPET_TABS, type SnippetTab } from "@/lib/developer-panel/types";
  * different modules.
  */
 
-export type RightRailOccupant = "preview" | "developer";
+/**
+ * `agent` is the Flows Agent (#838), which docks in the same rail as the
+ * Preview and wears the same chrome (`chat/rail-panel.tsx`). It is a third
+ * value rather than a flag on the builder because a Member reads the two as one
+ * thing, the chat at the right edge, and only one of them can be it.
+ *
+ * The Flow Canvas's node panel (#837) is deliberately **not** an occupant. It
+ * floats over the canvas (`flow-canvas-view.tsx`), so a seat here would evict
+ * the Preview or the Flows Agent and put nothing in the rail; the builder keeps
+ * its open state as a plain flag. It did hold a seat while it carried the Add
+ * palette, and `right-rail-occupant.test.ts` pins that it no longer can.
+ */
+export type RightRailOccupant = "preview" | "developer" | "agent";
 
 export interface RightRailState {
   occupant: RightRailOccupant | null;

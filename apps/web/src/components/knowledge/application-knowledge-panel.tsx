@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
+import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
 import type {
   ApplicationImport,
   ApplicationSyncRun,
@@ -72,6 +73,7 @@ const DESCRIPTIONS: Record<ApplicationProvider, string> = {
   slack: "Import messages and threads from selected channels.",
   onedrive: "Import supported files from a drive or folder.",
   google_drive: "Import supported files from My Drive or a folder.",
+  microsoft_mail: "Sends Human review requests from your mailbox; not a knowledge source.",
 };
 
 /** The two that authenticate against credentials an admin configured. */
@@ -727,7 +729,6 @@ export function ApplicationKnowledgePanel({
   >;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [credentialProvider, setCredentialProvider] = useState<
     "salesforce" | "servicenow" | null
   >(null);
@@ -761,19 +762,7 @@ export function ApplicationKnowledgePanel({
     [contextAssistantId, imports]
   );
 
-  useEffect(() => {
-    const receiveConnection = (event: MessageEvent) => {
-      if (
-        event.origin === window.location.origin &&
-        event.data?.type === "ciele:application-connected"
-      ) {
-        toast.success("Application connected.");
-        router.refresh();
-      }
-    };
-    window.addEventListener("message", receiveConnection);
-    return () => window.removeEventListener("message", receiveConnection);
-  }, [router]);
+  useApplicationConnectedToast("Application connected.");
 
   function connect(
     definition: ProviderDefinition,

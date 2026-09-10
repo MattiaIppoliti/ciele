@@ -1,8 +1,47 @@
 import { z } from "zod";
-import type { Assistant } from "@agent-hub/core";
-import { buildPublicationConfig } from "@agent-hub/core";
+import type { Assistant, Flow } from "@agent-hub/core";
+import {
+  buildPublicationConfig,
+  connectorAction,
+  connectorConnectionIssue,
+  connectorSettingsIssue,
+} from "@agent-hub/core";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
+import { assertHumanReviewFlowsPublishable } from "./reviews";
+
+/**
+ * A published Flow's Connector action must be runnable by the widget (#839):
+ * a catalogued action, its required fields, and an Organization-owned
+ * Connection that holds the scopes. The same judgement the runtime makes, so
+ * Publish never freezes a Flow the widget would refuse; the reason names the
+ * Flow so the console can show it there.
+ */
+export async function assertConnectorFlowsPublishable(
+  ctx: OperationContext,
+  flows: readonly Flow[]
+): Promise<void> {
+  for (const flow of flows) {
+    if (!flow.enabled || !flow.actions.includes("connector")) continue;
+    const settings = flow.actionSettings?.connector;
+    const settingsIssue = connectorSettingsIssue(settings);
+    if (settingsIssue) {
+      throw new OperationError(
+        "invalid_input",
+        `Flow "${flow.name}": ${settingsIssue.toLowerCase()} before publishing`
+      );
+    }
+    const action = connectorAction(settings?.action)!;
+    const connection = await ctx.db.getSafeApplicationConnection(settings!.connectionId!);
+    const issue = connectorConnectionIssue(
+      action,
+      connection && connection.organizationId === ctx.organizationId ? connection : null
+    );
+    if (issue) {
+      throw new OperationError("invalid_input", `Flow "${flow.name}": ${issue}`);
+    }
+  }
+}
 
 /**
  * The Publish domain (#623). Publications are immutable snapshots
@@ -45,6 +84,8 @@ export const publishAssistantOp = defineOperation({
           : ctx.db.table("entities").list({ organizationId: assistant.organizationId }),
     ]);
     const entities = orgEntities.filter((entity) => selected.has(entity.id));
+    await assertConnectorFlowsPublishable(ctx, flows);
+    await assertHumanReviewFlowsPublishable(ctx, flows);
     const publication = await ctx.db.createPublication(
       assistantId,
       buildPublicationConfig(assistant, flows, collections, skills, entities)

@@ -7,17 +7,21 @@ import type {
   FlowTrigger,
   ProactiveTriggerContext,
   ProviderConnection,
+  ReviewRequest,
   SkillSnapshot,
   StoredMessage,
   StoredTurnTrace,
   Teammate,
   TrustTier,
+  FlowAction,
+  WebhookSubscription,
 } from "@agent-hub/core";
 import {
   messageText,
   needsVisitorDeliveryHistory,
   notificationDelivery,
   proactiveFlowCandidates,
+  reviewTemplateVariables,
   standingContextSections,
   teammateRuntimeAssistant,
 } from "@agent-hub/core";
@@ -44,6 +48,8 @@ import {
 } from "./engine";
 import { applyEffects, drainTurnEffects } from "./effects";
 import { buildTemplateContext, platformAppOrigin } from "./template";
+import { dbReviewRuntime, reviewPart } from "./review-runtime";
+import { dbWebhookRuntime, webhookResumeVariables } from "./webhook-runtime";
 import { createTurnSession } from "./session";
 import { enqueueAgentMemoryJob, enqueueMemoryPromotionJob } from "./jobs";
 import { MEMORY_RECALL_LIMIT } from "./memories";
@@ -70,7 +76,8 @@ import {
   admitAiSpend,
   CONVERSATION_SPEND_CAPACITY,
 } from "./spend-admission";
-import { resolveChatModel, type KeyResolution } from "./models";
+import { isOperatorSurface, resolveChatModel, type KeyResolution } from "./models";
+import { dbConnectorRuntime } from "./connector-request";
 import type { EscalationDeskCandidate } from "./help-desk-recommend";
 import { getRuntimeHost } from "./host";
 
@@ -104,6 +111,13 @@ interface ConversationTurnBaseInput {
    * private Teammate would disclose it. Empty registers no referral tool.
    */
   referralCandidates?: readonly ReferralCandidate[];
+  /**
+   * Standing context the host surface supplies for this one turn (#838): the
+   * Flow Canvas hands the Flows Agent the open draft and the Assistant's
+   * catalogue here. Rides the memory-document channel, above the transcript
+   * and below the persona, so it is neither faked into a message nor stored.
+   */
+  standingContext?: readonly string[];
   /** Attached Skills, a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
   /**
@@ -171,6 +185,22 @@ interface ConversationTurnBaseInput {
    * short or replayed report cannot make a nudge fire early.
    */
   triggerContext?: ProactiveTriggerContext;
+  /**
+   * Continue this Conversation after a decided Human review (#841). A
+   * system-initiated turn: no user message is persisted, the named Flow runs
+   * from the action after the gate, and the reply is the next assistant
+   * message. Pass a stable `turnId` so a retried job replays instead of
+   * answering twice.
+   */
+  resumeReview?: ReviewRequest;
+  /**
+   * Continue this Conversation after a settled callback gate (#842). The same
+   * system-initiated turn as `resumeReview`, and the same rules: no user
+   * message is persisted, the named Flow runs from the action after the gate,
+   * and a stable `turnId` makes a retried job replay instead of answering
+   * twice. Only one of the two is ever set.
+   */
+  resumeWebhook?: WebhookSubscription;
 }
 
 /** A turn answered by an Assistant: a Publication snapshot or live rows. */
@@ -651,6 +681,23 @@ function ownsConversation(
     : conversation.assistantId === subject.assistant.id;
 }
 
+/**
+ * The assistant messages persisted after the Visitor's last one: what a closed
+ * Human review wrote while nobody was in the chat (#841). Empty in the common
+ * case, where the newest stored message is the Visitor's own.
+ */
+function trailingAssistantParts(stored: readonly StoredMessage[]): ChatReplyPart[] {
+  const parts: ChatReplyPart[] = [];
+  for (let i = stored.length - 1; i >= 0; i -= 1) {
+    const message = stored[i]!;
+    if (message.role !== "assistant") break;
+    parts.unshift(
+      ...(message.content as ChatReplyPart[]).filter((part) => part.type !== "tool_calls")
+    );
+  }
+  return parts;
+}
+
 export async function streamConversationTurn(
   input: ConversationTurnInput
 ): Promise<ReadableStream<Uint8Array>> {
@@ -748,7 +795,7 @@ export async function streamConversationTurn(
       subjectType,
       subjectId,
       collectionId: input.collectionId ?? null,
-      title: message.slice(0, 80),
+      title: message.slice(0, 80) || "Conversation",
       metadata: input.metadata,
     });
   }
@@ -868,7 +915,7 @@ export async function streamConversationTurn(
           return [] as string[];
         }),
         conversation.metadata
-      )
+      ).concat(input.standingContext ?? [])
     : undefined;
 
   // Tau-style session: the conversation's persistent state bag, exposed to
@@ -910,12 +957,15 @@ export async function streamConversationTurn(
   // prompt block; later turns rely on the searchMemories tool) are
   // independent, one wave, not two awaits.
   await Promise.all([
-    db.appendMessage({
-      conversationId: conversation.id,
-      requestId,
-      role: "user",
-      content: [{ type: "text", text: message }],
-    }),
+    // A resumed turn has no Visitor words to persist (#841, #842).
+    input.resumeReview || input.resumeWebhook
+      ? Promise.resolve()
+      : db.appendMessage({
+          conversationId: conversation.id,
+          requestId,
+          role: "user",
+          content: [{ type: "text", text: message }],
+        }),
     (async () => {
       if (!searchMemories || stored.length !== 0) return;
       try {
@@ -944,6 +994,14 @@ export async function streamConversationTurn(
       const observer = createTurnObserver(forward);
       const emit = observer.emit;
       emit({ type: "turn", conversationId });
+      // A Human review closed while the Visitor was away (#841): the outcome
+      // was persisted as an assistant message after their last one, and this
+      // live transcript never saw it. Replay those parts at the top of this
+      // turn's stream, emitted only, never persisted twice; the Visitor's new
+      // message is what makes them no longer trailing next time.
+      if (!input.resumeReview && !input.resumeWebhook) {
+        for (const part of trailingAssistantParts(stored)) emit({ type: "part", part });
+      }
       /**
        * The one terminal-turn ritual, persist the assistant message, run any
        * post-persist bookkeeping, emit `done`, record the `chat_turn`
@@ -1171,6 +1229,34 @@ export async function streamConversationTurn(
           entities: input.entities,
           queryEntityRecords: (entityId, query) =>
             db.queryEntityRecords(entityId, query),
+          // Connector actions (#839) read the Connection live and may mark it
+          // for reauthorization; a personal Connection is allowed only on the
+          // operator surfaces, the same line ADR-0007 draws for provider keys.
+          connectorRuntime: dbConnectorRuntime(db, assistant.organizationId, {
+            allowPersonal: isOperatorSurface(input.keyResolution ?? {}),
+            memberId: input.keyResolution?.memberId ?? null,
+          }),
+          // The Human review gate (#841): raises its request against this
+          // Conversation; simulated on the operator surfaces, where nobody is
+          // notified and the transcript decides inline.
+          // Bound to the system Db: the review table has no member insert
+          // policy, the runtime is its only writer. A Teammate turn has no
+          // Flows, so it never reaches the gate.
+          reviewRuntime: teammate
+            ? undefined
+            : dbReviewRuntime(systemDb, {
+                conversation,
+                assistant,
+                simulated: isOperatorSurface(input.keyResolution ?? {}),
+              }),
+          webhookRuntime: teammate
+            ? undefined
+            : dbWebhookRuntime(systemDb, {
+                conversation,
+                assistant,
+                simulated: isOperatorSurface(input.keyResolution ?? {}),
+              }),
+          resumeFrom: resumeCursor(input, input.flows ?? []),
           // Entity tool policy input (#667): the verified subject type and
           // claim decide which tool variants exist, never the model.
           toolSubject: {
@@ -1235,6 +1321,13 @@ export async function streamConversationTurn(
         }
         if (signal.aborted) {
           throw new DOMException("Conversation turn aborted", "AbortError");
+        }
+        // A resumed review turn opens with the gate's closed card (#841), so
+        // the transcript, the widget and the Inbox all show how it closed.
+        if (input.resumeReview) {
+          const closed = reviewPart(input.resumeReview);
+          emit({ type: "part", part: closed });
+          result = { ...result, parts: [closed, ...result.parts] };
         }
         // Handover continuation (#314): the same message, run once more
         // inside the target Assistant's Publication. One hop, same
@@ -1401,6 +1494,41 @@ export async function streamConversationTurn(
       }
     },
   });
+}
+
+/**
+ * Where a resumed turn picks the Flow back up (#841, #842).
+ *
+ * Two gates, one cursor. Both stop a Flow mid-chain and both continue from the
+ * action after the one that stopped it, so they share the engine's resume seam
+ * rather than each teaching it about themselves. The `action` is part of the
+ * cursor because the engine re-checks it against the live Flow: an index into
+ * a chain that was edited during the wait would otherwise run whatever now
+ * sits in that slot.
+ */
+function resumeCursor(
+  input: { resumeReview?: ReviewRequest; resumeWebhook?: WebhookSubscription },
+  flows: Flow[]
+): { flowId: string; actionIndex: number; action: FlowAction; templatePatch: Record<string, string> } | undefined {
+  if (input.resumeReview) {
+    return {
+      flowId: input.resumeReview.flowId,
+      actionIndex: input.resumeReview.actionIndex,
+      action: "human_review",
+      templatePatch: reviewTemplateVariables(input.resumeReview),
+    };
+  }
+  if (input.resumeWebhook) {
+    const settings = flows.find((flow) => flow.id === input.resumeWebhook!.flowId)
+      ?.actionSettings?.http_webhook;
+    return {
+      flowId: input.resumeWebhook.flowId,
+      actionIndex: input.resumeWebhook.actionIndex,
+      action: "http_webhook",
+      templatePatch: webhookResumeVariables(input.resumeWebhook, settings),
+    };
+  }
+  return undefined;
 }
 
 /**

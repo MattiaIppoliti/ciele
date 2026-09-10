@@ -72,7 +72,8 @@ Per-page CLI/cURL/MCP snippets (#754/#755). Three conventions decide whether it 
 - **One list.** `EndpointSpec` in `src/lib/api-v1/openapi.ts` carries `domain`, `capability`, `cli`
   and `mcp` beside the fields the OpenAPI document already read (the document builder ignores the new
   four). The MCP *tool name* lives on the domain in `src/lib/developer-panel/domains.ts`, because the
-  16 coarse tools map onto the 19 domains many-to-one; only the `action` is per-endpoint. Per-domain
+  16 coarse tools map onto the 22 domains (`API_V1_DOMAINS` in `src/lib/api-v1/meta.ts`)
+  many-to-one; only the `action` is per-endpoint. Per-domain
   copy (titles, agent prompts, docs links) lives there too, so `buildOpenApiDocument` never carries
   UI strings.
 - **Pages declare, they never derive.** `apiDomains` on the `shell/nav.ts` entries, and
@@ -142,15 +143,17 @@ demos sit under `data-foley-silent`.
 
 Reduced motion substitutes, it does not delete: the sheet cross-fades instead of sliding, `press`
 swaps its scale for an opacity change. The **animated icon set** (`ciele-animated-icons`, via
-`components/ui/animated-icon`) is deliberately left running under `prefers-reduced-motion` — those
+`components/ui/animated-icon`) is deliberately left running under `prefers-reduced-motion`: those
 are small pointer-triggered glyph state changes, not vestibular motion, and several controls use
 them to signal what they do. Do not add a blanket `* { animation: none }`.
 
 ## Every route has its own loading.tsx
 
-**All 66 `page.tsx` segments have their own `loading.tsx`, and
+**All 64 `page.tsx` segments have their own `loading.tsx`, and
 `src/lib/loading-coverage.test.ts` fails if that stops being true.** Adding a
-route means adding its boundary in the same change.
+route means adding its boundary in the same change. (The test walks the tree,
+so the count here is descriptive; `find src/app -name page.tsx | wc -l` is
+where to check it.)
 
 Without one the router holds the *previous* page on screen until the server
 answers, so the click that started the navigation looks like it did nothing.

@@ -1,0 +1,109 @@
+---
+title: Connector
+description: Run an action in ServiceNow, Salesforce, Slack, OneDrive, or Google Drive from a Flow through a connected application.
+---
+
+## What a Connector does
+
+A **Connector** is a response action. It runs one action in a system your Organization already connected under **Knowledge → Applications**. The Flow stores the connection and the action. It never stores a credential.
+
+Available actions:
+
+| Provider | Actions |
+| --- | --- |
+| ServiceNow | Create record, Update record, List records, Delete record |
+| Salesforce | Get Contact records, Get Case records, Get User records, Get Product records |
+| Slack | Post message, Create channel, Join public channel, List public channels |
+| OneDrive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
+| Google Drive | Create file, Copy file, Find files in folder, Get file content, Get file metadata, Create share link, Delete file |
+
+Each action is a **read** or a **write**. A write changes the external system.
+
+## OneDrive and Google Drive
+
+A OneDrive or Google Drive connection belongs to one Member. The connector runs under that Member's account. For this reason:
+
+- The action runs in the **Preview** and in **Teammate chat**. It does not run in a published widget.
+- **Publish** refuses a Flow that contains a Drive connector. The reason names the Flow.
+- Write actions need an extra scope. OneDrive needs `Files.ReadWrite`. Google Drive needs `drive.file`. Select **Grant access** to add it.
+- With `drive.file`, Google Drive lets the connector change only files the connector created or that a person opened with it. Copy, share, and delete can fail on other files.
+- **Get file content** returns text only, up to a bounded size. Binary files and Google Docs are not converted.
+
+## Add a Connector
+
+1. Open a Flow.
+2. In the **Canvas**, select a provider under **Connector** in the palette. In the **Form**, select **Connector** under **Add an action** and then select the provider.
+3. Select a **Connection**. The list shows the Organization's connections for that provider.
+4. Select an **Action**.
+5. Fill in the fields. Template variables such as `{{user.name}}` and `{{workflow.message}}` are allowed where the field says so.
+
+If the provider has no connection, connect it under **Knowledge → Applications** first. For Slack, the panel can open the sign-in window directly.
+
+## Fields loaded from the system
+
+Some fields load their values from the connected system: ServiceNow tables and columns, Salesforce fields, Slack channels. Select **Load options** to fetch them. You can still type a value.
+
+## Needs setup
+
+A Connector node shows **Needs setup** when:
+
+- The action or the connection is not selected.
+- A required field is empty.
+- The connection lacks a scope the action needs. Select **Grant access** to re-run the provider sign-in with the missing scopes added.
+- The connection needs to be reconnected.
+
+## Outputs
+
+An action writes its results to template variables for later actions in the same Flow. The names start with `connector.`:
+
+| Action | Variables |
+| --- | --- |
+| ServiceNow Create or Update record | `{{connector.sys_id}}`, `{{connector.number}}` |
+| ServiceNow List records | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
+| Salesforce Get records | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Slack Post message | `{{connector.ts}}`, `{{connector.channel}}` |
+| Slack Create or Join channel | `{{connector.id}}`, `{{connector.name}}` |
+| Drive Create or Get metadata, Google Drive Copy | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |
+| OneDrive Copy | `{{connector.status}}`, `{{connector.monitor_url}}` (the copy runs in the background) |
+| Drive Find files | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.items}}` |
+| Drive Get content | `{{connector.content}}` |
+| Drive Create share link | `{{connector.url}}` |
+
+`{{connector.ok}}` is `true` or `false` after every action. A **Message** action after the Connector can show these values.
+
+## What the Visitor sees
+
+- A **write** that succeeds shows the **Success message**. The default is a short confirmation.
+- A **read** that succeeds shows nothing. Use a Message action to show the results.
+- Any failure shows the **Failure message**. The provider's error is never shown to the Visitor. The Editor sees it in **Run node** and, for an expired connection, in **Alerts**.
+
+## Run node
+
+Select the node, then **Run node**. The console makes the real call with sample values.
+
+- A **read** runs at once.
+- A **write** asks for confirmation first, because it changes the external system.
+
+**Test connection** checks that the connection's token still works.
+
+## Publish
+
+Publish refuses a Flow whose Connector:
+
+- names a connection that no longer exists,
+- names a personal connection (OneDrive or Google Drive accounts belong to one Member),
+- names a connection that lacks the action's scopes or needs to be reconnected.
+
+The reason names the Flow. Fix the connection or the Flow, then publish again.
+
+## Expired connections
+
+When a call fails because the provider rejected the token, the connection is marked **Reauthorization required** and an **Integration** alert is raised. Reconnect the application under **Knowledge → Applications**. The alert clears on reconnect.
+
+## API, CLI, and MCP
+
+- `GET /api/v1/applications/connections` lists the connections without credentials.
+- `GET /api/v1/applications/connectors` lists the catalogue.
+- `POST /api/v1/applications/connections/{id}/reconsent` returns the scope union and the URL to open to grant it.
+
+The same operations are `ciele applications list|connectors|reconsent` and the `manage_integrations` MCP tool actions `application_list`, `application_connectors`, `application_reconsent`.

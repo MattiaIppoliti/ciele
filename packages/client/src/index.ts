@@ -1,4 +1,6 @@
 import type {
+  ApplicationConnection,
+  ReviewRequest,
   AssistantPatch,
   Conversation,
   StoredMessage,
@@ -178,6 +180,40 @@ export interface ApiMeta {
   apiVersion: number;
   serverVersion: string;
   domains: string[];
+}
+
+/** An Application Connection over the API: never the sealed credential (#839). */
+export type ApplicationConnectionView = Pick<
+  ApplicationConnection,
+  | "id" | "provider" | "name" | "status" | "ownerType" | "ownerMemberId"
+  | "scopes" | "providerAccountId" | "error" | "lastConnectedAt" | "createdAt" | "updatedAt"
+>;
+
+/** A Human review request (#841): the row as the API returns it. */
+export type ReviewRequestView = Omit<ReviewRequest, "haltMessage" | "resumedAt">;
+
+/** One catalogued Connector action, as the API describes it. */
+export interface ConnectorActionView {
+  key: string;
+  /** Mirrors `ConnectorProvider` in `@agent-hub/core`; the two Drives are Member-owned (#840). */
+  provider: "salesforce" | "servicenow" | "slack" | "onedrive" | "google_drive";
+  title: string;
+  description: string;
+  effect: "read" | "write";
+  requiredScopes: string[];
+  fields: Array<{ name: string; label: string; type: string; required: boolean; template: boolean }>;
+  outputs: Array<{ name: string; label: string }>;
+}
+
+/** What a re-consent request returns: the union to grant and where to grant it. */
+export interface ApplicationReconsentView {
+  connectionId: string;
+  provider: string;
+  currentScopes: string[];
+  scopes: string[];
+  startPath: string;
+  /** The start path on the deployment's origin; open it in a browser. */
+  startUrl: string;
 }
 
 export interface ApiIntegrationView {
@@ -894,6 +930,46 @@ export class CieleClient {
         "DELETE",
         `/assistants/${encodeURIComponent(assistantId)}/api-integration`
       ),
+  };
+
+  /** Application Connections as the Connector action sees them (#839). */
+  readonly applications = {
+    list: (provider?: string): Promise<{ data: ApplicationConnectionView[] }> =>
+      this.request(
+        "GET",
+        provider
+          ? `/applications/connections?provider=${encodeURIComponent(provider)}`
+          : "/applications/connections"
+      ),
+    connectors: (provider?: string): Promise<{ data: ConnectorActionView[] }> =>
+      this.request(
+        "GET",
+        provider
+          ? `/applications/connectors?provider=${encodeURIComponent(provider)}`
+          : "/applications/connectors"
+      ),
+    reconsent: (
+      id: string,
+      input: { actions?: string[]; scopes?: string[] } = {}
+    ): Promise<ApplicationReconsentView> =>
+      this.request("POST", `/applications/connections/${encodeURIComponent(id)}/reconsent`, {
+        body: input,
+      }),
+  };
+
+  /** Human review requests (#841). */
+  readonly reviews = {
+    list: (
+      params: { status?: string; conversationId?: string; assistantId?: string } = {}
+    ): Promise<{ data: ReviewRequestView[] }> =>
+      this.request("GET", "/reviews", { query: { ...params } }),
+    get: (id: string): Promise<ReviewRequestView> =>
+      this.request("GET", `/reviews/${encodeURIComponent(id)}`),
+    decide: (
+      id: string,
+      input: { decision: "approved" | "rejected"; inputs?: Record<string, string> }
+    ): Promise<ReviewRequestView> =>
+      this.request("POST", `/reviews/${encodeURIComponent(id)}/decide`, { body: input }),
   };
 
   readonly providers = {

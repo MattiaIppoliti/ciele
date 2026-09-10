@@ -102,6 +102,7 @@ export {
   canViewTeammate,
   danglingScopeAlertCopy,
   danglingSourceScopeAlertCopy,
+  isSystemTeammate,
   isTeammateRetired,
   rosterTeammates,
   teammateDefaultFlow,
@@ -111,6 +112,71 @@ export {
   visibleTeammates,
 } from "./teammate";
 export type { TeammateKnowledgeScope, TeammateViewer } from "./teammate";
+
+// Human review (#841): the approval gate's state machine and its settings rule.
+export {
+  DEFAULT_REVIEW_EXPIRED_MESSAGE,
+  DEFAULT_REVIEW_HALT_MESSAGE,
+  DEFAULT_REVIEW_TIMEOUT_HOURS,
+  DEFAULT_REVIEW_WAITING_MESSAGE,
+  MAX_REVIEW_TIMEOUT_HOURS,
+  MIN_REVIEW_TIMEOUT_HOURS,
+  REVIEW_MAIL_SCOPE,
+  REVIEW_SLACK_SCOPE,
+  canDecideReview,
+  decideReview,
+  expireReview,
+  humanReviewSettingsIssue,
+  isReviewOverdue,
+  newReviewInputField,
+  normalizeAssignees,
+  reviewExpiresAt,
+  reviewHaltMessage,
+  reviewRequestText,
+  reviewTemplateVariables,
+  reviewTimeoutHours,
+} from "./review";
+export type { ReviewDecider, ReviewRefusal, ReviewTransition } from "./review";
+
+// The callback gate (#842): the same state machine as the review gate with a
+// machine in the middle. "The first callback wins" is the whole protection
+// against a replaying caller running the rest of a Flow twice.
+export {
+  DEFAULT_WEBHOOK_TIMEOUT_MINUTES,
+  DEFAULT_WEBHOOK_WAITING_MESSAGE,
+  MAX_WEBHOOK_TIMEOUT_MINUTES,
+  MIN_WEBHOOK_TIMEOUT_MINUTES,
+  WEBHOOK_CALLBACK_TOKEN,
+  WEBHOOK_PAYLOAD_MAX_CHARS,
+  expireWebhook,
+  httpWebhookSettingsIssue,
+  receiveWebhook,
+  isWebhookOverdue,
+  webhookExpiresAt,
+  webhookHaltMessage,
+  webhookTemplateVariables,
+  webhookTimeoutMinutes,
+} from "./webhook";
+
+// The inbound-HTTP trigger (#843): which actions a Flow with a caller may run,
+// what it may read about the request, and what it may answer.
+export {
+  DEFAULT_HTTP_FLOW_METHODS,
+  HTTP_FLOW_ACTIONS,
+  HTTP_FLOW_METHODS,
+  flowTriggerKind,
+  httpFlowMethods,
+  httpFlowRequestVariables,
+  isHttpTrigger,
+  jsonBodyPaths,
+  respondHeaders,
+  respondSettingsIssue,
+  respondStatus,
+} from "./http-flow";
+// Human review before a Connector write (#841): the Flows Agent's default as a
+// rule rather than a sentence in its persona.
+export { withReviewBeforeConnectorWrites } from "./review-gate";
+export type { FlowTriggerKind, HttpFlowMethod, HttpFlowRequest } from "./http-flow";
 
 // Teammate action grants (#770): a grant row is the grant, the ceiling caps
 // every granted domain at once, and approval-bypass is the one explicit
@@ -227,6 +293,44 @@ export type {
   CatalogPathRefusal,
   CatalogPathRejection,
 } from "./api-catalog";
+
+// Resolving one operation out of an OpenAPI / Swagger document (#837): a fact
+// about the document, so the builder's test and the runtime's request read it
+// the same way.
+export { resolveOpenApiOperation } from "./openapi";
+export type {
+  OpenApiResolution,
+  OpenApiResolveError,
+  ResolvedOperation,
+} from "./openapi";
+
+// The Connector catalogue (#839): catalogued actions over Application
+// Connections, read by the builder, Publish and the runtime alike.
+export {
+  CONNECTOR_ACTIONS,
+  CONNECTOR_INTERNAL_ONLY_REASON,
+  CONNECTOR_PROVIDERS,
+  CONNECTOR_PROVIDER_LABELS,
+  connectorAction,
+  connectorRunsInternalOnly,
+  connectorActionsFor,
+  connectorConnectionIssue,
+  connectorMissingParams,
+  connectorMissingScopes,
+  connectorOutputVariable,
+  connectorParamValue,
+  connectorSettingsIssue,
+  isConnectorProvider,
+} from "./connector-catalog";
+export type {
+  ConnectorAction,
+  ConnectorEffect,
+  ConnectorField,
+  ConnectorFieldDynamic,
+  ConnectorFieldType,
+  ConnectorLoader,
+  ConnectorOutput,
+} from "./connector-catalog";
 
 // The Insights read model. `computeInsightsOverview` is the oracle the SQL
 // aggregate `get_insights_overview` is checked against (ADR-0010); the seven

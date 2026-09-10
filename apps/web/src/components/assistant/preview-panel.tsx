@@ -3,17 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Assistant, Conversation } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import {
-  ChevronDown,
-  ChevronsLeft,
-  ChevronsRight,
-  Pin,
-  Square,
-  SquarePen,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, Pin, Square, SquarePen, Trash2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
+import { decideReviewAction } from "@/app/(admin)/reviews/actions";
 import {
   deleteConversationAction,
   getConversationMessagesAction,
@@ -25,8 +18,7 @@ import {
 } from "@/app/actions";
 import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
-import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
-import { consumeTurnStream } from "@agent-hub/agent/client";
+import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import {
@@ -43,6 +35,7 @@ import {
   type ConnectorPreferences,
 } from "@/lib/local-connector-protocol";
 import { ChatHeader } from "@/components/chat/chat-header";
+import { ChatSurface, RailPanel } from "@/components/chat/rail-panel";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
@@ -51,6 +44,7 @@ import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import {
   ChatThread,
   type ChatBotMsg,
+  type HumanReviewPart,
   type ChatMsg,
 } from "@/components/chat/chat-thread";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
@@ -58,7 +52,6 @@ import { latestHelpDeskId } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
 import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
-import { useRightRail } from "@/components/shell/right-rail";
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
@@ -68,13 +61,6 @@ import { MessageSquareText } from "lucide-react";
 type BotMsg = ChatBotMsg;
 type Msg = ChatMsg;
 
-const PANEL_DEFAULT_WIDTH = 400;
-const PANEL_MIN_WIDTH = 320;
-const PANEL_MAX_WIDTH = 640;
-/** Width of the collapsed rail (w-12), where an opening drag starts from. */
-const PANEL_RAIL_WIDTH = 48;
-/** Release a drag below this width and the panel collapses back to the rail. */
-const PANEL_COLLAPSE_THRESHOLD = 180;
 /** History shows this many recent conversations; pinned ones always stay. */
 const HISTORY_RECENT_LIMIT = 10;
 
@@ -122,8 +108,49 @@ export function PreviewPanel({
    */
   variant?: "docked" | "page";
 }) {
-  const asPage = variant === "page";
   const [messages, setMessages] = useState<Msg[]>([]);
+  /**
+   * A simulated Human review (#841, story 57): the card's Approve / Reject
+   * decides the row through the same operation the decision page uses, and
+   * the continuation runs inline, so the next assistant message is appended
+   * here rather than waiting for a refresh.
+   */
+  function decideSimulatedReview(part: HumanReviewPart, decision: "approved" | "rejected") {
+    void (async () => {
+      try {
+        const result = await decideReviewAction(part.reviewId, decision, {});
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.role === "bot"
+              ? {
+                  ...m,
+                  parts: m.parts.map((p) =>
+                    p.type === "human_review" && p.reviewId === part.reviewId
+                      ? { ...p, status: result.review.status, decidedByName: result.review.decidedByName }
+                      : p
+                  ),
+                }
+              : m
+          )
+        );
+        if (result.resumed) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              role: "bot",
+              id: result.resumed!.messageId,
+              ...EMPTY_TURN_TRACE,
+              parts: result.resumed!.content as ChatReplyPart[],
+              streamingText: null,
+              feedback: 0,
+            },
+          ]);
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Could not record the decision");
+      }
+    })();
+  }
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -207,42 +234,13 @@ export function PreviewPanel({
     setComposerPulse(true);
     window.setTimeout(() => setComposerPulse(false), 1100);
   }
-  const [ownCollapsed, setOwnCollapsed] = useState(false);
-  const collapsed = collapsedProp ?? ownCollapsed;
-  const {
-    width,
-    fade,
-    resizing,
-    beginResize,
-    widthTransition,
-    containerRef: asideRef,
-  } = useResizableWidth({
-      defaultWidth: PANEL_DEFAULT_WIDTH,
-      minWidth: PANEL_MIN_WIDTH,
-      maxWidth: PANEL_MAX_WIDTH,
-      initialResizing: startResizing,
-      overdrag: {
-        railWidth: PANEL_RAIL_WIDTH,
-        collapseThreshold: PANEL_COLLAPSE_THRESHOLD,
-        onCollapse: () => toggleCollapsed(true),
-      },
-    });
-
-  // Tell the shell's viewport-fixed furniture how much of the right edge this
-  // panel is holding, so the notification stack lands beside the chat instead
-  // of on top of its composer. Nothing to move aside for a collapsed rail (one
-  // button at its top) or for the full-route variant, which is the page.
-  useRightRail(asPage || collapsed ? null : { width, animated: !resizing });
-
-  // PreviewPanelLauncher is this component's only docked mount point, and it
-  // owns both the persisted preference and the rail claim, so this component
-  // must not re-derive its own opinion from localStorage on mount (as it once
-  // did): that raced the launcher's decision and could silently re-collapse the
-  // panel right after a "Show preview" click had just opened it.
-  function toggleCollapsed(value: boolean) {
-    if (onCollapsedChange) onCollapsedChange(value);
-    else setOwnCollapsed(value);
-  }
+  // The aside, its drag handle, the collapsed rail and the width the shell's
+  // furniture moves aside for are `RailPanel`'s (#837). PreviewPanelLauncher is
+  // this component's only docked mount point and owns both the persisted
+  // preference and the rail claim, so nothing here may re-derive that from
+  // localStorage on mount (as it once did): that raced the launcher's decision
+  // and could silently re-collapse the panel right after a "Show preview"
+  // click had just opened it.
   const abortRef = useRef<AbortController | null>(null);
   const abortWhenStartedRef = useRef(false);
   const conversationIdRef = useRef<string | null>(null);
@@ -608,119 +606,58 @@ export function PreviewPanel({
     messages.flatMap((message) => (message.role === "bot" ? [message.parts] : []))
   );
 
-  // Collapsed: slim rail with a « button that reopens the panel. Dragging the
-  // handle also reopens it, the panel grows from the rail under the pointer,
-  // fading in, and snaps to PANEL_MIN_WIDTH on release (Spotify-style).
-  // A page is never collapsed: there is nothing beside it to make room for.
-  if (collapsed && !asPage) {
-    return (
-      <aside className="bg-background relative hidden w-12 shrink-0 flex-col items-center border-l pt-4 md:flex">
-        <ResizeHandle
-          resizing={resizing}
-          onPointerDown={(event) => {
-            toggleCollapsed(false);
-            beginResize(event, PANEL_RAIL_WIDTH);
-          }}
-          label="Resize preview panel"
-        />
-        <Hint label="Show preview" side="left">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Show preview"
-            onClick={() => toggleCollapsed(false)}
-          >
-            <ChevronsLeft className="size-4" />
-          </Button>
-        </Hint>
-      </aside>
-    );
-  }
-
   return (
-    <aside
-      ref={asideRef}
-      style={asPage ? undefined : { width }}
-      className={
-        asPage
-          ? "bg-background relative flex h-full min-h-0 w-full flex-col"
-          : `bg-background relative hidden shrink-0 flex-col border-l md:flex ${widthTransition}`
+    <RailPanel
+      title="Preview"
+      labels={{
+        show: "Show preview",
+        hide: "Hide preview",
+        resize: "Resize preview panel",
+      }}
+      variant={variant}
+      collapsed={collapsedProp}
+      onCollapsedChange={onCollapsedChange}
+      startResizing={startResizing}
+      actions={
+        <Hint label="Refresh preview">
+          {/* Refresh re-reads the assistant's config *and* restarts the
+              preview conversation, so proactive flows fire again. */}
+          <RefreshButton onRefresh={newChat} />
+        </Hint>
+      }
+      overlay={
+        ssoGated ? (
+          <IdentityGate
+            provider={ssoGate?.provider ?? null}
+            loading={ssoGate === null}
+            onLogin={startSsoLogin}
+            brandColor={assistant.style?.brandColor ?? "#0a0a0a"}
+          />
+        ) : null
+      }
+      banner={
+        assistant.chatLauncherEnabled ? null : (
+          <p className="text-muted-foreground bg-muted mb-3 rounded-lg px-3 py-2 text-xs">
+            Chat launcher is disabled, users won&apos;t see the chat button, but
+            you can still test the assistant here.
+          </p>
+        )
+      }
+      extras={
+        /* Send feedback (chat-level, from the ⋯ menu), shared dialog. */
+        <FeedbackDialog
+          open={feedbackOpen}
+          onOpenChange={setFeedbackOpen}
+          nickname={nickname}
+          onSubmit={submitFeedback}
+        />
       }
     >
-      {!asPage && (
-        <ResizeHandle
-          resizing={resizing}
-          onPointerDown={(event) => beginResize(event)}
-          label="Resize preview panel"
-        />
-      )}
-      {ssoGated && (
-        <IdentityGate
-          provider={ssoGate?.provider ?? null}
-          loading={ssoGate === null}
-          onLogin={startSsoLogin}
-          brandColor={assistant.style?.brandColor ?? "#0a0a0a"}
-        />
-      )}
-      {/* Clips the content only, the resize handle overhangs the panel's
-          left edge and must stay fully visible. */}
-      <div className="flex min-h-0 w-full flex-1 flex-col items-end overflow-hidden">
-      {/* Content keeps its readable min width while the panel is dragged
-          narrower, it slides out of view fading, instead of reflowing. As a
-          page there is no drag and no min width to defend: it just fills the
-          route, capped so the chat does not sprawl on a desktop. */}
-      <div
-        style={asPage ? undefined : { width: Math.max(width, PANEL_MIN_WIDTH), opacity: fade }}
-        className={
-          asPage
-            ? "mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-4 py-4 sm:px-5"
-            : `flex min-h-0 flex-1 flex-col px-5 py-4 ${
-                resizing ? "" : "transition-opacity duration-200 ease-out"
-              }`
-        }
-      >
-      <div className="flex items-center justify-between pb-3">
-        <h2 className="text-lg font-semibold">Preview</h2>
-        <div className="flex items-center gap-1">
-          <Hint label="Refresh preview">
-            {/* Refresh re-reads the assistant's config *and* restarts the
-                preview conversation, so proactive flows fire again. */}
-            <RefreshButton onRefresh={newChat} />
-          </Hint>
-          {/* Hiding is a docked-panel affordance: the page has the sidebar to
-              navigate away with. */}
-          {!asPage && (
-            <Hint label="Hide preview">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Hide preview"
-                onClick={() => toggleCollapsed(true)}
-              >
-                <ChevronsRight className="size-4" />
-              </Button>
-            </Hint>
-          )}
-        </div>
-      </div>
-
-      {!assistant.chatLauncherEnabled && (
-        <p className="text-muted-foreground bg-muted mb-3 rounded-lg px-3 py-2 text-xs">
-          Chat launcher is disabled, users won&apos;t see the chat button, but
-          you can still test the assistant here.
-        </p>
-      )}
-
-      {/* While the panel grows it is out of flow, so this holds its slot, and
-          is what the collapse measures back down to. */}
-      {animating && <div ref={spacerRef} className="min-h-0 flex-1" />}
-      <div
-        ref={surfaceRef}
-        className={
-          fullscreen
-            ? "bg-card fixed inset-0 z-50 flex flex-col overflow-hidden"
-            : "bg-card flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border"
-        }
+      <ChatSurface
+        fullscreen={fullscreen}
+        animating={animating}
+        spacerRef={spacerRef}
+        surfaceRef={surfaceRef}
       >
         {/* Escalation: replaces the whole chat surface, like the widget. */}
         {supportOpen && (
@@ -903,6 +840,7 @@ export function PreviewPanel({
               setSupportOpen(true);
             }}
             hasPersistentSupport={!hideEscalation}
+            onDecideReview={decideSimulatedReview}
           />
         </MessageScroller>
 
@@ -982,17 +920,7 @@ export function PreviewPanel({
         </div>
         </>
         )}
-      </div>
-      </div>
-      </div>
-
-      {/* Send feedback (chat-level, from the ⋯ menu), shared dialog. */}
-      <FeedbackDialog
-        open={feedbackOpen}
-        onOpenChange={setFeedbackOpen}
-        nickname={nickname}
-        onSubmit={submitFeedback}
-      />
-    </aside>
+      </ChatSurface>
+    </RailPanel>
   );
 }

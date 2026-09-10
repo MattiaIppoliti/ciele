@@ -1,0 +1,150 @@
+---
+title: Connector
+description: Führen Sie eine Aktion in ServiceNow, Salesforce, Slack, OneDrive oder Google Drive aus einem Flow über eine verbundene Anwendung aus.
+---
+
+## Was ein Connector macht
+
+Eine **Connector** ist eine Antwortaktion. Er führt eine Aktion in einem System
+aus, das Ihre Organisation bereits unter **Knowledge → Applications** verbunden
+hat. Der Flow speichert die Verbindung und die Aktion. Er speichert niemals
+Anmeldeinformationen.
+
+Verfügbare Aktionen:
+
+| Anbieter | Aktionen |
+| --- | --- |
+| ServiceNow | Datensatz erstellen, Datensatz aktualisieren, Datensätze auflisten, Datensatz löschen |
+| Salesforce | Kontaktdatensätze abrufen, Falldatensätze abrufen, Benutzerdatensätze abrufen, Produktdatensätze abrufen |
+| Slack | Nachricht posten, Kanal erstellen, Öffentlichem Kanal beitreten, Öffentliche Kanäle auflisten |
+| OneDrive | Datei erstellen, Datei kopieren, Dateien in Ordner suchen, Dateiinhalt abrufen, Dateimetadaten abrufen, Freigabelink erstellen, Datei löschen |
+| Google Drive | Datei erstellen, Datei kopieren, Dateien in Ordner suchen, Dateiinhalt abrufen, Dateimetadaten abrufen, Freigabelink erstellen, Datei löschen |
+
+Jede Aktion ist entweder eine **Lese**- oder eine **Schreib**-Aktion. Ein
+Schreibvorgang ändert das externe System.
+
+## OneDrive und Google Drive
+
+Eine OneDrive- oder Google Drive-Verbindung gehört zu einem Mitglied. Der
+Connector läuft unter dem Konto dieses Mitglieds. Aus diesem Grund:
+
+- Die Aktion wird in **Preview** und in **Teammate chat** ausgeführt. Sie wird
+  nicht in einem veröffentlichten Widget ausgeführt.
+- **Publish** lehnt einen Flow ab, der einen Drive-Connector enthält. Der Grund
+  benennt den Flow.
+- Schreibaktionen benötigen einen zusätzlichen Bereich. OneDrive benötigt
+  `Files.ReadWrite`. Google Drive benötigt `drive.file`. Wählen Sie **Grant
+  access** aus, um es hinzuzufügen.
+- Mit `drive.file` lässt Google Drive den Connector nur Dateien ändern, die der
+  Connector erstellt hat oder die eine Person mit ihm geöffnet hat. Das
+  Kopieren, Freigeben und Löschen anderer Dateien kann fehlschlagen.
+- **Get file content** gibt nur Text bis zu einer begrenzten Größe zurück.
+  Binärdateien und Google Docs werden nicht konvertiert.
+
+## Einen Connector hinzufügen
+
+1. Öffnen Sie einen Flow.
+2. Wählen Sie in der **Canvas** einen Anbieter unter **Connector** in der
+   Palette aus. Wählen Sie in der **Form** **Connector** unter **Add an action**
+   aus und wählen Sie dann den Anbieter aus.
+3. Wählen Sie einen **Connection** aus. Die Liste zeigt die Verbindungen der
+   Organisation für diesen Anbieter.
+4. Wählen Sie einen **Action** aus.
+5. Füllen Sie die Felder aus. Vorlagenvariablen wie `{{user.name}}` und
+   `{{workflow.message}}` sind zulässig, wenn dies im Feld angegeben ist.
+
+Wenn der Anbieter keine Verbindung hat, verbinden Sie ihn zuerst unter
+**Knowledge → Applications**. Für Slack kann das Panel das Anmeldefenster direkt
+öffnen.
+
+## Aus dem System geladene Felder
+
+Einige Felder laden ihre Werte aus dem verbundenen System: ServiceNow-Tabellen
+und -Spalten, Salesforce-Felder, Slack-Kanäle. Wählen Sie **Load options**, um
+sie abzurufen. Sie können trotzdem einen Wert eingeben.
+
+## Setup erforderlich
+
+Ein Connector-Knoten zeigt **Needs setup** an, wenn:
+
+- Die Aktion oder die Verbindung ist nicht ausgewählt.
+- Ein Pflichtfeld ist leer.
+- Der Verbindung fehlt ein Bereich, den die Aktion benötigt. Wählen Sie **Grant
+  access**, um die Anmeldung beim Anbieter erneut auszuführen, wobei die
+  fehlenden Bereiche hinzugefügt werden.
+- Die Verbindung muss erneut hergestellt werden.
+
+## Ausgaben
+
+Eine Aktion schreibt ihre Ergebnisse in Vorlagenvariablen für spätere Aktionen
+im selben Flow. Die Namen beginnen mit `connector.`:
+
+| Aktion | Variablen |
+| --- | --- |
+| ServiceNow Datensatz erstellen oder aktualisieren | `{{connector.sys_id}}`, `{{connector.number}}` |
+| ServiceNow Datensätze auflisten | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
+| Salesforce Datensätze abrufen | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Slack-Nachricht posten | `{{connector.ts}}`, `{{connector.channel}}` |
+| Slack Kanal erstellen oder beitreten | `{{connector.id}}`, `{{connector.name}}` |
+| Drive Metadaten erstellen oder abrufen, Google Drive Kopieren | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |
+| OneDrive Kopieren | `{{connector.status}}`, `{{connector.monitor_url}}` (die Kopie wird im Hintergrund ausgeführt) |
+| Drive Dateien suchen | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.items}}` |
+| Drive Inhalt abrufen | `{{connector.content}}` |
+| Drive Freigabelink erstellen | `{{connector.url}}` |
+
+`{{connector.ok}}` ist `true` oder `false` nach jeder Aktion. Eine
+**Message**-Aktion nach dem Connector kann diese Werte anzeigen.
+
+## Was der Besucher sieht
+
+- Ein erfolgreicher **Schreibvorgang** zeigt **Success message** an.
+  Standardmäßig wird eine kurze Bestätigung angezeigt.
+- Bei einem erfolgreichen **Lesen** wird nichts angezeigt. Verwenden Sie eine
+  Message-Aktion, um die Ergebnisse anzuzeigen.
+- Bei jedem Fehler wird **Failure message** angezeigt. Der Fehler des Providers
+  wird dem Besucher niemals angezeigt. Der Editor sieht dies in **Run node** und
+  bei einer abgelaufenen Verbindung in **Alerts**.
+
+## Knoten ausführen
+
+Wählen Sie den Knoten aus und dann **Run node**. Die Konsole führt den
+eigentlichen Aufruf mit Beispielwerten durch.
+
+- Ein **Read** wird sofort ausgeführt.
+- Ein **Schreibvorgang** fordert zuerst eine Bestätigung an, da er das externe
+  System verändert.
+
+**Test connection** prüft, ob das Token der Verbindung noch funktioniert.
+
+## Veröffentlichen
+
+Publish lehnt einen Flow ab, dessen Connector:
+
+- eine Verbindung benennt, die nicht mehr existiert,
+- eine persönliche Verbindung benennt (OneDrive- oder Google Drive-Konten
+  gehören einem Mitglied),
+- eine Verbindung benennt, der die Bereiche der Aktion fehlen oder die erneut
+  verbunden werden muss.
+
+Der Grund benennt den Flow. Korrigieren Sie die Verbindung oder den Flow und
+veröffentlichen Sie dann erneut.
+
+## Abgelaufene Verbindungen
+
+Wenn ein Aufruf fehlschlägt, weil der Anbieter das Token abgelehnt hat, wird die
+Verbindung als **Reauthorization required** markiert und eine
+**Integration**-Warnung ausgelöst. Verbinden Sie die Anwendung unter **Knowledge
+→ Applications** erneut. Die Warnung wird bei erneuter Verbindung gelöscht.
+
+## API, CLI und MCP
+
+- `GET /api/v1/applications/connections` listet die Verbindungen ohne
+  Anmeldeinformationen auf.
+- `GET /api/v1/applications/connectors` listet den Katalog auf.
+- `POST /api/v1/applications/connections/{id}/reconsent` gibt die
+  Bereichsvereinigung und die URL zurück, die geöffnet werden muss, um sie zu
+  gewähren.
+
+Dieselben Vorgänge sind `ciele applications list|connectors|reconsent` und die
+Aktionen `application_list`, `application_connectors`, `application_reconsent`
+des MCP-Tools `manage_integrations`.

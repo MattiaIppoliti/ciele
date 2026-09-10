@@ -132,3 +132,43 @@ describe("mergeFlowSecrets", () => {
     });
   });
 });
+
+describe("the webhook's two calls (#842)", () => {
+  const webhook = (): FlowActionSettings => ({
+    http_webhook: {
+      subscribe: {
+        method: "POST",
+        url: "https://api.example.com/subscriptions",
+        bodyTemplate: '{"callback":"{{webhook.callbackUrl}}"}',
+        auth: { type: "api_key", header: "X-API-Key", key: "sub-secret" },
+        headers: [{ id: "h1", name: "X-Tenant", value: "tenant-secret" }],
+      },
+      unsubscribe: {
+        method: "DELETE",
+        url: "https://api.example.com/subscriptions/{{subscriptionId}}",
+        auth: { type: "bearer", token: "unsub-secret" },
+      },
+    },
+  });
+
+  it("redacts the credential and header values on both calls, keeping everything else", () => {
+    const out = redactFlowSecrets({ actionSettings: webhook() }).actionSettings!.http_webhook!;
+    expect(out.subscribe!.auth).toEqual({ type: "api_key", header: "X-API-Key", hasKey: true });
+    expect(out.subscribe!.headers).toEqual([{ id: "h1", name: "X-Tenant", value: "" }]);
+    expect(out.subscribe!.url).toBe("https://api.example.com/subscriptions");
+    expect(out.unsubscribe!.auth).toEqual({ type: "bearer", hasToken: true });
+    expect(JSON.stringify(out)).not.toMatch(/secret/);
+  });
+
+  it("round-trips: redact then merge restores exactly what was stored", () => {
+    const stored = webhook();
+    const redacted = redactFlowSecrets({ actionSettings: stored }).actionSettings;
+    expect(mergeFlowSecrets(redacted, stored)).toEqual(stored);
+  });
+
+  it("merges the webhook and the api_request independently", () => {
+    const stored: FlowActionSettings = { ...settings(), ...webhook() };
+    const redacted = redactFlowSecrets({ actionSettings: stored }).actionSettings;
+    expect(mergeFlowSecrets(redacted, stored)).toEqual(stored);
+  });
+});

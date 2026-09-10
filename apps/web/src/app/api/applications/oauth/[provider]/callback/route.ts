@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { applicationConnectionOwnerType, sealSecret } from "@agent-hub/core";
+import { connectorAlertKey } from "@agent-hub/agent";
 import { getSession } from "@/lib/auth";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
@@ -13,6 +14,11 @@ import {
   isApplicationOAuthProvider,
   openApplicationOAuthTransaction,
 } from "@/lib/application-oauth";
+import {
+  APPLICATION_CONNECTED_MESSAGE,
+  type ApplicationConnectedMessage,
+} from "@/lib/application-connected";
+import { revalidateEntities } from "@/lib/org-mutation";
 
 export const runtime = "nodejs";
 
@@ -20,7 +26,8 @@ function completionPage(returnTo: string, provider: string): NextResponse {
   const inlineJson = (value: unknown) =>
     JSON.stringify(value).replaceAll("<", "\\u003c");
   const destination = inlineJson(returnTo);
-  const message = inlineJson({ type: "ciele:application-connected", provider });
+  const payload: ApplicationConnectedMessage = { type: APPLICATION_CONNECTED_MESSAGE, provider };
+  const message = inlineJson(payload);
   return new NextResponse(
     `<!doctype html><html><body><p>Connection complete. You can close this window.</p><script>if(window.opener){window.opener.postMessage(${message},window.location.origin);window.close()}else{window.location.href=${destination}}</script></body></html>`,
     { headers: { "content-type": "text/html; charset=utf-8" } }
@@ -124,6 +131,14 @@ export async function GET(
         error: "",
         lastConnectedAt: new Date().toISOString(),
       });
+      // A reconnect clears the Alert a failed Connector call raised (#839),
+      // and the Alerts page and its sidebar badge render that row, so they are
+      // revalidated the way every other alert mutation does it (ADR-0005).
+      await mutationDb.resolveAlertsByKey(
+        transaction.organizationId,
+        connectorAlertKey(visible.id)
+      );
+      revalidateEntities([{ kind: "alerts" }], transaction.organizationId);
     } else {
       await mutationDb.createApplicationConnection({
         organizationId: transaction.organizationId,

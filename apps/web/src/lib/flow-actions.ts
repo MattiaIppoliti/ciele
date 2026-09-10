@@ -1,5 +1,10 @@
 import type { FlowAction, FlowTrigger } from "@agent-hub/core";
-import { actionAllowedForTrigger } from "@agent-hub/core";
+import {
+  CONNECTOR_PROVIDERS,
+  CONNECTOR_PROVIDER_LABELS,
+  HTTP_FLOW_ACTIONS,
+  actionAllowedForTrigger,
+} from "@agent-hub/core";
 import {
   AtSign,
   BellRing,
@@ -8,10 +13,14 @@ import {
   Headphones,
   MessageSquare,
   PanelTop,
+  Radio,
+  Reply,
   Route,
   Search,
   Smile,
   SquareArrowOutUpRight,
+  Unplug,
+  UserCheck,
   Webhook,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +34,7 @@ export const FLOW_TRIGGER_LABELS: Record<FlowTrigger, string> = {
   page_load: "On page load",
   time_on_page: "Time on page",
   chat_open: "Chat opens",
+  http_request: "On HTTP request",
 };
 
 export interface FlowActionMeta {
@@ -68,7 +78,9 @@ export const FLOW_ACTIONS: Record<FlowAction, FlowActionMeta> = {
   },
   api_request: {
     label: "API request",
-    subtitle: "Call an external API endpoint",
+    // Names HTTP on purpose: it is what someone looking for this step
+    // searches for, and the step picker searches the subtitle too.
+    subtitle: "Call an HTTP endpoint, or an operation from an OpenAPI definition",
     icon: Webhook,
   },
   send_email: {
@@ -97,6 +109,28 @@ export const FLOW_ACTIONS: Record<FlowAction, FlowActionMeta> = {
     subtitle: "Send a proactive in-widget message",
     icon: BellRing,
   },
+  connector: {
+    label: "Connector",
+    subtitle: `Run an action in ${new Intl.ListFormat("en-GB", { type: "disjunction" }).format(
+      CONNECTOR_PROVIDERS.map((provider) => CONNECTOR_PROVIDER_LABELS[provider])
+    )}`,
+    icon: Unplug,
+  },
+  human_review: {
+    label: "Human review",
+    subtitle: "Ask a colleague to approve before continuing",
+    icon: UserCheck,
+  },
+  http_webhook: {
+    label: "HTTP webhook",
+    subtitle: "Subscribe to an HTTP webhook and wait for a callback",
+    icon: Radio,
+  },
+  respond: {
+    label: "Response",
+    subtitle: "Send a response to the HTTP request that started this flow",
+    icon: Reply,
+  },
 };
 
 export const FLOW_ACTION_KEYS = Object.keys(FLOW_ACTIONS) as FlowAction[];
@@ -123,10 +157,15 @@ export const FLOW_ACTION_PICKER: FlowAction[] = [
   "send_email",
   "improvement",
   "handover",
+  "connector",
+  "human_review",
 ];
 
 /** The Response step's catalog for a proactively-triggered flow. */
 export const PROACTIVE_FLOW_ACTION_PICKER: FlowAction[] = ["notification"];
+
+/** The inbound-HTTP catalog already carries its display order. */
+export const HTTP_FLOW_ACTION_PICKER: FlowAction[] = [...HTTP_FLOW_ACTIONS];
 
 /**
  * The actions a flow would keep if its trigger became `trigger`, and the ones it

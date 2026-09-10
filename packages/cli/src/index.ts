@@ -23,6 +23,8 @@ import { channels } from "./commands/channels.ts";
 import { alerts, goals, skills } from "./commands/configuration.ts";
 import { apiKeys, invites, members, organization } from "./commands/organization.ts";
 import { apiIntegrations, providers } from "./commands/integrations.ts";
+import { applications } from "./commands/applications.ts";
+import { reviews } from "./commands/reviews.ts";
 import { str, type CommandContext } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
@@ -54,7 +56,9 @@ const COMMAND_GROUPS: Record<
   invites,
   "api-keys": apiKeys,
   "api-integrations": apiIntegrations,
+  applications,
   providers,
+  reviews,
 };
 
 /**
@@ -218,6 +222,11 @@ Commands:
   api-keys list|create|revoke
   api-integrations get|set|delete <assistantId>
   providers list|create-api-key|create-compatible|create-federated|delete|set-embedding
+  applications list|connectors [--provider <p>]
+  applications reconsent <connectionId> [--actions <key,key>] [--scopes <s,s>]
+  reviews list [--status <s>] [--conversation <id>] [--assistant <id>]
+  reviews get <reviewId>
+  reviews decide <reviewId> --decision approved|rejected [--inputs key=value,key=value]
 
 Global options:
   --version            Print the CLI version

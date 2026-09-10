@@ -73,7 +73,9 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     href: "/help-desks",
     apiDomains: ["help-desks"],
   },
-  { label: "Inbox", icon: Archive, href: "/inbox", apiDomains: ["inbox"] },
+  // Reviews rides along (#841): a Human review request is part of a
+  // Conversation's transcript, and the panel shows how to list or decide one.
+  { label: "Inbox", icon: Archive, href: "/inbox", apiDomains: ["inbox", "reviews"] },
   // The org's internal AI colleagues (#768).
   {
     label: "Teammates",
@@ -158,7 +160,9 @@ export const SETUP_SECTIONS: SetupSection[] = [
     label: "Flows",
     slug: "flows",
     icon: Workflow,
-    apiDomains: ["flows"],
+    // Applications rides along (#839): a Connector node names a Connection,
+    // and the panel shows how to list or re-consent one from here.
+    apiDomains: ["flows", "applications", "reviews"],
   },
   {
     label: "Tools & Skills",

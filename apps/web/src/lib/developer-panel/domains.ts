@@ -10,7 +10,7 @@ import type { ApiV1Domain } from "@/lib/api-v1/meta";
  * stays cheap and client-safe.
  *
  * **The MCP tool name belongs to the domain, not the endpoint.** The 16 MCP tools
- * are coarse and map onto the 19 domains many-to-one (one tool covers Skills,
+ * are coarse and map onto the 22 domains many-to-one (one tool covers Skills,
  * Goals and Alerts; another covers Organization, Members and API Keys), so a
  * per-endpoint field would repeat a string with no added truth. The per-endpoint
  * half of an MCP call is its `action`, and that is a template in the registry.
@@ -171,5 +171,17 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpTool: "manage_integrations",
     mcpPrompt:
       "List the Provider Connections and tell me which one serves embeddings.",
+  },
+  applications: {
+    title: "Applications API",
+    mcpTool: "manage_integrations",
+    mcpPrompt:
+      "List the Application Connections and tell me which Connector actions each one can run today.",
+  },
+  reviews: {
+    title: "Reviews API",
+    mcpTool: "read_inbox",
+    mcpPrompt:
+      "List the pending Human review requests and tell me which conversations are waiting on a colleague.",
   },
 };

@@ -756,6 +756,11 @@ class ShimQueryBuilder implements PromiseLike<{
       if (innerClauses.length > 0) {
         sql += where ? ` and ${innerClauses.join(" and ")}` : ` where ${innerClauses.join(" and ")}`;
       }
+      // PostgREST returns an exact count alongside rows too, not only for
+      // HEAD requests. Count the filtered relation before applying its page.
+      const countSql = this.countMode
+        ? `select count(*)::int as n from (${sql}) matched`
+        : null;
       if (this.orders.length > 0) {
         sql += ` order by ${this.orders
           .map((o) => `${alias}.${quoteIdent(o.column)} ${o.ascending ? "asc" : "desc"}`)
@@ -764,7 +769,10 @@ class ShimQueryBuilder implements PromiseLike<{
       if (this.limitN !== null) sql += ` limit ${this.limitN}`;
       if (this.offsetN !== null) sql += ` offset ${this.offsetN}`;
       const res = await this.pg.query<Row>(sql, params);
-      return this.finish(res.rows);
+      const result = this.finish(res.rows);
+      if (!countSql) return result;
+      const count = await this.pg.query<{ n: number }>(countSql, params);
+      return { ...result, count: count.rows[0]?.n ?? 0 };
     }
 
     if (this.mode.op === "insert" || this.mode.op === "upsert") {

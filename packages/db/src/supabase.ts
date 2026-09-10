@@ -13,11 +13,6 @@ import {
 import type {
   Alert,
   AlertStatus,
-  Organization,
-  MemoryDocument,
-  MemoryDocumentEntry,
-  MemoryDocumentOwner,
-  TeammateRoutine,
   AlertType,
   ApiEndpointSpec,
   ApiIntegration,
@@ -31,12 +26,12 @@ import type {
   AssistantPatch,
   AssistantTools,
   BackgroundJob,
-  ChannelAvailability,
   ChannelAuthorType,
+  ChannelAvailability,
   ChannelConversationData,
-  ChannelMessage,
   ChannelFormField,
   ChannelKind,
+  ChannelMessage,
   Concept,
   ConceptFrontmatter,
   Conversation,
@@ -82,10 +77,15 @@ import type {
   LocalInferenceJob,
   Member,
   Memory,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  MemoryDocumentOwner,
   MemorySubjectSummary,
   OrgApiKey,
   OrgApiKeyInput,
+  Organization,
   OrganizationPatch,
+  OrgKnowledgeSourcePage,
   Profile,
   ProfilePatch,
   Provider,
@@ -97,6 +97,8 @@ import type {
   PublicationConfig,
   QuickReplyButton,
   RecrawlSchedule,
+  ReviewRequest,
+  WebhookSubscription,
   Role,
   Skill,
   Source,
@@ -108,10 +110,11 @@ import type {
   StoredTurnTrace,
   SupportChannel,
   SupportChannelConfig,
+  TeammateRoutine,
   TicketingIntegration,
   UsageDailyRow,
-  UsageMeterRow,
   UsageKind,
+  UsageMeterRow,
   WidgetStyle,
 } from "@agent-hub/core";
 import {
@@ -1320,12 +1323,32 @@ function supabaseTable<K extends DbTableName>(
     },
 
     async insert(values) {
-      const row = domainToRow({ ...spec.defaults, ...values });
-      const { data, error } = await client
+      const id = newTableRowId(spec);
+      const merged = { ...spec.defaults, ...values } as Record<string, unknown>;
+      let { data, error } = await client
         .from(spec.table)
-        .insert({ id: newTableRowId(spec), ...row })
+        .insert({ id, ...domainToRow(merged) })
         .select()
         .single();
+      if (error && isSchemaLagError(error)) {
+        // The deploy serves against a database one migration behind
+        // (supabase/CLAUDE.md). A default whose value is null names a column
+        // the database would fill with null itself once it exists, so on a
+        // missing-column error the row is retried without those, and a
+        // caller who actually set one of them still gets the error.
+        const trimmed = Object.fromEntries(
+          Object.entries(merged).filter(
+            ([key, value]) =>
+              !(value === null && (spec.defaults as Record<string, unknown>)[key] === null &&
+                !(key in (values as Record<string, unknown>)))
+          )
+        );
+        ({ data, error } = await client
+          .from(spec.table)
+          .insert({ id, ...domainToRow(trimmed) })
+          .select()
+          .single());
+      }
       if (error) throw error;
       return rowToDomain(data) as unknown as DbTableRow<K>;
     },
@@ -3629,6 +3652,50 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return (data as Array<Record<string, unknown>>).map(toConcept);
     },
 
+    async listAssistantFaqOptions(assistantId) {
+      // Page the compact links too: a large Library must not silently hide
+      // FAQs after PostgREST's row cap. Batch ids to keep request URLs bounded.
+      const options: { id: string; question: string }[] = [];
+      const pageSize = 200;
+      for (let offset = 0; ; offset += pageSize) {
+        const links = await client.from("assistant_sources")
+          .select("source_id")
+          .eq("assistant_id", assistantId)
+          .order("source_id", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (links.error) throw links.error;
+        const sourceIds = (links.data ?? []).map((row) => row.source_id);
+        if (sourceIds.length === 0) break;
+        for (let from = 0; ; from += pageSize) {
+          const read = (activeOnly: boolean) => {
+            let query = client.from("concepts")
+              .select("id, frontmatter")
+              .in("source_id", sourceIds)
+              .eq("excluded", false)
+              .eq("frontmatter->>type", "FAQ")
+              .order("id", { ascending: true })
+              .range(from, from + pageSize - 1);
+            if (activeOnly) query = query.eq("is_active", true);
+            return query;
+          };
+          let result = await read(true);
+          if (result.error && isSchemaLagError(result.error)) result = await read(false);
+          if (result.error) throw result.error;
+          for (const row of result.data ?? []) {
+            const frontmatter: unknown = row.frontmatter;
+            if (typeof frontmatter !== "object" || frontmatter === null || !("title" in frontmatter)) continue;
+            const question = frontmatter.title;
+            if (typeof question === "string" && question.trim()) {
+              options.push({ id: row.id, question });
+            }
+          }
+          if ((result.data?.length ?? 0) < pageSize) break;
+        }
+        if (sourceIds.length < pageSize) break;
+      }
+      return options.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    },
+
     async listConceptPage(collectionId, input) {
       const limit = Math.max(1, Math.min(input.limit, 500));
       const build = (activeOnly: boolean) => {
@@ -4425,6 +4492,32 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         );
       }
       if (error) throw error;
+    },
+
+    async decideReviewRequest(id, patch) {
+      // `.eq("status", "pending")` is the whole first-wins rule: the row is
+      // written only if nobody closed it between the caller's read and now.
+      const { data, error } = await client
+        .from("review_requests")
+        .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data ? (rowToDomain(data) as unknown as ReviewRequest) : null;
+    },
+
+    async settleWebhookSubscription(id, patch) {
+      const { data, error } = await client
+        .from("webhook_subscriptions")
+        .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data ? (rowToDomain(data) as unknown as WebhookSubscription) : null;
     },
 
     async updateConversationMetadata(id, patch) {
@@ -5283,6 +5376,20 @@ export function createSupabaseDb(client: SupabaseClient): Db {
     // --- Org-level knowledge hub (PRD #726) -------------------------------
 
     async listOrgKnowledgeSources(organizationId, filter) {
+      // SQL filters/counts the match set and hydrates only the requested page.
+      // Keep the old read during the deploy-before-migrate window.
+      const result = await client.rpc("get_org_knowledge_source_page", {
+        p_organization_id: organizationId,
+        p_kinds: filter.kinds,
+        p_status: filter.status || null,
+        p_assistant_id: filter.assistantId || null,
+        p_query: (filter.query ?? "").trim(),
+        p_page: filter.page ?? 1,
+        p_page_size: filter.pageSize ?? 25,
+      });
+      if (!result.error) return result.data as OrgKnowledgeSourcePage;
+      if (!isSchemaLagError(result.error)) throw result.error;
+
       // Fine-filtering and paging happen adapter-side, hub tables are
       // org-sized (dozens to hundreds of Sources), and this keeps the query
       // shapes inside what the PostgREST test shim implements. Every
@@ -5314,7 +5421,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         );
         matches = matches.filter((s) => linkedIds.has(s.id));
       }
-      matches.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+      matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
 
       const statusCounts = { processing: 0, ready: 0, error: 0 };
       for (const source of matches) statusCounts[source.status] += 1;
@@ -5419,6 +5526,27 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }));
 
       return { items, total, statusCounts };
+    },
+
+    async listOrgKnowledgeSourceOptions(organizationId, filter) {
+      const { data, error, count } = await client
+        .from("sources")
+        .select("id, name, kind, collection_id, knowledge_collections!inner(organization_id)", { count: "exact" })
+        .eq("knowledge_collections.organization_id", organizationId)
+        .in("kind", filter.kinds)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(filter.limit);
+      if (error) throw error;
+      return {
+        items: (data as Array<{ id: string; name: string; kind: Source["kind"]; collection_id: string }>).map((row) => ({
+          id: row.id,
+          name: row.name,
+          kind: row.kind,
+          collectionId: row.collection_id,
+        })),
+        total: count ?? 0,
+      };
     },
 
     async listOrgFaqs(organizationId) {

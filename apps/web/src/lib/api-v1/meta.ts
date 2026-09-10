@@ -26,6 +26,8 @@ export const API_V1_DOMAINS = [
   "api-keys",
   "api-integrations",
   "providers",
+  "applications",
+  "reviews",
 ] as const;
 
 /** One of the domains this deployment advertises. */

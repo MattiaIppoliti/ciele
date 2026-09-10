@@ -1,0 +1,91 @@
+---
+title: Revisión humana
+description: Pon en pausa un flujo hasta que un compañero lo apruebe por correo electrónico o Slack y continúa con su respuesta.
+---
+
+## Qué hace una revisión humana
+
+Una **Human review** es una acción de respuesta. Cuando el flujo llega a ella,
+el asistente se detiene y pide a los compañeros designados que tomen una
+decisión. El visitante lee un mensaje de espera. El flujo continúa solo después
+de que el primer compañero lo apruebe. Si un compañero rechaza la solicitud o
+nadie responde a tiempo, el flujo se detiene con un mensaje que tú configuras.
+
+La solicitud se envía por **correo electrónico** desde tu propio buzón de
+Microsoft 365 o por **Slack** a través de la conexión de Slack de la
+organización. Ambos incluyen el título, tu mensaje, un resumen de la
+conversación y un enlace firmado a una página de decisión en la consola.
+
+## Configura la acción
+
+1. Añade **Human review** desde la paleta o desde el selector de acciones.
+2. Introduce un **Title** y un **Message to the reviewer**. Las variables de
+   plantilla funcionan en ambos.
+3. Introduce a los revisores en **Assigned to** como direcciones de correo
+   electrónico. Cada dirección debe pertenecer a un miembro de la organización.
+4. Selecciona el **Channel**.
+   - **Email**: conecta tu buzón de Microsoft 365 con **Connect** y luego
+     selecciónalo en **Sent from**. La solicitud se envía desde tu cuenta.
+   - **Slack**: introduce el ID del canal o el ID del miembro. La conexión de
+     Slack de la organización debe tener el ámbito `chat:write`.
+5. Añade al menos un **Input** para que el revisor lo rellene: texto corto,
+   texto largo, un menú desplegable o sí/no. Cada entrada tiene un
+   identificador.
+6. Establece **Expires after** en horas. El valor predeterminado es 24.
+7. Introduce lo que el visitante lee **mientras espera** y **si se rechaza o
+   caduca**.
+
+El nodo muestra **Needs setup** hasta que se establezcan todos los campos
+obligatorios. **Publish** rechaza un flujo cuyos revisores no sean miembros o
+cuyo remitente no esté conectado.
+
+## Previsualiza la solicitud
+
+En el lienzo, selecciona el nodo y abre **Run node**. El panel muestra el correo
+electrónico o el mensaje de Slack tal y como lo leerá el revisor. No se envía
+nada desde allí.
+
+## Decide una solicitud
+
+El enlace abre una página en la consola. Debes haber iniciado sesión. La página
+muestra el mensaje, la conversación hasta el momento, las entradas y **Approve**
+/ **Reject**.
+
+- Solo una persona asignada, un propietario o un administrador pueden decidir.
+- La primera decisión cierra la solicitud. Los visitantes posteriores ven quién
+  tomó la decisión.
+- Se rechaza la aprobación con una entrada obligatoria vacía.
+
+Una solicitud pendiente también aparece en la **Inbox**. Abre la conversación
+para ver su estado y las aportaciones del revisor, o filtra la bandeja de
+entrada por **Human review → Pending reviews**.
+
+## Qué sucede después de la decisión
+
+- **Approved**: las acciones que se ejecutan después de la revisión humana. Las
+  entradas del revisor están disponibles como variables de plantilla,
+  `{{review.<id>}}`, junto con `{{review.decidedBy}}` y `{{review.approved}}`.
+  La respuesta se añade a la conversación como el siguiente mensaje del
+  Asistente.
+- **Rejected** o **caducado**: en su lugar, se añade el mensaje de interrupción.
+
+El visitante verá el resultado la próxima vez que escriba o vuelva a abrir el
+chat.
+
+## Vista previa
+
+En la Vista previa, la solicitud se **simula**. No se envía nada. La
+transcripción muestra la solicitud con los botones **Approve** y **Reject**, y
+el flujo continúa en el mismo chat. Un chat de Teammate no tiene Flows, por lo
+que nunca llega a una revisión humana.
+
+## API, CLI y MCP
+
+| Operación | API | CLI | MCP (`read_inbox`) |
+| --- | --- | --- | --- |
+| Listar solicitudes | `GET /api/v1/reviews?status=pending` | `ciele reviews list --status pending` | `review_list` |
+| Leer uno | `GET /api/v1/reviews/{id}` | `ciele reviews get <id>` | `review_get` |
+| Decidir | `POST /api/v1/reviews/{id}/decide` | `ciele reviews decide <id> --decision approved --inputs amount=50` | `review_decide` |
+
+Una clave de API no tiene correo electrónico, por lo que solo puede decidir
+cuando su rol es Propietario o Administrador.

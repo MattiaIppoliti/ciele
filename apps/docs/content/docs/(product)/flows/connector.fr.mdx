@@ -1,0 +1,149 @@
+---
+title: Connecteur
+description: Exécutez une action dans ServiceNow, Salesforce, Slack, OneDrive ou Google Drive à partir d'un flux via une application connectée.
+---
+
+## Ce que fait un connecteur
+
+Un **Connector** est une action de réponse. Il exécute une action dans un
+système que votre organisation a déjà connecté sous **Knowledge →
+Applications**. Le Flow stocke la connexion et l'action. Il ne stocke jamais
+d'informations d'identification.
+
+Actions disponibles :
+
+| Fournisseur | Actions |
+| --- | --- |
+| ServiceNow | Créer un enregistrement, Mettre à jour un enregistrement, Lister les enregistrements, Supprimer un enregistrement |
+| Salesforce | Obtenir les enregistrements de contact, Obtenir les enregistrements de cas, Obtenir les enregistrements d'utilisateur, Obtenir les enregistrements de produit |
+| Slack | Publier un message, Créer un canal, Rejoindre un canal public, Lister les canaux publics |
+| OneDrive | Créer un fichier, Copier un fichier, Rechercher des fichiers dans un dossier, Obtenir le contenu d'un fichier, Obtenir les métadonnées d'un fichier, Créer un lien de partage, Supprimer un fichier |
+| Google Drive | Créer un fichier, Copier un fichier, Rechercher des fichiers dans un dossier, Obtenir le contenu d'un fichier, Obtenir les métadonnées d'un fichier, Créer un lien de partage, Supprimer un fichier |
+
+Chaque action est une **lecture** ou une **écriture**. Une écriture modifie le
+système externe.
+
+## OneDrive et Google Drive
+
+Une connexion OneDrive ou Google Drive appartient à un Membre. Le connecteur
+s'exécute sous le compte de ce membre. Pour cette raison :
+
+- L'action s'exécute dans le **Preview** et dans le **Teammate chat**. Elle ne
+  s'exécute pas dans un widget publié.
+- **Publish** refuse un flux qui contient un connecteur Drive. La raison désigne
+  le flux.
+- Les actions d'écriture nécessitent une portée supplémentaire. OneDrive
+  requiert `Files.ReadWrite`. Google Drive requiert `drive.file`. Sélectionnez
+  **Grant access** pour l'ajouter.
+- Avec `drive.file`, Google Drive permet au connecteur de modifier uniquement
+  les fichiers qu'il a créés ou qu'une personne a ouverts avec lui. La copie, le
+  partage et la suppression peuvent échouer pour d'autres fichiers.
+- **Get file content** renvoie uniquement du texte, jusqu'à une taille limitée.
+  Les fichiers binaires et les documents Google Docs ne sont pas convertis.
+
+## Ajouter un connecteur
+
+1. Ouvrez un flux.
+2. Dans le **Canvas**, sélectionnez un fournisseur sous **Connector** dans la
+   palette. Dans le **Form**, sélectionnez **Connector** sous **Add an action**,
+   puis sélectionnez le fournisseur.
+3. Sélectionnez un **Connection**. La liste affiche les connexions de
+   l'organisation pour ce fournisseur.
+4. Sélectionnez un **Action**.
+5. Remplissez les champs. Les variables de modèle telles que `{{user.name}}` et
+   `{{workflow.message}}` sont autorisées lorsque le champ l'indique.
+
+Si le fournisseur n'a pas de connexion, connectez-le d'abord sous **Knowledge →
+Applications**. Pour Slack, le panneau peut ouvrir directement la fenêtre de
+connexion.
+
+## Champs chargés depuis le système
+
+Certains champs chargent leurs valeurs depuis le système connecté : tables et
+colonnes ServiceNow, champs Salesforce, canaux Slack. Sélectionnez **Load
+options** pour les récupérer. Vous pouvez toujours saisir une valeur.
+
+## Configuration requise
+
+Un nœud Connector affiche **Needs setup** lorsque :
+
+- L'action ou la connexion n'est pas sélectionnée.
+- Un champ obligatoire est vide.
+- La connexion ne dispose pas d'une portée requise par l'action. Sélectionnez
+  **Grant access** pour relancer la connexion au fournisseur avec les
+  autorisations manquantes ajoutées.
+- La connexion doit être rétablie.
+
+## Sorties
+
+Une action écrit ses résultats dans des variables de modèle pour les actions
+ultérieures dans le même flux. Les noms commencent par `connector.` :
+
+| Action | Variables |
+| --- | --- |
+| ServiceNow Créer ou mettre à jour un enregistrement | `{{connector.sys_id}}`, `{{connector.number}}` |
+| ServiceNow Lister les enregistrements | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
+| Salesforce Obtenir des enregistrements | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Slack Publier un message | `{{connector.ts}}`, `{{connector.channel}}` |
+| Slack Créer ou rejoindre un canal | `{{connector.id}}`, `{{connector.name}}` |
+| Drive Créer ou obtenir des métadonnées, Google Drive Copier | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |
+| OneDrive Copier | `{{connector.status}}`, `{{connector.monitor_url}}` (la copie s'effectue en arrière-plan) |
+| Drive Rechercher des fichiers | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.items}}` |
+| Drive Obtenir le contenu | `{{connector.content}}` |
+| Drive Créer un lien de partage | `{{connector.url}}` |
+
+`{{connector.ok}}` est `true` ou `false` après chaque action. Une action
+**Message** après le connecteur peut afficher ces valeurs.
+
+## Ce que voit le visiteur
+
+- Une **écriture** réussie affiche le **Success message**. La valeur par défaut
+  est une courte confirmation.
+- Une action **read** réussie n'affiche rien. Utilisez une action Message pour
+  afficher les résultats.
+- Tout échec affiche le **Failure message**. L'erreur du fournisseur n'est
+  jamais affichée au Visiteur. L'éditeur le voit dans **Run node** et, pour une
+  connexion expirée, dans **Alerts**.
+
+## Exécuter le nœud
+
+Sélectionnez le nœud, puis **Run node**. La console effectue l'appel réel avec
+des valeurs d'exemple.
+
+- Une **lecture** s'exécute immédiatement.
+- Une **écriture** demande d'abord une confirmation, car elle modifie le système
+  externe.
+
+**Test connection** vérifie que le jeton de la connexion fonctionne toujours.
+
+## Publier
+
+Publish refuse un flux dont le connecteur :
+
+- nomme une connexion qui n'existe plus,
+- nomme une connexion personnelle (les comptes OneDrive ou Google Drive
+  appartiennent à un seul membre),
+- nomme une connexion qui n'a pas les étendues de l'action ou qui doit être
+  reconnectée.
+
+La raison désigne le flux. Corrigez la connexion ou le flux, puis publiez à
+nouveau.
+
+## Connexions expirées
+
+Lorsqu'un appel échoue parce que le fournisseur a rejeté le jeton, la connexion
+est marquée **Reauthorization required** et une alerte **Integration** est
+déclenchée. Reconnectez l'application sous **Knowledge → Applications**.
+L'alerte disparaît lors de la reconnexion.
+
+## API, CLI et MCP
+
+- `GET /api/v1/applications/connections` répertorie les connexions sans
+  informations d'identification.
+- `GET /api/v1/applications/connectors` répertorie le catalogue.
+- `POST /api/v1/applications/connections/{id}/reconsent` renvoie l'union des
+  étendues et l'URL à ouvrir pour l'accorder.
+
+Les mêmes opérations sont `ciele applications list|connectors|reconsent` et les
+actions de l'outil MCP `manage_integrations` `application_list`,
+`application_connectors`, `application_reconsent`.

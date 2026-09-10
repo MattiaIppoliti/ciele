@@ -36,6 +36,9 @@ export async function runApiOperation<In, Out>(
     organizationId: ctx.organizationId,
     userId: ctx.actorUserId,
     role: ctx.role,
+    // A key has no email, so an assignee rule never matches it; its decisions
+    // are the admin override's and are attributed to the key.
+    actorName: `API key ${ctx.keyId}`,
     db: ctx.db,
     // Ports need more Db surface than the pinned view exposes; the raw
     // service Db is confined to them, never handed to operations directly.

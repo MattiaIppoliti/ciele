@@ -34,15 +34,29 @@ export {
 
 // Flows domain (#621): the authoritative router, invariants included.
 export {
+  assertTriggerActions,
   createFlowOp,
   deleteFlowOp,
+  draftFlowOp,
   flowInputSchema,
   flowPatchSchema,
+  flowTriggerSchema,
   getFlowOp,
   listFlowsOp,
+  listHttpFlowRunsOp,
+  proposeFlowOp,
   reorderFlowsOp,
   updateFlowOp,
 } from "./flows";
+
+// The Flows Agent (#838): the per-Assistant system Teammate behind the canvas.
+export {
+  FLOWS_AGENT_NAME,
+  adoptFlowsAgentThreadOp,
+  ensureFlowsAgentOp,
+  listFlowsAgentThreadOp,
+  readFlowsAgentConversationOp,
+} from "./flows-agent";
 
 // Knowledge domain (#622): sources, FAQs, re-crawl; pipeline via ports.
 export {
@@ -68,11 +82,32 @@ export {
 
 // Publish domain (#623): immutable Publication snapshots.
 export {
+  assertConnectorFlowsPublishable,
   publicationStatusOp,
   publishAssistantOp,
   republishOp,
   unpublishAssistantOp,
 } from "./publish";
+
+// Reviews domain (#841): the Human review gate's requests, listed and decided.
+export {
+  assertHumanReviewFlowsPublishable,
+  decideReviewOp,
+  getReviewOp,
+  listReviewsOp,
+} from "./reviews";
+
+// Applications domain (#839): the Organization's Application Connections as
+// the Connector action sees them, and re-consent for missing scopes.
+export {
+  applicationConnectionView,
+  listApplicationConnectionsOp,
+  listConnectorActionsOp,
+  reconsentScopes,
+  reconsentStartPath,
+  requestApplicationReconsentOp,
+} from "./applications";
+export type { ApplicationConnectionView } from "./applications";
 
 // Teammates domain (#768): the org's internal AI colleagues. Ownership and
 // visibility are enforced here, over the domain package's pure rules.

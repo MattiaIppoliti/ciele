@@ -4,9 +4,10 @@ import type {
   Entity,
   Improvement,
   ImprovementPatch,
+  Provider,
+  ReviewRequest,
   Role,
   SsoConnection,
-  Provider,
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
 } from "@agent-hub/core";
@@ -43,6 +44,13 @@ export interface OperationContext {
   userId: string;
   /** Already-authorized Role, capability was checked by the caller. */
   role: Role;
+  /**
+   * The acting Member's email and display name (#841), when the surface knows
+   * them. A Human review's assignees are emails, so deciding one needs the
+   * actor's; an API key has none and decides only through the admin override.
+   */
+  actorEmail?: string;
+  actorName?: string | null;
   /**
    * Set when this run is an AI Teammate acting inside a turn (#770).
    *
@@ -93,6 +101,38 @@ export interface TeammateActor {
 export interface OperationPorts {
   /** Read the org's Entities when freezing a Publication snapshot. */
   listPublicationEntities?(organizationId: string): Promise<Entity[]>;
+  /**
+   * Grant a system Teammate its one domain at creation (#838). A port because
+   * the grant table's RLS is admin-only (#770) while the Flow Canvas is an
+   * Editor's surface: the host writes the row with its system Db, and the
+   * operation stays the one place that decides *which* row. Absent, the
+   * operation inserts through its own Db, which is what the mock and the
+   * contract tests exercise.
+   */
+  grantSystemTeammate?(grant: {
+    organizationId: string;
+    teammateId: string;
+    domain: TeammateGrantDomain;
+    grantedBy: string | null;
+  }): Promise<void>;
+  /**
+   * What happens after a Human review closes (#841): approved runs the rest of
+   * the Flow, rejected or expired persists the halt message. The host owns it
+   * because it is a Conversation Turn: queued on the job ledger in production,
+   * run inline for a simulated Preview request so the transcript can show the
+   * next message at once. Returns that message when it ran inline.
+   */
+  afterReviewDecided?(
+    review: ReviewRequest
+  ): Promise<{ messageId: string; content: unknown[] } | null>;
+  /**
+   * The decision write itself (#841): a compare-and-set on the pending row,
+   * run by the host on its system Db because the table has no member write
+   * policy (the assignee rule lives in the operation, and a member policy
+   * would let PostgREST bypass it). Absent, the operation writes through its
+   * own Db, which the mock allows.
+   */
+  decideReviewRequest?: Db["decideReviewRequest"];
   /** Probe a BYOK provider credential before it is persisted. */
   validateProviderApiKey?(
     provider: Exclude<Provider, "openai_compatible">,
@@ -142,6 +182,14 @@ export interface OperationPorts {
     updated: Improvement;
     patch: ImprovementPatch;
   }): Promise<void>;
+  /**
+   * Tell the other systems to stop before a Conversation with open webhook
+   * gates is deleted (#842). The subscription rows cascade with the
+   * Conversation, so a delete without this leaves the other system calling an
+   * address that no longer resolves. A port because the calls are the
+   * runtime's egress; absent, the delete proceeds without them.
+   */
+  unsubscribeWebhooks?(conversationId: string): Promise<void>;
 }
 
 /** Same ladder the web app's authz seam speaks. */

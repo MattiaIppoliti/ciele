@@ -22,6 +22,11 @@ import {
 } from "./application-connectors";
 import { APPLICATION_CONNECTORS } from "./application-provider-connectors";
 import { syncApplicationImport } from "./application-sync";
+import {
+  deliverReviewRequestHandler,
+  resumeReviewedConversationHandler,
+} from "./review-runtime";
+import { resumeWebhookConversationHandler } from "./webhook-runtime";
 
 /**
  * The durable job ledger (ADR-0008), generic over `kind`: claim/lease,
@@ -558,6 +563,12 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   distill_agent_memory: distillAgentMemoryHandler,
   sync_entity_records: entitySyncHandler,
   sync_application_import: applicationSyncHandler,
+  // Human review (#841): delivery, then continuation or halt.
+  deliver_review_request: deliverReviewRequestHandler,
+  resume_reviewed_conversation: resumeReviewedConversationHandler,
+  // The callback gate (#842): continuation or halt. No delivery twin, the
+  // subscribe call runs inline in the action.
+  resume_webhook_conversation: resumeWebhookConversationHandler,
 };
 
 async function runClaimedJob(

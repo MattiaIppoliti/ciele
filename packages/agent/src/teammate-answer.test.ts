@@ -25,6 +25,8 @@ const teammate: Teammate = {
   modelProvider: "anthropic",
   modelId: "claude-opus-4-8",
   capabilityCeiling: "edit",
+  systemKind: null,
+  assistantId: null,
   approvalBypass: false,
   projectId: null,
   deletedAt: null,

@@ -3,6 +3,7 @@ import {
   INITIAL_RIGHT_RAIL,
   parseSnippetTab,
   rightRailReducer,
+  type RightRailAction,
   type RightRailState,
 } from "./right-rail-occupant";
 
@@ -32,6 +33,32 @@ describe("the right rail holds one occupant", () => {
       occupant: "preview",
     });
     expect(next.occupant).toBe("preview");
+  });
+
+  it("has no seat for the Flow Canvas's node panel", () => {
+    // The node panel floats over the canvas (#837), so claiming the rail for it
+    // evicted the Preview or the Flows Agent and put nothing in their place.
+    // The union no longer names it; this line is what fails if it comes back.
+    // @ts-expect-error "canvas" is not a RightRailOccupant
+    const action: RightRailAction = { type: "open", occupant: "canvas" };
+    expect(rightRailReducer(held("preview"), action).occupant).toBe("canvas");
+  });
+
+  it("swaps the Preview for the Flows Agent, and back", () => {
+    // The Agent button and the Preview's own rail are the two ways in, and the
+    // Member reads them as one panel: opening either has to close the other.
+    const agent = rightRailReducer(held("preview"), { type: "open", occupant: "agent" });
+    expect(agent.occupant).toBe("agent");
+    expect(rightRailReducer(agent, { type: "open", occupant: "preview" }).occupant).toBe(
+      "preview"
+    );
+  });
+
+  it("lets the Flows Agent release the rail without evicting a later occupant", () => {
+    const state = rightRailReducer(held("agent"), { type: "open", occupant: "developer" });
+    expect(rightRailReducer(state, { type: "close", occupant: "agent" }).occupant).toBe(
+      "developer"
+    );
   });
 
   it("never lets both hold it", () => {

@@ -176,6 +176,53 @@ export type { EmailMessage, EmailDelivery, EmailTransport } from "./email";
 
 // Builder "Test request": run an api_request config with sample values.
 export { testApiRequest, sendEscalationApiRequest } from "./api-request";
+// The Connector action's shared core (#839): the builder's Run node, option
+// loaders and connection test, plus the Db-bound runtime the hosts pass in.
+export {
+  connectorAlertKey,
+  dbConnectorRuntime,
+  loadConnectorOptions,
+  testConnectorAction,
+  testConnectorConnection,
+} from "./connector-request";
+export type {
+  ConnectorError,
+  ConnectorErrorCode,
+  ConnectorOption,
+  ConnectorOutcome,
+  ConnectorRuntime,
+} from "./connector-request";
+// Human review (#841): the gate's runtime, jobs, clock and signed links.
+export {
+  dbReviewRuntime,
+  enqueueReviewResumptionJob,
+  expireDueReviews,
+  resumeReviewedConversation,
+  reviewLinkUrl,
+  runDueReviewJobs,
+  verifyReviewLinkToken,
+} from "./review-runtime";
+export type { ReviewJobDeps, ReviewLinkVerdict } from "./review-runtime";
+export type { ReviewRuntime } from "./types";
+
+// The callback gate (#842): the gate's runtime, its job, its clock, and the
+// signed URL that is the anonymous caller's whole authorization.
+export {
+  deliverWebhookCallback,
+  expireDueWebhooks,
+  resumeWebhookConversation,
+  runDueWebhookJobs,
+  unsubscribePendingWebhooks,
+  verifyWebhookCallbackToken,
+  webhookCallbackUrl,
+} from "./webhook-runtime";
+export type { WebhookDeliveryOutcome, WebhookTokenVerdict } from "./webhook-runtime";
+export type { WebhookRuntime } from "./types";
+
+// The inbound-HTTP trigger (#843): decide whether a request may run a Flow,
+// then run it and lift its answer off the end.
+export { refuseHttpFlow, runHttpFlow } from "./http-flow-run";
+export type { HttpFlowRefusal, HttpFlowResult } from "./http-flow-run";
 export type { ApiRequestOutcome, EscalationEndpointConfig } from "./api-request";
 export type { ApiRequestTestResult, ExtractedVariable } from "./api-request";
 

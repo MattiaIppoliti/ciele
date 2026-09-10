@@ -111,8 +111,14 @@ export function PublishClient({
   function publish() {
     setConfirmView(null);
     startTransition(async () => {
-      const version = await publishAssistantAction(assistant.id);
-      toast.success(`Published v${version}, the widget now serves this snapshot`);
+      const result = await publishAssistantAction(assistant.id);
+      if (typeof result === "object") {
+        // The refusal names the Flow to fix (a Connector on a dead or
+        // personal Connection, #839); nothing was published.
+        toast.error(result.error);
+        return;
+      }
+      toast.success(`Published v${result}, the widget now serves this snapshot`);
     });
   }
 

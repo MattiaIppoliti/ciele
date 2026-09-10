@@ -817,6 +817,7 @@ function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
         operation: action.operation,
         domain: action.domain,
         entity: describeEntities(outcome.entities),
+        ...(outcome.payload ? { payload: outcome.payload } : {}),
       });
       return actionResultForModel(outcome.result);
     },

@@ -1,0 +1,149 @@
+---
+title: Conector
+description: Ejecuta una acción en ServiceNow, Salesforce, Slack, OneDrive o Google Drive desde un flujo a través de una aplicación conectada.
+---
+
+## Qué hace un Connector
+
+Una **Connector** es una acción de respuesta. Ejecuta una acción en un sistema
+que tu organización ya ha conectado en **Knowledge → Applications**. El Flow
+almacena la conexión y la acción. Nunca almacena una credencial.
+
+Acciones disponibles:
+
+| Proveedor | Acciones |
+| --- | --- |
+| ServiceNow | Crear registro, Actualizar registro, Listar registros, Eliminar registro |
+| Salesforce | Obtener registros de contactos, Obtener registros de casos, Obtener registros de usuarios, Obtener registros de productos |
+| Slack | Publicar mensaje, Crear canal, Unirse a canal público, Listar canales públicos |
+| OneDrive | Crear archivo, Copiar archivo, Buscar archivos en carpeta, Obtener contenido de archivo, Obtener metadatos de archivo, Crear enlace para compartir, Eliminar archivo |
+| Google Drive | Crear archivo, Copiar archivo, Buscar archivos en carpeta, Obtener contenido de archivo, Obtener metadatos de archivo, Crear enlace para compartir, Eliminar archivo |
+
+Cada acción es una **lectura** o una **escritura**. Una escritura modifica el
+sistema externo.
+
+## OneDrive y Google Drive
+
+Una conexión de OneDrive o Google Drive pertenece a un Miembro. El conector se
+ejecuta en la cuenta de ese Miembro. Por esta razón:
+
+- La acción se ejecuta en **Preview** y en **Teammate chat**. No se ejecuta en
+  un widget publicado.
+- **Publish** rechaza un flujo que contiene un conector de Drive. El motivo
+  nombra al flujo.
+- Las acciones de escritura necesitan un ámbito adicional. OneDrive necesita
+  `Files.ReadWrite`. Google Drive necesita `drive.file`. Selecciona **Grant
+  access** para añadirlo.
+- Con `drive.file`, Google Drive permite que el conector modifique únicamente
+  los archivos que el conector haya creado o que una persona haya abierto con
+  él. Las acciones de copiar, compartir y eliminar pueden fallar en otros
+  archivos.
+- **Get file content** devuelve solo texto, hasta un tamaño limitado. Los
+  archivos binarios y los documentos de Google Docs no se convierten.
+
+## Añade un conector
+
+1. Abre un flujo.
+2. En el **Canvas**, selecciona un proveedor en **Connector** en la paleta. En
+   el **Form**, selecciona **Connector** en **Add an action** y, a continuación,
+   selecciona el proveedor.
+3. Selecciona un **Connection**. La lista muestra las conexiones de la
+   organización para ese proveedor.
+4. Selecciona un **Action**.
+5. Rellena los campos. Las variables de plantilla como `{{user.name}}` y
+   `{{workflow.message}}` están permitidas cuando el campo lo indique.
+
+Si el proveedor no tiene conexión, conéctalo primero en **Knowledge →
+Applications**. Para Slack, el panel puede abrir directamente la ventana de
+inicio de sesión.
+
+## Campos cargados desde el sistema
+
+Algunos campos cargan sus valores desde el sistema conectado: tablas y columnas
+de ServiceNow, campos de Salesforce, canales de Slack. Selecciona **Load
+options** para obtenerlos. Aun así, puedes escribir un valor.
+
+## Necesita configuración
+
+Un nodo Connector muestra **Needs setup** cuando:
+
+- No se ha seleccionado la acción o la conexión.
+- Un campo obligatorio está vacío.
+- La conexión carece de un ámbito que la acción necesita. Selecciona **Grant
+  access** para volver a iniciar sesión en el proveedor con los permisos que
+  faltaban añadidos.
+- Es necesario volver a conectar la conexión.
+
+## Salidas
+
+Una acción escribe sus resultados en variables de plantilla para acciones
+posteriores en el mismo flujo. Los nombres comienzan con `connector.`:
+
+| Acción | Variables |
+| --- | --- |
+| ServiceNow Crear o actualizar registro | `{{connector.sys_id}}`, `{{connector.number}}` |
+| ServiceNow Listar registros | `{{connector.count}}`, `{{connector.first_sys_id}}`, `{{connector.records}}` |
+| Salesforce Obtener registros | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.records}}`, `{{connector.api_usage}}` |
+| Publicar mensaje en Slack | `{{connector.ts}}`, `{{connector.channel}}` |
+| Slack Crear canal o unirse a él | `{{connector.id}}`, `{{connector.name}}` |
+| Crear u obtener metadatos de Drive, copiar de Google Drive | `{{connector.id}}`, `{{connector.name}}`, `{{connector.web_url}}` |
+| Copia de OneDrive | `{{connector.status}}`, `{{connector.monitor_url}}` (la copia se ejecuta en segundo plano) |
+| Drive Buscar archivos | `{{connector.count}}`, `{{connector.first_id}}`, `{{connector.items}}` |
+| Obtener contenido de Drive | `{{connector.content}}` |
+| Drive Crear enlace para compartir | `{{connector.url}}` |
+
+`{{connector.ok}}` es `true` o `false` después de cada acción. Una acción
+**Message** después del Conector puede mostrar estos valores.
+
+## Lo que ve el visitante
+
+- Una **escritura** correcta muestra el **Success message**. El valor
+  predeterminado es una breve confirmación.
+- Una **lectura** correcta no muestra nada. Utiliza una acción Message para
+  mostrar los resultados.
+- Cualquier fallo muestra el **Failure message**. El error del proveedor nunca
+  se muestra al visitante. El Editor lo ve en **Run node** y, en el caso de una
+  conexión caducada, en **Alerts**.
+
+## Ejecutar nodo
+
+Selecciona el nodo y, a continuación, **Run node**. La consola realiza la
+llamada real con valores de ejemplo.
+
+- Una **lectura** se ejecuta de inmediato.
+- Una **escritura** solicita primero confirmación, porque modifica el sistema
+  externo.
+
+**Test connection** comprueba que el token de la conexión siga funcionando.
+
+## Publicar
+
+Publish rechaza un Flow cuyo Connector:
+
+- nombra una conexión que ya no existe,
+- nombra una conexión personal (las cuentas de OneDrive o Google Drive
+  pertenecen a un Miembro),
+- nombra una conexión que carece de los ámbitos de la acción o que debe volver a
+  conectarse.
+
+El motivo nombra el flujo. Corrige la conexión o el flujo y, a continuación,
+vuelve a publicar.
+
+## Conexiones caducadas
+
+Cuando una llamada falla porque el proveedor ha rechazado el token, la conexión
+se marca como **Reauthorization required** y se genera una alerta
+**Integration**. Vuelve a conectar la aplicación en **Knowledge →
+Applications**. La alerta desaparece al volver a conectar.
+
+## API, CLI y MCP
+
+- `GET /api/v1/applications/connections` muestra una lista de las conexiones sin
+  credenciales.
+- `GET /api/v1/applications/connectors` muestra el catálogo.
+- `POST /api/v1/applications/connections/{id}/reconsent` devuelve la unión de
+  ámbitos y la URL que hay que abrir para concederla.
+
+Las mismas operaciones son `ciele applications list|connectors|reconsent` y las
+acciones de la herramienta MCP `manage_integrations` `application_list`,
+`application_connectors`, `application_reconsent`.

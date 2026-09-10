@@ -7,6 +7,7 @@ import {
   thrownMessage,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
+import { drain } from "./drain";
 import { alertKeys, signalHealth } from "./health";
 import { streamConversationTurn } from "./turn";
 import type { TeammateActionTool } from "./types";
@@ -266,14 +267,4 @@ async function executeRoutine(
  * attended one gets. Reusing the streaming entrypoint rather than adding a
  * second headless path is the whole reason the audit trails match.
  */
-async function drain(stream: ReadableStream<Uint8Array>): Promise<void> {
-  const reader = stream.getReader();
-  try {
-    for (;;) {
-      const { done } = await reader.read();
-      if (done) return;
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
+// The mechanics are shared with the two gate continuations (`drain.ts`).

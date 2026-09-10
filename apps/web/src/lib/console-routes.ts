@@ -18,6 +18,8 @@ export const CONSOLE_PATH_PREFIXES = [
   "/inbox",
   "/insights",
   "/library",
+  // Human review decision pages (#841): a signed link lands here, behind the login wall.
+  "/reviews",
   "/settings",
   "/setup",
   "/teammates",

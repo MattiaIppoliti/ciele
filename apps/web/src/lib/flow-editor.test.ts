@@ -9,6 +9,7 @@ import {
   flowSavePayload,
   initialDwell,
   triggerChangePlan,
+  triggerHasConditions,
   type FlowDraft,
 } from "./flow-editor";
 
@@ -23,6 +24,7 @@ function draft(overrides: Partial<FlowDraft> = {}): FlowDraft {
     name: "Opening hours",
     trigger: "message",
     dwell: { minutes: 0, seconds: DEFAULT_DWELL_SECONDS },
+    httpMethods: ["POST"],
     conditionLogic: "any",
     conditions: [],
     actions: ["search_knowledge"],
@@ -200,6 +202,50 @@ describe("triggerChangePlan / applyTriggerChange", () => {
     const applied = applyTriggerChange(d, "message");
     expect(applied.actions).toEqual(["search_knowledge"]);
     expect(applied.conditions).toHaveLength(1);
+  });
+
+  it("crossing into On HTTP request clears the conditions, and the save sends none", () => {
+    // An inbound Flow is named by its URL (#843): nothing routes to it, so the
+    // runtime never evaluates a condition on it. The plan says so, the switch
+    // clears them, and the payload carries none, one rule in three places.
+    const d = draft({
+      actions: ["custom_message", "api_request"],
+      customMessage: "verbatim",
+      conditions: [urlCondition()],
+      settings: { api_request: { url: "https://example.com/hook" } },
+    });
+    const plan = triggerChangePlan(d, "http_request");
+    expect(plan.clearsConditions).toBe(true);
+    expect(plan.needsConfirmation).toBe(true);
+    const applied = applyTriggerChange(d, "http_request");
+    expect(applied.trigger).toBe("http_request");
+    expect(applied.actions).toEqual(["api_request"]);
+    expect(applied.conditions).toEqual([]);
+    expect(applied.customMessage).toBe("");
+    const payload = flowSavePayload(applied, null);
+    expect(payload.conditions).toEqual([]);
+    expect(payload.triggerSettings).toEqual({ httpRequest: { methods: ["POST"] } });
+  });
+
+  it("refuses to save conditions on an inbound draft even when the draft still holds some", () => {
+    // A draft restored from storage, or patched by the agent, can carry
+    // conditions the switch never saw; the save is the last gate.
+    const payload = flowSavePayload(
+      draft({ trigger: "http_request", actions: ["respond"], conditions: [urlCondition()] }),
+      null
+    );
+    expect(payload.conditions).toEqual([]);
+  });
+});
+
+describe("triggerHasConditions", () => {
+  it("is true for a message trigger and for no trigger yet, false for proactive and inbound", () => {
+    expect(triggerHasConditions("message")).toBe(true);
+    expect(triggerHasConditions(null)).toBe(true);
+    expect(triggerHasConditions("page_load")).toBe(false);
+    expect(triggerHasConditions("time_on_page")).toBe(false);
+    expect(triggerHasConditions("chat_open")).toBe(false);
+    expect(triggerHasConditions("http_request")).toBe(false);
   });
 });
 

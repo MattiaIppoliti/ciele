@@ -10,7 +10,7 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "verify": "pnpm verify:mirror && turbo run typecheck test lint build --concurrency=4 && turbo run test:security && turbo boundaries && node deploy/compose.test.mjs && node scripts/workflow-pins.test.mjs && node scripts/rotate-legacy-secrets.test.mjs && node scripts/apply-migrations.test.mjs",
-    "verify:mirror": "if [ -d scripts/mirror-gate ]; then T=$(mktemp -d) && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts assemble \"$T\" --root \"$PWD\" && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts check \"$T\" --skip-build; else echo \"no scripts/mirror-gate in this tree (public mirror), skipping\"; fi",
+    "verify:mirror": "if [ -d scripts/mirror-gate ]; then T=$(mktemp -d) && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts assemble \"$T\" --root \"$PWD\" && pnpm --dir \"$T\" install --frozen-lockfile --ignore-scripts && pnpm --filter @agent-hub/mirror-gate exec tsx src/cli.ts check \"$T\" --skip-build; else echo \"no scripts/mirror-gate in this tree (public mirror), skipping\"; fi",
     "verify:desktop": "pnpm --filter @ciele/desktop package:mac && pnpm --filter @ciele/desktop test:e2e",
     "db:start": "supabase start",
     "db:stop": "supabase stop",

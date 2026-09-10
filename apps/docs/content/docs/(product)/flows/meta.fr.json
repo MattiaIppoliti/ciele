@@ -3,7 +3,11 @@
   "pages": [
     "index",
     "building-a-flow",
+    "canvas",
     "actions",
+    "connector",
+    "http",
+    "human-review",
     "notifications"
   ]
 }

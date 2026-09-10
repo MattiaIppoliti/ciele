@@ -18,6 +18,115 @@ function ok(text: string, status = 200) {
   };
 }
 
+/**
+ * A Swagger-sourced step (#837): the definition is fetched first and decides
+ * the method and the URL, so what the request looks like is a fact about the
+ * document rather than about anything typed into the builder.
+ */
+describe("an endpoint named in a Swagger definition", () => {
+  const SPEC = JSON.stringify({
+    openapi: "3.0.0",
+    servers: [{ url: "https://api.example.com/v1" }],
+    paths: {
+      "/refunds": { post: { operationId: "createRefund" } },
+      "/refunds/{refundId}": { get: { operationId: "getRefund" } },
+    },
+  });
+
+  beforeEach(() => {
+    egressFetchMock.mockReset();
+  });
+
+  it("reads the definition, then calls the operation it names", async () => {
+    egressFetchMock
+      .mockResolvedValueOnce(ok(SPEC) as never)
+      .mockResolvedValueOnce(ok("{}") as never);
+    const result = await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://api.example.com/openapi.json",
+      operationId: "createRefund",
+      // A stale method left on the step: the definition wins, or an operation
+      // could be talked into being a verb it does not have.
+      method: "GET",
+    });
+    expect(egressFetchMock.mock.calls[0][0]).toBe("https://api.example.com/openapi.json");
+    expect(egressFetchMock.mock.calls[1][0]).toBe("https://api.example.com/v1/refunds");
+    expect(egressFetchMock.mock.calls[1][1]).toMatchObject({ method: "POST" });
+    expect(result.ok).toBe(true);
+  });
+
+  it("leaves a path parameter as a template variable for the turn to fill", async () => {
+    egressFetchMock
+      .mockResolvedValueOnce(ok(SPEC) as never)
+      .mockResolvedValueOnce(ok("{}") as never);
+    await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://api.example.com/openapi.json",
+      operationId: "getRefund",
+    });
+    // The test run has no value for it, so the placeholder survives to the
+    // URL rather than the brace being sent as a literal path segment.
+    expect(String(egressFetchMock.mock.calls[1][0])).toContain("refundId");
+  });
+
+  it("says which half failed, and never sends the request when the definition did", async () => {
+    egressFetchMock.mockResolvedValueOnce(ok("not json") as never);
+    const unreadable = await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://api.example.com/openapi.json",
+      operationId: "createRefund",
+    });
+    expect(unreadable.error?.code).toBe("swagger_unreadable");
+    expect(egressFetchMock).toHaveBeenCalledTimes(1);
+
+    egressFetchMock.mockReset();
+    egressFetchMock.mockResolvedValueOnce(ok(SPEC) as never);
+    const missing = await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://api.example.com/openapi.json",
+      operationId: "notInTheSpec",
+    });
+    expect(missing.error?.code).toBe("swagger_no_operation");
+    expect(egressFetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a definition that moves the API to another site, so the step's credential stays home", async () => {
+    const foreign = JSON.stringify({
+      ...JSON.parse(SPEC),
+      servers: [{ url: "https://collector.evil.example/v1" }],
+    });
+    egressFetchMock.mockResolvedValueOnce(ok(foreign) as never);
+    const result = await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://api.example.com/openapi.json",
+      operationId: "createRefund",
+      auth: { type: "bearer", token: "sk-live" },
+    });
+    expect(result.error?.code).toBe("swagger_foreign_origin");
+    expect(result.error?.message).toMatch(/different site/i);
+    expect(egressFetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a refusal on the definition as that policy's own refusal", async () => {
+    // The definition URL is admin-set and server-fetched, so it is guarded the
+    // same way the request is; flattening that into "unreadable" would hide a
+    // blocked host behind a spelling mistake.
+    egressFetchMock.mockRejectedValueOnce(new EgressPolicyError("blocked", "blocked_host"));
+    const result = await testApiRequest({
+      endpoint: "swagger",
+      swaggerUrl: "https://internal.example.com/openapi.json",
+      operationId: "createRefund",
+    });
+    expect(result.error?.code).toBe("blocked_host");
+  });
+
+  it("needs a definition URL before it can do anything", async () => {
+    const result = await testApiRequest({ endpoint: "swagger", operationId: "x" });
+    expect(result.error?.code).toBe("swagger_unreadable");
+    expect(egressFetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("testApiRequest", () => {
   beforeEach(() => {
     egressFetchMock.mockReset();

@@ -9,9 +9,9 @@ import type {
 } from "@agent-hub/core";
 import { teammateSearchesKnowledge } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
-import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
+import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
 import { ArrowLeft, Settings2, UserRoundPlus } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
@@ -259,26 +259,7 @@ export function TeammateWorkspace({
       conversationRef.current = id;
       setConversationId(id);
       setConversationMeta(conversation.metadata ?? null);
-      setMessages(
-        stored.map((message): ChatMsg =>
-          message.role === "user"
-            ? {
-                role: "user",
-                text: (message.content as ChatReplyPart[])
-                  .map((part) => (part.type === "text" ? part.text : ""))
-                  .join(""),
-                sentAt: null,
-              }
-            : {
-                role: "bot",
-                id: message.id,
-                ...EMPTY_TURN_TRACE,
-                parts: message.content as ChatReplyPart[],
-                streamingText: null,
-                feedback: message.feedback,
-              }
-        )
-      );
+      setMessages(chatMessagesFromStored(stored));
       setHistoryOpen(false);
     } catch {
       toast.error("Could not open that conversation");

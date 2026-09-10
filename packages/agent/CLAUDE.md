@@ -79,7 +79,8 @@ Single test file: `pnpm --filter @agent-hub/agent exec vitest run src/engine.tes
   should not pull server code into the bundle.
 - Inside `src/`, files compose across internals freely, the boundary applies to consumers, and it is
   enforced by the `exports` map (a deep import does not resolve), not by a lint rule.
-- `custom_message` (the Message action) is **verbatim**. Generative behaviour belongs in
+- `custom_message` (the Message action) is **verbatim**: `resolveTemplate` fills in template
+  variables (`{{user.name}}`, `{{review.amount}}`) and no model touches the text. Generative behaviour belongs in
   `search_knowledge`, the Default behavior flow, and `basic_reply`, and nowhere else (see
   `agents.md`). `basic_reply` is the deliberate third: it generates, but it is the *only* generative
   action that never retrieves, so it must never assert a fact about the organization. A new action

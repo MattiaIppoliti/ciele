@@ -27,9 +27,8 @@ const ALL_SOURCE_KINDS: SourceKind[] = KNOWLEDGE_TAB_SLUGS.flatMap(
 /**
  * How many Library items the scope picker offers.
  *
- * A Library is org-sized (the hub adapter filters and pages in memory for the
- * same reason), so one read is the right shape. The cap is a backstop rather
- * than a page: a picker that silently stopped at its limit would look like an
+ * The database returns only identity fields for this bounded read. The cap is
+ * a backstop rather than a page: silently stopping at it would look like an
  * empty Library, so the caller is told when it bit and the picker says so.
  */
 export const SCOPE_SOURCE_LIMIT = 500;
@@ -46,10 +45,9 @@ export async function loadScopeSources(
   db: Db,
   organizationId: string
 ): Promise<{ sources: ScopeSource[]; truncated: boolean }> {
-  const page = await db.listOrgKnowledgeSources(organizationId, {
+  const page = await db.listOrgKnowledgeSourceOptions(organizationId, {
     kinds: ALL_SOURCE_KINDS,
-    page: 1,
-    pageSize: SCOPE_SOURCE_LIMIT,
+    limit: SCOPE_SOURCE_LIMIT,
   });
   return {
     sources: page.items.map((item) => ({
