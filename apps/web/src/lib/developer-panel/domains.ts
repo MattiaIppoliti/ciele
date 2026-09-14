@@ -110,6 +110,12 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List the AI Teammates in this Organization and tell me which ones have no Knowledge Collection in scope.",
   },
+  projects: {
+    title: "Projects API",
+    mcpTool: "manage_projects",
+    mcpPrompt:
+      "List this Organization's Projects and tell me which ones have no memory document written yet.",
+  },
   channels: {
     title: "Channels API",
     mcpTool: "manage_channels",

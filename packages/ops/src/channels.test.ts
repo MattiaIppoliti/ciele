@@ -577,7 +577,7 @@ describe("attribution across a chain (#778, story 8)", () => {
       scope: "project",
       projectId: project.id,
     });
-    const entries = await db.listMemoryDocumentEntries(document!.id);
+    const entries = await db.listMemoryDocumentEntries(DEMO_ORG.id, document!.id);
     expect(entries.map((entry) => entry.teammateId)).toEqual([
       scheduler.id,
       chief.id,

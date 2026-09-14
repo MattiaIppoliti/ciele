@@ -10,7 +10,7 @@ instalaciones autoalojadas.
 ## Requisitos
 
 - Utiliza Node.js 22.6 o una versión posterior.
-- Crea una [clave de API de organización](/developers/api-keys).
+- Crea una [clave API de la organización](/developers/api-keys).
 
 ## Instalar
 
@@ -25,8 +25,8 @@ ciele help
 El tarball incluye sus dependencias de tiempo de ejecución. El comando installed
 ya no necesita el repositorio.
 
-Después de que `@ciele/cli` se publique en npm,
-`npm install --global @ciele/cli` instala el mismo artefacto.
+Después de publicar `@ciele/cli` en npm, `npm install --global @ciele/cli`
+instala el mismo artefacto.
 
 Los colaboradores también pueden ejecutar `node packages/cli/bin/ciele.mjs` sin
 instalarlo.
@@ -93,6 +93,22 @@ tiene propietario, por lo que estos enlaces son lo único que pone el
 conocimiento al alcance de un Asistente. Los comandos son `sources add-text`,
 `sources add-url`, `sources add-file`, `faqs add` y `faqs import`.
 
+### Añadir conocimiento sin una Collection
+
+Un nuevo Asistente no tiene ninguna Colección, porque la lista de Colecciones
+muestra solo las Colecciones que contienen sus Fuentes. En ese caso, usa
+`sources add-org`. Coloca la Fuente en la Biblioteca de conocimiento de la
+Organización.
+
+```bash
+ciele sources add-org --url https://example.com/help --assistants <assistant-id>
+ciele sources add-org --file handbook.pdf --assistants <assistant-id>
+ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
+```
+
+Indica uno de estos: `--url`, `--file` o `--text`. El comando necesita
+`--assistants` por la misma razón que los demás comandos de adición.
+
 ### Enlaces de fuente
 
 Una Fuente responde por los Asistentes vinculados a ella. Estos comandos leen y
@@ -110,10 +126,117 @@ los Asistentes.
 `sources link` reemplaza el conjunto de enlaces. Una lista vacía elimina todos
 los enlaces y la Fuente deja de responder.
 
-`sources direct-access` decide si ese Asistente puede proporcionar el archivo
+`sources direct-access` decide si ese Asistente puede entregar el archivo
 original a un Visitante.
 
-## Comandos de Operaciones y Organización
+## Comandos de flujo
+
+### Descubre qué puede contener un Flow
+
+`ciele flows catalog` muestra los desencadenantes, las acciones y los tipos de
+condición de esta implementación de Ciele. También muestra qué acciones permite
+cada desencadenante. Léelo antes de escribir un archivo Flow. El servidor
+rechaza un desencadenante, una acción o un tipo de condición que no esté en la
+lista.
+
+La implementación da esta respuesta, no la CLI. Una CLI anterior comparada con
+una Ciele más reciente muestra las nuevas listas.
+
+```bash
+ciele flows catalog
+```
+
+### Comprueba un Flow antes de guardarlo
+
+`flows draft` comprueba un cambio en un Flow. `flows validate` comprueba un Flow
+completo. Ninguno de los dos comandos guarda nada. Ambos te muestran el flujo
+que Ciele almacenaría.
+
+```bash
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
+```
+
+Úsalos sobre todo por una razón: cuando un Flow escribe en un conector, Ciele
+añade una acción de revisión humana antes de esa escritura. Estos dos comandos
+te muestran la acción añadida. Al guardar, se hace de forma silenciosa.
+
+### Observa un flujo HTTP
+
+Un flujo con el desencadenante HTTP mantiene un registro de cada llamada
+entrante.
+
+```bash
+ciele flows runs <flow-id> --limit 20
+```
+
+Las conversaciones no incluyen estas ejecuciones, porque una llamada entrante no
+es una conversación.
+
+## Comandos de Teammate
+
+### Dale a un Teammate sus capacidades
+
+Un nuevo Teammate de IA puede responder preguntas. No puede actuar hasta que le
+concedas un dominio, y no realiza ningún trabajo de forma autónoma hasta que le
+asignes una Routine.
+
+```bash
+ciele teammates grants <teammate-id>
+ciele teammates set-grants <teammate-id> --domains improvements,knowledge
+ciele teammates routines <teammate-id>
+ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
+```
+
+`set-grants` envía el conjunto completo de dominios cada vez. `--domains ""` los
+elimina todos. Este comando requiere una clave de API con el rol de
+administrador o superior, ya que permite que un agente modifique tus datos. Los
+demás comandos de Teammate requieren el rol Editor.
+
+Un Teammate puede tener un máximo de cinco Routines.
+
+### Configura un compañero de equipo con un solo comando
+
+`teammates create` crea un compañero de equipo que responde a las preguntas. No
+puede actuar y no realiza ningún trabajo desatendido. `teammates provision`
+realiza los tres pasos a la vez.
+
+```bash
+ciele teammates provision --name "Triage" \
+  --grants improvements \
+  --routine "Triage new feedback:daily:8"
+```
+
+El orden es crear, luego conceder y después programar. Si un paso falla, el
+comando te indica dónde se detuvo. El compañero de equipo se puede seguir
+utilizando hasta ese momento.
+
+Una clave sin el rol de administrador puede crear al compañero de equipo. No
+puede conceder un dominio. A continuación, el comando informa de que se detuvo
+en el paso de concesiones.
+
+### Proyectos y memoria
+
+Un Project es un espacio de trabajo compartido. Un compañero de IA vinculado a
+un proyecto lee el documento de memoria de ese proyecto en cada turno.
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <project-id>
+ciele projects set-document <project-id> --file notes.md --note "after review"
+ciele teammates memory <teammate-id>
+ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
+```
+
+`set-document` y `set-memory` reemplazan el texto completo. Ciele conserva el
+texto anterior en el historial del documento.
+
+No hay ningún comando para tu propia capa de memoria. Una clave API actúa como
+el miembro que la creó, por lo que un comando aquí mostraría el documento
+privado de ese miembro. En la consola, ve a Configuración y luego a Memoria.
+
+## Comandos de Operations y Organization
 
 ```bash
 ciele conversations list --assistant <assistant-id>

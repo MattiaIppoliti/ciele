@@ -233,7 +233,7 @@ describe("distillAgentLearning", () => {
     expect(document?.body).toContain("Second thing.");
     // Each write is recorded, so an owner can see where a wrong learning came
     // from and correct it (#767, story 21).
-    const entries = await db.listMemoryDocumentEntries(document!.id);
+    const entries = await db.listMemoryDocumentEntries(DEMO_ORG.id, document!.id);
     expect(entries).toHaveLength(2);
     expect(entries[0].teammateId).toBe(teammate.id);
   });

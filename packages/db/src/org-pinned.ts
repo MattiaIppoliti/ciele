@@ -351,17 +351,26 @@ const PINNED_TABLES = new Set([
   "entities",
   "skills",
   "projects",
-  // AI Teammates (#768) and their channels (#778). Every row carries an
-  // `organizationId` stamp, which is what the pinning below relies on.
-  // `teammateGrants`, `teammateRoutines` and `teammateRosterHidden` stay out:
-  // no /api/v1 route reaches them, and fail-closed means a table earns its
-  // exposure from a route, not from being adjacent to one.
+  // AI Teammates (#768), their governance (#770), their routines (#772) and
+  // their channels (#778). Every row carries an `organizationId` stamp, which
+  // is what the pinning below relies on. `teammateRosterHidden` stays out: no
+  // /api/v1 route reaches it, and fail-closed means a table earns its exposure
+  // from a route, not from being adjacent to one. Grants and routines earned
+  // theirs when `/teammates/{id}/grants` and `/teammates/{id}/routines`
+  // shipped.
   "teammates",
+  "teammateGrants",
+  "teammateRoutines",
   "teammateChannels",
   "teammateChannelParticipants",
   "assistantGoals",
   // Human review requests (#841): `/api/v1/reviews` lists and decides them.
   "reviewRequests",
+  // Inbound HTTP Flow runs (#843). Earned its exposure when
+  // `GET /flows/{id}/runs` shipped: an operator watching a webhook from a
+  // script has nowhere else to look, and a run is not a Conversation, so the
+  // Inbox endpoints do not cover it.
+  "httpFlowRuns",
 ] as const);
 type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
 
@@ -508,18 +517,37 @@ export function createOrgPinnedDb(inner: Db, organizationId: string): Db {
       }
 
       /**
-       * A Teammate's own memory write (#771). The Organization arrives inside
-       * the input object rather than as the first argument, so it is stamped
-       * the way `listMemories` is, and a forged one in the payload cannot place
-       * a document in another tenant.
+       * The memory-document layers (#771). The write takes its Organization
+       * inside the input object rather than as the first argument, so it is
+       * stamped the way `listMemories` is, and a forged one in the payload
+       * cannot place a document in another tenant. The read takes it as the
+       * first argument, so it is substituted there.
        *
-       * Only the write is here. Reading a document, its history and reverting
-       * one are console operations on the Member's own session, so they stay
-       * behind RLS and earn no exposure they do not need.
+       * Reading arrived with the Projects and Agent-memory endpoints: both
+       * serve the document *and* its history, so `getMemoryDocument` and
+       * `listMemoryDocumentEntries` are now reachable by a key, and the latter
+       * took an `organizationId` first argument in the same change so that it
+       * could be. The User layer
+       * is not, and cannot become so through here: its operations derive the
+       * member id from the session context, and a key has none.
+       *
+       * `revertMemoryDocument` stays out. Reverting is a console affordance on
+       * a Member's own screen, and no /api/v1 route reaches it.
        */
       if (method === "writeMemoryDocument") {
         return (...args: unknown[]) =>
           call({ ...((args[0] ?? {}) as object), organizationId });
+      }
+      if (method === "getMemoryDocument") {
+        return (...args: unknown[]) => call(organizationId, ...args.slice(1));
+      }
+      if (method === "listMemoryDocumentEntries") {
+        // Organization-first, so the proxy substitutes it like every other
+        // org-scoped read. It was briefly a bare passthrough on the reasoning
+        // that a document id only ever arrives from a read this proxy already
+        // pinned; that is true of today's callers and is not a property of the
+        // seam, which is the only thing a fail-closed boundary may rely on.
+        return (...args: unknown[]) => call(organizationId, ...args.slice(1));
       }
 
       /**

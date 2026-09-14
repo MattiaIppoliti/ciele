@@ -19,13 +19,14 @@ import { memories } from "./commands/memories.ts";
 import { sso } from "./commands/sso.ts";
 import { helpDesks } from "./commands/help-desks.ts";
 import { teammates } from "./commands/teammates.ts";
+import { projects } from "./commands/projects.ts";
 import { channels } from "./commands/channels.ts";
 import { alerts, goals, skills } from "./commands/configuration.ts";
 import { apiKeys, invites, members, organization } from "./commands/organization.ts";
 import { apiIntegrations, providers } from "./commands/integrations.ts";
 import { applications } from "./commands/applications.ts";
 import { reviews } from "./commands/reviews.ts";
-import { str, type CommandContext } from "./commands/shared.ts";
+import { str, type CommandContext, type FlagValue } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
 const COMMAND_GROUPS: Record<
@@ -48,6 +49,7 @@ const COMMAND_GROUPS: Record<
   "help-desks": helpDesks,
   teammates,
   channels,
+  projects,
   skills,
   goals,
   alerts,
@@ -87,7 +89,7 @@ export interface CliDeps {
 
 interface Parsed {
   positional: string[];
-  flags: Record<string, string | boolean>;
+  flags: Record<string, FlagValue>;
 }
 
 // Deliberately not node:util's parseArgs: that one refuses option values
@@ -96,7 +98,7 @@ interface Parsed {
 // required flag table for our ~36 flags would be longer than this parser.
 function parseArgs(argv: string[]): Parsed {
   const positional: string[] = [];
-  const flags: Record<string, string | boolean> = {};
+  const flags: Record<string, FlagValue> = {};
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (!arg.startsWith("--")) {
@@ -104,12 +106,29 @@ function parseArgs(argv: string[]): Parsed {
       continue;
     }
     const eq = arg.indexOf("=");
+    let name: string;
+    let value: string | boolean;
     if (eq >= 0) {
-      flags[arg.slice(2, eq)] = arg.slice(eq + 1);
+      name = arg.slice(2, eq);
+      value = arg.slice(eq + 1);
     } else if (i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
-      flags[arg.slice(2)] = argv[++i];
+      name = arg.slice(2);
+      value = argv[++i];
     } else {
-      flags[arg.slice(2)] = true;
+      name = arg.slice(2);
+      value = true;
+    }
+    // A repeated flag collects rather than overwrites, which is what lets
+    // `--routine a --routine b` mean two routines. `str()` still reads the last
+    // value out of an array, so every command that never expected a repeat
+    // behaves exactly as it did when the second one silently won.
+    const held = flags[name];
+    if (held === undefined) {
+      flags[name] = value;
+    } else if (Array.isArray(held)) {
+      held.push(value);
+    } else {
+      flags[name] = [held, value];
     }
   }
   return { positional, flags };

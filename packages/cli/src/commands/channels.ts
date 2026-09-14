@@ -16,6 +16,36 @@ export async function channels(
 ) {
   const { client, flags, rest, emit, deps } = ctx;
   switch (verb) {
+    case "oversight": {
+      // Owner/Admin: every channel in the organization, seated or not.
+      const result = await client.channels.oversight();
+      emit(
+        table(
+          result.data.map((row) => ({
+            id: row.channel.id,
+            name: row.channel.name,
+            members: row.memberIds.length,
+            teammates: row.teammateIds.length,
+            lastMessageAt: row.lastMessageAt ?? "",
+          })),
+          [
+            { key: "id", header: "ID" },
+            { key: "name", header: "Name" },
+            { key: "members", header: "Members" },
+            { key: "teammates", header: "Teammates" },
+            { key: "lastMessageAt", header: "Last message" },
+          ]
+        ),
+        result
+      );
+      return EXIT.ok;
+    }
+    case "oversight-read": {
+      if (!rest[0]) return usage(deps, "channels oversight-read <channelId>");
+      const view = await client.channels.oversightRead(rest[0]);
+      emit(JSON.stringify(view, null, 2), view);
+      return EXIT.ok;
+    }
     case "list": {
       const result = await client.channels.list();
       emit(
@@ -129,7 +159,7 @@ export async function channels(
     default:
       return usage(
         deps,
-        "channels list|get|create|update|delete|add-member|remove-member|add-teammate|remove-teammate"
+        "channels list|get|create|update|delete|add-member|remove-member|add-teammate|remove-teammate|oversight|oversight-read"
       );
   }
 }

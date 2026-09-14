@@ -1,6 +1,6 @@
 ---
 title: Ciele CLI
-description: Gestisci Ciele da un terminale o da un job automatizzato.
+description: Gestisci Ciele da un terminale o tramite un job automatizzato.
 ---
 
 Il comando `ciele` utilizza le stesse operazioni API della console di
@@ -9,12 +9,12 @@ self-hosted.
 
 ## Requisiti
 
-- Utilizza Node.js 22.6 o versioni successive.
+- Usa Node.js 22.6 o versioni successive.
 - Crea una [chiave API dell'organizzazione](/developers/api-keys).
 
 ## Installa
 
-Compila e installa il pacchetto standalone da un repository estratto:
+Compila e installa il pacchetto standalone da un checkout del repository:
 
 ```bash
 pnpm --dir packages/cli pack --pack-destination ./dist
@@ -22,8 +22,8 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Il tarball include le sue dipendenze di runtime. Il comando installed non ha più
-bisogno del repository.
+Il tarball include le sue dipendenze di runtime. Il comando installato non
+necessita più del repository.
 
 Dopo la pubblicazione di `@ciele/cli` su npm, `npm install --global @ciele/cli`
 installa lo stesso artefatto.
@@ -33,7 +33,7 @@ installarlo.
 
 ## Accedi
 
-Per il servizio in hosting, esegui:
+Per il servizio hosted, esegui:
 
 ```bash
 ciele login --key "$CIELE_API_KEY"
@@ -61,7 +61,7 @@ La CLI risolve una chiave in questo ordine:
 La CLI utilizza lo stesso ordine per `--base-url`, `CIELE_BASE_URL` e l'origine
 salvata. L'origine ospitata è l'ultima opzione predefinita.
 
-## Usa l'output dell'automazione
+## Usa l'output di automazione
 
 Aggiungi `--json` a un comando per ricevere un output leggibile da una macchina.
 
@@ -88,15 +88,31 @@ ciele sources get <source-id>
 ciele publish status <assistant-id>
 ```
 
-Ogni comando che aggiunge conoscenza necessita di `--assistants`. Una Collection
-non ha un proprietario, quindi questi link sono l'unico modo per mettere la
+Ogni comando che aggiunge conoscenza richiede `--assistants`. Una Collection non
+ha un proprietario, quindi questi link sono l'unico modo per mettere la
 conoscenza a disposizione di un Assistente. I comandi sono `sources add-text`,
 `sources add-url`, `sources add-file`, `faqs add` e `faqs import`.
+
+### Aggiungi conoscenza senza una Collection
+
+Un nuovo Assistente non ha alcuna Collection, perché l'elenco delle Collection
+mostra solo le Collection che contengono le sue Source. In tal caso, utilizza
+`sources add-org`. Inserisce la Fonte nella Knowledge Library
+dell'Organizzazione.
+
+```bash
+ciele sources add-org --url https://example.com/help --assistants <assistant-id>
+ciele sources add-org --file handbook.pdf --assistants <assistant-id>
+ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
+```
+
+Indica uno tra `--url`, `--file` o `--text`. Il comando necessita di
+`--assistants` per lo stesso motivo degli altri comandi di aggiunta.
 
 ### Collegamenti alla fonte
 
 Una Fonte risponde per gli Assistenti ad essa collegati. Questi comandi leggono
-e modificano i link.
+e modificano i collegamenti.
 
 ```bash
 ciele sources list-org
@@ -110,10 +126,115 @@ tutti gli Assistenti.
 `sources link` sostituisce il set di link. Un elenco vuoto rimuove tutti i
 collegamenti e la Sorgente smette di rispondere.
 
-`sources direct-access` decide se quell'Assistant può fornire a un Visitor il
-file originale.
+`sources direct-access` decide se quell'Assistente specifico può fornire a un
+Visitor il file originale.
 
-## Comandi per Operazioni e Organizzazione
+## Comandi Flow
+
+### Scopri cosa può contenere un Flow
+
+`ciele flows catalog` mostra i trigger, le azioni e i tipi di condizione di
+questa distribuzione Ciele. Mostra anche quali azioni sono consentite da ciascun
+trigger. Leggilo prima di scrivere un file Flow. Il server rifiuta un trigger,
+un'azione o un tipo di condizione che non è presente nell'elenco.
+
+Questa risposta viene fornita dalla distribuzione, non dalla CLI. Una CLI
+precedente rispetto a una Ciele più recente mostra i nuovi elenchi.
+
+```bash
+ciele flows catalog
+```
+
+### Controlla un Flow prima di salvarlo
+
+`flows draft` verifica una modifica a un Flow. `flows validate` verifica un Flow
+completo. Nessuno dei due comandi salva nulla. Entrambi ti mostrano il Flow che
+Ciele memorizzerebbe.
+
+```bash
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
+```
+
+Usali soprattutto per un motivo: quando un Flow scrive su un connettore, Ciele
+aggiunge un'azione di revisione umana prima di quella scrittura. Questi due
+comandi ti mostrano l'azione aggiunta. Il salvataggio lo fa in modo silenzioso.
+
+### Osserva un flusso HTTP
+
+Un Flow con il trigger HTTP tiene traccia di ogni chiamata in entrata.
+
+```bash
+ciele flows runs <flow-id> --limit 20
+```
+
+Le conversazioni non includono queste esecuzioni, perché una chiamata in entrata
+non è una conversazione.
+
+## Comandi per Teammate
+
+### Assegna a un Teammate le sue capacità
+
+Un nuovo Teammate AI può rispondere alle domande. Non può agire finché non gli
+assegni un dominio e non svolge alcun lavoro autonomo finché non gli assegni una
+Routine.
+
+```bash
+ciele teammates grants <teammate-id>
+ciele teammates set-grants <teammate-id> --domains improvements,knowledge
+ciele teammates routines <teammate-id>
+ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
+```
+
+`set-grants` invia ogni volta l'insieme completo dei domini. `--domains ""` li
+rimuove tutti. Questo comando richiede una chiave API con il ruolo di
+amministratore o superiore, perché consente a un agente di modificare i tuoi
+dati. Gli altri comandi Teammate richiedono il ruolo di Editor.
+
+Un Teammate può avere al massimo cinque Routine.
+
+### Configura un Teammate con un solo comando
+
+`teammates create` crea un Teammate che risponde alle domande. Non può agire e
+non svolge alcun lavoro non presidiato. `teammates provision` esegue i tre
+passaggi contemporaneamente.
+
+```bash
+ciele teammates provision --name "Triage" \
+  --grants improvements \
+  --routine "Triage new feedback:daily:8"
+```
+
+L'ordine è: crea, poi assegna, infine programma. Se un passaggio fallisce, il
+comando ti indica dove si è interrotto. Il teammate rimane utilizzabile fino a
+quel momento.
+
+Una chiave senza il ruolo di amministratore può creare il compagno di team. Non
+può concedere un dominio. Il comando segnala quindi di essersi interrotto nella
+fase grants.
+
+### Progetti e memoria
+
+Un Progetto è uno spazio di lavoro condiviso. Un AI Teammate collegato a un
+Progetto legge il documento di memoria di quel Progetto a ogni turno.
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <project-id>
+ciele projects set-document <project-id> --file notes.md --note "after review"
+ciele teammates memory <teammate-id>
+ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
+```
+
+`set-document` e `set-memory` sostituiscono il testo completo. Ciele conserva il
+testo precedente nella cronologia del documento.
+
+Non esiste un comando per il tuo livello di memoria. Una chiave API funziona
+come il membro che l'ha creata, quindi un comando qui mostrerebbe il documento
+privato di quel membro. Nella console, vai su Impostazioni e poi su Memoria.
+
+## Comandi Operazioni e Organizzazione
 
 ```bash
 ciele conversations list --assistant <assistant-id>

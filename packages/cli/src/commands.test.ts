@@ -92,6 +92,209 @@ describe("flows commands", () => {
   });
 });
 
+describe("project commands", () => {
+  it("set-document reads a local file and archiving is offered instead of delete", async () => {
+    const dir = tmp();
+    const path = join(dir, "notes.md");
+    writeFileSync(path, "Ship before the freeze.");
+    const { deps, calls } = harness(() => ({ json: { id: "p1", body: "x" } }));
+
+    expect(
+      await runCli(
+        ["projects", "set-document", "p1", "--file", path, "--note", "kickoff"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "PUT" });
+    expect(calls[0].url).toContain("/projects/p1/document");
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      body: "Ship before the freeze.",
+      note: "kickoff",
+    });
+
+    // Deleting cascades the project's decisions, so it asks, and it names the
+    // reversible alternative rather than only refusing.
+    expect(await runCli(["projects", "delete", "p1"], deps)).toBe(EXIT.usage);
+    expect(await runCli(["projects", "delete", "p1", "--yes"], deps)).toBe(EXIT.ok);
+    expect(calls[1]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("teammates set-memory writes the whole agent document", async () => {
+    const { deps, calls } = harness(() => ({ json: { id: "m1", body: "x" } }));
+    expect(
+      await runCli(
+        ["teammates", "set-memory", "t1", "--body", "Refunds go to billing."],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "PUT" });
+    expect(calls[0].url).toContain("/teammates/t1/memory");
+    expect(JSON.parse(calls[0].body!).body).toBe("Refunds go to billing.");
+  });
+});
+
+describe("provisioning a teammate from the CLI", () => {
+  it("keeps every --routine, not only the last one", async () => {
+    const { deps, calls } = harness(() => ({
+      json: { teammate: { id: "t1", name: "Triage" }, governance: null, routines: [], partial: null },
+    }));
+
+    expect(
+      await runCli(
+        [
+          "teammates",
+          "provision",
+          "--name",
+          "Triage",
+          "--routine",
+          "Morning sweep:daily:8",
+          "--routine",
+          "Weekly digest:weekly",
+        ],
+        deps
+      )
+    ).toBe(EXIT.ok);
+
+    // The flag parser used to overwrite on repeat, so the second routine won
+    // and the first vanished with no warning.
+    const body = JSON.parse(calls[0].body!);
+    expect(body.routines).toEqual([
+      { instruction: "Morning sweep", cadence: "daily", hour: 8 },
+      { instruction: "Weekly digest", cadence: "weekly", hour: undefined },
+    ]);
+  });
+
+  it("exits 1, not 2, when the server refuses a step", async () => {
+    const { deps } = harness(() => ({
+      json: {
+        teammate: { id: "t1", name: "Half" },
+        governance: null,
+        routines: [],
+        partial: "grants",
+        reason: "needs manageMembers",
+      },
+    }));
+    expect(
+      await runCli(["teammates", "provision", "--name", "Half", "--grants", "inbox"], deps)
+    ).toBe(EXIT.error);
+  });
+});
+
+describe("flow authoring and operator commands", () => {
+  it("draft and validate post the file and store nothing", async () => {
+    const dir = tmp();
+    const patch = join(dir, "patch.json");
+    writeFileSync(patch, JSON.stringify({ actions: ["connector"] }));
+    const { deps, calls } = harness(() => ({ json: { patch: {}, proposal: {} } }));
+
+    expect(
+      await runCli(
+        ["flows", "draft", "--file", patch, "--summary", "add a refund branch"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "POST" });
+    expect(calls[0].url).toContain("/flows/draft");
+    expect(JSON.parse(calls[0].body!).summary).toBe("add a refund branch");
+
+    expect(
+      await runCli(
+        ["flows", "validate", "a1", "--file", patch, "--rationale", "own flow"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[1].url).toContain("/assistants/a1/flows/validate");
+
+    // Both need their prose argument: an unexplained draft is what the Flows
+    // Agent's tool contract refuses, and the CLI should not spend a round trip
+    // finding that out.
+    expect(await runCli(["flows", "draft", "--file", patch], deps)).toBe(EXIT.usage);
+    expect(await runCli(["flows", "validate", "a1", "--file", patch], deps)).toBe(
+      EXIT.usage
+    );
+    expect(calls).toHaveLength(2);
+  });
+
+  it("runs reads an HTTP flow's inbound calls", async () => {
+    const { deps, calls } = harness(() => ({ json: { data: [] } }));
+    expect(await runCli(["flows", "runs", "f1", "--limit", "5"], deps)).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "GET" });
+    expect(calls[0].url).toContain("/flows/f1/runs");
+    expect(calls[0].url).toContain("limit=5");
+  });
+});
+
+describe("teammate governance commands", () => {
+  it("set-grants sends the whole set, and an empty --domains revokes", async () => {
+    const { deps, calls } = harness(() => ({
+      json: { teammateId: "t1", domains: [], ceiling: "edit", approvalBypass: false },
+    }));
+
+    expect(
+      await runCli(
+        ["teammates", "set-grants", "t1", "--domains", "improvements,inbox"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "PUT" });
+    expect(JSON.parse(calls[0].body!).domains).toEqual(["improvements", "inbox"]);
+
+    // `--domains ""` is a revoke and must be sent; omitting the flag is not.
+    expect(
+      await runCli(["teammates", "set-grants", "t1", "--domains", ""], deps)
+    ).toBe(EXIT.ok);
+    expect(JSON.parse(calls[1].body!).domains).toEqual([]);
+    expect(await runCli(["teammates", "set-grants", "t1"], deps)).toBe(EXIT.usage);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("add-routine needs an instruction and a cadence; delete-routine needs --yes", async () => {
+    const { deps, calls } = harness(() => ({
+      json: { id: "r1", cadence: "daily" },
+    }));
+
+    expect(
+      await runCli(["teammates", "add-routine", "t1", "--instruction", "Triage"], deps)
+    ).toBe(EXIT.usage);
+    expect(
+      await runCli(
+        ["teammates", "add-routine", "t1", "--instruction", "Triage", "--cadence", "daily"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(calls[0].url).toContain("/teammates/t1/routines");
+
+    // Stopping unattended work is destructive enough to confirm.
+    expect(await runCli(["teammates", "delete-routine", "r1"], deps)).toBe(EXIT.usage);
+    expect(
+      await runCli(["teammates", "delete-routine", "r1", "--yes"], deps)
+    ).toBe(EXIT.ok);
+    expect(calls[1]).toMatchObject({ method: "DELETE" });
+  });
+});
+
+describe("flow commands", () => {
+  it("flows catalog asks the deployment and needs no ids", async () => {
+    const { deps, calls } = harness(() => ({
+      json: {
+        triggers: [
+          { trigger: "message", proactive: false, allowedActions: ["search_knowledge"] },
+          { trigger: "page_load", proactive: true, allowedActions: ["notification"] },
+        ],
+        actions: ["search_knowledge", "notification"],
+        conditionKinds: ["url", "schedule"],
+        conditionLogic: ["any", "all"],
+        actionsWithSettings: ["search_knowledge"],
+        notes: [],
+      },
+    }));
+
+    expect(await runCli(["flows", "catalog"], deps)).toBe(EXIT.ok);
+    expect(calls[0]).toMatchObject({ method: "GET" });
+    expect(calls[0].url).toContain("/flows/catalog");
+  });
+});
+
 describe("knowledge commands", () => {
   it("sources add-text reads a local file; add-file uploads multipart", async () => {
     const dir = tmp();
@@ -123,6 +326,44 @@ describe("knowledge commands", () => {
     });
     // Multipart carries no arrays, so the links travel as a JSON field.
     expect(calls[1].formFields).toEqual({ assistantIds: '["a1","a2"]' });
+  });
+
+  it("sources add-org posts to the Library and needs exactly one input", async () => {
+    const dir = tmp();
+    const path = join(dir, "handbook.txt");
+    writeFileSync(path, "Tuition is due in October.");
+    const { deps, calls } = harness(() => ({
+      json: { id: "s1", status: "processing" },
+    }));
+
+    await runCli(
+      ["sources", "add-org", "--url", "https://example.com/help", "--assistants", "a1"],
+      deps
+    );
+    expect(calls[0].url).toContain("/knowledge/sources");
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      kind: "url",
+      url: "https://example.com/help",
+      assistantIds: ["a1"],
+    });
+
+    await runCli(
+      ["sources", "add-org", "--file", path, "--assistants", "a1"],
+      deps
+    );
+    expect(calls[1].formFile).toMatchObject({ field: "file", name: "handbook.txt" });
+
+    // Two inputs is as much a usage error as none: the verb picks one shape.
+    expect(
+      await runCli(
+        ["sources", "add-org", "--url", "https://x.test", "--text", "hi", "--assistants", "a1"],
+        deps
+      )
+    ).toBe(EXIT.usage);
+    expect(await runCli(["sources", "add-org", "--text", "hi"], deps)).toBe(
+      EXIT.usage
+    );
+    expect(calls).toHaveLength(2);
   });
 
   it("faqs import streams the local CSV as multipart", async () => {

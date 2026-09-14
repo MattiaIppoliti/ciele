@@ -118,6 +118,15 @@ export const getSourceOp = defineOperation({
   run: async (ctx, { id }) => (await requireSource(ctx, id)).source,
 });
 
+/** The persisted triage verdict for a file upload (#801, CYB-09). */
+const triageSchema = z.object({
+  scanner: z.literal("document-triage"),
+  version: z.number().int().positive(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  verdict: z.literal("clean"),
+  at: z.string(),
+});
+
 /**
  * Creates the Source row (`processing`) and defers the OKF pipeline to an
  * Ingestion Job through the port; callers poll the Source status until it
@@ -144,15 +153,7 @@ export const addSourceOp = defineOperation({
      */
     assistantIds: z.array(z.string().min(1)).max(50).optional(),
     /** The persisted triage verdict for a file upload (#801, CYB-09). */
-    triage: z
-      .object({
-        scanner: z.literal("document-triage"),
-        version: z.number().int().positive(),
-        sha256: z.string().regex(/^[0-9a-f]{64}$/),
-        verdict: z.literal("clean"),
-        at: z.string(),
-      })
-      .optional(),
+    triage: triageSchema.optional(),
   }),
   entities: (_input, result: { source: Source; assistantId: string }) => [
     { kind: "assistantEditor" as const, assistantId: result.assistantId },
@@ -498,6 +499,52 @@ export const createOrgFaqOp = defineOperation({
       ctx.organizationId
     );
     return createFaqOp.run(ctx, { collectionId: library.id, ...input });
+  },
+});
+
+/**
+ * Add a Source without naming a Collection (PRD #726).
+ *
+ * Collections stopped belonging to an Assistant at the contract migration and
+ * nothing in the product creates a named one: every console door resolves the
+ * per-org Knowledge Library and links explicitly. `/api/v1` never got that
+ * door, so a key could only add to a Collection it had already found through
+ * `GET /assistants/{id}/collections`, which is derived from the Sources
+ * already linked there and is therefore empty for a new Assistant. An API
+ * caller could add an org FAQ and nothing else.
+ *
+ * This is the same delegation `createOrgFaqOp` does, over `addSourceOp`
+ * instead: resolve the Library, then run the operation that owns the guards,
+ * the Source row and the ingestion enqueue. Extraction still happens at the
+ * surface, so `rawText` arrives already extracted.
+ */
+export const addOrgSourceOp = defineOperation({
+  name: "knowledge.org.sources.add",
+  capability: "edit",
+  input: z.object({
+    name: z.string().min(1).max(500),
+    kind: z.enum(["text", "url", "file"]),
+    rawText: z.string().min(1),
+    sourceUrl: z.string().url().max(2000).optional(),
+    originalObjectPath: z.string().max(1000).optional(),
+    /**
+     * The Library has no owning Assistant, so the links are the only reach and
+     * there is no owner to fall back on. Required here, not merely refused
+     * downstream, so a caller that forgets does not spend a round trip.
+     */
+    assistantIds: z.array(z.string().min(1)).min(1).max(50),
+    triage: triageSchema.optional(),
+  }),
+  entities: (_input, result: { source: Source; assistantId: string }) =>
+    addSourceOp.entities(
+      { collectionId: "", name: "", kind: "text", rawText: "" },
+      result
+    ),
+  run: async (ctx, input) => {
+    const library = await ctx.db.getOrCreateOrgLibraryCollection(
+      ctx.organizationId
+    );
+    return addSourceOp.run(ctx, { collectionId: library.id, ...input });
   },
 });
 

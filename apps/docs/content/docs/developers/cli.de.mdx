@@ -4,10 +4,10 @@ description: Verwalten Sie Ciele über ein Terminal oder einen automatisierten J
 ---
 
 Der Befehl `ciele` verwendet dieselben API-Operationen wie die
-Administratorkonsole. Die CLI unterstützt den gehosteten Dienst sowie selbst
+Administrator-Konsole. Die CLI unterstützt den gehosteten Dienst sowie selbst
 gehostete Installationen.
 
-## Anforderungen
+## Voraussetzungen
 
 - Verwenden Sie Node.js 22.6 oder höher.
 - Erstellen Sie einen [Organisations-API-Schlüssel](/developers/api-keys).
@@ -23,8 +23,8 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Das Tarball enthält seine Laufzeitabhängigkeiten. Der Befehl installed benötigt
-das Repository nicht mehr.
+Das Tar-Archiv enthält seine Laufzeitabhängigkeiten. Der installierte Befehl
+benötigt das Repository nicht mehr.
 
 Nachdem `@ciele/cli` in npm veröffentlicht wurde, installiert
 `npm install --global @ciele/cli` dasselbe Artefakt.
@@ -34,15 +34,14 @@ installieren.
 
 ## Anmelden
 
-Führen Sie für den gehosteten Dienst Folgendes aus:
+Für den gehosteten Dienst führen Sie Folgendes aus:
 
 ```bash
 ciele login --key "$CIELE_API_KEY"
 ciele whoami
 ```
 
-Fügen Sie für eine selbst gehostete Installation deren öffentlichen Ursprung
-hinzu:
+Fügen Sie bei einer Self-Hosted-Installation deren öffentlichen Origin hinzu:
 
 ```bash
 ciele login \
@@ -64,7 +63,7 @@ Die CLI verwendet dieselbe Reihenfolge für `--base-url`, `CIELE_BASE_URL` und
 den gespeicherten Ursprung. Der gehostete Ursprung ist die letzte
 Standardeinstellung.
 
-## Automatisierungsausgabe verwenden
+## Automatisierungs-Ausgabe verwenden
 
 Fügen Sie `--json` zu einem Befehl hinzu, um eine maschinenlesbare Ausgabe zu
 erhalten.
@@ -73,7 +72,7 @@ erhalten.
 | --- | --- |
 | `0` | Der Vorgang wurde abgeschlossen. |
 | `1` | Der Server hat einen Fehler zurückgegeben. |
-| `2` | Die Befehlseingabe ist ungültig. |
+| `2` | Die Eingabe des Befehls ist ungültig. |
 | `3` | Authentifizierung fehlgeschlagen. |
 
 `ciele doctor` überprüft die API-Erkennung, die API-Kompatibilität, den
@@ -97,7 +96,23 @@ keinen Besitzer, daher sind diese Links das Einzige, was das Wissen für einen
 Assistant zugänglich macht. Die Befehle sind `sources add-text`,
 `sources add-url`, `sources add-file`, `faqs add` und `faqs import`.
 
-### Quelllinks
+### Wissen ohne Collection hinzufügen
+
+Ein neuer Assistent hat keine Collection, da die Collection-Liste nur die
+Collections anzeigt, die seine Quellen enthalten. Verwenden Sie in diesem Fall
+`sources add-org`. Dadurch wird die Quelle in die Wissensbibliothek der
+Organisation aufgenommen.
+
+```bash
+ciele sources add-org --url https://example.com/help --assistants <assistant-id>
+ciele sources add-org --file handbook.pdf --assistants <assistant-id>
+ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
+```
+
+Geben Sie entweder `--url`, `--file` oder `--text` an. Der Befehl benötigt
+`--assistants` aus demselben Grund wie die anderen add-Befehle.
+
+### Quellverknüpfungen
 
 Eine Quelle antwortet für die mit ihr verknüpften Assistenten. Diese Befehle
 lesen und ändern die Links.
@@ -109,13 +124,121 @@ ciele sources direct-access <source-id> on --assistant <assistant-id>
 ```
 
 `sources list-org` listet jede Quelle auf, die die Organisation besitzt, und
-zwar für alle Assistenten.
+zwar über alle Assistenten hinweg.
 
 `sources link` ersetzt den Link-Satz. Eine leere Liste entfernt jeden Link, und
 die Quelle antwortet nicht mehr.
 
-`sources direct-access` entscheidet, ob dieser eine Assistant einem Besucher die
-Originaldatei geben kann.
+`sources direct-access` entscheidet, ob dieser eine Assistant einem Visitor die
+Originaldatei zur Verfügung stellen darf.
+
+## Flow-Befehle
+
+### Erfahren Sie, was ein Flow enthalten kann
+
+`ciele flows catalog` zeigt die Trigger, die Aktionen und die Bedingungstypen
+dieser Ciele-Bereitstellung an. Es zeigt auch, welche Aktionen jeder Trigger
+zulässt. Lesen Sie es, bevor Sie eine Flow-Datei schreiben. Der Server lehnt
+einen Trigger, eine Aktion oder einen Bedingungstyp ab, der nicht in der Liste
+enthalten ist.
+
+Diese Antwort gibt die Bereitstellung, nicht die CLI. Eine ältere CLI zeigt im
+Vergleich zu einer neueren Ciele-Version die neuen Listen an.
+
+```bash
+ciele flows catalog
+```
+
+### Überprüfen Sie einen Flow, bevor Sie ihn speichern
+
+`flows draft` prüft eine Änderung an einem Flow. `flows validate` prüft einen
+vollständigen Flow. Keiner der beiden Befehle speichert etwas. Beide zeigen
+Ihnen den Flow, den Ciele speichern würde.
+
+```bash
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
+```
+
+Verwenden Sie sie vor allem aus einem Grund: Wenn ein Flow in einen Konnektor
+schreibt, fügt Ciele vor diesem Schreibvorgang eine Aktion zur menschlichen
+Überprüfung hinzu. Diese beiden Befehle zeigen Ihnen die hinzugefügte Aktion an.
+Ein Speichervorgang führt dies im Hintergrund aus.
+
+### Einen HTTP-Flow beobachten
+
+Ein Flow mit dem HTTP-Trigger zeichnet jeden eingehenden Aufruf auf.
+
+```bash
+ciele flows runs <flow-id> --limit 20
+```
+
+Gespräche umfassen diese Ausführungen nicht, da ein eingehender Anruf kein
+Gespräch ist.
+
+## Teammate-Befehle
+
+### Einem Teammate seine Capabilities zuweisen
+
+Ein neuer KI-Teammate kann Fragen beantworten. Er kann erst handeln, wenn Sie
+ihm eine Domäne zuweisen, und er führt keine unbeaufsichtigten Arbeiten aus, bis
+Sie ihm eine Routine zuweisen.
+
+```bash
+ciele teammates grants <teammate-id>
+ciele teammates set-grants <teammate-id> --domains improvements,knowledge
+ciele teammates routines <teammate-id>
+ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
+```
+
+`set-grants` sendet jedes Mal den vollständigen Satz von Domains. `--domains ""`
+entfernt sie alle. Für diesen Befehl ist ein API-Schlüssel mit der Rolle „Admin“
+oder höher erforderlich, da er einem Agenten ermöglicht, Ihre Daten zu ändern.
+Für die anderen Teammate-Befehle ist die Editor-Rolle erforderlich.
+
+Ein Teammate kann maximal fünf Routinen haben.
+
+### Richten Sie einen Teammate mit einem einzigen Befehl ein
+
+`teammates create` erstellt einen Teammate, der Fragen beantwortet. Er kann
+nicht handeln und führt keine unbeaufsichtigte Arbeit aus. `teammates provision`
+führt die drei Schritte zusammen aus.
+
+```bash
+ciele teammates provision --name "Triage" \
+  --grants improvements \
+  --routine "Triage new feedback:daily:8"
+```
+
+Die Reihenfolge lautet: erstellen, dann gewähren, dann planen. Wenn ein Schritt
+fehlschlägt, teilt Ihnen der Befehl mit, wo er angehalten hat. Der Teammate
+bleibt bis zu diesem Punkt nutzbar.
+
+Ein Schlüssel ohne die Admin-Rolle kann den Teamkollegen erstellen. Es kann
+keine Domäne gewähren. Der Befehl meldet dann, dass er beim Schritt „grants“
+abgebrochen hat.
+
+### Projekte und Speicher
+
+Ein Projekt ist ein gemeinsamer Arbeitsbereich. Ein AI Teammate, der einem
+Projekt zugeordnet ist, liest bei jedem Zug das Memory-Dokument dieses Projekts.
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <project-id>
+ciele projects set-document <project-id> --file notes.md --note "after review"
+ciele teammates memory <teammate-id>
+ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
+```
+
+`set-document` und `set-memory` ersetzen den vollständigen Text. Ciele speichert
+den vorherigen Text im Verlauf des Dokuments.
+
+Es gibt keinen Befehl für Ihre eigene Speicherebene. Ein API-Schlüssel fungiert
+als das Mitglied, das ihn erstellt hat. Daher würde ein Befehl hier das private
+Dokument dieses Mitglieds anzeigen. Wählen Sie in der Konsole „Settings“ und
+dann „Memory“.
 
 ## Befehle für Vorgänge und Organisation
 
@@ -140,14 +263,14 @@ ciele providers list
 ciele sso connection
 ```
 
-Befehle, die Daten löschen, erfordern `--yes`. Der Standard-Verhaltensablauf
-kann nicht gelöscht werden.
+Befehle, die Daten löschen, erfordern `--yes`. Der Standardverhaltensfluss kann
+nicht gelöscht werden.
 
 Führen Sie `ciele help` für jede Befehlsgruppe und jede akzeptierte Option aus.
 Fügen Sie `--file` hinzu, wenn ein Befehl eine vollständige JSON-Eingabe oder
-einen Patch akzeptiert.
+einen vollständigen Patch akzeptiert.
 
-## Beispiel für eine CI-Prüfung
+## Beispiel für einen CI-Check
 
 ```bash
 export CIELE_API_KEY="ciele_sk_..."
@@ -155,5 +278,5 @@ export CIELE_BASE_URL="https://ciele.example.edu"
 ciele publish status "$ASSISTANT_ID" --json
 ```
 
-Speichern Sie alle Werte im CI-Secret-Speicher für CI. Schreiben Sie keinen
-Schlüssel in eine Workflow-Datei.
+Speichern Sie alle Werte im CI-Secret-Store. Schreiben Sie keinen Schlüssel in
+eine Workflow-Datei.

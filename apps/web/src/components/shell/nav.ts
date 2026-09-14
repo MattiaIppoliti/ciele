@@ -83,14 +83,18 @@ export const GLOBAL_NAV: GlobalNavItem[] = [
     // `MousePointerClick`: a Teammate is a colleague you talk to, not a robot.
     icon: MousePointerClick,
     href: "/teammates",
-    // Two domains, because the page renders two rosters: the Teammates and the
-    // channels they share with the team (#778). A channel page nests under this
-    // prefix, so it answers with both as well.
-    apiDomains: ["teammates", "channels"],
+    // Three domains, because the page renders two rosters and owns a third
+    // noun: the Teammates, the channels they share with the team (#778), and
+    // the Projects a Teammate attaches to (#771), which are created and edited
+    // from here. A channel page nests under this prefix, so it answers with all
+    // three as well.
+    apiDomains: ["teammates", "channels", "projects"],
   },
   // Projects deliberately have no nav entry: a Project is only ever read by
   // one Teammate (#771), so it is created, attached and edited from the
-  // Teammate's own configuration panel rather than a page of its own.
+  // Teammate's own configuration panel rather than a page of its own. The
+  // Developer Panel still has to reach the domain from somewhere, which is why
+  // the Teammates entry above claims it.
   {
     label: "Improvements",
     icon: FlaskConical,

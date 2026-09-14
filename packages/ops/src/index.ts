@@ -38,6 +38,7 @@ export {
   createFlowOp,
   deleteFlowOp,
   draftFlowOp,
+  flowCatalogOp,
   flowInputSchema,
   flowPatchSchema,
   flowTriggerSchema,
@@ -60,6 +61,7 @@ export {
 
 // Knowledge domain (#622): sources, FAQs, re-crawl; pipeline via ports.
 export {
+  addOrgSourceOp,
   addSourceOp,
   createFaqOp,
   deleteSourceOp,
@@ -345,3 +347,9 @@ export {
   wipeSubjectMemoriesOp,
   type EntityCsvResult,
 } from "./data";
+
+// The one workflow operation (#773 follow-up): persona + grants + routines.
+export {
+  provisionTeammateOp,
+  type ProvisionedTeammate,
+} from "./teammate-provision";

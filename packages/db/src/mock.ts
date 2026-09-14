@@ -5539,9 +5539,13 @@ export const mockDb: Db = {
     return document;
   },
 
-  async listMemoryDocumentEntries(documentId, limit = 50) {
+  async listMemoryDocumentEntries(organizationId, documentId, limit = 50) {
     return [...getStore().memoryDocumentEntries.values()]
-      .filter((entry) => entry.documentId === documentId)
+      .filter(
+        (entry) =>
+          entry.organizationId === organizationId &&
+          entry.documentId === documentId
+      )
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
   },

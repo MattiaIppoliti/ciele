@@ -22,6 +22,7 @@ import {
   Sparkles,
   SquareArrowOutUpRight,
   Trash2,
+  Terminal,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -718,6 +719,71 @@ export function AlertsMock() {
       <div className="text-muted-foreground border-border mt-auto flex items-center gap-2 rounded-xl border border-dashed px-3.5 py-3 text-xs">
         <Bell className="size-4" />
         An alert clears itself when the next run succeeds.
+      </div>
+    </div>
+  );
+}
+
+/* The Developer Panel as it actually opens: a docked right rail, the page's own
+   domain named on the tab, and the same operation rendered three ways with this
+   page's ids already substituted. The tab row is the point of the picture, so
+   the snippet underneath is the CLI one, the shortest of the three. */
+const DEVELOPER_OPERATIONS = [
+  { method: "GET", path: "/flows", label: "List flows" },
+  { method: "POST", path: "/flows", label: "Create flow" },
+  { method: "PATCH", path: "/flows/{id}", label: "Update flow" },
+];
+
+export function DevelopersMock() {
+  return (
+    <div className="flex h-full gap-4 p-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        <PaneHeader
+          icon={Workflow}
+          title="Flows"
+          description="The router that decides how each message is answered."
+          action="New flow"
+        />
+        <div className="flex flex-col gap-2">
+          {DEVELOPER_OPERATIONS.map((operation) => (
+            <Row key={operation.path + operation.method}>
+              <span className="bg-muted flex size-8 shrink-0 items-center justify-center rounded-lg border">
+                <Workflow className="text-muted-foreground size-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{operation.label}</span>
+                <span className="text-muted-foreground block truncate font-mono text-xs">
+                  {operation.method} {operation.path}
+                </span>
+              </span>
+            </Row>
+          ))}
+        </div>
+      </div>
+      <div className="bg-card flex w-[46%] shrink-0 flex-col gap-3 rounded-xl border p-4">
+        <div className="flex items-center gap-2">
+          <Terminal className="text-muted-foreground size-4" />
+          <span className="text-sm font-medium">Flows API</span>
+          <span className="text-muted-foreground ml-auto font-mono text-[11px]">D</span>
+        </div>
+        <div className="text-muted-foreground flex gap-3 border-b pb-2 text-xs">
+          <span className="text-foreground border-foreground -mb-2 border-b-2 pb-2 font-medium">
+            CLI
+          </span>
+          <span>cURL</span>
+          <span>MCP</span>
+        </div>
+        <pre className="bg-muted/60 text-muted-foreground overflow-hidden rounded-lg border p-3 font-mono text-[11px] leading-relaxed">
+          {`ciele flows list \\
+  aK3mPqR7xT2w`}
+        </pre>
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          Every id on the page is already filled in. Copy it, run it, keep going.
+        </p>
+        <span className="text-muted-foreground mt-auto flex items-center gap-2 text-xs">
+          <Pill tone="ok">Editor</Pill>
+          the role this call needs
+        </span>
       </div>
     </div>
   );

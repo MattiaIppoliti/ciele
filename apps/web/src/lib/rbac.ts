@@ -1,9 +1,15 @@
 import type { Role } from "@agent-hub/core";
+import { memberRoleRank } from "@agent-hub/core";
 
-const RANK: Record<Role, number> = { owner: 4, admin: 3, editor: 2, viewer: 1 };
-
+/**
+ * The ladder itself lives in `@agent-hub/core` (ADR-0019: the domain and its
+ * pure derivations). It moved there when a *composite* operation had to check a
+ * capability from inside the operations layer, where this module is not
+ * reachable. This file keeps the app-facing names and the copy that explains
+ * each rung; it no longer keeps a second copy of the numbers.
+ */
 export function roleRank(role: Role | null): number {
-  return role ? RANK[role] : 0;
+  return memberRoleRank(role);
 }
 
 /** Editors and above can create/edit assistants, flows and knowledge. */

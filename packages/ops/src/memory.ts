@@ -68,7 +68,10 @@ async function readWithHistory(
   if (!document) return { document: null, entries: [] };
   return {
     document,
-    entries: await ctx.db.listMemoryDocumentEntries(document.id),
+    entries: await ctx.db.listMemoryDocumentEntries(
+      ctx.organizationId,
+      document.id
+    ),
   };
 }
 
@@ -222,7 +225,9 @@ export const revertMyMemoryOp = defineOperation({
       scope: "user",
       memberId: ctx.userId,
     });
-    const entries = own ? await ctx.db.listMemoryDocumentEntries(own.id) : [];
+    const entries = own
+      ? await ctx.db.listMemoryDocumentEntries(ctx.organizationId, own.id)
+      : [];
     if (!entries.some((entry) => entry.id === entryId)) {
       throw new OperationError("not_found", "No such entry in your memory");
     }

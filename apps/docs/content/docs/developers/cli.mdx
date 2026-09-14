@@ -85,6 +85,21 @@ so these links are the only thing that puts the knowledge in the reach of an
 Assistant. The commands are `sources add-text`, `sources add-url`,
 `sources add-file`, `faqs add`, and `faqs import`.
 
+### Add knowledge without a Collection
+
+A new Assistant has no Collection, because the Collection list shows only the
+Collections that hold its Sources. Use `sources add-org` in that case. It puts the
+Source in the Knowledge Library of the Organization.
+
+```bash
+ciele sources add-org --url https://example.com/help --assistants <assistant-id>
+ciele sources add-org --file handbook.pdf --assistants <assistant-id>
+ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
+```
+
+Give one of `--url`, `--file`, or `--text`. The command needs `--assistants` for the
+same reason as the other add commands.
+
 ### Source links
 
 A Source answers for the Assistants linked to it. These commands read and change the links.
@@ -100,6 +115,106 @@ ciele sources direct-access <source-id> on --assistant <assistant-id>
 `sources link` replaces the link set. An empty list removes every link, and the Source stops answering.
 
 `sources direct-access` decides whether that one Assistant can give a Visitor the original file.
+
+## Flow commands
+
+### Find out what a Flow can contain
+
+`ciele flows catalog` shows the triggers, the actions, and the condition kinds of
+this Ciele deployment. It also shows which actions each trigger permits. Read it
+before you write a Flow file. The server refuses a trigger, an action, or a
+condition kind that is not in the list.
+
+The deployment gives this answer, not the CLI. An older CLI against a newer Ciele
+shows the new lists.
+
+```bash
+ciele flows catalog
+```
+
+### Check a Flow before you save it
+
+`flows draft` checks a change to a Flow. `flows validate` checks a complete Flow.
+Neither command saves anything. Both show you the Flow that Ciele would store.
+
+```bash
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
+```
+
+Use them for one reason above all: when a Flow writes to a connector, Ciele adds
+a human review action before that write. These two commands show you the added
+action. A save does it silently.
+
+### Watch an HTTP flow
+
+A Flow with the HTTP trigger keeps a record of each inbound call.
+
+```bash
+ciele flows runs <flow-id> --limit 20
+```
+
+Conversations do not include these runs, because an inbound call is not a
+conversation.
+
+## Teammate commands
+
+### Give a Teammate its capabilities
+
+A new AI Teammate can answer questions. It cannot act until you grant it a
+domain, and it does no unattended work until you give it a Routine.
+
+```bash
+ciele teammates grants <teammate-id>
+ciele teammates set-grants <teammate-id> --domains improvements,knowledge
+ciele teammates routines <teammate-id>
+ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
+```
+
+`set-grants` sends the complete set of domains each time. `--domains ""` removes
+all of them. This command needs an API key with the Admin Role or higher, because
+it permits an agent to change your data. The other Teammate commands need the
+Editor Role.
+
+A Teammate can have a maximum of five Routines.
+
+### Set up a teammate in one command
+
+`teammates create` makes a teammate that answers questions. It cannot act, and it
+does no unattended work. `teammates provision` does the three steps together.
+
+```bash
+ciele teammates provision --name "Triage" \
+  --grants improvements \
+  --routine "Triage new feedback:daily:8"
+```
+
+The order is create, then grant, then schedule. If a step fails, the command
+tells you where it stopped. The teammate stays usable up to that point.
+
+A key without the Admin Role can create the teammate. It cannot grant a domain.
+The command then reports that it stopped at the grants step.
+
+### Projects and memory
+
+A Project is a shared workspace. An AI Teammate that is attached to a Project
+reads the memory document of that Project in each turn.
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <project-id>
+ciele projects set-document <project-id> --file notes.md --note "after review"
+ciele teammates memory <teammate-id>
+ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
+```
+
+`set-document` and `set-memory` replace the full text. Ciele keeps the previous
+text in the history of the document.
+
+There is no command for your own memory layer. An API key operates as the member
+who made it, so a command here would show the private document of that member.
+Use Settings, then Memory, in the console.
 
 ## Operations and Organization commands
 

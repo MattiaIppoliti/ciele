@@ -19,7 +19,9 @@ export default async function MemorySettingsPage() {
     memberId: session.userId,
   });
   const [entries, teammates] = await Promise.all([
-    document ? db.listMemoryDocumentEntries(document.id) : Promise.resolve([]),
+    document
+      ? db.listMemoryDocumentEntries(organizationId, document.id)
+      : Promise.resolve([]),
     // Names for the history lines. Tombstoned Teammates included: an entry
     // outlives the Teammate that wrote it, and "who wrote this about me" still
     // needs an answer.

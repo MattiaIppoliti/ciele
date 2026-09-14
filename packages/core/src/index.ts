@@ -185,6 +185,8 @@ export {
   DEFAULT_TEAMMATE_CEILING,
   actionRefusal,
   ceilingAllowsCapability,
+  memberRoleRank,
+  roleAllowsCapability,
   grantedDomains,
   hasGrant,
   mayAcceptSuggestedFix,

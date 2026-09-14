@@ -2,12 +2,21 @@ import { z } from "zod";
 import type { Assistant, Flow, FlowAction, FlowTrigger } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
+  flowTriggerKind,
   mergeFlowSecrets,
   redactFlowSecrets,
   redactFlowsSecrets,
   withReviewBeforeConnectorWrites,
 } from "@agent-hub/core";
-import { flowInputSchema, flowPatchSchema, flowTriggerSchema } from "./flow-schema";
+import {
+  FLOW_ACTIONS_WITH_SETTINGS,
+  FLOW_CONDITION_KINDS,
+  flowActionSchema,
+  flowConditionLogicSchema,
+  flowInputSchema,
+  flowPatchSchema,
+  flowTriggerSchema,
+} from "./flow-schema";
 import type { OperationContext } from "./operation";
 import { OperationError, defineOperation } from "./operation";
 
@@ -59,6 +68,52 @@ async function requireFlow(ctx: OperationContext, id: string): Promise<Flow> {
   await requireAssistant(ctx, flow.assistantId);
   return flow;
 }
+
+/**
+ * What a Flow may contain, served rather than guessed.
+ *
+ * The Flow Builder knows the catalogue because it renders it, and the Flows
+ * Agent is handed it in its prompt. Every other author, a script against
+ * `/api/v1`, an MCP client, had to infer it from a rejection. `flow-schema.ts`
+ * at least produces rejections now; this is the half that lets a caller get it
+ * right the first time.
+ *
+ * Derived from the schemas rather than restated: `.options` on the same zod
+ * enums the endpoint validates with, so the catalogue cannot describe a Flow
+ * the create call would refuse. That is also why the trigger/action pairing is
+ * computed through `actionAllowedForTrigger` instead of being written out, the
+ * rule has three branches now (message, proactive, http) and a second copy of
+ * it would be wrong within a release.
+ *
+ * Reads no Db and touches no Organization. `member`, because describing the
+ * router to somebody who cannot list a Flow is pointless.
+ */
+export const flowCatalogOp = defineOperation({
+  name: "flows.catalog",
+  capability: "member",
+  input: z.object({}),
+  entities: () => [],
+  run: async () => ({
+    triggers: flowTriggerSchema.options.map((trigger) => ({
+      trigger,
+      kind: flowTriggerKind(trigger),
+      allowedActions: flowActionSchema.options.filter((action) =>
+        actionAllowedForTrigger(action, trigger)
+      ),
+    })),
+    actions: [...flowActionSchema.options],
+    conditionKinds: [...FLOW_CONDITION_KINDS],
+    conditionLogic: [...flowConditionLogicSchema.options],
+    /** The actions that carry configuration under `actionSettings`. */
+    actionsWithSettings: [...FLOW_ACTIONS_WITH_SETTINGS],
+    notes: [
+      "url and schedule conditions are hard gates applied before intent classification; conversation_context is few-shot context for the classifier.",
+      "actionSettings is keyed by action name; only the actions listed in actionsWithSettings appear in it.",
+      "Objects are loose: unknown keys pass through rather than being stripped, so an older client patching one field cannot drop a newer build's key.",
+      "Field-by-field shapes are in GET /api/v1/openapi.json under POST /assistants/{id}/flows.",
+    ],
+  }),
+});
 
 export const listFlowsOp = defineOperation({
   name: "flows.list",

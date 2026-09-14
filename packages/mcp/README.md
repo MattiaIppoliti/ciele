@@ -9,14 +9,17 @@ Fourteen coarse tools, grouped by domain, each with an `action` discriminator:
 |---|---|
 | `ciele_identity` | deployment meta + the key's org and role |
 | `manage_assistants` | list · get · create · update · delete · duplicate · get_entities · set_entities |
-| `manage_flows` | list · get · create · update · delete · reorder |
-| `manage_knowledge` | list_collections · list_sources · get_source · add_text · add_url · add_file · delete_source · recrawl · add_faq · import_faqs |
+| `manage_flows` | catalog · list · get · create · draft · validate · runs · agent_thread · agent_conversation · update · delete · reorder |
+| `manage_knowledge` | list_collections · list_sources · get_source · add_text · add_url · add_file · add_org_text · add_org_url · add_org_file · delete_source · recrawl · add_faq · import_faqs |
 | `publish_assistant` | status · publish · unpublish · republish |
 | `read_inbox` | list · get · export · pin · unpin · feedback · message_feedback · delete |
 | `manage_improvements` | list · get · update |
 | `manage_entities` | list · get · create · update · delete · list_records · query_records · import_records |
 | `manage_memories` | settings · enable · disable · subjects · list · delete · wipe |
 | `manage_sso` | status · set_identity · validate · connection · connect · disconnect |
+| `manage_teammates` | list · get · create · update · delete · conversations · conversation · grants · set_grants · routines · add_routine · update_routine · delete_routine · memory · set_memory · provision |
+| `manage_projects` | list · get · create · update · delete · set_document |
+| `manage_channels` | list · get · create · update · delete · add_members · remove_member · add_teammates · remove_teammate · oversight · oversight_read (no `post`: a message starts a chain of model turns, so it belongs to the streaming surface) |
 | `manage_help_desks` | Help Desk, channel ordering, and ServiceNow lifecycle |
 | `manage_configuration` | Skills · Assistant Skill selection · Goals · Alerts |
 | `manage_organization` | Organization · Members · Invites · API keys |

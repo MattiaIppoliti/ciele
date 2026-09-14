@@ -42,12 +42,18 @@ lands in the Knowledge slice).
 
 | Operation | Capability | Route | Beyond Db |
 |---|---|---|---|
+| `flows.catalog` | member | `GET /api/v1/flows/catalog` | reads no Db; derived from `flow-schema.ts`'s own zod enums and its pairing from `actionAllowedForTrigger`, so the catalogue cannot describe a Flow the create call would refuse |
 | `flows.list` | member | `GET /api/v1/assistants/{id}/flows` | |
 | `flows.get` | member | `GET /api/v1/flows/{id}` | |
-| `flows.create` | edit | `POST /api/v1/assistants/{id}/flows` | trigger/action pairing rule (#541) |
+| `flows.create` | edit | `POST /api/v1/assistants/{id}/flows` | trigger/action pairing rule (#541); structural config schema in `flow-schema.ts` (#837), loose on unknown keys so an older client's patch never strips a newer build's field |
 | `flows.update` | edit | `PATCH /api/v1/flows/{id}` | pairing rule on the stored pair |
 | `flows.delete` | edit | `DELETE /api/v1/flows/{id}` | Default behavior locked (409) |
 | `flows.reorder` | edit | `POST /api/v1/assistants/{id}/flows/reorder` | Default pinned last by the adapter |
+| `flows.draft` | edit | `POST /api/v1/flows/draft` | stores nothing; returns the patch after the pairing rule and the human-review gate inserted ahead of a Connector write (#841), which is the only way to see that insertion before saving |
+| `flows.propose` | edit | `POST /api/v1/assistants/{id}/flows/validate` | the same, for a whole Flow |
+| `flows.http.runs` | member | `GET /api/v1/flows/{id}/runs` | the inbound trigger's own record (#843); not the Inbox, because a run is not a Conversation |
+| `flows.agent.thread` | member | `GET /api/v1/assistants/{id}/flows-agent/thread` | the key minter's own thread, `?flowId=` omitted means the new-Flow canvas |
+| `flows.agent.conversation` | member | `GET /api/v1/assistants/{id}/flows-agent/conversations/{conversationId}` | |
 
 ## Knowledge (shipped, #622)
 
@@ -57,6 +63,7 @@ lands in the Knowledge slice).
 | `knowledge.sources.list` | member | `GET /api/v1/collections/{id}/sources` | |
 | `knowledge.sources.get` | member | `GET /api/v1/sources/{id}` | status poll |
 | `knowledge.sources.add` | edit | `POST /api/v1/collections/{id}/sources` | extraction + original storage at the surface; ingestion job via `enqueueIngest` port |
+| `knowledge.org.sources.add` | edit | `POST /api/v1/knowledge/sources` | resolves the org Knowledge Library, then delegates to `knowledge.sources.add`; the only add path for a caller holding an Assistant id and no Collection |
 | `knowledge.sources.delete` | edit | `DELETE /api/v1/sources/{id}` | per-Concept graph retirement via `removeConceptGraph` port |
 | `knowledge.faqs.create` | edit | `POST /api/v1/collections/{id}/faqs` | OKF persist via `persistFaq` port |
 | `knowledge.faqs.import` | edit | `POST /api/v1/collections/{id}/faqs/import` | CSV parsing at the surface; indexed paths + CSV provenance |
@@ -88,6 +95,79 @@ session, not by an API key, so they are not operations and take no key:
 |---|---|---|
 | `GET /api/insights?from=&to=&aggregate=…` | any Member of the Organization | the cached overview for a filter set (five minutes per Organization and filter, ADR-0005 amendment) |
 | `DELETE /api/insights` | any Member of the Organization | expires the Organization's cached overview; the next read recomputes it. Same gate as GET on purpose: the cache is shared by the roster, and a Member can already force a miss by changing a filter |
+
+## Teammates (shipped, #768, #770, #772)
+
+The persona and its transcript shipped with #768; governance and unattended work
+did not reach `/api/v1` until this table's second half, so a key could create a
+Teammate that could answer questions and do nothing else.
+
+| Operation | Capability | Route | Beyond Db |
+|---|---|---|---|
+| `teammates.list` | member | `GET /api/v1/teammates` | visibility filter, the key acts as its minter |
+| `teammates.get` | member | `GET /api/v1/teammates/{id}` | |
+| `teammates.create` | edit | `POST /api/v1/teammates` | raises a `knowledge` Alert for a scope naming a deleted Collection |
+| `teammates.update` | edit | `PATCH /api/v1/teammates/{id}` | same scope check on an edited scope |
+| `teammates.delete` | edit | `DELETE /api/v1/teammates/{id}` | soft delete: it answers nothing more, its Conversations stay readable |
+| `teammates.thread` | member | `GET /api/v1/teammates/{id}/conversations` | the *minter's* own thread, not everyone's |
+| `teammates.conversation` | member | `GET /api/v1/teammates/{id}/conversations/{conversationId}` | |
+| `teammates.grants.list` | member | `GET /api/v1/teammates/{id}/grants` | domains + ceiling + bypass as one governance view |
+| `teammates.grants.set` | **manageMembers** | `PUT /api/v1/teammates/{id}/grants` | whole-set replace; revokes land before adds, so a half-failure holds fewer capabilities and not more |
+| `teammates.routines.list` | member | `GET /api/v1/teammates/{id}/routines` | |
+| `teammates.routines.create` | edit | `POST /api/v1/teammates/{id}/routines` | cap of 5, refused here with a sentence and by a trigger underneath |
+| `teammates.routines.update` | edit | `PATCH /api/v1/routines/{id}` | reached through its Teammate's own edit rule |
+| `teammates.routines.delete` | edit | `DELETE /api/v1/routines/{id}` | |
+| `teammates.provision` | edit | `POST /api/v1/teammates/provision` | the one composite: create → grant → schedule, in that order because nothing rolls back across those tables and every partial outcome of *that* order is safe. Re-checks `manageMembers` before the grant step: surfaces check capabilities before `run`, so a composite calling an inner `run` would otherwise skip its gate |
+
+**Channel oversight** (#778, story 15) rides the Channels domain:
+`GET /api/v1/channels/oversight` and `/channels/oversight/{id}`, both
+`manageMembers`. Separate paths rather than a flag on the ordinary reads,
+because a flag on a read is how an oversight surface quietly becomes the default
+one; `GET /channels` stays the key minter's own roster and answers `not_found`,
+never "forbidden", for a channel they are not seated in.
+
+**Console-only, and deliberately.** Each of these is a decision, not a gap, so
+that nobody closes one by mistake:
+
+| Operation | Why it has no route |
+|---|---|
+| `memory.me.get` / `.write` / `.revert` | The User memory layer's RLS is `member_id = auth.uid()` and nothing else, admins included, and a key acts as the Member who minted it: an endpoint would hand anyone holding the key that Member's private document. Its operations derive the member id from the context and take none as input, which is what keeps that a property rather than a promise. |
+| `teammates.hide` / `.unhide` | A preference on one Member's own roster. `requireRosterOwner` refuses a key outright and says so in the message, so there is nothing for a route to call. |
+| `channels.read` / `channels.mentions` | Per-Member seat state (a read marker, an unread list). Over a key they would answer for whoever minted it, which is a confusing thing for a key to do and the same objection that keeps `memory.me.*` out. |
+| `channels.messages.post` | A message starts a bounded chain of model turns, which belongs to the streaming console surface rather than to a request/response API. |
+| `teammates.referral.start` | The accept half of a deliberately human-mediated flow (#773): the tool emits a card and stops, and a Member clicks. A key that could accept its own referrals is the autonomous agent-to-agent chain #773 refused; that belongs to channels. |
+
+Two more are console lifecycle rather than API surface, and they are the last
+of the unexposed list:
+
+| Operation | Why it has no route |
+|---|---|
+| `flows.agent.ensure` | Creates the Assistant's system Teammate as a side effect of opening the canvas. A key calling it would mint a system Teammate for a UI nobody opened. |
+| `flows.agent.adopt` | Re-tags the canvas's null-tagged conversations onto the Flow a Save just created. It is a step *inside* that save, not an operation with a life of its own. |
+
+## Projects and memory layers (shipped, #771)
+
+Three memory layers exist; two of them reach `/api/v1`. The **User** layer does
+not, and that is a decision rather than a gap: its RLS is `member_id = auth.uid()`
+and nothing else, admins included, and an API key acts as the Member who minted
+it, so an endpoint would hand anyone holding the key that Member's own document.
+Its operations derive the member id from the context and take none as input,
+which is what keeps that true rather than merely intended.
+
+| Operation | Capability | Route | Beyond Db |
+|---|---|---|---|
+| `projects.list` | member | `GET /api/v1/projects` | |
+| `projects.get` | member | `GET /api/v1/projects/{id}` | serves the row **and** its memory document with history: for a Teammate they are one thing |
+| `projects.create` | edit | `POST /api/v1/projects` | |
+| `projects.update` | edit | `PATCH /api/v1/projects/{id}` | `{archived:true}` is the move that keeps the record |
+| `projects.delete` | edit | `DELETE /api/v1/projects/{id}` | decisions cascade, attached Teammates detach |
+| `projects.document.write` | edit | `PUT /api/v1/projects/{id}/document` | whole-body replace; the previous body lands in the append-only history as `body_before`, which is what makes a revert a restore |
+| `teammates.memory.get` | member | `GET /api/v1/teammates/{id}/memory` | the Agent layer with its history |
+| `teammates.memory.write` | edit | `PUT /api/v1/teammates/{id}/memory` | the Teammate's own edit rule: a wrong learning is corrected by whoever maintains it |
+
+Console-only, deliberately: `memory.me.get` / `.write` / `.revert` (the User
+layer, above) and `revertMemoryDocument`, which is a console affordance on a
+Member's own screen and which no route reaches.
 
 ## Improvements (shipped, #625)
 

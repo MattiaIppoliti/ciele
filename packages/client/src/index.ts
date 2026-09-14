@@ -12,9 +12,15 @@ import type {
   TeammateChannelParticipant,
   TeammateInput,
   TeammatePatch,
+  TeammateRoutine,
+  MemoryDocument,
+  MemoryDocumentEntry,
+  Project,
+  ProjectPatch,
   Flow,
   FlowInput,
   FlowPatch,
+  HttpFlowRun,
   ImprovementPatch,
   Entity,
   EntityInput,
@@ -158,6 +164,23 @@ export interface ApiChannelView {
   roster: ChannelRosterEntry[];
   messages: ChannelMessage[];
   canManage: boolean;
+}
+
+/** A memory document with its append-only history (#771). */
+export interface ApiMemoryDocumentView {
+  document: MemoryDocument | null;
+  entries: MemoryDocumentEntry[];
+}
+
+/**
+ * What a Teammate may do (#770). Restated rather than imported: `@ciele/ops`
+ * owns the interface and this package deliberately depends only on `core`.
+ */
+export interface TeammateGovernance {
+  teammateId: string;
+  domains: string[];
+  ceiling: string;
+  approvalBypass: boolean;
 }
 
 /** A Teammate conversation with the turns it holds (#768). */
@@ -357,6 +380,72 @@ export class CieleClient {
   };
 
   readonly flows = {
+    /**
+     * The deployment's Flow catalogue. Ask rather than remember: an older
+     * client against a newer deployment learns that deployment's triggers,
+     * actions and condition kinds, and the same lists build the zod schemas
+     * that refuse anything outside them.
+     */
+    catalog: (): Promise<{
+      triggers: Array<{
+        trigger: string;
+        proactive: boolean;
+        allowedActions: string[];
+      }>;
+      actions: string[];
+      conditionKinds: string[];
+      conditionLogic: string[];
+      actionsWithSettings: string[];
+      notes: string[];
+    }> => this.request("GET", "/flows/catalog"),
+    /**
+     * Check a patch, or a whole Flow, without storing it. Both mutate nothing
+     * and both return what *would* be stored, which is the only way to see the
+     * human-review action the runtime inserts ahead of a Connector write.
+     */
+    draft: (input: {
+      summary: string;
+      currentTrigger?: string;
+      patch: FlowPatch;
+    }): Promise<{ applied: "draft"; summary: string; patch: FlowPatch }> =>
+      this.request("POST", "/flows/draft", { body: input }),
+    validate: (
+      assistantId: string,
+      input: { rationale: string; flow: FlowInput }
+    ): Promise<{ proposal: FlowInput; rationale: string; assistantId: string }> =>
+      this.request(
+        "POST",
+        `/assistants/${encodeURIComponent(assistantId)}/flows/validate`,
+        { body: input }
+      ),
+
+    /** Recent inbound runs of an HTTP-triggered Flow (#843). */
+    runs: (
+      flowId: string,
+      limit?: number
+    ): Promise<{ data: HttpFlowRun[] }> =>
+      this.request("GET", `/flows/${encodeURIComponent(flowId)}/runs`, {
+        query: { limit },
+      }),
+
+    /** The key holder's own Flows Agent thread; no `flowId` = the new-Flow canvas. */
+    agentThread: (
+      assistantId: string,
+      flowId?: string
+    ): Promise<{ data: Conversation[] }> =>
+      this.request(
+        "GET",
+        `/assistants/${encodeURIComponent(assistantId)}/flows-agent/thread`,
+        { query: { flowId } }
+      ),
+    agentConversation: (
+      assistantId: string,
+      conversationId: string
+    ): Promise<{ conversation: Conversation; messages: StoredMessage[] }> =>
+      this.request(
+        "GET",
+        `/assistants/${encodeURIComponent(assistantId)}/flows-agent/conversations/${encodeURIComponent(conversationId)}`
+      ),
     list: (assistantId: string): Promise<{ data: Flow[] }> =>
       this.request("GET", `/assistants/${assistantId}/flows`),
     get: (id: string): Promise<Flow> => this.request("GET", `/flows/${id}`),
@@ -505,6 +594,31 @@ export class CieleClient {
       this.request("PUT", `/sources/${sourceId}/direct-access`, {
         body: { assistantId, directAccess },
       }),
+    /**
+     * Org-level Source add: no Collection id, the server resolves the
+     * Knowledge Library. The add path for a caller that holds an Assistant id
+     * and nothing else, since `collections()` lists only Collections that
+     * already hold Sources linked to that Assistant.
+     */
+    addOrgTextSource: (input: {
+      name?: string;
+      text: string;
+      assistantIds: string[];
+    }): Promise<ApiSource> =>
+      this.request("POST", "/knowledge/sources", {
+        body: { kind: "text", ...input },
+      }),
+    addOrgUrlSource: (url: string, assistantIds: string[]): Promise<ApiSource> =>
+      this.request("POST", "/knowledge/sources", {
+        body: { kind: "url", url, assistantIds },
+      }),
+    addOrgFileSource: (file: File, assistantIds: string[]): Promise<ApiSource> => {
+      const form = new FormData();
+      form.set("file", file);
+      // The route parses this field as JSON (multipart carries no arrays).
+      form.set("assistantIds", JSON.stringify(assistantIds));
+      return this.request("POST", "/knowledge/sources", { form });
+    },
     /** Org-level FAQ create (Knowledge Library + explicit links). */
     addOrgFaq: (input: {
       question: string;
@@ -689,6 +803,33 @@ export class CieleClient {
       this.request("GET", `/teammates/${encodeURIComponent(id)}`),
     create: (input: Omit<TeammateInput, "organizationId" | "ownerId">): Promise<Teammate> =>
       this.request("POST", "/teammates", { body: input }),
+
+    /**
+     * Persona, grants and routines in one call. `create` leaves a colleague
+     * that answers and cannot act, because grants are absence-is-refusal; this
+     * is the call that finishes the job. It adds no reach: granting still needs
+     * an admin-tier key and comes back as `partial: "grants"` rather than
+     * discarding the Teammate that was already created.
+     */
+    provision: (
+      input: Omit<TeammateInput, "organizationId" | "ownerId"> & {
+        grants?: string[];
+        ceiling?: string;
+        approvalBypass?: boolean;
+        routines?: Array<{
+          instruction: string;
+          cadence: string;
+          hour?: number;
+        }>;
+      },
+      opts: { idempotencyKey?: string } = {}
+    ): Promise<{
+      teammate: Teammate;
+      governance: TeammateGovernance | null;
+      routines: TeammateRoutine[];
+      partial: "grants" | "routines" | null;
+      reason: string | null;
+    }> => this.request("POST", "/teammates/provision", { body: input, ...opts }),
     update: (id: string, patch: TeammatePatch): Promise<Teammate> =>
       this.request("PATCH", `/teammates/${encodeURIComponent(id)}`, { body: patch }),
     delete: (id: string): Promise<void> =>
@@ -703,6 +844,99 @@ export class CieleClient {
         "GET",
         `/teammates/${encodeURIComponent(id)}/conversations/${encodeURIComponent(conversationId)}`
       ),
+
+    /**
+     * Governance (#770). Reading is a Member right; `setGrants` needs an
+     * admin-tier key, a rung above the `edit` that renames the Teammate,
+     * because arming an agent is the same kind of decision as handing a person
+     * a Role. The write replaces the whole set.
+     */
+    grants: (id: string): Promise<TeammateGovernance> =>
+      this.request("GET", `/teammates/${encodeURIComponent(id)}/grants`),
+    setGrants: (
+      id: string,
+      input: {
+        domains: string[];
+        ceiling?: string;
+        approvalBypass?: boolean;
+      }
+    ): Promise<TeammateGovernance> =>
+      this.request("PUT", `/teammates/${encodeURIComponent(id)}/grants`, {
+        body: input,
+      }),
+
+    /** Routines (#772): unattended recurring runs, max 5 per Teammate. */
+    routines: (id: string): Promise<{ data: TeammateRoutine[] }> =>
+      this.request("GET", `/teammates/${encodeURIComponent(id)}/routines`),
+    addRoutine: (
+      id: string,
+      input: { instruction: string; cadence: string; hour?: number },
+      opts: { idempotencyKey?: string } = {}
+    ): Promise<TeammateRoutine> =>
+      this.request("POST", `/teammates/${encodeURIComponent(id)}/routines`, {
+        body: input,
+        ...opts,
+      }),
+    updateRoutine: (
+      routineId: string,
+      patch: {
+        instruction?: string;
+        cadence?: string;
+        hour?: number;
+        enabled?: boolean;
+      }
+    ): Promise<TeammateRoutine> =>
+      this.request("PATCH", `/routines/${encodeURIComponent(routineId)}`, {
+        body: patch,
+      }),
+    deleteRoutine: (routineId: string): Promise<void> =>
+      this.request("DELETE", `/routines/${encodeURIComponent(routineId)}`),
+
+    /**
+     * The Agent memory layer (#771). Its sibling, the User layer, has no
+     * endpoint on purpose: that document is the Member's alone, and a key acts
+     * as the Member who minted it.
+     */
+    memory: (id: string): Promise<ApiMemoryDocumentView> =>
+      this.request("GET", `/teammates/${encodeURIComponent(id)}/memory`),
+    setMemory: (
+      id: string,
+      input: { body: string; note?: string }
+    ): Promise<MemoryDocument> =>
+      this.request("PUT", `/teammates/${encodeURIComponent(id)}/memory`, {
+        body: input,
+      }),
+  };
+
+  /**
+   * Projects (#771): the shared workspace a Teammate attaches to, and the owner
+   * of the Project memory layer. `get` returns the row with its document and
+   * that document's history, because for a Teammate they are one thing.
+   */
+  readonly projects = {
+    list: (): Promise<{ data: Project[] }> => this.request("GET", "/projects"),
+    get: (
+      id: string
+    ): Promise<{ project: Project } & ApiMemoryDocumentView> =>
+      this.request("GET", `/projects/${encodeURIComponent(id)}`),
+    create: (
+      input: { name: string; description?: string },
+      opts: { idempotencyKey?: string } = {}
+    ): Promise<Project> =>
+      this.request("POST", "/projects", { body: input, ...opts }),
+    update: (id: string, patch: ProjectPatch): Promise<Project> =>
+      this.request("PATCH", `/projects/${encodeURIComponent(id)}`, {
+        body: patch,
+      }),
+    delete: (id: string): Promise<void> =>
+      this.request("DELETE", `/projects/${encodeURIComponent(id)}`),
+    setDocument: (
+      id: string,
+      input: { body: string; note?: string }
+    ): Promise<MemoryDocument> =>
+      this.request("PUT", `/projects/${encodeURIComponent(id)}/document`, {
+        body: input,
+      }),
   };
 
   /**
@@ -714,6 +948,17 @@ export class CieleClient {
    * the console's streaming route rather than to a request/response API.
    */
   readonly channels = {
+    /**
+     * Owner/Admin oversight: every channel in the Organization, and any one
+     * channel's transcript, without being seated in it. Deliberately separate
+     * paths rather than a flag on the ordinary reads, because a flag on a read
+     * is how an oversight surface quietly becomes the default one.
+     */
+    oversight: (): Promise<{ data: ApiChannelSummary[] }> =>
+      this.request("GET", "/channels/oversight"),
+    oversightRead: (id: string): Promise<ApiChannelView> =>
+      this.request("GET", `/channels/oversight/${encodeURIComponent(id)}`),
+
     list: (): Promise<{ data: ApiChannelSummary[] }> =>
       this.request("GET", "/channels"),
     get: (id: string): Promise<ApiChannelView> =>

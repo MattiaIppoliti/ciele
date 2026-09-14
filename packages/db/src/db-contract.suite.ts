@@ -1248,7 +1248,7 @@ export function describeDbContract(
           authorId: ctx.userId,
         });
 
-        const entries = await db.listMemoryDocumentEntries(doc.id);
+        const entries = await db.listMemoryDocumentEntries(ctx.organizationId, doc.id);
         expect(entries).toHaveLength(2);
         // Newest first, and the newest carries who/when/what plus the body it
         // replaced, which is what makes the next test a restore.
@@ -1279,7 +1279,7 @@ export function describeDbContract(
           note: "A bad write",
         });
 
-        const [latest] = await db.listMemoryDocumentEntries(doc.id);
+        const [latest] = await db.listMemoryDocumentEntries(ctx.organizationId, doc.id);
         const reverted = await db.revertMemoryDocument({
           entryId: latest.id,
           authorId: ctx.userId,
@@ -1288,7 +1288,7 @@ export function describeDbContract(
 
         // Append-only: undoing a write is another write, so the history shows
         // both rather than a hole where the bad one used to be.
-        const entries = await db.listMemoryDocumentEntries(doc.id);
+        const entries = await db.listMemoryDocumentEntries(ctx.organizationId, doc.id);
         expect(entries).toHaveLength(3);
         expect(entries[0].note).toContain("Revert");
         expect(entries[0].bodyBefore).toBe("Something the teammate got wrong.");

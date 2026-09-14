@@ -3,6 +3,7 @@ import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createAssistantOp } from "./assistants";
 import {
+  addOrgSourceOp,
   addSourceOp,
   createFaqOp,
   deleteSourceOp,
@@ -147,6 +148,65 @@ describe("knowledge hub operations (PRD #726)", () => {
     expect(assistantId).toBe(assistant.id);
     const links = await db.listSourceAssistantLinks(source.id);
     expect(links.map((l) => l.assistantId)).toEqual([assistant.id]);
+  });
+
+  it("adds to the Library without being told a Collection", async () => {
+    const db = getMockDb();
+    const assistant = await newAssistant("Library Door");
+    // The gap this closes: a fresh Assistant derives no Collections, so a
+    // caller holding only its id had no add path at all.
+    expect(await db.listCollections(assistant.id)).toEqual([]);
+
+    const { source, assistantId } = await addOrgSourceOp.run(ctx(), {
+      name: "Org Text",
+      kind: "text",
+      rawText: "hello",
+      assistantIds: [assistant.id],
+    });
+
+    expect(assistantId).toBe(assistant.id);
+    const library = await db.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+    expect(source.collectionId).toBe(library.id);
+    const links = await db.listSourceAssistantLinks(source.id);
+    expect(links.map((l) => l.assistantId)).toEqual([assistant.id]);
+    // The Collection list is derived, so it answers once something is linked.
+    expect((await db.listCollections(assistant.id)).map((c) => c.id)).toEqual([
+      library.id,
+    ]);
+  });
+
+  it("refuses an org-level add that names no assistant", async () => {
+    // The Library has no owner to fall back on, so this is refused by the
+    // schema rather than after a round trip.
+    expect(
+      addOrgSourceOp.input.safeParse({
+        name: "Org Text",
+        kind: "text",
+        rawText: "hello",
+        assistantIds: [],
+      }).success
+    ).toBe(false);
+  });
+
+  it("declares the org-level add's contract", async () => {
+    expect(addOrgSourceOp.capability).toBe("edit");
+    const assistant = await newAssistant("Library Contract");
+    const { source } = await addOrgSourceOp.run(ctx(), {
+      name: "Org Text",
+      kind: "text",
+      rawText: "hello",
+      assistantIds: [assistant.id],
+    });
+    // Same revalidation as the collection-scoped add: the editor and the hub.
+    expect(
+      addOrgSourceOp.entities(
+        { name: "", kind: "text", rawText: "", assistantIds: [] },
+        { source, assistantId: assistant.id }
+      )
+    ).toEqual([
+      { kind: "assistantEditor", assistantId: assistant.id },
+      { kind: "knowledgeHub" },
+    ]);
   });
 
   it("refuses the org Library to a foreign organization", async () => {

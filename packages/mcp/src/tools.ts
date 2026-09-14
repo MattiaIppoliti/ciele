@@ -90,6 +90,17 @@ const READ_ACTIONS = new Set([
   // Teammates (#768): reading one Member's own thread mutates nothing.
   "conversations",
   "conversation",
+  "grants",
+  "routines",
+  "memory",
+  // The Flow catalogue: a read, and the one action that needs no ids at all.
+  "catalog",
+  // `draft` and `validate` answer with what would be stored and store nothing.
+  "draft",
+  "validate",
+  "runs",
+  "agent_thread",
+  "agent_conversation",
 ]);
 
 const byAction = (args: Record<string, unknown>) =>
@@ -162,17 +173,70 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_flows",
       description:
-        "The Assistant's routing: list an Assistant's Flows, read one (full trigger/conditions/actions config), create, update (incl. enabled true/false), reorder, or delete. The Default behavior flow is locked and cannot be deleted. `flow` carries the FlowInput/FlowPatch body for create/update.",
+        "The Assistant's routing: list an Assistant's Flows, read one (full trigger/conditions/actions config), create, update (incl. enabled true/false), reorder, or delete. The Default behavior flow is locked and cannot be deleted. `flow` carries the FlowInput/FlowPatch body for create/update: call `catalog` FIRST to learn which triggers, actions and condition kinds exist and which pair with which, the server refuses anything outside that list rather than storing it, then `draft` (a patch) or `validate` (a whole Flow) to see what would be stored without storing it, including the human-review action the runtime inserts ahead of a Connector write. `runs` reads an HTTP-triggered Flow's recent inbound calls.",
       schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "reorder"]),
+        action: z.enum([
+          "catalog",
+          "list",
+          "get",
+          "create",
+          "draft",
+          "validate",
+          "runs",
+          "agent_thread",
+          "agent_conversation",
+          "update",
+          "delete",
+          "reorder",
+        ]),
         assistantId: z.string().optional().describe("Required for list/create/reorder"),
         id: z.string().optional().describe("Flow id (get/update/delete)"),
         flow: z.record(z.string(), z.unknown()).optional().describe("FlowInput (create) / FlowPatch (update)"),
         orderedIds: z.array(z.string()).optional().describe("Full order for reorder; Default stays last"),
+        summary: z.string().optional().describe("One sentence on what the patch changes (draft)"),
+        rationale: z.string().optional().describe("Why this belongs in its own Flow (validate)"),
+        currentTrigger: z.string().optional().describe("The open Flow's trigger, when a draft patches only the actions"),
+        conversationId: z.string().optional().describe("agent_conversation"),
+        limit: z.number().optional().describe("How many runs to return (runs)"),
       },
       mutates: byAction,
       run: async (args) => {
         switch (args.action) {
+          // Served by the deployment, not restated here: the same arrays its
+          // zod schemas are built from, so the catalogue cannot describe a Flow
+          // the API would then refuse, and an older `ciele-mcp` against a newer
+          // server still answers with the server's catalogue.
+          case "catalog":
+            return client.flows.catalog();
+          // Three reads and two checks. `draft` and `validate` store nothing:
+          // they answer with what *would* be stored, which is the only way to
+          // see the human-review action the runtime inserts ahead of a
+          // Connector write before committing to it.
+          case "draft":
+            if (!args.flow) throw new ToolInputError('"flow" carries the patch for draft');
+            return client.flows.draft({
+              summary: need(args, "summary"),
+              currentTrigger: args.currentTrigger as string | undefined,
+              patch: args.flow as never,
+            });
+          case "validate":
+            if (!args.flow) throw new ToolInputError('"flow" is required for validate');
+            return client.flows.validate(need(args, "assistantId"), {
+              rationale: need(args, "rationale"),
+              flow: args.flow as never,
+            });
+          case "runs":
+            return client.flows.runs(need(args, "id"), args.limit as number | undefined);
+          case "agent_thread":
+            return client.flows.agentThread(
+              need(args, "assistantId"),
+              args.id as string | undefined
+            );
+          case "agent_conversation":
+            return client.flows.agentConversation(
+              need(args, "assistantId"),
+              need(args, "conversationId")
+            );
           case "list":
             return client.flows.list(need(args, "assistantId"));
           case "get":
@@ -205,7 +269,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_knowledge",
       description:
-        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources (text, url, or a file passed as base64), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
+        "The Organization's knowledge: list org-wide items (list_org_sources, filter by kinds/status/assistant), list an Assistant's Collections, list/read a Collection's Sources (poll get_source until status leaves 'processing'), add sources to a named Collection (add_text/add_url/add_file) or straight to the org Knowledge Library with no Collection id (add_org_text/add_org_url/add_org_file, which is what a newly created Assistant needs, since it has no Collection to name yet), replace a source's linked assistants (set_links), flip per-assistant direct access on a file (set_direct_access), delete a source, re-crawl a website source, add one FAQ (add_faq collection-scoped, add_org_faq org-level), bulk-import FAQs from CSV text, or export every FAQ as CSV (export_faqs). Every action that adds knowledge takes assistantIds: a Collection has no owner, so those links are the only thing that puts the knowledge in an Assistant's reach, and an empty set is refused.",
       schema: {
         action: z.enum([
           "list_collections",
@@ -215,6 +279,9 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "add_text",
           "add_url",
           "add_file",
+          "add_org_text",
+          "add_org_url",
+          "add_org_file",
           "set_links",
           "set_direct_access",
           "delete_source",
@@ -226,12 +293,23 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "export_faqs",
         ]),
         assistantId: z.string().optional().describe("Required for list_collections"),
-        collectionId: z.string().optional().describe("Required for list_sources/add_*/import_faqs"),
+        collectionId: z
+          .string()
+          .optional()
+          .describe(
+            "Required for list_sources/add_text/add_url/add_file/add_faq/import_faqs; the add_org_* actions take none"
+          ),
         sourceId: z.string().optional().describe("Required for get_source/delete_source/recrawl"),
-        name: z.string().optional().describe("Source name (add_text) / file name (add_file)"),
-        text: z.string().optional().describe("Raw text (add_text)"),
-        url: z.string().optional().describe("Page URL (add_url)"),
-        fileBase64: z.string().optional().describe("File bytes, base64 (add_file)"),
+        name: z
+          .string()
+          .optional()
+          .describe("Source name (add_text/add_org_text) / file name (add_file/add_org_file)"),
+        text: z.string().optional().describe("Raw text (add_text/add_org_text)"),
+        url: z.string().optional().describe("Page URL (add_url/add_org_url)"),
+        fileBase64: z
+          .string()
+          .optional()
+          .describe("File bytes, base64 (add_file/add_org_file)"),
         question: z.string().optional(),
         answer: z.string().optional(),
         csvText: z.string().optional().describe("CSV content (import_faqs/import_org_faqs)"),
@@ -239,7 +317,7 @@ export function buildTools(client: CieleClient): CieleTool[] {
           .array(z.string())
           .optional()
           .describe(
-            "Linked assistants. Required by every add (add_text/add_url/add_file/add_faq/import_faqs/add_org_faq/import_org_faqs); for set_links it is the replacement set, where an empty array removes every link"
+            "Linked assistants. Required by every add (add_text/add_url/add_file/add_org_text/add_org_url/add_org_file/add_faq/import_faqs/add_org_faq/import_org_faqs); for set_links it is the replacement set, where an empty array removes every link"
           ),
         directAccess: z.boolean().optional().describe("set_direct_access"),
         kinds: z.array(z.string()).optional().describe("Kind filter (list_org_sources)"),
@@ -271,6 +349,24 @@ export function buildTools(client: CieleClient): CieleTool[] {
             const bytes = Buffer.from(need(args, "fileBase64"), "base64");
             return client.knowledge.addFileSource(
               need(args, "collectionId"),
+              new File([bytes], (args.name as string) || "upload.bin"),
+              needLinkTargets(args)
+            );
+          }
+          case "add_org_text":
+            return client.knowledge.addOrgTextSource({
+              name: args.name as string | undefined,
+              text: need(args, "text"),
+              assistantIds: needLinkTargets(args),
+            });
+          case "add_org_url":
+            return client.knowledge.addOrgUrlSource(
+              need(args, "url"),
+              needLinkTargets(args)
+            );
+          case "add_org_file": {
+            const bytes = Buffer.from(need(args, "fileBase64"), "base64");
+            return client.knowledge.addOrgFileSource(
               new File([bytes], (args.name as string) || "upload.bin"),
               needLinkTargets(args)
             );
@@ -582,13 +678,42 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_teammates",
       description:
-        "Manage the Organization's AI Teammates: the internal agents Members chat with in the console. Delete is a soft delete, so a retired Teammate answers nothing more while its Conversations stay readable. The key acts as the Member who minted it, so `conversations` reads that Member's own thread.",
+        "Manage the Organization's AI Teammates: the internal agents Members chat with in the console. Delete is a soft delete, so a retired Teammate answers nothing more while its Conversations stay readable. The key acts as the Member who minted it, so `conversations` reads that Member's own thread. Use `provision` to stand one up in a single call (persona + grants + routines). A newly created Teammate can answer questions and nothing else: `set_grants` is what lets it act (improvements/knowledge/inbox; absence is refusal, there is no default) and needs an admin-tier key, and `add_routine` is what makes it run unattended (max 5 per Teammate).",
       schema: {
-        action: z.enum(["list", "get", "create", "update", "delete", "conversations", "conversation"]),
+        action: z.enum([
+          "list",
+          "get",
+          "create",
+          "update",
+          "delete",
+          "conversations",
+          "conversation",
+          "grants",
+          "set_grants",
+          "routines",
+          "add_routine",
+          "update_routine",
+          "delete_routine",
+          "memory",
+          "set_memory",
+          "provision",
+        ]),
         id: z.string().optional().describe("Teammate id"),
         conversationId: z.string().optional(),
+        routineId: z.string().optional().describe("Routine id (update_routine/delete_routine)"),
         input: z.record(z.string(), z.unknown()).optional(),
         patch: z.record(z.string(), z.unknown()).optional(),
+        domains: z
+          .array(z.string())
+          .optional()
+          .describe("Granted domains for set_grants; the whole set, an empty array revokes everything"),
+        ceiling: z.string().optional().describe('Capability ceiling (set_grants): "member" or "edit"'),
+        approvalBypass: z.boolean().optional().describe("set_grants"),
+        instruction: z.string().optional().describe("What the Routine tells the Teammate to do"),
+        cadence: z.string().optional().describe("daily | weekly | monthly"),
+        hour: z.number().optional().describe("UTC hour 0-23 the Routine runs at (default 8)"),
+        body: z.string().optional().describe("Whole memory document (set_memory); the previous body is kept in history"),
+        note: z.string().optional().describe("Why the memory changed (set_memory)"),
       },
       mutates: byAction,
       run: async (args) => {
@@ -597,10 +722,84 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "list": return client.teammates.list();
           case "get": return client.teammates.get(id());
           case "create": return client.teammates.create(needObject(args, "input") as never);
+          // The one composite action: create + grants + routines. Prefer it
+          // over `create` when the caller described what the Teammate should
+          // *do*, since `create` alone leaves it unable to do any of it.
+          case "provision": return client.teammates.provision(needObject(args, "input") as never);
           case "update": return client.teammates.update(id(), needObject(args, "patch") as never);
           case "delete": await client.teammates.delete(id()); return { deleted: args.id };
           case "conversations": return client.teammates.conversations(id());
           case "conversation": return client.teammates.conversation(id(), need(args, "conversationId"));
+          case "grants": return client.teammates.grants(id());
+          case "set_grants":
+            if (!Array.isArray(args.domains)) {
+              throw new ToolInputError(
+                '"domains" is required for set_grants: send the whole set, an empty array revokes everything'
+              );
+            }
+            return client.teammates.setGrants(id(), {
+              domains: (args.domains as unknown[]).map(String),
+              ceiling: args.ceiling as string | undefined,
+              approvalBypass: args.approvalBypass as boolean | undefined,
+            });
+          case "routines": return client.teammates.routines(id());
+          case "add_routine":
+            return client.teammates.addRoutine(id(), {
+              instruction: need(args, "instruction"),
+              cadence: need(args, "cadence"),
+              hour: args.hour as number | undefined,
+            });
+          case "update_routine":
+            if (!args.patch) throw new ToolInputError('"patch" is required for update_routine');
+            return client.teammates.updateRoutine(need(args, "routineId"), args.patch);
+          case "delete_routine":
+            await client.teammates.deleteRoutine(need(args, "routineId"));
+            return { deleted: args.routineId };
+          case "memory": return client.teammates.memory(id());
+          case "set_memory":
+            return client.teammates.setMemory(id(), {
+              body: need(args, "body"),
+              note: args.note as string | undefined,
+            });
+          default: throw new ToolInputError(`Unknown action "${args.action}"`);
+        }
+      },
+    },
+    {
+      name: "manage_projects",
+      description:
+        "Projects: the shared workspace an AI Teammate attaches to, and the owner of the Project memory layer. `get` returns the Project with its memory document and that document's history; `set_document` replaces the body and keeps the previous one, so a revert is a restore. Delete cascades the Project's decisions and detaches its Teammates: archive (`update` with `{\"archived\":true}`) is the move that keeps the record.",
+      schema: {
+        action: z.enum(["list", "get", "create", "update", "delete", "set_document"]),
+        id: z.string().optional().describe("Project id"),
+        name: z.string().optional().describe("Project name (create)"),
+        description: z.string().optional(),
+        patch: z.record(z.string(), z.unknown()).optional().describe("Fields to change (update)"),
+        body: z.string().optional().describe("Whole document (set_document)"),
+        note: z.string().optional().describe("Why it changed, shown in history"),
+      },
+      mutates: byAction,
+      run: async (args) => {
+        const id = () => need(args, "id");
+        switch (args.action) {
+          case "list": return client.projects.list();
+          case "get": return client.projects.get(id());
+          case "create":
+            return client.projects.create({
+              name: need(args, "name"),
+              description: args.description as string | undefined,
+            });
+          case "update":
+            if (!args.patch) throw new ToolInputError('"patch" is required for update');
+            return client.projects.update(id(), args.patch);
+          case "delete":
+            await client.projects.delete(id());
+            return { deleted: args.id };
+          case "set_document":
+            return client.projects.setDocument(id(), {
+              body: need(args, "body"),
+              note: args.note as string | undefined,
+            });
           default: throw new ToolInputError(`Unknown action "${args.action}"`);
         }
       },
@@ -620,6 +819,8 @@ export function buildTools(client: CieleClient): CieleTool[] {
           "remove_member",
           "add_teammate",
           "remove_teammate",
+          "oversight",
+          "oversight_read",
         ]),
         id: z.string().optional().describe("Channel id"),
         userId: z.string().optional(),
@@ -633,6 +834,10 @@ export function buildTools(client: CieleClient): CieleTool[] {
       run: async (args) => {
         const id = () => need(args, "id");
         switch (args.action) {
+          // Owner/Admin only, and separate actions rather than a flag: a flag
+          // on a read is how an oversight surface becomes the default one.
+          case "oversight": return client.channels.oversight();
+          case "oversight_read": return client.channels.oversightRead(need(args, "id"));
           case "list": return client.channels.list();
           case "get": return client.channels.get(id());
           case "create": return client.channels.create(needObject(args, "input") as never);

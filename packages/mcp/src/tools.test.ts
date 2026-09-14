@@ -75,11 +75,209 @@ describe("ciele MCP tools", () => {
       "manage_knowledge",
       "manage_memories",
       "manage_organization",
+      "manage_projects",
       "manage_sso",
       "manage_teammates",
       "publish_assistant",
       "read_inbox",
     ]);
+  });
+
+  it("reaches Projects and the Agent memory layer, and not the User one", async () => {
+    const { calls, tool } = harness(() => ({ json: { ok: true } }));
+
+    await callTool(
+      tool("manage_projects"),
+      { action: "set_document", id: "p1", body: "Ship it.", note: "kickoff" },
+      false
+    );
+    expect(calls[0]).toMatchObject({ method: "PUT" });
+    expect(calls[0].url).toContain("/projects/p1/document");
+
+    await callTool(
+      tool("manage_teammates"),
+      { action: "set_memory", id: "t1", body: "Refunds go to billing." },
+      false
+    );
+    expect(calls[1].url).toContain("/teammates/t1/memory");
+
+    // The User layer is console-only by design: an API key acts as the Member
+    // who minted it, so an action here would expose that Member's own document.
+    const names = buildTools(null as never).flatMap((t) => [
+      t.name,
+      ...Object.keys(t.schema),
+    ]);
+    expect(names).not.toContain("manage_my_memory");
+  });
+
+  it("checks a Flow without writing it, and read-only still allows that", async () => {
+    const { calls, tool } = harness(() => ({ json: { patch: {}, proposal: {} } }));
+
+    await callTool(
+      tool("manage_flows"),
+      { action: "draft", summary: "add a refund branch", flow: { actions: ["connector"] } },
+      false
+    );
+    expect(calls[0]).toMatchObject({ method: "POST" });
+    expect(calls[0].url).toContain("/flows/draft");
+
+    await callTool(
+      tool("manage_flows"),
+      { action: "validate", assistantId: "a1", rationale: "own flow", flow: { name: "R" } },
+      false
+    );
+    expect(calls[1].url).toContain("/assistants/a1/flows/validate");
+
+    // Neither stores anything, so a read-only server must not refuse them:
+    // checking your work is the one thing a read-only agent should be able to
+    // do before asking a human to write.
+    for (const action of ["draft", "validate"]) {
+      const result = await callTool(
+        tool("manage_flows"),
+        {
+          action,
+          summary: "s",
+          rationale: "r",
+          assistantId: "a1",
+          flow: { name: "R" },
+        },
+        true
+      );
+      expect(result.isError, action).toBeUndefined();
+    }
+
+    await callTool(tool("manage_flows"), { action: "runs", id: "f1" }, false);
+    expect(calls[4].url).toContain("/flows/f1/runs");
+  });
+
+  it("arms a Teammate: grants as a whole set, routines by id", async () => {
+    const { calls, tool } = harness(() => ({ json: { ok: true } }));
+
+    await callTool(
+      tool("manage_teammates"),
+      { action: "set_grants", id: "t1", domains: ["improvements"], ceiling: "edit" },
+      false
+    );
+    expect(calls[0]).toMatchObject({ method: "PUT" });
+    expect(calls[0].url).toContain("/teammates/t1/grants");
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      domains: ["improvements"],
+      ceiling: "edit",
+    });
+
+    // An empty set is a revoke and must reach the server; a *missing* set is a
+    // caller mistake and must not.
+    await callTool(
+      tool("manage_teammates"),
+      { action: "set_grants", id: "t1", domains: [] },
+      false
+    );
+    expect(JSON.parse(calls[1].body!).domains).toEqual([]);
+    const refusal = await callTool(
+      tool("manage_teammates"),
+      { action: "set_grants", id: "t1" },
+      false
+    );
+    expect(refusal.isError).toBe(true);
+    expect(calls).toHaveLength(2);
+
+    await callTool(
+      tool("manage_teammates"),
+      { action: "add_routine", id: "t1", instruction: "Triage", cadence: "daily", hour: 8 },
+      false
+    );
+    expect(calls[2]).toMatchObject({ method: "POST" });
+    expect(calls[2].url).toContain("/teammates/t1/routines");
+
+    await callTool(
+      tool("manage_teammates"),
+      { action: "delete_routine", routineId: "r1" },
+      false
+    );
+    expect(calls[3]).toMatchObject({ method: "DELETE" });
+    expect(calls[3].url).toContain("/routines/r1");
+  });
+
+  it("lets read-only inspect a Teammate's grants but never change them", async () => {
+    const { tool } = harness(() => ({ json: { domains: [] } }));
+    expect(
+      (await callTool(tool("manage_teammates"), { action: "grants", id: "t1" }, true))
+        .isError
+    ).toBeUndefined();
+    expect(
+      (
+        await callTool(
+          tool("manage_teammates"),
+          { action: "set_grants", id: "t1", domains: ["inbox"] },
+          true
+        )
+      ).isError
+    ).toBe(true);
+  });
+
+  it("asks the deployment for the Flow catalogue rather than remembering one", async () => {
+    const { calls, tool } = harness(() => ({
+      json: { actions: ["search_knowledge"], conditionKinds: ["url"] },
+    }));
+    const result = await callTool(tool("manage_flows"), { action: "catalog" }, false);
+    expect(result.isError).toBeUndefined();
+    expect(calls[0]).toMatchObject({
+      method: "GET",
+      url: "http://self.host/api/v1/flows/catalog",
+    });
+    // A compiled-in copy would go stale against a newer deployment, which is
+    // the one thing a catalogue must not do.
+    expect(JSON.parse(result.content[0].text).actions).toEqual(["search_knowledge"]);
+  });
+
+  it("allows the catalogue in read-only mode: it is a read", async () => {
+    const { tool } = harness(() => ({ json: { actions: [] } }));
+    expect(
+      (await callTool(tool("manage_flows"), { action: "catalog" }, true)).isError
+    ).toBeUndefined();
+  });
+
+  it("adds knowledge to the Library without a collection id", async () => {
+    const { calls, tool } = harness();
+
+    await callTool(
+      tool("manage_knowledge"),
+      { action: "add_org_url", url: "https://example.com/help", assistantIds: ["a1"] },
+      false
+    );
+    expect(calls[0]).toMatchObject({
+      method: "POST",
+      url: "http://self.host/api/v1/knowledge/sources",
+    });
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      kind: "url",
+      url: "https://example.com/help",
+      assistantIds: ["a1"],
+    });
+
+    await callTool(
+      tool("manage_knowledge"),
+      {
+        action: "add_org_file",
+        name: "notes.txt",
+        fileBase64: Buffer.from("hello").toString("base64"),
+        assistantIds: ["a1"],
+      },
+      false
+    );
+    expect(calls[1].url).toContain("/knowledge/sources");
+    expect(calls[1].formFile).toEqual({ name: "notes.txt", text: "hello" });
+    expect(calls[1].formLinks).toBe('["a1"]');
+
+    // The Library has no owner, so an add that names no Assistant is refused
+    // here and spends no round trip.
+    const refusal = await callTool(
+      tool("manage_knowledge"),
+      { action: "add_org_text", text: "hello" },
+      false
+    );
+    expect(refusal.isError).toBe(true);
+    expect(calls).toHaveLength(2);
   });
 
   it("tool calls become the right API requests", async () => {

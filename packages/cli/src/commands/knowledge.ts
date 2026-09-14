@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, usage, type CommandContext } from "./shared.ts";
+import { str, usage, type CommandContext, type FlagValue } from "./shared.ts";
 
 /**
  * `ciele collections|sources|faqs …` (#628). File inputs (`sources add-file`,
@@ -47,7 +47,7 @@ function localFile(path: string, type?: string): File {
  * means "remove every link".
  */
 function linkTargets(
-  flags: Record<string, string | boolean>
+  flags: Record<string, FlagValue>
 ): string[] | undefined {
   const ids = (str(flags.assistants) ?? "").split(",").filter(Boolean);
   return ids.length > 0 ? ids : undefined;
@@ -132,6 +132,33 @@ export async function sources(
       emit(`Created source ${source.id} (${source.status})`, source);
       return EXIT.ok;
     }
+    case "add-org": {
+      // No collectionId: the server resolves the org Knowledge Library. This
+      // is the verb to reach for after `ciele assistants create`, when there
+      // is no Collection to name yet.
+      const url = str(flags.url);
+      const text = str(flags.text);
+      const file = str(flags.file);
+      const assistants = linkTargets(flags);
+      const chosen = [url, text, file].filter(Boolean).length;
+      if (chosen !== 1 || !assistants) {
+        return usage(
+          deps,
+          "sources add-org (--url <url> | --text <t> | --file <path>) --assistants <a,b,…> [--name <n>]"
+        );
+      }
+      const source = url
+        ? await client.knowledge.addOrgUrlSource(url, assistants)
+        : file
+          ? await client.knowledge.addOrgFileSource(localFile(file), assistants)
+          : await client.knowledge.addOrgTextSource({
+              name: str(flags.name),
+              text: text!,
+              assistantIds: assistants,
+            });
+      emit(`Created source ${source.id} (${source.status})`, source);
+      return EXIT.ok;
+    }
     case "delete": {
       if (!rest[0]) return usage(deps, "sources delete <id> --yes");
       if (flags.yes !== true) {
@@ -201,7 +228,7 @@ export async function sources(
     default:
       return usage(
         deps,
-        "sources <list|list-org|get|add-text|add-url|add-file|link|direct-access|delete|recrawl>"
+        "sources <list|list-org|get|add-text|add-url|add-file|add-org|link|direct-access|delete|recrawl>"
       );
   }
 }

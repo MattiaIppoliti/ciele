@@ -10,6 +10,7 @@ import {
   Lock,
   MousePointerClick,
   Plane,
+  Terminal,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -24,7 +25,16 @@ export type FeatureShot =
   /** One of the five panes the home-page dashboard mock already renders. */
   | { kind: "pane"; view: GlobalView }
   /** A mock of an assistant-editor section, drawn in feature-mocks.tsx. */
-  | { kind: "mock"; mock: "knowledge" | "flows" | "publishing" | "authentication" | "alerts" }
+  | {
+      kind: "mock";
+      mock:
+        | "knowledge"
+        | "flows"
+        | "publishing"
+        | "authentication"
+        | "alerts"
+        | "developers";
+    }
   /** The editor's live Preview playing a scripted conversation on loop. */
   | { kind: "preview" }
   /** A Teammate chat playing a scripted turn on loop. Org-wide, not an
@@ -360,6 +370,37 @@ export const FEATURES: FeatureEntry[] = [
         body: "The count sits in the sidebar, so an unhealthy integration is not something you have to go looking for.",
       },
     ],
+  },
+  {
+    slug: "developers",
+    icon: Terminal,
+    label: "Developers",
+    eyebrow: "API, CLI, MCP",
+    headline: "Everything the console does, your agent can do too",
+    standfirst:
+      "One operations layer behind three doors: a REST API, the ciele command line, and an MCP server your coding agent connects to. The console is not a privileged client.",
+    shot: { kind: "mock", mock: "developers" },
+    meta: "The Ciele API, the ciele CLI and the MCP server: the same operations the console runs, reachable from a script or an AI agent.",
+    points: [
+      {
+        title: "One implementation, three doors",
+        body: "A console button and an API call execute the same operation, with the same role check. Nothing is reachable from one and not the others, so an integration cannot fall behind the product.",
+      },
+      {
+        title: "Snippets on the page you are already on",
+        body: "Open the developer panel from any screen and it shows that screen's operations as CLI, cURL and MCP calls, with the ids in front of you already filled in.",
+      },
+      {
+        title: "Your agent connects in one line",
+        body: "Point Claude Code, Cursor or any MCP client at the hosted endpoint with an organization API key. Coarse tools rather than one per endpoint, so the agent picks the right one.",
+      },
+    ],
+    coda: {
+      eyebrow: "Scoped by the key, not by trust",
+      headline: "A key can only do what its role allows",
+      body: "An API key is capped at the role of whoever minted it, and every call re-checks that role in the operations layer. A viewer key reads. A read-only MCP server refuses a write before the request leaves the process.",
+      mock: "preview",
+    },
   },
 ];
 

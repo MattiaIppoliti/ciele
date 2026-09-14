@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { FeatureShot } from "@/components/marketing/feature-catalog";
 import {
   AlertsMock,
+  DevelopersMock,
   AuthenticationMock,
   FlowsMock,
   KnowledgeMock,
@@ -45,6 +46,7 @@ const MOCKS = {
   publishing: PublishingMock,
   authentication: AuthenticationMock,
   alerts: AlertsMock,
+  developers: DevelopersMock,
 } as const;
 
 function SidebarRow({
@@ -80,7 +82,7 @@ export function FeatureWindow({ shot, label }: { shot: FeatureShot; label: strin
     shot.kind === "preview"
       ? "preview"
       : shot.kind === "mock"
-        ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null }[
+        ? { knowledge: "knowledge", flows: "flows", publishing: "publish", authentication: "authentication", alerts: null, developers: "flows" }[
             shot.mock
           ]
         : null;

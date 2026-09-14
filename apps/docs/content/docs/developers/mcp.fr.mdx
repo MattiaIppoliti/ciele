@@ -9,8 +9,8 @@ enregistrent les mêmes outils.
 
 - Le **point de terminaison hébergé** est `POST /api/mcp` sur votre déploiement.
   Utilisez-le pour un client qui se connecte via HTTP.
-- Le **serveur local** est un processus `stdio` que vous lancez à partir d'une
-  extraction du dépôt.
+- Le **local server** est un processus `stdio` que vous démarrez à partir d'une
+  copie locale d'un dépôt.
 
 Chaque appel d'outil parvient à l'Organisation via `/api/v1`, de sorte qu'une
 opération a un seul chemin d'exécution, quel que soit le transport qui l'a
@@ -33,7 +33,7 @@ l'en-tête `Authorization` :
 Authorization: Bearer ciele_sk_...
 ```
 
-Une clé inconnue ou absente est refusée avec `401` avant que tout outil ne soit
+Une clé inconnue ou absente est refusée avec `401` avant qu'aucun outil ne soit
 répertorié.
 
 <Callout title="The key Role is the permission boundary">
@@ -43,8 +43,8 @@ The hosted endpoint has no read-only switch. Its permissions are the Role of the
 ## Révisions du protocole
 
 Le serveur prend en charge la révision `2026-07-28` et les révisions 2025. Il
-détermine la révision à partir de l'échange d'ouverture, de sorte qu'un client
-qui n'est pas passé à `2026-07-28` fonctionne toujours.
+détermine la révision dès l'échange d'ouverture, de sorte qu'un client qui n'est
+pas passé à `2026-07-28` continue de fonctionner.
 
 La révision `2026-07-28` a supprimé les sessions de protocole. Chaque requête
 est autonome ; par conséquent, le point de terminaison hébergé n'a besoin ni de
@@ -89,37 +89,38 @@ Use a viewer key and set `CIELE_MCP_READ_ONLY=1`. Remove one restriction only wh
 
 | Outil | Opérations en cours |
 | --- | --- |
-| `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et au rôle. |
+| `ciele_identity` | Lire les informations relatives au déploiement, à l'organisation et aux rôles. |
 | `manage_assistants` | Répertorier, lire, créer, mettre à jour, dupliquer ou supprimer des Assistants. |
-| `manage_flows` | Lister, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
-| `manage_knowledge` | Gérer les collections, les sources et les FAQ. |
-| `publish_assistant` | Lire le statut, publier, annuler la publication ou restaurer une publication. |
-| `read_inbox` | Lister, lire, exporter, épingler, annoter, évaluer ou supprimer des conversations. |
+| `manage_flows` | Lire le catalogue de flux, vérifier un flux sans l'enregistrer, lire les exécutions d'un flux HTTP, puis répertorier, lire, créer, mettre à jour, réorganiser ou supprimer des flux. |
+| `manage_knowledge` | Gérez les Collections, les Sources et les FAQ. |
+| `publish_assistant` | Lire l'état, publier, annuler la publication ou restaurer une publication. |
+| `read_inbox` | Lister, lire, exporter, épingler, annoter, noter ou supprimer des Conversations. |
 | `manage_improvements` | Lister, lire ou mettre à jour les améliorations. |
 | `manage_entities` | Gérez les entités de l'organisation et les enregistrements typés. |
 | `manage_memories` | Inspectez les paramètres et effectuez un effacement de la mémoire ciblé. |
-| `manage_sso` | Gérez les demandes d'identité et la connexion SSO de l'organisation. |
+| `manage_sso` | Gérez les revendications d'identité et la connexion SSO de l'organisation. |
 | `manage_help_desks` | Gérez les centres d'assistance, les canaux, les commandes et ServiceNow. |
-| `manage_teammates` | Gérez les collègues IA et lisez vos propres conversations de collègue. |
+| `manage_teammates` | Gérez les collègues IA, leurs autorisations, leurs routines et leur mémoire. `provision` effectue la configuration complète en une seule action. |
+| `manage_projects` | Gérez les Projects et le document de mémoire de chaque Project. |
 | `manage_channels` | Lisez et façonnez les canaux des coéquipiers dont vous faites partie. |
 | `manage_configuration` | Gérez les compétences, la sélection des compétences de l'assistant, les objectifs et les alertes. |
-| `manage_organization` | Gérez les paramètres de l'organisation, les membres, les invitations et les clés API. |
-| `manage_integrations` | Gérez les intégrations de l'API Assistant et les fournisseurs de modèles. |
+| `manage_organization` | Gérez les paramètres de l'organisation, les Members, les Invites et les API keys. |
+| `manage_integrations` | Gérez les intégrations d'API d'assistant et les fournisseurs de modèles. |
 
 Le serveur enregistre seize outils. Chaque outil de domaine utilise un champ
 `action` pour ses opérations.
 
 Le mode lecture seule catégorise chaque action. Il autorise les actions list,
-read, status, query et export, mais refuse les mutations.
+read, status, query et export tout en refusant les mutations.
 
 Consultez [Clients IA](/developers/ai-clients) pour la configuration de chaque
 client pris en charge.
 
-## Vérifiez la connexion
+## Vérifier la connexion
 
 Demandez au client d'appeler `ciele_identity`. Confirmez l'ID de l'organisation,
 le rôle, la version de l'API et la liste des domaines attendus.
 
 La suite de tests du référentiel lance également le véritable processus `stdio`.
-Elle vérifie l'initialisation, la découverte des outils et un appel API
+Elle vérifie l'initialisation, la découverte des outils et un appel d'API
 authentifié.

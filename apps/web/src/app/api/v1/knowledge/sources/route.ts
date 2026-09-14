@@ -1,5 +1,8 @@
-import { listOrgKnowledgeSourcesOp } from "@ciele/ops";
+import { addOrgSourceOp, listOrgKnowledgeSourcesOp } from "@ciele/ops";
+import { idempotencyScope, withIdempotency } from "@/lib/api-v1/idempotency";
+import { sourceResource } from "@/lib/api-v1/resources";
 import { runApiOperation } from "@/lib/api-v1/run";
+import { intakeSource } from "@/lib/api-v1/source-intake";
 
 /**
  * Org-wide knowledge items (PRD #726): the hub's table, for API consumers.
@@ -42,5 +45,28 @@ export async function GET(request: Request) {
     })),
     total,
     statusCounts,
+  });
+}
+
+/**
+ * Add a knowledge Source without naming a Collection: the org-level door the
+ * console has had since PRD #726 and `/api/v1` did not. `addOrgSourceOp`
+ * resolves the per-org Knowledge Library, so a caller holding nothing but an
+ * Assistant id can add knowledge to it, which
+ * `POST /api/v1/collections/{id}/sources` cannot do for a new Assistant: the
+ * Collection list it needs is derived from Sources already linked there.
+ *
+ * Same body as that route (JSON text/url, or multipart `file`) plus the
+ * required `assistantIds` links, and the same `status`-then-poll contract.
+ */
+export async function POST(request: Request) {
+  const scope = await idempotencyScope(request, "POST /knowledge/sources");
+  return withIdempotency(request, scope, async () => {
+    const intake = await intakeSource(request);
+    if (intake instanceof Response) return intake;
+
+    const outcome = await runApiOperation(request, addOrgSourceOp, intake);
+    if (outcome instanceof Response) return outcome;
+    return Response.json(sourceResource(outcome.result.source), { status: 201 });
   });
 }

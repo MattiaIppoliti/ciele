@@ -1,10 +1,19 @@
 import { z } from "zod";
 import type { ZodType } from "zod";
 import {
+  ROUTINE_CADENCES,
+  TEAMMATE_CAPABILITY_CEILINGS,
+  TEAMMATE_GRANT_DOMAINS,
+} from "@agent-hub/core";
+import {
   assistantPatchSchema,
   createAssistantOp,
   createFaqOp,
   createOrgFaqOp,
+  draftFlowOp,
+  projectPatchSchema,
+  provisionTeammateOp,
+  routinePatchSchema,
   flowInputSchema,
   flowPatchSchema,
   improvementPatchSchema,
@@ -116,6 +125,56 @@ const sourceBody = z.union([
   }),
   z.object({ kind: z.literal("url"), url: z.string() }),
 ]);
+/** The org-level add carries its links in the body; the Library has no owner. */
+const orgSourceBody = z.union([
+  z.object({
+    kind: z.literal("text"),
+    name: z.string().optional(),
+    text: z.string(),
+    assistantIds: z.array(z.string().min(1)).min(1).max(50),
+  }),
+  z.object({
+    kind: z.literal("url"),
+    url: z.string(),
+    assistantIds: z.array(z.string().min(1)).min(1).max(50),
+  }),
+]);
+/**
+ * The grant and routine bodies restate what the operations validate, minus the
+ * id the path already carries. `Operation.input` is a `ZodType`, so it cannot
+ * be `.omit`ed here; the enums come from `@agent-hub/core` so the two lists
+ * cannot disagree even though the objects are written twice.
+ */
+const teammateGrantsBody = z.object({
+  domains: z.array(z.enum(TEAMMATE_GRANT_DOMAINS as [string, ...string[]])),
+  ceiling: z
+    .enum(TEAMMATE_CAPABILITY_CEILINGS as [string, ...string[]])
+    .optional(),
+  approvalBypass: z.boolean().optional(),
+});
+/**
+ * `flows.draft` takes no path parameter, so its body is the operation's whole
+ * input. `flows.propose` carries the assistant in the path, so its body is
+ * restated minus that one field.
+ */
+const flowDraftBody = draftFlowOp.input;
+const flowValidateBody = z.object({
+  rationale: z.string().min(1).max(1000),
+  flow: flowInputSchema,
+});
+const projectBody = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(2000).optional(),
+});
+const memoryDocumentBody = z.object({
+  body: z.string().describe("The whole document; the previous body is kept in history"),
+  note: z.string().max(300).optional().describe("Why it changed, shown in history"),
+});
+const routineBody = z.object({
+  instruction: z.string().min(1).max(2000),
+  cadence: z.enum(ROUTINE_CADENCES as [string, ...string[]]),
+  hour: z.number().int().min(0).max(23).optional(),
+});
 const memorySettingsBody = z.object({ enabled: z.boolean() });
 const entityImportBody = z.object({ csv: z.string() });
 const assistantEntitiesBody = z.object({ entityIds: z.array(z.string()) });
@@ -258,6 +317,62 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
   },
   {
     method: "get",
+    path: "/flows/catalog",
+    domain: "flows",
+    capability: "member",
+    summary: "What a Flow may contain: triggers, actions, condition kinds, pairing rules",
+    cli: "ciele flows catalog",
+    mcp: '{"action":"catalog"}',
+  },
+  {
+    method: "post",
+    path: "/flows/draft",
+    domain: "flows",
+    capability: "edit",
+    summary: "Check a Flow patch without storing it (shows the inserted human-review gate)",
+    body: flowDraftBody,
+    cli: 'ciele flows draft --file patch.json --summary "add a refund branch"',
+    mcp: '{"action":"draft","summary":"add a refund branch","flow":{"actions":["search_knowledge"]}}',
+  },
+  {
+    method: "post",
+    path: "/assistants/{id}/flows/validate",
+    domain: "flows",
+    capability: "edit",
+    summary: "Check a whole Flow without creating it (shows what would be stored)",
+    body: flowValidateBody,
+    cli: 'ciele flows validate {assistantId} --file flow.json --rationale "refunds deserve their own flow"',
+    mcp: '{"action":"validate","assistantId":"{assistantId}","rationale":"refunds deserve their own flow","flow":{"name":"Refunds"}}',
+  },
+  {
+    method: "get",
+    path: "/flows/{id}/runs",
+    domain: "flows",
+    capability: "member",
+    summary: "Recent inbound runs of an HTTP-triggered Flow (?limit=)",
+    cli: "ciele flows runs {flowId} --limit 20",
+    mcp: '{"action":"runs","id":"{flowId}","limit":20}',
+  },
+  {
+    method: "get",
+    path: "/assistants/{id}/flows-agent/thread",
+    domain: "flows",
+    capability: "member",
+    summary: "Your own Flows Agent conversations about one Flow (?flowId=)",
+    cli: "ciele flows agent-thread {assistantId} --flow {flowId}",
+    mcp: '{"action":"agent_thread","assistantId":"{assistantId}","id":"{flowId}"}',
+  },
+  {
+    method: "get",
+    path: "/assistants/{id}/flows-agent/conversations/{conversationId}",
+    domain: "flows",
+    capability: "member",
+    summary: "One Flows Agent conversation with its turns",
+    cli: "ciele flows agent-conversation {assistantId} --conversation {conversationId}",
+    mcp: '{"action":"agent_conversation","assistantId":"{assistantId}","conversationId":"{conversationId}"}',
+  },
+  {
+    method: "get",
     path: "/flows/{id}",
     domain: "flows",
     capability: "member",
@@ -376,6 +491,18 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     mcp: '{"action":"list_org_sources","kinds":["website","file"],"status":"ready"}',
   },
   {
+    method: "post",
+    path: "/knowledge/sources",
+    domain: "knowledge",
+    capability: "edit",
+    summary: "Add a Source to the Knowledge Library (no Collection id needed)",
+    body: orgSourceBody,
+    multipart: ["file"],
+    idempotent: true,
+    cli: "ciele sources add-org --url https://example.com/help --assistants {assistantId}",
+    mcp: '{"action":"add_org_url","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
+  },
+  {
     method: "put",
     path: "/sources/{id}/links",
     domain: "knowledge",
@@ -424,6 +551,66 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     summary: "Org-wide FAQ CSV export",
     cli: "ciele faqs export",
     mcp: '{"action":"export_faqs"}',
+  },
+
+  // Projects + the Project memory layer (#771)
+  {
+    method: "get",
+    path: "/projects",
+    domain: "projects",
+    capability: "member",
+    summary: "The Organization's Projects",
+    cli: "ciele projects list",
+    mcp: '{"action":"list"}',
+  },
+  {
+    method: "post",
+    path: "/projects",
+    domain: "projects",
+    capability: "edit",
+    summary: "Create a Project",
+    body: projectBody,
+    idempotent: true,
+    cli: 'ciele projects create --name "Q4 migration"',
+    mcp: '{"action":"create","name":"Q4 migration"}',
+  },
+  {
+    method: "get",
+    path: "/projects/{id}",
+    domain: "projects",
+    capability: "member",
+    summary: "One Project with its memory document and that document's history",
+    cli: "ciele projects get {projectId}",
+    mcp: '{"action":"get","id":"{projectId}"}',
+  },
+  {
+    method: "patch",
+    path: "/projects/{id}",
+    domain: "projects",
+    capability: "edit",
+    summary: "Rename, re-describe or archive a Project",
+    body: projectPatchSchema,
+    cli: "ciele projects update {projectId} --archived true",
+    mcp: '{"action":"update","id":"{projectId}","patch":{"archived":true}}',
+  },
+  {
+    method: "delete",
+    path: "/projects/{id}",
+    domain: "projects",
+    capability: "edit",
+    summary: "Delete a Project (decisions cascade, Teammates detach; archive instead to keep the record)",
+    cli: "ciele projects delete {projectId} --yes",
+    mcp: '{"action":"delete","id":"{projectId}"}',
+  },
+  {
+    method: "put",
+    path: "/projects/{id}/document",
+    domain: "projects",
+    capability: "edit",
+    summary: "Replace the Project memory document (previous body kept in history)",
+    body: memoryDocumentBody,
+    cli: 'ciele projects set-document {projectId} --file notes.md --note "after review"',
+    mcp: '{"action":"set_document","id":"{projectId}","body":"…","note":"after review"}',
   },
 
   // Publish (#623)
@@ -752,6 +939,17 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     mcp: '{"action":"create","input":{"name":"Nora","title":"Support Copywriter"}}',
   },
   {
+    method: "post",
+    path: "/teammates/provision",
+    domain: "teammates",
+    capability: "edit",
+    summary: "Stand up a working Teammate in one call: persona, grants, routines",
+    body: provisionTeammateOp.input,
+    idempotent: true,
+    cli: 'ciele teammates provision --name "Triage" --grants improvements --routine "Triage new feedback:daily"',
+    mcp: '{"action":"provision","input":{"name":"Triage","grants":["improvements"],"routines":[{"instruction":"Triage new feedback","cadence":"daily"}]}}',
+  },
+  {
     method: "get",
     path: "/teammates/{id}",
     domain: "teammates",
@@ -797,6 +995,83 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     cli: "ciele teammates conversation {teammateId} {conversationId}",
     mcp: '{"action":"conversation","id":"{teammateId}","conversationId":"{conversationId}"}',
   },
+  {
+    method: "get",
+    path: "/teammates/{id}/grants",
+    domain: "teammates",
+    capability: "member",
+    summary: "What a Teammate may do: granted domains, ceiling, approval bypass",
+    cli: "ciele teammates grants {teammateId}",
+    mcp: '{"action":"grants","id":"{teammateId}"}',
+  },
+  {
+    method: "put",
+    path: "/teammates/{id}/grants",
+    domain: "teammates",
+    capability: "manageMembers",
+    summary: "Replace a Teammate's granted domains (and its ceiling / bypass)",
+    body: teammateGrantsBody,
+    cli: "ciele teammates set-grants {teammateId} --domains improvements,knowledge",
+    mcp: '{"action":"set_grants","id":"{teammateId}","domains":["improvements"]}',
+  },
+  {
+    method: "get",
+    path: "/teammates/{id}/memory",
+    domain: "teammates",
+    capability: "member",
+    summary: "The Agent memory layer: what this Teammate has learned, with history",
+    cli: "ciele teammates memory {teammateId}",
+    mcp: '{"action":"memory","id":"{teammateId}"}',
+  },
+  {
+    method: "put",
+    path: "/teammates/{id}/memory",
+    domain: "teammates",
+    capability: "edit",
+    summary: "Replace the Agent memory document (previous body kept in history)",
+    body: memoryDocumentBody,
+    cli: 'ciele teammates set-memory {teammateId} --file memory.md --note "corrected"',
+    mcp: '{"action":"set_memory","id":"{teammateId}","body":"…","note":"corrected"}',
+  },
+  {
+    method: "get",
+    path: "/teammates/{id}/routines",
+    domain: "teammates",
+    capability: "member",
+    summary: "A Teammate's Routines (unattended recurring runs)",
+    cli: "ciele teammates routines {teammateId}",
+    mcp: '{"action":"routines","id":"{teammateId}"}',
+  },
+  {
+    method: "post",
+    path: "/teammates/{id}/routines",
+    domain: "teammates",
+    capability: "edit",
+    summary: "Add a Routine (max 5 per Teammate)",
+    body: routineBody,
+    idempotent: true,
+    cli: 'ciele teammates add-routine {teammateId} --instruction "Triage new feedback" --cadence daily --hour 8',
+    mcp: '{"action":"add_routine","id":"{teammateId}","instruction":"Triage new feedback","cadence":"daily","hour":8}',
+  },
+  {
+    method: "patch",
+    path: "/routines/{id}",
+    domain: "teammates",
+    capability: "edit",
+    summary: "Change a Routine's instruction, cadence, hour or enabled flag",
+    body: routinePatchSchema,
+    cli: "ciele teammates update-routine {routineId} --enabled false",
+    mcp: '{"action":"update_routine","routineId":"{routineId}","patch":{"enabled":false}}',
+  },
+  {
+    method: "delete",
+    path: "/routines/{id}",
+    domain: "teammates",
+    capability: "edit",
+    summary: "Delete a Routine",
+    cli: "ciele teammates delete-routine {routineId} --yes",
+    mcp: '{"action":"delete_routine","routineId":"{routineId}"}',
+  },
 
   // Teammate channels: the group threads Members share with Teammates (#778)
   {
@@ -817,6 +1092,24 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: channelInputSchema,
     cli: 'ciele channels create --name "Launch week" --teammates {teammateId}',
     mcp: '{"action":"create","input":{"name":"Launch week","teammateIds":["{teammateId}"]}}',
+  },
+  {
+    method: "get",
+    path: "/channels/oversight",
+    domain: "channels",
+    capability: "manageMembers",
+    summary: "Every channel in the Organization, membership ignored (Owner/Admin)",
+    cli: "ciele channels oversight",
+    mcp: '{"action":"oversight"}',
+  },
+  {
+    method: "get",
+    path: "/channels/oversight/{id}",
+    domain: "channels",
+    capability: "manageMembers",
+    summary: "One channel's transcript without being seated in it (Owner/Admin)",
+    cli: "ciele channels oversight-read {channelId}",
+    mcp: '{"action":"oversight_read","id":"{channelId}"}',
   },
   {
     method: "get",

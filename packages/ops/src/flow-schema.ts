@@ -36,7 +36,7 @@ export const flowTriggerSchema = z.enum([
   "http_request",
 ]) satisfies z.ZodType<FlowTrigger>;
 
-const flowActionSchema = z.enum([
+export const flowActionSchema = z.enum([
   "search_knowledge",
   "custom_message",
   "suggest_help_desk",
@@ -55,7 +55,7 @@ const flowActionSchema = z.enum([
   "respond",
 ]) satisfies z.ZodType<FlowAction>;
 
-const flowConditionLogicSchema = z.enum(["any", "all"]) satisfies z.ZodType<
+export const flowConditionLogicSchema = z.enum(["any", "all"]) satisfies z.ZodType<
   FlowConditionLogic
 >;
 
@@ -85,7 +85,7 @@ const conditionExampleSchema = z.looseObject({
   shouldTrigger: z.boolean(),
 });
 
-const flowConditionSchema = z.discriminatedUnion("kind", [
+const flowConditionUnion = z.discriminatedUnion("kind", [
   z.looseObject({
     id: z.string().min(1),
     kind: z.literal("conversation_context"),
@@ -105,7 +105,21 @@ const flowConditionSchema = z.discriminatedUnion("kind", [
     endAt: z.string().max(32).optional(),
     timezone: z.string().min(1).max(64),
   }),
-]) as unknown as z.ZodType<FlowCondition>;
+]);
+
+export const flowConditionSchema =
+  flowConditionUnion as unknown as z.ZodType<FlowCondition>;
+
+/**
+ * The condition kinds this build implements, read off the union rather than
+ * restated. Shorter than the product surface map's list: `user_role`,
+ * `external_data` and `course` are charted and unbuilt, and a stored condition
+ * of an unknown kind is skipped at routing time, so a Flow carrying one matches
+ * everything instead of what its author asked for. `flows.catalog` serves this.
+ */
+export const FLOW_CONDITION_KINDS = flowConditionUnion.options.map(
+  (option) => option.shape.kind.value
+);
 
 const keyValueSchema = z.looseObject({
   id: z.string(),
@@ -159,7 +173,7 @@ const buttonIconSchema = z.enum([
   "headphones",
 ]);
 
-const flowActionSettingsSchema = z.looseObject({
+const flowActionSettingsObject = z.looseObject({
   search_knowledge: z
     .looseObject({
       escalatePrompt: z.boolean().optional(),
@@ -305,7 +319,15 @@ const flowActionSettingsSchema = z.looseObject({
         .optional(),
     })
     .optional(),
-}) as unknown as z.ZodType<FlowActionSettings>;
+});
+
+export const flowActionSettingsSchema =
+  flowActionSettingsObject as unknown as z.ZodType<FlowActionSettings>;
+
+/** The actions that carry configuration, for `flows.catalog` to name. */
+export const FLOW_ACTIONS_WITH_SETTINGS = Object.keys(
+  flowActionSettingsObject.shape
+);
 
 /** The router configuration every Flow carries, minus name/enabled. */
 export const flowConfigShape = {

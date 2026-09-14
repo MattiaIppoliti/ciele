@@ -1332,8 +1332,19 @@ export interface Db {
     /** The Member it is attributed to. */
     authorId?: string | null;
   }): Promise<MemoryDocument>;
-  /** The write history, newest first. */
+  /**
+   * The write history, newest first.
+   *
+   * Organization-first like `getMemoryDocument`, and not because the document
+   * id is ambiguous: it is so this method can be handed to an API key at all.
+   * The key surface runs on the service-role client with RLS bypassed, behind
+   * the org-pinned proxy, and that proxy can only pin a method whose
+   * Organization is an argument it controls. A `(documentId)` signature would
+   * have been a cross-tenant read the moment any operation took the id from
+   * caller input.
+   */
   listMemoryDocumentEntries(
+    organizationId: string,
     documentId: string,
     limit?: number
   ): Promise<MemoryDocumentEntry[]>;

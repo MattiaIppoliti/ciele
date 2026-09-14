@@ -5165,10 +5165,11 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       return toMemoryDocument(row);
     },
 
-    async listMemoryDocumentEntries(documentId, limit = 50) {
+    async listMemoryDocumentEntries(organizationId, documentId, limit = 50) {
       const { data, error } = await client
         .from("memory_document_entries")
         .select("*")
+        .eq("organization_id", organizationId)
         .eq("document_id", documentId)
         .order("created_at", { ascending: false })
         .limit(limit);

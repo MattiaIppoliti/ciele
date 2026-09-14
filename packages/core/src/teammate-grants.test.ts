@@ -5,6 +5,8 @@ import {
   grantedDomains,
   hasGrant,
   mayAcceptSuggestedFix,
+  memberRoleRank,
+  roleAllowsCapability,
 } from "./teammate-grants";
 import type { TeammateGrant } from "./types";
 
@@ -98,5 +100,40 @@ describe("actionRefusal", () => {
     expect(message).toContain("inbox");
     expect(message).toContain("administrator");
     expect(message).toMatch(/do not try again/i);
+  });
+});
+
+describe("the Member Role ladder", () => {
+  it("ranks the four Roles and treats absence as nobody", () => {
+    expect(memberRoleRank("owner")).toBeGreaterThan(memberRoleRank("admin"));
+    expect(memberRoleRank("admin")).toBeGreaterThan(memberRoleRank("editor"));
+    expect(memberRoleRank("editor")).toBeGreaterThan(memberRoleRank("viewer"));
+    expect(memberRoleRank(null)).toBe(0);
+    expect(memberRoleRank(undefined)).toBe(0);
+  });
+
+  it("puts granting a rung above editing, which is the whole point", () => {
+    // An Editor may create and rename a Teammate and may not arm one.
+    expect(roleAllowsCapability("editor", "edit")).toBe(true);
+    expect(roleAllowsCapability("editor", "manageMembers")).toBe(false);
+    expect(roleAllowsCapability("admin", "manageMembers")).toBe(true);
+  });
+
+  it("lets a Viewer read and nothing more", () => {
+    expect(roleAllowsCapability("viewer", "member")).toBe(true);
+    expect(roleAllowsCapability("viewer", "edit")).toBe(false);
+  });
+
+  it("reserves changeRoles for the Owner", () => {
+    expect(roleAllowsCapability("admin", "changeRoles")).toBe(false);
+    expect(roleAllowsCapability("owner", "changeRoles")).toBe(true);
+  });
+
+  it("refuses a capability it has never heard of, at every Role", () => {
+    // A capability added to the operations layer tomorrow is denied until
+    // somebody ranks it, rather than landing silently under a default.
+    for (const role of ["owner", "admin", "editor", "viewer"] as const) {
+      expect(roleAllowsCapability(role, "teleport")).toBe(false);
+    }
   });
 });

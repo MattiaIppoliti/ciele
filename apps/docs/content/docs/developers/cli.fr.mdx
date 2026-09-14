@@ -12,7 +12,7 @@ auto-hébergées.
 - Utilisez Node.js 22.6 ou une version ultérieure.
 - Créez une [clé API d'organisation](/developers/api-keys).
 
-## Installation
+## Installer
 
 Compilez et installez le paquet autonome à partir d'une extraction du dépôt :
 
@@ -22,7 +22,7 @@ npm install --global ./packages/cli/dist/ciele-cli-*.tgz
 ciele help
 ```
 
-Le tarball inclut ses dépendances d'exécution. La commande installed n'a plus
+L'archive tar inclut ses dépendances d'exécution. La commande installed n'a plus
 besoin du dépôt.
 
 Une fois `@ciele/cli` publié sur npm, `npm install --global @ciele/cli` installe
@@ -61,9 +61,9 @@ La CLI résout une clé dans cet ordre :
 La CLI utilise le même ordre pour `--base-url`, `CIELE_BASE_URL` et l'origine
 enregistrée. L'origine hébergée est la valeur par défaut finale.
 
-## Utiliser la sortie d'automatisation
+## Utiliser la sortie de l'automatisation
 
-Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
+Ajoutez `--json` à une commande pour obtenir une sortie lisible par machine.
 
 | Code de sortie | Signification |
 | --- | --- |
@@ -75,7 +75,7 @@ Ajoutez `--json` à une commande pour recevoir une sortie lisible par machine.
 `ciele doctor` vérifie la découverte de l'API, la compatibilité de l'API, la
 clé, son rôle et son organisation.
 
-## Commandes d'assistant et de connaissances
+## Commandes relatives à l'assistant et aux connaissances
 
 ```bash
 ciele assistants list --all
@@ -93,6 +93,23 @@ Collection n'a pas de propriétaire ; par conséquent, ces liens sont le seul
 moyen de mettre les connaissances à la disposition d'un Assistant. Les commandes
 sont `sources add-text`, `sources add-url`, `sources add-file`, `faqs add` et
 `faqs import`.
+
+### Ajouter des connaissances sans collection
+
+Un nouvel Assistant n'a pas de Collection, car la liste des Collections
+n'affiche que les Collections qui contiennent ses Sources. Utilisez
+`sources add-org` dans ce cas. Cela place la Source dans la Knowledge Library de
+l'Organisation.
+
+```bash
+ciele sources add-org --url https://example.com/help --assistants <assistant-id>
+ciele sources add-org --file handbook.pdf --assistants <assistant-id>
+ciele sources add-org --text "Opening hours are 09:00 to 17:00." --assistants <assistant-id>
+```
+
+Indiquez l'une des valeurs suivantes : `--url`, `--file` ou `--text`. La
+commande nécessite `--assistants` pour la même raison que les autres commandes
+d'ajout.
 
 ### Liens de source
 
@@ -114,7 +131,115 @@ liens et la Source cesse de répondre.
 `sources direct-access` décide si cet Assistant peut fournir le fichier original
 à un Visiteur.
 
-## Commandes d'opérations et d'organisation
+## Commandes de flux
+
+### Découvrez ce qu'un flux peut contenir
+
+`ciele flows catalog` affiche les déclencheurs, les actions et les types de
+conditions de ce déploiement Ciele. Il indique également quelles actions chaque
+déclencheur autorise. Lisez-le avant d'écrire un fichier Flow. Le serveur refuse
+un trigger, une action ou un type de condition qui ne figure pas dans la liste.
+
+C'est le déploiement qui fournit cette réponse, et non la CLI. Une ancienne CLI
+comparée à une version plus récente de Ciele affiche les nouvelles listes.
+
+```bash
+ciele flows catalog
+```
+
+### Vérifiez un flux avant de l'enregistrer
+
+`flows draft` vérifie une modification apportée à un flux. `flows validate`
+vérifie un flux complet. Aucune de ces commandes n'effectue d'enregistrement.
+Les deux vous montrent le Flow que Ciele stockerait.
+
+```bash
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistant-id> --file flow.json --rationale "own flow"
+```
+
+Utilisez-les pour une raison avant tout : lorsqu'un flux écrit dans un
+connecteur, Ciele ajoute une action de révision humaine avant cette écriture.
+Ces deux commandes vous montrent l'action ajoutée. Une sauvegarde le fait en
+silence.
+
+### Observez un flux HTTP
+
+Un Flow avec le déclencheur HTTP conserve un enregistrement de chaque appel
+entrant.
+
+```bash
+ciele flows runs <flow-id> --limit 20
+```
+
+Les conversations n'incluent pas ces exécutions, car un appel entrant n'est pas
+une conversation.
+
+## Commandes pour les Teammates
+
+### Donnez à un Teammate ses capacités
+
+Un nouvel IA Teammate peut répondre aux questions. Il ne peut agir que lorsque
+vous lui avez attribué un domaine, et il n'effectue aucun travail en autonomie
+tant que vous ne lui avez pas assigné une Routine.
+
+```bash
+ciele teammates grants <teammate-id>
+ciele teammates set-grants <teammate-id> --domains improvements,knowledge
+ciele teammates routines <teammate-id>
+ciele teammates add-routine <teammate-id> --instruction "Triage new feedback" --cadence daily --hour 8
+```
+
+`set-grants` envoie l'ensemble complet des domaines à chaque fois.
+`--domains ""` les supprime tous. Cette commande nécessite une clé API disposant
+du rôle Admin ou d'un rôle supérieur, car elle permet à un agent de modifier vos
+données. Les autres commandes Teammate nécessitent le rôle Éditeur.
+
+Un Teammate peut avoir un maximum de cinq Routines.
+
+### Configurez un coéquipier en une seule commande
+
+`teammates create` crée un coéquipier qui répond aux questions. Il ne peut pas
+agir et n'effectue aucune tâche sans supervision. `teammates provision` réalise
+les trois étapes en même temps.
+
+```bash
+ciele teammates provision --name "Triage" \
+  --grants improvements \
+  --routine "Triage new feedback:daily:8"
+```
+
+L'ordre est le suivant : créer, puis accorder, puis planifier. Si une étape
+échoue, la commande vous indique où elle s'est arrêtée. Le coéquipier reste
+utilisable jusqu'à ce stade.
+
+Une clé sans le rôle d'administrateur peut créer le coéquipier. Elle ne peut pas
+accorder un domaine. La commande indique ensuite qu'elle s'est arrêtée à l'étape
+grants.
+
+### Projets et mémoire
+
+Un projet est un espace de travail partagé. Un coéquipier IA associé à un projet
+lit le document de mémoire de ce projet à chaque tour.
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <project-id>
+ciele projects set-document <project-id> --file notes.md --note "after review"
+ciele teammates memory <teammate-id>
+ciele teammates set-memory <teammate-id> --file memory.md --note "corrected"
+```
+
+`set-document` et `set-memory` remplacent le texte intégral. Ciele conserve le
+texte précédent dans l'historique du document.
+
+Il n'existe pas de commande pour votre propre couche de mémoire. Une clé API
+agit au nom du membre qui l'a créée ; par conséquent, une commande ici
+afficherait le document privé de ce membre. Utilisez Paramètres, puis Mémoire,
+dans la console.
+
+## Commandes Opérations et Organisation
 
 ```bash
 ciele conversations list --assistant <assistant-id>

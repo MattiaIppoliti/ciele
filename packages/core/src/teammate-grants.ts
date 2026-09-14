@@ -3,6 +3,7 @@ import type {
   TeammateCapabilityCeiling,
   TeammateGrant,
   TeammateGrantDomain,
+  Role,
 } from "./types";
 import { TEAMMATE_GRANT_DOMAINS } from "./types";
 
@@ -43,6 +44,58 @@ const CAPABILITY_RANK: Record<string, number> = {
   edit: 2,
   publish: 3,
 };
+
+/**
+ * The Member Role ladder, and what each rung may do.
+ *
+ * This lived only in `apps/web/src/lib/rbac.ts`, which was fine while the only
+ * thing that checked a capability was a surface. It stopped being fine when a
+ * *composite* operation (`teammates.provision`) had to run a step that needs a
+ * higher capability than the composite declares: calling the inner operation's
+ * `run` skips the surface, and with it the only check that existed. That is a
+ * privilege escalation, so the predicate has to be reachable from the
+ * operations layer, which means it belongs here with the rest of the domain.
+ *
+ * `apps/web/src/lib/rbac.ts` delegates to this rather than keeping a copy,
+ * because two ladders is how they end up disagreeing.
+ */
+const ROLE_RANK: Record<Role, number> = {
+  owner: 4,
+  admin: 3,
+  editor: 2,
+  viewer: 1,
+};
+
+/** 0 for "nobody", so an absent Role clears no gate. */
+export function memberRoleRank(role: Role | null | undefined): number {
+  return role ? ROLE_RANK[role] : 0;
+}
+
+/** The rung each operation capability needs. `member` is anyone signed in. */
+const REQUIRED_RANK: Record<string, number> = {
+  member: 1,
+  edit: 2,
+  publish: 3,
+  manageMembers: 3,
+  manageApiKeys: 3,
+  changeRoles: 4,
+};
+
+/**
+ * Whether a Role may run an operation declaring this capability.
+ *
+ * An unknown capability is refused rather than ranked, the same choice
+ * `ceilingAllowsCapability` makes above and for the same reason: a capability
+ * added tomorrow should be denied until somebody decides otherwise, not land
+ * silently under whichever rung a default would pick.
+ */
+export function roleAllowsCapability(
+  role: Role | null | undefined,
+  capability: string
+): boolean {
+  const wanted = REQUIRED_RANK[capability];
+  return wanted !== undefined && memberRoleRank(role) >= wanted;
+}
 
 /**
  * What a transcript card can say an action belonged to.

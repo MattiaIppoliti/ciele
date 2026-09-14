@@ -120,14 +120,22 @@ describe("@ciele/client ↔ /api/v1 registry conformance", () => {
       key: registryKey(endpoint.method, endpoint.path),
       method: endpoint.method.toUpperCase(),
       matcher: matcherOf(endpoint.path),
+      /** A path with no {placeholder} can only match itself. */
+      literal: !endpoint.path.includes("{"),
     }));
 
     const unmatched: string[] = [];
     const covered = new Set<string>();
     for (const call of calls) {
-      const hits = entries.filter(
+      const all = entries.filter(
         (entry) => entry.method === call.method && entry.matcher.test(call.path)
       );
+      // Static before dynamic, the way Next.js routes: "/flows/catalog" is a
+      // route file of its own AND matches "/flows/{id}", and the registry has
+      // to resolve that the same way the router does, or a literal endpoint can
+      // never be added under a dynamic sibling.
+      const literals = all.filter((entry) => entry.literal);
+      const hits = literals.length > 0 ? literals : all;
       if (hits.length !== 1) {
         unmatched.push(
           `${call.method} ${call.path} (matched ${hits.length} registry entries)`

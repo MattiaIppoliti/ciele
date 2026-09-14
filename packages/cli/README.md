@@ -61,6 +61,13 @@ ciele assistants set-entities <id> --ids products,opening-hours
 ### Flows (the router)
 
 ```bash
+ciele flows catalog                    # triggers, actions, condition kinds, pairing
+ciele flows draft --file patch.json --summary "add a refund branch"
+ciele flows validate <assistantId> --file flow.json --rationale "own flow"
+                                       # both check without storing; they show the
+                                       # human-review action inserted before a
+                                       # Connector write
+ciele flows runs <flowId> --limit 20   # inbound calls of an HTTP-triggered flow
 ciele flows list <assistantId>
 ciele flows get <id>                   # full router config as JSON
 ciele flows create <assistantId> --name "Fees intent" [--description …]
@@ -80,6 +87,8 @@ ciele sources add-text <collectionId> --name "Handbook" --text "…"
 ciele sources add-text <collectionId> --file ./handbook.txt
 ciele sources add-url  <collectionId> --url https://example.edu/fees
 ciele sources add-file <collectionId> --file ./syllabus.pdf
+ciele sources add-org --url https://example.com/help --assistants a1,a2
+                                       # no collectionId: the org Knowledge Library
 ciele sources get <id>                 # poll status: processing → ready
 ciele sources recrawl <id>             # website sources only
 ciele sources delete <id> --yes
@@ -141,6 +150,43 @@ ciele sso identity email                      # admin+; resets validation
 ciele sso identity none                       # clear the identity claim
 ciele sso validate                            # admin+; restore valid status
 ```
+
+### AI Teammates
+
+```bash
+ciele teammates list
+ciele teammates provision --name "Triage" --grants improvements \
+  --routine "Triage new feedback:daily:8"    # persona + grants + routines, one call
+ciele teammates create --name "Ops" --title "Support triage"
+ciele teammates grants <teammateId>          # what it may do; empty = answers only
+ciele teammates set-grants <teammateId> --domains improvements,knowledge
+ciele teammates set-grants <teammateId> --domains ""   # revoke everything
+ciele teammates routines <teammateId>
+ciele teammates add-routine <teammateId> --instruction "Triage new feedback" --cadence daily --hour 8
+ciele teammates update-routine <routineId> --enabled false
+ciele teammates delete-routine <routineId> --yes
+ciele channels oversight                     # admin: every channel, seated or not
+ciele channels oversight-read <channelId>
+```
+
+`set-grants` replaces the whole set and needs an admin-tier key: arming an agent
+is a rung above renaming one. Five routines per teammate.
+
+### Projects and memory
+
+```bash
+ciele projects list
+ciele projects create --name "Q4 migration"
+ciele projects get <id>                       # the project + its memory document
+ciele projects set-document <id> --file notes.md --note "after review"
+ciele projects update <id> --archived true    # keeps the record; delete does not
+ciele teammates memory <teammateId>           # what this teammate has learned
+ciele teammates set-memory <teammateId> --file memory.md --note "corrected"
+```
+
+There is no command for your *own* memory layer, on purpose: a key acts as the
+member who minted it, so an endpoint there would expose that member's private
+document. Edit it in Settings → Memory.
 
 ### Help desks, reusable configuration, and alerts
 
