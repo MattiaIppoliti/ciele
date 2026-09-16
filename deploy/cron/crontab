@@ -8,6 +8,7 @@
 # cron only. See RUN_ROUTINES below for the other exception.
 #
 # min hour dom mon dow  command
+45 1 * * *  /usr/local/bin/run-job.sh /api/cron/run-slack
 0 2 * * *   /usr/local/bin/run-job.sh /api/cron/rollup-usage
 30 2 * * *  /usr/local/bin/run-job.sh /api/cron/sweep-retention
 45 2 * * *  /usr/local/bin/run-job.sh /api/cron/security-detections

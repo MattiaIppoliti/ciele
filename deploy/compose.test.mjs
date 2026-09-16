@@ -637,6 +637,15 @@ function cronEntries(text) {
     });
 }
 
+check("the app receives the optional Slack event credentials", () => {
+  const compose = read("docker-compose.yml");
+  const env = read(".env.example");
+  for (const key of ["SLACK_APPLICATION_APP_ID", "SLACK_SIGNING_SECRET"]) {
+    assert.ok(compose.includes(`${key}: ${"${"}${key}:-}`));
+    assert.ok(env.includes(`${key}=`));
+  }
+});
+
 check("the scheduler runs exactly the jobs vercel.json schedules", () => {
   const hosted = vercel.crons.map((c) => ({ path: c.path, schedule: c.schedule }));
   const selfHosted = cronEntries(crontab);
