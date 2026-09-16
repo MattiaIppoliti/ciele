@@ -23,7 +23,7 @@ describe("applicationOAuthScopes", () => {
         provider: "slack",
         scopes: ["chat:write", "channels:read", " chat:write ", ""],
       })
-    ).toEqual([...APPLICATION_OAUTH_DEFAULT_SCOPES.slack, "chat:write"]);
+    ).toEqual(APPLICATION_OAUTH_DEFAULT_SCOPES.slack);
   });
 
   it("refuses a scope carrying whitespace or a comma", () => {

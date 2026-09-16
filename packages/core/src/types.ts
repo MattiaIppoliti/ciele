@@ -2113,7 +2113,8 @@ export type BackgroundJobKind =
    * settles. There is no delivery job to pair with it, the subscribe call runs
    * inline in the action so a failure can halt the turn that made it.
    */
-  | "resume_webhook_conversation";
+  | "resume_webhook_conversation"
+  | "answer_slack_mention";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface CrawlFinalizeClaim {

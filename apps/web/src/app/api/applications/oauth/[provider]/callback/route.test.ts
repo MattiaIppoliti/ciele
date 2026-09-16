@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => ({ getSession: mocks.getSession }));
 vi.mock("@/lib/data", () => ({ getDb: mocks.getDb }));
 vi.mock("@/lib/widget-db", () => ({ getWidgetDb: mocks.getWidgetDb }));
+vi.mock("@/lib/org-mutation", () => ({ revalidateEntities: vi.fn() }));
 vi.mock("@/lib/application-oauth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/application-oauth")>()),
   exchangeApplicationOAuthCode: mocks.exchange,
@@ -142,5 +143,30 @@ describe("Application OAuth callback route", () => {
     expect(response.status).toBe(400);
     expect(mocks.exchange).not.toHaveBeenCalled();
     expect(createConnection).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["TTEST", "ATEST", true],
+    ["TOTHER", "ATEST", false],
+    ["TTEST", "AOTHER", false],
+  ])("preserves Slack opt-in only for the same installation (%s, %s)", async (teamId, appId, preserve) => {
+    const slackBot = { assistantId: "assistant-1", channelIds: ["CTEST"] };
+    mocks.getDb.mockResolvedValue({ consumeApplicationOAuthNonce: consumeNonce,
+      getSafeApplicationConnection: vi.fn(async () => ({ id: "conn-1", organizationId: "org-1",
+        provider: "slack", ownerType: "organization", providerAccountId: "TTEST",
+        metadata: { slackAppId: "ATEST", slackBot } })) });
+    const update = vi.fn();
+    mocks.getWidgetDb.mockReturnValue({ updateApplicationConnection: update, resolveAlertsByKey: vi.fn() });
+    mocks.exchange.mockResolvedValue({ credentials: { accessToken: "test-token" }, name: "Ciele Slack",
+      providerAccountId: teamId, scopes: ["chat:write", "app_mentions:read"], metadata: { slackAppId: appId, slackBotUserId: "UBOT" } });
+    const redirectUri = "https://ciele.example/api/applications/oauth/slack/callback";
+    const transaction = newApplicationOAuthTransaction({ provider: "slack", organizationId: "org-1",
+      memberId: "member-1", connectionId: "conn-1", returnTo: "/library/applications", redirectUri });
+    const cookie = sealApplicationOAuthTransaction(transaction);
+    const response = await GET(new NextRequest(`${redirectUri}?code=code&state=${transaction.nonce}`, {
+      headers: { cookie: `application_oauth_txn=${cookie}` },
+    }), { params: Promise.resolve({ provider: "slack" }) });
+    expect(response.status).toBe(200);
+    expect(update.mock.calls[0][1].metadata.slackBot).toEqual(preserve ? slackBot : undefined);
   });
 });

@@ -429,13 +429,16 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
         );
         for (const channel of valueArray(page, "channels")) {
           const id = String(channel.id ?? "");
-          if (!id || channel.is_member !== true) continue;
+          if (!id) continue;
           options.push({
             id,
             label: `#${String(channel.name ?? id)}`,
             kind: "channel",
             parentId: null,
-            metadata: { private: Boolean(channel.is_private) },
+            metadata: {
+              private: Boolean(channel.is_private),
+              member: channel.is_member === true,
+            },
           });
         }
         cursor = String(

@@ -2684,6 +2684,23 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       );
     },
 
+    async listSlackWorkspaceConnections(teamId) {
+      // This lookup is used only by the signed Slack event runtime with its
+      // service-role DB. The safe view has an explicit `is_org_member(...)`
+      // predicate in addition to base-table RLS; service-role requests have no
+      // auth.uid(), so the view correctly returns no rows for them. Query the
+      // base table while still selecting no credential ciphertext.
+      const { data, error } = await client
+        .from("application_connections")
+        .select(
+          "id, organization_id, provider, name, status, scopes, provider_account_id, metadata, error, last_connected_at, created_at, updated_at, owner_type, owner_member_id",
+        )
+        .eq("provider", "slack")
+        .eq("provider_account_id", teamId);
+      if (error) throw error;
+      return (data ?? []).map((row: Record<string, unknown>) => toApplicationConnection(row));
+    },
+
     async getSafeApplicationConnection(id) {
       const { data, error } = await client
         .from("application_connections_safe")
@@ -3282,6 +3299,14 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         throw error;
       }
       return ((data ?? []) as Array<Record<string, unknown>>).map(toBackgroundJob);
+    },
+
+    async checkpointBackgroundJob(input) {
+      const { data, error } = await client.from("background_jobs")
+        .update({ payload: input.payload }).eq("id", input.id)
+        .eq("status", "running").eq("lease_token", input.leaseToken).select("id");
+      if (error) throw error;
+      return (data?.length ?? 0) === 1;
     },
 
     async settleBackgroundJob(input) {

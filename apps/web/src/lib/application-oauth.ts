@@ -279,7 +279,15 @@ function authorizationEndpoint(transaction: ApplicationOAuthTransaction): string
 
 /** The scopes the Knowledge import needs from each provider, the floor of every grant. */
 export const APPLICATION_OAUTH_DEFAULT_SCOPES: Record<ApplicationOAuthProvider, string[]> = {
-  slack: ["channels:history", "channels:read", "groups:history", "groups:read", "users:read"],
+  slack: [
+    "channels:history",
+    "channels:read",
+    "groups:history",
+    "groups:read",
+    "users:read",
+    "app_mentions:read",
+    "chat:write",
+  ],
   onedrive: ["offline_access", "Files.Read", "User.Read"],
   google_drive: ["https://www.googleapis.com/auth/drive.readonly"],
   // The Human review sender (#841): delegated send from the Member's own mailbox.
@@ -484,7 +492,11 @@ export async function exchangeApplicationOAuthCode(input: {
       name: String(team.name ?? "Slack"),
       providerAccountId: credentials.teamId ?? null,
       scopes,
-      metadata: { teamName: String(team.name ?? "") },
+      metadata: {
+        teamName: String(team.name ?? ""),
+        slackAppId: String(token.app_id ?? ""),
+        slackBotUserId: String(token.bot_user_id ?? ""),
+      },
     };
   }
 

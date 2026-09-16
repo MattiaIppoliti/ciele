@@ -56,6 +56,8 @@ export const alertKeys = {
   /** One Application Connection's authorization lifecycle. */
   applicationConnection: (connectionId: string) =>
     `application-connection:${connectionId}`,
+  /** A Slack event whose reply failed or has an uncertain delivery outcome. */
+  slackMention: (jobId: string) => `slack-mention:${jobId}`,
   /**
    * One security-detection finding (#801, CYB-19): rule + the subject it
    * fired on, so a still-firing rule updates one Alert in place and two

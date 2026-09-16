@@ -184,7 +184,10 @@ describe("built-in Application Connectors", () => {
       if (url.includes("conversations.list")) {
         return response({
           ok: true,
-          channels: [{ id: "C01", name: "help", is_member: true }],
+          channels: [
+            { id: "C01", name: "help", is_member: true },
+            { id: "C02", name: "announcements", is_member: false },
+          ],
           response_metadata: { next_cursor: "" },
         });
       }
@@ -230,11 +233,20 @@ describe("built-in Application Connectors", () => {
         expect.objectContaining({ id: "language:it" }),
       ])
     );
+    expect(scopes[2].scopes).toEqual([
+      expect.objectContaining({
+        id: "C01",
+        label: "#help",
+        metadata: expect.objectContaining({ member: true }),
+      }),
+      expect.objectContaining({
+        id: "C02",
+        label: "#announcements",
+        metadata: expect.objectContaining({ member: false }),
+      }),
+    ]);
     expect(scopes[1].scopes).toEqual([
       expect.objectContaining({ id: "kb-1", kind: "knowledge_base" }),
-    ]);
-    expect(scopes[2].scopes).toEqual([
-      expect.objectContaining({ id: "C01", kind: "channel" }),
     ]);
     expect(scopes[3].scopes).toEqual(
       expect.arrayContaining([

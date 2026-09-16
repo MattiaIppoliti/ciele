@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as engine from "./engine";
 import type { Assistant, Flow, RuntimeEventInput } from "@agent-hub/core";
 import { buildPublicationConfig } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -48,6 +49,7 @@ async function runTurn(input: {
   faqQuestion?: boolean;
   turnId?: string;
   signal?: AbortSignal;
+  standingContext?: readonly string[];
 }): Promise<RuntimeEvent[]> {
   const stream = await streamConversationTurn({
     db,
@@ -63,6 +65,7 @@ async function runTurn(input: {
     turnId: input.turnId,
     faqQuestion: input.faqQuestion,
     signal: input.signal ?? new AbortController().signal,
+    standingContext: input.standingContext,
   });
   const text = await new Response(stream).text();
   return text
@@ -78,6 +81,17 @@ function doneEvent(events: RuntimeEvent[]) {
 }
 
 describe("streamConversationTurn", () => {
+  it("passes host context to Assistant turns without storing it as a user message", async () => {
+    const spy = vi.spyOn(engine, "runAssistantChat");
+    try {
+      const { assistant, flows } = await fixture();
+      const context = "Untrusted Slack context: the deadline is Friday.";
+      const events = await runTurn({ assistant, flows, standingContext: [context] });
+      expect(spy.mock.calls[0][0].memoryDocuments).toEqual([context]);
+      const messages = await db.listMessages(doneEvent(events).conversationId);
+      expect(JSON.stringify(messages)).not.toContain(context);
+    } finally { spy.mockRestore(); }
+  });
   it("replays a completed turn without duplicating messages or effects", async () => {
     const { assistant } = await fixture();
     await db.createFlow(assistant.id, {

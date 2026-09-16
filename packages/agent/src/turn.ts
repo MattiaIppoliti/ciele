@@ -916,7 +916,7 @@ export async function streamConversationTurn(
         }),
         conversation.metadata
       ).concat(input.standingContext ?? [])
-    : undefined;
+    : input.standingContext;
 
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.

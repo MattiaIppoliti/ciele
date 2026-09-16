@@ -4,9 +4,9 @@ description: Synchronisieren Sie ausgewählte Inhalte aus Salesforce, ServiceNow
 ---
 
 Application Knowledge kopiert ausgewählte externe Inhalte als durchsuchbare
-Quellen in Ciele. Jede Quelle durchläuft den normalen Erfassungsprozess,
-erscheint in Zitaten und antwortet nur für die verknüpften Assistenten. Die
-Integration erfolgt direkt. Sie verwendet weder Merge noch einen anderen
+Quellen in Ciele. Jede Source durchläuft den normalen Ingestionspfad, wird in
+Citations angezeigt und liefert Antworten nur für die verknüpften Assistants.
+Die Integration erfolgt direkt. Sie verwendet weder Merge noch einen anderen
 Integrationsbroker.
 
 <Callout title="Content is copied into Ciele">
@@ -20,54 +20,62 @@ Integrationsbroker.
 Ein **Application Connection** speichert ein autorisiertes externes Konto. Ein
 **Application Import** wählt Inhalte innerhalb dieses Kontos, einen Zeitplan und
 die Assistenten aus, die diese durchsuchen dürfen. Eine Synchronisierung
-erstellt oder aktualisiert für jedes Remote-Element eine Ciele Source.
+erstellt oder aktualisiert eine Ciele-Quelle für jedes Remote-Element.
 
 Verwenden Sie eine Verbindung für mehrere Importe, wenn sich deren Umfang oder
 die Assistant-Links unterscheiden. Beispielsweise kann eine Slack-Verbindung
-separate Kanal-Sets an separate Assistenten weiterleiten.
+separate Kanalgruppen an separate Assistenten weiterleiten.
 
 Salesforce-, ServiceNow- und Slack-Verbindungen gehören zur Organisation. Jede
-Organisation kann für jeden dieser Anbieter eine Verbindung haben. OneDrive- und
+Organisation kann für jeden dieser Anbieter eine Connection haben. OneDrive- und
 Google Drive-Verbindungen gehören dem Mitglied, das sie autorisiert. Jedes
 Mitglied kann für jeden persönlichen Anbieter ein Konto verbinden.
 
-Ein Organisationsadministrator kann persönliche Verbindungs-Metadaten einsehen
-und eine persönliche Verbindung entfernen. Nur das Mitglied, dem die Verbindung
-gehört, kann sie erneut verbinden. Anmeldeinformationen des Providers
-überschreiten niemals die Grenze des Members. Importierte Quellen zählen zum
-Wissen der Organisation und folgen den für sie konfigurierten Assistant-Links.
+Ein Organization Admin kann Metadaten persönlicher Verbindungen einsehen und
+eine persönliche Verbindung entfernen. Nur das Mitglied, dem sie gehört, kann
+sie erneut verbinden. Provider-Anmeldedaten überschreiten niemals die Grenze des
+Members. Importierte Quellen zählen zum Wissen der Organisation und folgen den
+für sie konfigurierten Assistant-Links.
 
 ## Ein Konto verbinden
 
-Ein Organisationsadministrator oder -besitzer kann Salesforce, ServiceNow oder
-Slack verbinden. Ein Mitglied mit der Berechtigung zum Bearbeiten von Wissen
-kann sein OneDrive oder Google Drive verbinden und Importe verwalten.
+Ein Organization Admin oder Owner kann Salesforce, ServiceNow oder Slack
+verbinden. Ein Mitglied mit der Berechtigung zum Bearbeiten von Wissen kann sein
+OneDrive oder Google Drive verbinden und Importe verwalten.
 
 1. Öffnen Sie **Library** und wählen Sie **Applications** aus, oder öffnen Sie
    die **Knowledge** eines Assistenten und wählen Sie **Applications** aus.
-2. Wählen Sie **Connect** beim Provider aus.
+2. Wählen Sie **Connect** beim Anbieter aus.
 3. Geben Sie für Salesforce oder ServiceNow einen Connection-Namen, die
    Instance-URL, die Client-ID und das Client-Secret ein.
-4. Füllen Sie das Fenster zur Autorisierung des Anbieters aus.
-5. Erstellen Sie einen Import, wählen Sie seinen Umfang aus und verknüpfen Sie
+4. Wählen Sie für Slack, OneDrive oder Google Drive **Continue connecting** auf
+   der Ciele-Verbindungsseite aus.
+5. Melden Sie sich auf der Website des Anbieters an und genehmigen Sie den
+   Zugriff. Ciele aktualisiert anschließend die Liste „Applications“.
+6. Erstellen Sie einen Import, wählen Sie seinen Umfang aus und verknüpfen Sie
    mindestens einen Assistenten.
-6. Wählen Sie die Synchronisierung **Daily** oder **Manual**.
-7. Speichern Sie den Import und warten Sie, bis seine Quellen **Ready** werden.
-8. Testen Sie eine Antwort und öffnen Sie die benannte Quellenangabe.
+7. Wählen Sie **Daily**- oder **Manual**-Synchronisierung.
+8. Speichern Sie den Import und warten Sie, bis seine Quellen **Ready** werden.
+9. Testen Sie eine Antwort und öffnen Sie die zugehörige benannte Source-Angabe.
+
+Slack, OneDrive und Google Drive fordern Sie auf, sich anzumelden und den
+Zugriff zu autorisieren. Mitglieder geben keine OAuth Client ID oder kein OAuth
+Secret ein. Die Ciele-Bereitstellung stellt diese Anmeldeinformationen bereit.
+**Not now** schließt das Verbindungsfenster, ohne ein Konto zu verbinden.
 
 Der Assistant-Editor zeigt Organisationsimporte an, die Sie verknüpfen können.
-Die Bibliothek ist die vollständige Organisationsansicht und enthält jede
-importierte Quelle.
+Die Library ist die vollständige Ansicht der Organisation und umfasst alle
+importierten Sources.
 
-## Provider-Umfänge
+## Berechtigungsbereiche des Providers
 
-| Anbieter | Auswählbare Inhalte | Anmerkungen |
+| Provider | Auswählbarer Inhalt | Hinweise |
 | --- | --- | --- |
-| Salesforce | Knowledge-Sprache und bis zu drei Datenkategorien aus verschiedenen Gruppen | Verwenden Sie Production, Sandbox oder eine genehmigte My Domain. |
-| ServiceNow | Eine oder mehrere Wissensdatenbanken und eine Sprache | Geben Sie die Instanz-URL und den OAuth-Client ein, die von dieser ServiceNow-Instanz bereitgestellt werden. Password grants werden nicht unterstützt. |
-| Slack | Zugängliche Kanäle und ein Verlaufsfenster | Das Standardfenster umfasst 180 Tage. **All history** kann viele API-Aufrufe erfordern. Threads werden mit ihrer Stammnachricht gespeichert. |
-| OneDrive | Ein Laufwerk oder Ordner | Ciele importiert unterstützte Dateien über Microsoft Graph. SharePoint-Bibliotheken sind in dieser ersten Version nicht enthalten. |
-| Google Drive | Ordner „Meine Ablage“ oder „Freigegebene Ablage“ | Native Google-Dokumente werden in ein lesbares Format exportiert. Andere unterstützte Dateien werden direkt heruntergeladen. |
+| Salesforce | Knowledge-Sprache und bis zu drei Data Categories aus verschiedenen Gruppen | Verwenden Sie Production, Sandbox oder eine genehmigte My Domain. |
+| ServiceNow | Eine oder mehrere Knowledge Bases und eine Sprache | Geben Sie die Instance-URL und den OAuth-Client ein, die von dieser ServiceNow-Instance bereitgestellt werden. Die Erteilung von Passwörtern wird nicht unterstützt. |
+| Slack | Zugängliche Kanäle und ein Verlaufsfenster | Das Standardfenster beträgt 180 Tage. **All history** kann viele API-Aufrufe erfordern. Threads werden zusammen mit ihrer Root-Nachricht gespeichert. |
+| OneDrive | Ein Laufwerk oder ein Ordner | Ciele importiert unterstützte Dateien über Microsoft Graph. SharePoint-Bibliotheken sind in dieser ersten Version nicht enthalten. |
+| Google Drive | My Drive oder Shared Drive-Ordner | Native Google-Dokumente werden in ein lesbares Format exportiert. Andere unterstützte Dateien werden direkt heruntergeladen. |
 
 Ciele meldet nicht unterstützte Dateien, leere Elemente und anbieterspezifische
 Ausschlüsse als übersprungene Elemente. Ein fehlerhaftes Element stoppt gültige
@@ -75,55 +83,138 @@ Inhalte im selben Durchlauf nicht.
 
 ## Synchronisierung und Status
 
-Wählen Sie **Sync now** für eine sofortige Ausführung. **Pause** stoppt geplante
-Ausführungen, ohne Quellen zu löschen. **Resume** stellt eine neue Ausführung in
-die Warteschlange. Durch das Bearbeiten eines Bereichs wird dessen Prüfpunkt
+Wählen Sie **Sync now** für einen sofortigen Lauf aus. **Pause** stoppt geplante
+Läufe, ohne Sources zu löschen. **Resume** stellt einen neuen Lauf in die
+Warteschlange. Wenn Sie einen Scope bearbeiten, wird dessen Checkpoint
 zurückgesetzt und eine vollständige Aktualisierung der neuen Auswahl geplant.
 
 Die Zeile „Import“ zeigt die letzte und die nächste Synchronisierung, die Anzahl
-der Source- und Assistant-Links sowie die Gesamtzahlen des letzten Laufs für
-„discovered“, „updated“, „removed“, „skipped“ und „failed“ an. Fehler bei der
-Provider-Autorisierung markieren die Verbindung für eine erneute Verbindung und
-erzeugen eine Warnung. Ein späterer erfolgreicher Durchlauf löscht die Warnung.
+der Source- und Assistant-Links sowie die Gesamtzahlen der im letzten Durchlauf
+entdeckten, aktualisierten, entfernten, übersprungenen und fehlgeschlagenen
+Elemente an. Fehlschläge bei der Provider-Autorisierung markieren die Connection
+für eine erneute Verbindung und erzeugen einen Alert. Ein späterer erfolgreicher
+Lauf löscht den Alert.
 
 Die Remote-Identität bleibt stabil. Ein bearbeitetes Remote-Element aktualisiert
 die vorhandene Quelle, sodass sich Links und Zitate nicht ändern. Ein entferntes
-Remote-Element löscht seine aktive Quelle, behält jedoch einen internen
-Tombstone, der es ermöglicht, bei einem späteren Wiederauftreten den korrekten
-Ersatz zu erstellen, ohne ihn zu duplizieren.
+Remote-Element löscht seine aktive Quelle, behält aber einen internen Tombstone,
+der bei einem späteren Wiederauftreten die Erstellung des korrekten Ersatzes
+ermöglicht, ohne es zu duplizieren.
 
 Die Ratenbegrenzungen des Anbieters verwenden die zurückgegebene
-Wiederholungsverzögerung. Tägliche Importe werden ebenfalls im normalen
+Wiederholungsverzögerung. Daily Imports werden ebenfalls im normalen
 Ciele-Worker-Zeitplan ausgeführt, sodass der Webprozess nicht geöffnet bleiben
 muss.
+
+## Auf Erwähnungen in Slack antworten
+
+Slack Imports und Conversational Replies sind separate Funktionen. Imports
+kopieren Wissen in Ciele. Conversational Replies führen einen veröffentlichten
+Assistenten aus, wenn jemand `@Ciele` in einem aktivierten Kanal erwähnt.
+
+1. Bitten Sie Ihren Bereitstellungsadministrator, die unten beschriebene Slack
+   Events API zu konfigurieren.
+2. Öffnen Sie die Slack-Verbindung in **Applications** und wählen Sie **Slack
+   assistant**.
+3. Wählen Sie **Authorize conversational permissions** aus, wenn Sie dazu
+   aufgefordert werden, und genehmigen Sie den Zugriff in Slack.
+4. Wählen Sie einen veröffentlichten Assistant aus Ihrer Organisation aus.
+5. Wählen Sie die erlaubten Kanäle aus der Liste **Channels** aus. Laden Sie
+   Ciele in private Kanäle ein, damit diese angezeigt werden.
+6. Wählen Sie **Save Slack assistant** aus und laden Sie Ciele zu jedem
+   ausgewählten Kanal ein.
+7. Erwähnen Sie `@Ciele` mit einer Frage. Ciele antwortet im Thread dieser
+   Nachricht.
+
+Der Assistent verwendet seine verknüpften Wissensquellen, die veröffentlichte
+Konfiguration und den aktuellen Slack-Kontext. Er liest bis zu 15
+Kanalnachrichten und 15 Thread-Nachrichten vor der Erwähnung. Slack-Rate-Limits
+können diesen Kontext einschränken. Ciele liest bei jeder Antwort nicht den
+gesamten Workspace. Der Thread behält seine Ciele-Konversation über nachfolgende
+Erwähnungen hinweg bei. Direct Messages lösen diese Funktion nicht aus.
+
+<Callout title="Choose the channel audience carefully">
+  Everyone in an enabled channel can receive answers from the selected Assistant's knowledge.
+  Ciele does not match Slack users to individual Source permissions or Ciele single sign-on identities.
+  Assistants that require sign-in and shared channels are not supported.
+  Use **Disable replies** to stop new replies without deleting Imports.
+</Callout>
+
+Jeder Slack-Workspace und jeder Slack-Kanal muss auf genau eine aktivierte
+Verbindung zu einer Ciele-Organisation verweisen. Ciele antwortet nicht, wenn
+diese Zuordnung mehrdeutig ist. Wenn Sie die Verbindung zu einem anderen
+Arbeitsbereich oder einer anderen Slack-Anwendung wiederherstellen, wird die
+Konversationskonfiguration gelöscht.
+
+### Konfigurieren Sie die Slack Events API
+
+Stellen Sie die Slack-Datenbankmigration bereit, bevor Sie Ereignisse
+aktivieren. Konfigurieren Sie diese serverseitigen Werte auf der **Basic
+Information**-Seite von Slack:
+
+```dotenv
+SLACK_APPLICATION_APP_ID=
+SLACK_SIGNING_SECRET=
+```
+
+Behalten Sie die vorhandene OAuth Client ID, das Client Secret und den HTTPS
+OAuth Callback bei. Das Signing Secret unterscheidet sich vom Client Secret.
+Speichern Sie keines der beiden Secrets jemals in einer öffentlichen
+Umgebungsvariablen.
+
+1. Fügen Sie `app_mentions:read` und `chat:write` unter **OAuth & Permissions**
+   hinzu, zusätzlich zu den bereits vorhandenen Importbereichen.
+2. Aktivieren Sie **Event Subscriptions** und setzen Sie die Anforderungs-URL
+   auf `{origin}/api/slack/events`.
+3. Abonnieren Sie das `app_mention`-Bot-Ereignis und speichern Sie die
+   Konfiguration.
+4. Autorisieren Sie bestehende Verbindungen erneut, um die neuen Berechtigungen
+   zu erteilen.
+5. Konfigurieren Sie einen Organisationsmodell-Provider, der den Datenverkehr
+   von veröffentlichten Assistenten bedienen kann.
+
+Der Endpoint überprüft Slack-Signaturen und speichert jedes Event, bevor er es
+bestätigt. Der Worker wird nach der Bestätigung ausgeführt und verwendet
+dieselbe Konversationslaufzeit wie veröffentlichte Assistenten. Abonnements
+persönlicher Provider bedienen keinen Slack-Traffic.
+
+Die Bereitstellung stellt außerdem `/api/cron/run-slack` bereit, geschützt durch
+`CRON_SECRET`, für in der Warteschlange befindliche Wiederholungsversuche und
+unterbrochene Worker. Der mitgelieferte Vercel-Zeitplan wird täglich ausgeführt.
+Konfigurieren Sie einen häufig ausführenden, authentifizierten Scheduler, wenn
+die Produktion eine umgehende Wiederherstellung durch Wiederholungsversuche
+erfordert. Wenn die Slack-Zustellung ein unsicheres Ergebnis aufweist,
+unterdrückt Ciele automatische Reposts und erstellt nach erfolglosen
+Wiederholungsversuchen einen Alert. Überprüfen Sie den Slack-Thread, bevor Sie
+ein betroffenes Event manuell erneut versuchen.
 
 ## Erneut verbinden oder löschen
 
 Wählen Sie **Reconnect**, wenn die Einwilligung abläuft oder sich das Konto
-ändert. Die Verbindung behält dieselbe Identität und ihre Importe bleiben
+ändert. Die Verbindung behält dieselbe Identität, und ihre Imports bleiben
 konfiguriert.
 
-Wenn Sie einen Import löschen, werden auch die synchronisierten Quellen für
-jeden verknüpften Assistenten gelöscht. Wenn Sie eine Connection löschen, werden
-alle zugehörigen Imports und Sources gelöscht. Die Bestätigung zeigt die Anzahl
-der betroffenen Importe, Quellen und Assistant-Links an. Ciele versucht, das
+Wenn Sie einen Import löschen, werden dessen synchronisierte Sources für jeden
+verknüpften Assistant gelöscht. Wenn Sie eine Verbindung löschen, werden alle
+zugehörigen Importe und Quellen gelöscht. Die Bestätigung zeigt die Anzahl der
+betroffenen Importe, Quellen und Assistant-Verknüpfungen an. Ciele versucht, den
 Provider-Token zu widerrufen, wenn der Provider dies unterstützt, und entfernt
-dann immer die lokalen Anmeldeinformationen.
+anschließend stets die lokalen Anmeldeinformationen.
 
-## Konfigurieren Sie OAuth für eine selbst gehostete Bereitstellung
+## OAuth für eine Self-Hosted-Bereitstellung konfigurieren
 
-Legen Sie `APP_ENCRYPTION_KEY` fest, bevor Sie einen Anbieter verbinden. Ciele
-versiegelt OAuth-Token sowie die Client-Geheimnisse von Salesforce und
-ServiceNow für jede Verbindung mit diesem Schlüssel.
+Legen Sie `APP_ENCRYPTION_KEY` fest, bevor Sie einen Provider verbinden. Ciele
+versiegelt OAuth-Token sowie die Salesforce- und ServiceNow-Client-Geheimnisse
+pro Verbindung mit diesem Schlüssel.
 
-Der verwaltete Ciele-Dienst stellt die gemeinsamen OAuth-Registrierungen für
-Slack, Microsoft und Google bereit. Jede selbst gehostete Bereitstellung stellt
-ihre eigenen Registrierungen über Umgebungsvariablen bereit. Diese
-Registrierungen identifizieren die Ciele-Bereitstellung. Sie identifizieren
-weder ein Organisations- noch ein Mitgliedskonto.
+Der Managed Service von Ciele stellt die gemeinsam genutzten
+OAuth-Registrierungen für Slack, Microsoft und Google bereit. Jede selbst
+gehostete Bereitstellung stellt ihre eigenen Registrierungen über
+Umgebungsvariablen bereit. Diese Registrierungen identifizieren die
+Ciele-Bereitstellung. Sie identifizieren kein Organization- oder Member-Konto.
 
-Erstellen Sie Provider-OAuth-Anwendungen und legen Sie die Paare fest, die Sie
-aktivieren:
+Erstellen Sie OAuth-Anwendungen des Providers und legen Sie die Paare fest, die
+Sie aktivieren:
 
 ```dotenv
 SLACK_APPLICATION_CLIENT_ID=
@@ -140,19 +231,19 @@ APPLICATION_IMPORT_MAX_CONCURRENT=3
 Die drei Grenzwerte begrenzen synchronisierte Remote-Elemente pro Verbindung,
 gespeicherte Anwendungsbytes pro Organisation und aktive
 Synchronisierungsanforderungen pro Organisation. Verringern Sie sie für kleinere
-Bereitstellungen. Ciele führt Checkpoints für den Provider-Cursor durch und
-setzt große Importe in späteren Durable Claims fort.
+Bereitstellungen. Ciele setzt Checkpoints für den Provider-Cursor und setzt
+große Importe in späteren Durable Claims fort.
 
-Die Client-Anmeldeinformationen von Salesforce und ServiceNow gelten speziell
-für die verbundene Organisation. Der Administrator gibt sie in das geschützte
-Verbindungsformular ein. Ciele versiegelt sie vor der Speicherung und gibt sie
-niemals an den Browser zurück. ServiceNow verwendet einen Autorisierungscode und
+Die Client-Anmeldeinformationen für Salesforce und ServiceNow sind spezifisch
+für die verbundene Organisation. Der Administrator gibt sie im geschützten
+Formular „Connection“ ein. Ciele versiegelt sie vor der Speicherung und gibt sie
+niemals an den Browser zurück. ServiceNow verwendet den Authorization Code und
 speichert weder einen Benutzernamen noch ein Passwort.
 
 Registrieren Sie pro Anbieter genau eine Callback-URL. Ersetzen Sie `{origin}`
 durch den öffentlichen HTTPS-Ursprung Ihrer Ciele-Konsole:
 
-| Anbieter | Callback-URL |
+| Provider | Callback URL |
 | --- | --- |
 | Salesforce | `{origin}/api/applications/oauth/salesforce/callback` |
 | ServiceNow | `{origin}/api/applications/oauth/servicenow/callback` |
@@ -161,25 +252,28 @@ durch den öffentlichen HTTPS-Ursprung Ihrer Ciele-Konsole:
 | Google Drive | `{origin}/api/applications/oauth/google_drive/callback` |
 
 Ein fehlendes Umgebungsvariablen-Paar für Slack, Microsoft oder Google
-deaktiviert nur diesen Anbieter und zeigt Konfigurationsanleitungen in der
-Konsole an. Salesforce und ServiceNow bleiben verfügbar, da der Administrator
-deren OAuth-Registrierung im Verbindungsformular eingibt. Beide verwenden den
-Autorisierungscode. Salesforce, Microsoft und Google verwenden ebenfalls PKCE.
-Jede Transaktion ist kurzlebig und an die Organisation, das initiierende
-Mitglied, den Anbieter und die genaue Callback-URL gebunden.
+verhindert die Autorisierung für diesen Anbieter. **Connect** öffnet dennoch die
+Ciele-Verbindungsseite, auf der erklärt wird, dass die Bereitstellung
+eingerichtet werden muss. Admins und Owners können den Setup-Leitfaden von
+dieser Seite aus öffnen. Salesforce und ServiceNow bleiben verfügbar, da der
+Administrator deren OAuth-Registrierung im Verbindungsformular eingibt. Beide
+verwenden den Authorization Code. Salesforce, Microsoft und Google verwenden
+ebenfalls PKCE. Jede Transaktion ist kurzlebig und an die Organisation, das
+initiierende Mitglied, den Provider sowie die exakte Callback-URL gebunden.
 
 ## Fehlerbehebung
 
-| Symptom | Maßnahme |
+| Symptom | Aktion |
 | --- | --- |
-| **Connect** ist für Slack, OneDrive oder Google Drive nicht verfügbar | Konfigurieren Sie die Bereitstellungs-Client-ID und das Bereitstellungs-Client-Geheimnis dieses Anbieters und starten Sie dann den Webdienst neu. |
-| Salesforce oder ServiceNow lehnt den Client ab | Überprüfen Sie die Client-ID, das Client-Geheimnis, die Instanz-URL und den genauen Callback in der Provider-Anwendung dieser Organisation. |
-| Der Anbieter lehnt den Callback ab | Stellen Sie sicher, dass der registrierte Callback genau mit dem öffentlichen Ciele-Ursprung und -Pfad übereinstimmt. |
-| Die Verbindung meldet, dass eine Autorisierung erforderlich ist | Wählen Sie **Reconnect** aus und genehmigen Sie die angeforderten Leseberechtigungen erneut. |
-| Ein Ordner oder Kanal fehlt | Vergewissern Sie sich, dass das autorisierte Konto ihn öffnen kann und bei Slack Kanalmitglied ist. |
-| Elemente werden übersprungen | Öffnen Sie das neueste Synchronisierungsergebnis. Überprüfen Sie, ob der Grund ein nicht unterstützter Typ, leerer Inhalt oder der Umfang des Providers ist. |
-| Importierter Inhalt antwortet nicht | Bestätigen Sie, dass die Quelle **Ready** ist und dass der Import den erwarteten Assistenten verknüpft. |
+| Auf der Verbindungsseite wird angezeigt, dass der Provider aktiviert werden muss | Konfigurieren Sie die Deployment Client ID und das Secret dieses Providers sowie `APP_ENCRYPTION_KEY` und starten Sie anschließend den Webdienst neu. |
+| Salesforce oder ServiceNow lehnt den Client ab | Überprüfen Sie die Client-ID, das Client-Secret, die Instance-URL und den exakten Callback in der Provider-Anwendung dieser Organisation. |
+| Der Provider lehnt den Callback ab | Stellen Sie sicher, dass der registrierte Callback exakt mit dem öffentlichen Ciele-Origin und dem Pfad übereinstimmt. |
+| Die Verbindung meldet, dass eine Autorisierung erforderlich ist | Wählen Sie **Reconnect** aus und genehmigen Sie die angeforderten Lese-Scopes erneut. |
+| Ein Ordner oder Kanal fehlt | Stellen Sie sicher, dass das autorisierte Konto ihn öffnen kann und – im Falle von Slack – Mitglied des Kanals ist. |
+| Elemente werden übersprungen | Öffnen Sie das letzte Synchronisierungsergebnis. Überprüfen Sie, ob der Grund ein nicht unterstützter Typ, leerer Inhalt oder der Umfang des Providers ist. |
+| Importierter Inhalt antwortet nicht | Stellen Sie sicher, dass die Quelle **Ready** ist und dass der Import mit dem erwarteten Assistant verknüpft ist. |
 
-Anwendungs-Connectors sind für Quellinhalte schreibgeschützt. Diese Version
-schreibt nicht an einen Provider zurück, erzwingt keine Provider-ACLs zum
-Zeitpunkt der Beantwortung und unterstützt keine SharePoint-Bibliotheken.
+Anwendungsimporte sind für Quellinhalte schreibgeschützt. Der optionale
+Slack-Assistent kann Antworten in Form von Gesprächen posten. Ciele setzt zum
+Zeitpunkt der Beantwortung keine Zugriffssteuerungslisten von Anbietern durch
+und unterstützt keine SharePoint-Bibliotheken.

@@ -555,7 +555,9 @@ const applicationSyncHandler: JobHandler = {
 // The registry + the generic lifecycle.
 // ---------------------------------------------------------------------------
 
-const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
+// Slack delivery belongs to the web host's signed Events API worker, not this drain.
+type AgentJobKind = Exclude<BackgroundJobKind, "answer_slack_mention">;
+const JOB_HANDLERS: Record<AgentJobKind, JobHandler> = {
   ingest_source: ingestSourceHandler,
   graph_sync_concept: graphSyncHandler,
   draft_improvement_proposal: draftProposalHandler,
@@ -576,6 +578,7 @@ async function runClaimedJob(
   deps: JobDeps,
   now: Date
 ): Promise<JobOutcome> {
+  if (record.kind === "answer_slack_mention") throw new Error("Slack jobs require the Slack worker");
   const handler = JOB_HANDLERS[record.kind];
   if (!record.leaseToken) throw new Error("Claimed job has no lease token");
   try {
@@ -645,7 +648,7 @@ async function runClaimedJob(
 export async function runDueJobs(
   deps: JobDeps,
   options: {
-    kinds?: BackgroundJobKind[];
+    kinds?: AgentJobKind[];
     now?: Date;
     limit?: number;
     workerId?: string;
@@ -655,7 +658,7 @@ export async function runDueJobs(
   const now = options.now ?? new Date();
   const staleAfterMs = options.staleAfterMs ?? 15 * 60_000;
   const kinds =
-    options.kinds ?? (Object.keys(JOB_HANDLERS) as BackgroundJobKind[]);
+    options.kinds ?? (Object.keys(JOB_HANDLERS) as AgentJobKind[]);
 
   const result: RunDueJobsResult = {
     claimed: 0,
@@ -682,7 +685,7 @@ export async function runDueJobs(
       if (!record.leaseToken) throw new Error("Terminal cleanup job has no lease token");
       const message = record.error || "Worker lease expired after final attempt";
       try {
-        await JOB_HANDLERS[record.kind].onTerminalFailure?.(record, deps, message);
+        await JOB_HANDLERS[kind].onTerminalFailure?.(record, deps, message);
         const settled = await deps.db.settleBackgroundJob({
           id: record.id,
           leaseToken: record.leaseToken,

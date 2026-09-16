@@ -39,11 +39,15 @@ edit permission can connect their OneDrive or Google Drive and manage Imports.
    **Applications**.
 2. Select **Connect** on the provider.
 3. For Salesforce or ServiceNow, enter a Connection name, instance URL, client ID, and client secret.
-4. Complete the provider authorization window.
-5. Create an Import, select its scope, and link at least one Assistant.
-6. Choose **Daily** or **Manual** synchronization.
-7. Save the Import and wait for its Sources to become **Ready**.
-8. Test an answer and open its named Source citation.
+4. For Slack, OneDrive, or Google Drive, select **Continue connecting** on the Ciele connection page.
+5. Sign in on the provider's website and approve access. Ciele then refreshes the Applications list.
+6. Create an Import, select its scope, and link at least one Assistant.
+7. Choose **Daily** or **Manual** synchronization.
+8. Save the Import and wait for its Sources to become **Ready**.
+9. Test an answer and open its named Source citation.
+
+Slack, OneDrive, and Google Drive ask you to sign in and authorize access. Members do not enter an OAuth client ID or secret.
+The Ciele deployment supplies those credentials. **Not now** closes the connection window without connecting an account.
 
 The Assistant editor shows Organization Imports that you can link. The Library is the full
 Organization view and includes every imported Source.
@@ -77,6 +81,62 @@ tombstone, which lets a later reappearance create the correct replacement withou
 
 Provider rate limits use the returned retry delay. Daily Imports also run through the normal Ciele
 worker schedule, so the web process does not need to stay open.
+
+## Answer mentions in Slack
+
+Slack Imports and conversational replies are separate features. Imports copy knowledge into Ciele.
+Conversational replies run a published Assistant when someone mentions `@Ciele` in an enabled channel.
+
+1. Ask your deployment administrator to configure the Slack Events API described below.
+2. Open the Slack Connection in **Applications** and select **Slack assistant**.
+3. Select **Authorize conversational permissions** when prompted and approve access in Slack.
+4. Select a published Assistant from your Organization.
+5. Select the allowed **Channels** from the list. Invite Ciele to private channels to make them appear.
+6. Select **Save Slack assistant** and invite Ciele to each selected channel.
+7. Mention `@Ciele` with a question. Ciele responds in that message's thread.
+
+The Assistant uses its linked knowledge, published configuration, and recent Slack context.
+It reads up to 15 channel messages and 15 thread messages before the mention.
+Slack rate limits can reduce that context. Ciele does not read the complete workspace for each reply.
+The thread retains its Ciele conversation across subsequent mentions. Direct messages do not trigger this feature.
+
+<Callout title="Choose the channel audience carefully">
+  Everyone in an enabled channel can receive answers from the selected Assistant's knowledge.
+  Ciele does not match Slack users to individual Source permissions or Ciele single sign-on identities.
+  Assistants that require sign-in and shared channels are not supported.
+  Use **Disable replies** to stop new replies without deleting Imports.
+</Callout>
+
+Each Slack workspace and channel must resolve to one enabled Ciele Organization connection.
+Ciele does not respond when that mapping is ambiguous.
+Reconnecting to a different workspace or Slack application clears the conversational configuration.
+
+### Configure the Slack Events API
+
+Deploy the Slack database migration before enabling events. Configure these server-only values from Slack's **Basic Information** page:
+
+```dotenv
+SLACK_APPLICATION_APP_ID=
+SLACK_SIGNING_SECRET=
+```
+
+Keep the existing OAuth client ID, client secret, and HTTPS OAuth callback.
+The signing secret is different from the client secret. Never place either secret in a public environment variable.
+
+1. Add `app_mentions:read` and `chat:write` under **OAuth & Permissions**, in addition to the existing import scopes.
+2. Enable **Event Subscriptions** and set the request URL to `{origin}/api/slack/events`.
+3. Subscribe to the `app_mention` bot event and save the configuration.
+4. Reauthorize existing Connections to grant the new permissions.
+5. Configure an Organization model provider that can serve published Assistant traffic.
+
+The endpoint verifies Slack signatures and stores each event before acknowledging it.
+The worker runs after acknowledgement and uses the same conversation runtime as published Assistants.
+Personal provider subscriptions do not serve Slack traffic.
+
+The deployment also exposes `/api/cron/run-slack`, protected by `CRON_SECRET`, for queued retries and interrupted workers.
+The supplied Vercel schedule runs daily. Configure a frequent authenticated scheduler when production requires prompt retry recovery.
+If Slack delivery has an uncertain result, Ciele suppresses automatic reposts and creates an Alert after unsuccessful retries.
+Check the Slack thread before manually retrying an affected event.
 
 ## Reconnect or delete
 
@@ -130,8 +190,10 @@ your Ciele console:
 | OneDrive | `{origin}/api/applications/oauth/onedrive/callback` |
 | Google Drive | `{origin}/api/applications/oauth/google_drive/callback` |
 
-A missing Slack, Microsoft, or Google environment-variable pair disables only that provider and shows
-configuration guidance in the console. Salesforce and ServiceNow remain available because the Admin
+A missing Slack, Microsoft, or Google environment-variable pair prevents authorization for that provider.
+**Connect** still opens the Ciele connection page, which explains that the deployment needs setup.
+Admins and Owners can open the setup guide from that page.
+Salesforce and ServiceNow remain available because the Admin
 enters their OAuth registration in the Connection form. Both use Authorization Code. Salesforce,
 Microsoft, and Google also use PKCE. Every transaction is short-lived and bound to the Organization,
 initiating Member, provider, and exact callback URL.
@@ -140,7 +202,7 @@ initiating Member, provider, and exact callback URL.
 
 | Symptom | Action |
 | --- | --- |
-| **Connect** is unavailable for Slack, OneDrive, or Google Drive | Configure that provider's deployment client ID and secret, then restart the web service. |
+| The connection page says the provider needs to be enabled | Configure that provider's deployment client ID and secret and `APP_ENCRYPTION_KEY`, then restart the web service. |
 | Salesforce or ServiceNow rejects the client | Check the client ID, client secret, instance URL, and exact callback in that Organization's provider application. |
 | The provider rejects the callback | Make its registered callback match the public Ciele origin and path exactly. |
 | The Connection says authorization is required | Select **Reconnect** and approve the requested read scopes again. |
@@ -148,5 +210,5 @@ initiating Member, provider, and exact callback URL.
 | Items are skipped | Open the latest sync result. Check unsupported type, empty content, or provider scope reasons. |
 | Imported content does not answer | Confirm that the Source is **Ready** and that the Import links the expected Assistant. |
 
-Application connectors are read-only for source content. This release does not write back to a
-provider, enforce provider ACLs at answer time, or support SharePoint libraries.
+Application Imports are read-only for source content. The optional Slack assistant can post conversational replies.
+Ciele does not enforce provider access-control lists at answer time or support SharePoint libraries.

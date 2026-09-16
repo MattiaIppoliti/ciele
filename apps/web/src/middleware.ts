@@ -6,6 +6,12 @@ import { isMarketingPath } from "@/lib/console-routes";
 // The whole `(marketing)` route group is public through `isMarketingPath`
 // (pinned to the filesystem); these are the one-off public paths outside it.
 const PUBLIC_PATHS = [
+  // Slack verifies its own raw-body signature; no browser session is present.
+  /^\/api\/slack\/events$/,
+  // Cron routes carry their own shared-secret bearer authentication. Vercel's
+  // scheduler has no browser session, so the admin auth middleware must let
+  // the request reach `withCronAuth` instead of redirecting it to /login.
+  /^\/api\/cron(?:\/|$)/,
   // Checkout gates itself (see the route): letting middleware bounce it would
   // drop the ?plan= the buyer just picked, since the /login redirect below
   // carries only the pathname.
@@ -15,6 +21,9 @@ const PUBLIC_PATHS = [
   // (same-origin + size cap + schema check) and answers 204 regardless.
   /^\/api\/cookie-consent$/,
   /^\/login/,
+  // The connection page authenticates itself and preserves returnTo and the
+  // reconnect target through sign-in, including when opened in another browser.
+  /^\/application-connect\/[^/]+$/,
   // Self-serve signup is closed; /signup is a redirect stub to /contact/sales
   // (see app/signup/page.tsx). Public so signed-out visitors reach the redirect.
   /^\/signup/,
@@ -33,9 +42,9 @@ const PUBLIC_PATHS = [
   // gate: it hashes the bearer secret, refuses a revoked key, and hands back an
   // org-pinned Db, so nothing here relies on the session middleware.
   //
-  // Path-precise on purpose: a blanket `/^\/api\//` would also unbounce the cron
-  // routes, whose gate is a shared secret, and any future cookie-authenticated
-  // API route.
+  // Path-precise on purpose: cron is admitted explicitly above because every
+  // cron route uses the shared-secret gate; future cookie-authenticated API
+  // routes must not become public by accident.
   /^\/api\/v1(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
   /^\/api\/local-connector\/relay\/exchange$/,

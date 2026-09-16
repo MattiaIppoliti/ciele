@@ -2954,6 +2954,12 @@ export const mockDb: Db = {
     return getStore().applicationConnections.get(id) ?? null;
   },
 
+  async listSlackWorkspaceConnections(teamId) {
+    return [...getStore().applicationConnections.values()]
+      .filter((row) => row.provider === "slack" && row.providerAccountId === teamId)
+      .map((row) => ({ ...row, sealedCredentials: "" }));
+  },
+
   async getSafeApplicationConnection(id) {
     const connection = getStore().applicationConnections.get(id);
     return connection ? { ...connection, sealedCredentials: "" } : null;
@@ -3660,6 +3666,13 @@ export const mockDb: Db = {
       claimed.push(updated);
     }
     return claimed;
+  },
+
+  async checkpointBackgroundJob(input) {
+    const job = getStore().backgroundJobs.get(input.id);
+    if (!job || job.status !== "running" || job.leaseToken !== input.leaseToken) return false;
+    getStore().backgroundJobs.set(input.id, { ...job, payload: input.payload });
+    return true;
   },
 
   async settleBackgroundJob(input) {

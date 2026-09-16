@@ -217,6 +217,18 @@ describe("Application OAuth", () => {
     );
   });
 
+  it("retains the Slack installation identity needed to route bot events", async () => {
+    const transaction = newApplicationOAuthTransaction({ provider: "slack", organizationId: "org",
+      memberId: "member", redirectUri: "https://ciele.example/api/applications/oauth/slack/callback",
+      returnTo: "/library/applications" });
+    const fetcher = vi.fn<typeof fetch>(async () => Response.json({ ok: true, access_token: "test-token",
+      app_id: "ATEST", bot_user_id: "UBOT", team: { id: "TTEST", name: "Personal Ciele" },
+      scope: "app_mentions:read,chat:write" }));
+    const result = await exchangeApplicationOAuthCode({ transaction, code: "code", fetcher });
+    expect(result).toMatchObject({ providerAccountId: "TTEST", credentials: { teamId: "TTEST" },
+      scopes: ["app_mentions:read", "chat:write"], metadata: { slackAppId: "ATEST", slackBotUserId: "UBOT" } });
+  });
+
   it("keeps per-Organization Salesforce available without deployment credentials", () => {
     vi.stubEnv("SALESFORCE_APPLICATION_CLIENT_ID", "");
     vi.stubEnv("SALESFORCE_APPLICATION_CLIENT_SECRET", "");

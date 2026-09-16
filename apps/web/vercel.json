@@ -5,6 +5,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/run-slack",
+      "schedule": "45 1 * * *"
+    },
+    {
       "path": "/api/cron/finalize-crawls",
       "schedule": "0 3 * * *"
     },

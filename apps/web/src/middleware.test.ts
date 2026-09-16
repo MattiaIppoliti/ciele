@@ -25,6 +25,19 @@ function withSession(url: string) {
 }
 
 describe("middleware local connector relay", () => {
+  it("lets Slack reach only its signature-authenticated event endpoint", async () => {
+    const response = await middleware(new NextRequest("https://ciele.test/api/slack/events", { method: "POST" }));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("lets Vercel cron requests reach their bearer-authenticated routes", async () => {
+    const response = await middleware(
+      new NextRequest("https://ciele.test/api/cron/run-slack")
+    );
+
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("location")).toBeNull();
+  });
   beforeEach(() => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://supabase.example.com");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
@@ -129,6 +142,17 @@ describe("middleware local connector relay", () => {
 
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("lets the OAuth handoff preserve its full continuation through its own sign-in gate", async () => {
+    for (const request of [
+      new NextRequest("https://ciele.example.com/application-connect/slack?returnTo=%2Fassistants%2Fa1%2Fknowledge&connectionId=c1"),
+      withSession("https://ciele.example.com/application-connect/slack?returnTo=%2Fassistants%2Fa1%2Fknowledge&connectionId=c1"),
+    ]) {
+      const response = await middleware(request);
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.get("location")).toBeNull();
+    }
   });
 
   // Exhaustive on purpose: every route in the (marketing) group, so adding a
