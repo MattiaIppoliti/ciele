@@ -1,21 +1,21 @@
 ---
 title: Connetti i client IA
-description: Collega i client IA supportati al server Ciele MCP in hosting o locale.
+description: Connetti i client AI supportati al server MCP Ciele ospitato o locale.
 ---
 
 Il server Ciele MCP dispone di due trasporti. Entrambi registrano gli stessi
 strumenti.
 
 - L'**endpoint in hosting** è `POST /api/mcp` sulla tua distribuzione. Qualsiasi
-  client che accetti un URL MCP remoto può utilizzarlo.
-- Il **server locale** è un processo `stdio` che il client avvia come processo
+  client che accetta un URL MCP remoto può utilizzarlo.
+- Il **local server** è un processo `stdio` che il client avvia come processo
   figlio.
 
 Dai la preferenza all'endpoint in hosting. Non richiede alcun checkout, né
 Node.js sul computer client, né un percorso da mantenere aggiornato.
 
-Questa pagina riflette la documentazione del client verificata il 6 agosto 2026.
-Le interfacce client e i formati di configurazione possono cambiare.
+Questa pagina riflette la documentazione client verificata il 6 agosto 2026. Le
+interfacce client e i formati di configurazione possono cambiare.
 
 ## Compatibilità
 
@@ -31,9 +31,9 @@ Le interfacce client e i formati di configurazione possono cambiare.
 | ChatGPT web | Sì | Nessun processo locale |
 | Pi | Nessuna procedura integrata | Nessuna procedura integrata |
 
-## Connettiti all'endpoint in hosting
+## Connettiti all'endpoint ospitato
 
-1. Crea una [chiave API](/developers/api-keys) per il visualizzatore.
+1. Crea una [API key](/developers/api-keys) per un visualizzatore.
 2. Fornisci al client l'URL dell'endpoint per la tua distribuzione.
 3. Configura l'intestazione `Authorization` come `Bearer <key>`.
 
@@ -42,18 +42,22 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-L'endpoint in hosting non ha un interruttore di sola lettura. Utilizza una
-chiave Viewer quando l'agente non deve modificare i dati.
+L'endpoint in hosting non ha un interruttore di sola lettura: le sue
+autorizzazioni sono determinate dal ruolo della chiave. Una chiave Viewer non è
+però un agente di sola lettura: la revisione delle conversazioni conta come
+curation, quindi può fissare una conversazione, lasciare un feedback ed
+eliminarla. Utilizza un server stdio locale con `CIELE_MCP_READ_ONLY=1` quando
+l'agente non deve apportare alcuna modifica.
 
 ## Prepara una connessione locale
 
 1. Installa Node.js 22.6 o una versione successiva.
 2. Clona il repository Ciele.
-3. Crea una [chiave API](/developers/api-keys) per il visualizzatore.
+3. Crea una [API key](/developers/api-keys) per il viewer.
 4. Risolvi il percorso assoluto a `packages/mcp/bin/ciele-mcp.mjs`.
 5. Imposta `CIELE_MCP_READ_ONLY=1` per la prima connessione.
 
-Sostituisci `<repo>` e l'origine di esempio in ogni configurazione.
+Sostituisci `<repo>` e l'origin di esempio in ogni configurazione.
 
 ## Claude Code
 
@@ -106,7 +110,7 @@ CIELE_MCP_READ_ONLY = "1"
 Esegui `codex mcp list` o apri `/mcp` per verificare la connessione.
 
 Consulta la [guida Codex MCP](https://learn.chatgpt.com/docs/extend/mcp) per le
-impostazioni correnti del client.
+impostazioni client correnti.
 
 ## Cursore
 
@@ -197,8 +201,9 @@ Esegui **MCP: List Servers** dalla Command Palette. Avvia `ciele` e controlla il
 suo output quando una connessione fallisce.
 
 Consulta la
-[guida VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
-per le posizioni di configurazione e i controlli di attendibilità.
+[VS Code MCP guide](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
+per informazioni sui percorsi di configurazione e sui controlli di
+attendibilità.
 
 ## CLI di GitHub Copilot
 
@@ -216,7 +221,7 @@ Copilot. Non inserire la chiave API nel controllo del codice sorgente.
 
 Consulta la
 [guida GitHub Copilot CLI MCP](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
-per il formato di configurazione attuale.
+per il formato di configurazione corrente.
 
 ## Prompt copiabili
 

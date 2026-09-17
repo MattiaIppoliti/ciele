@@ -41,7 +41,7 @@ export function SectionHeading({
     >
       <div
         className={cn(
-          "bg-card ring-foreground/10 relative flex shrink-0 items-center justify-center overflow-hidden shadow-sm ring-1",
+          "bg-card ring-foreground/10 relative flex shrink-0 items-center justify-center overflow-hidden shadow-light ring-1",
           marketing
             ? "size-16 rounded-2xl sm:size-20 sm:rounded-[1.35rem]"
             : mock

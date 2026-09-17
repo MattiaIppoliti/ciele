@@ -166,6 +166,49 @@ async function resolveSettingsEndpoint(
 }
 
 /**
+ * The origin a URL template names, read with its variables blanked out. `null`
+ * when what the admin configured is not a URL at all.
+ */
+function staticUrlOrigin(template: string): string | null {
+  try {
+    return new URL(template.replace(/\{\{[^}]+\}\}/g, "x")).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a URL template under the origin lock: variables may fill the path and
+ * the query, never the origin. `null` when the result is not a URL or when it
+ * landed on a host the configuration did not name.
+ *
+ * Exported because the lock has to travel with the resolve. Where a URL is
+ * resolved once and the *result* stored — the webhook action's unsubscribe,
+ * whose template is filled from the external subscribe reply — a per-call check
+ * later compares the stored URL with itself and accepts whatever the remote
+ * chose for it.
+ */
+export function resolveLockedUrl(
+  template: string,
+  context: TemplateContext
+): { url: URL; reason: null } | { url: null; reason: "invalid_url" | "template_in_origin" } {
+  const staticOrigin = staticUrlOrigin(template);
+  // Two refusals, kept apart because the builder's Test request explains them
+  // differently: the configured URL was never a URL, versus a variable moved it
+  // off the host the configuration names.
+  if (staticOrigin === null) return { url: null, reason: "invalid_url" };
+  let url: URL;
+  try {
+    url = new URL(resolveTemplate(template, context));
+  } catch {
+    return { url: null, reason: "invalid_url" };
+  }
+  return url.origin === staticOrigin
+    ? { url, reason: null }
+    : { url: null, reason: "template_in_origin" };
+}
+
+/**
  * Builds and sends the configured request through the shared egress guard.
  * Never throws for policy/network failures, they come back as `errorCode`
  * with `ok:false`, so callers decide how to surface them.
@@ -191,25 +234,17 @@ export async function executeApiRequest(
   }
   const method = (settings.method || "POST").toUpperCase();
 
-  // URL: template variables may reach the path/query but never the origin,
-  // assert the resolved origin equals the config-time origin.
-  let url: URL;
-  try {
-    const staticOrigin = new URL(
-      settings.url.replace(/\{\{[^}]+\}\}/g, "x")
-    ).origin;
-    url = new URL(resolveTemplate(settings.url, context));
-    if (url.origin !== staticOrigin) {
-      return {
-        ok: false,
-        status: null,
-        bodyText: null,
-        errorCode: "template_in_origin",
-      };
-    }
-  } catch {
-    return { ok: false, status: null, bodyText: null, errorCode: "invalid_url" };
+  // URL: template variables may reach the path/query but never the origin.
+  const resolvedUrl = resolveLockedUrl(settings.url, context);
+  if (!resolvedUrl.url) {
+    return {
+      ok: false,
+      status: null,
+      bodyText: null,
+      errorCode: resolvedUrl.reason,
+    };
   }
+  const url = resolvedUrl.url;
   for (const param of settings.queryParams ?? []) {
     if (!param.name.trim()) continue;
     url.searchParams.set(param.name, resolveTemplate(param.value, context));

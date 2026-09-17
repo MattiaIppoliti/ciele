@@ -18,7 +18,7 @@ import { cn } from "./cn"
 // `transition-all` is gone: it animated colour, border, shadow and transform on
 // one duration, so the press could never be quicker than the hover tint.
 const buttonBase =
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-100 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px active:scale-[0.97] motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap outline-none select-none transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-100 ease-out focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px active:scale-[0.97] motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5"
 
 type ButtonVariant =
   | "default"
@@ -27,17 +27,30 @@ type ButtonVariant =
   | "ghost"
   | "destructive"
 
+// Surfaces are written against the alpha scale (--alpha-lighter/light/medium),
+// not against a grey. Two things follow, and both were bugs before:
+//
+//   - A control keeps its weight wherever it lands. `outline` used to paint
+//     `bg-background`, which is #f5f5f5: correct over the shell, a visible
+//     lighter patch over a `bg-card` panel, and plain wrong over a coloured
+//     banner. A translucent black tints whatever is behind it instead.
+//   - The alphas invert themselves in `.dark`, so a variant written against
+//     them needs no `dark:` twin. `outline` and `ghost` each carried one, and
+//     a pair like that drifts every time only one side is touched.
+//
+// `default` stays a solid pill: it is the page's one committing action and
+// should not read as a surface at all.
 const buttonVariantClasses: Record<ButtonVariant, string> = {
   default:
     // Dark mode: a dark pill lit from inside by a radial top glow;
     // hover inverts to the light pill with a faint halo around it.
     "bg-primary text-primary-foreground hover:bg-primary/80 dark:border-white/10 dark:bg-neutral-900 dark:bg-[radial-gradient(100%_80%_at_50%_0%,rgba(255,255,255,0.14),transparent_65%)] dark:text-foreground dark:hover:bg-none dark:hover:bg-primary dark:hover:text-primary-foreground dark:hover:shadow-[0_0_14px_rgba(255,255,255,0.28)]",
   outline:
-    "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+    "border-alpha-medium hover:bg-alpha-light hover:text-foreground aria-expanded:bg-alpha-light aria-expanded:text-foreground",
   secondary:
-    "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+    "border-alpha-medium bg-alpha-lighter text-secondary-foreground hover:bg-alpha-light aria-expanded:bg-alpha-light aria-expanded:text-secondary-foreground",
   ghost:
-    "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-foreground/10",
+    "hover:bg-alpha-light hover:text-foreground aria-expanded:bg-alpha-light aria-expanded:text-foreground",
   destructive:
     "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
 }
@@ -54,10 +67,10 @@ type ButtonSize =
 
 const buttonSizeClasses: Record<ButtonSize, string> = {
   default:
-    "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+    "h-8 gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
   xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
   sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-  lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+  lg: "h-9 gap-1 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
   icon: "size-8",
   "icon-xs":
     "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",

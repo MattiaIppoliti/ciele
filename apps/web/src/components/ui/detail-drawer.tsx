@@ -87,7 +87,7 @@ export function DetailDrawer({
         role="dialog"
         aria-label={ariaLabel}
         style={{ width: inlineFullScreen ? "100vw" : width }}
-        className={`bg-background fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l shadow-xl ${widthTransition}`}
+        className={`bg-background fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l shadow-strong ${widthTransition}`}
       >
         {!inlineFullScreen && (
           <ResizeHandle

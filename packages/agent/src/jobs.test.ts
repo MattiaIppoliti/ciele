@@ -502,6 +502,7 @@ describe("runDueJobs (generic ledger)", () => {
     // Every registered kind is claimed once.
     const kinds = claim.mock.calls.map((call) => call[0].kind).sort();
     expect(kinds).toEqual([
+      "answer_slack_mention",
       "deliver_review_request",
       "distill_agent_memory",
       "draft_improvement_proposal",

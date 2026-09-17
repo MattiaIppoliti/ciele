@@ -701,6 +701,19 @@ const API_REQUEST_AUTH_LABELS: Record<ApiRequestAuthType, string> = {
   basic: "Basic auth",
 };
 
+/**
+ * What a Button step's type is called. A map rather than labels inline in the
+ * menu, because the closed trigger has to render one too: Base UI's
+ * `SelectValue` shows the stored value when given no children, so a menu that
+ * owns its own labels leaves the trigger reading "external_link".
+ */
+const FLOW_BUTTON_TYPE_LABELS: Record<FlowButtonType, string> = {
+  external_link: "External link",
+  help_desk: "Help desk",
+  send_text: "Send text to chat",
+  faq: "FAQ",
+};
+
 type ApiRequestSettings = NonNullable<FlowActionSettings["api_request"]>;
 
 /** How an HTTP step names its endpoint (#837). */
@@ -1152,7 +1165,10 @@ function ApiAuthFields({
       <Label>Authentication</Label>
       <Select value={auth.type} onValueChange={(v) => setAuthType(v as ApiRequestAuthType)}>
         <SelectTrigger className="bg-background">
-          <SelectValue />
+          {/* Explicit children: the primitive otherwise shows the stored value,
+              so the closed trigger read "api_key" while its own menu said
+              "API key header". Same reason as the endpoint select below. */}
+          <SelectValue>{API_REQUEST_AUTH_LABELS[auth.type]}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           {(Object.keys(API_REQUEST_AUTH_LABELS) as ApiRequestAuthType[]).map((type) => (
@@ -1280,8 +1296,21 @@ function HttpWebhookConfig({
           type="number"
           min={MIN_WEBHOOK_TIMEOUT_MINUTES}
           max={MAX_WEBHOOK_TIMEOUT_MINUTES}
-          value={settings?.timeoutMinutes ?? DEFAULT_WEBHOOK_TIMEOUT_MINUTES}
-          onChange={(e) => onChange({ timeoutMinutes: Number(e.target.value) })}
+          value={settings?.timeoutMinutes ?? ""}
+          placeholder={String(DEFAULT_WEBHOOK_TIMEOUT_MINUTES)}
+          onChange={(e) =>
+            // An empty field is "unset", the same shape `RespondConfig` uses
+            // next door. It was `Number(e.target.value)` with no guard, which
+            // stored 0 for "" (NaN for a space), so React warned about an
+            // uncontrolled value and the schema's `int().min(1)` then refused
+            // the save over a field the Editor had simply emptied. Mapping it
+            // to the default instead would snap the digits back under the
+            // cursor mid-edit, which is why this clears rather than defaults.
+            onChange({
+              timeoutMinutes:
+                e.target.value === "" ? undefined : Number(e.target.value),
+            })
+          }
           className="bg-background w-32"
         />
       </div>
@@ -1689,13 +1718,15 @@ function FlowButtonConfig({
           }
         >
           <SelectTrigger className="bg-background">
-            <SelectValue />
+            {/* Explicit children, or the trigger reads "external_link". */}
+            <SelectValue>{FLOW_BUTTON_TYPE_LABELS[type]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="external_link">External link</SelectItem>
-            <SelectItem value="help_desk">Help desk</SelectItem>
-            <SelectItem value="send_text">Send text to chat</SelectItem>
-            <SelectItem value="faq">FAQ</SelectItem>
+            {(Object.keys(FLOW_BUTTON_TYPE_LABELS) as FlowButtonType[]).map((option) => (
+              <SelectItem key={option} value={option}>
+                {FLOW_BUTTON_TYPE_LABELS[option]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -1836,7 +1867,10 @@ function FlowButtonConfig({
           }
         >
           <SelectTrigger className="bg-background">
-            <SelectValue />
+            {/* Explicit children, or the trigger reads the stored icon id. */}
+            <SelectValue>
+              {FLOW_BUTTON_ICON_OPTIONS.find((option) => option.value === icon)?.label ?? ""}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {FLOW_BUTTON_ICON_OPTIONS.map((option) => (

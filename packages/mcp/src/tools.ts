@@ -101,6 +101,11 @@ const READ_ACTIONS = new Set([
   "runs",
   "agent_thread",
   "agent_conversation",
+  // Channel oversight (#778): two reads, kept separate from `list`/`get` so an
+  // oversight surface can never be the default one. Both operations declare no
+  // mutated entities, so read-only has nothing to refuse.
+  "oversight",
+  "oversight_read",
 ]);
 
 const byAction = (args: Record<string, unknown>) =>
@@ -706,9 +711,14 @@ export function buildTools(client: CieleClient): CieleTool[] {
         domains: z
           .array(z.string())
           .optional()
-          .describe("Granted domains for set_grants; the whole set, an empty array revokes everything"),
-        ceiling: z.string().optional().describe('Capability ceiling (set_grants): "member" or "edit"'),
-        approvalBypass: z.boolean().optional().describe("set_grants"),
+          .describe(
+            "Granted domains for set_grants (the whole set, an empty array revokes everything); the domains to grant for provision"
+          ),
+        ceiling: z
+          .string()
+          .optional()
+          .describe('Capability ceiling (set_grants, provision): "member" or "edit"'),
+        approvalBypass: z.boolean().optional().describe("set_grants, provision"),
         instruction: z.string().optional().describe("What the Routine tells the Teammate to do"),
         cadence: z.string().optional().describe("daily | weekly | monthly"),
         hour: z.number().optional().describe("UTC hour 0-23 the Routine runs at (default 8)"),
@@ -725,7 +735,33 @@ export function buildTools(client: CieleClient): CieleTool[] {
           // The one composite action: create + grants + routines. Prefer it
           // over `create` when the caller described what the Teammate should
           // *do*, since `create` alone leaves it unable to do any of it.
-          case "provision": return client.teammates.provision(needObject(args, "input") as never);
+          case "provision": {
+            // The governance dials and a Routine are advertised at the top
+            // level (they belong to `set_grants` / `add_routine`), so an agent
+            // naturally puts them there for this action too. Forwarding only
+            // `input` dropped them without a word and answered `partial: null`,
+            // which is the inert Teammate this action exists to prevent.
+            // `input` wins on conflict: it is the more specific place to say it.
+            const routine =
+              typeof args.instruction === "string"
+                ? [
+                    {
+                      instruction: args.instruction,
+                      cadence: args.cadence ?? "daily",
+                      ...(args.hour === undefined ? {} : { hour: args.hour }),
+                    },
+                  ]
+                : undefined;
+            return client.teammates.provision({
+              ...(args.domains === undefined ? {} : { grants: args.domains }),
+              ...(args.ceiling === undefined ? {} : { ceiling: args.ceiling }),
+              ...(args.approvalBypass === undefined
+                ? {}
+                : { approvalBypass: args.approvalBypass }),
+              ...(routine === undefined ? {} : { routines: routine }),
+              ...needObject(args, "input"),
+            } as never);
+          }
           case "update": return client.teammates.update(id(), needObject(args, "patch") as never);
           case "delete": await client.teammates.delete(id()); return { deleted: args.id };
           case "conversations": return client.teammates.conversations(id());

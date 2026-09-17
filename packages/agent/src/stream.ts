@@ -137,6 +137,11 @@ function storedResult(
 }
 
 export function publicRuntimeEvent(event: RuntimeEvent): RuntimeEvent {
+  if (event.type === "notice") {
+    if (event.operatorDetail === undefined) return event;
+    const { operatorDetail: _operatorDetail, ...rest } = event;
+    return rest;
+  }
   if (event.type !== "tool-end" || event.operatorResult === undefined) {
     return event;
   }
@@ -158,7 +163,9 @@ export function foldTraceEvent(trace: TurnTrace, event: RuntimeEvent): TurnTrace
             kind: "notice",
             label: event.label,
             status: "done",
-            detail: event.detail,
+            // The stored trace is an admin surface, so it keeps the operator
+            // tier; the wire projection above is what a Visitor gets.
+            detail: event.detail ?? event.operatorDetail,
           },
         ],
       };

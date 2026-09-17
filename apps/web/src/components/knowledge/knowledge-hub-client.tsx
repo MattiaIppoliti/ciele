@@ -31,6 +31,7 @@ import {
 } from "@/components/knowledge/application-knowledge-panel";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
+import type { BadgeTone } from "@agent-hub/ui";
 import {
   Badge,
   Button,
@@ -112,13 +113,14 @@ const HEALTH_DOT: Record<SourceStatus, string> = {
   error: "bg-red-500",
 };
 
-const STATUS_BADGE: Record<SourceStatus, string> = {
-  ready:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-400",
-  processing:
-    "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400",
-  error:
-    "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400",
+// The dot above stays a solid palette colour: a 6px dot has to carry the state
+// on its own and a tint disappears at that size. The badge is the opposite
+// case, so it takes a Badge `tone`, which is the same pale-surface /
+// dark-ink pair every other status badge in the console now uses.
+const STATUS_TONE: Record<SourceStatus, BadgeTone> = {
+  ready: "green",
+  processing: "amber",
+  error: "red",
 };
 
 function formatWhen(iso: string): string {
@@ -131,11 +133,9 @@ function formatWhen(iso: string): string {
 
 function StatusBadge({ status }: { status: SourceStatus }) {
   return (
-    <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-2xs font-medium uppercase ${STATUS_BADGE[status]}`}
-    >
+    <Badge tone={STATUS_TONE[status]} className="text-2xs uppercase">
       {status}
-    </span>
+    </Badge>
   );
 }
 

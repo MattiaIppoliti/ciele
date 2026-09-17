@@ -1,6 +1,6 @@
 ---
 title: Strumenti per sviluppatori
-description: Utilizza una sola API key con l'API di Ciele, la CLI o il server MCP.
+description: Utilizza una chiave API con l'API Ciele, la CLI o il server MCP.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
@@ -9,8 +9,8 @@ Ciele offre tre interfacce per l'amministrazione programmatica. Ogni interfaccia
 utilizza le stesse operazioni e gli stessi controlli dei ruoli della console di
 amministrazione.
 
-Per trovare l'operazione corrispondente a un comando della console, apri il
-[Pannello sviluppatore](/developers/developer-panel) in quella pagina.
+Per scoprire l'operazione sottostante a un controllo della console, apri il
+[Developer Panel](/developers/developer-panel) su quella pagina.
 
 <Cards>
   <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
@@ -44,10 +44,10 @@ flowchart TB
 />
 
 Il servizio in hosting utilizza `https://ciele.app` per impostazione
-predefinita. Un'installazione self-hosted utilizza il proprio public origin.
+predefinita. Un'installazione self-hosted utilizza il proprio origin pubblico.
 
 <Callout title="Use the minimum Role">
-Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
 </Callout>
 
 ## Domini disponibili

@@ -20,7 +20,10 @@ import {
   connectorSettingsIssue,
 } from "@agent-hub/core";
 import type { ConnectorError, ConnectorOutcome } from "@agent-hub/agent";
-import type { ConnectorConnectionOption } from "@/lib/connector-options";
+import {
+  connectorFieldIdentity,
+  type ConnectorConnectionOption,
+} from "@/lib/connector-options";
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
 import { AlertCircle, ExternalLink, KeyRound, Plug, RefreshCw } from "lucide-react";
 import {
@@ -274,7 +277,16 @@ export function ConnectorConfig({
       {action &&
         action.fields.map((field) => (
           <ConnectorFieldInput
-            key={field.name}
+            /* Not `field.name`: a dynamic field's loaded options describe one
+               Connection and one action, so keying by name alone carried a
+               previous connection's suggestions into the next one, and into
+               another action's same-named field. */
+            key={connectorFieldIdentity(
+              connection?.id ?? null,
+              action.key,
+              field,
+              settings?.params ?? {}
+            )}
             action={action}
             field={field}
             connectionId={connection?.id ?? null}

@@ -26,7 +26,7 @@ import type { ChatReplyPart } from "./types";
 import { buildToolset } from "./tools";
 import { createApiResponseStore } from "./api-catalog-tools";
 import { resolveTemplate } from "./template";
-import { executeApiRequest, extractApiJsonPaths } from "./api-request";
+import { executeApiRequest, extractApiJsonPaths, resolveLockedUrl } from "./api-request";
 import { emailTransportConfigured } from "./email";
 import {
   dedupSources,
@@ -308,6 +308,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   apiIntegration,
   teammateActions,
   memoryDocuments,
+  untrustedContext,
   referralCandidates,
   session,
   skills,
@@ -440,6 +441,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
     platformPrompt,
     persona,
     memoryDocuments,
+    untrustedContext,
     flow,
     message,
     history,
@@ -637,7 +639,16 @@ const connector: ActionHandler = async ({
         "Connector actions are not available on this surface."
       );
   if (outcome.error) {
-    emit({ type: "notice", label: `${CONNECTOR_PROVIDER_LABELS[action.provider]}: ${outcome.error.message}` });
+    // The provider's own error is the operator tier: a Visitor reads only that
+    // the step failed, which is the contract this handler's doc states, and the
+    // admin gets the upstream sentence in the run panel, the Inbox trace and
+    // the Alert. Put it in `label` or `detail` and it reaches the anonymous
+    // widget's Thinking panel verbatim.
+    emit({
+      type: "notice",
+      label: `${CONNECTOR_PROVIDER_LABELS[action.provider]} request failed`,
+      operatorDetail: outcome.error.message,
+    });
   }
   const templatePatch = connectorTemplatePatch(outcome);
 
@@ -1078,13 +1089,28 @@ const httpWebhook: ActionHandler = async ({
       );
       for (const value of extracted) unsubscribeCtx[value.variable] = value.value;
     }
-    await webhookRuntime.configureUnsubscribe(subscription.id, {
-      method: settings.unsubscribe.method ?? "DELETE",
-      url: resolveTemplate(settings.unsubscribe.url, unsubscribeCtx),
-      body: settings.unsubscribe.bodyTemplate
-        ? resolveTemplate(settings.unsubscribe.bodyTemplate, unsubscribeCtx, "json-string")
-        : null,
-    });
+    // The origin lock has to be applied *here*, not when the unsubscribe
+    // eventually fires. The template is filled from the external subscribe
+    // reply and the result is what gets stored, so by then the per-call check
+    // in `executeApiRequest` is comparing the stored URL against itself: a
+    // subscribe endpoint that answers with a host of its choosing would have
+    // the org's own unsubscribe credentials sent there.
+    const unsubscribeUrl = resolveLockedUrl(settings.unsubscribe.url, unsubscribeCtx).url;
+    if (!unsubscribeUrl) {
+      emit({
+        type: "notice",
+        label: "Skipped the webhook unsubscribe",
+        operatorDetail: `The subscribe reply resolved the unsubscribe URL onto a host the Flow does not configure (${settings.unsubscribe.url}). Nothing was sent.`,
+      });
+    } else {
+      await webhookRuntime.configureUnsubscribe(subscription.id, {
+        method: settings.unsubscribe.method ?? "DELETE",
+        url: unsubscribeUrl.toString(),
+        body: settings.unsubscribe.bodyTemplate
+          ? resolveTemplate(settings.unsubscribe.bodyTemplate, unsubscribeCtx, "json-string")
+          : null,
+      });
+    }
   }
 
   const waiting: ChatReplyPart = {

@@ -139,7 +139,20 @@ export interface ReviewJobDeps {
   db: Db;
   client?: ApplicationHttpClient;
   now?: () => Date;
+  /** The sweep's window size. Injectable so a test can fill it. */
+  limit?: number;
 }
+
+/**
+ * How many pending requests one expiry tick reads.
+ *
+ * Bounded because the sweep runs on a cron and must not read an unbounded
+ * table; safe to bound only because the window is taken in due order
+ * (`expires_at` ascending), so what falls outside it is by definition not yet
+ * due. Newest-first, which is the table's default, meant that past this many
+ * pending rows the due ones were never read and nothing else expires them.
+ */
+const REVIEW_EXPIRY_WINDOW = 500;
 
 const GRAPH_HOSTS = ["graph.microsoft.com"];
 const SLACK_HOSTS = ["slack.com"];
@@ -466,7 +479,12 @@ export async function expireDueReviews(
   deps: ReviewJobDeps
 ): Promise<{ expired: number }> {
   const now = (deps.now ?? (() => new Date()))();
-  const pending = await deps.db.table("reviewRequests").list({ status: "pending" }, { limit: 500 });
+  const pending = await deps.db
+    .table("reviewRequests")
+    .list(
+      { status: "pending" },
+      { orderBy: "expiresAt", ascending: true, limit: deps.limit ?? REVIEW_EXPIRY_WINDOW }
+    );
   let expired = 0;
   for (const review of pending) {
     const next = expireReview(review, now);

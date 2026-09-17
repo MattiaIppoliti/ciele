@@ -23,7 +23,7 @@ Um die Operation zu finden, die hinter einem Konsolensteuerelement steckt,
 ## Gemeinsames Verbindungsmodell
 
 Für alle drei Schnittstellen ist ein Organisations-API-Schlüssel erforderlich.
-Die zugewiesene Role steuert die Operationen, die der Schlüssel verwenden kann.
+Die zugewiesene Rolle steuert die Operationen, die der Schlüssel verwenden kann.
 
 <Mermaid
   title="Drei Clients, eine API, ein Satz von Operationen"
@@ -47,7 +47,7 @@ Der gehostete Dienst verwendet standardmäßig `https://ciele.app`. Eine selbst
 gehostete Installation verwendet ihren eigenen öffentlichen Ursprung.
 
 <Callout title="Use the minimum Role">
-Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
 </Callout>
 
 ## Verfügbare Domains

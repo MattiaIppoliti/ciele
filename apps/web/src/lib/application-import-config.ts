@@ -101,6 +101,18 @@ export function validateApplicationImportScopes(
   };
   if (provider === "slack") {
     requireIds(config.channelIds as string[], ["channel"]);
+    // Discovery lists every public channel so the console can say "invite
+    // Ciele first"; only a channel the bot has joined can be read, and a
+    // Slack Connect channel is never in an Import's audience.
+    for (const id of config.channelIds as string[]) {
+      const channel = byId.get(id)!;
+      if (channel.metadata.member === false) {
+        throw new Error(`Invite Ciele to ${channel.label} before importing it`);
+      }
+      if (channel.metadata.shared === true) {
+        throw new Error(`${channel.label} is a Slack Connect channel and cannot be imported`);
+      }
+    }
   } else if (provider === "servicenow") {
     requireIds(config.knowledgeBaseIds as string[], ["knowledge_base"]);
   } else if (provider === "salesforce") {

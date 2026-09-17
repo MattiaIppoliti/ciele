@@ -279,6 +279,9 @@ function authorizationEndpoint(transaction: ApplicationOAuthTransaction): string
 
 /** The scopes the Knowledge import needs from each provider, the floor of every grant. */
 export const APPLICATION_OAUTH_DEFAULT_SCOPES: Record<ApplicationOAuthProvider, string[]> = {
+  // Read-only: the two reply scopes (`SLACK_BOT_SCOPES`) are requested only
+  // by the Slack assistant dialog's re-consent, so an Import-only connection
+  // never stores a token that can post.
   slack: ["channels:history", "channels:read", "groups:history", "groups:read", "users:read"],
   onedrive: ["offline_access", "Files.Read", "User.Read"],
   google_drive: ["https://www.googleapis.com/auth/drive.readonly"],
@@ -484,7 +487,11 @@ export async function exchangeApplicationOAuthCode(input: {
       name: String(team.name ?? "Slack"),
       providerAccountId: credentials.teamId ?? null,
       scopes,
-      metadata: { teamName: String(team.name ?? "") },
+      metadata: {
+        teamName: String(team.name ?? ""),
+        slackAppId: String(token.app_id ?? ""),
+        slackBotUserId: String(token.bot_user_id ?? ""),
+      },
     };
   }
 

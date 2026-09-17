@@ -12,6 +12,7 @@ import {
 import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { Button, Input, Label } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ListInput } from "@/components/ui/list-input";
 import {
   Select,
   SelectContent,
@@ -99,16 +100,9 @@ export function HumanReviewConfig({
       </div>
       <div className="space-y-1.5">
         <Label>Assigned to</Label>
-        <Input
-          value={(settings?.assignees ?? []).join(", ")}
-          onChange={(e) =>
-            onChange({
-              assignees: e.target.value
-                .split(/[,\s;]+/)
-                .map((part) => part.trim())
-                .filter(Boolean),
-            })
-          }
+        <ListInput
+          values={settings?.assignees}
+          onChange={(assignees) => onChange({ assignees })}
           placeholder="ann@campus.edu, bob@campus.edu"
           className="bg-background"
         />
@@ -274,13 +268,10 @@ export function HumanReviewConfig({
               </label>
             </div>
             {field.type === "dropdown" && (
-              <Input
-                value={(field.options ?? []).join(", ")}
-                onChange={(e) =>
-                  updateInput(index, {
-                    options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean),
-                  })
-                }
+              <ListInput
+                values={field.options}
+                onChange={(options) => updateInput(index, { options })}
+                separator=","
                 placeholder="Option one, Option two"
                 aria-label="Dropdown options"
                 className="bg-background"

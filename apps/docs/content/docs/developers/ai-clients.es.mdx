@@ -3,13 +3,13 @@ title: Conectar clientes de IA
 description: Conecta los clientes de IA compatibles al servidor Ciele MCP alojado o local.
 ---
 
-El servidor Ciele MCP tiene dos transportes. Ambos registran las mismas
+El servidor MCP de Ciele dispone de dos transportes. Ambos registran las mismas
 herramientas.
 
 - El **punto de conexión alojado** es `POST /api/mcp` en tu implementación.
   Cualquier cliente que acepte una URL de MCP remota puede usarla.
-- El **servidor local** es un proceso `stdio` que el cliente inicia como proceso
-  secundario.
+- El **local server** es un proceso `stdio` que el cliente inicia como proceso
+  hijo.
 
 Utiliza preferentemente el punto de conexión alojado. No necesita comprobación,
 ni Node.js en el equipo cliente, ni una ruta para mantenerse actualizado.
@@ -19,7 +19,7 @@ Esta página refleja la documentación del cliente revisada el 6 de agosto de
 
 ## Compatibilidad
 
-| Cliente | Punto de conexión alojado | Local `stdio` |
+| Cliente | Endpoint alojado | Local `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Sí | Sí |
 | Codex CLI, aplicación Codex y extensión Codex IDE | Sí | Sí |
@@ -42,8 +42,12 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-El punto de conexión alojado no tiene un conmutador de solo lectura. Utiliza una
-clave de visor cuando el agente no deba modificar los datos.
+El punto de conexión alojado no tiene un conmutador de solo lectura: sus
+permisos son el rol de la clave. Sin embargo, una clave de Viewer no es un
+agente de solo lectura: revisar conversaciones cuenta como curación, por lo que
+puede anclar una conversación, dejar comentarios y eliminarla. Utiliza un
+servidor stdio local con `CIELE_MCP_READ_ONLY=1` cuando el agente no deba
+cambiar absolutamente nada.
 
 ## Prepara una conexión local
 
@@ -71,8 +75,8 @@ Abre `/mcp` en Claude Code. Confirma que el servidor `ciele` muestra catorce
 herramientas.
 
 Consulta la
-[guía de MCP de Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp)
-para conocer las opciones de cliente y los ámbitos de configuración.
+[Claude Code MCP guide](https://docs.anthropic.com/en/docs/claude-code/mcp) para
+conocer las opciones del cliente y los ámbitos de configuración.
 
 ## Codex y ChatGPT para escritorio
 
@@ -105,8 +109,8 @@ CIELE_MCP_READ_ONLY = "1"
 
 Ejecuta `codex mcp list` o abre `/mcp` para comprobar la conexión.
 
-Consulta la [guía de Codex MCP](https://learn.chatgpt.com/docs/extend/mcp) para
-ver la configuración actual del cliente.
+Consulta la [Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp) para
+conocer la configuración actual del cliente.
 
 ## Cursor
 
@@ -212,14 +216,14 @@ También puedes empezar con este comando:
 copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Añade las tres variables de entorno de Ciele a través de la configuración de
-Copilot MCP. No pongas la clave de la API en el control de versiones.
+Añade las tres variables de entorno de Ciele a través de la configuración de MCP
+de Copilot. No pongas la clave de la API en el control de versiones.
 
 Consulta la
 [guía de GitHub Copilot CLI MCP](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
 para conocer el formato de configuración actual.
 
-## Indicaciones copiables
+## Prompts copiables
 
 Inicia cada nueva conexión con esta comprobación de solo lectura:
 
@@ -228,7 +232,7 @@ Call ciele_identity. Show the deployment version, available domains,
 Organization ID, and Role. Do not change data.
 ```
 
-Utiliza esta indicación para revisar los Asistentes:
+Utiliza esta indicación para revisar a los Asistentes:
 
 ```text
 List all Ciele Assistants. For each Assistant, list its enabled Flows.
@@ -265,9 +269,9 @@ Read the proposed tool input before you approve it. API Roles and MCP read-only 
 
 ## Clientes sin proceso local
 
-ChatGPT web no puede iniciar un servidor `stdio` local. En su lugar, apúntalo al
+ChatGPT web no puede iniciar un servidor local `stdio`. En su lugar, apúntalo al
 punto de conexión alojado. La implementación debe ser accesible desde la
-Internet pública, lo que no es posible con una pila local de Ciele Desktop.
+internet pública, lo cual no ocurre con una pila local de Ciele Desktop.
 
 Pi no incluye un procedimiento de conexión MCP integrado. Las extensiones de Pi
 pueden añadir compatibilidad con MCP, pero Ciele no distribuye ni prueba dicha

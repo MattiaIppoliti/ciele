@@ -4309,6 +4309,23 @@ export function describeDbContract(
     });
 
     describe("background jobs", () => {
+      it("fences Slack reply checkpoints and keeps the first event payload on redelivery", async () => {
+        const input = { id: `slack-${shortId()}`, organizationId: ctx.organizationId,
+          kind: "answer_slack_mention" as const, payload: { eventId: "EvTEST" },
+          nextRunAt: "2026-07-09T10:00:00.000Z" };
+        const job = await systemDb.createBackgroundJob(input);
+        expect((await systemDb.createBackgroundJob({ ...input, payload: {} })).payload).toEqual(input.payload);
+        const [claim] = await systemDb.claimBackgroundJobs({ kind: input.kind, workerId: "slack-test",
+          now: "2026-07-09T10:01:00.000Z", staleBefore: "2026-07-09T09:45:00.000Z", limit: 1 });
+        expect(claim?.id).toBe(job.id);
+        const payload = { ...input.payload, reply: "Ready", deliveryAttempted: true };
+        expect(await systemDb.checkpointBackgroundJob({ id: job.id, leaseToken: "00000000-0000-0000-0000-000000000000", payload })).toBe(false);
+        expect(await systemDb.checkpointBackgroundJob({ id: job.id, leaseToken: claim!.leaseToken!, payload })).toBe(true);
+        expect((await systemDb.createBackgroundJob(input)).payload).toEqual(payload);
+        await systemDb.settleBackgroundJob({ id: job.id, leaseToken: claim!.leaseToken!,
+          now: "2026-07-09T10:02:00.000Z", outcome: { status: "succeeded" } });
+        expect(await systemDb.checkpointBackgroundJob({ id: job.id, leaseToken: claim!.leaseToken!, payload: {} })).toBe(false);
+      });
       it("returns the existing ledger row for a repeated stable job id", async () => {
         const assistant = await newAssistant();
         const collection = await db.createCollection(assistant.id, {
@@ -4988,6 +5005,35 @@ export function describeDbContract(
           expiresAt: "2000-01-01T00:00:00.000Z",
         });
 
+        // An inbound Flow's run ledger sweeps here too: it is a record of a
+        // machine call, never a Conversation, so it is coordination history
+        // rather than product history and nothing else ever removes a row.
+        const flow = await db.createFlow(assistant.id, {
+          name: "Inbound",
+          description: "called by another system",
+          actions: ["custom_message"],
+        });
+        const run = (createdAt?: string) =>
+          ({
+            organizationId: ctx.organizationId,
+            assistantId: assistant.id,
+            flowId: flow.id,
+            method: "POST",
+            status: 200,
+            ran: ["custom_message"],
+            durationMs: 5,
+            // `createdAt` is the column's own default, so it is not part of the
+            // insert type; writing it is how a test ages a row, and both
+            // adapters pass a top-level key straight through.
+            ...(createdAt ? { createdAt } : {}),
+          }) as Parameters<
+            ReturnType<typeof systemDb.table<"httpFlowRuns">>["insert"]
+          >[0];
+        const oldRun = await systemDb
+          .table("httpFlowRuns")
+          .insert(run("1999-01-01T00:00:00.000Z"));
+        const freshRun = await systemDb.table("httpFlowRuns").insert(run());
+
         const report = await systemDb.sweepRuntimeLedgers(
           "2030-01-01T00:00:00.000Z",
           1
@@ -4998,7 +5044,11 @@ export function describeDbContract(
           turnEffects: 1,
           apiIdempotencyKeys: 1,
           sourceGenerations: 0,
+          httpFlowRuns: 1,
         });
+        const runs = await systemDb.table("httpFlowRuns").list({ flowId: flow.id });
+        expect(runs.map((run) => run.id)).toEqual([freshRun.id]);
+        expect(runs.some((run) => run.id === oldRun.id)).toBe(false);
         const jobs = await db.listBackgroundJobsForSource(source.id);
         expect(jobs.some((job) => job.id === oldJob.id)).toBe(false);
         expect(jobs.some((job) => job.id === activeJob.id)).toBe(true);
@@ -7900,6 +7950,9 @@ export function describeDbContract(
         expect(
           await db.listApplicationConnections(ctx.organizationId)
         ).toContainEqual({ ...connection, sealedCredentials: "" });
+        expect(await systemDb.listSlackWorkspaceConnections("workspace-contract"))
+          .toContainEqual({ ...connection, sealedCredentials: "" });
+        expect(await systemDb.listSlackWorkspaceConnections("workspace-not-connected")).toEqual([]);
         expect(await db.getApplicationConnection(connection.id)).toEqual(
           connection
         );

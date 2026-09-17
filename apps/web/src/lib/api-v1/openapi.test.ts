@@ -175,3 +175,31 @@ describe("Developer Panel contract fields (#754)", () => {
     expect(orphaned).toEqual([]);
   });
 });
+
+/**
+ * `idempotent` in the registry is a promise to the caller, and the route is
+ * what keeps it. The two disagreeing is invisible at runtime — the header is
+ * simply ignored, and a retried create makes a second row. `teammates.addRoutine`
+ * and `projects.create` shipped with the typed client sending the header against
+ * routes that never read it, which is how a Routine (capped at 5, with
+ * unattended runs attached) could be created twice by one timeout.
+ *
+ * Only the registry-to-route leg is asserted here. The client's own
+ * `idempotencyKey` arguments are the third party to the promise and are not
+ * checked: reading them out of `packages/client` needs a parser, not a regex,
+ * and a drift test that matches the wrong thing is worse than none.
+ */
+describe("Idempotency-Key contract", () => {
+  it("every endpoint that claims idempotency actually reads the header", () => {
+    const byRoute = new Map<string, string>();
+    for (const file of routeFiles(API_ROOT)) byRoute.set(routePath(file), readFileSync(file, "utf8"));
+
+    const broken = API_V1_ENDPOINTS.filter((endpoint) => {
+      if (!endpoint.idempotent) return false;
+      const text = byRoute.get(endpoint.path);
+      return !text?.includes("withIdempotency");
+    }).map((e) => `${e.method} ${e.path}`);
+
+    expect(broken).toEqual([]);
+  });
+});

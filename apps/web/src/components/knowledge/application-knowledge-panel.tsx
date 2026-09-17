@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { useApplicationConnectedToast } from "@/components/knowledge/use-application-connected";
+import { SlackBotDialog } from "@/components/knowledge/slack-bot-dialog";
 import type {
   ApplicationImport,
   ApplicationSyncRun,
@@ -283,27 +284,48 @@ function providerConfigFields(
     const selected = new Set(
       (config.channelIds ?? "").split(",").filter(Boolean)
     );
+    const channels = scopes.filter((scope) => scope.kind === "channel");
     return (
       <div className="space-y-2">
         <Label>Channels</Label>
         <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border p-2">
           {scopesLoading && <p className="p-2 text-sm">Loading channels…</p>}
-          {scopes
-            .filter((scope) => scope.kind === "channel")
-            .map((scope) => (
-              <label key={scope.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm">
+          {!scopesLoading && channels.length === 0 && (
+            <p className="p-2 text-sm text-muted-foreground">
+              No Slack channels were found. Invite Ciele to a channel, then
+              reopen this dialog.
+            </p>
+          )}
+          {channels.map((scope) => {
+            const isMember =
+              scope.metadata.member !== false && scope.metadata.shared !== true;
+            const isSelected = selected.has(scope.id);
+            return (
+              <label
+                key={scope.id}
+                className="flex items-center gap-2 rounded px-2 py-1.5 text-sm"
+              >
                 <input
                   type="checkbox"
-                  checked={selected.has(scope.id)}
+                  checked={isSelected}
+                  disabled={!isMember && !isSelected}
                   onChange={() => {
-                    if (selected.has(scope.id)) selected.delete(scope.id);
+                    if (isSelected) selected.delete(scope.id);
                     else selected.add(scope.id);
                     update("channelIds", [...selected].join(","));
                   }}
                 />
-                {scope.label}
+                <span className="min-w-0 flex-1 truncate">{scope.label}</span>
+                {!isMember && (
+                  <span className="text-xs text-muted-foreground">
+                    {scope.metadata.shared === true
+                      ? "Slack Connect, not supported"
+                      : "Invite Ciele first"}
+                  </span>
+                )}
               </label>
-            ))}
+            );
+          })}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -323,7 +345,9 @@ function providerConfigFields(
           </div>
         </div>
         <p className="text-muted-foreground text-xs">
-          Only channels accessible to the installed app are listed. Threads include replies.
+          Public channels are shown for discovery, but only channels that Ciele
+          has joined can be imported. Private channels appear after Ciele is
+          invited. Threads include replies.
         </p>
       </div>
     );
@@ -732,6 +756,7 @@ export function ApplicationKnowledgePanel({
   const [credentialProvider, setCredentialProvider] = useState<
     "salesforce" | "servicenow" | null
   >(null);
+  const [slackBotConnection, setSlackBotConnection] = useState<PublicApplicationConnection | null>(null);
   const [reconnectingConnectionId, setReconnectingConnectionId] = useState<
     string | undefined
   >(undefined);
@@ -779,8 +804,9 @@ export function ApplicationKnowledgePanel({
     }
     const params = new URLSearchParams({ returnTo: pathname });
     if (connectionId) params.set("connectionId", connectionId);
-    const url = `/api/applications/oauth/${definition.provider}/start?${params}`;
-    window.open(url, "ciele-application-oauth", "popup,width=560,height=760");
+    const url = `/application-connect/${definition.provider}?${params}`;
+    const popup = window.open(url, "ciele-application-oauth", "popup,width=560,height=760");
+    if (!popup) window.location.assign(url);
   }
 
   function run(operation: () => Promise<void>, success: string) {
@@ -832,13 +858,13 @@ export function ApplicationKnowledgePanel({
                       <Button
                         size="sm"
                         variant={providerConnections.length > 0 ? "outline" : "default"}
-                        disabled={!availability.configured || alreadyConnected}
+                        disabled={alreadyConnected}
                         title={
-                          !availability.configured
-                            ? availability.guidance
-                            : alreadyConnected
+                          alreadyConnected
                               ? `Only one ${definition.label} connection is allowed for this ${ownerType === "member" ? "Member" : "Organization"}.`
-                            : undefined
+                            : !availability.configured
+                              ? `Set up a connection to ${definition.label}`
+                              : undefined
                         }
                         onClick={() => connect(definition)}
                       >
@@ -849,11 +875,6 @@ export function ApplicationKnowledgePanel({
                   <p className="text-muted-foreground mt-1 text-sm">
                     {definition.description}
                   </p>
-                  {!availability.configured && (
-                    <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-                      {availability.guidance}
-                    </p>
-                  )}
                 </div>
               </div>
               {providerConnections.length > 0 && (
@@ -899,6 +920,11 @@ export function ApplicationKnowledgePanel({
                       </span>
                       {(canEdit || canManageConnections) && (
                         <>
+                          {connection.provider === "slack" && canManageConnections && (
+                            <Button size="sm" variant="outline" onClick={() => setSlackBotConnection(connection)}>
+                              Slack assistant
+                            </Button>
+                          )}
                           {canEdit && (
                             <Button
                               size="icon-sm"
@@ -1178,7 +1204,7 @@ export function ApplicationKnowledgePanel({
       )}
 
       <OAuthSetupDialog
-        key={`${credentialProvider ?? "closed"}:${reconnectingConnectionId ?? "new"}`}
+        key={`oauth:${credentialProvider ?? "closed"}:${reconnectingConnectionId ?? "new"}`}
         provider={credentialProvider}
         connectionId={reconnectingConnectionId}
         initialName={reconnectingConnectionName}
@@ -1188,8 +1214,12 @@ export function ApplicationKnowledgePanel({
           setReconnectingConnectionName(undefined);
         }}
       />
+      {slackBotConnection && (
+        <SlackBotDialog key={`slack-bot:${slackBotConnection.id}`} connection={slackBotConnection}
+          assistants={assistants} onClose={() => setSlackBotConnection(null)} />
+      )}
       <ImportDialog
-        key={`${importConnection?.id ?? "closed"}:${editingImport?.id ?? "new"}`}
+        key={`import:${importConnection?.id ?? "closed"}:${editingImport?.id ?? "new"}`}
         connection={importConnection}
         editingImport={editingImport}
         assistants={assistants}

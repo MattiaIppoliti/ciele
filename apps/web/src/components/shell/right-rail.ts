@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 
 /**
  * The workspace's right rail, published as CSS custom properties.
@@ -64,27 +64,61 @@ export function rightRailVars(
 }
 
 /**
+ * What the rail is, given everything currently publishing to it.
+ *
+ * One panel *holds* the rail, but several can be mounted at once: the Assistant
+ * editor mounts the live Preview's launcher and, on the Flow canvas, the Flows
+ * Agent, and opening either collapses the other. A collapsed panel publishes
+ * `null`, so "last publisher wins" meant the collapsed one could clear the vars
+ * the open one had just set — which is what happened, the Preview's launcher
+ * being a later sibling than the canvas. A publisher with nothing to say is
+ * therefore ignored rather than authoritative, and only the absence of *any*
+ * occupant hands the vars back to the stylesheet.
+ *
+ * Pure, and the whole rule, so the arbitration is testable without a DOM.
+ */
+export function resolveRightRail(
+  entries: ReadonlyArray<readonly [string, RightRail | null]>,
+): RightRail | null {
+  let occupant: RightRail | null = null;
+  for (const [, rail] of entries) {
+    if (rail && rail.width > 0) occupant = rail;
+  }
+  return occupant;
+}
+
+/** Every mounted publisher, in mount order. Module-level: the vars are too. */
+const publishers = new Map<string, RightRail | null>();
+
+function applyRightRail(): void {
+  const vars = rightRailVars(resolveRightRail([...publishers]));
+  const root = document.documentElement;
+  for (const [name, value] of Object.entries(vars)) {
+    if (value === null) root.style.removeProperty(name);
+    else root.style.setProperty(name, value);
+  }
+}
+
+/**
  * Publish this component's occupancy of the right rail. Pass `null` when it
  * occupies nothing the rest of the shell should move out of the way for, a
  * collapsed 48px rail holds one button at its top, and a full-route or
  * fullscreen preview is not a rail at all.
  *
- * Clears the vars on unmount, so navigating away from a rail page returns the
- * fixed furniture to the viewport edge.
+ * Deregisters on unmount, so navigating away from a rail page returns the fixed
+ * furniture to the viewport edge — and so that a panel leaving while another
+ * still holds the rail leaves that one's width standing.
  */
 export function useRightRail(rail: RightRail | null): void {
+  const id = useId();
   const width = rail?.width ?? 0;
   const animated = rail?.animated ?? false;
   useEffect(() => {
-    const root = document.documentElement;
-    const vars = rightRailVars(width > 0 ? { width, animated } : null);
-    for (const [name, value] of Object.entries(vars)) {
-      if (value === null) root.style.removeProperty(name);
-      else root.style.setProperty(name, value);
-    }
+    publishers.set(id, width > 0 ? { width, animated } : null);
+    applyRightRail();
     return () => {
-      root.style.removeProperty(RIGHT_RAIL_WIDTH_VAR);
-      root.style.removeProperty(RIGHT_RAIL_TRANSITION_VAR);
+      publishers.delete(id);
+      applyRightRail();
     };
-  }, [width, animated]);
+  }, [id, width, animated]);
 }

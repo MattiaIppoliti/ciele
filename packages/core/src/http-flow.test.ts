@@ -214,6 +214,44 @@ describe("the Response action", () => {
     expect(respondSettingsIssue({ status: 204 })).toBeNull();
   });
 
+  /**
+   * The value is sanitised; the *name* was not checked at all, so a name that
+   * is not an HTTP token saved and published cleanly and then threw inside the
+   * route's `new Response(...)` — a 500 the author never configured, after the
+   * Flow's side effects had run and after the run ledger recorded the status it
+   * meant to send. "Needs setup" has to catch it while it is still an edit.
+   */
+  it("refuses a header name that is not an HTTP token", () => {
+    const bad = (name: string): RespondSettings => ({
+      status: 200,
+      headers: [{ id: "h1", name, value: "x" }],
+    });
+    expect(respondSettingsIssue(bad("X Custom"))).toMatch(/name/i);
+    expect(respondSettingsIssue(bad("X-Custom:"))).toMatch(/name/i);
+    expect(respondSettingsIssue(bad("X\u00e9"))).toMatch(/name/i);
+    expect(respondSettingsIssue(bad("X-Custom\r\nSet-Cookie"))).toMatch(/name/i);
+    // The names a Flow legitimately sets still pass.
+    expect(respondSettingsIssue(bad("X-Custom"))).toBeNull();
+    expect(respondSettingsIssue(bad("cache-control"))).toBeNull();
+    expect(respondSettingsIssue(bad("X-Request-Id_1.2"))).toBeNull();
+  });
+
+  it("drops a header whose name is not a token, so a stored one cannot throw", () => {
+    // Belt and braces with the rule above: settings written before it existed
+    // are still out there, and the route must answer rather than 500.
+    const headers = respondHeaders(
+      {
+        status: 200,
+        headers: [
+          { id: "h1", name: "X Custom", value: "a" },
+          { id: "h2", name: "X-Good", value: "b" },
+        ],
+      },
+      (value) => value
+    );
+    expect(headers).toEqual({ "x-good": "b" });
+  });
+
   it("strips line breaks from a resolved header value, so a body cannot end the header", () => {
     const headers = respondHeaders(
       { status: 200, headers: [{ id: "h1", name: "X-Echo", value: "{{request.body}}" }] },

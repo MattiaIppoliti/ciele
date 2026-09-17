@@ -36,9 +36,12 @@ const handler = createMcpHandler((ctx) => {
     // the loopback default keeps the endpoint configuration-free.
     baseUrl: internalApiOrigin(),
   });
-  // Read-only is a property of the key's Role here, not an env switch: a
-  // Viewer key simply cannot mutate (the operations layer answers 403).
-  // `CIELE_MCP_READ_ONLY` stays a local-process convenience on stdio.
+  // Read-only is a property of the key's Role here, not an env switch: the
+  // operations layer answers 403 for a capability the Role does not carry.
+  // Note a Viewer key is *not* a read-only agent — the four Inbox operations
+  // declare `member` on purpose, conversation delete included — so
+  // `CIELE_MCP_READ_ONLY` on a stdio server is still the only way to get an
+  // agent that cannot write at all.
   return createCieleMcpServer({ client, readOnly: false });
 });
 

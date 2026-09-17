@@ -66,9 +66,21 @@ export function SectionTimeline({ children }: { children: ReactNode }) {
   return (
     <SectionRailContext.Provider value={{ activeId, register }}>
       <div className="relative">
+        {/* Two things made this line invisible in light mode.
+            Colour: `border` is #e8e8e8 on the light theme's #f5f5f5 ground,
+            under one step of separation, while the inactive dots beside it
+            sit near #c8c8c8, so the dots read and the line did not.
+            `alpha-strong` lands where those dot rings do in *both* themes,
+            being the translucent-black scale that inverts in `.dark` rather
+            than a colour picked against one background.
+            Geometry: `from-transparent via-… to-transparent` puts the only
+            full-strength point at 50% of the whole rail, so on a page of
+            five sections every stretch between two dots was already most of
+            the way to transparent. The fade belongs at the ends and nowhere
+            else, which is a fixed 24px rather than a share of the height. */}
         <div
           aria-hidden
-          className="via-border absolute top-3 bottom-3 left-[5.5px] w-px bg-gradient-to-b from-transparent to-transparent"
+          className="absolute top-3 bottom-3 left-[5.5px] w-px bg-[linear-gradient(to_bottom,transparent,var(--alpha-strong)_24px,var(--alpha-strong)_calc(100%_-_24px),transparent)]"
         />
         {children}
       </div>

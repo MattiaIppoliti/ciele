@@ -38,7 +38,7 @@ import {
   updateImprovementAction,
 } from "@/app/actions";
 import { ImproveAnswerDialog } from "@/components/inbox/improve-answer-dialog";
-import { Button } from "@agent-hub/ui";
+import { Badge, Button } from "@agent-hub/ui";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -1010,14 +1010,10 @@ function SuggestedFix({
       <div className="mb-2 flex items-center gap-2">
         <h2 className="font-semibold">Suggested fix</h2>
         {status === "accepted" && (
-          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-            Accepted
-          </span>
+          <Badge tone="green">Accepted</Badge>
         )}
         {status === "dismissed" && (
-          <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-            Dismissed
-          </span>
+          <Badge tone="gray">Dismissed</Badge>
         )}
       </div>
       <Card size="sm" className="gap-3 p-4">

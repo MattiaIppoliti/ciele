@@ -70,10 +70,33 @@ function fakeDb(rows: WebhookSubscription[], options: { flow?: unknown } = {}) {
       if (name !== "webhookSubscriptions") throw new Error(`unexpected table ${name}`);
       return {
         get: async (id: string) => store.get(id) ?? null,
-        list: async (filter: Partial<WebhookSubscription>) =>
-          [...store.values()].filter((row) =>
+        // Honours order and limit, because the sweep's correctness lives in
+        // exactly those: a window taken in the wrong order hides the rows that
+        // are due, and a fake that ignores them cannot show it.
+        list: async (
+          filter: Partial<WebhookSubscription>,
+          options?: {
+            orderBy?: keyof WebhookSubscription;
+            ascending?: boolean;
+            limit?: number;
+          }
+        ) => {
+          const matched = [...store.values()].filter((row) =>
             Object.entries(filter).every(([key, value]) => (row as never)[key] === value)
-          ),
+          );
+          const field = options?.orderBy ?? "createdAt";
+          const direction = options?.ascending ? 1 : -1;
+          matched.sort((a, b) => {
+            const left = String(a[field] ?? "");
+            const right = String(b[field] ?? "");
+            // Return 0 on a tie: a comparator that never does is inconsistent,
+            // and V8 then reorders equal rows arbitrarily — which would let
+            // this fake pass a due-order assertion by luck.
+            if (left === right) return 0;
+            return left < right ? -direction : direction;
+          });
+          return options?.limit === undefined ? matched : matched.slice(0, options.limit);
+        },
         update: async (id: string, patch: Partial<WebhookSubscription>) => {
           const next = { ...store.get(id)!, ...patch };
           store.set(id, next);
@@ -249,6 +272,29 @@ describe("the clock", () => {
     expect(store.get("old")!.status).toBe("expired");
     expect(store.get("fresh")!.status).toBe("pending");
     expect(jobs.map((job) => job.id)).toEqual(["resume_webhook_conversation:old"]);
+  });
+
+  /**
+   * The window is bounded, so its order decides what is ever seen. Newest first
+   * — the table's default — meant the oldest pending subscriptions, which are
+   * the due ones, fell outside it, and this tick is the only thing that expires
+   * them. Machine traffic on minute-long waits fills a window fast.
+   */
+  it("takes the window in due order, so a full one cannot hide an overdue gate", async () => {
+    const overdue = subscription({
+      id: "old",
+      expiresAt: new Date(NOW.getTime() - 60_000).toISOString(),
+    });
+    const fresh = Array.from({ length: 8 }, (_, i) =>
+      subscription({
+        id: `fresh-${i}`,
+        expiresAt: new Date(NOW.getTime() + 600_000 + i).toISOString(),
+      })
+    );
+    const { db, store } = fakeDb([...fresh, overdue]);
+
+    expect(await expireDueWebhooks({ db, now: () => NOW, limit: 3 })).toEqual({ expired: 1 });
+    expect(store.get("old")!.status).toBe("expired");
   });
 
   it("does not flip a row a callback closed between its read and its write", async () => {

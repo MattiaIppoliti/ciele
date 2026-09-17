@@ -27,6 +27,9 @@ import {
   resumeReviewedConversationHandler,
 } from "./review-runtime";
 import { resumeWebhookConversationHandler } from "./webhook-runtime";
+import { answerSlackMentionHandler } from "./slack-mentions";
+import type { ApplicationHttpClient } from "./application-provider-http";
+import type { streamConversationTurn } from "./turn";
 
 /**
  * The durable job ledger (ADR-0008), generic over `kind`: claim/lease,
@@ -51,6 +54,10 @@ import { resumeWebhookConversationHandler } from "./webhook-runtime";
 export interface JobDeps {
   db: Db;
   applicationConnectors?: ApplicationConnectorRegistry;
+  /** Provider HTTP transport override (tests); defaults to the guarded egress client. */
+  applicationHttpClient?: ApplicationHttpClient;
+  /** Conversation runtime override (tests); defaults to `streamConversationTurn`. */
+  runTurn?: typeof streamConversationTurn;
 }
 
 /** One job kind's contribution to the ledger: how to run a claimed job. */
@@ -569,6 +576,9 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   // The callback gate (#842): continuation or halt. No delivery twin, the
   // subscribe call runs inline in the action.
   resume_webhook_conversation: resumeWebhookConversationHandler,
+  // Slack mention replies (#857): queued by the signed event route, drained by
+  // its after-response hook and the run-slack cron tick.
+  answer_slack_mention: answerSlackMentionHandler,
 };
 
 async function runClaimedJob(
@@ -682,7 +692,7 @@ export async function runDueJobs(
       if (!record.leaseToken) throw new Error("Terminal cleanup job has no lease token");
       const message = record.error || "Worker lease expired after final attempt";
       try {
-        await JOB_HANDLERS[record.kind].onTerminalFailure?.(record, deps, message);
+        await JOB_HANDLERS[kind].onTerminalFailure?.(record, deps, message);
         const settled = await deps.db.settleBackgroundJob({
           id: record.id,
           leaseToken: record.leaseToken,

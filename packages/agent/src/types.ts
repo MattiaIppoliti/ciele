@@ -28,6 +28,7 @@ import type {
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
 import type { ConnectorRuntime } from "./connector-request";
+import type { UntrustedEnvelope } from "./untrusted-content";
 
 /**
  * One renderable piece of a bot reply, tagged with the action that produced
@@ -311,7 +312,19 @@ export type RuntimeEvent =
    * observed; the phase labels it replaced ("Deciding what to do…") only
    * described where the loop was, which the tool lifecycle now shows directly.
    */
-  | { type: "notice"; label: string; detail?: string }
+  | {
+      type: "notice";
+      label: string;
+      detail?: string;
+      /**
+       * The operator tier, the same two-tier rule `tool-end` uses: what an
+       * admin needs (an upstream status line, a provider's own error) and a
+       * Visitor must not read. `publicRuntimeEvent` drops it on the way to a
+       * client; the folded trace the Inbox renders keeps it. Anything put in
+       * `label` or `detail` reaches an anonymous Visitor's Thinking panel.
+       */
+      operatorDetail?: string;
+    }
   /**
    * Tool-invocation lifecycle start. `callId` pairs it with its `tool-end`;
    * `input` is the model-supplied arguments, already safe to show (query
@@ -641,6 +654,8 @@ export interface ActionContext {
    * empty, which is the same thing to the prompt: nothing is injected.
    */
   memoryDocuments?: readonly string[];
+  /** Third-party text for this turn (#857), fenced as untrusted by the search action. */
+  untrustedContext?: readonly UntrustedEnvelope[];
   /**
    * The colleagues this Teammate may refer to (#773). Empty leaves the
    * referral tool unregistered; the model is then never told it exists.

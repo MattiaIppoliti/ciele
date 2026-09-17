@@ -82,6 +82,69 @@ describe("Inbox read model", () => {
       ),
     ).rejects.toMatchObject({ code: "not_found" });
   });
+
+  // The Human review card shipped reading a `reviews` state nothing filled on
+  // select, so it either never appeared or showed the *previous* Conversation's
+  // requests. It belongs to the same hydration as the transcript: one read, one
+  // conversation, and never a list that outlives the selection.
+  it("hydrates the conversation's review requests with its transcript", async () => {
+    const ctx = context();
+    const page = await listInboxPageOp.run(ctx, { limit: 10 });
+    const first = page.conversations[0]!;
+
+    const listSpy = vi.spyOn(ctx.db, "table");
+    const review = await getInboxConversationReviewOp.run(ctx, {
+      conversationId: first.id,
+    });
+    expect(review.reviews).toEqual(expect.any(Array));
+    expect(listSpy).toHaveBeenCalledWith("reviewRequests");
+
+    await ctx.db.table("reviewRequests").insert({
+      organizationId: DEMO_ORG.id,
+      assistantId: first.assistantId ?? "assistant-demo",
+      conversationId: first.id,
+      flowId: "flow-demo",
+      actionIndex: 0,
+      title: "Approve refund",
+      message: "",
+      summary: "",
+      channel: "email",
+      assignees: ["ann@campus.edu"],
+      inputs: [],
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      haltMessage: "",
+      simulated: false,
+    });
+
+    const withReview = await getInboxConversationReviewOp.run(ctx, {
+      conversationId: first.id,
+    });
+    expect(withReview.reviews).toHaveLength(1);
+    expect(withReview.reviews[0]!.conversationId).toBe(first.id);
+
+    // A request belonging to another Conversation must not ride along: the
+    // stale card the fix removes was exactly a list from a different one.
+    await ctx.db.table("reviewRequests").insert({
+      organizationId: DEMO_ORG.id,
+      assistantId: first.assistantId ?? "assistant-demo",
+      conversationId: "conv-somewhere-else",
+      flowId: "flow-demo",
+      actionIndex: 0,
+      title: "Somewhere else",
+      message: "",
+      summary: "",
+      channel: "email",
+      assignees: ["bob@campus.edu"],
+      inputs: [],
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      haltMessage: "",
+      simulated: false,
+    });
+    const still = await getInboxConversationReviewOp.run(ctx, {
+      conversationId: first.id,
+    });
+    expect(still.reviews.map((r) => r.conversationId)).toEqual([first.id]);
+  });
 });
 
 describe("legal hold (#801, CYB-12)", () => {

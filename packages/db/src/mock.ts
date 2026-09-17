@@ -2954,6 +2954,12 @@ export const mockDb: Db = {
     return getStore().applicationConnections.get(id) ?? null;
   },
 
+  async listSlackWorkspaceConnections(teamId) {
+    return [...getStore().applicationConnections.values()]
+      .filter((row) => row.provider === "slack" && row.providerAccountId === teamId)
+      .map((row) => ({ ...row, sealedCredentials: "" }));
+  },
+
   async getSafeApplicationConnection(id) {
     const connection = getStore().applicationConnections.get(id);
     return connection ? { ...connection, sealedCredentials: "" } : null;
@@ -3662,6 +3668,13 @@ export const mockDb: Db = {
     return claimed;
   },
 
+  async checkpointBackgroundJob(input) {
+    const job = getStore().backgroundJobs.get(input.id);
+    if (!job || job.status !== "running" || job.leaseToken !== input.leaseToken) return false;
+    getStore().backgroundJobs.set(input.id, { ...job, payload: input.payload });
+    return true;
+  },
+
   async settleBackgroundJob(input) {
     const store = getStore();
     const job = store.backgroundJobs.get(input.id);
@@ -3973,12 +3986,27 @@ export const mockDb: Db = {
         generation.generationId,
       );
     }
+    // Inbound-Flow runs: same 30-day window as the job ledger. No Conversation
+    // hangs off one, so no transcript or Insights retention ever reaches it and
+    // nothing else would remove a row.
+    let httpFlowRuns = 0;
+    for (const [id, run] of [...store.httpFlowRuns].sort(
+      ([aId, a], [bId, b]) =>
+        a.createdAt.localeCompare(b.createdAt) || aId.localeCompare(bId),
+    )) {
+      if (httpFlowRuns >= cap) break;
+      if (run.createdAt < jobCutoff) {
+        store.httpFlowRuns.delete(id);
+        httpFlowRuns += 1;
+      }
+    }
     return {
       backgroundJobs,
       conversationTurns,
       turnEffects,
       apiIdempotencyKeys,
       sourceGenerations: staleGenerations.length,
+      httpFlowRuns,
     };
   },
 

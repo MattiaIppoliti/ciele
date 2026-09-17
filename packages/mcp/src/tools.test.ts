@@ -215,6 +215,38 @@ describe("ciele MCP tools", () => {
     ).toBe(true);
   });
 
+  // `provision` forwarded only `input`, while the tool advertises the
+  // governance dials and a Routine at the top level. An agent that put them
+  // there got a Teammate that answers and cannot act, reported as a full
+  // success — the exact outcome `provision` exists to prevent.
+  it("carries the top-level governance and routine fields into provision", async () => {
+    const { calls, tool } = harness(() => ({
+      json: { teammate: { id: "t1" }, governance: null, routines: [], partial: null },
+    }));
+    const result = await callTool(
+      tool("manage_teammates"),
+      {
+        action: "provision",
+        input: { name: "Triage" },
+        domains: ["improvements"],
+        ceiling: "member",
+        approvalBypass: true,
+        instruction: "Triage new feedback",
+        cadence: "daily",
+        hour: 8,
+      },
+      false
+    );
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(calls[0].body!)).toEqual({
+      name: "Triage",
+      grants: ["improvements"],
+      ceiling: "member",
+      approvalBypass: true,
+      routines: [{ instruction: "Triage new feedback", cadence: "daily", hour: 8 }],
+    });
+  });
+
   it("asks the deployment for the Flow catalogue rather than remembering one", async () => {
     const { calls, tool } = harness(() => ({
       json: { actions: ["search_knowledge"], conditionKinds: ["url"] },
@@ -448,6 +480,13 @@ describe("ciele MCP tools", () => {
     expect(tools.get("manage_configuration")!.mutates({ action: "goal_list" })).toBe(false);
     expect(tools.get("manage_organization")!.mutates({ action: "member_list" })).toBe(false);
     expect(tools.get("manage_integrations")!.mutates({ action: "provider_list" })).toBe(false);
+    // The channel oversight reads: `listOrgChannelsOp` / `readOrgChannelOp`
+    // mutate nothing (both declare `entities: () => []`), so read-only mode
+    // must not refuse them. Missing from READ_ACTIONS they were unusable.
+    expect(tools.get("manage_channels")!.mutates({ action: "oversight" })).toBe(false);
+    expect(tools.get("manage_channels")!.mutates({ action: "oversight_read" })).toBe(false);
+    expect(tools.get("manage_channels")!.mutates({ action: "list" })).toBe(false);
+    expect(tools.get("manage_channels")!.mutates({ action: "delete" })).toBe(true);
   });
 
   it("missing per-action fields and API errors become error results, not throws", async () => {

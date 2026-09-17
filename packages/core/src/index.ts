@@ -425,3 +425,13 @@ export {
 // Reads a message off a thrown value: including the plain objects PostgREST
 // throws instead of Error instances.
 export { thrownMessage } from "./thrown-message";
+
+// The Slack conversational opt-in (#857): the parser every surface shares
+// and the readiness predicate the dialog, the save and the worker agree on.
+export {
+  SLACK_BOT_SCOPES,
+  SLACK_CHANNEL_ID,
+  slackBotConfig,
+  slackBotReady,
+} from "./slack-bot";
+export type { SlackBotConfig } from "./slack-bot";

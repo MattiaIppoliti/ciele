@@ -77,6 +77,9 @@ describe("runtime public interface", () => {
       "enqueueGraphSyncJob",
       "enqueueIngestJob",
       "enqueueReviewResumptionJob",
+      // Slack mention replies (#857): enqueue from the signed route, the
+      // routing predicate the settings save reuses, and the bounded drain.
+      "enqueueSlackMention",
       "expireDueReviews",
       "expireDueWebhooks",
       "extractSourceText",
@@ -95,6 +98,7 @@ describe("runtime public interface", () => {
       // The host port registry: how a framework-free package gets the two
       // facts only its host knows (see host.ts).
       "registerRuntimeHost",
+      "resolveSlackConnection",
       "restartWebsiteCrawl",
       "resumeReviewedConversation",
       "resumeWebhookConversation",
@@ -113,6 +117,7 @@ describe("runtime public interface", () => {
       // job-ledger kind, and the cron tick composes it directly.
       "runDueReviewJobs",
       "runDueRoutines",
+      "runDueSlackMentionJobs",
       "runDueWebhookJobs",
       "runGraphLearning",
       "runHttpFlow",
@@ -120,6 +125,9 @@ describe("runtime public interface", () => {
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",
+      // The stable job/conversation key Slack surfaces share (#857), so the
+      // web route test can name the job it expects.
+      "slackKey",
       // Teammate channels (#778): one entrypoint for a whole chain, like
       // `streamConversationTurn` is for one turn.
       "streamChannelChain",

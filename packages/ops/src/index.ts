@@ -161,6 +161,7 @@ export type {
 } from "./channels";
 
 // Inbox domain (#624): read-only conversation review.
+export type { InboxConversationDetail } from "./inbox";
 export {
   deleteConversationOp,
   getConversationOp,

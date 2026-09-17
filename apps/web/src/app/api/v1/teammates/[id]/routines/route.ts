@@ -1,5 +1,6 @@
 import { createRoutineOp, listRoutinesOp } from "@ciele/ops";
 import { apiError } from "@/lib/api-v1/http";
+import { idempotencyScope, withIdempotency } from "@/lib/api-v1/idempotency";
 import { runApiOperation } from "@/lib/api-v1/run";
 
 /**
@@ -26,13 +27,19 @@ export async function GET(request: Request, { params }: Params) {
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
-  const body = await request.json().catch(() => null);
-  if (body === null) return apiError(400, "invalid_input", "Body must be JSON");
-  const outcome = await runApiOperation(request, createRoutineOp, {
-    teammateId: id,
-    ...body,
+  // The registry promises idempotency here and the client sends the header, so
+  // the route has to read it: five Routines is the cap, and a retried create
+  // otherwise spends one of them and attaches a second unattended schedule.
+  const scope = await idempotencyScope(request, `POST /teammates/${id}/routines`);
+  return withIdempotency(request, scope, async () => {
+    const body = await request.json().catch(() => null);
+    if (body === null) return apiError(400, "invalid_input", "Body must be JSON");
+    const outcome = await runApiOperation(request, createRoutineOp, {
+      teammateId: id,
+      ...body,
+    });
+    return outcome instanceof Response
+      ? outcome
+      : Response.json(outcome.result, { status: 201 });
   });
-  return outcome instanceof Response
-    ? outcome
-    : Response.json(outcome.result, { status: 201 });
 }

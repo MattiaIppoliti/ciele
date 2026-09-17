@@ -136,7 +136,7 @@ function StatusBadge({ source }: { source: Source }) {
     );
   if (source.status === "error")
     return (
-      <Badge variant="outline" className="rounded-full border-red-300 bg-red-50 text-red-800 dark:border-red-400/30 dark:bg-red-400/10 dark:text-red-300" title={source.error}>
+      <Badge tone="red" title={source.error}>
         ERROR
       </Badge>
     );

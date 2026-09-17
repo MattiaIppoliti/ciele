@@ -20,6 +20,7 @@ import {
 } from "@agent-hub/core";
 import { z } from "zod";
 import type { ChatReplyPart } from "./types";
+import type { UntrustedEnvelope } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import {
   getClassifierModel,
@@ -397,6 +398,8 @@ export async function runAssistantChat(options: {
   teammateActions?: readonly TeammateActionTool[];
   /** Its three memory documents, rendered (#771). Empty injects nothing. */
   memoryDocuments?: readonly string[];
+  /** Third-party text for this turn (#857), fenced as untrusted by the search action. */
+  untrustedContext?: readonly UntrustedEnvelope[];
   /** Colleagues this Teammate may refer to (#773); empty registers no tool. */
   referralCandidates?: readonly ReferralCandidate[];
   /**
@@ -486,6 +489,7 @@ export async function runAssistantChat(options: {
     apiIntegration,
     teammateActions,
     memoryDocuments,
+    untrustedContext,
     referralCandidates,
     collectionId = null,
     session,
@@ -783,6 +787,7 @@ export async function runAssistantChat(options: {
     apiIntegration,
     teammateActions,
     memoryDocuments,
+    untrustedContext,
     referralCandidates,
     session,
     alreadyClarified,

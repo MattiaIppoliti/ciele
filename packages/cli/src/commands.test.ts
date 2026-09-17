@@ -248,6 +248,41 @@ describe("teammate governance commands", () => {
     expect(calls).toHaveLength(2);
   });
 
+  // The parser does no kebab/camel normalisation, so a flag advertised as
+  // `--approval-bypass` and read as `flags.approvalBypass` is inert: it exits 0
+  // with a success line having sent nothing. Both commands that take it assert
+  // it here, because a governance dial that silently does nothing is worse than
+  // one that refuses.
+  it("reads --approval-bypass under the name it advertises", async () => {
+    const { deps, calls } = harness(() => ({
+      json: { teammateId: "t1", domains: ["inbox"], ceiling: "edit", approvalBypass: true },
+    }));
+
+    expect(
+      await runCli(
+        ["teammates", "set-grants", "t1", "--domains", "inbox", "--approval-bypass"],
+        deps
+      )
+    ).toBe(EXIT.ok);
+    expect(JSON.parse(calls[0].body!).approvalBypass).toBe(true);
+
+    const provision = harness(() => ({
+      json: {
+        teammate: { id: "t1", name: "Armed" },
+        governance: { teammateId: "t1", domains: ["inbox"], ceiling: "edit", approvalBypass: true },
+        routines: [],
+        partial: null,
+      },
+    }));
+    expect(
+      await runCli(
+        ["teammates", "provision", "--name", "Armed", "--grants", "inbox", "--approval-bypass"],
+        provision.deps
+      )
+    ).toBe(EXIT.ok);
+    expect(JSON.parse(provision.calls[0].body!).approvalBypass).toBe(true);
+  });
+
   it("add-routine needs an instruction and a cadence; delete-routine needs --yes", async () => {
     const { deps, calls } = harness(() => ({
       json: { id: "r1", cadence: "daily" },

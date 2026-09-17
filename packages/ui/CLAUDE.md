@@ -40,6 +40,29 @@ mute and hidden tabs. The fire/no-fire rule is the pure `decide()` in `policy.ts
 interaction table there is the sound design. A new interaction needs a row, a call site and a
 test in the same change.
 
+## The token set these primitives are written against
+
+Three groups, declared in **`apps/web/src/app/globals.css`** (the source of truth) and repeated in
+`apps/docs/src/app/global.css` and the staff console's own stylesheet, because Tailwind resolves
+`@theme` per app and a primitive rendered in one of those apps would otherwise lose its surface.
+**Add a token to all three or to none.**
+
+- **Surface alphas** `alpha-lighter | alpha-light | alpha-medium | alpha-strong`
+  (`bg-`/`border-`/`ring-`). Translucent black, inverted to white in `.dark`. Reach for these for
+  any control surface or hairline: a variant written against them keeps its weight over the shell,
+  over a card and over a coloured banner, and needs **no `dark:` twin**. A control that paints a
+  literal grey (`bg-background`, `border-input`) shows that grey as a patch the moment it lands on
+  anything but the one ground it was picked for.
+- **Elevations** `shadow-light` (resting lift) and `shadow-strong` (detached layer: popover,
+  dropdown, drawer, dialog, drag ghost). Two, not a ramp. `shadow-md`/`-lg`/`-xl` were three
+  different answers to the same question and no two floating layers agreed.
+- **Tag tints** `tone-<hue>` + `tone-<hue>-ink` for gray/blue/green/amber/red/purple, reached
+  through `<Badge tone="…">` rather than by class. A **solid** palette colour is still right for a
+  status *dot*: a 6px dot has to carry the state alone and a tint vanishes at that size.
+
+Geometry follows from `--radius` (8px): `rounded-lg` is the control radius, and the xl/2xl steps
+scale off the same base. Buttons carry 14px icons, menu rows 16px.
+
 ## Before adding a component
 
 Check whether it already exists here or in `apps/web/src/components/ui/`. A primitive used by

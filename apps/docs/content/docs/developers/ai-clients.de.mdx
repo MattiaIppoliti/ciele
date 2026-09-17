@@ -3,7 +3,7 @@ title: KI-Clients verbinden
 description: Verbinden Sie unterstützte KI-Clients mit dem gehosteten oder lokalen Ciele-MCP-Server.
 ---
 
-Der Ciele-MCP-Server verfügt über zwei Transportmöglichkeiten. Beide
+Der Ciele MCP-Server verfügt über zwei Transportmöglichkeiten. Beide
 registrieren dieselben Tools.
 
 - Der **gehostete Endpunkt** ist `POST /api/mcp` in Ihrer Bereitstellung. Jeder
@@ -20,7 +20,7 @@ Client-Schnittstellen und Konfigurationsformate können sich ändern.
 
 ## Kompatibilität
 
-| Client | Gehosteter Endpunkt | Lokal `stdio` |
+| Client | Hosted endpoint | Local `stdio` |
 | --- | :---: | :---: |
 | Claude Code | Ja | Ja |
 | Codex CLI, Codex-App und Codex-IDE-Erweiterung | Ja | Ja |
@@ -29,10 +29,10 @@ Client-Schnittstellen und Konfigurationsformate können sich ändern.
 | OpenCode | Ja | Ja |
 | GitHub Copilot in VS Code | Ja | Ja |
 | GitHub Copilot CLI | Ja | Ja |
-| ChatGPT Web | Ja | Kein lokaler Prozess |
+| ChatGPT web | Ja | Kein lokaler Prozess |
 | Pi | Keine integrierte Prozedur | Keine integrierte Prozedur |
 
-## Verbinden Sie sich mit dem gehosteten Endpunkt
+## Verbindung zum gehosteten Endpoint herstellen
 
 1. Erstellen Sie einen Viewer-[API-Schlüssel](/developers/api-keys).
 2. Geben Sie dem Client die Endpunkt-URL für Ihre Bereitstellung.
@@ -43,14 +43,18 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-Der gehostete Endpunkt verfügt über keinen Schreibschutz-Schalter. Verwenden Sie
-einen Viewer-Schlüssel, wenn der Agent keine Daten ändern darf.
+Der gehostete Endpunkt verfügt über keinen Schreibschutz-Schalter: Seine
+Berechtigungen werden durch die Rolle des Schlüssels bestimmt. Ein
+Viewer-Schlüssel ist jedoch kein schreibgeschützter Agent – das Überprüfen von
+Gesprächen zählt als Kuratierung, sodass er ein Gespräch anheften, Feedback
+hinterlassen und es löschen kann. Verwenden Sie einen lokalen stdio-Server mit
+`CIELE_MCP_READ_ONLY=1`, wenn der Agent überhaupt nichts ändern darf.
 
 ## Bereiten Sie eine lokale Verbindung vor
 
 1. Installieren Sie Node.js 22.6 oder höher.
 2. Klonen Sie das Ciele-Repository.
-3. Erstellen Sie einen Viewer-[API-Schlüssel](/developers/api-keys).
+3. Erstellen Sie einen Viewer-[API key](/developers/api-keys).
 4. Lösen Sie den absoluten Pfad zu `packages/mcp/bin/ciele-mcp.mjs` auf.
 5. Legen Sie `CIELE_MCP_READ_ONLY=1` für die erste Verbindung fest.
 
@@ -86,8 +90,8 @@ codex mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Codex CLI, die Codex-App, die Codex-IDE-Erweiterung und ChatGPT Desktop nutzen
-dieselbe Codex-MCP-Konfiguration.
+Codex CLI, die Codex-App, die Codex-IDE-Erweiterung und ChatGPT Desktop
+verwenden dieselbe Codex-MCP-Konfiguration.
 
 Sie können auch `~/.codex/config.toml` bearbeiten:
 
@@ -104,7 +108,7 @@ CIELE_MCP_READ_ONLY = "1"
 ```
 
 Führen Sie `codex mcp list` aus oder öffnen Sie `/mcp`, um die Verbindung zu
-überprüfen.
+prüfen.
 
 Die aktuellen Client-Einstellungen finden Sie im
 [Codex-MCP-Leitfaden](https://learn.chatgpt.com/docs/extend/mcp).
@@ -134,7 +138,7 @@ Cursor-Konfiguration verwenden.
 angeforderten Tool-Aufruf.
 
 Informationen zur globalen Konfiguration und zur Client-Sicherheit finden Sie im
-[Cursor-MCP-Leitfaden](https://docs.cursor.com/context/model-context-protocol).
+[Cursor MCP-Leitfaden](https://docs.cursor.com/context/model-context-protocol).
 
 ## OpenCode
 
@@ -161,12 +165,12 @@ Fügen Sie diesen Server zu `opencode.json` hinzu:
 
 Führen Sie `opencode2 mcp list` aus, um die Verbindung zu überprüfen.
 
-Das aktuelle Schema der Version 2 finden Sie im
-[OpenCode MCP-Leitfaden](https://opencode.ai/v2/docs/mcp-servers).
+Informationen zum aktuellen Schema der Version 2 finden Sie im
+[OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers).
 
 ## GitHub Copilot in VS Code
 
-Erstellen Sie `.vscode/mcp.json`:
+`.vscode/mcp.json` erstellen:
 
 ```json
 {
@@ -213,8 +217,8 @@ copilot mcp add ciele -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 Fügen Sie die drei Ciele-Umgebungsvariablen über die Copilot-MCP-Konfiguration
 hinzu. Fügen Sie den API-Schlüssel nicht in die Quellcodeverwaltung ein.
 
-Das aktuelle Konfigurationsformat finden Sie im
-[GitHub Copilot CLI MCP-Leitfaden](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers).
+Informationen zum aktuellen Konfigurationsformat finden Sie im
+[GitHub Copilot CLI MCP guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers).
 
 ## Kopierbare Prompts
 
@@ -269,6 +273,6 @@ stattdessen auf den gehosteten Endpunkt. Die Bereitstellung muss über das
 nicht der Fall ist.
 
 Pi enthält kein integriertes MCP-Verbindungsverfahren. Pi-Erweiterungen können
-MCP-Unterstützung hinzufügen, aber Ciele liefert oder testet eine solche
+MCP-Unterstützung hinzufügen, aber Ciele liefert und testet eine solche
 Erweiterung nicht. Verwenden Sie `ciele ... --json` über einen genehmigten
 Shell-Workflow oder rufen Sie die [HTTP-API](/developers/api) direkt auf.

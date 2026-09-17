@@ -398,7 +398,7 @@ export const FEATURES: FeatureEntry[] = [
     coda: {
       eyebrow: "Scoped by the key, not by trust",
       headline: "A key can only do what its role allows",
-      body: "An API key is capped at the role of whoever minted it, and every call re-checks that role in the operations layer. A viewer key reads. A read-only MCP server refuses a write before the request leaves the process.",
+      body: "An API key is capped at the role of whoever minted it, and every call re-checks that role in the operations layer. Publishing and organization administration need the roles that carry them. A read-only MCP server refuses a write before the request leaves the process.",
       mock: "preview",
     },
   },

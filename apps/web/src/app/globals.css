@@ -59,6 +59,43 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
+  /* Surface alphas. A control is built out of translucent black rather than
+     its own grey, so the same button keeps its weight over the #f5f5f5 shell,
+     over a card, and over a coloured banner instead of showing a grey that
+     only ever matched one of them. Dark mode inverts to white at the same
+     steps, which is why a variant needs no `dark:` override once it is
+     written against these. Named for the step, not the use: a chip, a
+     divider and a button border share one rung on purpose. */
+  --color-alpha-lighter: var(--alpha-lighter);
+  --color-alpha-light: var(--alpha-light);
+  --color-alpha-medium: var(--alpha-medium);
+  --color-alpha-strong: var(--alpha-strong);
+
+  /* Tag/chip tints: a surface at the pale end of a hue and ink at the dark
+     end of the same hue, so a status reads as coloured without becoming a
+     block of saturated colour. Both halves flip in `.dark`. */
+  --color-tone-gray: var(--tone-gray);
+  --color-tone-gray-ink: var(--tone-gray-ink);
+  --color-tone-blue: var(--tone-blue);
+  --color-tone-blue-ink: var(--tone-blue-ink);
+  --color-tone-green: var(--tone-green);
+  --color-tone-green-ink: var(--tone-green-ink);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-amber-ink: var(--tone-amber-ink);
+  --color-tone-red: var(--tone-red);
+  --color-tone-red-ink: var(--tone-red-ink);
+  --color-tone-purple: var(--tone-purple);
+  --color-tone-purple-ink: var(--tone-purple-ink);
+
+  /* Two elevations, not a ramp. `shadow-light` is a resting lift (a control
+     that sits above the page); `shadow-strong` is a detached layer (popover,
+     dropdown, dialog, drag ghost). Anything in between was always somebody
+     guessing, and the guesses never matched each other. Both are a tight
+     contact shadow plus a wider ambient one, which is what keeps them
+     readable on a light ground without going muddy. */
+  --shadow-light: var(--elevation-light);
+  --shadow-strong: var(--elevation-strong);
+
   /* Tracking is size-specific, never one value across the scale: letters read
      too far apart as they grow, and too tight as they shrink. Binding it to
      the step means `text-4xl` is correctly tracked without anyone remembering
@@ -129,7 +166,32 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  /* 8px, Twenty's control radius. `rounded-lg` is the app's default and
+     lands on it exactly; the xl/2xl steps above scale off the same base. */
+  --radius: 0.5rem;
+
+  /* Twenty-derived surface alphas; see the `@theme` block for why these are
+     translucent rather than grey. */
+  --alpha-lighter: rgba(0, 0, 0, 0.02);
+  --alpha-light: rgba(0, 0, 0, 0.04);
+  --alpha-medium: rgba(0, 0, 0, 0.08);
+  --alpha-strong: rgba(0, 0, 0, 0.16);
+  --elevation-light:
+    0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --elevation-strong:
+    0 2px 4px rgba(0, 0, 0, 0.04), 2px 4px 16px rgba(0, 0, 0, 0.12);
+  --tone-gray: #ebebeb;
+  --tone-gray-ink: #5c5c5c;
+  --tone-blue: #e6edfe;
+  --tone-blue-ink: #3451b2;
+  --tone-green: #e0f5e6;
+  --tone-green-ink: #18794e;
+  --tone-amber: #fff0d4;
+  --tone-amber-ink: #8a5300;
+  --tone-red: #ffe8e4;
+  --tone-red-ink: #ca3214;
+  --tone-purple: #f3e7fc;
+  --tone-purple-ink: #793aaf;
   --sidebar: #f1f1f1;
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -206,6 +268,31 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* Inverted alphas: white at the same steps, so a variant written against
+     these needs no `dark:` override. */
+  --alpha-lighter: rgba(255, 255, 255, 0.03);
+  --alpha-light: rgba(255, 255, 255, 0.06);
+  --alpha-medium: rgba(255, 255, 255, 0.11);
+  --alpha-strong: rgba(255, 255, 255, 0.22);
+  /* A shadow over #121212 does almost nothing, so the dark ramp leans on a
+     denser black plus the alpha hairline the surfaces already carry. */
+  --elevation-light:
+    0 0 4px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --elevation-strong:
+    0 2px 4px rgba(0, 0, 0, 0.3), 2px 4px 16px rgba(0, 0, 0, 0.55);
+  --tone-gray: #2b2b2b;
+  --tone-gray-ink: #b4b4b4;
+  --tone-blue: #1f2a52;
+  --tone-blue-ink: #9eb1ff;
+  --tone-green: #13351f;
+  --tone-green-ink: #4cc38a;
+  --tone-amber: #3a2503;
+  --tone-amber-ink: #ffb224;
+  --tone-red: #3d1512;
+  --tone-red-ink: #ff977d;
+  --tone-purple: #2b1a44;
+  --tone-purple-ink: #bf7af0;
 }
 
 /* Forces light-theme tokens on a subtree regardless of an ancestor .dark
@@ -244,6 +331,29 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Twenty-derived surface alphas; see the `@theme` block for why these are
+     translucent rather than grey. */
+  --alpha-lighter: rgba(0, 0, 0, 0.02);
+  --alpha-light: rgba(0, 0, 0, 0.04);
+  --alpha-medium: rgba(0, 0, 0, 0.08);
+  --alpha-strong: rgba(0, 0, 0, 0.16);
+  --elevation-light:
+    0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --elevation-strong:
+    0 2px 4px rgba(0, 0, 0, 0.04), 2px 4px 16px rgba(0, 0, 0, 0.12);
+  --tone-gray: #ebebeb;
+  --tone-gray-ink: #5c5c5c;
+  --tone-blue: #e6edfe;
+  --tone-blue-ink: #3451b2;
+  --tone-green: #e0f5e6;
+  --tone-green-ink: #18794e;
+  --tone-amber: #fff0d4;
+  --tone-amber-ink: #8a5300;
+  --tone-red: #ffe8e4;
+  --tone-red-ink: #ca3214;
+  --tone-purple: #f3e7fc;
+  --tone-purple-ink: #793aaf;
 }
 
 @layer base {

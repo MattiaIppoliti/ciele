@@ -305,6 +305,53 @@ describe("the clock and the continuation", () => {
     expect(jobs.map((job) => job.payload.reviewId)).toEqual([overdue.id]);
   });
 
+  /**
+   * The sweep reads a bounded window of pending rows and decides expiry in JS.
+   * The window was the table's default order — newest first — so once more than
+   * `limit` requests were pending, the oldest, which are precisely the ones
+   * that are due, were never in it. The cron tick is the only place expiry
+   * happens, so those requests would have waited forever. Due-ness order is
+   * `expires_at` ascending, which is also exactly what the partial index on the
+   * table is built for.
+   */
+  it("reads the window in due order, not newest first", async () => {
+    const db = getMockDb();
+    const seen: unknown[] = [];
+    const table = db.table.bind(db);
+    db.table = ((name: Parameters<Db["table"]>[0]) => {
+      const accessor = table(name);
+      if (name !== "reviewRequests") return accessor;
+      return {
+        ...accessor,
+        list: async (
+          filter?: Parameters<typeof accessor.list>[0],
+          options?: Parameters<typeof accessor.list>[1]
+        ) => {
+          seen.push(options);
+          return accessor.list(filter, options);
+        },
+      };
+    }) as Db["table"];
+
+    await expireDueReviews({ db, now: () => NOW });
+    expect(seen[0]).toMatchObject({ orderBy: "expiresAt", ascending: true });
+  });
+
+  it("expires the oldest overdue request even when newer ones fill the window", async () => {
+    const db = getMockDb();
+    const overdue = await seed(db, {
+      expiresAt: new Date(NOW.getTime() - 60_000).toISOString(),
+    });
+    // Enough fresher pending rows to push the overdue one out of a newest-first
+    // window; the sweep must still find it.
+    for (let i = 0; i < 12; i += 1) {
+      await seed(db, { expiresAt: new Date(NOW.getTime() + 3_600_000 + i).toISOString() });
+    }
+
+    expect(await expireDueReviews({ db, now: () => NOW, limit: 4 })).toEqual({ expired: 1 });
+    expect((await db.table("reviewRequests").get(overdue.review.id))?.status).toBe("expired");
+  });
+
   it("does not overwrite a decision that landed while the sweep was deciding", async () => {
     // The sweep lists pending rows, then writes. A Member who approved in
     // between has closed the row; the sweep's write is a compare-and-set that

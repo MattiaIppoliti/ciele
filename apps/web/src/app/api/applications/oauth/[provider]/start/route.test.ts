@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => ({
@@ -10,6 +10,7 @@ vi.mock("@/lib/auth", () => ({ getSession: mocks.getSession }));
 vi.mock("@/lib/data", () => ({ getDb: mocks.getDb }));
 
 import { POST } from "./route";
+import { openApplicationOAuthTransaction } from "@/lib/application-oauth";
 
 function session(role: "owner" | "editor" = "owner") {
   return {
@@ -20,6 +21,7 @@ function session(role: "owner" | "editor" = "owner") {
 }
 
 describe("Application OAuth start route", () => {
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
     vi.stubEnv("APP_ENCRYPTION_KEY", "oauth-route-test-key");
     vi.stubEnv("MICROSOFT_APPLICATION_CLIENT_ID", "microsoft-client");
@@ -63,6 +65,31 @@ describe("Application OAuth start route", () => {
       { params: Promise.resolve({ provider: "onedrive" }) }
     );
     expect(response.status).toBe(200);
+  });
+
+  it.each([
+    ["slack", "SLACK", "https://slack.com/oauth/v2/authorize"],
+    ["onedrive", "MICROSOFT", "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize"],
+    ["google_drive", "GOOGLE", "https://accounts.google.com/o/oauth2/v2/auth"],
+  ])("starts %s from the handoff with server credentials and bound callback state", async (provider, prefix, endpoint) => {
+    vi.stubEnv(`${prefix}_APPLICATION_CLIENT_ID`, "ciele-client");
+    vi.stubEnv(`${prefix}_APPLICATION_CLIENT_SECRET`, "server-only-secret");
+    const response = await POST(new NextRequest(
+      `https://ciele.example/api/applications/oauth/${provider}/start`,
+      { method: "POST", body: JSON.stringify({ returnTo: "/assistants/a1/knowledge" }) },
+    ), { params: Promise.resolve({ provider }) });
+    expect(response.status).toBe(200);
+    const { authorizationUrl } = await response.json();
+    const url = new URL(authorizationUrl);
+    expect(`${url.origin}${url.pathname}`).toBe(endpoint);
+    expect(url.searchParams.get("client_id")).toBe("ciele-client");
+    expect(url.searchParams.get("redirect_uri")).toBe(`https://ciele.example/api/applications/oauth/${provider}/callback`);
+    expect(authorizationUrl).not.toContain("server-only-secret");
+    const cookie = response.headers.get("set-cookie")!.match(/application_oauth_txn=([^;]+)/)![1];
+    expect(openApplicationOAuthTransaction(decodeURIComponent(cookie))).toMatchObject({
+      provider, organizationId: "org-1", memberId: "member-1",
+      nonce: url.searchParams.get("state"), returnTo: "/assistants/a1/knowledge",
+    });
   });
 
   it("returns an authorization URL and stores only a sealed HttpOnly transaction", async () => {

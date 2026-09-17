@@ -7,6 +7,79 @@
    render unstyled. Same declaration as apps/web's globals.css. */
 @source "../../../../packages/ui/src";
 
+/* The shared primitives in packages/ui are written against a token set that
+   fumadocs' preset does not declare: the surface alphas, the two elevations
+   and the tag tints. Without them a shared <Button> here loses its border and
+   a <Badge tone="..."> loses its tint. Same values as apps/web's globals.css,
+   which is the source of truth for the set; they are repeated rather than
+   imported because Tailwind resolves `@theme` per app. */
+@theme inline {
+  --color-alpha-lighter: var(--alpha-lighter);
+  --color-alpha-light: var(--alpha-light);
+  --color-alpha-medium: var(--alpha-medium);
+  --color-alpha-strong: var(--alpha-strong);
+  --color-tone-gray: var(--tone-gray);
+  --color-tone-gray-ink: var(--tone-gray-ink);
+  --color-tone-blue: var(--tone-blue);
+  --color-tone-blue-ink: var(--tone-blue-ink);
+  --color-tone-green: var(--tone-green);
+  --color-tone-green-ink: var(--tone-green-ink);
+  --color-tone-amber: var(--tone-amber);
+  --color-tone-amber-ink: var(--tone-amber-ink);
+  --color-tone-red: var(--tone-red);
+  --color-tone-red-ink: var(--tone-red-ink);
+  --color-tone-purple: var(--tone-purple);
+  --color-tone-purple-ink: var(--tone-purple-ink);
+  --shadow-light: var(--elevation-light);
+  --shadow-strong: var(--elevation-strong);
+}
+
+:root {
+  --alpha-lighter: rgba(0, 0, 0, 0.02);
+  --alpha-light: rgba(0, 0, 0, 0.04);
+  --alpha-medium: rgba(0, 0, 0, 0.08);
+  --alpha-strong: rgba(0, 0, 0, 0.16);
+  --elevation-light:
+    0 0 4px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --elevation-strong:
+    0 2px 4px rgba(0, 0, 0, 0.04), 2px 4px 16px rgba(0, 0, 0, 0.12);
+  --tone-gray: #ebebeb;
+  --tone-gray-ink: #5c5c5c;
+  --tone-blue: #e6edfe;
+  --tone-blue-ink: #3451b2;
+  --tone-green: #e0f5e6;
+  --tone-green-ink: #18794e;
+  --tone-amber: #fff0d4;
+  --tone-amber-ink: #8a5300;
+  --tone-red: #ffe8e4;
+  --tone-red-ink: #ca3214;
+  --tone-purple: #f3e7fc;
+  --tone-purple-ink: #793aaf;
+}
+
+.dark {
+  --alpha-lighter: rgba(255, 255, 255, 0.03);
+  --alpha-light: rgba(255, 255, 255, 0.06);
+  --alpha-medium: rgba(255, 255, 255, 0.11);
+  --alpha-strong: rgba(255, 255, 255, 0.22);
+  --elevation-light:
+    0 0 4px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --elevation-strong:
+    0 2px 4px rgba(0, 0, 0, 0.3), 2px 4px 16px rgba(0, 0, 0, 0.55);
+  --tone-gray: #2b2b2b;
+  --tone-gray-ink: #b4b4b4;
+  --tone-blue: #1f2a52;
+  --tone-blue-ink: #9eb1ff;
+  --tone-green: #13351f;
+  --tone-green-ink: #4cc38a;
+  --tone-amber: #3a2503;
+  --tone-amber-ink: #ffb224;
+  --tone-red: #3d1512;
+  --tone-red-ink: #ff977d;
+  --tone-purple: #2b1a44;
+  --tone-purple-ink: #bf7af0;
+}
+
 /* One highlighter across every surface and both themes: a fixed dark grey
    marker with white ink. It used to invert with the theme, which read as two
    different brand behaviours between the docs and the product. Keep this value

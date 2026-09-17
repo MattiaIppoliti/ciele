@@ -1,7 +1,12 @@
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
-import { mintUntrustedNonce, untrustedContentPolicy } from "../untrusted-content";
+import {
+  mintUntrustedNonce,
+  untrustedContentPolicy,
+  wrapUntrustedContent,
+  type UntrustedEnvelope,
+} from "../untrusted-content";
 import type { TurnSession } from "../session";
 import type {
   ChatReplyPart,
@@ -295,6 +300,13 @@ export interface AgenticSearchTurnInput {
   persona?: string;
   /** Its three memory documents, rendered (#771); absent on Assistant turns. */
   memoryDocuments?: readonly string[];
+  /**
+   * Third-party text the host surface supplies for this turn (#857: a Slack
+   * channel transcript). Rides the user turn inside this turn's untrusted
+   * fence, beside the retrieved material the policy paragraph describes; never
+   * the system prompt, which is the organization's voice.
+   */
+  untrustedContext?: readonly UntrustedEnvelope[];
   flow: Flow;
   message: string;
   history: HistoryMessage[];
@@ -383,6 +395,7 @@ export async function runAgenticSearch(
     platformPrompt,
     persona,
     memoryDocuments,
+    untrustedContext = [],
     flow,
     message,
     history,
@@ -477,7 +490,13 @@ export async function runAgenticSearch(
   // ── Phase 1: gather (gather-phase.ts) ─────────────────────────────────────
   const baseMessages: ModelMessage[] = [
     ...history.map((m) => ({ role: m.role, content: m.text })),
-    { role: "user" as const, content: message },
+    {
+      role: "user" as const,
+      content: [
+        message,
+        ...untrustedContext.map((envelope) => wrapUntrustedContent(envelope, untrustedNonce)),
+      ].join("\n\n"),
+    },
   ];
   const gather = await runGatherPhase({
     chatModel,

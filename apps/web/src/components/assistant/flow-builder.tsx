@@ -394,7 +394,15 @@ export function FlowBuilder({
   // mounted once opened, the way the Preview does, so closing it does not throw
   // the conversation away.
   const [agentMounted, setAgentMounted] = useState(false);
-  const [agentInitialMessage, setAgentInitialMessage] = useState<string | null>(null);
+  // The prompt waiting for the panel, carrying an id: the panel outlives every
+  // ask, so a second one with the same words has to be distinguishable from the
+  // one already sent. Cleared the moment the panel takes it, which is what stops
+  // a Canvas→Form→Canvas round trip from replaying it as a new turn.
+  const [agentPrompt, setAgentPrompt] = useState<{ id: string; text: string } | null>(null);
+  // The panel lives inside the Canvas view, so the Form unmounts it. Holding
+  // the conversation id here is what makes a round trip resume the thread
+  // instead of opening a blank one.
+  const [agentConversationId, setAgentConversationId] = useState<string | null>(null);
 
   // Keyed by the fields the patch touches, so typing in one field coalesces
   // while toggling a switch and then typing next to it stay two steps.
@@ -421,12 +429,11 @@ export function FlowBuilder({
   }, [openRightRail]);
   const askAgent = useCallback(
     (message: string) => {
-      setAgentInitialMessage(message);
+      setAgentPrompt({ id: crypto.randomUUID(), text: message });
       openAgent();
     },
     [openAgent]
   );
-  const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Which rendering; remembered per Member in this browser. Restored after
   // mount (deferred, like the Preview launcher does) so the server-rendered
@@ -593,7 +600,6 @@ export function FlowBuilder({
       </Link>
       <span className="text-muted-foreground">/</span>
       <Input
-        ref={nameInputRef}
         value={draft.name}
         onChange={(e) => update({ name: e.target.value }, "name")}
         placeholder="Name this flow..."
@@ -838,7 +844,10 @@ export function FlowBuilder({
               onCollapsedChange={(collapsed) =>
                 collapsed ? closeRightRail("agent") : openAgent()
               }
-              initialMessage={agentInitialMessage}
+              prompt={agentPrompt}
+              onPromptSent={() => setAgentPrompt(null)}
+              resumeConversationId={agentConversationId}
+              onConversationChange={setAgentConversationId}
               providerReady={agentProviderReady}
             />
           )}

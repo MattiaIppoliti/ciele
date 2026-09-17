@@ -715,17 +715,20 @@ export function InboxClient({
     setMessages(null);
     setLinks([]);
     setVerdicts([]);
+    setReviews([]);
     try {
       const review = await getInboxConversationReviewAction(id);
       if (generation !== reviewGeneration.current) return;
       setMessages(review.messages);
       setLinks(review.improvementLinks);
       setVerdicts(review.answerVerdicts);
+      setReviews(review.reviews);
     } catch {
       if (generation !== reviewGeneration.current) return;
       setMessages([]);
       setLinks([]);
       setVerdicts([]);
+      setReviews([]);
     }
   }
 
@@ -745,11 +748,13 @@ export function InboxClient({
       setMessages(review.messages);
       setLinks(review.improvementLinks);
       setVerdicts(review.answerVerdicts);
+      setReviews(review.reviews);
     }).catch(() => {
       if (cancelled || generation !== reviewGeneration.current) return;
       setMessages([]);
       setLinks([]);
       setVerdicts([]);
+      setReviews([]);
     });
     return () => {
       cancelled = true;
@@ -761,8 +766,15 @@ export function InboxClient({
   async function refreshLinks() {
     if (!selectedId) return;
     try {
-      setLinks(await listConversationImprovementLinksAction(selectedId));
-      setReviews(await listConversationReviewsAction(selectedId));
+      // Together, and applied together: two independent reads, and failing one
+      // of them must not leave the pane showing a refreshed half beside a stale
+      // one — which is what the comment below has always claimed.
+      const [links, reviews] = await Promise.all([
+        listConversationImprovementLinksAction(selectedId),
+        listConversationReviewsAction(selectedId),
+      ]);
+      setLinks(links);
+      setReviews(reviews);
     } catch {
       /* keep stale links on failure */
     }

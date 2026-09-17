@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { FlowInput, FlowPatch } from "@agent-hub/core";
+import type { FlowPatch } from "@agent-hub/core";
 import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { Button } from "@agent-hub/ui";
@@ -56,7 +56,10 @@ export function FlowsAgentPanel({
   onDraftPatch,
   collapsed,
   onCollapsedChange,
-  initialMessage,
+  prompt,
+  onPromptSent,
+  resumeConversationId,
+  onConversationChange,
   providerReady = true,
 }: {
   assistantId: string;
@@ -73,8 +76,23 @@ export function FlowsAgentPanel({
    */
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
-  /** The prompt the Editor typed into the empty canvas, sent on mount. */
-  initialMessage?: string | null;
+  /**
+   * A prompt the Editor typed into the canvas, waiting to be sent. Carries an
+   * `id` rather than being a bare string because the canvas can ask twice with
+   * the same words, and because the panel stays mounted for the life of the
+   * builder: an identity is what tells a second ask from the one already sent.
+   * The panel calls `onPromptSent` as it takes it, so the parent can clear it
+   * and a remount cannot replay it.
+   */
+  prompt?: { id: string; text: string } | null;
+  onPromptSent?: () => void;
+  /**
+   * The conversation this panel was last holding. The panel is mounted inside
+   * the Canvas view, so switching to the Form unmounts it; the builder keeps
+   * the id so coming back reopens the same thread rather than a blank one.
+   */
+  resumeConversationId?: string | null;
+  onConversationChange?: (id: string | null) => void;
   /**
    * Whether a turn has anything to run on: the Organization holds a Provider
    * Connection, or has opted into Members' own subscriptions (ADR-0007). False
@@ -94,6 +112,17 @@ export function FlowsAgentPanel({
   const [proposals, setProposals] = useState<(FlowsAgentProposalPayload & { key: string })[]>([]);
   const [, startTransition] = useTransition();
   const conversationRef = useRef<string | null>(null);
+  // The turn in flight, so Stop can end it and unmount does not leave a stream
+  // writing into a tree that is gone. The Preview holds the same handle for the
+  // same reasons (`preview-panel.tsx`).
+  const abortRef = useRef<AbortController | null>(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  /** One place the held conversation changes, so the builder always hears it. */
+  const holdConversation = (id: string | null) => {
+    conversationRef.current = id;
+    onConversationChange?.(id);
+  };
 
   const updateLastBot = (fn: (bot: ChatBotMsg) => ChatBotMsg) =>
     setMessages((prev) => {
@@ -114,6 +143,8 @@ export function FlowsAgentPanel({
       { role: "user", text: message, sentAt: new Date().toISOString() },
       { role: "bot", id: null, ...EMPTY_TURN_TRACE, parts: [], streamingText: null, feedback: 0 },
     ]);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const response = await fetch(`/api/assistants/${assistantId}/flows-agent/chat`, {
         method: "POST",
@@ -125,6 +156,7 @@ export function FlowsAgentPanel({
           message,
           turnId,
         }),
+        signal: controller.signal,
       });
       if (!response.ok || !response.body) {
         throw new Error(
@@ -136,10 +168,10 @@ export function FlowsAgentPanel({
       await consumeTurnStream<ChatBotMsg>(response.body, {
         update: updateLastBot,
         onStart: ({ conversationId }) => {
-          conversationRef.current = conversationId;
+          holdConversation(conversationId);
         },
         onDone: ({ conversationId, messageId }) => {
-          conversationRef.current = conversationId;
+          holdConversation(conversationId);
           updateLastBot((bot) => ({ ...bot, id: messageId }));
         },
         onEvent: (event) => {
@@ -156,20 +188,44 @@ export function FlowsAgentPanel({
         errorText: (text) => `⚠️ ${text}`,
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Chat failed");
+      // An aborted turn is the Editor pressing Stop or leaving, not a failure.
+      if (!(error instanceof DOMException && error.name === "AbortError")) {
+        toast.error(error instanceof Error ? error.message : "Chat failed");
+      }
     } finally {
+      abortRef.current = null;
       setPending(false);
     }
   }
 
-  // The prompt typed into the empty canvas is this panel's first message.
-  const sentInitial = useRef(false);
+  function stop() {
+    abortRef.current?.abort();
+  }
+
+  // A prompt typed into the canvas becomes a message here. The panel outlives
+  // every one of them (it stays mounted so closing the rail does not throw the
+  // conversation away), so "already sent" is per prompt id, never a latch: a
+  // second ask after the first answer is an ordinary message, not a no-op. A
+  // prompt that lands mid-turn waits for `pending` to clear rather than being
+  // dropped by `send`'s own guard.
+  // Coming back from the Form view remounts this panel. Reopen the thread it
+  // was holding, unless a prompt is waiting: that prompt continues the same
+  // conversation anyway, and letting the server transcript land after the new
+  // message would drop the bubble the Editor just watched appear.
   useEffect(() => {
-    if (!initialMessage || sentInitial.current) return;
-    sentInitial.current = true;
-    void send(initialMessage);
+    if (!resumeConversationId || prompt) return;
+    void openConversation(resumeConversationId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialMessage]);
+  }, []);
+
+  const sentPromptId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!prompt || pending || sentPromptId.current === prompt.id) return;
+    sentPromptId.current = prompt.id;
+    onPromptSent?.();
+    void send(prompt.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompt, pending]);
 
   async function toggleHistory() {
     const next = !historyOpen;
@@ -186,7 +242,7 @@ export function FlowsAgentPanel({
   async function openConversation(id: string) {
     try {
       const { messages: stored } = await flowsAgentConversationAction(assistantId, id);
-      conversationRef.current = id;
+      holdConversation(id);
       setProposals([]);
       setMessages(chatMessagesFromStored(stored));
       setHistoryOpen(false);
@@ -196,7 +252,7 @@ export function FlowsAgentPanel({
   }
 
   function newChat() {
-    conversationRef.current = null;
+    holdConversation(null);
     setMessages([]);
     setProposals([]);
     setHistoryOpen(false);
@@ -361,6 +417,7 @@ export function FlowsAgentPanel({
               <PromptInput
                 onSubmit={(value) => void send(value)}
                 loading={pending}
+                onStop={stop}
                 disabled={!providerReady}
                 minRows={1}
                 maxRows={6}
@@ -414,4 +471,3 @@ function ProposalCard({
   );
 }
 
-export type { FlowInput };

@@ -427,6 +427,8 @@ export interface Db {
     organizationId: string
   ): Promise<ApplicationConnection[]>;
   getSafeApplicationConnection(id: string): Promise<ApplicationConnection | null>;
+  /** Workspace lookup for verified Slack events. Returns redacted rows; RLS still applies. */
+  listSlackWorkspaceConnections(teamId: string): Promise<ApplicationConnection[]>;
   getApplicationConnection(id: string): Promise<ApplicationConnection | null>;
   createApplicationConnection(input: {
     organizationId: string;
@@ -649,6 +651,12 @@ export interface Db {
       | { status: "failed"; error: string }
       | { status: "queued"; error: string; nextRunAt: string };
   }): Promise<boolean>;
+  /** Persist a worker checkpoint only while its claim still owns the job. */
+  checkpointBackgroundJob(input: {
+    id: string;
+    leaseToken: string;
+    payload: Record<string, unknown>;
+  }): Promise<boolean>;
   /** Atomically wins an Application Import lease and queues its continuation. */
   settleApplicationSyncJobSuccess(input: {
     id: string;
@@ -714,6 +722,12 @@ export interface Db {
     turnEffects: number;
     apiIdempotencyKeys: number;
     sourceGenerations: number;
+    /**
+     * Inbound-Flow run records (#843). A ledger of machine calls, never a
+     * Conversation, so no transcript or Insights retention ever reaches it and
+     * nothing but this sweep removes a row.
+     */
+    httpFlowRuns: number;
   }>;
 
   // --- Report exports (durable, off the request path) -----------------------

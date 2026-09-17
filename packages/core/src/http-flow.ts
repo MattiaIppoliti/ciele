@@ -194,6 +194,18 @@ export function respondStatus(settings: RespondSettings | undefined): number | n
 }
 
 /**
+ * A field name, per RFC 9110: one or more token characters, and nothing else.
+ * Anything outside this throws in `new Headers()`, so it has to be refused at
+ * the edit rather than discovered at the call.
+ */
+const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/** Whether a configured header name is one a Response can actually carry. */
+function isHeaderName(name: string): boolean {
+  return HEADER_NAME.test(name.trim());
+}
+
+/**
  * The Needs-setup rule the canvas, the form and Publish share. `null` means
  * configured: a status the route can send, and no header the route must own.
  */
@@ -206,6 +218,13 @@ export function respondSettingsIssue(settings: RespondSettings | undefined): str
     if (!name) continue;
     if (UNWRITABLE_HEADERS.has(name)) {
       return `The response can't set ${name}; the server owns that header.`;
+    }
+    // Unchecked, a name like `X Custom` saved and published, then threw inside
+    // the route's `new Response(...)`: a 500 the author never configured, after
+    // the side effects ran and after the run ledger recorded the status the
+    // Flow meant to send.
+    if (!isHeaderName(name)) {
+      return `"${header.name.trim()}" is not a valid header name: no spaces, quotes, colons or brackets.`;
     }
   }
   return null;
@@ -225,7 +244,10 @@ export function respondHeaders(
   const headers: Record<string, string> = {};
   for (const header of settings?.headers ?? []) {
     const name = header.name.trim().toLowerCase();
-    if (!name || UNWRITABLE_HEADERS.has(name)) continue;
+    // The name check is `respondSettingsIssue`'s job, and dropping it again
+    // here is what keeps a Flow saved before that rule existed from turning
+    // into a 500 instead of the answer it configured.
+    if (!name || UNWRITABLE_HEADERS.has(name) || !isHeaderName(name)) continue;
     headers[name] = resolve(header.value).replace(/[\r\n\0]/g, "");
   }
   return headers;

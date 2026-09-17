@@ -8,7 +8,7 @@ vi.mock("./egress", async (importOriginal) => ({
 import type { Assistant, Flow, FlowActionSettings } from "@agent-hub/core";
 import { egressFetch } from "./egress";
 import { ACTION_HANDLERS } from "./actions";
-import { refuseHttpFlow, runHttpFlow } from "./http-flow-run";
+import { emailIdempotencyKey, refuseHttpFlow, runHttpFlow } from "./http-flow-run";
 import type { Db } from "@agent-hub/db";
 
 /**
@@ -289,5 +289,64 @@ describe("what the caller gets back", () => {
     } finally {
       ACTION_HANDLERS.improvement = original;
     }
+  });
+});
+
+/**
+ * An inbound run has no durable claim to key an email off, and the key it used
+ * embedded `Date.now()`, which made it unique per invocation and defeated the
+ * transport's dedup outright: the retry every HTTP caller makes on a timeout
+ * sent the email twice. The request itself is the identity — same flow, same
+ * step, same call, same key.
+ */
+describe("emailIdempotencyKey", () => {
+  const request = {
+    method: "POST",
+    body: '{"ticket":"T-1"}',
+    query: { source: "crm" },
+    headers: { "content-type": "application/json" },
+  };
+
+  it("is stable across retries of the same call", () => {
+    expect(emailIdempotencyKey("f1", 0, request)).toBe(
+      emailIdempotencyKey("f1", 0, request)
+    );
+  });
+
+  // The header is the only thing that can tell a retry from a deliberate
+  // repeat, so a caller that sends one is believed over the content hash.
+  it("prefers the caller's own Idempotency-Key", () => {
+    const withKey = (key: string, body: string) =>
+      emailIdempotencyKey("f1", 0, {
+        ...request,
+        body,
+        headers: { ...request.headers, "idempotency-key": key },
+      });
+    // Same key, different body: the caller says it is the same call.
+    expect(withKey("abc", '{"ticket":"T-1"}')).toBe(withKey("abc", '{"ticket":"T-9"}'));
+    // Different key, same body: two calls that happen to look alike.
+    expect(withKey("abc", '{"ticket":"T-1"}')).not.toBe(withKey("def", '{"ticket":"T-1"}'));
+    // Still scoped to the step, so one call's two emails stay distinct.
+    expect(withKey("abc", "{}")).not.toBe(
+      emailIdempotencyKey("f1", 1, {
+        ...request,
+        body: "{}",
+        headers: { ...request.headers, "idempotency-key": "abc" },
+      })
+    );
+  });
+
+  it("separates two different calls, steps and flows", () => {
+    const key = emailIdempotencyKey("f1", 0, request);
+    expect(emailIdempotencyKey("f1", 0, { ...request, body: '{"ticket":"T-2"}' })).not.toBe(key);
+    expect(emailIdempotencyKey("f1", 0, { ...request, query: { source: "lms" } })).not.toBe(key);
+    expect(emailIdempotencyKey("f1", 0, { ...request, method: "PUT" })).not.toBe(key);
+    expect(emailIdempotencyKey("f1", 1, request)).not.toBe(key);
+    expect(emailIdempotencyKey("f2", 0, request)).not.toBe(key);
+  });
+
+  it("fits the transport's 256-character header budget", () => {
+    expect(emailIdempotencyKey("f1", 0, { ...request, body: "x".repeat(100_000) }).length)
+      .toBeLessThanOrEqual(256);
   });
 });

@@ -2,7 +2,9 @@ import { z } from "zod";
 import type {
   Conversation,
   InboxConversation,
+  InboxConversationReview,
   InboxQuery,
+  ReviewRequest,
   StoredMessage,
 } from "@agent-hub/core";
 import type { OperationContext } from "./operation";
@@ -81,14 +83,45 @@ export const getInboxFacetsOp = defineOperation({
   run: (ctx) => ctx.db.getInboxFacets(ctx.organizationId),
 });
 
+/** How many review requests one Conversation's detail pane will ever show. */
+const INBOX_CONVERSATION_REVIEW_LIMIT = 50;
+
+/**
+ * What the Inbox's detail pane loads for one Conversation.
+ *
+ * `InboxConversationReview` is the Db read; the review requests are composed on
+ * top of it here rather than widened into it, because no `Db` method returns
+ * them together. Named so the web action can state the same shape instead of
+ * spelling the intersection out a second time.
+ */
+export type InboxConversationDetail = InboxConversationReview & {
+  reviews: ReviewRequest[];
+};
+
 export const getInboxConversationReviewOp = defineOperation({
   name: "inbox.conversations.review",
   capability: "member",
   input: z.object({ conversationId: z.string().min(1) }),
   entities: () => [],
-  run: async (ctx, { conversationId }) => {
+  run: async (
+    ctx,
+    { conversationId }
+  ): Promise<InboxConversationDetail> => {
     await requireConversation(ctx, conversationId);
-    return ctx.db.getInboxConversationReview(conversationId);
+    // The Human review requests ride the same hydration as the transcript, and
+    // deliberately not a second call from the client: a list fetched on its own
+    // schedule is a list that can still be showing the Conversation before this
+    // one, which is exactly how the card shipped.
+    const [review, reviews] = await Promise.all([
+      ctx.db.getInboxConversationReview(conversationId),
+      ctx.db
+        .table("reviewRequests")
+        .list(
+          { organizationId: ctx.organizationId, conversationId },
+          { limit: INBOX_CONVERSATION_REVIEW_LIMIT }
+        ),
+    ]);
+    return { ...review, reviews };
   },
 });
 

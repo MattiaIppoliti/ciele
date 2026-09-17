@@ -52,6 +52,40 @@ describe("provisioning a Teammate", () => {
     ).toEqual([]);
   });
 
+  // `ceiling` fails *open*: the column's default is `edit`, the permissive end,
+  // so a ceiling that is quietly dropped arms the Teammate one rung above what
+  // the caller asked for, and a later set-grants call inherits it. Governance
+  // is therefore applied whenever it is asked for, grants or no grants.
+  it("applies a ceiling asked for without grants", async () => {
+    const context = ctx();
+    const result = await provisionTeammateOp.run(context, {
+      name: "Capped",
+      ceiling: "member",
+    });
+
+    expect(result.partial).toBeNull();
+    expect(result.governance?.ceiling).toBe("member");
+    expect(result.governance?.domains).toEqual([]);
+
+    const read = await listTeammateGrantsOp.run(context, { id: result.teammate.id });
+    expect(read.ceiling).toBe("member");
+    expect(read.domains).toEqual([]);
+  });
+
+  it("says so when a ceiling without grants is refused", async () => {
+    // Governance is admin-tier whatever it carries, so an Editor asking for one
+    // has to read a refusal rather than a success that did not happen.
+    const context = ctx("editor");
+    const result = await provisionTeammateOp.run(context, {
+      name: "Capped by an editor",
+      approvalBypass: true,
+    });
+
+    expect(result.partial).toBe("grants");
+    expect(result.reason).toContain("manageMembers");
+    expect(result.governance).toBeNull();
+  });
+
   it("reports a refused grant instead of throwing away the Teammate", async () => {
     // An Editor may create a colleague and may not arm one. Throwing here would
     // hand back a 403 and lose the id of the Teammate that now exists.

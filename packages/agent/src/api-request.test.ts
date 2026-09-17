@@ -6,7 +6,7 @@ vi.mock("./egress", async (importOriginal) => ({
 }));
 
 import { egressFetch, EgressPolicyError } from "./egress";
-import { testApiRequest } from "./api-request";
+import { resolveLockedUrl, testApiRequest } from "./api-request";
 import { registerRuntimeHost, resetRuntimeHost } from "./host";
 
 const egressFetchMock = vi.mocked(egressFetch);
@@ -214,5 +214,53 @@ describe("testApiRequest", () => {
     });
     expect(egressFetchMock).not.toHaveBeenCalled();
     expect(result.error?.code).toBe("template_in_origin");
+  });
+});
+
+/**
+ * The origin lock, on its own.
+ *
+ * `executeApiRequest` asserts it per call, which is enough while the template
+ * is the stored configuration. It is not enough where a URL is resolved once
+ * and the *result* is stored — the webhook action's unsubscribe, whose template
+ * is filled from the external subscribe reply and then persisted. There the
+ * per-call check compares the stored URL with itself and passes whatever the
+ * remote chose, so the resolve has to carry the lock with it.
+ */
+describe("resolveLockedUrl", () => {
+  it("lets a variable fill the path and the query", () => {
+    const url = resolveLockedUrl("https://hooks.example.com/subs/{{sub.id}}?t={{sub.token}}", {
+      "sub.id": "9f2",
+      "sub.token": "abc",
+    });
+    expect(url.url?.toString()).toBe("https://hooks.example.com/subs/9f2?t=abc");
+    expect(url.reason).toBeNull();
+  });
+
+  // The two refusals stay apart: the builder's Test request explains "that is
+  // not a URL" and "a variable moved the host" differently, and collapsing them
+  // made an unparseable URL report the wrong one.
+  it("refuses a variable that moves the origin, and says which refusal it was", () => {
+    expect(
+      resolveLockedUrl("https://{{sub.host}}/subs/9f2", { "sub.host": "attacker.example.net" })
+    ).toEqual({ url: null, reason: "template_in_origin" });
+    expect(
+      resolveLockedUrl("https://hooks.example.com{{sub.path}}", {
+        "sub.path": ".attacker.example.net/subs",
+      })
+    ).toEqual({ url: null, reason: "template_in_origin" });
+  });
+
+  it("refuses a variable carrying a whole URL, and anything unparseable", () => {
+    expect(
+      resolveLockedUrl("{{sub.url}}", { "sub.url": "https://attacker.example.net" })
+    ).toEqual({ url: null, reason: "invalid_url" });
+    expect(resolveLockedUrl("not a url", {})).toEqual({ url: null, reason: "invalid_url" });
+  });
+
+  it("passes a template with no variables through", () => {
+    expect(resolveLockedUrl("https://hooks.example.com/subs", {}).url?.toString()).toBe(
+      "https://hooks.example.com/subs"
+    );
   });
 });

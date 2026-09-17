@@ -44,7 +44,7 @@ export function ResizeHandle({
         }`}
       />
       <div
-        className={`absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-neutral-400 bg-background py-1.5 shadow-sm transition-opacity ${
+        className={`absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-neutral-400 bg-background py-1.5 shadow-light transition-opacity ${
           resizing ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
       >

@@ -22,7 +22,7 @@ Para encontrar la operación asociada a un control de la consola, abre el
 
 ## Modelo de conexión común
 
-Las tres interfaces requieren una clave de API de organización. El rol asignado
+Las tres interfaces requieren una clave API de la organización. El rol asignado
 controla las operaciones que la clave puede usar.
 
 <Mermaid
@@ -44,10 +44,10 @@ flowchart TB
 />
 
 El servicio alojado utiliza `https://ciele.app` de forma predeterminada. Una
-instalación autohospedada utiliza su propio origen público.
+instalación autoalojada utiliza su propio origen público.
 
 <Callout title="Use the minimum Role">
-Create a viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant.
+Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
 </Callout>
 
 ## Dominios disponibles

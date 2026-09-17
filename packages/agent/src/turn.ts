@@ -35,6 +35,7 @@ import type {
   TeammateActionTool,
 } from "./types";
 import { contactLabel } from "./actions";
+import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
@@ -118,6 +119,13 @@ interface ConversationTurnBaseInput {
    * and below the persona, so it is neither faked into a message nor stored.
    */
   standingContext?: readonly string[];
+  /**
+   * Third-party text for this one turn (#857): a Slack channel transcript.
+   * Unlike `standingContext` it is nobody the organization vouches for, so it
+   * rides the turn's untrusted-content fence beside retrieved material rather
+   * than the memory-document channel.
+   */
+  untrustedContext?: readonly UntrustedEnvelope[];
   /** Attached Skills, a Publication snapshot (widget) or live rows (preview). */
   skills?: SkillSnapshot[];
   /**
@@ -682,17 +690,29 @@ function ownsConversation(
 }
 
 /**
- * The assistant messages persisted after the Visitor's last one: what a closed
- * Human review wrote while nobody was in the chat (#841). Empty in the common
- * case, where the newest stored message is the Visitor's own.
+ * The assistant parts that trail the Visitor's last message and that they have
+ * not already seen (#841).
+ *
+ * "Trailing" is how a gate outcome is recognised: it was persisted after the
+ * Visitor's last message, by a resumption they were not present for, so this
+ * turn's stream is the first chance to show it. Two kinds are excluded. A
+ * `tool_calls` part is an audit trail with no surface. A part whose action is
+ * `notification` is a proactive nudge, which the widget rendered live as it
+ * fired: replaying it puts the nudge a second time inside the answer to the
+ * message the Visitor typed *because* of it, and the client reducer de-dupes
+ * only `component` parts, so nothing downstream catches it.
  */
-function trailingAssistantParts(stored: readonly StoredMessage[]): ChatReplyPart[] {
+export function replayableTrailingParts(stored: readonly StoredMessage[]): ChatReplyPart[] {
   const parts: ChatReplyPart[] = [];
   for (let i = stored.length - 1; i >= 0; i -= 1) {
     const message = stored[i]!;
     if (message.role !== "assistant") break;
     parts.unshift(
-      ...(message.content as ChatReplyPart[]).filter((part) => part.type !== "tool_calls")
+      ...(message.content as ChatReplyPart[]).filter(
+        (part) =>
+          part.type !== "tool_calls" &&
+          !("action" in part && part.action === "notification")
+      )
     );
   }
   return parts;
@@ -916,7 +936,7 @@ export async function streamConversationTurn(
         }),
         conversation.metadata
       ).concat(input.standingContext ?? [])
-    : undefined;
+    : input.standingContext;
 
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
@@ -1000,7 +1020,7 @@ export async function streamConversationTurn(
       // turn's stream, emitted only, never persisted twice; the Visitor's new
       // message is what makes them no longer trailing next time.
       if (!input.resumeReview && !input.resumeWebhook) {
-        for (const part of trailingAssistantParts(stored)) emit({ type: "part", part });
+        for (const part of replayableTrailingParts(stored)) emit({ type: "part", part });
       }
       /**
        * The one terminal-turn ritual, persist the assistant message, run any
@@ -1217,6 +1237,7 @@ export async function streamConversationTurn(
           apiIntegration,
           teammateActions: input.teammateActions,
           memoryDocuments,
+          untrustedContext: input.untrustedContext,
           referralCandidates: input.referralCandidates,
           collectionId,
           session,

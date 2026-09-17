@@ -205,6 +205,17 @@ export {
 export type { ReviewJobDeps, ReviewLinkVerdict } from "./review-runtime";
 export type { ReviewRuntime } from "./types";
 
+// Slack mention replies (#857): the signed event route enqueues, its
+// after-response hook and the run-slack cron tick drain. The handler itself is
+// registered in the job ledger and stays internal.
+export {
+  enqueueSlackMention,
+  resolveSlackConnection,
+  runDueSlackMentionJobs,
+  slackKey,
+} from "./slack-mentions";
+export type { SlackMention } from "./slack-mentions";
+
 // The callback gate (#842): the gate's runtime, its job, its clock, and the
 // signed URL that is the anonymous caller's whole authorization.
 export {

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import * as engine from "./engine";
 import type { Assistant, Flow, RuntimeEventInput } from "@agent-hub/core";
 import { buildPublicationConfig } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
@@ -8,6 +9,7 @@ import type { ChatReplyPart } from "./types";
 import {
   RECENT_HISTORY_LIMIT,
   readFlowTrustTier,
+  replayableTrailingParts,
   streamConversationTurn,
   turnConnectionKind,
 } from "./turn";
@@ -48,6 +50,7 @@ async function runTurn(input: {
   faqQuestion?: boolean;
   turnId?: string;
   signal?: AbortSignal;
+  standingContext?: readonly string[];
 }): Promise<RuntimeEvent[]> {
   const stream = await streamConversationTurn({
     db,
@@ -63,6 +66,7 @@ async function runTurn(input: {
     turnId: input.turnId,
     faqQuestion: input.faqQuestion,
     signal: input.signal ?? new AbortController().signal,
+    standingContext: input.standingContext,
   });
   const text = await new Response(stream).text();
   return text
@@ -78,6 +82,17 @@ function doneEvent(events: RuntimeEvent[]) {
 }
 
 describe("streamConversationTurn", () => {
+  it("passes host context to Assistant turns without storing it as a user message", async () => {
+    const spy = vi.spyOn(engine, "runAssistantChat");
+    try {
+      const { assistant, flows } = await fixture();
+      const context = "Untrusted Slack context: the deadline is Friday.";
+      const events = await runTurn({ assistant, flows, standingContext: [context] });
+      expect(spy.mock.calls[0][0].memoryDocuments).toEqual([context]);
+      const messages = await db.listMessages(doneEvent(events).conversationId);
+      expect(JSON.stringify(messages)).not.toContain(context);
+    } finally { spy.mockRestore(); }
+  });
   it("replays a completed turn without duplicating messages or effects", async () => {
     const { assistant } = await fixture();
     await db.createFlow(assistant.id, {
@@ -1660,5 +1675,72 @@ describe("plan-cap gate (#442)", () => {
       flowName: "Usage limit",
     });
     doneEvent(events);
+  });
+});
+
+/**
+ * The replay exists for one thing: an outcome persisted while the Visitor was
+ * away, which their live transcript never saw (#841). A proactive Notification
+ * is the opposite case — the widget rendered it as it fired — so replaying it
+ * shows the nudge a second time, inside the answer to the message the Visitor
+ * typed after reading it. The client reducer de-dupes only `component` parts,
+ * so nothing downstream catches this.
+ */
+describe("replayableTrailingParts", () => {
+  const assistant = (parts: ChatReplyPart[]) => ({
+    id: crypto.randomUUID(),
+    conversationId: "c1",
+    role: "assistant" as const,
+    content: parts as unknown[],
+    flowName: "",
+    feedback: 0 as const,
+    createdAt: new Date().toISOString(),
+  });
+  const user = () => ({
+    id: crypto.randomUUID(),
+    conversationId: "c1",
+    role: "user" as const,
+    content: [{ type: "text", action: "message", text: "hello" }] as unknown[],
+    flowName: "",
+    feedback: 0 as const,
+    createdAt: new Date().toISOString(),
+  });
+
+  const gateOutcome: ChatReplyPart = {
+    type: "text",
+    action: "custom_message",
+    text: "Approved, your refund is on its way.",
+  };
+  const nudge: ChatReplyPart = {
+    type: "text",
+    action: "notification",
+    text: "Need a hand with fees?",
+  };
+  const nudgeButton: ChatReplyPart = {
+    type: "button",
+    action: "notification",
+    label: "Fees",
+    buttonType: "send_text",
+    text: "Tell me about fees",
+  };
+
+  it("replays an outcome the Visitor never saw", () => {
+    const stored = [user(), assistant([gateOutcome])];
+    expect(replayableTrailingParts(stored as never)).toEqual([gateOutcome]);
+  });
+
+  it("never replays a proactive Notification the widget already rendered", () => {
+    const stored = [assistant([nudge, nudgeButton])];
+    expect(replayableTrailingParts(stored as never)).toEqual([]);
+  });
+
+  it("keeps the outcome when a nudge trails beside it", () => {
+    const stored = [user(), assistant([nudge]), assistant([gateOutcome])];
+    expect(replayableTrailingParts(stored as never)).toEqual([gateOutcome]);
+  });
+
+  it("stops at the Visitor's last message", () => {
+    const stored = [assistant([gateOutcome]), user()];
+    expect(replayableTrailingParts(stored as never)).toEqual([]);
   });
 });

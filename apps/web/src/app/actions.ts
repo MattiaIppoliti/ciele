@@ -5,7 +5,9 @@ import type {
   ApiIntegrationAuthType,
   Assistant,
   AssistantPatch,
+  ApplicationConnection,
   ApplicationProvider,
+  SlackBotConfig,
   Conversation,
   ConnectorActionSettings,
   ConnectorLoader,
@@ -24,7 +26,6 @@ import type {
   ImprovementProposal,
   ImprovementStatus,
   InboxConversation,
-  InboxConversationReview,
   InboxFacets,
   InboxPage,
   InboxQuery,
@@ -203,6 +204,7 @@ import {
   writeProjectDocumentOp,
   type MemoryDocumentView,
 } from "@ciele/ops";
+import type { InboxConversationDetail } from "@ciele/ops";
 import { FAQ_CSV_MAX_BYTES, parseFaqCsv, serializeFaqCsv } from "@/lib/faq-csv";
 import {
   normalizeApplicationImportConfig,
@@ -211,6 +213,7 @@ import {
 import { isPlatformOwner, setPlatformSystemPrompt } from "@/lib/platform";
 import { getDb } from "@/lib/data";
 import { getWidgetDb } from "@/lib/widget-db";
+import { saveSlackBotSettings } from "@/lib/slack/settings";
 import { canViewReasoning } from "@/lib/rbac";
 import { canDeleteApplicationConnection } from "@/lib/application-connections";
 import { MAX_AGENT_ITERATIONS } from "@agent-hub/agent/client";
@@ -1892,10 +1895,15 @@ export async function getInboxFacetsAction(): Promise<InboxFacets> {
   return runOperation(getInboxFacetsOp, {});
 }
 
-/** Transcript, Improvement links and verifier verdicts in one server round trip. */
+/**
+ * Transcript, Improvement links, verifier verdicts and the Conversation's own
+ * Human review requests, in one server round trip. The reviews are part of the
+ * same read on purpose: fetched separately they outlive the selection, which is
+ * how the detail card came to show the previous Conversation's requests.
+ */
 export async function getInboxConversationReviewAction(
   conversationId: string,
-): Promise<InboxConversationReview> {
+): Promise<InboxConversationDetail> {
   return runOperation(getInboxConversationReviewOp, { conversationId });
 }
 
@@ -2596,6 +2604,10 @@ export async function discoverApplicationScopesAction(connectionId: string) {
     organizationId,
     connectionId
   );
+  return discoverScopesForConnection(connection);
+}
+
+async function discoverScopesForConnection(connection: ApplicationConnection) {
   if (connection.status !== "connected") {
     throw new Error("Reconnect this Application before browsing its content");
   }
@@ -2616,6 +2628,45 @@ export async function discoverApplicationScopesAction(connectionId: string) {
     await persistRefresh(discovery.refreshedCredentials);
   }
   return discovery.scopes;
+}
+
+/**
+ * The Slack conversational opt-in (#857): which published Assistant answers
+ * mentions in which channels. Publish-level, because it is a publication
+ * audience. The save re-discovers the workspace's channels so a channel the
+ * bot cannot answer in is refused here, with the reason, instead of every
+ * mention there being skipped later.
+ */
+export async function configureSlackBotAction(
+  connectionId: string,
+  config: SlackBotConfig | null
+) {
+  const { db, organizationId } = await requireMember("publish");
+  const expectedAppId = process.env.SLACK_APPLICATION_APP_ID;
+  if (config === null) {
+    await saveSlackBotSettings(db, organizationId, connectionId, null);
+  } else {
+    if (
+      !expectedAppId ||
+      !process.env.SLACK_SIGNING_SECRET ||
+      !isSupabaseServiceConfigured()
+    ) {
+      throw new Error(
+        "Configure Slack event delivery on this deployment first: SLACK_APPLICATION_APP_ID and SLACK_SIGNING_SECRET are required."
+      );
+    }
+    const connection = await requireApplicationConnectionForImport(
+      db,
+      organizationId,
+      connectionId
+    );
+    const channels = await discoverScopesForConnection(connection);
+    await saveSlackBotSettings(db, organizationId, connectionId, config, {
+      expectedAppId,
+      channels,
+    });
+  }
+  revalidateEntities([{ kind: "knowledgeHub" }], organizationId);
 }
 
 export async function syncApplicationImportNowAction(importId: string): Promise<void> {

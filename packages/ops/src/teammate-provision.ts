@@ -114,7 +114,13 @@ export const provisionTeammateOp = defineOperation({
       reason: null,
     };
 
-    if (grants?.length) {
+    // Governance is the grants *and* the two dials over them. A ceiling asked
+    // for with no domains still has to be written: the column's default is
+    // `edit`, the permissive end, so dropping the request quietly arms the
+    // Teammate a rung above what the caller asked for, and `setTeammateGrantsOp`
+    // inherits that value on the next call. Whatever is asked for is applied or
+    // refused out loud, never dropped.
+    if (grants?.length || ceiling !== undefined || approvalBypass !== undefined) {
       // The capability check that the surface would have done, done here.
       // Surfaces check `operation.capability` before calling `run`, so calling
       // an inner operation's `run` directly skips its gate: without this line a
@@ -130,7 +136,7 @@ export const provisionTeammateOp = defineOperation({
       try {
         result.governance = await setTeammateGrantsOp.run(ctx, {
           id: teammate.id,
-          domains: grants,
+          domains: grants ?? [],
           ceiling,
           approvalBypass,
         });

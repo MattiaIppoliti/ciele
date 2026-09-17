@@ -604,12 +604,16 @@ function FlowCanvasInner({
         return;
       }
       event.preventDefault();
+      // Leave full screen first, for the reason the context menu's own Remove
+      // gives: the panel is about to unmount, and a fixed panel that vanishes
+      // mid-animation leaves the screen blank over the next selection.
+      setFullscreen(false);
       handlers.removeAction(selectedAction!);
       deselect();
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [readOnly, selectedAction, handlers, deselect]);
+  }, [readOnly, selectedAction, handlers, deselect, setFullscreen]);
 
   /**
    * One place a step is added, whichever control asked. `buildByHand` comes
@@ -949,6 +953,7 @@ function FlowCanvasInner({
         onFullscreen={openNodeFullscreen}
         onAddStep={() => setPickerOpen(true)}
         onRemove={(action) => {
+          setFullscreen(false);
           handlers.removeAction(action);
           deselect();
         }}
@@ -1500,7 +1505,9 @@ function AgentPromptBar({ onAsk }: { onAsk: (message: string) => void }) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
-        if (trimmed) onAsk(trimmed);
+        if (!trimmed) return;
+        onAsk(trimmed);
+        setValue("");
       }}
       className="bg-card pointer-events-auto flex h-10 w-[min(26rem,42%)] items-center gap-2 rounded-full border py-1 pr-1 pl-3 shadow-sm"
     >

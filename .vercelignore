@@ -1,0 +1,7 @@
+# Vercel ignores most of these by default; .turbo is the one that matters, so a
+# CLI deploy from a working tree does not upload local Turborepo caches.
+**/node_modules
+**/.next
+**/.turbo
+.git
+.vercel

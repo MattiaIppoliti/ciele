@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Assistant, Flow, FlowAction } from "@agent-hub/core";
 import {
   actionAllowedForTrigger,
@@ -168,7 +169,12 @@ export async function runHttpFlow(options: {
   // happen and leave the doing to the turn that persisted the message. There
   // is no message here, so they are applied now, each on its own: one failing
   // never takes the answer or the others with it.
-  await applyHttpFlowEffects(effects, { db, organizationId: assistant.organizationId, flow });
+  await applyHttpFlowEffects(effects, {
+    db,
+    organizationId: assistant.organizationId,
+    flow,
+    request,
+  });
 
   const response = [...parts]
     .reverse()
@@ -202,13 +208,54 @@ export async function runHttpFlow(options: {
 }
 
 /**
+ * The email dedup key for one step of one inbound call.
+ *
+ * A turn keys its email off the durable claim it is running under. An inbound
+ * run has no claim, and the key here embedded `Date.now()`, which made it
+ * unique per invocation and so defeated the transport's dedup entirely: the
+ * retry every HTTP client makes on a timeout sent the email a second time.
+ *
+ * The caller's own `Idempotency-Key` is the identity when it sends one, which
+ * is the header that already means exactly this and the only thing that can
+ * tell a retry from a genuine repeat. Without it the request's content is the
+ * best available stand-in — with the cost that two identical calls inside the
+ * transport's window collapse to one email, which is why a caller that repeats
+ * itself deliberately (a nightly ping) should send the header.
+ */
+export function emailIdempotencyKey(
+  flowId: string,
+  actionIndex: number,
+  request: HttpFlowRequest
+): string {
+  const supplied = request.headers["idempotency-key"]?.trim();
+  const identity =
+    supplied ||
+    createHash("sha256")
+      .update(
+        JSON.stringify({
+          method: request.method.toUpperCase(),
+          body: request.body,
+          query: request.query,
+        })
+      )
+      .digest("hex")
+      .slice(0, 32);
+  return `http-flow:${flowId}:${actionIndex}:${identity}`.slice(0, 256);
+}
+
+/**
  * The deferred effects, applied without a Conversation. An Improvement raised
  * here has no message to link, so it is filed on its own and its title says
  * which Flow raised it; an email goes through the same transport a turn uses.
  */
 async function applyHttpFlowEffects(
   effects: ActionEffect[],
-  ctx: { db: Db; organizationId: string; flow: Pick<Flow, "id" | "name"> }
+  ctx: {
+    db: Db;
+    organizationId: string;
+    flow: Pick<Flow, "id" | "name">;
+    request: HttpFlowRequest;
+  }
 ): Promise<void> {
   for (const [index, effect] of effects.entries()) {
     try {
@@ -219,7 +266,7 @@ async function applyHttpFlowEffects(
         });
       } else if (effect.kind === "send_email") {
         const delivery = await sendEmail(effect, {
-          idempotencyKey: `http-flow:${ctx.flow.id}:${index}:${Date.now()}`,
+          idempotencyKey: emailIdempotencyKey(ctx.flow.id, index, ctx.request),
         });
         if (!delivery.delivered) throw new Error(`Email ${delivery.reason}`);
       }

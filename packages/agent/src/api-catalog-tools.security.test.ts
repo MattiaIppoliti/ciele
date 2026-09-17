@@ -81,3 +81,40 @@ describe("tool-end result tiers", () => {
     expect(publicRuntimeEvent(plain)).toBe(plain);
   });
 });
+
+/**
+ * The same two-tier rule for a `notice`. The Connector handler's own contract
+ * is "any failure reads the configured failure message, never the provider's
+ * error", and it held for the reply part while the raw provider error went out
+ * as a notice label — which the widget chat route returns verbatim to an
+ * anonymous Visitor and the Thinking panel renders. ServiceNow and Salesforce
+ * say plenty about an Organization in a failure.
+ */
+describe("notice operator tier", () => {
+  const notice = {
+    type: "notice" as const,
+    label: "ServiceNow request failed",
+    operatorDetail:
+      "401 Unauthorized: user 'svc_ciele' lacks role itil on instance acme-prod.service-now.com",
+  };
+
+  it("strips the operator detail from the event a Visitor receives", () => {
+    const wire = publicRuntimeEvent(notice as RuntimeEvent);
+    const serialized = JSON.stringify(wire);
+    expect(wire).not.toHaveProperty("operatorDetail");
+    expect(serialized).not.toContain("acme-prod.service-now.com");
+    expect(serialized).not.toContain("svc_ciele");
+    // The Visitor still learns the step happened and failed.
+    expect((wire as typeof notice).label).toBe("ServiceNow request failed");
+  });
+
+  it("keeps it in the folded trace the Inbox renders", () => {
+    const trace = foldTraceEvent(EMPTY_TURN_TRACE, notice as RuntimeEvent);
+    expect(trace.steps[0]?.detail).toContain("svc_ciele");
+  });
+
+  it("leaves a notice with no operator tier untouched", () => {
+    const plain = { type: "notice" as const, label: "Calling ServiceNow" };
+    expect(publicRuntimeEvent(plain)).toBe(plain);
+  });
+});

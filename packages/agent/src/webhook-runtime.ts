@@ -286,7 +286,19 @@ interface WebhookJobPayload {
 export interface WebhookJobDeps {
   db: Db;
   now?: () => Date;
+  /** The sweep's window size. Injectable so a test can fill it. */
+  limit?: number;
 }
+
+/**
+ * How many pending subscriptions one expiry tick reads.
+ *
+ * Same rule as the review gate's window, and more exposed here: the wait is
+ * minutes and the traffic is machine-driven, so a busy Organization reaches a
+ * full window quickly. Bounded safely only because the window is read in due
+ * order, so what falls outside it is not yet due.
+ */
+const WEBHOOK_EXPIRY_WINDOW = 500;
 
 export async function enqueueWebhookResumptionJob(
   deps: { db: Db },
@@ -404,7 +416,10 @@ export async function expireDueWebhooks(deps: WebhookJobDeps): Promise<{ expired
   const now = (deps.now ?? (() => new Date()))();
   const pending = await deps.db
     .table("webhookSubscriptions")
-    .list({ status: "pending" }, { limit: 500 });
+    .list(
+      { status: "pending" },
+      { orderBy: "expiresAt", ascending: true, limit: deps.limit ?? WEBHOOK_EXPIRY_WINDOW }
+    );
   let expired = 0;
   for (const subscription of pending) {
     const overdue = expireWebhook(subscription, now);

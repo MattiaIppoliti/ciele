@@ -184,7 +184,11 @@ describe("built-in Application Connectors", () => {
       if (url.includes("conversations.list")) {
         return response({
           ok: true,
-          channels: [{ id: "C01", name: "help", is_member: true }],
+          channels: [
+            { id: "C01", name: "help", is_member: true },
+            { id: "C02", name: "announcements", is_member: false },
+            { id: "C03", name: "partners", is_member: true, is_ext_shared: true },
+          ],
           response_metadata: { next_cursor: "" },
         });
       }
@@ -230,11 +234,24 @@ describe("built-in Application Connectors", () => {
         expect.objectContaining({ id: "language:it" }),
       ])
     );
+    expect(scopes[2].scopes).toEqual([
+      expect.objectContaining({
+        id: "C01",
+        label: "#help",
+        metadata: expect.objectContaining({ member: true }),
+      }),
+      expect.objectContaining({
+        id: "C02",
+        label: "#announcements",
+        metadata: expect.objectContaining({ member: false, shared: false }),
+      }),
+      expect.objectContaining({
+        id: "C03",
+        metadata: expect.objectContaining({ member: true, shared: true }),
+      }),
+    ]);
     expect(scopes[1].scopes).toEqual([
       expect.objectContaining({ id: "kb-1", kind: "knowledge_base" }),
-    ]);
-    expect(scopes[2].scopes).toEqual([
-      expect.objectContaining({ id: "C01", kind: "channel" }),
     ]);
     expect(scopes[3].scopes).toEqual(
       expect.arrayContaining([
@@ -367,6 +384,35 @@ describe("built-in Application Connectors", () => {
       text: expect.stringContaining("Alex Support"),
       metadata: { channelId: "C01", authorName: "Alex Support" },
     });
+  });
+
+  it("skips a Slack channel the bot cannot read and keeps syncing the others", async () => {
+    const client: ApplicationHttpClient = async (url) => {
+      if (url.includes("users.list")) {
+        return response({ ok: true, members: [], response_metadata: { next_cursor: "" } });
+      }
+      if (url.includes("channel=C01")) {
+        return response({ ok: false, error: "not_in_channel" });
+      }
+      return response({
+        ok: true,
+        messages: [{ ts: "1787800000.000100", user: "U02", text: "Still readable" }],
+        response_metadata: { next_cursor: "" },
+      });
+    };
+    const registry = createApplicationConnectorRegistry(client);
+    const conn = connection("slack", { teamId: "T01" });
+
+    const result = await registry.slack!.synchronize({
+      connection: conn,
+      applicationImport: applicationImport(conn.id, { channelIds: ["C01", "C02"] }),
+      knownArtifacts: {},
+    });
+
+    expect(result.skipped).toEqual([{ remoteId: "C01", reason: "not_in_channel" }]);
+    expect(result.artifacts.map((artifact) => artifact.remoteId)).toEqual([
+      "C02:1787800000.000100",
+    ]);
   });
 
   it("revisits an older Slack root for new replies and deletion", async () => {

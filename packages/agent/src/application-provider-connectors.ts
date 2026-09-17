@@ -402,6 +402,9 @@ export function serviceNowConnector(baseClient: ApplicationHttpClient): Applicat
   };
 }
 
+/** `conversations.history` refusals that name the channel, not the token or the tier. */
+const SLACK_CHANNEL_UNREADABLE = new Set(["not_in_channel", "channel_not_found", "is_archived"]);
+
 export function slackConnector(baseClient: ApplicationHttpClient): ApplicationConnector {
   return {
     provider: "slack",
@@ -429,13 +432,19 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
         );
         for (const channel of valueArray(page, "channels")) {
           const id = String(channel.id ?? "");
-          if (!id || channel.is_member !== true) continue;
+          if (!id) continue;
           options.push({
             id,
             label: `#${String(channel.name ?? id)}`,
             kind: "channel",
             parentId: null,
-            metadata: { private: Boolean(channel.is_private) },
+            metadata: {
+              private: Boolean(channel.is_private),
+              member: channel.is_member === true,
+              shared: Boolean(
+                channel.is_ext_shared || channel.is_org_shared || channel.is_pending_ext_shared
+              ),
+            },
           });
         }
         cursor = String(
@@ -741,7 +750,23 @@ export function slackConnector(baseClient: ApplicationHttpClient): ApplicationCo
             token.active.accessToken,
             ["slack.com"]
           );
-          if (page.ok === false) throw new Error(`Slack error: ${String(page.error ?? "unknown")}`);
+          if (page.ok === false) {
+            const error = String(page.error ?? "unknown");
+            // A channel the bot cannot read any more is that channel's problem,
+            // not the Import's: record it and move on to the next one rather
+            // than failing every channel in the Import on every run.
+            if (SLACK_CHANNEL_UNREADABLE.has(error)) {
+              skipped.push({ remoteId: channelId, reason: error });
+              completedHistoryChannels.add(channelId);
+              delete historyCursorByChannel[channelId];
+              delete historyOldestByChannel[channelId];
+              // Advance the rotation as a completed channel would, or the next
+              // run starts again at the channel it already knows it cannot read.
+              nextSlackChannelOffset = (channelIndex + 1) % channelIds.length;
+              continue channelLoop;
+            }
+            throw new Error(`Slack error: ${error}`);
+          }
           const nextHistoryCursor = String(
             (page.response_metadata as Record<string, unknown> | undefined)
               ?.next_cursor ?? ""

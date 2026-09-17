@@ -1,18 +1,18 @@
 ---
 title: Connecter des clients IA
-description: Connectez les clients IA pris en charge au serveur Ciele MCP hébergé ou local.
+description: Connectez les clients IA pris en charge au serveur MCP Ciele hébergé ou local.
 ---
 
 Le serveur Ciele MCP dispose de deux transports. Les deux enregistrent les mêmes
 outils.
 
-- Le **point de terminaison hébergé** est `POST /api/mcp` sur votre déploiement.
-  Tout client qui accepte une URL MCP distante peut l'utiliser.
+- Le **hosted endpoint** est `POST /api/mcp` sur votre déploiement. Tout client
+  qui accepte une URL MCP distante peut l'utiliser.
 - Le **serveur local** est un processus `stdio` que le client lance en tant que
   processus enfant.
 
 Privilégiez le point de terminaison hébergé. Il ne nécessite ni extraction, ni
-Node.js sur la machine client, ni chemin d'accès à maintenir à jour.
+Node.js sur la machine client, ni chemin d'accès à tenir à jour.
 
 Cette page reflète la documentation client vérifiée le 6 août 2026. Les
 interfaces client et les formats de configuration peuvent évoluer.
@@ -28,7 +28,7 @@ interfaces client et les formats de configuration peuvent évoluer.
 | OpenCode | Oui | Oui |
 | GitHub Copilot dans VS Code | Oui | Oui |
 | GitHub Copilot CLI | Oui | Oui |
-| ChatGPT Web | Oui | Aucun processus local |
+| ChatGPT web | Oui | Pas de processus local |
 | Pi | Aucune procédure intégrée | Aucune procédure intégrée |
 
 ## Connectez-vous au point de terminaison hébergé
@@ -42,8 +42,12 @@ claude mcp add --transport http ciele https://ciele.example.edu/api/mcp \
   --header "Authorization: Bearer ciele_sk_..."
 ```
 
-Le point de terminaison hébergé ne dispose pas d'un commutateur en lecture
-seule. Utilisez une clé Viewer lorsque l'agent ne doit pas modifier les données.
+Le point de terminaison hébergé ne dispose pas d'un commutateur en lecture seule
+: ses autorisations sont définies par le rôle de la clé. Cependant, une clé
+Viewer n'est pas un agent en lecture seule : la révision des conversations est
+considérée comme de la curation, ce qui lui permet d'épingler une conversation,
+de laisser des commentaires et de la supprimer. Utilisez un serveur stdio local
+avec `CIELE_MCP_READ_ONLY=1` lorsque l'agent ne doit absolument rien modifier.
 
 ## Préparez une connexion locale
 
@@ -74,7 +78,7 @@ Consultez le
 [guide MCP de Claude Code](https://docs.anthropic.com/en/docs/claude-code/mcp)
 pour connaître les options client et les étendues de configuration.
 
-## Codex et ChatGPT Desktop
+## Codex et ChatGPT pour ordinateur de bureau
 
 Exécutez cette commande pour Codex CLI :
 
@@ -86,7 +90,7 @@ codex mcp add ciele \
   -- node <repo>/packages/mcp/bin/ciele-mcp.mjs
 ```
 
-Codex CLI, l'application Codex, l'extension Codex IDE et ChatGPT Desktop
+Codex CLI, l'application Codex, l'extension Codex pour IDE et ChatGPT Desktop
 partagent la même configuration Codex MCP.
 
 Vous pouvez également modifier `~/.codex/config.toml` :
@@ -133,8 +137,9 @@ Ouvrez **Settings > MCP**. Activez `ciele` et examinez chaque appel d'outil
 demandé.
 
 Consultez le
-[guide Cursor MCP](https://docs.cursor.com/context/model-context-protocol) pour
-obtenir des informations sur la configuration globale et la sécurité du client.
+[guide MCP de Cursor](https://docs.cursor.com/context/model-context-protocol)
+pour obtenir des informations sur la configuration globale et la sécurité du
+client.
 
 ## OpenCode
 
@@ -161,8 +166,8 @@ Ajoutez ce serveur à `opencode.json` :
 
 Exécutez `opencode2 mcp list` pour vérifier la connexion.
 
-Consultez le [guide OpenCode MCP](https://opencode.ai/v2/docs/mcp-servers) pour
-le schéma actuel de la version 2.
+Consultez le [OpenCode MCP guide](https://opencode.ai/v2/docs/mcp-servers) pour
+connaître le schéma de la version 2 actuelle.
 
 ## GitHub Copilot dans VS Code
 
@@ -193,8 +198,8 @@ Créez `.vscode/mcp.json` :
 }
 ```
 
-Exécutez **MCP: List Servers** depuis la palette de commandes. Lancez `ciele` et
-examinez sa sortie en cas d'échec de connexion.
+Exécutez **MCP: List Servers** depuis la Palette de commandes. Lancez `ciele` et
+examinez sa sortie en cas d'échec de la connexion.
 
 Consultez le
 [guide VS Code MCP](https://code.visualstudio.com/docs/agent-customization/mcp-servers)
@@ -218,7 +223,7 @@ Consultez le
 [guide GitHub Copilot CLI MCP](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers)
 pour connaître le format de configuration actuel.
 
-## Invites copiables
+## Prompts copiables
 
 Démarrez chaque nouvelle connexion avec cette vérification en lecture seule :
 
@@ -234,7 +239,7 @@ List all Ciele Assistants. For each Assistant, list its enabled Flows.
 Identify duplicate or unclear Flow names. Do not change data.
 ```
 
-Utilisez cette requête pour vérifier l'ingestion de connaissances :
+Utilisez cette invite pour examiner l'ingestion de connaissances :
 
 ```text
 List the Sources linked to Assistant <assistant-id>.
@@ -264,7 +269,7 @@ Read the proposed tool input before you approve it. API Roles and MCP read-only 
 
 ## Clients sans processus local
 
-ChatGPT Web ne peut pas démarrer un serveur `stdio` local. Pointez-le plutôt
+ChatGPT Web ne peut pas démarrer un serveur `stdio` local. Dirigez-le plutôt
 vers le point de terminaison hébergé. Le déploiement doit être accessible depuis
 l'Internet public, ce qui n'est pas le cas d'une pile Ciele Desktop locale.
 

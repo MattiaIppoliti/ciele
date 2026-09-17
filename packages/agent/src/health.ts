@@ -56,6 +56,15 @@ export const alertKeys = {
   /** One Application Connection's authorization lifecycle. */
   applicationConnection: (connectionId: string) =>
     `application-connection:${connectionId}`,
+  /** A Slack event whose reply failed or has an uncertain delivery outcome. */
+  slackMention: (jobId: string) => `slack-mention:${jobId}`,
+  /**
+   * One workspace channel enabled on more than one Organization (#857). Raised
+   * on every Organization involved, because RLS hides the other row from each
+   * of them; cleared once a mention there resolves to exactly one.
+   */
+  slackChannelConflict: (teamId: string, channel: string) =>
+    `slack-channel-conflict:${teamId}:${channel}`,
   /**
    * One security-detection finding (#801, CYB-19): rule + the subject it
    * fired on, so a still-firing rule updates one Alert in place and two

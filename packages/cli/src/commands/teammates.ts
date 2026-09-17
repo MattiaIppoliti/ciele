@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import type { TeammatePatch } from "@agent-hub/core";
 import { EXIT } from "../index.ts";
 import { table } from "../output.ts";
-import { str, strList, usage, type CommandContext } from "./shared.ts";
+import { bool, str, strList, usage, type CommandContext } from "./shared.ts";
 
 /**
  * AI Teammates (#768): the Organization's internal agents.
@@ -144,7 +144,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
         visibility: flags.private === true ? "private" : undefined,
         grants: grants ? grants.split(",").filter(Boolean) : undefined,
         ceiling: str(flags.ceiling),
-        approvalBypass: flags.approvalBypass === true ? true : undefined,
+        approvalBypass: bool(flags["approval-bypass"]),
         routines: routines.length ? routines : undefined,
       });
       const lines = [
@@ -191,7 +191,7 @@ export async function teammates(verb: string | undefined, ctx: CommandContext) {
       const governance = await client.teammates.setGrants(rest[0], {
         domains: domains ? domains.split(",").filter(Boolean) : [],
         ceiling: str(flags.ceiling),
-        approvalBypass: flags.approvalBypass === true ? true : undefined,
+        approvalBypass: bool(flags["approval-bypass"]),
       });
       emit(`Granted: ${governance.domains.join(", ") || "(none)"}`, governance);
       return EXIT.ok;

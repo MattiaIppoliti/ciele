@@ -126,7 +126,14 @@ export async function GET(
         sealedCredentials: sealSecret(JSON.stringify(result.credentials)),
         scopes: result.scopes,
         providerAccountId: result.providerAccountId,
-        metadata: result.metadata,
+        // Keep the opt-in only when the same Slack installation is renewed.
+        // Choosing a different workspace/app must never publish its knowledge there.
+        metadata: {
+          ...(provider === "slack" && visible.providerAccountId === result.providerAccountId &&
+            visible.metadata.slackAppId === result.metadata.slackAppId
+            ? { slackBot: visible.metadata.slackBot } : {}),
+          ...result.metadata,
+        },
         status: "connected",
         error: "",
         lastConnectedAt: new Date().toISOString(),

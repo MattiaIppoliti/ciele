@@ -88,6 +88,17 @@ beforeAll(async () => {
 afterAll(async () => pg?.close());
 
 describe("Application connector authenticated RLS", () => {
+  it("keeps signed-event jobs service-only even for Organization Admins", async () => {
+    await pg.query(`insert into public.background_jobs (id, organization_id, kind, payload)
+      values ('slack-private-event', $1, 'answer_slack_mention', '{"text":"private channel"}')`, [orgId]);
+    const result = await actingAs(admin, "select id from public.background_jobs where id = 'slack-private-event'");
+    expect(result.rows).toHaveLength(0);
+    await expect(actingAs(admin, `insert into public.background_jobs (id, organization_id, kind, payload)
+      values ('slack-forged-event', $1, 'answer_slack_mention', '{}')`, [orgId])).rejects.toThrow(/row-level security/);
+    expect((await actingAs(admin, `update public.background_jobs set payload = '{}' where id = 'slack-private-event' returning id`)).rows).toHaveLength(0);
+    expect((await actingAs(admin, "delete from public.background_jobs where id = 'slack-private-event' returning id")).rows).toHaveLength(0);
+    expect((await pg.query("select payload from public.background_jobs where id = 'slack-private-event'")).rows).toEqual([{ payload: { text: "private channel" } }]);
+  });
   it("shows members redacted health while only Admins can select ciphertext", async () => {
     expect(
       (await actingAs(viewer, "select id from public.application_connections_safe")).rows

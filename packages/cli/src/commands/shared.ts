@@ -28,6 +28,17 @@ export function str(flag: FlagValue | undefined): string | undefined {
   return typeof flag === "string" ? flag : undefined;
 }
 
+/**
+ * A flag given with no value (`--approval-bypass`). Reach for this rather than
+ * `flags.someName === true`: the parser stores a flag under the exact name that
+ * was typed and normalises nothing, so a camelCase read of a kebab-case flag is
+ * always `undefined` and the command succeeds having done nothing.
+ */
+export function bool(flag: FlagValue | undefined): boolean | undefined {
+  if (Array.isArray(flag)) return flag.includes(true) ? true : undefined;
+  return flag === true ? true : undefined;
+}
+
 /** Every string value of a flag, in the order it was given. */
 export function strList(flag: FlagValue | undefined): string[] {
   if (Array.isArray(flag)) {
