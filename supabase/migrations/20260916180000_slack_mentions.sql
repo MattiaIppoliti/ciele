@@ -13,6 +13,17 @@ create index if not exists application_connections_slack_workspace_idx
 -- private-channel text; ordinary organization membership grants no access.
 -- Restrictive policies intersect with the existing org policies. Service role
 -- bypasses RLS; other job kinds retain their existing behavior.
+--
+-- Dropped first because `create policy` has no `if not exists`, and this
+-- project's live database already carries these four: the Slack work was
+-- deployed there by hand before the migration existed, so the applier hit
+-- "policy already exists", rolled the file back, and left it pending to fail
+-- again on every nightly run. On a database built from the chain alone the
+-- drops are no-ops.
+drop policy if exists slack_jobs_service_select on public.background_jobs;
+drop policy if exists slack_jobs_service_insert on public.background_jobs;
+drop policy if exists slack_jobs_service_update on public.background_jobs;
+drop policy if exists slack_jobs_service_delete on public.background_jobs;
 create policy slack_jobs_service_select on public.background_jobs
   as restrictive for select to authenticated using (kind <> 'answer_slack_mention');
 create policy slack_jobs_service_insert on public.background_jobs
