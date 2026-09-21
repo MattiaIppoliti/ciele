@@ -76,5 +76,10 @@ Mutation routes can accept an `Idempotency-Key` header. Reuse the same value onl
 - Configuration: manage Skills, Assistant Goals, and operational Alerts.
 - Organization: manage settings, Members, Invites, and API keys.
 - Integrations: manage Assistant API integrations and model Provider Connections.
+- Usage: read the plan's meters and who spent a window's credits. Read-only.
+  The spender breakdown keeps its dimensions apart. One answer names both the
+  teammate that ran and the colleague who asked, so adding the dimensions
+  together counts it twice. Buying credits has no endpoint: a purchase belongs
+  on a screen where a person confirms an amount.
 
 Use the OpenAPI document for exact request fields and response schemas.

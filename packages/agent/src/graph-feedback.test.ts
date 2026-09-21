@@ -297,6 +297,8 @@ describe("runGraphLearning", () => {
         credentialKind: "platform",
         inputTokens: 900,
         outputTokens: 400,
+        // Nightly graph learning is nobody's turn (#849).
+        surface: "scheduled",
       },
     ]);
   });

@@ -102,10 +102,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
               has to be pinned as well, CSS promotes the other axis to `auto`
               on its own, which puts a stray vertical scrollbar in a 28px-tall
               strip. */}
-          <TabsList
-            variant="line"
-            className="no-scrollbar min-w-0 overflow-x-auto overflow-y-hidden"
-          >
+          <TabsList className="no-scrollbar min-w-0 overflow-x-auto overflow-y-hidden">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.label}

@@ -1,4 +1,10 @@
 import type { ChannelRosterEntry } from "@agent-hub/core";
+import {
+  activeToken,
+  matchByName,
+  replaceToken,
+  type ActiveToken,
+} from "@/lib/composer/token";
 
 /**
  * The @ picker's logic (#778): what token the caret is inside, who matches it,
@@ -9,6 +15,11 @@ import type { ChannelRosterEntry } from "@agent-hub/core";
  * agree with `parseChannelMentions` in `@agent-hub/core`: a name the picker
  * inserts must be a name the resolver later finds. That is why matching is
  * case-insensitive and why names keep their spaces, the resolver reads both.
+ *
+ * The caret arithmetic itself is `lib/composer/token.ts`, shared with the two
+ * other triggers a composer now carries. What stays here is everything the
+ * channel means by a mention: who ranks above whom, and which runs of a posted
+ * message are names rather than prose.
  */
 
 /** Someone the picker can offer: a roster entry plus what the list renders. */
@@ -20,39 +31,14 @@ export interface MentionTarget extends ChannelRosterEntry {
 }
 
 /** The @token under the caret: where its `@` sits, and what follows it. */
-export interface ActiveMention {
-  /** Index of the `@` itself. */
-  start: number;
-  /** What was typed after the `@`, up to the caret. */
-  query: string;
-}
+export type ActiveMention = ActiveToken;
 
-/**
- * Roster names contain spaces ("Chief of Staff"), so the query may too; the
- * cap keeps a lone `@` in running prose from reopening the list forever.
- */
-const QUERY_LIMIT = 32;
-
-/**
- * The mention token the caret is inside, or null when it is not in one.
- *
- * An `@` only opens a mention at the start of the text, a line, or after
- * whitespace, mirroring nothing about the resolver (which reads every `@`) but
- * everything about typing: `name@example.com` must not pop a list. The token
- * ends at the caret, and a newline before the caret ends it too.
- */
+/** The mention token the caret is inside, or null when it is not in one. */
 export function activeMention(
   text: string,
   caret: number
 ): ActiveMention | null {
-  const upto = text.slice(0, caret);
-  const start = upto.lastIndexOf("@");
-  if (start === -1) return null;
-  const before = upto[start - 1];
-  if (before && !/\s/.test(before)) return null;
-  const query = upto.slice(start + 1);
-  if (query.includes("\n") || query.length > QUERY_LIMIT) return null;
-  return { start, query };
+  return activeToken(text, caret, "@");
 }
 
 /**
@@ -65,15 +51,9 @@ export function mentionMatches(
   targets: readonly MentionTarget[],
   query: string
 ): MentionTarget[] {
-  const needle = query.trim().toLowerCase();
-  const named = targets.filter((target) => target.name.trim().length > 0);
-  const pool = needle
-    ? named.filter((target) => target.name.toLowerCase().includes(needle))
-    : named;
-  const rank = (target: MentionTarget) =>
-    (target.kind === "teammate" ? 0 : 2) +
-    (needle && !target.name.toLowerCase().startsWith(needle) ? 1 : 0);
-  return [...pool].sort((a, b) => rank(a) - rank(b));
+  return matchByName(targets, query, (target) =>
+    target.kind === "teammate" ? 0 : 1
+  );
 }
 
 /**
@@ -86,11 +66,7 @@ export function insertMention(
   caret: number,
   name: string
 ): { text: string; caret: number } {
-  const inserted = `@${name} `;
-  return {
-    text: text.slice(0, mention.start) + inserted + text.slice(caret),
-    caret: mention.start + inserted.length,
-  };
+  return replaceToken(text, mention, caret, `@${name} `);
 }
 
 /** One run of a message: plain prose, or a name that resolved to somebody. */

@@ -1679,6 +1679,28 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     cli: "ciele reviews decide {reviewId} --decision approved --inputs amount=50",
     mcp: '{"action":"review_decide","reviewId":"{reviewId}","decision":"approved","inputs":{"amount":"50"}}',
   },
+  // Usage (#853), read-only. A purchase is deliberately absent: it belongs to a
+  // surface where a person confirms an amount.
+  {
+    method: "get",
+    path: "/usage/meters",
+    domain: "usage",
+    capability: "manageMembers",
+    summary:
+      "The plan's meters: cap, credits used and window per resource (an unmetered deployment says so)",
+    cli: "ciele usage meters",
+    mcp: '{"action":"usage_meters"}',
+  },
+  {
+    method: "get",
+    path: "/usage/spenders",
+    domain: "usage",
+    capability: "manageMembers",
+    summary:
+      "Who spent a window's credits, grouped per dimension (a turn names two, so dimensions do not add up)",
+    cli: "ciele usage spenders --from 2026-09-01T00:00:00Z",
+    mcp: '{"action":"usage_spenders","from":"2026-09-01T00:00:00Z"}',
+  },
 ];
 
 const ERROR_SCHEMA = {

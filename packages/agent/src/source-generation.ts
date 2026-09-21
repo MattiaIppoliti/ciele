@@ -65,6 +65,9 @@ export function clearSourceGenerationCheckpoint(
     crawlIngestGenerationId: undefined,
     crawlIngestExpectedGenerationId: undefined,
     crawlIngestedPages: undefined,
+    // The in-flight display counter goes with the generation that produced it;
+    // `crawlTotalPages` stays, it describes the crawl that just ended.
+    crawlStagedPages: undefined,
   };
 }
 

@@ -1,4 +1,7 @@
 import type { AssistantGoal } from "@agent-hub/core";
+import { fileGoalImprovement } from "./goal-improvement";
+import { enqueueGoalProposalJob } from "./jobs";
+import type { ChatReplyPart } from "./types";
 import type { Db } from "@agent-hub/db";
 import { runAssistantChat } from "./engine";
 import { buildKnowledgeSearcher } from "./retrieval";
@@ -57,7 +60,15 @@ async function evalGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
   return verdict;
 }
 
-async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
+/**
+ * The verdict plus what produced it. The answer is deliberately NOT on
+ * `GoalVerdict`: grading is pure and the grade is the same whatever the
+ * Assistant said, but the Improvement (#903) needs the text the Visitor would
+ * have seen, so it rides alongside rather than inside.
+ */
+type GoalRun = GoalVerdict & { parts?: readonly ChatReplyPart[] };
+
+async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalRun> {
   const publication = await db.getLatestPublication(goal.assistantId);
   if (!publication) {
     return {
@@ -84,6 +95,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
     assistant,
     collectionId: null,
     conversationId: null,
+    usage: { surface: "scheduled" },
   });
   const platformPrompt = await getRuntimeHost().getPlatformSystemPrompt();
   const resolvedModel = resolveChatModel(
@@ -135,10 +147,12 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
         credentialKind: u.credentialKind,
         inputTokens: u.inputTokens,
         outputTokens: u.outputTokens,
+        // Synthetic traffic: nobody asked, so nobody is named (#849).
+        surface: "scheduled" as const,
       })),
     );
 
-    return gradeGoalReply(result.parts, goal.expectations);
+    return { ...gradeGoalReply(result.parts, goal.expectations), parts: result.parts };
   } finally {
     await admission?.release();
   }
@@ -147,7 +161,7 @@ async function executeGoal(db: Db, goal: AssistantGoal): Promise<GoalVerdict> {
 async function finishRun(
   db: Db,
   goal: AssistantGoal,
-  verdict: GoalVerdict,
+  verdict: GoalRun,
   durationMs: number
 ): Promise<void> {
   try {
@@ -185,5 +199,19 @@ async function finishRun(
       },
       "goal-runner"
     );
+    // Beside the Alert, not instead of it (#903). The Alert says an operator
+    // should look; the Improvement is where the fix gets drafted, reviewed and
+    // accepted into the Assistant's knowledge. One card per goal, gaining a
+    // night each time, never one card per night.
+    const filed = await fileGoalImprovement(db, goal, {
+      detail: verdict.detail,
+      parts: verdict.parts ?? [],
+    });
+    // Only on the first night: the draft is against the answer that failed,
+    // and a goal that fails again tomorrow failed the same way. A second draft
+    // would replace the first and cost a model call to say the same thing.
+    if (filed?.created) {
+      await enqueueGoalProposalJob(db, goal, filed.improvement.id, filed.answer);
+    }
   }
 }

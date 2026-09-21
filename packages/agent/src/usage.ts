@@ -1,4 +1,8 @@
-import type { AiUsageInput } from "@agent-hub/core";
+import type {
+  AiUsageInput,
+  UsageSpenders,
+  UsageSurface,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { UsageEvent } from "./types";
 
@@ -75,6 +79,43 @@ export function summarizeTurnUsage(usage: UsageEvent[]): {
     outputTokens,
     provider: picked?.provider ?? null,
     modelId: picked?.modelId ?? null,
+  };
+}
+
+/**
+ * Which surface a turn's credits belong to, and who spent them (#849).
+ *
+ * Pure, and here rather than inline in the turn, because it is a policy with
+ * four rules worth pinning: the caller's declared surface wins (only it knows
+ * an unattended Routine is driving what otherwise looks exactly like a Member's
+ * Teammate chat); the subject's surface is the default; the Member comes from
+ * the same `keyResolution` that decides whose personal subscription may run;
+ * and every absent identity is null rather than undefined, so the two data-layer
+ * adapters cannot disagree about what "nobody" is.
+ */
+export function turnUsageAttribution(input: {
+  /** What the turn worked out for itself from its subject. */
+  subjectSurface: UsageSurface;
+  teammateId?: string | null;
+  memberId?: string | null;
+  declared?: {
+    surface?: UsageSurface;
+    routineId?: string | null;
+    apiKeyId?: string | null;
+  };
+}): { surface: UsageSurface; spenders: UsageSpenders } {
+  return {
+    surface: input.declared?.surface ?? input.subjectSurface,
+    spenders: {
+      teammateId: input.teammateId ?? null,
+      memberId: input.memberId ?? null,
+      routineId: input.declared?.routineId ?? null,
+      apiKeyId: input.declared?.apiKeyId ?? null,
+      // Null, not absent. The Flow is only known once one has answered, so the
+      // caller fills it in at row-build time; leaving the key out here would
+      // make this the one identity the rule above does not hold for.
+      flowId: null,
+    },
   };
 }
 

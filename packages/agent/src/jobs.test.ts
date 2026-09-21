@@ -505,6 +505,7 @@ describe("runDueJobs (generic ledger)", () => {
       "answer_slack_mention",
       "deliver_review_request",
       "distill_agent_memory",
+      "draft_goal_proposal",
       "draft_improvement_proposal",
       "graph_sync_concept",
       "ingest_source",

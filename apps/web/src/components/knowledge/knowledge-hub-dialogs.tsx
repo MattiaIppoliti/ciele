@@ -29,6 +29,7 @@ import {
   uploadOrgFileSourceAction,
 } from "@/app/actions";
 import { FAQ_ANSWER_MAX, FAQ_QUESTION_MAX } from "@/lib/faq-csv";
+import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 
 /** Searchable multi-select over the Organization's Assistants. */
@@ -288,6 +289,7 @@ export function AddWebsiteDialog({
           },
           selected
         );
+        ingestionStarted();
         toast.success("Website added, crawling in the background.");
         onClose();
       } catch (error) {
@@ -419,6 +421,7 @@ export function AddFileDialog({
         toast.error(result.error);
         return;
       }
+      ingestionStarted();
       toast.success("File uploaded, indexing in the background.");
       onClose();
     });

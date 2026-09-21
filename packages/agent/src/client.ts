@@ -52,6 +52,7 @@ export { canEmbedWithConnection } from "./embedding-capability";
 
 // Static model catalog for editor UI (provider labels + model lists).
 export { MODEL_CATALOG, PROVIDER_NAMES } from "./catalog";
+export type { ChatModelOption } from "./catalog";
 
 // The agent loop's iteration budget: the number the model is TOLD about (#558).
 // Public because the Inbox export re-states it in the reference platform's

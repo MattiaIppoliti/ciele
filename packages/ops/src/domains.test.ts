@@ -347,6 +347,51 @@ describe("organization administration operations", () => {
 });
 
 describe("integration and provider operations", () => {
+  it("refuses an idempotency declaration that would fight the credential", async () => {
+    // #901. The declaration is admin-supplied and lands in the same header map
+    // as the integration's sealed credential, so it is refused on the editor's
+    // own round trip rather than filtered at send time where nobody sees it.
+    const assistant = await newAssistant("Idempotency fixture");
+    const save = (idempotency: { in: "header" | "body"; name: string }) =>
+      setApiIntegrationOp.run(ctx(), {
+        assistantId: assistant.id,
+        input: {
+          name: "Ticketing",
+          baseUrl: "https://api.example.edu",
+          authType: "bearer",
+          credential: "secret-token",
+          endpoints: [
+            {
+              id: "create",
+              name: "Create ticket",
+              purpose: "Open a ticket",
+              method: "POST",
+              path: "/tickets",
+              idempotency,
+            },
+          ],
+        },
+      });
+    await expect(save({ in: "header", name: "Authorization" })).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+    await expect(save({ in: "header", name: "X Key" })).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+    await expect(save({ in: "body", name: "meta.id" })).rejects.toMatchObject({
+      code: "invalid_input",
+    });
+    // And the shape an organization actually has, saved and read back.
+    await save({ in: "header", name: "Idempotency-Key" });
+    const stored = await getApiIntegrationOp.run(ctx(), {
+      assistantId: assistant.id,
+    });
+    expect(stored?.endpoints?.[0]?.idempotency).toEqual({
+      in: "header",
+      name: "Idempotency-Key",
+    });
+  });
+
   it("stores API and SSO credentials while returning only safe projections", async () => {
     const assistant = await newAssistant("Integration fixture");
     await setApiIntegrationOp.run(ctx(), {

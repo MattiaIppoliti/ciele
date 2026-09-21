@@ -1,20 +1,18 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
-import { Loader2, Trash2, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { removeMemberAction, revokeInviteAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";
+import { isRedirectError } from "@/components/ui/confirm-delete-modal";
+import { SlideToConfirm } from "@/components/ui/slide-to-confirm";
 import type { MemberRow } from "@/lib/member-rows";
 import { Button } from "@agent-hub/ui";
-import { Input } from "@agent-hub/ui";
-import { Label } from "@agent-hub/ui";
-
-const CONFIRMATION_WORD = "DELETE";
 
 /**
- * The same two-step (warning -> type-to-confirm) morphing modal the assistant
+ * The same two-step (warning -> slide-to-confirm) morphing modal the assistant
  * delete uses, retargeted at a Members-table row. A pending invite is revoked
  * rather than removed, but it goes through the identical gate, the row means
  * the same thing to an admin either way.
@@ -29,11 +27,8 @@ export function RemoveMemberModal({
   onClose: () => void;
 }) {
   const [view, setView] = useState<"warning" | "confirm">("warning");
-  const [confirmationText, setConfirmationText] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const inputId = useId();
+  const [busy, setBusy] = useState(false);
 
-  const isConfirmed = confirmationText === CONFIRMATION_WORD;
   const isInvite = row?.kind === "invite";
   const subject = row?.name ?? "";
 
@@ -41,29 +36,35 @@ export function RemoveMemberModal({
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open) {
-      setView("warning");
-      setConfirmationText("");
-    }
+    if (open) setView("warning");
   }
 
   function close() {
-    if (isPending) return;
+    if (busy) return;
     onClose();
   }
 
-  function handleRemove() {
-    if (!row || !isConfirmed || isPending) return;
-    startTransition(async () => {
-      if (row.kind === "invite") {
-        await revokeInviteAction(row.subjectId);
-        toast.success("Invitation revoked");
-      } else {
-        await removeMemberAction(row.subjectId);
-        toast.success("Member removed");
-      }
-      onClose();
-    });
+  /** Rethrows, so a failed removal sends the handle back to the start. */
+  async function handleRemove() {
+    if (!row) return;
+    setBusy(true);
+    try {
+      if (row.kind === "invite") await revokeInviteAction(row.subjectId);
+      else await removeMemberAction(row.subjectId);
+    } catch (error) {
+      setBusy(false);
+      if (isRedirectError(error)) throw error;
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : isInvite
+            ? "The invitation was not revoked"
+            : "The member was not removed",
+      );
+      throw error;
+    }
+    toast.success(isInvite ? "Invitation revoked" : "Member removed");
+    onClose();
   }
 
   return (
@@ -109,49 +110,25 @@ export function RemoveMemberModal({
                 Confirm {isInvite ? "revocation" : "removal"}
               </h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                Type <strong>{CONFIRMATION_WORD}</strong> below to permanently{" "}
-                {isInvite ? "revoke" : "remove"} &ldquo;{subject}&rdquo;.
+                Slide to permanently {isInvite ? "revoke" : "remove"} &ldquo;
+                {subject}&rdquo;.
               </p>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor={inputId}>Type {CONFIRMATION_WORD} to confirm</Label>
-            <Input
-              id={inputId}
-              value={confirmationText}
-              onChange={(e) => setConfirmationText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleRemove();
-              }}
-              placeholder={CONFIRMATION_WORD}
-              autoComplete="off"
-              disabled={isPending}
+          <div className="flex justify-center">
+            <SlideToConfirm
+              onConfirm={handleRemove}
+              label={isInvite ? "Slide to revoke" : "Slide to remove"}
+              confirmedLabel={isInvite ? "Revoked" : "Removed"}
             />
-            {confirmationText && !isConfirmed ? (
-              <p className="text-destructive text-xs">
-                The text doesn&rsquo;t match. Type {CONFIRMATION_WORD} exactly.
-              </p>
-            ) : null}
           </div>
           <div className="flex justify-end gap-2">
             <Button
               variant="ghost"
               onClick={() => setView("warning")}
-              disabled={isPending}
+              disabled={busy}
             >
               Back
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleRemove}
-              disabled={!isConfirmed || isPending}
-            >
-              {isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Trash2 className="size-4" />
-              )}
-              {isInvite ? "Revoke invitation" : "Remove member"}
             </Button>
           </div>
         </div>

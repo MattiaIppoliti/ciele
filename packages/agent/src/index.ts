@@ -73,6 +73,11 @@ export {
   updateWebsiteSourceConfiguration,
 } from "./ingest";
 export { extractSourceText } from "./extract";
+// Reading an image, which is where "OCR" would be if Ciele had one: the
+// Organization's own provider connection answers what the picture says, and
+// the words join the pipeline where a PDF's text does (see `vision.ts`).
+export { createVisionReader } from "./vision";
+export type { VisionReader } from "./vision";
 export { enqueueIngestJob, runDueIngestJobs } from "./jobs";
 export { enqueueApplicationSyncJob } from "./jobs";
 export {
@@ -161,6 +166,11 @@ export type { AgenticOpsReport } from "./scheduled";
 // Provider/model resolution (which LLMs an org can actually run on) and
 // pre-flight validation of a provider API key.
 export { providerAvailability } from "./models";
+// The models a chat window may offer (allow-list ∩ the org's connections), and
+// the row shape the client draws. Server-side because capability is read from
+// the Provider Connections and the platform environment.
+export { chatModelOptions } from "./model-options";
+export type { ChatModelOption } from "./model-options";
 export { validateProviderApiKey, InvalidProviderKeyError } from "./validate-key";
 // "Test connection" for an OpenAI-compatible endpoint: one-token chat call +
 // one embedding call (#436), drives the admin connection form.

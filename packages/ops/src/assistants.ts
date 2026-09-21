@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allowedModelsSchema } from "./model-allow-list";
 import type {
   Assistant,
   AssistantPatch,
@@ -53,6 +54,8 @@ export const assistantPatchSchema = z
     chatLauncherEnabled: z.boolean(),
     modelProvider: z.custom<Provider>((v) => typeof v === "string"),
     modelId: z.string().max(200),
+    allowedModels: allowedModelsSchema,
+    attachmentsEnabled: z.boolean(),
     style: z.custom<Assistant["style"]>(
       (v) => typeof v === "object" && v !== null
     ),
@@ -176,6 +179,8 @@ export const duplicateAssistantOp = defineOperation({
       chatLauncherEnabled: source.chatLauncherEnabled,
       modelProvider: source.modelProvider,
       modelId: source.modelId,
+      allowedModels: source.allowedModels,
+      attachmentsEnabled: source.attachmentsEnabled,
       style: source.style,
       allowedDomains: source.allowedDomains,
       helpDeskSettings: source.helpDeskSettings,

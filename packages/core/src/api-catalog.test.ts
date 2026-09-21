@@ -3,6 +3,9 @@ import {
   apiCatalogSummary,
   apiEndpointDetail,
   resolveCatalogPath,
+  endpointIdempotencyExposure,
+  endpointIdempotencyKey,
+  validateEndpointIdempotency,
 } from "./api-catalog";
 import type { ApiEndpointSpec } from "./types";
 
@@ -206,5 +209,136 @@ describe("percent-encoded dot segments", () => {
     if (result.ok) {
       expect(result.pathParams).toEqual({ collection: "tickets", id: "8317" });
     }
+  });
+});
+
+describe("endpoint idempotency (#901)", () => {
+  const endpoint = (over: Partial<ApiEndpointSpec> = {}): ApiEndpointSpec => ({
+    id: "create-ticket",
+    name: "Create ticket",
+    path: "/tickets",
+    method: "POST",
+    purpose: "Open a support ticket",
+    ...over,
+  });
+
+  describe("the key", () => {
+    it("is the same for the same Conversation and call slot", () => {
+      // A retry of the same call, by us, by a durable job, or by anything
+      // above us that reissues the request, must present the value the
+      // organization's API already saw.
+      const args = {
+        conversationId: "conv-1",
+        callSlot: "action-2",
+        endpointId: "create-ticket",
+      };
+      expect(endpointIdempotencyKey(args)).toBe(endpointIdempotencyKey(args));
+    });
+
+    it("differs for a different Conversation, slot or endpoint", () => {
+      // Two different calls are two different writes. Collapsing them would
+      // tell a Member their second order duplicated their first.
+      const base = {
+        conversationId: "conv-1",
+        callSlot: "action-2",
+        endpointId: "create-ticket",
+      };
+      const keys = new Set([
+        endpointIdempotencyKey(base),
+        endpointIdempotencyKey({ ...base, conversationId: "conv-2" }),
+        endpointIdempotencyKey({ ...base, callSlot: "action-3" }),
+        endpointIdempotencyKey({ ...base, endpointId: "create-refund" }),
+      ]);
+      expect(keys.size).toBe(4);
+    });
+
+    it("cannot be forged into another call's key by a crafted id", () => {
+      // The parts are percent-encoded before joining, so a conversation id
+      // containing the separator cannot impersonate a different slot.
+      expect(
+        endpointIdempotencyKey({
+          conversationId: "conv-1:action-9",
+          callSlot: "action-2",
+          endpointId: "e",
+        })
+      ).not.toBe(
+        endpointIdempotencyKey({
+          conversationId: "conv-1",
+          callSlot: "action-9:action-2",
+          endpointId: "e",
+        })
+      );
+    });
+
+    it("fits the header cap every implementation shares", () => {
+      expect(
+        endpointIdempotencyKey({
+          conversationId: "c".repeat(400),
+          callSlot: "s".repeat(400),
+          endpointId: "e".repeat(400),
+        }).length
+      ).toBeLessThanOrEqual(256);
+    });
+  });
+
+  describe("the declaration", () => {
+    it("accepts a plain header name and a plain body field", () => {
+      expect(validateEndpointIdempotency({ in: "header", name: "Idempotency-Key" })).toEqual({ ok: true });
+      expect(validateEndpointIdempotency({ in: "body", name: "request_id" })).toEqual({ ok: true });
+    });
+
+    it("refuses a header that would overwrite the credential", () => {
+      // The declaration is admin-supplied and lands in the same header map as
+      // the integration's sealed credential. Naming `authorization` would let
+      // an endpoint description replace the credential with a derived hash.
+      for (const name of ["authorization", "Authorization", "Cookie", "host"]) {
+        expect(validateEndpointIdempotency({ in: "header", name })).toEqual({
+          ok: false,
+          reason: "reserved_header",
+        });
+      }
+    });
+
+    it("refuses a header name that could split the request", () => {
+      for (const name of ["X-Key: injected", "X\nKey", "X Key"]) {
+        expect(
+          validateEndpointIdempotency({ in: "header", name }).ok
+        ).toBe(false);
+      }
+    });
+
+    it("refuses an empty name and a nested body path", () => {
+      expect(validateEndpointIdempotency({ in: "header", name: "   " })).toEqual({
+        ok: false,
+        reason: "empty_name",
+      });
+      expect(validateEndpointIdempotency({ in: "body", name: "meta.id" })).toEqual({
+        ok: false,
+        reason: "illegal_body_field",
+      });
+    });
+  });
+
+  describe("the exposure", () => {
+    it("says plainly that an undeclared write is unprotected", () => {
+      // #901: "An endpoint declaring no key is documented as unprotected
+      // rather than silently treated as safe."
+      expect(endpointIdempotencyExposure(endpoint())).toBe("unprotected");
+      for (const method of ["PUT", "PATCH", "DELETE"] as const) {
+        expect(endpointIdempotencyExposure(endpoint({ method }))).toBe("unprotected");
+      }
+    });
+
+    it("distinguishes a read, where a replay duplicates nothing", () => {
+      expect(endpointIdempotencyExposure(endpoint({ method: "GET" }))).toBe("read_only");
+    });
+
+    it("reports a declared endpoint as protected", () => {
+      expect(
+        endpointIdempotencyExposure(
+          endpoint({ idempotency: { in: "header", name: "Idempotency-Key" } })
+        )
+      ).toBe("protected");
+    });
   });
 });

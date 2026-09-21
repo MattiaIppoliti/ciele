@@ -46,7 +46,7 @@ const PROPOSALS_SCHEMA = z.object({
 });
 
 const COMPOST_SYSTEM = [
-  "You are a quality analyst for an AI assistant embedded on an organization's website. You receive one week of failure exhaust: answers that failed independent verification, answers visitors rated down, escalations, refusals, standing-goal violations and demoted flows.",
+  "You are a quality analyst for an AI assistant embedded on an organization's website. You receive one week of failure exhaust: answers that failed independent verification, answers visitors rated down, escalations, refusals and demoted flows.",
   "Propose AT MOST 3 concrete improvements a human admin could accept: a new FAQ (draft = the question and a grounded answer), a flow adjustment (draft = a prose description of the matcher/action change), an answering-style amendment (draft = the paragraph to add), or a new standing goal (draft = the golden question plus its checkable expectations).",
   "Ground every proposal in the exhaust, cite what recurred. Fewer, sharper proposals beat filler; propose nothing you cannot justify from the data. Use the organization's own domain language from the excerpts.",
 ].join(" ");
@@ -57,7 +57,10 @@ function digestIsEmpty(digest: CompostDigest): boolean {
     digest.thumbsDown.length === 0 &&
     digest.escalatedConversations === 0 &&
     digest.refusals === 0 &&
-    digest.goalViolations.length === 0 &&
+    // NOT `goalViolations`: a failing Goal files its own Improvement the same
+    // night (#903) and this digest no longer renders one, so counting them
+    // here would call a goal-violations-only week non-empty and then send the
+    // model an empty exhaust with a request for three grounded proposals.
     digest.demotedFlows.length === 0
   );
 }
@@ -81,12 +84,16 @@ export function renderDigest(digest: CompostDigest): string {
     lines.push(`Escalated conversations: ${digest.escalatedConversations}`);
   }
   if (digest.refusals > 0) lines.push(`Safety refusals: ${digest.refusals}`);
-  if (digest.goalViolations.length > 0) {
-    lines.push("Standing-goal violations:");
-    for (const g of digest.goalViolations.slice(0, 5)) {
-      lines.push(`- "${g.question}", ${g.detail}`);
-    }
-  }
+  // Standing-goal violations are deliberately NOT rendered here (#903).
+  //
+  // A failing Goal now files its own Improvement the same night, with the
+  // golden question, the expectation it missed and the answer it produced.
+  // Leaving it in this digest would make two producers for one signal, and
+  // this one's dedup could not catch the other: `landProposal` dedups by
+  // walking the evidence's Conversations, and a Goal Improvement has none,
+  // because a goal eval persists no Conversation. The second card would just
+  // appear. `getCompostDigest` still returns the field; nothing reads it, and
+  // removing it from the Db shape is a change to a seam for no gain.
   if (digest.demotedFlows.length > 0) {
     lines.push("Flows demoted to watch:");
     for (const f of digest.demotedFlows) {
@@ -206,6 +213,7 @@ async function compostOne(
           modelId,
           credentialKind,
           ...usageTotals(usage),
+          surface: "scheduled",
         },
       ]);
     } catch (error) {

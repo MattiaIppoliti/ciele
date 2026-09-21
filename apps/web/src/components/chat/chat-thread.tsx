@@ -26,7 +26,8 @@ import {
   MessageContent,
 } from "@/components/agents/message";
 import { StreamingResponse } from "@/components/agents/streaming-response";
-import { Citations, type CitationItem } from "@/components/agents/citations";
+import { Citations } from "@/components/agents/citations";
+import { toCitationItems } from "@/components/chat/citation-items";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 
 /**
@@ -46,20 +47,6 @@ import { GeneratedAvatar } from "@/components/ui/generated-avatar";
  * Each surface keeps what is genuinely its own: the header, the composer, the
  * escalation panel, history.
  */
-
-type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
-
-/** Concept→Source citations, shaped for the beui citation components. */
-function toCitationItems(sources: SourcesPart["sources"]): CitationItem[] {
-  return sources.map((source, index) => ({
-    id: source.conceptId ?? `source-${index}`,
-    title: source.conceptTitle,
-    domain: source.sourceName
-      ? `${source.collectionName} · ${source.sourceName}`
-      : source.collectionName,
-    url: source.url ?? undefined,
-  }));
-}
 
 /** "07 Jul, 14:32", the hover timestamp on a sent message. */
 function sentAtLabel(iso: string): string {

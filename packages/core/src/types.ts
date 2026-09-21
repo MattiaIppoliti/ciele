@@ -1,4 +1,5 @@
 import type { TriageEvidence } from "./document-triage";
+import type { ModelRef } from "./model-choice";
 /**
  * The domain vocabulary: every noun in `CONTEXT.md`, as a type.
  *
@@ -719,6 +720,27 @@ export interface ApiEndpointParam {
 }
 
 /**
+ * How one endpoint wants an idempotency key, when it accepts one at all (#901).
+ *
+ * The declaration exists because **we cannot guess the spelling**. The runtime
+ * has always sent a hardcoded `idempotency-key` header on the `api_request`
+ * Flow Action, which protects an organization whose API happens to read that
+ * exact name and silently protects nobody else. Stripe reads
+ * `Idempotency-Key`, some APIs take a field in the body, and many accept none,
+ * so the only party who knows is the organization that owns the endpoint.
+ *
+ * Optional on purpose. An API that supports no idempotency key still belongs
+ * in the catalogue, and a catalogue that refused those endpoints would be
+ * worse than one that records the exposure.
+ */
+export interface ApiEndpointIdempotency {
+  /** A request header, or a top-level field in the JSON body. */
+  in: "header" | "body";
+  /** The name the organization's own API reads. Never guessed. */
+  name: string;
+}
+
+/**
  * One endpoint of an {@link ApiIntegration}'s catalogue: what it is for, the
  * parameters it takes, and the keys a successful response carries. This
  * description is the whole contract the model discovers and reads; it is also
@@ -736,6 +758,12 @@ export interface ApiEndpointSpec {
   params?: ApiEndpointParam[];
   /** Keys present in a successful response body. */
   responseKeys?: string[];
+  /**
+   * Where this endpoint wants an idempotency key, if it takes one (#901).
+   * Absent means the endpoint is **unprotected against a duplicate write**,
+   * which `endpointIdempotencyExposure` states rather than leaves implied.
+   */
+  idempotency?: ApiEndpointIdempotency;
 }
 
 export type ApiIntegrationAuthType = "none" | "bearer" | "api_key" | "basic";
@@ -797,6 +825,17 @@ export interface Skill {
   name: string;
   description: string;
   prompt: string;
+  /**
+   * The opening line the composer writes when someone picks this Skill from
+   * `/`, phrased as the asker ("Draft release notes for…"), not as the Skill.
+   *
+   * A separate field from `prompt` because they are addressed to different
+   * readers: `prompt` is a system-prompt layer the model is given every turn,
+   * and putting it in a Visitor's message box would show them instructions
+   * written about them. Empty, the default, keeps the Skill out of `/`
+   * entirely: a menu entry that inserts nothing is worse than no entry.
+   */
+  starter: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -805,6 +844,7 @@ export interface SkillInput {
   name: string;
   description?: string;
   prompt: string;
+  starter?: string;
 }
 
 /**
@@ -838,10 +878,22 @@ export interface CookieConsentRecord {
   createdAt: string;
 }
 
-export type SkillPatch = Partial<Pick<Skill, "name" | "description" | "prompt">>;
+export type SkillPatch = Partial<
+  Pick<Skill, "name" | "description" | "prompt" | "starter">
+>;
 
-/** What the runtime needs of an attached skill (frozen into Publications). */
-export type SkillSnapshot = Pick<Skill, "id" | "name" | "description" | "prompt">;
+/**
+ * What the runtime needs of an attached skill (frozen into Publications).
+ *
+ * `starter` rides along although no turn reads it: the widget's `/` menu is
+ * served from this snapshot like everything else it shows, and a second read
+ * of the live Skill row would let the menu and the prompt layer disagree about
+ * which Skill is even attached.
+ */
+export type SkillSnapshot = Pick<
+  Skill,
+  "id" | "name" | "description" | "prompt" | "starter"
+>;
 
 // ---------------------------------------------------------------------------
 // Entities + Records: org-level structured business data (#663).
@@ -1562,6 +1614,36 @@ export interface Assistant {
   chatLauncherEnabled: boolean;
   modelProvider: Provider;
   modelId: string;
+  /**
+   * The models a Visitor may switch between in the chat window, beside the
+   * configured one above.
+   *
+   * **Empty is the default and means no picker.** An Assistant published
+   * before this existed goes on running `modelProvider`/`modelId` and offers
+   * nothing, which is the only behaviour that leaves an org's cost exposure
+   * where its admin put it. Every entry is still resolved against the
+   * organization's Provider Connections at read time, so removing a connection
+   * removes its models from the widget without an edit here.
+   *
+   * Optional because it is also read off Publication snapshots written before
+   * it existed: for those the key is genuinely absent, and a required field
+   * would be a lie the type tells about rows already in the database. Absent
+   * and empty mean the same thing.
+   */
+  allowedModels?: ModelRef[];
+  /**
+   * Whether the published widget lets a Visitor attach a file.
+   *
+   * Off by default. A Member attaching a file in the Preview or a Teammate chat
+   * is signed in, attributable and already budgeted per account; a Visitor is a
+   * stranger on somebody else's page, and every file they send costs parser
+   * work, a model call if it is an image, and a malware surface. The console
+   * surfaces do not read this flag, because they are not that.
+   *
+   * Nothing is retained either way: an attachment is read into text once and
+   * the bytes are dropped.
+   */
+  attachmentsEnabled?: boolean;
   style: WidgetStyle;
   allowedDomains: string[];
   helpDeskSettings: HelpDeskSettings;
@@ -1607,6 +1689,8 @@ export interface PublicationConfig {
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
+    | "allowedModels"
+    | "attachmentsEnabled"
     | "style"
     | "allowedDomains"
     | "helpDeskSettings"
@@ -1679,6 +1763,17 @@ export interface Teammate {
   sourceIds: string[];
   modelProvider: Provider;
   modelId: string;
+  /**
+   * The models a Member may switch between while chatting with this Teammate.
+   * Empty means no picker, the same default the Assistant carries.
+   *
+   * A Member's own connected subscription is never one of these entries and is
+   * never chosen here: it is set once in Settings → AI and outranks whatever
+   * the composer offers (ADR-0001/0007 as amended by #769).
+   *
+   * Optional for the same reason the Assistant's is: absent means empty.
+   */
+  allowedModels?: ModelRef[];
   /**
    * Null for a Member-created Teammate. A system Teammate (#838) belongs to
    * the surface that created it, is hidden from the roster and from referral
@@ -2055,6 +2150,7 @@ export type TeammatePatch = Partial<
     | "editorIds"
     | "modelProvider"
     | "modelId"
+    | "allowedModels"
     | "projectId"
     | "deletedAt"
   >
@@ -2101,6 +2197,12 @@ export type BackgroundJobKind =
   | "ingest_source"
   | "graph_sync_concept"
   | "draft_improvement_proposal"
+  /**
+   * The same draft, for a failing standing Goal (#903). A separate kind
+   * because its payload carries its own inputs: a goal eval persists no
+   * Conversation and no message, so there is nothing to rehydrate from.
+   */
+  | "draft_goal_proposal"
   | "promote_memories"
   | "distill_agent_memory"
   | "sync_entity_records"
@@ -2177,6 +2279,26 @@ export interface WebsiteSourceConfig {
   crawlIngestExpectedGenerationId?: string;
   /** Successfully staged usable pages, for progress and empty-result checks. */
   crawlIngestedPages?: number;
+  /**
+   * Pages this crawl will ingest, known once its last dataset window is in
+   * hand: the count of pages actually staged, not the crawler's row count, so
+   * it is a denominator progress can reach. A windowed provider therefore has
+   * no total until its final window, and the console shows a bare count until
+   * then rather than a denominator it would have had to guess.
+   *
+   * Survives the crawl on purpose: after it finishes this is how many pages the
+   * most recent crawl brought in.
+   */
+  crawlTotalPages?: number;
+  /**
+   * Pages staged so far *within* the current window, for display only.
+   *
+   * Deliberately not `crawlIngestedPages`: that one is the resume arithmetic,
+   * and moving it mid-window would make a crash resume double-count the pages
+   * it restages. This one is advisory, nothing reads it back, and it is cleared
+   * when the crawl ends.
+   */
+  crawlStagedPages?: number;
   /** Restartable non-website ingestion generation and next draft index. */
   sourceIngestGenerationId?: string;
   sourceIngestExpectedGenerationId?: string;
@@ -3383,6 +3505,130 @@ export interface OrgBudget {
   enforcement: BudgetEnforcement;
 }
 
+/**
+ * Who spent a metered unit of work, beyond the Organization that is billed for
+ * it (#848). Every field is optional because a usage row carries whichever
+ * identities its call site actually knows: a Teammate turn names the Teammate
+ * and the Member who asked, a Routine run names the Teammate and the Routine,
+ * scheduled work names nobody at all.
+ *
+ * **Attribution is a fact, never a decision.** No cap, gate or meter reads
+ * these fields; they exist so an admin can see where the credits went, and so
+ * that a later per-Member budget needs no backfill.
+ */
+export interface UsageSpenders {
+  /** The Member whose turn it was (Preview, Teammate chat, a console action). */
+  memberId?: string | null;
+  /** The AI Teammate that ran (1:1 chat, a channel turn, a Routine). */
+  teammateId?: string | null;
+  /** The Organization API key behind an `/api/v1` or MCP call. */
+  apiKeyId?: string | null;
+  /** The Routine whose unattended run this was. */
+  routineId?: string | null;
+  /** The Flow whose action drove the spend. */
+  flowId?: string | null;
+}
+
+/**
+ * Which surface produced a metered unit of work. Wider than
+ * `RuntimeEventSurface`, which only distinguishes the three chat surfaces:
+ * unattended and machine callers spend too, and "a Routine fired" must not be
+ * indistinguishable from "a Visitor asked".
+ *
+ * Closed vocabulary: the ledger's check constraint and
+ * `USAGE_SURFACES` below are kept in step by an exhaustive guard in the
+ * data-layer contract suite, the same mechanism that pins `AiUsageStage`.
+ */
+export type UsageSurface =
+  | "widget"
+  | "preview"
+  | "teammate"
+  | "channel"
+  | "routine"
+  | "http_flow"
+  | "api"
+  | "ingestion"
+  | "scheduled";
+
+/** Every usage surface, for the exhaustiveness guard and for iteration. */
+export const USAGE_SURFACES: readonly UsageSurface[] = [
+  "widget",
+  "preview",
+  "teammate",
+  "channel",
+  "routine",
+  "http_flow",
+  "api",
+  "ingestion",
+  "scheduled",
+];
+
+/**
+ * Work the platform does that is not a model call (#854): a Flow reaching an
+ * external API, an email delivered, an inbound flow run, an outbound webhook.
+ *
+ * Closed vocabulary, guarded the same way `UsageSurface` is: an operation added
+ * to the union but not to the table's check constraint is dropped in
+ * production, where the recorder isolates the failure.
+ */
+export type UsageOperation =
+  | "api_request"
+  | "send_email"
+  | "http_flow_run"
+  | "webhook_call";
+
+/** Every non-model operation, for the exhaustiveness guard and for iteration. */
+export const USAGE_OPERATIONS: readonly UsageOperation[] = [
+  "api_request",
+  "send_email",
+  "http_flow_run",
+  "webhook_call",
+];
+
+/** What one non-model operation is counted in. */
+export type UsageOperationUnit = "request" | "invocation" | "email";
+
+/**
+ * How a non-model operation ended. `refused` is ours saying no (an egress
+ * policy, an unconfigured transport); `failed` is the other side or the network.
+ * Kept apart from `succeeded` because a Flow firing a thousand refusals an hour
+ * is a different problem from one firing a thousand successes.
+ */
+export type UsageOperationStatus = "succeeded" | "failed" | "refused";
+
+/** One non-model operation, as the runtime records it. */
+export interface UsageEventInput {
+  organizationId: string;
+  operation: UsageOperation;
+  unit: UsageOperationUnit;
+  status: UsageOperationStatus;
+  /** How many units; one, except where a single call does several things. */
+  quantity: number;
+  spenders?: UsageSpenders;
+  surface?: UsageSurface | null;
+  assistantId?: string | null;
+  conversationId?: string | null;
+}
+
+/** One organization's non-model operations over a window, grouped. */
+export interface UsageEventRow {
+  operation: UsageOperation;
+  unit: UsageOperationUnit;
+  status: UsageOperationStatus;
+  quantity: number;
+  calls: number;
+}
+
+/**
+ * Which pocket paid for a unit of metered work (#851).
+ *
+ * A plan allowance is a **rate** (credits per window); a top-up balance is a
+ * **pool** the Organization owns until spent. The pool is drawn only once a
+ * window is fully consumed, so a pack is a buffer and never a substitute for
+ * the plan.
+ */
+export type UsageFunding = "plan" | "topup";
+
 /** One AI usage ledger row: a single model call, fully attributed. */
 export interface AiUsageInput {
   organizationId: string;
@@ -3397,6 +3643,24 @@ export interface AiUsageInput {
   credentialKind?: AiCredentialKind | null;
   inputTokens: number;
   outputTokens: number;
+  /** Who spent it, beyond the Organization; absent where nothing is known. */
+  spenders?: UsageSpenders;
+  /** Which surface produced it; null on a row recorded before #848. */
+  surface?: UsageSurface | null;
+  /**
+   * Which pocket paid (#851): the plan's window allowance, or a purchased
+   * balance once that allowance was fully consumed. Absent reads as `plan`.
+   */
+  funding?: UsageFunding | null;
+  /**
+   * What this row cost, in micro-credits, snapshotted at settle time.
+   *
+   * Written **only** on a `topup`-funded row. A plan meter is a fraction of an
+   * allowance and may follow the rate table, so plan-funded rows stay priced at
+   * read time; a pool debit is money the customer paid and must not move when a
+   * rate is corrected. This is the one place the ledger stores a price.
+   */
+  creditsMicro?: number | null;
 }
 
 /**
@@ -3471,6 +3735,34 @@ export interface UsageDailyRow {
  */
 export interface UsageMeterRow {
   resource: UsageResource;
+  credentialKind: AiCredentialKind | "unknown";
+  provider: string;
+  modelId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  /** Crawled pages on a scraping row; zero for model calls. */
+  units: number;
+}
+
+/**
+ * One organization's usage over an arbitrary window, grouped by *who* spent it
+ * (#848) rather than by which meter it charged.
+ *
+ * The grain is the whole spender tuple, not one identity per row, because a
+ * single unit of work has several: a Teammate turn belongs to the Teammate and
+ * to the Member who asked. Summing across dimensions would therefore count it
+ * twice, which is exactly why the pivot into a ranked list lives in one pure
+ * function (`rankSpenders`) that groups by a single dimension at a time.
+ *
+ * Provider and model stay on the row so the caller prices it in credits through
+ * the shared conversion, rather than the read storing a price.
+ */
+export interface UsageSpenderRow {
+  spenders: UsageSpenders;
+  /** The Assistant that answered; its own column on the ledger, not a spender. */
+  assistantId: string | null;
+  surface: UsageSurface | null;
   credentialKind: AiCredentialKind | "unknown";
   provider: string;
   modelId: string;
@@ -3656,6 +3948,8 @@ export type AssistantPatch = Partial<
     | "chatLauncherEnabled"
     | "modelProvider"
     | "modelId"
+    | "allowedModels"
+    | "attachmentsEnabled"
     | "style"
     | "allowedDomains"
     | "helpDeskSettings"

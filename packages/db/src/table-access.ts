@@ -333,7 +333,7 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
   skills: {
     table: "skills",
     id: "shortId",
-    defaults: { description: "" },
+    defaults: { description: "", starter: "" },
     orderBy: "createdAt",
     ascending: true,
     touchesUpdatedAt: true,

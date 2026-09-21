@@ -33,6 +33,17 @@ export default async function WidgetPage({
   }
 
   const { assistant, collections } = publication.config;
+  // Only the Skills an admin gave an opening line to: the rest are prompt
+  // layers with nothing to insert, and a `/` entry that inserts nothing is
+  // worse than no entry.
+  const skills = (publication.config.skills ?? [])
+    .filter((skill) => (skill.starter ?? "").trim().length > 0)
+    .map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      starter: skill.starter,
+    }));
 
   return (
     // useSearchParams in WidgetChat needs a Suspense boundary on a static
@@ -55,6 +66,14 @@ export default async function WidgetPage({
         }
         hideEscalation={assistant.helpDeskSettings?.hideEscalationButton ?? false}
         requireSignIn={assistant.requireSignIn ?? false}
+        // Whether this Assistant opened the model picker at all, which the
+        // snapshot knows on its own. The rows themselves depend on live
+        // Provider Connections, so they are fetched by the client instead:
+        // reading them here would make this page dynamic and cost every
+        // Assistant an origin round-trip for a feature almost none use.
+        modelChoice={(assistant.allowedModels ?? []).length > 0}
+        skills={skills}
+        attachmentsEnabled={assistant.attachmentsEnabled ?? false}
       />
     </Suspense>
   );

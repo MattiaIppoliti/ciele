@@ -354,3 +354,12 @@ export {
   provisionTeammateOp,
   type ProvisionedTeammate,
 } from "./teammate-provision";
+
+// Usage, read-only (#853): the plan's meters and who spent the window's
+// credits. Nothing here mutates and nothing here is a purchase.
+export {
+  readUsageMetersOp,
+  readUsageSpendersOp,
+  resolveUsageWindow,
+  type UsageSpendersResult,
+} from "./usage";

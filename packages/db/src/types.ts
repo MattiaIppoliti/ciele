@@ -147,7 +147,10 @@ import type {
   TrustSignal,
   TrustTier,
   UsageDailyRow,
+  UsageEventInput,
+  UsageEventRow,
   UsageMeterRow,
+  UsageSpenderRow,
   VerifiableAnswer,
 } from "@agent-hub/core";
 import type { DbTableAccessor, DbTableName } from "./table-access";
@@ -1476,6 +1479,28 @@ export interface Db {
     from: string,
     to: string
   ): Promise<UsageMeterRow[]>;
+  /**
+   * Record one non-model operation (#854): an outbound API request, an email,
+   * an inbound flow run, a webhook. Counted, never priced.
+   */
+  recordUsageEvents(events: UsageEventInput[]): Promise<void>;
+  /** Non-model operations over an arbitrary `[from, to)` window, grouped. */
+  getOrgUsageEvents(
+    organizationId: string,
+    from: string,
+    to: string
+  ): Promise<UsageEventRow[]>;
+  /**
+   * Usage over an arbitrary `[from, to)` window grouped by *who* spent it
+   * (#848), at the whole-spender-tuple grain plus provider/model so the caller
+   * prices it in credits. Pivot onto a single dimension with `rankSpenders`;
+   * summing across dimensions double-counts a row that names two identities.
+   */
+  getOrgUsageSpenders(
+    organizationId: string,
+    from: string,
+    to: string
+  ): Promise<UsageSpenderRow[]>;
   /** Cross-org: every Knowledge Collection whose assistant uses the graph
    * engine, the datasets the nightly graph-learning cron sweeps. Service-role
    * (spans orgs), like the other cron-claim reads. */

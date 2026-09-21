@@ -250,6 +250,9 @@ async function executeRoutine(
     // rendering it as something the author said this morning (#772, story 26).
     metadata: routineConversationMetadata(routine),
     // No `keyResolution`: unattended work runs on Organization connections.
+    // Its credits say so too (#849): a Routine run is not a Member's chat, and
+    // naming the Routine is what keeps a runaway schedule findable on Usage.
+    usageAttribution: { surface: "routine", routineId: routine.id },
     signal: new AbortController().signal,
   });
 

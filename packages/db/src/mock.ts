@@ -97,7 +97,10 @@ import type {
   TicketingIntegration,
   TrustSignal,
   UsageDailyRow,
+  UsageEventInput,
+  UsageEventRow,
   UsageMeterRow,
+  UsageSpenderRow,
   VerifiableAnswer,
 } from "@agent-hub/core";
 import {
@@ -238,6 +241,10 @@ interface MockStore {
   aiUsage: (AiUsageInput & { createdAt: string })[];
   /** usage_daily rollup rows, keyed `${org}|${day}|${kind}|${credentialKind}`. */
   usageDaily: Map<string, UsageDailyAggregate>;
+  /** usage_spender_daily rollup rows (#850), keyed by org + day + the tuple. */
+  usageSpenderDaily: Map<string, UsageSpenderAggregate>;
+  /** Non-model operations (#854), appended per call; counted, never priced. */
+  usageEvents: (UsageEventInput & { occurredAt: string })[];
   /** Runtime telemetry events (ADR-0011), appended per runtime boundary. */
   runtimeEvents: (RuntimeEventInput & { createdAt: string })[];
   /** Sensitive-object access ledger (#801, CYB-05). Append-only, like the table. */
@@ -576,6 +583,8 @@ function emptyStore(): MockStore {
       },
     ],
     usageDaily: new Map(),
+    usageSpenderDaily: new Map(),
+    usageEvents: [],
     objectAccessEvents: [],
     retentionSweepEvents: [],
     runtimeEvents: [
@@ -709,6 +718,9 @@ function seedSkillsDemo(store: MockStore) {
     description: "Ends every answer with a warm, on-brand closing line.",
     prompt:
       "End every answer with a new line containing exactly: Ask me anything else about Alex! 👋",
+    // Non-empty, so demo mode shows what the `/` menu is for rather than an
+    // empty one. A Skill with no starter is simply not offered there.
+    starter: "Sum up what Alex does, and sign off warmly.",
     createdAt: at,
     updatedAt: at,
   };
@@ -2000,6 +2012,92 @@ function ownerMatches(
 /** One usage_daily rollup row (org retained for scoping the report reads). */
 interface UsageDailyAggregate extends UsageDailyRow {
   organizationId: string;
+}
+
+/**
+ * One row of the per-spender rollup (#850). Mirrors `usage_spender_daily`:
+ * absent identities key as the empty string, because these columns are the
+ * primary key and null would make two rows with the same absent spender
+ * distinct. The seam maps '' back to null on the way out.
+ */
+interface UsageSpenderAggregate {
+  organizationId: string;
+  day: string;
+  memberId: string;
+  teammateId: string;
+  apiKeyId: string;
+  routineId: string;
+  flowId: string;
+  assistantId: string;
+  surface: string;
+  credentialKind: string;
+  provider: string;
+  modelId: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** The rollup's key for one ledger row, in the SQL primary key's order. */
+function spenderRollupKey(row: Omit<UsageSpenderAggregate, "calls" | "inputTokens" | "outputTokens">): string {
+  return [
+    row.organizationId,
+    row.day,
+    row.memberId,
+    row.teammateId,
+    row.apiKeyId,
+    row.routineId,
+    row.flowId,
+    row.assistantId,
+    row.surface,
+    row.credentialKind,
+    row.provider,
+    row.modelId,
+  ].join("|");
+}
+
+/**
+ * Aggregates raw ledger rows into the per-spender grouping the SQL rollup
+ * produces, keeping only rows in [startDay, endDay). The single grouping seam
+ * the rollup write and the live-head read both go through, so their semantics
+ * cannot drift.
+ */
+function aggregateSpenders(
+  ledger: (AiUsageInput & { createdAt: string })[],
+  bounds: { organizationId?: string; startDay: string; endDay: string }
+): Map<string, UsageSpenderAggregate> {
+  const groups = new Map<string, UsageSpenderAggregate>();
+  for (const u of ledger) {
+    if (bounds.organizationId && u.organizationId !== bounds.organizationId) {
+      continue;
+    }
+    const day = u.createdAt.slice(0, 10);
+    if (day < bounds.startDay || day >= bounds.endDay) continue;
+    const identity = {
+      organizationId: u.organizationId,
+      day,
+      memberId: u.spenders?.memberId ?? "",
+      teammateId: u.spenders?.teammateId ?? "",
+      apiKeyId: u.spenders?.apiKeyId ?? "",
+      routineId: u.spenders?.routineId ?? "",
+      flowId: u.spenders?.flowId ?? "",
+      assistantId: u.assistantId ?? "",
+      surface: u.surface ?? "",
+      credentialKind: u.credentialKind ?? "unknown",
+      provider: u.provider,
+      modelId: u.modelId,
+    };
+    const key = spenderRollupKey(identity);
+    let row = groups.get(key);
+    if (!row) {
+      row = { ...identity, calls: 0, inputTokens: 0, outputTokens: 0 };
+      groups.set(key, row);
+    }
+    row.calls += 1;
+    row.inputTokens += u.inputTokens;
+    row.outputTokens += u.outputTokens;
+  }
+  return groups;
 }
 
 /**
@@ -4286,6 +4384,40 @@ export const mockDb: Db = {
     ) {
       return false;
     }
+    // Per-page admin state is keyed by (sourceId, path), not by Concept id, and
+    // a re-crawl mints a new id per page. Carry it at cutover, while the
+    // outgoing rows are still the active ones, so an exclusion made during the
+    // crawl survives too. A page absent from this generation keeps nothing:
+    // its row dies with the retired generation.
+    const priorByPath = new Map<string, Concept>();
+    for (const concept of store.concepts.values()) {
+      if (
+        concept.sourceId !== input.sourceId ||
+        concept.generationId !== source.activeGenerationId
+      ) {
+        continue;
+      }
+      const held = priorByPath.get(concept.path);
+      // An exclusion is never dropped by the tie-break.
+      if (!held || (concept.excluded && !held.excluded)) {
+        priorByPath.set(concept.path, concept);
+      }
+    }
+    for (const [id, concept] of store.concepts) {
+      if (
+        concept.sourceId !== input.sourceId ||
+        concept.generationId !== input.generationId
+      ) {
+        continue;
+      }
+      const prior = priorByPath.get(concept.path);
+      if (!prior || prior.id === id) continue;
+      store.concepts.set(id, {
+        ...concept,
+        excluded: prior.excluded,
+        recrawlSchedule: prior.recrawlSchedule,
+      });
+    }
     store.sources.set(source.id, {
       ...source,
       activeGenerationId: input.generationId,
@@ -6080,9 +6212,11 @@ export const mockDb: Db = {
     };
     const groups = aggregateLedger(store.aiUsage, bounds);
     const crawls = aggregateCrawls(store.runtimeEvents, bounds);
+    const spenders = aggregateSpenders(store.aiUsage, bounds);
     for (const [key, row] of groups) store.usageDaily.set(key, row);
     for (const [key, row] of crawls) store.usageDaily.set(key, row);
-    return groups.size + crawls.size;
+    for (const [key, row] of spenders) store.usageSpenderDaily.set(key, row);
+    return groups.size + crawls.size + spenders.size;
   },
 
   async getOrgUsageDaily(organizationId, days = 30) {
@@ -6198,6 +6332,134 @@ export const mockDb: Db = {
       });
     }
     return [...meters.values()];
+  },
+
+  async recordUsageEvents(events) {
+    const store = getStore();
+    const occurredAt = new Date().toISOString();
+    for (const event of events) {
+      store.usageEvents.push({
+        ...event,
+        spenders: event.spenders ?? {},
+        surface: event.surface ?? null,
+        assistantId: event.assistantId ?? null,
+        conversationId: event.conversationId ?? null,
+        occurredAt,
+      });
+    }
+  },
+
+  async getOrgUsageEvents(organizationId, from, to) {
+    const store = getStore();
+    const fromMs = Date.parse(from);
+    const toMs = Date.parse(to);
+    const rows = new Map<string, UsageEventRow>();
+    for (const event of store.usageEvents) {
+      if (event.organizationId !== organizationId) continue;
+      const at = Date.parse(event.occurredAt);
+      if (at < fromMs || at >= toMs) continue;
+      const key = `${event.operation}|${event.unit}|${event.status}`;
+      const row =
+        rows.get(key) ??
+        ({
+          operation: event.operation,
+          unit: event.unit,
+          status: event.status,
+          quantity: 0,
+          calls: 0,
+        } satisfies UsageEventRow);
+      row.quantity += event.quantity;
+      row.calls += 1;
+      rows.set(key, row);
+    }
+    return [...rows.values()];
+  },
+
+  async getOrgUsageSpenders(organizationId, from, to) {
+    const store = getStore();
+    const fromMs = Date.parse(from);
+    const toMs = Date.parse(to);
+    const { cutLo, cutHi } = usageWindowCuts(from, to);
+    const liveLo = Math.min(cutLo, toMs);
+    const liveHi = Math.max(cutHi, fromMs);
+
+    const rows = new Map<string, UsageSpenderRow>();
+    const add = (row: Omit<UsageSpenderAggregate, "organizationId" | "day">) => {
+      const key = [
+        row.memberId,
+        row.teammateId,
+        row.apiKeyId,
+        row.routineId,
+        row.flowId,
+        row.assistantId,
+        row.surface,
+        row.credentialKind,
+        row.provider,
+        row.modelId,
+      ].join("|");
+      // The rollup keys absent identities as '', the domain's "nobody" is null.
+      const id = (value: string): string | null => value || null;
+      const at =
+        rows.get(key) ??
+        ({
+          spenders: {
+            memberId: id(row.memberId),
+            teammateId: id(row.teammateId),
+            apiKeyId: id(row.apiKeyId),
+            routineId: id(row.routineId),
+            flowId: id(row.flowId),
+          },
+          assistantId: id(row.assistantId),
+          surface: id(row.surface) as UsageSpenderRow["surface"],
+          credentialKind: row.credentialKind as UsageSpenderRow["credentialKind"],
+          provider: row.provider,
+          modelId: row.modelId,
+          calls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          // Crawl telemetry carries no spender, so this read is model-only
+          // until it does; a non-token unit cannot appear here.
+          units: 0,
+        } satisfies UsageSpenderRow);
+      at.calls += row.calls;
+      at.inputTokens += row.inputTokens;
+      at.outputTokens += row.outputTokens;
+      rows.set(key, at);
+    };
+
+    // Whole closed days, from the rollup.
+    const dayLo = new Date(cutLo).toISOString().slice(0, 10);
+    const dayHi = new Date(cutHi).toISOString().slice(0, 10);
+    for (const row of store.usageSpenderDaily.values()) {
+      if (row.organizationId !== organizationId) continue;
+      if (row.day < dayLo || row.day >= dayHi) continue;
+      add(row);
+    }
+    // Partial head and tail, live from the raw ledger. Instants, never ISO
+    // strings: two spellings of the same moment must not compare differently.
+    for (const u of store.aiUsage) {
+      if (u.organizationId !== organizationId) continue;
+      const at = Date.parse(u.createdAt);
+      const inLive =
+        (at >= fromMs && at < liveLo) || (at >= liveHi && at < toMs);
+      if (!inLive) continue;
+      add({
+        memberId: u.spenders?.memberId ?? "",
+        teammateId: u.spenders?.teammateId ?? "",
+        apiKeyId: u.spenders?.apiKeyId ?? "",
+        routineId: u.spenders?.routineId ?? "",
+        flowId: u.spenders?.flowId ?? "",
+        assistantId: u.assistantId ?? "",
+        surface: u.surface ?? "",
+        credentialKind: u.credentialKind ?? "unknown",
+        provider: u.provider,
+        modelId: u.modelId,
+        calls: 1,
+        inputTokens: u.inputTokens,
+        outputTokens: u.outputTokens,
+      });
+    }
+    return [...rows.values()];
   },
 
   async recordRuntimeEvent(event) {

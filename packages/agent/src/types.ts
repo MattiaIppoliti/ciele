@@ -24,6 +24,9 @@ import type {
   ReviewStatus,
   SkillSnapshot,
   TeammateActionDomain,
+  UsageOperation,
+  UsageOperationStatus,
+  UsageOperationUnit,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
@@ -595,6 +598,19 @@ export interface ActionContext {
   actionIndex?: number;
   reviewRuntime?: ReviewRuntime;
   webhookRuntime?: WebhookRuntime;
+  /**
+   * Counts a non-model operation (#854): an outbound API request, an email.
+   * Priced at zero, so nothing reads it back except the Usage breakdown; it
+   * exists so a Flow firing a thousand outbound calls an hour is visible.
+   *
+   * Optional and isolated like every other accounting call: unwired, and on any
+   * failure, the action still happened.
+   */
+  countOperation?: (event: {
+    operation: UsageOperation;
+    unit: UsageOperationUnit;
+    status: UsageOperationStatus;
+  }) => void;
   assistant: Assistant;
   /**
    * The immutable platform (Ciele) system-prompt layer, always composed

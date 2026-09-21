@@ -55,6 +55,9 @@ export const skillInputSchema = z.object({
   name: z.string().trim().min(1).max(200),
   description: z.string().trim().max(2_000).optional(),
   prompt: z.string().trim().min(1).max(50_000),
+  // The `/` menu's opening line. Capped far below `prompt` because it lands in
+  // a message box someone is about to read and edit, not in a system prompt.
+  starter: z.string().trim().max(1_000).optional(),
 }) satisfies z.ZodType<SkillInput>;
 
 export const skillPatchSchema = skillInputSchema.partial() satisfies z.ZodType<SkillPatch>;

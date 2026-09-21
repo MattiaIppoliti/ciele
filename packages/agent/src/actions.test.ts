@@ -831,6 +831,7 @@ describe("buildSystemPrompt (prompt layering)", () => {
             name: "Citations",
             description: "",
             prompt: "Cite official documents by name.",
+            starter: "",
           },
         ],
       }

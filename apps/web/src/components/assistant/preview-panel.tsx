@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Assistant, Conversation } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
-import { ChevronDown, Pin, Square, SquarePen, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Headphones,
+  Paperclip,
+  Pin,
+  Sparkles,
+  Square,
+  SquarePen,
+  Trash2,
+} from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { decideReviewAction } from "@/app/(admin)/reviews/actions";
@@ -29,6 +38,7 @@ import {
 } from "@/lib/follow-up-scheduler";
 import {
   DEFAULT_CONNECTOR_PREFERENCES,
+  parseLocalModelSelector,
   previewAiPreferencesKey,
   sanitizeConnectorPreferences,
   type ConnectorFollowUpBehavior,
@@ -54,6 +64,25 @@ import { RefreshButton } from "./refresh-button";
 import type { ReportableTrigger } from "@/lib/widget-triggers";
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
+import { toPromptModels } from "@/components/chat/use-chat-models";
+import {
+  useComposerTrigger,
+  replaceToken,
+} from "@/components/chat/use-composer-trigger";
+import { TriggerList, TriggerRow } from "@/components/chat/trigger-list";
+import {
+  chatComposerOptionsAction,
+  listEscalationDesksAction,
+  readChatAttachmentAction,
+} from "@/app/actions";
+import { useAttachments } from "@/components/chat/use-attachments";
+import {
+  AttachmentChips,
+  AttachmentDropHint,
+  AttachmentInput,
+} from "@/components/chat/attachment-chips";
+import type { ChatModelOption } from "@agent-hub/agent/client";
+import type { EscalationHelpDesk } from "@/lib/escalation-desks";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 import { MessageSquareText } from "lucide-react";
 
@@ -228,6 +257,107 @@ export function PreviewPanel({
   // Dia-style border pulse on the composer: plays every time the chat input
   // gains focus (ignored while a pulse is already running).
   const [composerPulse, setComposerPulse] = useState(false);
+  /**
+   * What the composer can offer, read once the panel mounts. The Preview is a
+   * preview of the widget, so it carries the same three: the model picker, the
+   * `/` Skills menu and the `@` help desks. Read live rather than from a
+   * Publication, which is the point of previewing.
+   */
+  const [models, setModels] = useState<ChatModelOption[]>([]);
+  const [skills, setSkills] = useState<
+    Array<{ id: string; name: string; description: string; starter: string }>
+  >([]);
+  const [desks, setDesks] = useState<EscalationHelpDesk[]>([]);
+  const [model, setModel] = useState<string | undefined>();
+  const composerRef = useRef<HTMLDivElement>(null);
+  const composerTextarea = () =>
+    composerRef.current?.querySelector("textarea") ?? null;
+
+  useEffect(() => {
+    let live = true;
+    void chatComposerOptionsAction(assistant.id)
+      .then((options) => {
+        if (!live) return;
+        setModels(options.models);
+        setSkills(options.skills);
+      })
+      .catch(() => {
+        // A composer with no extras is a complete composer.
+      });
+    void listEscalationDesksAction(assistant.id)
+      .then((loaded) => {
+        // A desk with no enabled channel is a dead end here too.
+        if (live) setDesks(loaded.filter((desk) => desk.channels.length > 0));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [assistant.id]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachments = useAttachments(async (file) => {
+    const body = new FormData();
+    body.set("file", file);
+    body.set("assistantId", assistant.id);
+    return readChatAttachmentAction(body);
+  });
+
+  const skillTrigger = useComposerTrigger({
+    trigger: "/",
+    items: skills,
+    textarea: composerTextarea,
+    onPick: (skill, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      const next = replaceToken(draft, token, caret, skill.starter);
+      setDraft(next.text);
+      skillTrigger.settle(next.caret);
+    },
+  });
+  const deskTrigger = useComposerTrigger({
+    trigger: "@",
+    items: desks,
+    textarea: composerTextarea,
+    onPick: (desk, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      const next = replaceToken(draft, token, caret, "");
+      setDraft(next.text);
+      deskTrigger.settle(next.caret);
+      setSupportHelpDeskId(desk.id);
+      setSupportOpen(true);
+    },
+  });
+  const composerActions = [
+    {
+      value: "attach",
+      label: "Attach a file",
+      description: "A document, a spreadsheet or a screenshot.",
+      icon: <Paperclip />,
+      disabled: attachments.full,
+    },
+    ...(skills.length > 0
+      ? [
+          {
+            value: "skill",
+            label: "Use a skill",
+            description: "Start from a prepared request.",
+            icon: <Sparkles />,
+          },
+        ]
+      : []),
+    ...(desks.length > 0
+      ? [
+          {
+            value: "desk",
+            label: "Contact a help desk",
+            description: "Reach a person instead.",
+            icon: <Headphones />,
+          },
+        ]
+      : []),
+  ];
 
   function fireComposerPulse() {
     if (composerPulse) return;
@@ -418,6 +548,10 @@ export function PreviewPanel({
           message,
           turnId,
           modelPreference: aiPreferences.defaultModel,
+          // Advisory, and outranked by `modelPreference` above when this
+          // Member has their own subscription connected.
+          model: model ?? null,
+          attachments: attachments.tokens,
         }),
         signal: controller.signal,
       });
@@ -869,7 +1003,53 @@ export function PreviewPanel({
               </button>
             </div>
           )}
-          <div className="relative">
+          <AttachmentInput
+            inputRef={fileInputRef}
+            accept={attachments.accept}
+            onPick={(file) => void attachments.attach(file)}
+          />
+          <AttachmentChips
+            entries={attachments.entries}
+            onRemove={attachments.remove}
+          />
+          <div className="relative" ref={composerRef} {...attachments.dropProps}>
+            {attachments.dragging && <AttachmentDropHint label="Drop to attach" />}
+          {skillTrigger.open && (
+            <TriggerList
+              label="Use a skill"
+              items={skillTrigger.matches}
+              highlighted={skillTrigger.highlighted}
+              onHighlight={skillTrigger.setHighlighted}
+              onPick={skillTrigger.pick}
+              renderItem={(skill) => (
+                <TriggerRow
+                  name={skill.name}
+                  hint={skill.description || skill.starter}
+                  icon={<Sparkles />}
+                />
+              )}
+            />
+          )}
+          {deskTrigger.open && (
+            <TriggerList
+              label="Contact a help desk"
+              items={deskTrigger.matches}
+              highlighted={deskTrigger.highlighted}
+              onHighlight={deskTrigger.setHighlighted}
+              onPick={deskTrigger.pick}
+              renderItem={(desk) => (
+                <TriggerRow
+                  name={desk.name}
+                  hint={
+                    desk.channels.length === 1
+                      ? desk.channels[0].name
+                      : `${desk.channels.length} ways to get in touch`
+                  }
+                  icon={<Headphones />}
+                />
+              )}
+            />
+          )}
           {(composerPulse || pending) && (
             <ComposerPulse color="var(--primary)" focus={composerPulse} loading={pending} />
           )}
@@ -879,9 +1059,45 @@ export function PreviewPanel({
               the actions row instead. */}
           <PromptInput
             value={draft}
-            onValueChange={setDraft}
-            onSubmit={(value) => send(value)}
+            onValueChange={(value) => {
+              setDraft(value);
+              skillTrigger.sync(value);
+              deskTrigger.sync(value);
+            }}
+            onSubmit={(value) => {
+              // See the widget: a file mid-read would vanish from the message.
+              if (attachments.busy) return;
+              skillTrigger.reset();
+              deskTrigger.reset();
+              send(value);
+            }}
             onFocus={fireComposerPulse}
+            onPaste={attachments.onPaste}
+            onSelect={(event) => {
+              skillTrigger.sync(event.currentTarget.value);
+              deskTrigger.sync(event.currentTarget.value);
+            }}
+            onKeyDown={(event) => {
+              skillTrigger.handleKeyDown(event);
+              deskTrigger.handleKeyDown(event);
+            }}
+            onBlur={() => {
+              skillTrigger.close();
+              deskTrigger.close();
+            }}
+            models={toPromptModels(models)}
+            model={model ?? models[0]?.selector}
+            onModelChange={setModel}
+            actions={composerActions}
+            onAction={(action) => {
+              if (action === "attach") {
+                fileInputRef.current?.click();
+              } else if (action === "skill") {
+                skillTrigger.openFromButton(draft, setDraft);
+              } else if (action === "desk") {
+                deskTrigger.openFromButton(draft, setDraft);
+              }
+            }}
             minRows={1}
             maxRows={6}
             placeholder={`Ask ${nickname}...`}
@@ -901,6 +1117,19 @@ export function PreviewPanel({
               ) : undefined
             }
           />
+          {models.length > 0 &&
+          parseLocalModelSelector(aiPreferences.defaultModel) ? (
+            // The picker would otherwise be a control that silently does
+            // nothing for a Member who set a default in Settings → AI: their
+            // own subscription is applied after this choice and wins.
+            // "A connected" rather than "your", because a selector can be
+            // stored for a device that is not currently paired, and then the
+            // choice here is what runs.
+            <p className="text-muted-foreground mt-1 text-2xs">
+              A connected AI subscription answers Preview turns instead,
+              whichever model is picked here. Change it in Settings → AI.
+            </p>
+          ) : null}
           {pending && (
             <p className="text-muted-foreground mt-1 text-2xs">
               {followUpBehavior === "steer"

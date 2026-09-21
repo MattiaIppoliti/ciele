@@ -4,6 +4,35 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * The card a table lives in: one rounded, bordered surface holding the header
+ * band, the rows and the footer, with the footer separated by a rule rather
+ * than floating under the card. Every table in the console uses it, so the
+ * rhythm (band tone, row height, where the border sits) is decided once here
+ * instead of per page.
+ */
+function TableCard({
+  footer,
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { footer?: React.ReactNode }) {
+  return (
+    <div
+      data-slot="table-card"
+      className={cn("bg-card w-full overflow-hidden rounded-xl border", className)}
+      {...props}
+    >
+      {children}
+      {footer ? (
+        <div className="bg-muted/40 border-t" data-slot="table-card-footer">
+          {footer}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
@@ -23,7 +52,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={cn("bg-muted/40 [&_tr]:border-b", className)}
       {...props}
     />
   );
@@ -65,16 +94,37 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   );
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+/**
+ * A column header. `icon` is the small glyph that names the column beside its
+ * label; it is a prop rather than free children so every table spaces it the
+ * same way and a header without one still lines up.
+ */
+function TableHead({
+  className,
+  icon: Icon,
+  children,
+  ...props
+}: React.ComponentProps<"th"> & {
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
   return (
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
+        "text-muted-foreground h-11 px-4 text-left align-middle text-xs font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
-    />
+    >
+      {Icon ? (
+        <span className="inline-flex items-center gap-1.5">
+          <Icon className="size-3.5 opacity-70" aria-hidden="true" />
+          {children}
+        </span>
+      ) : (
+        children
+      )}
+    </th>
   );
 }
 
@@ -83,7 +133,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
+        "px-4 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -106,6 +156,7 @@ function TableCaption({
 
 export {
   Table,
+  TableCard,
   TableHeader,
   TableBody,
   TableFooter,

@@ -9,6 +9,8 @@ import type {
   ResolvedWebsiteCrawlerProvider,
   Source,
   SourceStatus,
+  UsageSpenders,
+  UsageSurface,
   WebsiteSourceConfig,
 } from "@agent-hub/core";
 import { isFreeCrawler, okfActor } from "@agent-hub/core";
@@ -54,6 +56,9 @@ export type SourceConceptDraft = {
 
 /** Longer than the bounded cron and configured local-crawl work window. */
 export const CRAWL_FINALIZE_LEASE_MS = 2 * 60 * 60_000;
+
+/** Pages between two writes of the crawl's display counter (`crawlStagedPages`). */
+const CRAWL_PROGRESS_STRIDE = 10;
 
 /**
  * Safety ceiling on a stored Concept body. This is a guard against pathological
@@ -343,6 +348,9 @@ async function enrich(
               modelId: classifier.modelId,
               credentialKind: classifier.credentialKind,
               ...usageTotals(usage),
+              // Indexing, not a turn: attributable to the job, never to whoever
+              // happens to be chatting while it runs (#849).
+              surface: "ingestion",
             },
           ]);
         }
@@ -447,6 +455,12 @@ export async function embedConcept(options: {
   connections: ProviderConnection[];
   /** A staged generation is projected only after its visibility CAS commits. */
   deferGraphSync?: boolean;
+  /**
+   * Who asked for this indexing (#849). Absent on the ingestion pipeline's own
+   * jobs, which nobody asked for in particular; set when an edit through a
+   * surface caused a re-embed, so the credits name the caller.
+   */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): Promise<void> {
   const chunks = chunkMarkdown(options.body);
   // Resolved up-front for usage attribution (the embedding call below is
@@ -499,6 +513,9 @@ export async function embedConcept(options: {
               db: options.db,
               organizationId: assistant.organizationId,
               assistantId: options.assistantId,
+              spenders: options.usage?.spenders,
+              // Indexing, not a turn (#849).
+              surface: options.usage?.surface ?? ("ingestion" as const),
             }
           : null
       );
@@ -599,6 +616,8 @@ export async function persistConcept(options: {
   frontmatter: ConceptFrontmatter;
   body: string;
   connections: ProviderConnection[];
+  /** Who asked, when a surface did rather than the ingestion pipeline (#849). */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): Promise<Concept> {
   const concept = await options.db.createConcept({
     collectionId: options.collectionId,
@@ -623,6 +642,7 @@ export async function persistConcept(options: {
     body: options.body,
     connections: options.connections,
     deferGraphSync: Boolean(options.generationId),
+    usage: options.usage,
   });
   return concept;
 }
@@ -748,6 +768,8 @@ export async function beginWebsiteCrawl(options: {
         crawlIngestGenerationId: undefined,
         crawlIngestExpectedGenerationId: undefined,
         crawlIngestedPages: undefined,
+        crawlTotalPages: undefined,
+        crawlStagedPages: undefined,
       },
     });
     const { runId, datasetId } = await websiteCrawlerAdapter(
@@ -1087,11 +1109,26 @@ export async function finalizeWebsiteCrawl(options: {
           ingestedPages: alreadyIngested,
         });
 
+    // What the console counts against. Only the final window knows it, because
+    // only then is "pages that will be ingested" a number rather than a guess,
+    // so a windowed crawl shows a bare count until its last pass.
+    const totalPages =
+      crawlResult.nextCursor === null
+        ? alreadyIngested + pages.length
+        : source.config.crawlTotalPages;
+    let progressConfig: WebsiteSourceConfig = {
+      ...stagedConfig,
+      crawlTotalPages: totalPages,
+      crawlStagedPages: alreadyIngested,
+    };
+    await db.updateSource(sourceId, { config: progressConfig });
+
     // A crash after the CAS but before clearing Source progress resumes here.
     // Do not re-stage the last batch under a generation that is already active.
     const cutoverAlreadyCommitted = generation.alreadyCommitted;
     if (!cutoverAlreadyCommitted) {
       const timestamp = new Date().toISOString();
+      let staged = alreadyIngested;
       for (const page of pages) {
         if (!(await renewLease())) return "processing";
         await persistConcept({
@@ -1114,6 +1151,14 @@ export async function finalizeWebsiteCrawl(options: {
           body: page.text.slice(0, MAX_CONCEPT_BODY_CHARS),
           connections,
         });
+        staged += 1;
+        // One write per stride, next to a per-page lease renewal that already
+        // writes: the cost is noise, and without it a single-window crawl of
+        // 300 pages reports nothing until it reports everything.
+        if (staged % CRAWL_PROGRESS_STRIDE === 0) {
+          progressConfig = { ...progressConfig, crawlStagedPages: staged };
+          await db.updateSource(sourceId, { config: progressConfig });
+        }
       }
     }
 
@@ -1123,7 +1168,7 @@ export async function finalizeWebsiteCrawl(options: {
       await checkpointSourceGeneration({
         db,
         sourceId,
-        config: stagedConfig,
+        config: { ...progressConfig, crawlStagedPages: ingestedPages },
         generation,
         cursor: crawlResult.nextCursor,
         ingestedPages,
@@ -1146,7 +1191,11 @@ export async function finalizeWebsiteCrawl(options: {
     await db.updateSource(sourceId, {
       status: "ready",
       lastCrawledAt: new Date().toISOString(),
-      config: clearSourceGenerationCheckpoint(source.config),
+      config: {
+        ...clearSourceGenerationCheckpoint(source.config),
+        // Kept: this is how many pages the crawl that just finished brought in.
+        crawlTotalPages: totalPages ?? ingestedPages,
+      },
     });
     // Crawl recovered: clear any operational alert raised by earlier failures.
     await signalHealth(

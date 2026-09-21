@@ -1,4 +1,10 @@
-import type { AiCredentialKind, AiUsageInput } from "@agent-hub/core";
+import type {
+  AiCredentialKind,
+  AiUsageInput,
+  UsageFunding,
+  UsageOutcome,
+} from "@agent-hub/core";
+import { creditsFor } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 
 import { checkOrgBudget } from "./budget-gate";
@@ -72,16 +78,27 @@ export async function admitAiSpend(options: {
             connectionKind,
             resource: "ai",
           })
-          .catch((error) => {
+          .catch((error): UsageOutcome => {
             console.error(
               "[spend-admission] usage check failed (failing open):",
               error,
             );
-            return { outcome: "allow" as const };
+            return { outcome: "allow" };
           }),
       ),
     ),
   ]);
+
+  // Which pocket paid (#851). The plan ladder is the first answer; a purchased
+  // balance carries the work only once a window is fully consumed, and the gate
+  // says so by allowing with `funding: "topup"`. The runtime's job is only to
+  // stamp the rows it settles, so a rate correction can never move money the
+  // customer already spent.
+  const funding: UsageFunding = usages.some(
+    (usage) => usage.outcome === "allow" && usage.funding === "topup",
+  )
+    ? "topup"
+    : "plan";
 
   let blocked: AiSpendBlock | null = null;
   if (budget.overBudget && budget.enforcement === "block") {
@@ -140,8 +157,29 @@ export async function admitAiSpend(options: {
   return {
     blocked,
     release,
-    settle: async (rows) => {
+    settle: async (raw) => {
       if (blocked) return;
+      // A pool-funded row snapshots its own cost, because the balance is
+      // derived from these and must not move when a rate is corrected. A
+      // plan-funded row stays priced at read time, as it always was.
+      const rows =
+        funding === "topup"
+          ? raw.map((row) => ({
+              ...row,
+              funding,
+              creditsMicro: Math.round(
+                creditsFor([
+                  {
+                    kind: "model" as const,
+                    provider: row.provider,
+                    modelId: row.modelId,
+                    inputTokens: row.inputTokens,
+                    outputTokens: row.outputTokens,
+                  },
+                ]) * 1_000_000,
+              ),
+            }))
+          : raw;
       if (!reservationId) {
         await meterUsage(db, rows);
         return;

@@ -16,6 +16,22 @@ description: Add a website URL and monitor its ingestion status.
 
 The crawler retrieves the configured website content. A JavaScript-rendering worker is required for pages that need browser rendering.
 
+## Monitor the crawl
+
+Ciele shows an activity card in the bottom-right corner of the console when a crawl starts. It
+stays visible on every console page until the work ends.
+
+The card counts the **pages** that the crawl adds to Ciele, for example 162/291. The total is
+available when the crawler gives its last group of pages to Ciele. Before that moment the card
+shows only the number of pages that are indexed.
+
+1. Select the arrow on the card to show the Sources.
+2. Read the status of each Source. The card shows a maximum of four Sources at one time.
+3. Select the close control to hide the card. The crawl continues.
+
+A Source that fails stays on the card until you close it. A Source that is complete disappears
+after some seconds.
+
 ## Recrawl a Source
 
 Use **Recrawl** when the source website content changes. Ciele restarts the crawl and replaces the indexed content after successful ingestion.

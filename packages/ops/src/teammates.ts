@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { allowedModelsSchema } from "./model-allow-list";
 import type {
   Conversation,
   StoredMessage,
@@ -62,6 +63,10 @@ export const teammatePatchSchema = z
     collectionIds: collectionIdsSchema,
     sourceIds: sourceIdsSchema,
     editorIds: z.array(z.string().min(1)).max(100),
+    // The models this Teammate's chat window offers. Editor-writable like the
+    // rest of the persona: choosing between models the Organization already
+    // pays for is not the same decision as granting an action.
+    allowedModels: allowedModelsSchema,
     // The attached Project (#771). Editor-writable like the rest of the
     // persona, unlike the grants, which are admin work on their own surface.
     projectId: z.string().min(1).nullable(),

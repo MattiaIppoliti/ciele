@@ -28,8 +28,19 @@ import {
   MessageScroller,
 } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
+import { toPromptModels, useChatModels } from "@/components/chat/use-chat-models";
+import { useComposerTrigger, replaceToken } from "@/components/chat/use-composer-trigger";
+import { useHelpDesks } from "@/components/chat/use-help-desks";
+import { TriggerList, TriggerRow } from "@/components/chat/trigger-list";
+import { useAttachments } from "@/components/chat/use-attachments";
+import {
+  AttachmentChips,
+  AttachmentDropHint,
+  AttachmentInput,
+} from "@/components/chat/attachment-chips";
 import { StreamingResponse } from "@/components/agents/streaming-response";
 import { Citations, type CitationItem } from "@/components/agents/citations";
+import { toCitationItems } from "@/components/chat/citation-items";
 import {
   latestHelpDeskId,
   repliesClosed,
@@ -49,6 +60,8 @@ import {
   Headphones,
   HelpCircle,
   Maximize2,
+  Paperclip,
+  Sparkles,
   ThumbsDown,
   ThumbsUp,
   X,
@@ -149,26 +162,23 @@ function IframeReplyPart({
 
 type SourcesPart = Extract<ChatReplyPart, { type: "sources" }>;
 
-/** Conceptâ†’Source citations, shaped for the beui citation components. */
-function toCitationItems(
+/**
+ * Concept→Source citations for the widget: the shared builder, plus the one
+ * thing only this surface offers.
+ *
+ * Direct access (PRD #726): a cited file the assistant may hand over links to
+ * the publication-gated download endpoint. Every other citation renders as it
+ * does everywhere else.
+ */
+function widgetCitations(
   sources: SourcesPart["sources"],
   assistantId?: string
 ): CitationItem[] {
-  return sources.map((source, index) => ({
-    id: source.conceptId ?? `source-${index}`,
-    title: source.conceptTitle,
-    domain: source.sourceName
-      ? `${source.collectionName} Â· ${source.sourceName}`
-      : source.collectionName,
-    // Direct access (PRD #726): a cited file the assistant may hand over
-    // links to the publication-gated download endpoint. Every other citation
-    // renders exactly as before.
-    url:
-      source.url ??
-      (assistantId && source.directAccess && source.sourceId
-        ? `/api/widget/${assistantId}/sources/${source.sourceId}/download?visitorId=${encodeURIComponent(visitorId())}`
-        : undefined),
-  }));
+  return toCitationItems(sources, (source) =>
+    assistantId && source.directAccess && source.sourceId
+      ? `/api/widget/${assistantId}/sources/${source.sourceId}/download?visitorId=${encodeURIComponent(visitorId())}`
+      : undefined
+  );
 }
 
 /**
@@ -201,7 +211,7 @@ function BotMessageView({
     (acc, part, index) => (part.type === "text" ? index : acc),
     -1
   );
-  const citationItems = toCitationItems(
+  const citationItems = widgetCitations(
     parts.flatMap((part) => (part.type === "sources" ? part.sources : [])),
     assistantId
   );
@@ -320,7 +330,7 @@ function BotMessageView({
             return (
               <Citations
                 key={j}
-                citations={toCitationItems(part.sources, assistantId)}
+                citations={widgetCitations(part.sources, assistantId)}
                 className="max-w-[90%]"
               />
             );
@@ -496,6 +506,9 @@ export function WidgetChat({
   contactLabel = "Contact support",
   hideEscalation = false,
   requireSignIn = false,
+  modelChoice = false,
+  skills = [],
+  attachmentsEnabled = false,
 }: {
   assistantId: string;
   nickname: string;
@@ -517,6 +530,25 @@ export function WidgetChat({
   hideEscalation?: boolean;
   /** When true, the visitor must complete SSO before the chat is usable. */
   requireSignIn?: boolean;
+  /**
+   * Whether this Assistant's admin opened the model picker. The rows are
+   * fetched only when it did (`useChatModels`), because they depend on live
+   * Provider Connections and this page is static per Publication.
+   */
+  modelChoice?: boolean;
+  /**
+   * The Assistant's Skills that carry an opening line, frozen into the
+   * Publication like everything else the widget shows. `/` writes one into the
+   * box; the Skill's prompt layer applies to every answer either way.
+   */
+  skills?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    starter: string;
+  }>;
+  /** Whether this Assistant accepts files from Visitors. Off by default. */
+  attachmentsEnabled?: boolean;
 }) {
   // Effective Style-section values. The legacy `brandColor` prop stays the
   // fallback, so a caller that passes only it (the editor preview) is
@@ -595,6 +627,122 @@ export function WidgetChat({
   }, [searchParams]);
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState(false);
+  // The picker's rows, and the Visitor's standing choice within this session.
+  // Not persisted: a model choice is a property of how someone is asking right
+  // now, not of who they are, and a remembered one would silently outlive the
+  // allow-list that justified it.
+  const models = useChatModels(assistantId, modelChoice);
+  const [model, setModel] = useState<string | undefined>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachments = useAttachments(async (file) => {
+    const body = new FormData();
+    body.set("file", file);
+    body.set("visitorId", visitorId());
+    const response = await fetch(`/api/widget/${assistantId}/attachments`, {
+      method: "POST",
+      body,
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      name?: string;
+      chars?: number;
+      token?: string;
+      message?: string;
+    } | null;
+    if (!response.ok || !payload?.token) {
+      return {
+        ok: false as const,
+        message: payload?.message ?? "That file could not be read.",
+      };
+    }
+    return {
+      ok: true as const,
+      name: payload.name ?? file.name,
+      chars: payload.chars ?? 0,
+      token: payload.token,
+    };
+  });
+
+  /**
+   * `@` reaches a help desk. The desks are fetched when the composer is first
+   * focused, not on load: a host page whose visitor never opens the chat pays
+   * nothing, and by the time the `+` menu can be opened the answer is in, so
+   * that menu offers the entry only when there is something behind it.
+   */
+  const [deskTriggerSeen, setDeskTriggerSeen] = useState(false);
+  const desks = useHelpDesks(assistantId, deskTriggerSeen);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const composerTextarea = () =>
+    composerRef.current?.querySelector("textarea") ?? null;
+  const skillTrigger = useComposerTrigger({
+    trigger: "/",
+    items: skills,
+    textarea: composerTextarea,
+    // The starter is the message: it replaces the token and whatever sat
+    // before it, because someone who typed `/` was reaching for the menu, not
+    // writing a sentence that happens to contain one.
+    onPick: (skill, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      const next = replaceToken(draft, token, caret, skill.starter);
+      setDraft(next.text);
+      skillTrigger.settle(next.caret);
+    },
+  });
+  /**
+   * What the `+` offers. Only what this Assistant can actually serve, so the
+   * button is absent rather than empty when it can serve nothing, and picking
+   * an entry writes its trigger rather than opening a second copy of the list.
+   */
+  const composerActions = [
+    ...(attachmentsEnabled
+      ? [
+          {
+            value: "attach",
+            label: "Attach a file",
+            description: "A document, a spreadsheet or a screenshot.",
+            icon: <Paperclip />,
+            disabled: attachments.full,
+          },
+        ]
+      : []),
+    ...(skills.length > 0
+      ? [
+          {
+            value: "skill",
+            label: "Use a skill",
+            description: "Start from a prepared request.",
+            icon: <Sparkles />,
+          },
+        ]
+      : []),
+    ...(desks.length > 0
+      ? [
+          {
+            value: "desk",
+            label: "Contact a help desk",
+            description: "Reach a person instead.",
+            icon: <Headphones />,
+          },
+        ]
+      : []),
+  ];
+
+  const deskTrigger = useComposerTrigger({
+    trigger: "@",
+    items: desks,
+    textarea: composerTextarea,
+    // Picking a desk is a command, not a word: the token leaves the draft
+    // entirely and the support panel opens on that desk. Writing "@Billing"
+    // into the message would send the Assistant a sentence about a menu.
+    onPick: (desk, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      const next = replaceToken(draft, token, caret, "");
+      setDraft(next.text);
+      deskTrigger.settle(next.caret);
+      openSupport(desk.id);
+    },
+  });
   const [view, setView] = useState<"chat" | "support">("chat");
   const [supportHelpDeskId, setSupportHelpDeskId] = useState<string>();
   // Mirror of the preview panel's fullscreen: the layout centers in here,
@@ -734,6 +882,12 @@ export function WidgetChat({
           collectionId: anchored?.id ?? null,
           message,
           turnId,
+          // Advisory: the Publication's allow-list decides, and a selector it
+          // does not name runs the configured model rather than failing.
+          model: model ?? null,
+          // Sealed at intake; the route opens them. Re-sent every turn, which
+          // is why the chips stay on screen.
+          attachments: attachments.tokens,
           // The embedding page, forwarded by the launcher as `?u=` â€” the
           // request's own referer is this iframe, not the host page. Gates URL
           // Flow Conditions server-side (spec #550).
@@ -1155,22 +1309,119 @@ export function WidgetChat({
             </button>
           </div>
         )}
-        <div className="relative">
+        {attachmentsEnabled && (
+          <AttachmentInput
+            inputRef={fileInputRef}
+            accept={attachments.accept}
+            onPick={(file) => void attachments.attach(file)}
+          />
+        )}
+        <AttachmentChips
+          entries={attachments.entries}
+          onRemove={attachments.remove}
+        />
+        <div
+          className="relative"
+          ref={composerRef}
+          {...(attachmentsEnabled ? attachments.dropProps : {})}
+        >
+          {attachmentsEnabled && attachments.dragging && (
+            <AttachmentDropHint label="Drop to attach" />
+          )}
+        {skillTrigger.open && (
+          <TriggerList
+            label="Use a skill"
+            items={skillTrigger.matches}
+            highlighted={skillTrigger.highlighted}
+            onHighlight={skillTrigger.setHighlighted}
+            onPick={skillTrigger.pick}
+            renderItem={(skill) => (
+              <TriggerRow
+                name={skill.name}
+                hint={skill.description || skill.starter}
+                icon={<Sparkles />}
+              />
+            )}
+          />
+        )}
+        {deskTrigger.open && (
+          <TriggerList
+            label="Contact a help desk"
+            items={deskTrigger.matches}
+            highlighted={deskTrigger.highlighted}
+            onHighlight={deskTrigger.setHighlighted}
+            onPick={deskTrigger.pick}
+            renderItem={(desk) => (
+              <TriggerRow
+                name={desk.name}
+                hint={
+                  desk.channels.length === 1
+                    ? desk.channels[0].name
+                    : `${desk.channels.length} ways to get in touch`
+                }
+                icon={<Headphones />}
+              />
+            )}
+          />
+        )}
         {(composerPulse || pending) && (
           <ComposerPulse color={ws.buttonColor} focus={composerPulse} loading={pending} />
         )}
         <PromptInput
           value={draft}
-          onValueChange={setDraft}
+          onValueChange={(value) => {
+            setDraft(value);
+            if (!deskTriggerSeen && value.includes("@")) setDeskTriggerSeen(true);
+            deskTrigger.sync(value);
+            skillTrigger.sync(value);
+          }}
+          models={toPromptModels(models)}
+          model={model ?? models[0]?.selector}
+          onModelChange={setModel}
           onSubmit={(value) => {
+            // A file still being read would be dropped from this message
+            // without saying so; the chip says "reading…" while it is.
+            if (attachments.busy) return;
+            // The sent message took its `@` with it, so the dismissal keyed to
+            // that index has to go too, or the next message starting with `@`
+            // is silently treated as the one already dismissed.
+            deskTrigger.reset();
+            skillTrigger.reset();
             if (!composerClosed) send(value);
+          }}
+          onSelect={(event) => {
+            deskTrigger.sync(event.currentTarget.value);
+            skillTrigger.sync(event.currentTarget.value);
+          }}
+          onKeyDown={(event) => {
+            deskTrigger.handleKeyDown(event);
+            skillTrigger.handleKeyDown(event);
+          }}
+          onBlur={() => {
+            deskTrigger.close();
+            skillTrigger.close();
+          }}
+          actions={composerActions}
+          onAction={(action) => {
+            if (action === "attach") {
+              fileInputRef.current?.click();
+            } else if (action === "skill") {
+              skillTrigger.openFromButton(draft, setDraft);
+            } else if (action === "desk") {
+              setDeskTriggerSeen(true);
+              deskTrigger.openFromButton(draft, setDraft);
+            }
           }}
           loading={pending}
           onStop={() => abortRef.current?.abort()}
           disabled={composerClosed}
           minRows={1}
           maxRows={6}
-          onFocus={fireComposerPulse}
+          onFocus={() => {
+            fireComposerPulse();
+            setDeskTriggerSeen(true);
+          }}
+          onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
           placeholder={
             composerClosed
               ? "This message doesn't take replies"

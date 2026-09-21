@@ -147,6 +147,36 @@ swaps its scale for an opacity change. The **animated icon set** (`ciele-animate
 are small pointer-triggered glyph state changes, not vestibular motion, and several controls use
 them to signal what they do. Do not add a blanket `* { animation: none }`.
 
+## The bottom-right corner has one owner
+
+`components/notifications/notification-dock.tsx` is the only thing that positions anything in that
+corner: it holds the fixed inset, the right-rail offset (`--right-rail-width`, so a docked Preview
+is never covered) and the order of its occupants. Two today, and the order is forced: the
+notification banner fans out *upward* out of its own footprint, so it has to sit above the
+ingestion activity card or it expands over it. A third occupant joins the dock rather than
+declaring its own `fixed bottom-*`.
+
+The **ingestion activity card** (a crawl or an Application Import in flight) is a poll, not a
+stream: crawl progress is written by whichever worker or cron tick advances it, so there is nothing
+to hold open. It only runs while something is in flight, which is two facts the client does not
+have to guess, `reads.ingestionInFlight()` in the shell (a `pageSize: 0` tally, so a reload
+mid-crawl brings the card back) and the `@/lib/ingestion-bus` signal every place that starts
+knowledge work fires. The bus carries no payload on purpose: what started is the server's answer,
+and an "Add website" has no Source id to hand over yet. Merge, ordering, copy and the linger policy
+are pure in `lib/ingestion-activity.ts`; the read is `lib/ingestion-activity-read.ts`, and both are
+tested, because vitest ignores the `.tsx`.
+
+**A run's unit is not its row, and the card counts both.** A crawl produces pages and has one row,
+an Import produces documents and has one row each, so the header counts the run's own unit
+(`done`/`total`) while the "+27 queued" footer counts rows. Collapsing the two gave a crawl a
+header of "0/1" for twenty minutes. The page numbers are real: the finalizer in
+`packages/agent/src/ingest.ts` writes `crawlStagedPages` every ten pages it stages and
+`crawlTotalPages` once the crawl's last dataset window is in hand, which is the first moment a
+denominator exists that progress can actually reach, so a windowed provider shows a bare count
+until its final pass. `crawlStagedPages` is display-only and deliberately separate from
+`crawlIngestedPages`: that one is the resume arithmetic, and moving it mid-window would make a
+crash resume double-count.
+
 ## Every route has its own loading.tsx
 
 **All 64 `page.tsx` segments have their own `loading.tsx`, and

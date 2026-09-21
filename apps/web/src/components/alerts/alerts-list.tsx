@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@agent-hub/ui";
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { formatDateTime } from "@/lib/format";
 
 const TYPE_LABELS: Record<AlertType, string> = {
@@ -69,22 +70,19 @@ export function AlertsList({
         issue recovers.
       </p>
 
-      <div className="border-border mt-4 flex items-center gap-1 border-b px-4 sm:px-6">
-        {tabs.map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            onClick={() => setTab(t.value)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-              tab === t.value
-                ? "border-primary text-foreground"
-                : "text-muted-foreground hover:text-foreground border-transparent"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as Tab)}
+        className="mt-4 px-4 sm:px-6"
+      >
+        <TabsList aria-label="Alert status" className="bg-muted">
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
         {visible.length === 0 ? (

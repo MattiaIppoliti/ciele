@@ -44,6 +44,25 @@ The agent can inspect endpoint details before it sends a request. Large response
 Add only the endpoints that the Assistant must use. The runtime cannot call an unregistered path through this integration.
 </Callout>
 
+### Prevent a duplicate write
+
+A request can be sent again after a timeout or a failure. If the endpoint writes data, the second request can make a second record.
+
+To prevent this, give the endpoint an idempotency key. In the endpoint form, type where your API reads the key:
+
+- `header:Idempotency-Key` sends the key in a request header.
+- `body:request_id` sends the key in the JSON body.
+
+Use the name that your API reads. Ciele does not guess this name. Different APIs read different names.
+
+Ciele makes one key for each call. A retry of the same call sends the same key. A different call sends a different key. Your API can then see the two requests as one write.
+
+Your API must also do its part. It must store the key and return the first result when it sees the key again.
+
+<Callout title="An endpoint with no key is not protected">
+If you give no key, a retry of the call can write two times. A `GET` endpoint does not need a key, because a read does not change data.
+</Callout>
+
 ## Attach an Organization Skill
 
 A Skill is a reusable instruction template. An Organization can attach the same Skill to multiple Assistants.
@@ -55,6 +74,32 @@ A Skill is a reusable instruction template. An Organization can attach the same 
 5. Publish the Assistant when the result is correct.
 
 Skill changes are available in Preview immediately. The published Widget uses the last Publication snapshot.
+
+### Let people start a Skill from the chat window
+
+A Skill can have an **Opening line**. Write it as the person who asks, not as the Assistant.
+
+The chat window shows a **/** menu with each Skill that has an opening line. When the user selects a
+Skill, the chat window writes the opening line into the message box. The user can edit the text
+before they send it.
+
+If the opening line is empty, the Skill does not show in the **/** menu. The Skill prompt continues
+to apply to each answer.
+
+Publish the Assistant after you write an opening line. The Widget uses the last Publication snapshot.
+
+## Attachments and Knowledge are not the same
+
+An attachment and a Knowledge Source both become text, and Ciele reads both with the same extractor.
+What happens next is different.
+
+A Knowledge Source is permanent. Ciele enriches it, indexes it, and the Assistant can cite it in
+every later conversation.
+
+An attachment belongs to its conversation. Ciele reads it one time, discards the bytes, and never
+adds it to the Library. No other conversation sees it.
+
+To make a file permanent, add it in **Library** instead.
 
 ## Test the configuration
 

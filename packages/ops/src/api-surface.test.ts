@@ -12,6 +12,7 @@ import {
   updateTeammateOp,
 } from "./teammates";
 import { addOrgSourceOp, listCollectionsOp } from "./knowledge";
+import { readUsageMetersOp, readUsageSpendersOp } from "./usage";
 import { createAssistantOp } from "./assistants";
 import {
   createFlowOp,
@@ -429,6 +430,38 @@ describe("the Flows authoring and operator reads over an API key", () => {
     const [run] = await listHttpFlowRunsOp.run(ctx, { flowId: flow.id, limit: 20 });
     expect(run.status).toBe(200);
     expect(run.ran).toEqual(["respond"]);
+  });
+
+  it("reads usage through the pinned view, and says so when nothing is metered", async () => {
+    const ctx = keyContext(pinned());
+    // No enterprise port wired, which is every open-source deployment: the read
+    // answers "unmetered" rather than zeroed meters.
+    expect(await readUsageMetersOp.run(ctx, {})).toMatchObject({
+      metered: false,
+      plan: null,
+      meters: [],
+    });
+    // The spender read runs on the pinned Db, the thing three name-checking
+    // drift tests cannot prove.
+    const spenders = await readUsageSpendersOp.run(ctx, {});
+    expect(Array.isArray(spenders.dimensions)).toBe(true);
+    expect(Date.parse(spenders.from)).toBeLessThan(Date.parse(spenders.to));
+  });
+
+  it("refuses a window it cannot answer honestly", async () => {
+    const ctx = keyContext(pinned());
+    await expect(
+      readUsageSpendersOp.run(ctx, {
+        from: "2026-09-02T00:00:00.000Z",
+        to: "2026-09-01T00:00:00.000Z",
+      })
+    ).rejects.toMatchObject({ code: "invalid_input" });
+    await expect(
+      readUsageSpendersOp.run(ctx, {
+        from: "2020-01-01T00:00:00.000Z",
+        to: "2026-01-01T00:00:00.000Z",
+      })
+    ).rejects.toMatchObject({ code: "invalid_input" });
   });
 
   it("reads the key holder's own Flows Agent thread, empty before a canvas opens", async () => {

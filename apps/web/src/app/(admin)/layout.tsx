@@ -1,6 +1,6 @@
 import { Suspense, cache } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import { NotificationCenter } from "@/components/notifications/notification-center";
+import { NotificationDock } from "@/components/notifications/notification-dock";
 import { ShellProvider } from "@/components/shell/shell-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PendingActivationBanner } from "@/components/shell/pending-activation-banner";
@@ -95,7 +95,7 @@ export default function AdminLayout({
                 </div>
               </div>
               <Suspense fallback={null}>
-                <NotificationCenterLoader />
+                <NotificationDockLoader />
               </Suspense>
             </div>
           </ShellProvider>
@@ -138,18 +138,20 @@ async function ActivationBannerLoader() {
   return <PendingActivationBanner organizationId={organizationId} />;
 }
 
-async function NotificationCenterLoader() {
+async function NotificationDockLoader() {
   const { reads } = await requirePageMember();
-  const [alerts, totalAlertCount, mentions] = await Promise.all([
+  const [alerts, totalAlertCount, mentions, ingestionActive] = await Promise.all([
     reads.activeAlerts(),
     reads.activeAlertCount(),
     channelMentions(),
+    reads.ingestionInFlight(),
   ]);
   return (
-    <NotificationCenter
+    <NotificationDock
       alerts={alerts}
       totalAlertCount={totalAlertCount}
       mentions={mentions}
+      ingestionActive={ingestionActive}
     />
   );
 }

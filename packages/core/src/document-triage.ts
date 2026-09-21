@@ -127,14 +127,32 @@ export function zipEntryNames(bytes: Uint8Array): string[] | null {
   return zipDirectory(bytes)?.map((entry) => entry.name) ?? null;
 }
 
+/** One central-directory entry: enough to name it, and enough to find it. */
+export interface ZipEntry {
+  name: string;
+  /** Declared, never measured. Triage answers before anything is inflated. */
+  uncompressedSize: number;
+  /** 0 = stored, 8 = deflate. Anything else is a format nobody here reads. */
+  compressionMethod: number;
+  compressedSize: number;
+  /** Where this entry's local header sits, for a reader that wants the bytes. */
+  localHeaderOffset: number;
+}
+
 /**
- * The central directory's entries: name and *declared* uncompressed size.
- * Null when the archive is malformed or uses ZIP64 (0xffffffff sizes/offsets),
- * which the caller treats as "cannot see inside" rather than "nothing inside".
+ * The central directory's entries: name, *declared* sizes, and where each one
+ * begins. Null when the archive is malformed or uses ZIP64 (0xffffffff
+ * sizes/offsets), which the caller treats as "cannot see inside" rather than
+ * "nothing inside".
+ *
+ * Triage needs only the names and the declared sizes. The offsets exist for the
+ * OOXML text reader in the runtime package, which inflates entries to pull the
+ * words out of a spreadsheet or a deck: reading a ZIP's shape is byte
+ * arithmetic and belongs here, inflating one needs `node:zlib` and does not.
+ * One reader, two callers, rather than a second parser that could disagree with
+ * this one about what an archive contains.
  */
-export function zipDirectory(
-  bytes: Uint8Array
-): Array<{ name: string; uncompressedSize: number }> | null {
+export function zipDirectory(bytes: Uint8Array): ZipEntry[] | null {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const floor = Math.max(0, bytes.length - EOCD_MIN_SIZE - EOCD_MAX_COMMENT);
   let eocd = -1;
@@ -152,7 +170,7 @@ export function zipDirectory(
   // that format is not worth it for a check whose answer is then "refuse".
   if (offset === 0xffffffff || count === 0xffff) return null;
 
-  const entries: Array<{ name: string; uncompressedSize: number }> = [];
+  const entries: ZipEntry[] = [];
   for (let i = 0; i < count; i++) {
     if (offset + 46 > bytes.length) return null;
     if (view.getUint32(offset, true) !== CENTRAL_FILE_HEADER_SIGNATURE) return null;
@@ -160,6 +178,12 @@ export function zipDirectory(
     // 0xffffffff is the ZIP64 sentinel, same verdict as a ZIP64 offset.
     const uncompressedSize = view.getUint32(offset + 24, true);
     if (uncompressedSize === 0xffffffff) return null;
+    const compressionMethod = view.getUint16(offset + 10, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const localHeaderOffset = view.getUint32(offset + 42, true);
+    if (compressedSize === 0xffffffff || localHeaderOffset === 0xffffffff) {
+      return null;
+    }
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
@@ -168,6 +192,9 @@ export function zipDirectory(
     entries.push({
       name: new TextDecoder("utf-8").decode(bytes.subarray(start, start + nameLength)),
       uncompressedSize,
+      compressionMethod,
+      compressedSize,
+      localHeaderOffset,
     });
     offset = start + nameLength + extraLength + commentLength;
   }

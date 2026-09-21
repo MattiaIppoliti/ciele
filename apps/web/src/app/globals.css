@@ -837,3 +837,232 @@
     opacity: 0;
   }
 }
+
+/* ══ Slide to confirm ══════════════════════════════════════
+   A handle crossing a track, and on commit the handle IS the
+   confirmation: it unfurls leftward and fills what it crossed.
+   See components/ui/slide-to-confirm.tsx for why the right edge
+   stays put.
+
+   ── THE TOKENS, and where each one landed ─────────────────
+   The block arrives reading eight custom properties it does
+   not define. Seven of them have a Ciele equivalent doing the
+   same job, and they are bound here on `.sld` rather than as
+   new globals, so none of this leaks into the app's scale:
+
+     --font-ui    -> --font-sans        (Host Grotesk)
+     --ink        -> --primary          light near-black,
+     --fill-on    -> --primary           dark near-white: the
+                                         inverting ink/slab pair
+                                         the block wants, which
+                                         Ciele already has
+     --card       -> --alpha-medium     the groove. NOT --card:
+     --fill-slab  -> --alpha-medium      this track sits inside
+                                         a modal whose panel is
+                                         already --card, and a
+                                         #f1f1f1 groove on a
+                                         #f1f1f1 panel is not a
+                                         groove. Ciele draws its
+                                         inset surfaces with the
+                                         Twenty alphas, so that
+                                         is what this is.
+     --pane-edge  -> --border
+
+   Two departures worth stating:
+
+   `--fill-slab` was doing two jobs, the track's fill and the
+   ink that rides ON the handle, which is safe only while the
+   slab is opaque. Ours is a translucent alpha, so the second
+   job goes to --primary-foreground through --fill-slab-ink,
+   and the fallback chain keeps the block's original answer
+   behind it.
+
+   `--fill-on-rgb` / `--ink-rgb` are gone rather than mapped.
+   They exist to build one colour, the resting label at 45% of
+   the ink, and every ink token in Ciele is oklch, which has no
+   channels to hand to rgba(). Hard-coding three numbers would
+   also have reintroduced a contrast bug this file already
+   fixed once: 45% of #171717 on the panel measures ~3.3:1,
+   under the 4.5:1 floor, and --muted-foreground is the token
+   whose level was raised to 5.0:1 for exactly this job. */
+.sld {
+  --fill-on: var(--primary);
+  --fill-slab: var(--alpha-medium);
+  --fill-slab-ink: var(--primary-foreground);
+  --pane-edge: var(--border);
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+  color: var(--fill-on);
+}
+
+.sld[data-disabled] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.sld-track {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  /* ── the track is the SLAB, the handle is the INK ─────────
+     It was the other way round, a translucent wash for the
+     track on the reasoning that a groove is darker than what
+     it is cut into. True, and on the bench it had nothing to be
+     cut into: the track WAS the whole block, so a 7% wash had
+     no opaque ground under it. Here it always sits on a panel,
+     so the wash is back and it is Ciele's own alpha scale.
+
+     Slab and ink is the pair the block wants and it inverts
+     from one rule: light groove with a near-black handle in
+     light, light handle in dark. And on commit the handle
+     fills the track, so the confirmed state is a solid ink
+     pill in both. */
+  background: var(--fill-slab, var(--card));
+  /* the drag is the component; the browser may not take the
+     gesture for panning */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* the bench gated this behind its own `data-stroke` toggle,
+     which does not exist here. Every inset control in Ciele
+     carries a hairline, so it is unconditional. */
+  box-shadow: inset 0 0 0 1px var(--pane-edge);
+}
+
+/* ── the ground already covered ─────────────────────────────
+   THE SAME INK AS THE HANDLE, which turns this from a trail
+   into the handle's own body. It was an 8% tint, and a tint is
+   read as a progress bar: a track filling up behind a knob that
+   slides along it. Two objects.
+
+   The geometry was already right for one. This runs from the
+   left pad to `x + GRIP`, the handle's RIGHT edge, not its
+   left, with the handle's own corner radius, so the pair
+   describes a single capsule with a rounded cap at each end and
+   the handle's cap doing the work at the leading edge. Only the
+   colour said otherwise. Matched, there is no seam to find: the
+   dot stretches out of the corner it started in and the far end
+   is still the dot.
+
+   It cannot be the ink at 100% and also sit UNDER the words. */
+.sld-wash {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  bottom: 4px;
+  background: var(--fill-on, var(--ink));
+  /* ── above the label, so it WIPES it ─────────────────────
+     Beneath it, the label's remaining ink sat on a surface its
+     own colour and went muddy rather than away: the fade
+     reaches zero at 55% of the travel and the capsule's edge
+     arrives at the first letter around 30%, so there is a
+     stretch where the two overlap. Painted over, the words are
+     covered by the advancing cap instead: they leave under a
+     rounded edge that is the handle's own shape, which reads as
+     the thing eating them rather than as a wipe.
+     The handle is `auto` and later in the DOM, and `auto` loses
+     to any z-index at all, so it needs one of its own. */
+  z-index: 1;
+  pointer-events: none;
+}
+
+.sld-say {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  /* ── CENTRED IN THE PILL, not in the room beside it ──────
+     It was inset by the handle's width, on the reasoning that
+     the words should be centred in the space actually left to
+     them. That is the right rule for a label sharing a row with
+     a control, and the wrong one here: the track IS the object,
+     and a label pushed 24px right of its middle reads as
+     off-centre rather than as considerate, since there is
+     nothing for it to be centred against except the pill.
+
+     It costs nothing at rest (the words start well clear of
+     the handle) and the overlap it was avoiding is now the
+     point, since the capsule wipes them as it comes. */
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  /* the block asked for the ink at 45%; see the token note at
+     the top for why this is a token rather than an alpha */
+  color: var(--muted-foreground);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.sld-grip {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  background: var(--fill-on, var(--ink));
+  color: var(--fill-slab-ink, var(--fill-slab, var(--card)));
+  cursor: grab;
+  /* ── it takes the pointer now, and the track still wins ───
+     It was `none`, so the track owned the gesture outright.
+     The handle has to know when a cursor is ON it to swell,
+     and a press still reaches the track by BUBBLING (the
+     handle is inside it) so nothing about the drag changed.
+     Once the track captures the pointer every later event is
+     retargeted there anyway, which is why a drag that wanders
+     off the handle keeps reporting. */
+  pointer-events: auto;
+  /* the wall it lands against, so the squash compresses
+     toward the end of the track rather than about its middle */
+  transform-origin: 0% 50%;
+  /* it is placed by a motion value, so nothing here may
+     transition `transform` or the two fight every frame */
+  transition: none;
+  /* over the wash, which had to claim a layer to cover the
+     label: see .sld-wash */
+  z-index: 2;
+}
+
+.sld-grip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 5px var(--ring);
+}
+
+.sld-track[data-held] .sld-grip {
+  cursor: grabbing;
+}
+
+/* ── two contents, both ABSOLUTE ────────────────────────────
+   Stacked so neither has to make room for the other and the
+   handle's width is free to be whatever the morph says it is.
+
+   They were one grid cell, and that put the arrow 21.3px right
+   of the handle's centre. "Confirmed" is 59px wide and the
+   resting handle is 42, so the shared track was wider than the
+   box holding it, and an overflowing grid item resolves
+   `center` to `start`, which shoved both to one side.
+
+   Absolute with `inset: 0` has no such rule: each fills the
+   handle and centres its own content, at every width the morph
+   passes through, and neither can size the handle. */
+.sld-arrow,
+.sld-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.006em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sld-done {
+    transition-duration: 1ms;
+  }
+}

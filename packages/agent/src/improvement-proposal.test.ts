@@ -7,7 +7,10 @@ import type {
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { EMBEDDING_DIMS } from "./embeddings";
-import { draftImprovementProposal } from "./improvement-proposal";
+import {
+  draftGoalProposal,
+  draftImprovementProposal,
+} from "./improvement-proposal";
 
 // Only the two calls that would leave the machine are faked, the drafter's
 // structured-output call and the embedding call. Everything else (context
@@ -228,5 +231,100 @@ describe("draftImprovementProposal", () => {
       draftImprovementProposal({ db, improvementId: "imp1", messageId: "m1" })
     ).resolves.toBeUndefined();
     expect(db.createImprovementProposal).not.toHaveBeenCalled();
+  });
+});
+
+describe("draftGoalProposal (#903)", () => {
+  it("drafts from a failing Goal, with no Conversation and no message", async () => {
+    // The producer this path exists for: a goal eval persists neither, so
+    // `gatherContext`'s whole rehydration is unavailable and the inputs
+    // arrive on the job instead.
+    const db = fakeDb();
+    await draftGoalProposal({
+      db,
+      improvementId: "imp1",
+      assistantId: "a1",
+      question: "What are the opening hours on a public holiday?",
+      answer: "We are open from 9 to 5 every day.",
+    });
+
+    expect(db.getConversationForMessage).not.toHaveBeenCalled();
+    expect(db.listMessages).not.toHaveBeenCalled();
+    expect(db.createImprovementProposal).toHaveBeenCalledWith({
+      improvementId: "imp1",
+      organizationId: "org1",
+      payload: expect.objectContaining({
+        draftQuestion: "How do I reset my password?",
+        draftAnswer: "Open the Identity Portal.",
+        targetAssistantId: "a1",
+        // No Conversation means no anchored Collection; retrieval widens to
+        // the whole Assistant, which is what `scope: "assistant"` already did.
+        targetCollectionId: null,
+      }),
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it("puts the golden question and the failing answer in front of the model", async () => {
+    const db = fakeDb();
+    await draftGoalProposal({
+      db,
+      improvementId: "imp1",
+      assistantId: "a1",
+      question: "What are the opening hours on a public holiday?",
+      answer: "We are open from 9 to 5 every day.",
+    });
+    const prompt = mocks.generateObject.mock.calls[0][0].prompt as string;
+    // A Goal IS a flagged answer an admin wrote down in advance, so both
+    // halves reach the drafter in the slots the other producer fills.
+    expect(prompt).toContain("What are the opening hours on a public holiday?");
+    expect(prompt).toContain("We are open from 9 to 5 every day.");
+  });
+
+  it("meters the call with no conversation or message to attribute it to", async () => {
+    const db = fakeDb();
+    await draftGoalProposal({
+      db,
+      improvementId: "imp1",
+      assistantId: "a1",
+      question: "Q?",
+      answer: "A.",
+    });
+    expect(db.recordAiUsage).toHaveBeenCalledWith([
+      expect.objectContaining({
+        organizationId: "org1",
+        assistantId: "a1",
+        conversationId: null,
+        messageId: null,
+        stage: "improvement_proposal",
+      }),
+    ]);
+  });
+
+  it("drafts nothing when the eval produced no answer", async () => {
+    // Nothing to improve against, and a model call that would invent one.
+    const db = fakeDb();
+    await draftGoalProposal({
+      db,
+      improvementId: "imp1",
+      assistantId: "a1",
+      question: "Q?",
+      answer: "   ",
+    });
+    expect(mocks.generateObject).not.toHaveBeenCalled();
+    expect(db.createImprovementProposal).not.toHaveBeenCalled();
+  });
+
+  it("drafts nothing when the Assistant is gone", async () => {
+    const db = fakeDb({ getAssistant: vi.fn().mockResolvedValue(null) });
+    await draftGoalProposal({
+      db,
+      improvementId: "imp1",
+      assistantId: "a1",
+      question: "Q?",
+      answer: "A.",
+    });
+    expect(db.createImprovementProposal).not.toHaveBeenCalled();
+    expect(errors).toEqual([]);
   });
 });

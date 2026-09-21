@@ -1,4 +1,10 @@
-import { openSecret, type Concept, type ConceptFrontmatter } from "@agent-hub/core";
+import {
+  openSecret,
+  type Concept,
+  type ConceptFrontmatter,
+  type UsageSpenders,
+  type UsageSurface,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { OperationPorts } from "@ciele/ops";
 import {
@@ -13,6 +19,7 @@ import {
   enqueueReviewResumptionJob,
   resumeReviewedConversation,
   unsubscribePendingWebhooks,
+  getEnterpriseCapabilities,
 } from "@agent-hub/agent";
 import { improvementAssignedEmail, improvementClosedEmail } from "@/lib/notify";
 import { getWidgetDb, invalidatePublication } from "@/lib/widget-db";
@@ -35,6 +42,11 @@ export function webOperationPorts(
      * forbids `updateTag` outside an action.
      */
     invalidatePublication?: (assistantId: string) => void;
+    /**
+     * Who the surface says is asking (#849), so indexing a caller triggered
+     * names the caller. Absent on the ingestion pipeline's own jobs.
+     */
+    usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
   }
 ): OperationPorts {
   return {
@@ -122,17 +134,23 @@ export function webOperationPorts(
       persistFaqConcept({
         db,
         organizationId: opts.organizationId,
+        usage: opts.usage,
         ...args,
       }),
     reembedConcept: async (args) => {
       const connections = await db.listProviderConnections(opts.organizationId);
-      await embedConcept({ db, connections, ...args });
+      await embedConcept({ db, connections, usage: opts.usage, ...args });
     },
     restartCrawl: async (sourceId) => {
       await restartWebsiteCrawl({ db, sourceId });
     },
     invalidatePublication: (assistantId) =>
       (opts.invalidatePublication ?? invalidatePublication)(assistantId),
+    // The plan's meters (#853). A port because caps are an enterprise concept
+    // and the operations layer must stay free of one; unwired, and on every
+    // open-source deployment, this answers null and the read says "unmetered".
+    readUsageLimits: (organizationId) =>
+      getEnterpriseCapabilities().metering.getUsageLimits(organizationId),
     notifyImprovementUpdate: async ({ before, updated, patch }) => {
       const key = `IMP-${updated.seq}`;
       const members = await db.listMembers(opts.organizationId);
@@ -195,6 +213,8 @@ export async function persistFaqConcept(args: {
   provenance: Pick<ConceptFrontmatter, "generated" | "verified" | "sources">;
   /** Disambiguates bundle paths in bulk imports (e.g. "-3"). */
   pathSuffix?: string;
+  /** Who asked for the indexing this triggers (#849). */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): Promise<Concept> {
   const question = args.question.trim();
   const slug =
@@ -226,6 +246,7 @@ export async function persistFaqConcept(args: {
     },
     body: args.answer,
     connections,
+    usage: args.usage,
   });
   await args.db.updateSource(source.id, { status: "ready" });
   return concept;

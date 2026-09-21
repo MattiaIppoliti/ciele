@@ -272,13 +272,23 @@ function ThoughtRow({ step }: { step: TurnStep }) {
       status={running ? "working" : "complete"}
       duration={elapsedMs !== null ? elapsedMs / 1000 : 0}
       activeLabel="Thinking…"
-      summary={elapsedMs === null ? "Thought" : undefined}
+      // A segment that finished inside a second has no clock worth printing:
+      // "Thought for 0s" reads like a bug, and rounding up to 1s would be a
+      // number nobody measured.
+      summary={elapsedMs === null || elapsedMs < 1000 ? "Thought" : undefined}
       maxHeight={140}
       className="-mt-1"
     />
   );
 }
 
+/**
+ * A row with nothing to stream: a `notice` (a decision already taken, emitted
+ * `done`) or a legacy `step`. Neither is ever `running`, which is why nothing
+ * here shimmers: the panel header and `ThoughtRow` carry the live animation,
+ * and animating a finished record would say the runtime is doing something it
+ * finished before the row existed.
+ */
 function PlainStepRow({ step }: { step: TurnStep }) {
   // A thought still being streamed (#584): text being written live.
   const streamingThought = step.kind === "thought" && step.status === "running";

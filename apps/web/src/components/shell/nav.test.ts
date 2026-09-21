@@ -115,8 +115,11 @@ describe("Developer Panel domain claims (#754)", () => {
     // list yet. Both readings are pinned here so neither drifts silently.
     expect(apiDomainsForPath("/settings/general")).toEqual(["organization"]);
     expect(apiDomainsForPath("/settings/data")).toEqual(["entities"]);
-    // Settings tabs that configure nothing programmatic get no button.
-    expect(apiDomainsForPath("/settings/usage")).toEqual([]);
+    // Usage became programmatic in #853: two read-only endpoints, so the tab
+    // that shows them gets the panel that explains how to call them.
+    expect(apiDomainsForPath("/settings/usage")).toEqual(["usage"]);
+    // Settings tabs that configure nothing programmatic still get no button.
+    // Billing stays one: buying is a surface where a person confirms an amount.
     expect(apiDomainsForPath("/settings/billing")).toEqual([]);
     expect(apiDomainsForPath("/settings/profile")).toEqual([]);
   });

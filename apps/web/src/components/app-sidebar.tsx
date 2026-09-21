@@ -62,6 +62,11 @@ import {
   assistantSectionFromPath,
   setupHref,
 } from "@/components/shell/nav";
+import { NavFoldGroup } from "@/components/shell/nav-tree";
+import {
+  ORG_SETTINGS_TABS,
+  settingsTabFromPath,
+} from "@/components/settings/settings-nav";
 import {
   useShell,
   useShellAssistants,
@@ -509,31 +514,55 @@ function SidebarContent({
         <div className="bg-border mb-3 h-px" />
 
         <div className="flex flex-col items-center gap-0.5">
-          {scopedId ? (
-            <NavRow
-              key="overview"
-              icon={MessageCircle}
-              avatarUrl={scopedAssistant?.avatarUrl ?? undefined}
-              label="Overview"
-              href={`/assistants/${scopedId}`}
-              collapsed={collapsed}
-              active={
-                pathname === `/assistants/${scopedId}` &&
-                (!currentSetup || currentSetup === "overview")
-              }
-            />
-          ) : (
-            assistantsNav && (
-              <NavRow
-                key={assistantsNav.label}
-                icon={assistantsNav.icon}
-                label={assistantsNav.label}
-                href={assistantsNav.href}
-                collapsed={collapsed}
-                active={pathname === assistantsNav.href}
-              />
-            )
-          )}
+          {/* The SETUP sections belong to an Assistant, so they hang off the
+              row that *is* the Assistant: Overview when one is in scope, the
+              dashboard entry when none is. They used to be a group of their
+              own below a separator, which said nothing about whose sections
+              they were and left the editor rail floating between the console
+              pages and the org ones.
+
+              Unscoped they still lead to `/setup/<section>`, the "choose an
+              assistant to continue" picker, exactly as the flat group did. */}
+          <NavFoldGroup
+            name="setup"
+            label="assistant sections"
+            collapsed={collapsed}
+            row={
+              scopedId ? (
+                <NavRow
+                  key="overview"
+                  icon={MessageCircle}
+                  avatarUrl={scopedAssistant?.avatarUrl ?? undefined}
+                  label="Overview"
+                  href={`/assistants/${scopedId}`}
+                  collapsed={collapsed}
+                  active={
+                    pathname === `/assistants/${scopedId}` &&
+                    (!currentSetup || currentSetup === "overview")
+                  }
+                />
+              ) : (
+                assistantsNav && (
+                  <NavRow
+                    key={assistantsNav.label}
+                    icon={assistantsNav.icon}
+                    label={assistantsNav.label}
+                    href={assistantsNav.href}
+                    collapsed={collapsed}
+                    active={pathname === assistantsNav.href}
+                  />
+                )
+              )
+            }
+            items={SETUP_SECTIONS.map((section) => ({
+              label: section.label,
+              href: setupHref(scopedId, section.slug),
+              icon: section.icon,
+            }))}
+            activeIndex={SETUP_SECTIONS.findIndex(
+              (section) => section.slug === currentSetup
+            )}
+          />
           {primaryNav.map((item) => (
             <NavRow
               key={item.label}
@@ -551,21 +580,6 @@ function SidebarContent({
               // were named in them.
               badge={item.label === "Teammates" ? mentionCount : 0}
             />
-          ))}
-        </div>
-
-        <div className="bg-border my-3 h-px" />
-
-        <div className="flex flex-col items-center gap-0.5">
-          {SETUP_SECTIONS.map((section) => (
-              <NavRow
-                key={section.slug}
-                icon={section.icon}
-                label={section.label}
-                href={setupHref(scopedId, section.slug)}
-                active={currentSetup === section.slug}
-                collapsed={collapsed}
-              />
           ))}
         </div>
 
@@ -629,12 +643,29 @@ function SidebarContent({
               Everyone else reaches their personal settings, Profile and
               theme, from the account menu below. */}
           {settingsNav && canManageMembers(role) && (
-            <NavRow
-              icon={settingsNav.icon}
-              label={settingsNav.label}
-              href={settingsNav.href}
+            <NavFoldGroup
+              name="settings"
+              label="settings sections"
               collapsed={collapsed}
-              active={pathname.startsWith(settingsNav.match ?? settingsNav.href)}
+              row={
+                <NavRow
+                  icon={settingsNav.icon}
+                  label={settingsNav.label}
+                  href={settingsNav.href}
+                  collapsed={collapsed}
+                  active={pathname.startsWith(
+                    settingsNav.match ?? settingsNav.href
+                  )}
+                />
+              }
+              items={ORG_SETTINGS_TABS.map((tab) => ({
+                label: tab.label,
+                href: tab.href,
+                icon: tab.icon,
+              }))}
+              activeIndex={ORG_SETTINGS_TABS.findIndex(
+                (tab) => tab.slug === settingsTabFromPath(pathname)
+              )}
             />
           )}
         </div>

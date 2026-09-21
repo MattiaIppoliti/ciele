@@ -92,6 +92,43 @@ export interface BillingAccessor {
    */
   startUpgradeCheckout(input: UpgradeCheckoutInput): Promise<string | null>;
   /**
+   * The credit packs this deployment sells (#852), or an empty list when it
+   * sells none, which is every open-source deployment and every one with no
+   * Stripe Price configured for a pack.
+   */
+  getCreditPacks?(): { slug: string; credits: number; priceEur: number }[];
+  /**
+   * Start hosted checkout for one credit pack and return its URL, or null when
+   * this deployment cannot sell it. Same contract as the upgrade above:
+   * configuration cases answer null, real failures throw.
+   */
+  startTopupCheckout?(input: {
+    organizationId: string;
+    pack: string;
+    customerEmail?: string | null;
+  }): Promise<string | null>;
+  /**
+   * Credits the organization holds and how it came by them (#852), newest
+   * first, so Billing can show a history a finance colleague reconciles against
+   * the Stripe receipts. Null where the deployment holds none.
+   */
+  getCreditBalance?(organizationId: string): Promise<{
+    credits: number;
+    /**
+     * What one credit costs inside this organization's own plan, so a surface
+     * can show that a pack is dearer without restating the arithmetic. Null for
+     * a sales-led or unknown tier, where there is no published per-credit price.
+     */
+    planCreditPriceEur: number | null;
+    grants: {
+      id: string;
+      credits: number;
+      source: string;
+      createdAt: string;
+      expiresAt: string | null;
+    }[];
+  } | null>;
+  /**
    * Open the Stripe Customer Portal: where an existing subscriber changes tier,
    * updates a card, or cancels. Null when there is no Stripe customer to open it
    * for (OSS, a comped grant, an unconfigured Stripe).

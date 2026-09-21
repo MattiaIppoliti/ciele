@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { streamObject } from "ai";
 import type { LanguageModel } from "ai";
 import type {
   ApiIntegration,
@@ -114,7 +114,13 @@ export async function classifyIntent(
   /** Raw SDK usage of the classify call, for the AI usage ledger. */
   onUsage?: (usage: unknown) => void,
   /** Page URL + clock for the objective condition gate (spec #550). */
-  routing: FlowRoutingContext = {}
+  routing: FlowRoutingContext = {},
+  /**
+   * Streams the router's own one-line reading of the message as a thought, so
+   * the Thinking panel is not blank while this call runs. Absent, nothing is
+   * emitted and the call behaves exactly as it did.
+   */
+  emit?: (event: RuntimeEvent) => void
 ): Promise<Flow | null> {
   // Flows fired by page/chat events never compete for user messages, and
   // neither do flows whose URL/Schedule conditions cannot pass.
@@ -124,10 +130,33 @@ export async function classifyIntent(
     return matchFlow(message, flows, routing);
   }
 
+  // `streamObject` does not reject the way `generateObject` did: when the
+  // provider fails, the object promise stays **pending forever** and only
+  // `onError` fires. Routing must never wait on that, so the failure is turned
+  // back into a rejection here and raced against the answer, which restores the
+  // guarantee the keyword-matcher fallback below depends on.
+  let reportStreamFailure: (error: unknown) => void = () => {};
+  const streamFailed = new Promise<never>((_, reject) => {
+    reportStreamFailure = reject;
+  });
+  // Attached before anything can reject it.
+  streamFailed.catch(() => {});
+
   try {
-    const { object, usage } = await generateObject({
+    const { partialObjectStream, object: objectPromise, usage: usagePromise } =
+      streamObject({
       model: classifier,
+      onError: ({ error }) => reportStreamFailure(error),
       schema: z.object({
+        // First in the schema, so it is generated first and can stream while
+        // the ids are still being decided. Routing used to be the one part of
+        // a turn with nothing to show: the panel sat on "Thinking…" with no
+        // step under it until the first tool call.
+        intent: z
+          .string()
+          .describe(
+            "One short sentence, in the user's own language, saying what THIS PERSON is asking for. Describe the request, never the routing: do not name, quote or allude to any flow, id, trigger or condition, and do not say which one you picked. Write it as something the person could read about themselves."
+          ),
         matchingFlowIds: z
           .array(z.string())
           .describe(
@@ -151,13 +180,72 @@ export async function classifyIntent(
         .map(flowCatalogEntry)
         .join("\n")}`,
     });
-    onUsage?.(usage);
+    // Deltas rather than one settled thought, so this reads like the rest of
+    // the panel: `foldTraceEvent` grows the running step in place.
+    //
+    // Narration is deliberately not what routing waits on. `streamObject` does
+    // not reject the way `generateObject` did: a provider that fails surfaces
+    // it on the stream and the object promise, and iterating a stream that
+    // never opens simply hangs. So the decision awaits the promise, which
+    // rejects into the keyword-matcher fallback below, and the deltas ride
+    // alongside where they cannot stall a turn.
+    const narrate = (async () => {
+      let streamed = "";
+      for await (const partial of partialObjectStream) {
+        const intent = typeof partial.intent === "string" ? partial.intent : "";
+        if (emit && intent.length > streamed.length) {
+          emit({ type: "thought-delta", delta: intent.slice(streamed.length) });
+          streamed = intent;
+        }
+      }
+    })();
+    // Attached now, so a failed stream is never an unhandled rejection even
+    // when the object promise rejects first and this is never awaited.
+    narrate.catch(() => {});
+
+    const object = await Promise.race([objectPromise, streamFailed]);
+    // Every delta is out before the terminal thought settles the step.
+    await narrate.catch(() => {});
+    if (emit) {
+      // The prompt forbids naming a flow; this is what enforces it. Flows are
+      // deliberately invisible to chat users, and the router is the one call
+      // whose input is the whole catalogue, so a model that echoes a name back
+      // would put an organization's routing on a stranger's screen. The
+      // terminal event rewrites the streamed label in place (`foldThought`),
+      // so a leaked name survives only the moment before it lands.
+      const settled = routingNarration(object.intent, candidates);
+      if (settled) emit({ type: "thought", text: settled });
+    }
+    onUsage?.(await Promise.race([usagePromise, streamFailed]));
     const matchingIds = new Set(object.matchingFlowIds.map((id) => id.trim()));
     const picked = candidates.find((flow) => matchingIds.has(flow.id));
     return picked ?? defaultFlow;
   } catch {
     return matchFlow(message, flows, routing);
   }
+}
+
+/**
+ * The router's narration, or null when it named something it must not.
+ *
+ * Exported for its test: the check is a one-line rule with a consequence worth
+ * asserting rather than trusting to a prompt.
+ */
+export function routingNarration(
+  intent: string,
+  candidates: readonly Flow[]
+): string | null {
+  const text = intent.trim();
+  if (!text) return null;
+  const haystack = text.toLowerCase();
+  const named = candidates.some((flow) => {
+    const name = flow.name.trim().toLowerCase();
+    return (
+      haystack.includes(flow.id.toLowerCase()) ||
+      (name.length > 2 && haystack.includes(name))
+    );
+  });
+  return named ? null : text;
 }
 
 /**
@@ -398,6 +486,12 @@ export async function runAssistantChat(options: {
   teammateActions?: readonly TeammateActionTool[];
   /** Its three memory documents, rendered (#771). Empty injects nothing. */
   memoryDocuments?: readonly string[];
+  /**
+   * This turn carries a file. It suppresses the courtesy short-circuit below:
+   * `memoryDocuments` cannot stand in for this, because a Teammate turn always
+   * has memory layers and would then never recognise a greeting again.
+   */
+  hasAttachments?: boolean;
   /** Third-party text for this turn (#857), fenced as untrusted by the search action. */
   untrustedContext?: readonly UntrustedEnvelope[];
   /** Colleagues this Teammate may refer to (#773); empty registers no tool. */
@@ -434,6 +528,8 @@ export async function runAssistantChat(options: {
   connectorRuntime?: ActionContext["connectorRuntime"];
   /** The Human review gate's host port (#841), bound over the turn's Conversation. */
   reviewRuntime?: ActionContext["reviewRuntime"];
+  /** Counts non-model operations the Flow performs (#854); priced at zero. */
+  countOperation?: ActionContext["countOperation"];
   /** The callback gate's host port (#842), bound over the turn's Conversation. */
   webhookRuntime?: ActionContext["webhookRuntime"];
   /** Who the turn verifiably speaks for, Entity tool policy input (#667). */
@@ -501,6 +597,7 @@ export async function runAssistantChat(options: {
     queryEntityRecords,
     connectorRuntime,
     reviewRuntime,
+    countOperation,
     webhookRuntime,
     toolSubject,
     escalationDesks = [],
@@ -589,10 +686,15 @@ export async function runAssistantChat(options: {
   // consult one decision from one call site, so they cannot drift. A hit skips
   // Intent Classification entirely and emits no notices, which is what leaves
   // the turn with a null trace and the Visitor with no Thinking panel.
-  const courtesyFlow = basicInteractionFlow(message, flows, {
-    ...routing,
-    history,
-  });
+  // A message that came with a file is not courtesy, whatever its words are:
+  // somebody who attaches an invoice and types "hi there" is asking about the
+  // invoice, and the courtesy path answers without ever reading it.
+  const courtesyFlow = options.hasAttachments
+    ? null
+    : basicInteractionFlow(message, flows, {
+        ...routing,
+        history,
+      });
 
   // Above the courtesy check would put one notice on a turn that must have none,
   // and which provider answered a greeting is not worth a Thinking panel. The
@@ -675,6 +777,7 @@ export async function runAssistantChat(options: {
       queryEntityRecords,
       connectorRuntime,
       reviewRuntime,
+      countOperation,
       webhookRuntime,
       toolSubject,
       priorParts: parts,
@@ -724,7 +827,8 @@ export async function runAssistantChat(options: {
           ...usageTotals(usage),
         });
       },
-      routing
+      routing,
+      emit
     ));
 
   if (!flow) {
@@ -798,6 +902,7 @@ export async function runAssistantChat(options: {
     queryEntityRecords,
     connectorRuntime,
     reviewRuntime,
+    countOperation,
     webhookRuntime,
     toolSubject,
     priorParts: parts,

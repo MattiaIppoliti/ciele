@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import type {
@@ -10,21 +9,25 @@ import type {
   OrgKnowledgeSourceListItem,
   SourceStatus,
 } from "@agent-hub/core";
-import type { OrgKnowledgeStatusCounts } from "@agent-hub/core";
 import {
+  Activity,
+  AppWindow,
+  Clock,
   Download,
   ExternalLink,
+  FileStack,
   FileText,
   Globe,
+  KeyRound,
   Link2,
   List,
   MessageCircleQuestion,
+  MessageSquare,
   Pencil,
   Plus,
   Search,
   Trash2,
   Upload,
-  AppWindow,
 } from "lucide-react";
 import {
   ApplicationKnowledgePanel,
@@ -45,11 +48,13 @@ import {
 import {
   Table,
   TableBody,
+  TableCard,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import {
   Select,
   SelectContent,
@@ -73,50 +78,41 @@ import {
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
-  KNOWLEDGE_TAB_SLUGS,
+  KNOWLEDGE_TAB_LABELS,
   directAccessSummary,
   sourceTypeLabel,
-  tabHealth,
   type HubSearchParams,
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
-import { paginationRange } from "@/lib/pagination";
+import { DEFAULT_PAGE_SIZE, paginationRange } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
-
-const TAB_LABELS: Record<KnowledgeTabSlug, string> = {
-  websites: "Websites",
-  files: "Files",
-  applications: "Applications",
-  faqs: "FAQs",
-};
-
-const TAB_TITLES: Record<KnowledgeTabSlug, string> = {
-  websites: "Websites",
-  files: "Files",
-  applications: "Applications",
-  faqs: "Questions and Answers",
-};
-
-const TAB_INTROS: Record<KnowledgeTabSlug, string> = {
-  websites:
-    "Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions.",
-  files:
-    "Upload files to add to your organization's knowledge base. Linked assistants will use these to answer questions.",
-  applications:
-    "Connect external applications and synchronize selected content into your organization's knowledge base.",
-  faqs: "Add sets of questions and answers to fine tune AI responses.",
-};
-
-const HEALTH_DOT: Record<SourceStatus, string> = {
-  ready: "bg-emerald-500",
-  processing: "bg-amber-500",
-  error: "bg-red-500",
-};
 
 // The dot above stays a solid palette colour: a 6px dot has to carry the state
 // on its own and a tint disappears at that size. The badge is the opposite
 // case, so it takes a Badge `tone`, which is the same pale-surface /
 // dark-ink pair every other status badge in the console now uses.
+/** The glyph on the Name column, which names what a row of this tab is. */
+const TAB_ROW_ICON: Record<KnowledgeTabSlug, typeof Globe> = {
+  websites: Globe,
+  files: FileText,
+  applications: AppWindow,
+  faqs: MessageCircleQuestion,
+};
+
+/** What the footer counts. FAQs carry their own plural. */
+const TAB_ROW_NOUN: Record<KnowledgeTabSlug, string> = {
+  websites: "website",
+  files: "file",
+  applications: "application",
+  faqs: "FAQ",
+};
+const TAB_ROW_NOUN_PLURAL: Record<KnowledgeTabSlug, string | undefined> = {
+  websites: undefined,
+  files: undefined,
+  applications: undefined,
+  faqs: "FAQs",
+};
+
 const STATUS_TONE: Record<SourceStatus, BadgeTone> = {
   ready: "green",
   processing: "amber",
@@ -166,25 +162,18 @@ function LinkedAssistantChips({
   );
 }
 
-interface TabSummary {
-  total: number;
-  statusCounts: OrgKnowledgeStatusCounts;
-}
-
 export function KnowledgeHubClient({
   tab,
   filters,
   items,
   total,
   pageSize,
-  tabSummaries,
   assistants,
   currentMemberId,
   canEdit,
   applicationConnections,
   applicationImports,
   applicationOperationalState,
-  applicationHealthSummary,
   canManageConnections,
   applicationOAuthAvailability,
 }: {
@@ -193,7 +182,6 @@ export function KnowledgeHubClient({
   items: OrgKnowledgeSourceListItem[];
   total: number;
   pageSize: number;
-  tabSummaries: Record<string, TabSummary>;
   assistants: Array<{ id: string; title: string }>;
   currentMemberId: string;
   canEdit: boolean;
@@ -203,13 +191,6 @@ export function KnowledgeHubClient({
     string,
     { lastRun: ApplicationSyncRun | null; sourceCount: number }
   >;
-  applicationHealthSummary: {
-    connected: number;
-    pending: number;
-    attention: number;
-    syncing: number;
-    ready: number;
-  };
   canManageConnections: boolean;
   applicationOAuthAvailability: ApplicationOAuthAvailability;
 }) {
@@ -239,6 +220,7 @@ export function KnowledgeHubClient({
     if (next.status) params.set("status", next.status);
     if (next.assistant) params.set("assistant", next.assistant);
     if (next.page > 1) params.set("page", String(next.page));
+    if (next.size !== DEFAULT_PAGE_SIZE) params.set("size", String(next.size));
     const qs = params.toString();
     startTransition(() => {
       router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -273,67 +255,10 @@ export function KnowledgeHubClient({
     );
   }
 
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-
+  // The heading and the tab rail belong to `library/layout.tsx`, which outlives
+  // the `[tab]` segment; this component is the bucket's own content.
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
-        <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-          {TAB_TITLES[tab]}
-          <Badge variant="secondary">{tabSummaries[tab]?.total ?? 0}</Badge>
-        </h1>
-      </header>
-      <p className="text-muted-foreground max-w-3xl px-4 text-sm sm:px-6">
-        {TAB_INTROS[tab]}
-      </p>
-
-      <nav
-        className="border-border mt-4 flex shrink-0 items-center gap-1 border-b px-4 sm:px-6"
-        aria-label="Library tabs"
-      >
-        {KNOWLEDGE_TAB_SLUGS.map((slug) => {
-          const summary = tabSummaries[slug];
-          const applicationHealth: SourceStatus | null =
-            applicationHealthSummary.attention > 0
-              ? "error"
-              : applicationHealthSummary.pending > 0 ||
-                  applicationHealthSummary.syncing > 0
-                ? "processing"
-                : applicationHealthSummary.connected > 0 ||
-                    applicationHealthSummary.ready > 0
-                  ? "ready"
-                  : null;
-          const health = slug === "applications"
-            ? applicationHealth ?? (summary ? tabHealth(summary.statusCounts) : null)
-            : summary
-              ? tabHealth(summary.statusCounts)
-              : null;
-          const active = slug === tab;
-          return (
-            <Link
-              key={slug}
-              href={`/library/${slug}`}
-              className={`-mb-px flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${
-                active
-                  ? "border-primary text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground border-transparent"
-              }`}
-            >
-              {TAB_LABELS[slug]}
-              <span className="text-muted-foreground text-xs">
-                {summary?.total ?? 0}
-              </span>
-              {health && (
-                <span
-                  className={`size-1.5 rounded-full ${HEALTH_DOT[health]}`}
-                  aria-label={`status: ${health}`}
-                />
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
+    <>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
         {tab === "applications" && (
           <ApplicationKnowledgePanel
@@ -353,7 +278,7 @@ export function KnowledgeHubClient({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={`Search ${TAB_LABELS[tab].toLowerCase()}...`}
+              placeholder={`Search ${KNOWLEDGE_TAB_LABELS[tab].toLowerCase()}...`}
               className="pl-8"
             />
           </div>
@@ -419,26 +344,50 @@ export function KnowledgeHubClient({
           </div>
         </div>
 
-        <div
-            className={`overflow-x-auto rounded-xl border ${isPending ? "opacity-60" : ""}`}
+        <TableCard
+          className={isPending ? "opacity-60" : undefined}
+          footer={
+            <TablePagination
+              page={filters.page}
+              pageSize={pageSize}
+              total={total}
+              noun={TAB_ROW_NOUN[tab]}
+              pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
+              onPageChange={(page) => apply({ page })}
+              onPageSizeChange={(size) => apply({ size, page: 1 })}
+            />
+          }
         >
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
                 {tab === "faqs" ? (
                   <>
-                    <TableHead className="min-w-64">Question</TableHead>
-                    <TableHead className="min-w-64">Answer</TableHead>
+                    <TableHead icon={MessageCircleQuestion} className="min-w-64">
+                      Question
+                    </TableHead>
+                    <TableHead icon={MessageSquare} className="min-w-64">
+                      Answer
+                    </TableHead>
                   </>
                 ) : (
-                  <TableHead className="min-w-64">Name</TableHead>
+                  <TableHead icon={TAB_ROW_ICON[tab]} className="min-w-64">
+                    Name
+                  </TableHead>
                 )}
-                {tab === "websites" && <TableHead>Content</TableHead>}
-                <TableHead>Linked assistants</TableHead>
-                {tab === "files" && <TableHead>Direct access</TableHead>}
-                <TableHead>Created at</TableHead>
-                <TableHead>Last updated at</TableHead>
-                {tab !== "websites" && <TableHead>Status</TableHead>}
+                {tab === "websites" && (
+                  <TableHead icon={FileStack}>Content</TableHead>
+                )}
+                <TableHead icon={Link2}>Linked assistants</TableHead>
+                {tab === "files" && (
+                  <TableHead icon={KeyRound}>Direct access</TableHead>
+                )}
+                {/* Status, where "Created at" used to be. When a row was first
+                    added answers nothing anyone asks of this table; whether it
+                    is answering questions yet is the whole question, and a
+                    crawling website had no status column at all. */}
+                <TableHead icon={Activity}>Status</TableHead>
+                <TableHead icon={Clock}>Last updated at</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -449,7 +398,7 @@ export function KnowledgeHubClient({
                       empty tab is the same fact the rest of the console draws
                       the same way. `hover:bg-transparent` because there is no
                       row here to highlight. */}
-                  <TableCell colSpan={8} className="hover:bg-transparent">
+                  <TableCell colSpan={6} className="hover:bg-transparent">
                     <EmptyState size="sm" title="Nothing here yet" />
                   </TableCell>
                 </TableRow>
@@ -563,17 +512,12 @@ export function KnowledgeHubClient({
                       </span>
                     </TableCell>
                   )}
-                  <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    {formatWhen(item.createdAt)}
+                  <TableCell>
+                    <StatusBadge status={item.status} />
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     {formatWhen(item.updatedAt)}
                   </TableCell>
-                  {tab !== "websites" && (
-                    <TableCell>
-                      <StatusBadge status={item.status} />
-                    </TableCell>
-                  )}
                   <TableCell>
                     <span className="flex justify-end gap-1">
                       {tab === "files" && (
@@ -629,28 +573,7 @@ export function KnowledgeHubClient({
               ))}
             </TableBody>
           </Table>
-        </div>
-
-        {pageCount > 1 && (
-          <div className="flex items-center justify-center gap-1">
-            {paginationRange(filters.page, pageCount).map((entry, i) =>
-              entry === "ellipsis" ? (
-                <span key={`e-${i}`} className="text-muted-foreground px-2">
-                  …
-                </span>
-              ) : (
-                <Button
-                  key={entry}
-                  variant={entry === filters.page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => apply({ page: entry })}
-                >
-                  {entry}
-                </Button>
-              )
-            )}
-          </div>
-        )}
+        </TableCard>
       </div>
 
       {/* Keyed by item so every open starts from fresh state. */}
@@ -696,7 +619,7 @@ export function KnowledgeHubClient({
         onClose={() => setAdding(null)}
       />
       {confirmDeleteModal}
-    </div>
+    </>
   );
 }
 
@@ -787,9 +710,9 @@ function ViewSourceDialog({
         <div className="max-h-80 overflow-y-auto rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Link</TableHead>
+              <TableRow className="hover:bg-transparent">
+                <TableHead icon={FileText}>Name</TableHead>
+                <TableHead icon={Link2}>Link</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

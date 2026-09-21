@@ -59,3 +59,32 @@ export async function startPlanCheckoutAction(formData: FormData): Promise<void>
   if (!url) redirect("/contact/sales");
   redirect(url);
 }
+
+/**
+ * Buy a credit pack (#852). Same shape and same failure handling as the plan
+ * checkout above: a configuration case sends the buyer to a human, and only a
+ * real Stripe or network failure lands on the error notice.
+ */
+export async function startTopupCheckoutAction(formData: FormData): Promise<void> {
+  const { session, organizationId } = await requireMember("manageMembers");
+  const pack = String(formData.get("pack") ?? "");
+
+  let url: string | null = null;
+  try {
+    url =
+      (await getEnterpriseCapabilities().billing.startTopupCheckout?.({
+        organizationId,
+        pack,
+        customerEmail: session.email || null,
+      })) ?? null;
+  } catch (error) {
+    console.error("[billing] topup checkout session failed", error);
+    redirect("/settings/billing?checkout=error");
+  }
+
+  // Nothing to sell: no Stripe Price for this pack, no plan to buffer, or an
+  // open-source deployment. The conversation is the path, as it is for a tier.
+  if (!url) redirect("/contact/sales");
+  redirect(url);
+}
+

@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
-import { isTeammateRetired, referralCandidates } from "@agent-hub/core";
+import {
+  isTeammateRetired,
+  parseModelSelector,
+  referralCandidates,
+  resolveRequestedModel,
+} from "@agent-hub/core";
 import {
   NDJSON_HEADERS,
   sessionMetadata,
@@ -11,6 +16,7 @@ import { getRuntimeDb } from "@/lib/runtime-db";
 import { findVisibleTeammate } from "@/lib/teammates/access";
 import { resolveTeammateActions } from "@/lib/teammates/actions";
 import { resolvePersonalSubscription } from "@/lib/personal-subscription";
+import { openAttachments } from "@/lib/attachments";
 
 export const maxDuration = 300;
 
@@ -37,6 +43,10 @@ export async function POST(
     conversationId?: string | null;
     message: string;
     turnId?: string;
+    /** `"<provider>:<model id>"` from the composer's picker; see below. */
+    model?: string | null;
+    /** Sealed attachment tokens; opened here, never trusted as sent. */
+    attachments?: unknown;
   };
   const message = (body.message ?? "").trim();
   if (!message) return new Response("Empty message", { status: 400 });
@@ -93,10 +103,29 @@ export async function POST(
     session.profile?.username ||
     undefined;
 
+  // Which model answers this message.
+  //
+  // Two selections can apply and they are not peers. The Member's own connected
+  // subscription, configured once in Settings → AI, outranks whatever the
+  // composer offers: it is their own capacity, it costs the Organization
+  // nothing, and `resolveChatModel` already prefers it over the configured
+  // provider. So this only decides which Organization model runs when no
+  // personal subscription is in play, and the composer draws no picker when one
+  // is (`personalSubscriptionInCharge`, read by the workspace).
+  const chosen = resolveRequestedModel(
+    parseModelSelector(body.model),
+    { provider: teammate.modelProvider, modelId: teammate.modelId },
+    teammate.allowedModels ?? []
+  );
+
   const stream = await streamConversationTurn({
     db,
     systemDb: getRuntimeDb(db),
-    teammate,
+    teammate: {
+      ...teammate,
+      modelProvider: chosen.provider,
+      modelId: chosen.modelId,
+    },
     teammateActions,
     referralCandidates: referralCandidates(roster, teammate, {
       userId: session.userId,
@@ -109,6 +138,7 @@ export async function POST(
     conversationId: body.conversationId,
     message,
     turnId: body.turnId,
+    attachments: openAttachments(body.attachments),
     metadata: {
       ...sessionMetadata(request.headers),
       userName: profileName,

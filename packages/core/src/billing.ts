@@ -9,7 +9,7 @@
  * stay in the runtime; they are the seam, not the vocabulary.
  */
 
-import type { UsageResource } from "./types";
+import type { UsageFunding, UsageResource } from "./types";
 
 /**
  * The two windows a plan allowance is measured over (#507): the billing period
@@ -45,7 +45,19 @@ export const USAGE_WARN_FRACTION = 0.8;
  * only ever sees `message`, which discloses nothing about billing.
  */
 export type UsageOutcome =
-  | { outcome: "allow" }
+  | {
+      outcome: "allow";
+      /**
+       * Which pocket paid (#851). Absent or `"plan"` is the ordinary case: the
+       * window's allowance covered it. `"topup"` means the allowance was fully
+       * consumed and a purchased balance carried the work instead, so the row
+       * the caller settles snapshots its cost rather than being priced at read
+       * time later.
+       */
+      funding?: UsageFunding;
+      /** Credits left on the balance after this check, when one funded it. */
+      balanceCredits?: number;
+    }
   | {
       outcome: "warn";
       usedFraction: number;
@@ -90,6 +102,13 @@ export interface UsageMeterSnapshot {
 export interface UsageLimitsSnapshot {
   plan: string;
   meters: UsageMeterSnapshot[];
+  /**
+   * Top-up credits the Organization still holds (#851), or null when it holds
+   * none. A pool behind the allowance, never beside it: it is drawn only once a
+   * window is fully consumed, so a surface should present it as the buffer it
+   * is rather than as a second wallet.
+   */
+  topupCredits?: number | null;
 }
 
 export interface SubscriptionState {

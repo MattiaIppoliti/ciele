@@ -234,6 +234,35 @@ export type WebhookDeliveryOutcome =
  * and a caller told "conflict" retries harder. What it does not get is a second
  * continuation of the Flow.
  */
+/**
+ * Counts one served callback (#854). Priced at zero, so nothing reads it back,
+ * and isolated like every other accounting write: losing the count must never
+ * lose a callback that has already been settled.
+ */
+async function countWebhookCall(
+  db: Db,
+  subscription: WebhookSubscription,
+  status: "succeeded" | "refused"
+): Promise<void> {
+  try {
+    await db.recordUsageEvents([
+      {
+        organizationId: subscription.organizationId,
+        operation: "webhook_call",
+        unit: "request",
+        status,
+        quantity: 1,
+        spenders: { flowId: subscription.flowId ?? null },
+        surface: "http_flow",
+        assistantId: subscription.assistantId ?? null,
+        conversationId: subscription.conversationId,
+      },
+    ]);
+  } catch (error) {
+    console.error("[webhook] usage-event persist failed:", error);
+  }
+}
+
 export async function deliverWebhookCallback(
   deps: { db: Db; now?: () => Date },
   subscriptionId: string,
@@ -248,7 +277,12 @@ export async function deliverWebhookCallback(
     // Already received, expired, failed, or past its wait with the sweep not
     // yet there. Only a received one is a duplicate worth acknowledging; the
     // others are a caller answering a closed gate.
-    return subscription.status === "received"
+    // A duplicate is the system working; a call against a closed gate is the
+    // other system talking to an address that no longer answers. Counting them
+    // apart is the point of having three outcomes (#854).
+    const duplicate = subscription.status === "received";
+    await countWebhookCall(db, subscription, duplicate ? "succeeded" : "refused");
+    return duplicate
       ? { ok: true, duplicate: true }
       : { ok: false, reason: "closed" };
   }
@@ -268,6 +302,7 @@ export async function deliverWebhookCallback(
       ? { ok: true, duplicate: true }
       : { ok: false, reason: "closed" };
   }
+  await countWebhookCall(db, settled, "succeeded");
   // The job id is derived from the subscription, so the ledger's primary key
   // collapses a retried enqueue into one continuation.
   await enqueueWebhookResumptionJob({ db }, settled);

@@ -90,14 +90,26 @@ describe("parseHubSearchParams", () => {
         assistant: ["as-1", "as-2"],
         page: "3",
       })
-    ).toEqual({ q: "guide", status: "error", assistant: "as-1", page: 3 });
+    ).toEqual({
+      q: "guide",
+      status: "error",
+      assistant: "as-1",
+      page: 3,
+      size: 25,
+    });
   });
 
   it("falls back to defaults on garbage", () => {
     expect(
       parseHubSearchParams({ status: "bogus", page: "-2" })
-    ).toEqual({ q: "", status: "", assistant: "", page: 1 });
+    ).toEqual({ q: "", status: "", assistant: "", page: 1, size: 25 });
     expect(parseHubSearchParams({ page: "NaN" }).page).toBe(1);
+  });
+
+  it("narrows the page size to one the footer offers", () => {
+    expect(parseHubSearchParams({ size: "10" }).size).toBe(10);
+    // A LIMIT reads this number, so anything else falls back to the default.
+    expect(parseHubSearchParams({ size: "100000" }).size).toBe(25);
   });
 
   it("caps the free-text query length", () => {

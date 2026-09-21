@@ -9,12 +9,12 @@ import { loadTeammateSettingsProps } from "@/lib/teammates/settings-props";
 export const dynamic = "force-dynamic";
 
 /**
- * One Teammate's configuration, full width: what the chat's drawer offers
- * behind "Open full screen", the way an Improvement's drawer hands off to
- * `/improvements/{id}`.
+ * One Teammate's configuration. The only place it is configured: the rail's
+ * pencil and the chat's Configure button both come here, and the surface can
+ * take the whole viewport from its own control.
  *
  * A Member who cannot edit this Teammate is sent to its chat rather than shown
- * a form they may not save. The drawer never offers them the button either;
+ * a form they may not save. Neither entry point offers them the button either;
  * this is the same rule for anyone arriving by URL.
  */
 export default async function TeammateSettingsRoute({

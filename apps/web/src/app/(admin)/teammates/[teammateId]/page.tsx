@@ -1,15 +1,18 @@
 import { notFound } from "next/navigation";
-import { canEditTeammate, isTeammateRetired } from "@agent-hub/core";
+import {
+  canEditTeammate,
+  isTeammateRetired,
+  visibleTeammates,
+} from "@agent-hub/core";
+import { chatModelOptions } from "@agent-hub/agent";
 import { TeammateWorkspace } from "@/components/teammates/teammate-workspace";
 import { requirePageMember } from "@/lib/authz";
-import { canManageMembers } from "@/lib/rbac";
 import { findVisibleTeammate } from "@/lib/teammates/access";
-import { loadTeammateSettingsProps } from "@/lib/teammates/settings-props";
 
 export const dynamic = "force-dynamic";
 
 /**
- * One Teammate: the chat, with its configuration in a right-side drawer.
+ * One Teammate: the chat. Its configuration is `/teammates/{id}/settings`.
  *
  * A retired Teammate still opens. It answers nothing more, but the
  * Conversations a Member had with it are readable only here, so a 404 would
@@ -41,17 +44,61 @@ export default async function TeammatePage({
   );
   if (!teammate) notFound();
 
-  const [settings, thread] = await Promise.all([
-    // The same facts `/teammates/{id}/settings` renders, so the drawer and the
-    // full-screen route configure the same Teammate.
-    loadTeammateSettingsProps(db, organizationId, teammate),
+  // The thread, plus what the composer needs. Still not the settings payload
+  // (#922): Collections, Library items, members, grants, Projects, memory and
+  // Routines belong to `/teammates/{id}/settings` and no longer load on every
+  // chat open. What stayed are four small reads the composer cannot draw
+  // itself without.
+  const [thread, connections, personalAllowed, roster, orgSkills] =
+    await Promise.all([
     db.listTeammateConversations(teammate.id, session.userId),
+    db.listProviderConnections(organizationId),
+    // The Organization's opt-in, not this Member's pairing. Whether they
+    // personally have a subscription connected costs a relay round trip and a
+    // CLI probe, which is too much for a page render; the opt-in is one read
+    // and answers the only question the composer needs, "could one be in
+    // charge here". Off, the common case, means the picker is the whole story.
+    db.getPersonalAiSubscriptionsAllowed(organizationId),
+    // Who `@` can name in this chat. Resolved against the **Member's** own
+    // visibility, not the Teammate's referral rule (#773): there the Teammate
+    // volunteers a colleague and a private one must stay unnamed, here the
+    // Member picks somebody they can already see on their own roster.
+    db.table("teammates").list({ organizationId }),
+    // The Organization's Skills, not an attachment list: `assistant_skills`
+    // decides whose *prompt* a Skill layers into, and a Teammate is not an
+    // Assistant. For `/` the Skill is only an opening line, so every one the
+    // Organization wrote is offerable.
+    db.table("skills").list({ organizationId }),
   ]);
+
+  const skills = orgSkills
+    .filter((skill) => (skill.starter ?? "").trim().length > 0)
+    .map((skill) => ({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      starter: skill.starter,
+    }));
+
+  const channelCandidates = visibleTeammates(roster, viewer)
+    .filter((candidate) => candidate.id !== teammate.id)
+    .map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      title: candidate.title,
+    }));
+
+  // Capability, resolved server-side: this page is already dynamic and
+  // authenticated, so unlike the widget there is nothing to fetch later.
+  const models = chatModelOptions(
+    { provider: teammate.modelProvider, modelId: teammate.modelId },
+    teammate.allowedModels,
+    connections
+  );
 
   return (
     <TeammateWorkspace
       teammate={teammate}
-      {...settings}
       thread={thread.map((c) => ({
         id: c.id,
         title: c.title,
@@ -60,9 +107,12 @@ export default async function TeammatePage({
         metadata: c.metadata,
       }))}
       canEdit={canEditTeammate(teammate, viewer)}
-      canGrant={canManageMembers(role)}
       retired={isTeammateRetired(teammate)}
       initialConversationId={initialConversationId ?? null}
+      models={models}
+      personalSubscriptionsAllowed={personalAllowed}
+      channelCandidates={channelCandidates}
+      skills={skills}
     />
   );
 }

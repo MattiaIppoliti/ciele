@@ -1,9 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { AiUsageStage, FlowCondition } from "@agent-hub/core";
+import type {
+  AiUsageStage,
+  FlowCondition,
+  UsageOperation,
+  UsageSurface,
+} from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
   IMPROVEMENT_STATUS_VALUES,
   MEMORIES_PER_SUBJECT_CAP,
+  USAGE_OPERATIONS,
+  USAGE_SURFACES,
   apiKeySecretHint,
   buildPublicationConfig,
   generateApiKeySecret,
@@ -4247,6 +4254,130 @@ export function describeDbContract(
         ).resolves.toEqual([prior.id]);
       });
 
+      // A re-crawl stages a fresh row per page with a fresh id, so anything
+      // keyed by Concept id alone is lost at cutover. `excluded` and
+      // `recrawl_schedule` are admin decisions about the page, not crawled
+      // material, and the page's identity across generations is (source, path).
+      it("carries per-page admin state across a re-crawl's generation swap", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Re-crawl Carry-over Collection",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Re-crawled site",
+          kind: "website",
+        });
+        await db.setSourceAssistantLinks(source.id, [assistant.id]);
+        const embedding = new Array<number>(1536).fill(0);
+        embedding[7] = 1;
+        const body = "Alumni donation records.";
+        const crawl = async (paths: string[], generationId?: string) => {
+          const pages = [];
+          for (const path of paths) {
+            pages.push(
+              await db.createConcept({
+                collectionId: collection.id,
+                sourceId: source.id,
+                path,
+                frontmatter: { type: "Web Page", title: path },
+                body,
+                ...(generationId ? { generationId } : {}),
+              })
+            );
+          }
+          await db.saveChunks(
+            pages.map((page) => ({
+              conceptId: page.id,
+              collectionId: collection.id,
+              sourceId: source.id,
+              content: body,
+              embedding,
+            }))
+          );
+          return pages;
+        };
+        const retrieved = async () =>
+          (
+            await db.searchChunks(assistant.id, collection.id, {
+              embedding,
+              text: "alumni donation records",
+            })
+          ).length;
+
+        const [secret, cadence] = await crawl([
+          "secret.md",
+          "cadence.md",
+          "plain.md",
+        ]);
+        await db.setConceptExcluded(secret!.id, true);
+        await db.setConceptRecrawlSchedule(cadence!.id, "daily");
+        expect(await retrieved()).toBe(2); // the excluded page is already out
+
+        // The next crawl finds the same three pages, plus one that is new.
+        const generationId = "00000000-0000-4000-8000-000000000103";
+        const restaged = await crawl(
+          ["secret.md", "cadence.md", "plain.md", "fresh.md"],
+          generationId
+        );
+        expect(restaged.map((page) => page.id)).not.toContain(secret!.id);
+        await expect(
+          db.commitSourceKnowledgeGeneration({
+            sourceId: source.id,
+            expectedActiveGenerationId: source.activeGenerationId,
+            generationId,
+          })
+        ).resolves.toBe(true);
+
+        const byPath = new Map(
+          (await db.listConcepts(collection.id)).map((c) => [c.path, c])
+        );
+        expect(byPath.get("secret.md")?.id).toBe(restaged[0]!.id);
+        expect(byPath.get("secret.md")?.excluded).toBe(true);
+        expect(byPath.get("cadence.md")?.recrawlSchedule).toBe("daily");
+        // Carried state is per page: the untouched ones keep the defaults.
+        expect(byPath.get("plain.md")?.excluded).toBe(false);
+        expect(byPath.get("plain.md")?.recrawlSchedule).toBeNull();
+        expect(byPath.get("fresh.md")?.excluded).toBe(false);
+        expect(byPath.get("fresh.md")?.recrawlSchedule).toBeNull();
+        // Still out of retrieval, under the new id.
+        expect(await retrieved()).toBe(3); // cadence + plain + fresh
+
+        // A page that disappears from a crawl and later returns comes back
+        // included, inheriting the Source cadence. Deliberate, not incidental:
+        // the state lives on the page row and dies with its generation.
+        await db.deleteSourceKnowledgeGeneration(
+          source.id,
+          source.activeGenerationId
+        );
+        const secondGenerationId = "00000000-0000-4000-8000-000000000104";
+        await crawl(["cadence.md"], secondGenerationId);
+        await expect(
+          db.commitSourceKnowledgeGeneration({
+            sourceId: source.id,
+            expectedActiveGenerationId: generationId,
+            generationId: secondGenerationId,
+          })
+        ).resolves.toBe(true);
+        const thirdGenerationId = "00000000-0000-4000-8000-000000000105";
+        await crawl(["cadence.md", "secret.md"], thirdGenerationId);
+        await expect(
+          db.commitSourceKnowledgeGeneration({
+            sourceId: source.id,
+            expectedActiveGenerationId: secondGenerationId,
+            generationId: thirdGenerationId,
+          })
+        ).resolves.toBe(true);
+        const afterGap = new Map(
+          (await db.listConcepts(collection.id)).map((c) => [c.path, c])
+        );
+        expect(afterGap.get("cadence.md")?.recrawlSchedule).toBe("daily"); // never absent
+        expect(afterGap.get("secret.md")?.excluded).toBe(false); // absent for a crawl
+
+        await db.deleteSource(source.id);
+        await db.deleteAssistant(assistant.id);
+      });
+
       it("reaps stale inactive generations but preserves resumable work", async () => {
         const assistant = await newAssistant();
         const collection = await db.createCollection(assistant.id, {
@@ -5536,6 +5667,266 @@ export function describeDbContract(
             outputTokens: 0,
           }))
         );
+      });
+
+      it("accepts every UsageSurface value (type ↔ constraint drift guard)", async () => {
+        // The stage guard above, for the attribution surface (#848). A surface
+        // added to the union but not to the ai_usage check constraint is
+        // dropped in production, where meterUsage isolates the failure.
+        const allSurfaces: Record<UsageSurface, true> = {
+          widget: true,
+          preview: true,
+          teammate: true,
+          channel: true,
+          routine: true,
+          http_flow: true,
+          api: true,
+          ingestion: true,
+          scheduled: true,
+        };
+        const surfaces = Object.keys(allSurfaces) as UsageSurface[];
+        // The exported list is what the app iterates; the record above is what
+        // the compiler checks. They have to name the same nine.
+        expect(new Set(surfaces)).toEqual(new Set(USAGE_SURFACES));
+        await db.recordAiUsage(
+          surfaces.map((surface) => ({
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate" as const,
+            provider: "google" as const,
+            modelId: "surface-drift-guard",
+            inputTokens: 1,
+            outputTokens: 0,
+            surface,
+          }))
+        );
+      });
+
+      it("round-trips a row's spenders and surface, grouped at the tuple grain", async () => {
+        // The ledger stamps created_at itself, so the window has to be one
+        // that contains now rather than a fixed date.
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        const row = {
+          organizationId: ctx.organizationId,
+          assistantId: null,
+          stage: "generate" as const,
+          provider: "google" as const,
+          modelId: "spender-guard",
+          credentialKind: "platform" as const,
+          inputTokens: 100,
+          outputTokens: 10,
+          // The member id is a real auth key on Supabase and an opaque string
+          // on the mock, so it comes from the context like every other id here.
+          spenders: { teammateId: "t-spender", memberId: ctx.userId },
+          surface: "teammate" as const,
+        };
+        await db.recordAiUsage([row, row]);
+
+        const rows = await db.getOrgUsageSpenders(ctx.organizationId, from, to);
+        const mine = rows.filter((r) => r.spenders.teammateId === "t-spender");
+        // Two identical rows collapse into one group: that is the grain.
+        expect(mine).toHaveLength(1);
+        expect(mine[0]).toMatchObject({
+          spenders: { teammateId: "t-spender", memberId: ctx.userId },
+          surface: "teammate",
+          credentialKind: "platform",
+          calls: 2,
+          inputTokens: 200,
+          outputTokens: 20,
+        });
+        // Absent identities are null on both adapters, never undefined: a suite
+        // that lets the two disagree about that proves nothing about either.
+        expect(mine[0].spenders.routineId).toBeNull();
+      });
+
+      it("accepts every UsageOperation value (type ↔ constraint drift guard)", async () => {
+        // The stage and surface guards, for the non-model operations (#854).
+        const allOperations: Record<UsageOperation, true> = {
+          api_request: true,
+          send_email: true,
+          http_flow_run: true,
+          webhook_call: true,
+        };
+        const operations = Object.keys(allOperations) as UsageOperation[];
+        expect(new Set(operations)).toEqual(new Set(USAGE_OPERATIONS));
+        await db.recordUsageEvents(
+          operations.map((operation) => ({
+            organizationId: ctx.organizationId,
+            operation,
+            unit: "invocation" as const,
+            status: "succeeded" as const,
+            quantity: 1,
+          }))
+        );
+      });
+
+      it("counts non-model operations without pricing them (#854)", async () => {
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        // Summed, not found: the grouping key includes the unit, so the same
+        // operation and status can legitimately be two rows, and picking the
+        // first would compare one of them against the total.
+        const apiCalls = (
+          rows: { operation: string; status: string; calls: number }[],
+          status: string
+        ) =>
+          rows
+            .filter((r) => r.operation === "api_request" && r.status === status)
+            .reduce((sum, r) => sum + r.calls, 0);
+        const before = await db.getOrgUsageEvents(ctx.organizationId, from, to);
+        const baseline = apiCalls(before, "succeeded");
+        await db.recordUsageEvents([
+          {
+            organizationId: ctx.organizationId,
+            operation: "api_request",
+            unit: "request",
+            status: "succeeded",
+            quantity: 1,
+            spenders: { flowId: "f-outbound" },
+            surface: "widget",
+          },
+          {
+            organizationId: ctx.organizationId,
+            operation: "api_request",
+            unit: "request",
+            status: "succeeded",
+            quantity: 1,
+          },
+          {
+            organizationId: ctx.organizationId,
+            operation: "api_request",
+            unit: "request",
+            // Ours saying no is its own outcome: a Flow firing a thousand
+            // refusals is a different problem from one firing a thousand calls.
+            status: "refused",
+            quantity: 1,
+          },
+        ]);
+
+        const rows = await db.getOrgUsageEvents(ctx.organizationId, from, to);
+        // Deltas, not totals: the drift guard above records into the same
+        // organization and the same window, and a suite whose cases depend on
+        // each other's counts is a suite that breaks when one is reordered.
+        expect(apiCalls(rows, "succeeded") - baseline).toBe(2);
+        expect(apiCalls(rows, "refused")).toBe(1);
+
+        // Another organization, and a closed window, see none of it.
+        expect(
+          await db.getOrgUsageEvents(ctx.missingOrganizationId, from, to)
+        ).toEqual([]);
+        expect(
+          await db.getOrgUsageEvents(
+            ctx.organizationId,
+            new Date(now - 48 * 60 * 60 * 1000).toISOString(),
+            new Date(now - 24 * 60 * 60 * 1000).toISOString()
+          )
+        ).toEqual([]);
+        // The refusal is the case worth pinning: it exists only in this test,
+        // so it is the one row whose absence proves the window is half-open.
+        expect(
+          (
+            await db.getOrgUsageEvents(
+              ctx.organizationId,
+              new Date(now - 48 * 60 * 60 * 1000).toISOString(),
+              new Date(now - 24 * 60 * 60 * 1000).toISOString()
+            )
+          ).some((r) => r.status === "refused")
+        ).toBe(false);
+      });
+
+      it("counts a rolled-up day once, not twice (#850)", async () => {
+        // The read takes whole closed days from the rollup and the partial ends
+        // live from the ledger. Running the rollup over a window that also has
+        // a live head is exactly where a wrong boundary double-counts, so the
+        // assertion is that the total does not move.
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "rollup-boundary",
+            inputTokens: 40,
+            outputTokens: 4,
+            spenders: { teammateId: "t-rollup" },
+            surface: "teammate",
+          },
+        ]);
+        const before = await db.getOrgUsageSpenders(ctx.organizationId, from, to);
+        const mineBefore = before.filter((r) => r.modelId === "rollup-boundary");
+        expect(mineBefore).toHaveLength(1);
+        expect(mineBefore[0].calls).toBe(1);
+
+        await (ctx.systemDb ?? db).rollupUsageDaily(2);
+        // Idempotent, like the rollup it extends: running it twice changes
+        // nothing either.
+        await (ctx.systemDb ?? db).rollupUsageDaily(2);
+
+        const after = await db.getOrgUsageSpenders(ctx.organizationId, from, to);
+        const mineAfter = after.filter((r) => r.modelId === "rollup-boundary");
+        expect(mineAfter).toHaveLength(1);
+        expect(mineAfter[0].calls).toBe(1);
+        expect(mineAfter[0].inputTokens).toBe(40);
+        expect(mineAfter[0].spenders.teammateId).toBe("t-rollup");
+      });
+
+      it("scopes the spender read to the organization and the half-open window", async () => {
+        const now = Date.now();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "generate",
+            provider: "google",
+            modelId: "spender-scope",
+            inputTokens: 5,
+            outputTokens: 5,
+            spenders: { memberId: ctx.userId },
+          },
+        ]);
+        // Matched on the model id rather than the member: the context's user
+        // may well have spent elsewhere in the suite, and this case is about
+        // which window and which organization a known row appears in.
+        const hasScopeRow = (rows: { modelId: string }[]) =>
+          rows.some((r) => r.modelId === "spender-scope");
+
+        expect(
+          hasScopeRow(
+            await db.getOrgUsageSpenders(
+              ctx.organizationId,
+              new Date(now - 60 * 60 * 1000).toISOString(),
+              new Date(now + 60 * 60 * 1000).toISOString()
+            )
+          )
+        ).toBe(true);
+
+        // A window that closed before the row was written must not see it.
+        expect(
+          hasScopeRow(
+            await db.getOrgUsageSpenders(
+              ctx.organizationId,
+              new Date(now - 48 * 60 * 60 * 1000).toISOString(),
+              new Date(now - 24 * 60 * 60 * 1000).toISOString()
+            )
+          )
+        ).toBe(false);
+
+        // Another organization never sees this organization's rows.
+        expect(
+          hasScopeRow(
+            await db.getOrgUsageSpenders(
+              ctx.missingOrganizationId,
+              new Date(now - 60 * 60 * 1000).toISOString(),
+              new Date(now + 60 * 60 * 1000).toISOString()
+            )
+          )
+        ).toBe(false);
       });
 
       it("upserts and reads the org budget", async () => {

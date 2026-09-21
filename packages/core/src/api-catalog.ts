@@ -1,4 +1,5 @@
 import type {
+  ApiEndpointIdempotency,
   ApiEndpointParam,
   ApiEndpointSpec,
   ApiIntegration,
@@ -220,6 +221,13 @@ export interface ApiEndpointDetail {
     description: string;
   }>;
   responseKeys: string[];
+  /**
+   * Whether a repeat of this call can write twice (#901). Carried on the
+   * detail the model reads BEFORE it sends anything, so "this endpoint is not
+   * deduplicated" is a fact available at the moment it matters rather than one
+   * buried in an admin form.
+   */
+  duplicateWrites: "protected" | "unprotected" | "read_only";
 }
 
 /** The full parameter-level contract for one endpoint. */
@@ -258,5 +266,124 @@ export function apiEndpointDetail(endpoint: ApiEndpointSpec): ApiEndpointDetail 
     purpose: endpoint.purpose,
     parameters,
     responseKeys: endpoint.responseKeys ?? [],
+    duplicateWrites: endpointIdempotencyExposure(endpoint),
   };
+}
+
+/**
+ * Header names an endpoint may never claim for its idempotency key.
+ *
+ * The declaration is admin-supplied, and it lands in the same header map as
+ * the integration's sealed credential. Letting it name `authorization` would
+ * let an endpoint description overwrite the credential with a derived hash,
+ * which is a way to leak nothing and break everything; letting it name `host`
+ * or `content-length` is a request-smuggling shape. Refused by NAME here
+ * rather than filtered at send time, so the refusal is visible in the editor
+ * instead of a silent no-op in production.
+ */
+const RESERVED_IDEMPOTENCY_HEADERS = new Set([
+  "authorization",
+  "proxy-authorization",
+  "cookie",
+  "host",
+  "content-length",
+  "connection",
+  "transfer-encoding",
+  "content-type",
+]);
+
+export type IdempotencyRejection =
+  | "empty_name"
+  | "reserved_header"
+  | "illegal_header_name"
+  | "illegal_body_field";
+
+/**
+ * Is this idempotency declaration safe to send? Pure, so the editor and the
+ * request path reach the same verdict rather than two similar ones.
+ */
+export function validateEndpointIdempotency(
+  declaration: ApiEndpointIdempotency
+): { ok: true } | { ok: false; reason: IdempotencyRejection } {
+  const name = declaration.name.trim();
+  if (!name) return { ok: false, reason: "empty_name" };
+  if (declaration.in === "header") {
+    if (RESERVED_IDEMPOTENCY_HEADERS.has(name.toLowerCase()))
+      return { ok: false, reason: "reserved_header" };
+    // RFC 9110 token: no spaces, no separators, no control characters, which
+    // is also what stops a newline turning one header into two.
+    if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name))
+      return { ok: false, reason: "illegal_header_name" };
+    return { ok: true };
+  }
+  // A body field is a JSON key, and a nested path would need a merge rule
+  // nobody asked for. One top-level key, plainly named.
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+    return { ok: false, reason: "illegal_body_field" };
+  return { ok: true };
+}
+
+/**
+ * The key itself: stable for the same logical call, different for any other.
+ *
+ * Rooted in the Conversation and the call slot within it, so a retry of the
+ * SAME call, by us, by a durable job, or by anything above us that reissues
+ * the request, presents the value the organization's API already saw. Two
+ * different calls to the same endpoint in the same Conversation are two
+ * different writes and get two different keys, which is what stops a Member
+ * being told their second order was a duplicate of their first.
+ *
+ * The endpoint id is in the material so that two endpoints reached from one
+ * call slot cannot collide.
+ */
+export function endpointIdempotencyKey(input: {
+  conversationId: string;
+  /** The call's slot: a Flow action index, or a tool call id. */
+  callSlot: string;
+  endpointId: string;
+}): string {
+  const material = [
+    input.conversationId,
+    input.callSlot,
+    input.endpointId,
+  ]
+    .map((part) => encodeURIComponent(part))
+    .join(":");
+  // The checksum leads, so the cap below can only ever remove the tail of a
+  // readable suffix. Two calls whose ids differ only past the cap still get
+  // different keys, which a plain truncation could not promise. It is a dedup
+  // key and not a secret, so a short non-cryptographic digest is the right
+  // size of tool, and it stays out of `node:crypto` because this module is in
+  // the browser bundle (the endpoint editor reads `endpointPathParams`).
+  return `ciele-${checksum(material)}-${material}`.slice(0, IDEMPOTENCY_KEY_MAX);
+}
+
+/**
+ * The cap every implementation shares: Resend and Stripe both take 255-256,
+ * and the three other places that set an idempotency header all slice to this.
+ */
+export const IDEMPOTENCY_KEY_MAX = 256;
+
+/** FNV-1a, 32-bit, hex. Deterministic, dependency-free, browser-safe. */
+function checksum(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+/**
+ * What an endpoint's catalogue entry says about duplicate writes.
+ *
+ * An endpoint that declares nothing is **unprotected**, and #901 asks for that
+ * to be documented rather than silently treated as safe. A GET is a different
+ * case and says so: replaying a read duplicates nothing.
+ */
+export function endpointIdempotencyExposure(
+  endpoint: ApiEndpointSpec
+): "protected" | "unprotected" | "read_only" {
+  if (endpoint.idempotency) return "protected";
+  return endpoint.method === "GET" ? "read_only" : "unprotected";
 }

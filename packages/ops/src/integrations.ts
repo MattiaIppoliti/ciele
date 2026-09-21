@@ -1,6 +1,8 @@
+import { validateEndpointIdempotency } from "@agent-hub/core";
 import type {
   AnthropicWifFederatedConfig,
   ApiEndpointSpec,
+  IdempotencyRejection,
   ApiIntegrationAuthType,
   AzureOpenAiFederatedConfig,
   GoogleVertexFederatedConfig,
@@ -52,6 +54,15 @@ const endpointSchema = z.object({
     value: z.string().optional(),
   })).optional(),
   responseKeys: z.array(z.string()).optional(),
+  // #901. Optional on purpose: an API that accepts no idempotency key still
+  // belongs in the catalogue, and refusing those endpoints would be worse
+  // than recording the exposure.
+  idempotency: z
+    .object({
+      in: z.enum(["header", "body"]),
+      name: z.string().trim().min(1).max(200),
+    })
+    .optional(),
 }) satisfies z.ZodType<ApiEndpointSpec>;
 
 export const apiIntegrationInputSchema = z.object({
@@ -86,6 +97,18 @@ export const getApiIntegrationOp = defineOperation({
   },
 });
 
+/** One sentence per refusal, naming the endpoint the admin has to go and fix. */
+const IDEMPOTENCY_REFUSALS: Record<IdempotencyRejection, (where: string) => string> = {
+  empty_name: (where) =>
+    `Name the header or body field that carries the idempotency key on "${where}", or remove the declaration.`,
+  reserved_header: (where) =>
+    `"${where}" cannot send its idempotency key in that header: it is one the request already uses for the integration's credential or its framing.`,
+  illegal_header_name: (where) =>
+    `The idempotency header on "${where}" must be a plain header name, with no spaces, colons or line breaks.`,
+  illegal_body_field: (where) =>
+    `The idempotency body field on "${where}" must be one top-level JSON key, e.g. request_id.`,
+};
+
 export const setApiIntegrationOp = defineOperation({
   name: "apiIntegrations.set",
   capability: "edit",
@@ -108,6 +131,18 @@ export const setApiIntegrationOp = defineOperation({
     const endpoints = input.endpoints.filter((endpoint) => endpoint.path.trim());
     if (!endpoints.length) {
       throw new OperationError("invalid_input", "Describe at least one endpoint");
+    }
+    // The idempotency declaration lands in the same header map as the sealed
+    // credential, so it is refused here, in the editor's own round trip,
+    // rather than filtered at send time where nobody would see it (#901).
+    for (const endpoint of endpoints) {
+      if (!endpoint.idempotency) continue;
+      const verdict = validateEndpointIdempotency(endpoint.idempotency);
+      if (verdict.ok) continue;
+      throw new OperationError(
+        "invalid_input",
+        IDEMPOTENCY_REFUSALS[verdict.reason](endpoint.name || endpoint.path)
+      );
     }
     const stored = await ctx.db.setApiIntegration({
       assistantId,

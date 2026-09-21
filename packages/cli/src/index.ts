@@ -26,6 +26,7 @@ import { apiKeys, invites, members, organization } from "./commands/organization
 import { apiIntegrations, providers } from "./commands/integrations.ts";
 import { applications } from "./commands/applications.ts";
 import { reviews } from "./commands/reviews.ts";
+import { usage } from "./commands/usage.ts";
 import { str, type CommandContext, type FlagValue } from "./commands/shared.ts";
 
 /** noun → command-group handler; each group owns its verbs (#628). */
@@ -61,6 +62,7 @@ const COMMAND_GROUPS: Record<
   applications,
   providers,
   reviews,
+  usage,
 };
 
 /**
@@ -246,6 +248,9 @@ Commands:
   reviews list [--status <s>] [--conversation <id>] [--assistant <id>]
   reviews get <reviewId>
   reviews decide <reviewId> --decision approved|rejected [--inputs key=value,key=value]
+
+  usage meters
+  usage spenders [--from <iso>] [--to <iso>]
 
 Global options:
   --version            Print the CLI version

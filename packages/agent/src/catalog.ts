@@ -25,6 +25,26 @@ export const MODEL_CATALOG: Record<Provider, { id: string; label: string }[]> = 
   openai_compatible: [],
 };
 
+/**
+ * One row of a chat window's model picker: everything the client needs to draw
+ * it and nothing it could act on. The `selector` is the only value that travels
+ * back, and it selects from this list rather than naming a model of its own.
+ *
+ * Declared here, beside the catalogue it is built from, because it is the one
+ * half of the model-picker vocabulary a client component reads; the function
+ * that builds it needs the Organization's connections and stays server-side
+ * (`model-options.ts`).
+ */
+export interface ChatModelOption {
+  selector: string;
+  provider: Provider;
+  modelId: string;
+  /** The catalogue's display name ("Claude Sonnet 5"). */
+  label: string;
+  /** The provider's display name, for the second line and the icon. */
+  providerName: string;
+}
+
 export const PROVIDER_NAMES: Record<Provider, string> = {
   google: "Google",
   anthropic: "Anthropic",

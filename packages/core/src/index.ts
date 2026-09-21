@@ -285,8 +285,11 @@ export type { ReferralCandidate } from "./referral";
 export {
   apiCatalogSummary,
   apiEndpointDetail,
+  endpointIdempotencyExposure,
+  endpointIdempotencyKey,
   endpointPathParams,
   resolveCatalogPath,
+  validateEndpointIdempotency,
 } from "./api-catalog";
 export type {
   ApiCatalogSummary,
@@ -294,6 +297,7 @@ export type {
   CatalogPathMatch,
   CatalogPathRefusal,
   CatalogPathRejection,
+  IdempotencyRejection,
 } from "./api-catalog";
 
 // Resolving one operation out of an OpenAPI / Swagger document (#837): a fact
@@ -381,6 +385,13 @@ export { estimateCostEur } from "./pricing";
 export { CREDIT_EUR, creditsFor, isFreeCrawler } from "./pricing";
 export type { MeteredUnit } from "./pricing";
 
+// Where the credits went (#848): the pivot from the ledger's spender grain
+// onto one ranked list. Grouping by a single dimension at a time is the rule
+// that keeps a row attributed to both a Teammate and a Member from being
+// counted twice.
+export { rankSpenders, spenderDimensions } from "./usage-spenders";
+export type { SpenderTotal, UsageSpenderDimension } from "./usage-spenders";
+
 // Short opaque ids for domain objects.
 export { monotonicNow, shortId } from "./id";
 
@@ -407,10 +418,12 @@ export { sealSecret, openSecret, isLegacyPlaintextSecret } from "./crypto";
 export {
   documentExtension,
   triageDocument,
+  zipDirectory,
   DOCUMENT_TRIAGE_VERSION,
   type DocumentTriage,
   type DocumentTriageCode,
   type TriageEvidence,
+  type ZipEntry,
 } from "./document-triage";
 
 // Organization API key secrets (#618): mint, hash, and hint. Verification is
@@ -435,3 +448,25 @@ export {
   slackBotReady,
 } from "./slack-bot";
 export type { SlackBotConfig } from "./slack-bot";
+export { isOpenImprovement } from "./improvements";
+
+// Per-message model choice: the allow-list an Assistant or Teammate offers,
+// and the one rule that turns a client's string into the model a turn runs.
+export {
+  modelChoices,
+  modelSelector,
+  parseModelSelector,
+  resolveRequestedModel,
+  sameModel,
+} from "./model-choice";
+export type { ModelRef } from "./model-choice";
+
+// Files attached to a chat message (read into text at intake; the bytes are
+// never stored). The prompt fence lives with the type, because "this is their
+// material, not your brief" is a runtime rule rather than one app's copy.
+export {
+  ATTACHMENT_MAX_CHARS,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+  attachmentContextSection,
+} from "./attachments";
+export type { ChatAttachment } from "./attachments";

@@ -264,7 +264,35 @@ describe("embedding usage metering (#438)", () => {
         credentialKind: "platform",
         inputTokens: 7,
         outputTokens: 0,
+        // Attribution (#849): this caller named nobody and no surface, so the
+        // row carries neither rather than inventing one.
+        spenders: undefined,
+        surface: null,
       },
+    ]);
+  });
+
+  it("carries the spender and surface its caller declared (#849)", async () => {
+    aiMocks.embed.mockResolvedValue({
+      embedding: [0.1, 0.2],
+      usage: { tokens: 7 },
+    });
+    const recordAiUsage = vi.fn();
+    const db = { recordAiUsage } as unknown as Db;
+
+    await embedText("hello", [], {
+      db,
+      organizationId: "org-1",
+      assistantId: "asst-1",
+      spenders: { memberId: "m-1", teammateId: "t-1" },
+      surface: "teammate",
+    });
+
+    expect(recordAiUsage).toHaveBeenCalledWith([
+      expect.objectContaining({
+        spenders: { memberId: "m-1", teammateId: "t-1" },
+        surface: "teammate",
+      }),
     ]);
   });
 

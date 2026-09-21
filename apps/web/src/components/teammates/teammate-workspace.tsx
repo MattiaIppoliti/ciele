@@ -2,18 +2,21 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type {
-  ConversationMetadata,
-  Teammate,
-  TeammateRoutine,
-} from "@agent-hub/core";
+import type { ConversationMetadata, Teammate } from "@agent-hub/core";
 import { teammateSearchesKnowledge } from "@agent-hub/core";
 import { threadEntryLabel } from "@/lib/teammates/thread-label";
 import { EMPTY_TURN_TRACE, consumeTurnStream } from "@agent-hub/agent/client";
+import type { ChatModelOption } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatMessagesFromStored } from "@/components/chat/stored-messages";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
-import { ArrowLeft, Settings2, UserRoundPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  Paperclip,
+  Settings2,
+  Sparkles,
+  UserRoundPlus,
+} from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import Link from "next/link";
 import { ChatHeader } from "@/components/chat/chat-header";
@@ -27,15 +30,24 @@ import {
 } from "@/components/chat/chat-thread";
 import { MessageScroller } from "@/components/agents/message";
 import { PromptInput } from "@/components/agents/prompt-input";
+import { toPromptModels } from "@/components/chat/use-chat-models";
+import {
+  useComposerTrigger,
+  replaceToken,
+} from "@/components/chat/use-composer-trigger";
+import { TriggerList, TriggerRow } from "@/components/chat/trigger-list";
+import { useAttachments } from "@/components/chat/use-attachments";
+import {
+  AttachmentChips,
+  AttachmentDropHint,
+  AttachmentInput,
+} from "@/components/chat/attachment-chips";
+import { readChatAttachmentAction } from "@/app/actions";
+import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 import { toast } from "@/lib/toast";
 import { setMessageFeedbackAction } from "@/app/actions";
-import type { MemberOption } from "@/components/teammates/teammate-editors-picker";
-import type { CollectionOption } from "@/components/teammates/teammates-client";
-import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
-import { TeammateSettingsDrawer } from "@/components/teammates/teammate-settings-drawer";
-import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import {
   readTeammateConversationAction,
   startReferredConversationAction,
@@ -61,40 +73,44 @@ export interface ThreadEntry {
  */
 export function TeammateWorkspace({
   teammate,
-  collections,
-  sources,
-  sourcesTruncated,
-  members,
   thread,
   canEdit,
-  governance,
-  canGrant,
-  projects,
-  learnings,
-  routines,
   retired,
   initialConversationId,
+  models,
+  personalSubscriptionsAllowed,
+  channelCandidates,
+  skills,
 }: {
   teammate: Teammate;
-  collections: CollectionOption[];
-  /** The Library items its Knowledge Scope can name one at a time (PRD #726). */
-  sources: ScopeSource[];
-  sourcesTruncated: boolean;
-  members: MemberOption[];
   thread: ThreadEntry[];
+  /** Whether Configure is offered; the route itself enforces the same rule. */
   canEdit: boolean;
-  /** What this Teammate was granted (#770), read from its grant rows. */
-  governance: TeammateGovernanceState;
-  /** Whether this Member may change that. Admin only. */
-  canGrant: boolean;
-  /** Live Projects it can attach to (#771). */
-  projects: { id: string; name: string }[];
-  /** Its Agent memory layer, editable in the dialog. */
-  learnings: string;
-  /** Its standing instructions (#772). */
-  routines: TeammateRoutine[];
   /** Soft-deleted: the transcripts are here, the composer is not (#767). */
   retired: boolean;
+  /** The picker's rows; empty when this Teammate offers no choice. */
+  models: ChatModelOption[];
+  /**
+   * Whether the Organization allows Members' own subscriptions at all. When it
+   * does, one that is connected outranks this picker (ADR-0007 as amended by
+   * #769), and the composer says so rather than looking broken.
+   */
+  personalSubscriptionsAllowed: boolean;
+  /**
+   * Who `@` can name here: the other Teammates this Member can see. Naming one
+   * opens a channel rather than sending a word, because a 1:1 Conversation is
+   * single-subject by construction (#778) and a second colleague in it would
+   * need a roster the Inbox, Insights and every export would then have to ask
+   * about.
+   */
+  channelCandidates: Array<{ id: string; name: string; title: string }>;
+  /** Organization Skills that carry an opening line, for the `/` menu. */
+  skills: Array<{
+    id: string;
+    name: string;
+    description: string;
+    starter: string;
+  }>;
   /**
    * A Conversation to open on arrival, from `?c=`. This is how a referral
    * lands: the target's chat has to open the conversation carrying the summary,
@@ -105,17 +121,103 @@ export function TeammateWorkspace({
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [pending, setPending] = useState(false);
+  // The picker's standing choice for this session; see `models` above.
+  const [model, setModel] = useState<string | undefined>();
+  // Controlled only because `@` edits it from outside the input.
+  const [draft, setDraft] = useState("");
+  const [openingChannel, setOpeningChannel] = useState(false);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const composerTextarea = () =>
+    composerRef.current?.querySelector("textarea") ?? null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachments = useAttachments(async (file) => {
+    const body = new FormData();
+    body.set("file", file);
+    body.set("teammateId", teammate.id);
+    return readChatAttachmentAction(body);
+  });
+
+  const skillTrigger = useComposerTrigger({
+    trigger: "/",
+    items: skills,
+    textarea: composerTextarea,
+    onPick: (skill, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      const next = replaceToken(draft, token, caret, skill.starter);
+      setDraft(next.text);
+      skillTrigger.settle(next.caret);
+    },
+  });
+  const composerActions = [
+    {
+      value: "attach",
+      label: "Attach a file",
+      description: "A document, a spreadsheet or a screenshot.",
+      icon: <Paperclip />,
+      disabled: attachments.full,
+    },
+    ...(skills.length > 0
+      ? [
+          {
+            value: "skill",
+            label: "Use a skill",
+            description: "Start from a prepared request.",
+            icon: <Sparkles />,
+          },
+        ]
+      : []),
+    ...(channelCandidates.length > 0
+      ? [
+          {
+            value: "teammate",
+            label: "Bring in a teammate",
+            description: "Opens a group with both of them.",
+            icon: <UserRoundPlus />,
+          },
+        ]
+      : []),
+  ];
+  const channelTrigger = useComposerTrigger({
+    trigger: "@",
+    items: channelCandidates,
+    textarea: composerTextarea,
+    onPick: (candidate, token) => {
+      const element = composerTextarea();
+      const caret = element ? element.selectionStart : draft.length;
+      // The `@` is a command, not a word: it leaves the draft, and whatever
+      // was being typed around it survives into the new thread's composer.
+      const next = replaceToken(draft, token, caret, "");
+      setDraft(next.text);
+      channelTrigger.settle(next.caret);
+      void openChannelWith(candidate);
+    },
+  });
+
   /**
-   * The settings drawer mounts only while this is true, so every open is a
-   * fresh mount seeded from the props as they stand at that click. The props
-   * move between opens: opening history refreshes the route, and the drawer's
-   * Server Actions revalidate it after a save. A colleague can be editing the
-   * same Teammate.
-   * Nothing is lost by unmounting, because a closed drawer holds no draft
-   * anybody meant to keep. The Agent memory layer needs more than this and
-   * reads itself on open; see the drawer.
+   * Promotes this 1:1 to a group: one channel, this Teammate and the named one,
+   * with the Member seated by `createChannelOp` itself.
+   *
+   * Nothing is copied across. The Conversation stays where it is and stays
+   * readable; a channel is its own entity with its own messages, and moving a
+   * transcript into one would be inventing a history that never happened there.
    */
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  async function openChannelWith(candidate: { id: string; name: string }) {
+    if (openingChannel) return;
+    setOpeningChannel(true);
+    try {
+      const channel = await createChannelAction({
+        name: `${teammate.name} & ${candidate.name}`,
+        teammateIds: [teammate.id, candidate.id],
+      });
+      router.push(`/teammates/channels/${channel.id}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not open a group"
+      );
+      setOpeningChannel(false);
+    }
+  }
   const [historyOpen, setHistoryOpen] = useState(false);
   /**
    * Full screen, on the same FLIP the Assistant Preview and the embed host use:
@@ -204,6 +306,8 @@ export function TeammateWorkspace({
           conversationId: conversationRef.current,
           message,
           turnId,
+          model: model ?? null,
+          attachments: attachments.tokens,
         }),
       });
       if (!response.ok || !response.body) {
@@ -299,12 +403,15 @@ export function TeammateWorkspace({
       <div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
         <Link
           href="/teammates"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+          /* The way back, for the widths where the rail is not on screen.
+             Above `lg` it is, and a back link to a list you can already see is
+             just noise in the header. */
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm lg:hidden"
         >
           <ArrowLeft className="size-4" />
           Teammates
         </Link>
-        <div className="ml-2 flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <TeammateAvatar teammate={teammate} className="size-8 text-xs" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{teammate.name}</p>
@@ -315,11 +422,17 @@ export function TeammateWorkspace({
         </div>
         {canEdit && (
           <Hint label="Persona, knowledge and visibility">
+            {/* One configuration surface, not two. This used to open a drawer
+                over the chat holding the same form `/teammates/{id}/settings`
+                renders, which meant two ways to reach one thing that had to be
+                kept looking alike, and the drawer made this route load the
+                whole settings payload on every chat open to fill a panel
+                almost nobody opened. */}
             <Button
               variant="outline"
               size="sm"
               className="ml-auto"
-              onClick={() => setSettingsOpen(true)}
+              render={<Link href={`/teammates/${teammate.id}/settings`} />}
             >
               <Settings2 className="size-4" /> Configure
             </Button>
@@ -458,35 +571,116 @@ export function TeammateWorkspace({
                   readable, and it answers nothing more.
                 </p>
               ) : (
-                <PromptInput
-                  onSubmit={(value) => void send(value)}
-                  minRows={1}
-                  maxRows={6}
-                  placeholder={`Ask ${teammate.name}...`}
-                  aria-label={`Ask ${teammate.name}`}
+                <>
+                <AttachmentInput
+                  inputRef={fileInputRef}
+                  accept={attachments.accept}
+                  onPick={(file) => void attachments.attach(file)}
                 />
+                <AttachmentChips
+                  entries={attachments.entries}
+                  onRemove={attachments.remove}
+                />
+                <div
+                  className="relative"
+                  ref={composerRef}
+                  {...attachments.dropProps}
+                >
+                  {attachments.dragging && (
+                    <AttachmentDropHint label="Drop to attach" />
+                  )}
+                  {skillTrigger.open && (
+                    <TriggerList
+                      label="Use a skill"
+                      items={skillTrigger.matches}
+                      highlighted={skillTrigger.highlighted}
+                      onHighlight={skillTrigger.setHighlighted}
+                      onPick={skillTrigger.pick}
+                      renderItem={(skill) => (
+                        <TriggerRow
+                          name={skill.name}
+                          hint={skill.description || skill.starter}
+                          icon={<Sparkles />}
+                        />
+                      )}
+                    />
+                  )}
+                  {channelTrigger.open && (
+                    <TriggerList
+                      label="Bring in another teammate"
+                      items={channelTrigger.matches}
+                      highlighted={channelTrigger.highlighted}
+                      onHighlight={channelTrigger.setHighlighted}
+                      onPick={channelTrigger.pick}
+                      renderItem={(candidate) => (
+                        <TriggerRow
+                          name={candidate.name}
+                          hint={candidate.title || "Opens a group with both"}
+                          icon={<UserRoundPlus />}
+                        />
+                      )}
+                    />
+                  )}
+                  <PromptInput
+                    value={draft}
+                    onValueChange={(value) => {
+                      setDraft(value);
+                      channelTrigger.sync(value);
+                      skillTrigger.sync(value);
+                    }}
+                    onSubmit={(value) => {
+                      // See the widget: a file mid-read would vanish.
+                      if (attachments.busy) return;
+                      setDraft("");
+                      channelTrigger.reset();
+                      skillTrigger.reset();
+                      void send(value);
+                    }}
+                    onSelect={(event) => {
+                      channelTrigger.sync(event.currentTarget.value);
+                      skillTrigger.sync(event.currentTarget.value);
+                    }}
+                    onKeyDown={(event) => {
+                      channelTrigger.handleKeyDown(event);
+                      skillTrigger.handleKeyDown(event);
+                    }}
+                    onBlur={() => {
+                      channelTrigger.close();
+                      skillTrigger.close();
+                    }}
+                    onPaste={attachments.onPaste}
+                    actions={composerActions}
+                    onAction={(action) => {
+                      if (action === "attach") {
+                        fileInputRef.current?.click();
+                      } else if (action === "skill") {
+                        skillTrigger.openFromButton(draft, setDraft);
+                      } else if (action === "teammate") {
+                        channelTrigger.openFromButton(draft, setDraft);
+                      }
+                    }}
+                    models={toPromptModels(models)}
+                    model={model ?? models[0]?.selector}
+                    onModelChange={setModel}
+                    minRows={1}
+                    maxRows={6}
+                    placeholder={`Ask ${teammate.name}...`}
+                    aria-label={`Ask ${teammate.name}`}
+                  />
+                </div>
+                </>
+              )}
+              {!retired && models.length > 0 && personalSubscriptionsAllowed && (
+                <p className="text-muted-foreground mt-2 text-xs">
+                  A personal AI subscription connected in Settings → AI answers
+                  your turns instead, whichever model is picked here.
+                </p>
               )}
             </div>
           </>
         )}
         </div>
       </div>
-
-      {canEdit && settingsOpen && (
-        <TeammateSettingsDrawer
-          teammate={teammate}
-          collections={collections}
-          sources={sources}
-          sourcesTruncated={sourcesTruncated}
-          members={members}
-          governance={governance}
-          canGrant={canGrant}
-          projects={projects}
-          learnings={learnings}
-          routines={routines}
-          onClose={() => setSettingsOpen(false)}
-        />
-      )}
     </div>
   );
 }

@@ -213,6 +213,9 @@ async function verifyOne(
           modelId,
           credentialKind,
           ...usageTotals(generated.usage),
+          // Verification re-reads an answer on a schedule, long after the
+          // Visitor who prompted it has gone (#849).
+          surface: "scheduled",
         },
       ]);
     } finally {

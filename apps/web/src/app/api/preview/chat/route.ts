@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
+import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
 import { getSession } from "@/lib/auth";
+import { openAttachments } from "@/lib/attachments";
 import { getDb } from "@/lib/data";
 import { getRuntimeDb } from "@/lib/runtime-db";
 import { resolvePersonalSubscription } from "@/lib/personal-subscription";
@@ -34,6 +36,10 @@ export async function POST(request: NextRequest) {
     message: string;
     turnId?: string;
     modelPreference?: unknown;
+    /** `"<provider>:<model id>"` from the composer's picker; see below. */
+    model?: string | null;
+    /** Sealed attachment tokens; opened here, never trusted as sent. */
+    attachments?: unknown;
   };
   const message = (body.message ?? "").trim();
   if (!message) return new Response("Empty message", { status: 400 });
@@ -72,8 +78,20 @@ export async function POST(request: NextRequest) {
     body.modelPreference,
     personal.providers
   );
+  // Two selections, and they are not peers. The composer's picker chooses
+  // between the models this Assistant allows, on the Organization's
+  // connections. The Member's own subscription, set once in Settings → AI,
+  // outranks it: it is their capacity, it costs the Organization nothing, and
+  // it is applied second so it wins. Composing them in this order is what
+  // makes "your subscription answers whichever model is picked" true here and
+  // in the Teammate chat both.
+  const chosen = resolveRequestedModel(
+    parseModelSelector(body.model),
+    { provider: assistant.modelProvider, modelId: assistant.modelId },
+    assistant.allowedModels ?? []
+  );
   const effectiveAssistant = applyLocalPreviewModelPreference(
-    assistant,
+    { ...assistant, modelProvider: chosen.provider, modelId: chosen.modelId },
     body.modelPreference,
     personal.providers
   );
@@ -91,6 +109,7 @@ export async function POST(request: NextRequest) {
     subjectId: session.userId,
     conversationId: body.conversationId,
     collectionId: body.collectionId,
+    attachments: openAttachments(body.attachments),
     message,
     turnId: body.turnId,
     metadata: {

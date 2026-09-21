@@ -1,14 +1,16 @@
-import { CreditCard, ExternalLink } from "lucide-react";
+import { Activity, CalendarDays, CreditCard, ExternalLink, FileText, Hash } from "lucide-react";
 import type { BillingAccountSnapshot } from "@agent-hub/agent";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
 import {
   Table,
   TableBody,
+  TableCard,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { openBillingPortalAction } from "@/app/(admin)/settings/billing/actions";
 import {
   EMPTY_FIELD,
@@ -94,16 +96,28 @@ export function BillingAccountCard({
               No invoices issued yet.
             </p>
           ) : (
+            <TableCard
+              footer={
+                <TablePagination
+                  total={account.invoices.length}
+                  noun="invoice"
+                />
+              }
+            >
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead icon={CalendarDays}>Date</TableHead>
                   {/* The provider's invoice number: what an accounts department
                       reconciles a payment against. */}
-                  <TableHead>Number</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Invoice</TableHead>
+                  <TableHead icon={Hash}>Number</TableHead>
+                  <TableHead icon={Activity}>Status</TableHead>
+                  <TableHead icon={CreditCard} className="text-right">
+                    Total
+                  </TableHead>
+                  <TableHead icon={FileText} className="text-right">
+                    Invoice
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -137,6 +151,7 @@ export function BillingAccountCard({
                 ))}
               </TableBody>
             </Table>
+            </TableCard>
           )}
         </CardContent>
       </Card>

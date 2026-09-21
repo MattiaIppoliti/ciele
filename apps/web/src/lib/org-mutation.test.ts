@@ -161,15 +161,15 @@ describe("orgMutation", () => {
     [{ kind: "improvement", id: "IMP_1" }, [["/improvements/IMP_1", undefined]]],
     [{ kind: "inbox" }, [["/inbox", undefined]]],
     [{ kind: "assistantEditor", assistantId: "as_1" }, [["/assistants/as_1", undefined]]],
-    // A channel change reaches the roster it shares with the Teammates, and one
-    // channel's own page. Both are concrete paths, so neither needs a type
-    // (#778).
-    [{ kind: "channelList" }, [["/teammates", undefined]]],
+    // A channel change reaches the rail it shares with the Teammates, and one
+    // channel's own page. The rail lives in `/teammates`'s layout, so that one
+    // is scoped to the layout; the channel page is a concrete path (#778).
+    [{ kind: "channelList" }, [["/teammates", "layout"]]],
     [
       { kind: "channel", id: "ch_1" },
       [["/teammates/channels/ch_1", undefined]],
     ],
-    // A Project change reaches the roster (whose create dialog offers the
+    // A Project change reaches the rail (whose create dialog offers the
     // live Projects), every Teammate page, and the Improvements board, where
     // an Improvement names the Project it belongs to. The bracketed path is
     // how Next names a dynamic route for all of its params, and it only works
@@ -177,7 +177,7 @@ describe("orgMutation", () => {
     [
       { kind: "projectList" },
       [
-        ["/teammates", undefined],
+        ["/teammates", "layout"],
         ["/teammates/[teammateId]", "page"],
         ["/improvements", undefined],
       ],
@@ -185,7 +185,7 @@ describe("orgMutation", () => {
     [
       { kind: "project", id: "prj_1" },
       [
-        ["/teammates", undefined],
+        ["/teammates", "layout"],
         ["/teammates/[teammateId]", "page"],
         ["/improvements", undefined],
       ],
@@ -220,7 +220,7 @@ describe("orgMutation", () => {
       async () => null
     );
     expect(revalidatePathMock.mock.calls).toEqual([
-      ["/teammates", undefined],
+      ["/teammates", "layout"],
       ["/teammates/[teammateId]", "page"],
       ["/improvements", undefined],
     ]);

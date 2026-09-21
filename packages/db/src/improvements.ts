@@ -1,4 +1,5 @@
 import type { Improvement } from "@agent-hub/core";
+import { isOpenImprovement } from "@agent-hub/core";
 import type { Db } from "./types";
 
 /**
@@ -68,13 +69,35 @@ export async function findOpenImprovementForConversation(
     const improvement = await db.getImprovement(link.improvementId);
     if (
       improvement &&
-      improvement.status !== "done" &&
-      improvement.status !== "archived"
+      isOpenImprovement(improvement)
     ) {
       return improvement;
     }
   }
   return null;
+}
+
+/**
+ * The first still-open Improvement carrying this tag, or null.
+ *
+ * The sibling of {@link findOpenImprovementForConversation} for a producer
+ * whose signal has no Conversation to walk: a failing standing Goal persists
+ * no Conversation and no message (#903), so its dedup key is a tag it wrote
+ * on the card instead. Same "open" rule, same reason.
+ *
+ * A full-org read because tags are not indexed. It runs once per failing goal
+ * per nightly tick, which is the cadence this is sized for.
+ */
+export async function findOpenImprovementByTag(
+  db: Db,
+  organizationId: string,
+  tag: string
+): Promise<Improvement | null> {
+  const items = await db.listImprovements(organizationId);
+  return (
+    items.find((item) => isOpenImprovement(item) && item.tags.includes(tag)) ??
+    null
+  );
 }
 
 /**

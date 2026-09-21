@@ -4,6 +4,7 @@ import type {
   SourceKind,
   SourceStatus,
 } from "@agent-hub/core";
+import { DEFAULT_PAGE_SIZE, clampPageSize } from "@/lib/pagination";
 
 /**
  * Pure derivations for the Library and the assistant editor's Knowledge
@@ -44,6 +45,32 @@ export function isKnowledgeTabSlug(value: string): value is KnowledgeTabSlug {
   return (KNOWLEDGE_TAB_SLUGS as string[]).includes(value);
 }
 
+/** The rail label, always the bucket's plain name. */
+export const KNOWLEDGE_TAB_LABELS: Record<KnowledgeTabSlug, string> = {
+  websites: "Websites",
+  files: "Files",
+  applications: "Applications",
+  faqs: "FAQs",
+};
+
+/** The page heading, which may be longer than the rail label. */
+export const KNOWLEDGE_TAB_TITLES: Record<KnowledgeTabSlug, string> = {
+  websites: "Websites",
+  files: "Files",
+  applications: "Applications",
+  faqs: "Questions and Answers",
+};
+
+export const KNOWLEDGE_TAB_INTROS: Record<KnowledgeTabSlug, string> = {
+  websites:
+    "Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions.",
+  files:
+    "Upload files to add to your organization's knowledge base. Linked assistants will use these to answer questions.",
+  applications:
+    "Connect external applications and synchronize selected content into your organization's knowledge base.",
+  faqs: "Add sets of questions and answers to fine tune AI responses.",
+};
+
 /**
  * Sub-nav health dot rollup: error > processing > ready; null (no dot) for an
  * empty tab.
@@ -82,13 +109,16 @@ export function sourceTypeLabel(kind: SourceKind): string {
   }
 }
 
-export const HUB_PAGE_SIZE = 25;
+/** The Library's page size when the URL does not name one. */
+export const HUB_PAGE_SIZE = DEFAULT_PAGE_SIZE;
 
 export interface HubSearchParams {
   q: string;
   status: "" | SourceStatus;
   assistant: string;
   page: number;
+  /** Rows per page, chosen in the table footer and carried in the URL. */
+  size: number;
 }
 
 const STATUSES: SourceStatus[] = ["processing", "ready", "error"];
@@ -108,6 +138,9 @@ export function parseHubSearchParams(
       : "",
     assistant: one(params.assistant),
     page: Number.isFinite(page) && page >= 1 ? page : 1,
+    // Clamped to an offered size: the page size reaches a LIMIT, so a
+    // hand-typed `?size=100000` would turn one navigation into a table scan.
+    size: clampPageSize(one(params.size)),
   };
 }
 

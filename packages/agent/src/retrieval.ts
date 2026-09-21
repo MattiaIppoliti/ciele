@@ -21,7 +21,12 @@
  * hand `streamConversationTurn` config, never searchers.
  */
 
-import type { Assistant, ProviderConnection } from "@agent-hub/core";
+import type {
+  Assistant,
+  ProviderConnection,
+  UsageSpenders,
+  UsageSurface,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { createEmbedder, embeddingSpaceId } from "./embeddings";
 import { withGraphEngine } from "./graph-search";
@@ -45,6 +50,11 @@ export function buildKnowledgeSearcher(opts: {
   conversationId: string | null;
   /** Receives the graph QA id when a graph search served results (#389). */
   onTrace?: (qaId: string) => void;
+  /**
+   * Who the query embedding's credits belong to (#849). A search is spent by
+   * whoever asked, not by retrieval itself, so the caller says.
+   */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): KnowledgeSearcher {
   const { db, assistant, collectionId, conversationId } = opts;
   const embed = createEmbedder(opts.connections, {
@@ -52,6 +62,8 @@ export function buildKnowledgeSearcher(opts: {
     organizationId: assistant.organizationId,
     assistantId: assistant.id,
     conversationId,
+    spenders: opts.usage?.spenders,
+    surface: opts.usage?.surface,
   });
   const vector: KnowledgeSearcher = async (query, options) => {
     const scoped = options?.scope === "assistant" ? null : collectionId;
@@ -103,15 +115,19 @@ export function buildCollectionSearcher(opts: {
   /** Individual Library Sources in the scope; empty is the common case. */
   sourceIds: string[];
   conversationId: string | null;
+  /** Who the query embedding's credits belong to (#849). */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }): KnowledgeSearcher {
   const { db, organizationId, collectionIds, sourceIds, conversationId } = opts;
   const embed = createEmbedder(opts.connections, {
     db,
     organizationId,
-    // No Assistant to attribute the embedding spend to; the Organization and
-    // the Conversation are the whole attribution for internal traffic.
+    // No Assistant to attribute the embedding spend to; the Teammate and the
+    // Member who asked are on the spender tuple instead (#849).
     assistantId: null,
     conversationId,
+    spenders: opts.usage?.spenders,
+    surface: opts.usage?.surface,
   });
   return async (query) => {
     // One embedding for both halves: the query is the same, and paying for it

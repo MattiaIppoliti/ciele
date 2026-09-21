@@ -81,6 +81,46 @@ describe("finalizeWebsiteCrawl", () => {
     expect(concepts.every((c) => c.sourceId === source.id)).toBe(true);
   });
 
+  it("records the page total and moves the counter while it stages", async () => {
+    const db = getMockDb();
+    const { assistantId, collectionId, source } = await seed(db, "progress");
+    getRunStateMock.mockResolvedValue({ status: "SUCCEEDED", datasetId: "ds_1" });
+    fetchPagesMock.mockResolvedValue(
+      Array.from({ length: 25 }, (_, i) => ({
+        url: `https://x.edu/${i}`,
+        title: `Page ${i}`,
+        text: `Body ${i}.`,
+      })),
+    );
+
+    // The console's denominator is written before the first page is staged, so
+    // the card can count against it from the first poll.
+    const staged: Array<number | undefined> = [];
+    const realUpdate = db.updateSource.bind(db);
+    db.updateSource = async (id, patch) => {
+      if (id === source.id && patch.config) {
+        staged.push(patch.config.crawlStagedPages);
+      }
+      return realUpdate(id, patch);
+    };
+
+    const status = await finalizeWebsiteCrawl({
+      db,
+      assistantId,
+      collectionId,
+      sourceId: source.id,
+    });
+
+    expect(status).toBe("ready");
+    // 0 at the open, then one write per stride of ten.
+    expect(staged.filter((value) => value !== undefined)).toEqual([0, 10, 20]);
+    const finished = await db.getSource(source.id);
+    // The total outlives the crawl (it says what the last one brought in); the
+    // in-flight counter does not.
+    expect(finished?.config.crawlTotalPages).toBe(25);
+    expect(finished?.config.crawlStagedPages).toBeUndefined();
+  });
+
   it("marks error when a finished run has no pages", async () => {
     const db = getMockDb();
     const { assistantId, collectionId, source } = await seed(db, "empty");

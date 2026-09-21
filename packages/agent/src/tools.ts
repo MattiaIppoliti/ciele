@@ -69,6 +69,13 @@ import {
 export interface ToolRuntimeContext {
   assistant: Assistant;
   session: TurnSession;
+  /**
+   * This tool call's id, present only on the PER-CALL context `instrumentAction`
+   * builds (#901). The turn-level context has no call to name, and that is the
+   * point: it is the slot an idempotency key is derived from, so it has to be
+   * different for every call and the same for a retry of one.
+   */
+  callId?: string;
   searchKnowledge?: KnowledgeSearcher;
   searchMemories?: MemorySearcher;
   entities?: EntitySnapshot[];
@@ -722,6 +729,9 @@ function instrumentAction(spec: RuntimeToolSpec, ctx: ToolRuntimeContext): Tool 
       let recordedShown: Record<string, unknown> | undefined;
       const callCtx: ToolRuntimeContext = {
         ...ctx,
+        // Only ever present on the PER-CALL context, which is what makes it a
+        // usable idempotency slot: the turn-level `ctx` has no call to name.
+        callId,
         recordResult: (result, shown) => {
           recorded = result;
           recordedShown = shown;

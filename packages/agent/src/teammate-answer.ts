@@ -3,6 +3,8 @@ import type {
   ProviderConnection,
   StoredTurnTrace,
   Teammate,
+  UsageSpenders,
+  UsageSurface,
 } from "@agent-hub/core";
 import {
   memoryPromptSections,
@@ -51,6 +53,8 @@ export function runTeammateAnswer(options: {
   /** Container-specific prompt context, after the Standing Role. */
   personaContext?: string;
   turn: TeammateAnswerTurn;
+  /** Who the Knowledge Scope search's embedding is spent by (#849). */
+  usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
 }) {
   const {
     db,
@@ -79,6 +83,7 @@ export function runTeammateAnswer(options: {
           collectionIds: teammate.collectionIds,
           sourceIds: teammate.sourceIds,
           conversationId,
+          usage: options.usage,
         })
       : undefined,
   });
@@ -91,6 +96,25 @@ interface TeammateAnswerTelemetry {
   conversationId: string | null;
   surface: "teammate";
   startedAt: number;
+}
+
+/**
+ * Who this answer's credits are attributed to (#848).
+ *
+ * Separate from `TeammateAnswerTelemetry` above, whose `surface` names one of
+ * the three *chat* surfaces a runtime event distinguishes: a Teammate answer is
+ * also produced unattended and inside a channel, and folding those into
+ * "teammate" would make a Routine's spend indistinguishable from a Member's.
+ *
+ * The Teammate itself is not a field here: this seam always runs one, and it is
+ * already on `options.teammate`.
+ */
+interface TeammateAnswerAttribution {
+  surface: UsageSurface;
+  /** The Member whose turn this is, where the surface has one. */
+  memberId?: string | null;
+  /** The Routine driving this run, when one is (#849). */
+  routineId?: string | null;
 }
 
 export type TeammateAnswerOutcome =
@@ -111,6 +135,45 @@ export type TeammateAnswerOutcome =
     };
 
 /**
+ * One Teammate answer's model calls, projected onto AI usage ledger rows.
+ *
+ * Pure, and separate from the lifecycle below, because this is where the
+ * attribution decision lives (#848): the Teammate that ran always, the Member
+ * who asked only where the surface has one. Unattended work names no Member
+ * rather than borrowing an arbitrary one, which is the difference between "a
+ * Routine spent this" and "a colleague spent this".
+ *
+ * Internal to the package: the barrel publishes the lifecycle, not its parts.
+ */
+export function projectTeammateUsage(input: {
+  usage: TeammateEngineResult["usage"];
+  organizationId: string;
+  teammateId: string;
+  telemetry: Pick<TeammateAnswerTelemetry, "assistantId" | "conversationId">;
+  attribution: TeammateAnswerAttribution;
+  messageId: string | null;
+}): AiUsageInput[] {
+  return input.usage.map((event) => ({
+    organizationId: input.organizationId,
+    assistantId: input.telemetry.assistantId,
+    conversationId: input.telemetry.conversationId,
+    messageId: input.messageId,
+    stage: event.stage,
+    provider: event.provider,
+    modelId: event.modelId,
+    credentialKind: event.credentialKind,
+    inputTokens: event.inputTokens,
+    outputTokens: event.outputTokens,
+    spenders: {
+      teammateId: input.teammateId,
+      memberId: input.attribution.memberId ?? null,
+      routineId: input.attribution.routineId ?? null,
+    },
+    surface: input.attribution.surface,
+  }));
+}
+
+/**
  * The complete model-backed Teammate answer lifecycle shared by Conversation
  * and Channel adapters. Containers still own persistence and continuation;
  * this seam owns execution, public event projection, trace/audit folding,
@@ -126,6 +189,7 @@ export async function executeTeammateAnswer(options: {
   turn: TeammateAnswerTurn;
   forward: (event: RuntimeEvent) => void;
   telemetry: TeammateAnswerTelemetry;
+  attribution: TeammateAnswerAttribution;
 }): Promise<TeammateAnswerOutcome> {
   const observer = createTurnObserver(options.forward);
   try {
@@ -137,21 +201,25 @@ export async function executeTeammateAnswer(options: {
       conversationId: options.conversationId,
       personaContext: options.personaContext,
       turn: { ...options.turn, emit: observer.emit },
+      usage: {
+        spenders: {
+          teammateId: options.teammate.id,
+          memberId: options.attribution.memberId ?? null,
+          routineId: options.attribution.routineId ?? null,
+        },
+        surface: options.attribution.surface,
+      },
     });
     const usage = summarizeTurnUsage(result.usage);
     const usageRows = (messageId: string | null): AiUsageInput[] =>
-      result.usage.map((event) => ({
+      projectTeammateUsage({
+        usage: result.usage,
         organizationId: options.organizationId,
-        assistantId: options.telemetry.assistantId,
-        conversationId: options.telemetry.conversationId,
+        teammateId: options.teammate.id,
+        telemetry: options.telemetry,
+        attribution: options.attribution,
         messageId,
-        stage: event.stage,
-        provider: event.provider,
-        modelId: event.modelId,
-        credentialKind: event.credentialKind,
-        inputTokens: event.inputTokens,
-        outputTokens: event.outputTokens,
-      }));
+      });
     return {
       ok: true,
       result,

@@ -28,6 +28,20 @@ Billing fields can remain absent when Stripe has not supplied them.
 
 Ciele reconciles the billing state with Stripe. Do not assume that a completed browser redirect proves plan activation.
 
+## Top-up credits
+
+**Settings > Billing** shows the credits your Organization holds, three pack
+sizes, and the history of the packs you bought.
+
+A pack is a buffer behind your plan allowance. Ciele spends it only after a
+window's allowance is used up. Purchased credits do not expire.
+
+A pack costs more for each credit than your plan does. The page shows both
+prices. Compare them before you buy a pack every month.
+
+Buying a pack needs an active or trial plan. A self-hosted deployment has no
+plan and no packs.
+
 ## Self-hosted edition
 
 The self-hosted edition shows no plan state and no subscription account. It needs no Ciele subscription. See [Open Source](/self-hosting).

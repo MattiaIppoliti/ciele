@@ -122,6 +122,10 @@ export async function distillAgentLearning(input: {
       credentialKind: classifier.credentialKind,
       inputTokens: result.usage?.inputTokens ?? 0,
       outputTokens: result.usage?.outputTokens ?? 0,
+      // Distillation runs after the turn, unattended, on the org connections:
+      // it is the platform's own housekeeping, not the Member's spend (#849).
+      spenders: { teammateId },
+      surface: "scheduled",
     },
   ]);
 

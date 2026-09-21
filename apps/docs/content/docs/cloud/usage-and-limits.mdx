@@ -23,6 +23,38 @@ The page compares current use with available plan limits. It can also show the O
 
 Daily rows use Coordinated Universal Time (UTC). Use this boundary when you compare Ciele data with a provider invoice.
 
+## Where the credits went
+
+The page lists the spenders that used the window's credits: Assistants,
+Teammates, Members, API keys and Routines.
+
+Each card totals one kind of spender. A Teammate answer names the Teammate and
+also the colleague who asked. The same credit is thus on two cards. Do not add
+the cards together.
+
+## Top-up credits
+
+A plan allowance resets with its window. Top-up credits are a pool that your
+Organization keeps until it spends them.
+
+Ciele draws on the pool only after a window's allowance is fully used. Answering
+then continues instead of pausing. When the pool is also empty, the usual limit
+message applies again.
+
+Buy a pack in **Settings > Billing**. A pack always costs more for each credit
+than your plan. If you buy a pack each month, an upgrade is less expensive.
+
+## Other work
+
+Some work costs no credits: an outbound API request from a Flow, an email, an
+inbound flow run, a webhook callback.
+
+The page counts these operations. It does not price them. The count shows you
+that a Flow makes many outbound calls, which no other page shows.
+
+Each row also gives the outcome. **Refused by Ciele** means our own policy
+stopped the call. **Failed** means the other system or the network did.
+
 ## Investigate unexpected use
 
 1. Select the affected meter.

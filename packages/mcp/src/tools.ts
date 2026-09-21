@@ -965,15 +965,17 @@ export function buildTools(client: CieleClient): CieleTool[] {
     {
       name: "manage_organization",
       description:
-        "Manage Organization settings, Members, invitation links, and API keys. Secret keys are returned only once on creation; Role checks match the app.",
+        "Manage Organization settings, Members, invitation links and API keys, and read the plan's usage meters and who spent its credits. Secret keys are returned only once on creation; Role checks match the app.",
       schema: {
-        action: z.enum(["get", "update", "member_list", "member_set_role", "member_remove", "invite_list", "invite_create", "invite_revoke", "api_key_list", "api_key_create", "api_key_revoke"]),
+        action: z.enum(["get", "update", "member_list", "member_set_role", "member_remove", "invite_list", "invite_create", "invite_revoke", "api_key_list", "api_key_create", "api_key_revoke", "usage_meters", "usage_spenders"]),
         id: z.string().optional().describe("Member user id, Invite id, or API key id"),
         input: z.record(z.string(), z.unknown()).optional(),
         patch: z.record(z.string(), z.unknown()).optional(),
         role: z.enum(["owner", "admin", "editor", "viewer"]).optional(),
+        from: z.string().optional().describe("Usage window start, ISO instant"),
+        to: z.string().optional().describe("Usage window end, ISO instant"),
       },
-      mutates: (args) => !new Set(["get", "member_list", "invite_list", "api_key_list"]).has(String(args.action)),
+      mutates: (args) => !new Set(["get", "member_list", "invite_list", "api_key_list", "usage_meters", "usage_spenders"]).has(String(args.action)),
       run: async (args) => {
         switch (args.action) {
           case "get": return client.organization.get();
@@ -987,6 +989,11 @@ export function buildTools(client: CieleClient): CieleTool[] {
           case "api_key_list": return client.apiKeys.list();
           case "api_key_create": return client.apiKeys.create(needObject(args, "input") as never);
           case "api_key_revoke": await client.apiKeys.revoke(need(args, "id")); return { revoked: args.id };
+          case "usage_meters": return client.usage.meters();
+          case "usage_spenders": return client.usage.spenders({
+            ...(typeof args.from === "string" ? { from: args.from } : {}),
+            ...(typeof args.to === "string" ? { to: args.to } : {}),
+          });
           default: throw new ToolInputError(`Unknown action "${args.action}"`);
         }
       },

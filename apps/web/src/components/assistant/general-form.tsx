@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import type {
   Assistant,
   KnowledgeEngine,
+  ModelRef,
   Provider,
   QuickReplyButton,
   QuickReplyType,
@@ -11,6 +12,10 @@ import type {
 import { shortId } from "@agent-hub/core";
 
 import { MODEL_CATALOG, PROVIDER_NAMES } from "@agent-hub/agent/client";
+import {
+  ModelAllowList,
+  modelAllowListSummary,
+} from "@/components/chat/model-allow-list";
 import { AvatarUpload } from "@/components/settings/avatar-upload";
 import {
   SectionTimeline,
@@ -133,6 +138,12 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
     assistant.modelProvider
   );
   const [modelId, setModelId] = useState(assistant.modelId);
+  const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
+    assistant.allowedModels ?? []
+  );
+  const [attachmentsEnabled, setAttachmentsEnabled] = useState(
+    assistant.attachmentsEnabled ?? false
+  );
   const [knowledgeEngine, setKnowledgeEngine] = useState<KnowledgeEngine>(
     assistant.knowledgeEngine ?? "graph"
   );
@@ -153,6 +164,9 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
     simplifiedThinking !== assistant.simplifiedThinking ||
     modelProvider !== assistant.modelProvider ||
     modelId !== assistant.modelId ||
+    JSON.stringify(allowedModels) !==
+      JSON.stringify(assistant.allowedModels ?? []) ||
+    attachmentsEnabled !== (assistant.attachmentsEnabled ?? false) ||
     knowledgeEngine !== (assistant.knowledgeEngine ?? "graph") ||
     JSON.stringify(questions) !== JSON.stringify(assistant.suggestedQuestions) ||
     JSON.stringify(quickReplies) !==
@@ -210,6 +224,13 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
         simplifiedThinking,
         modelProvider,
         modelId,
+        // A configured model that moved is implicitly in the picker, so drop
+        // any duplicate of it rather than storing the same model twice.
+        allowedModels: allowedModels.filter(
+          (ref) =>
+            !(ref.provider === modelProvider && ref.modelId === modelId)
+        ),
+        attachmentsEnabled,
         knowledgeEngine,
       });
       toast.success("Settings saved");
@@ -333,6 +354,47 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Models the chat window offers */}
+      <div className="space-y-3">
+        <FieldHeader
+          title="Let visitors choose the model"
+          hint="Tick the models the chat window offers beside the configured one. Leave every box clear (the default) and there is no picker: everyone runs the configured model. A ticked model whose provider has no organization credential is not offered until one exists."
+        />
+        <ModelAllowList
+          configured={{ provider: modelProvider, modelId }}
+          value={allowedModels}
+          onChange={setAllowedModels}
+        />
+        <p className="text-muted-foreground text-xs">
+          {modelAllowListSummary(
+            allowedModels.filter(
+              (ref) =>
+                !(ref.provider === modelProvider && ref.modelId === modelId)
+            )
+          )}
+        </p>
+      </div>
+
+      {/* Visitor attachments */}
+      <div className="space-y-3">
+        <FieldHeader
+          title="Let visitors attach files"
+          hint="Off by default. With it on, the chat window accepts a PDF, Word, Excel, PowerPoint, text file or image, reads it into text and answers from it. Nothing is stored: the file is read once and the bytes are discarded, so there is no copy to keep or delete. Reading an image costs one model call. Preview and Teammate chats accept files either way, because a member is signed in."
+        />
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={attachmentsEnabled}
+            onCheckedChange={setAttachmentsEnabled}
+            aria-label="Let visitors attach files"
+          />
+          <span className="text-muted-foreground text-sm">
+            {attachmentsEnabled
+              ? "Visitors can attach files."
+              : "Visitors cannot attach files."}
+          </span>
         </div>
       </div>
 

@@ -70,6 +70,12 @@ export interface UsageLimitsView {
    * lie, so the page says so in words instead.
    */
   allUncapped: boolean;
+  /**
+   * Top-up credits held (#851), formatted, or null when none are. A buffer
+   * behind the allowance, not a second wallet: the copy that renders it has to
+   * say so, or an admin reads it as spendable now and is surprised twice.
+   */
+  topupLabel: string | null;
 }
 
 const RESOURCE_COPY: Record<
@@ -227,6 +233,10 @@ export function usageLimitsView(
     cards,
     allUncapped:
       snapshot.meters.length > 0 && snapshot.meters.every((m) => m.cap === null),
+    topupLabel:
+      snapshot.topupCredits && snapshot.topupCredits > 0
+        ? formatNumber(snapshot.topupCredits)
+        : null,
     total: {
       usedLabel: formatNumber(used),
       capLabel: uncapped ? NO_LIMIT : formatNumber(cap),

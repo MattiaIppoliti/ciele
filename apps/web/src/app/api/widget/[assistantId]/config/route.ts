@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { proactiveDwellSeconds, proactiveTriggers } from "@agent-hub/core";
+import { chatModelOptions } from "@agent-hub/agent";
 import { resolveWidgetContext, widgetOptions } from "@/lib/widget-db";
 
 export async function GET(
@@ -10,6 +11,21 @@ export async function GET(
   if (ctx instanceof Response) return ctx;
 
   const { assistant, collections, flows } = ctx.publication.config;
+
+  // The picker's rows, resolved here rather than in the widget: the client has
+  // no business knowing which providers the Organization holds credentials for,
+  // and an empty list is the honest answer for every Assistant that never
+  // opened the choice. Connections are read live, not off the snapshot, so
+  // revoking a credential closes the picker without a republish.
+  const connections = await ctx.db.listProviderConnections(
+    assistant.organizationId
+  );
+  const models = chatModelOptions(
+    { provider: assistant.modelProvider, modelId: assistant.modelId },
+    assistant.allowedModels,
+    connections
+  );
+
   return Response.json(
     {
       version: ctx.publication.version,
@@ -30,13 +46,19 @@ export async function GET(
       // The dwell thresholds the embed must arm a timer for (#547). Distinct and
       // ascending; the server still re-checks each flow's own threshold.
       proactiveDwellSeconds: proactiveDwellSeconds(flows),
+      models,
     },
     {
       headers: {
         ...ctx.cors,
-        // Publication-derived: safe to cache briefly in browsers/CDNs so
-        // every host-page view stops paying an origin round-trip. A Publish
-        // reaches new visitors immediately and cached ones within max-age.
+        // Publication-derived, with one exception: safe to cache briefly in
+        // browsers/CDNs so every host-page view stops paying an origin
+        // round-trip. A Publish reaches new visitors immediately and cached
+        // ones within max-age. The exception is `models`, which is read from
+        // live Provider Connections, so a revoked credential can leave a model
+        // on a cached picker for up to max-age. That costs nothing: the chat
+        // route resolves the choice again against the same connections and
+        // falls back to the configured model rather than refusing the turn.
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
         // The CORS headers above depend on the caller's Origin, caches must
         // not serve one origin's response to another.

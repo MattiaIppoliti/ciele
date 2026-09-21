@@ -51,11 +51,15 @@ const DRAFTER_SYSTEM = [
 
 /** Everything the drafter needs, rehydrated from the Db so the job payload stays
  * a set of ids. Null when the Improvement can't produce a proposal. */
-async function gatherContext(
-  db: Db,
-  improvementId: string,
-  messageId: string
-): Promise<{
+/**
+ * Everything the drafter needs, however it was reached.
+ *
+ * Two producers build this: a flagged answer in a real Conversation, and a
+ * failing standing Goal (#903), which has neither a Conversation nor a
+ * message because goal evals persist none. `conversationId` and `messageId`
+ * are therefore nullable, and they feed only the usage ledger.
+ */
+export interface ProposalContext {
   organizationId: string;
   assistantId: string;
   question: string;
@@ -64,8 +68,15 @@ async function gatherContext(
   transcript: string;
   searcher: KnowledgeSearcher;
   collectionId: string | null;
-  conversationId: string;
-} | null> {
+  conversationId: string | null;
+  messageId: string | null;
+}
+
+async function gatherContext(
+  db: Db,
+  improvementId: string,
+  messageId: string
+): Promise<ProposalContext | null> {
   const [improvement, conversation] = await Promise.all([
     db.getImprovement(improvementId),
     db.getConversationForMessage(messageId),
@@ -103,6 +114,7 @@ async function gatherContext(
     assistant,
     collectionId,
     conversationId: conversation.id,
+    usage: { surface: "scheduled" },
   });
 
   return {
@@ -115,6 +127,54 @@ async function gatherContext(
     searcher,
     collectionId,
     conversationId: conversation.id,
+    messageId,
+  };
+}
+
+/**
+ * The same context, from a failing standing Goal (#903).
+ *
+ * The golden question IS the question, and the answer the eval produced is the
+ * flagged answer: a Goal is a flagged answer that an admin wrote down in
+ * advance. There is no transcript because there was no Conversation, so the
+ * question and answer are rendered as one, which is all the transcript ever
+ * gave the model anyway.
+ */
+export async function gatherGoalProposalContext(
+  db: Db,
+  input: {
+    improvementId: string;
+    assistantId: string;
+    question: string;
+    answer: string;
+  }
+): Promise<ProposalContext | null> {
+  const [improvement, assistant] = await Promise.all([
+    db.getImprovement(input.improvementId),
+    db.getAssistant(input.assistantId),
+  ]);
+  if (!improvement || !assistant) return null;
+  const flaggedAnswer = input.answer.trim();
+  if (!flaggedAnswer) return null;
+
+  const connections = await db.listProviderConnections(assistant.organizationId);
+  return {
+    organizationId: assistant.organizationId,
+    assistantId: assistant.id,
+    question: input.question,
+    flaggedAnswer,
+    description: improvement.description || improvement.title,
+    transcript: `user: ${input.question}\nassistant: ${flaggedAnswer}`,
+    searcher: buildKnowledgeSearcher({
+      db,
+      connections,
+      assistant,
+      collectionId: null,
+      conversationId: null,
+    }),
+    collectionId: null,
+    conversationId: null,
+    messageId: null,
   };
 }
 
@@ -128,15 +188,35 @@ export async function draftImprovementProposal(deps: {
   improvementId: string;
   messageId: string;
 }): Promise<void> {
-  const { db } = deps;
-  const ctx = await gatherContext(db, deps.improvementId, deps.messageId).catch(
+  const ctx = await gatherContext(deps.db, deps.improvementId, deps.messageId).catch(
     (error) => {
       console.error("[proposal] context gathering failed:", error);
       return null;
     }
   );
-  if (!ctx) return;
+  if (ctx) await draftFrom(deps.db, deps.improvementId, ctx);
+}
 
+/** The Goal producer's entry point (#903). Same drafting, same draft status. */
+export async function draftGoalProposal(deps: {
+  db: Db;
+  improvementId: string;
+  assistantId: string;
+  question: string;
+  answer: string;
+}): Promise<void> {
+  const ctx = await gatherGoalProposalContext(deps.db, deps).catch((error) => {
+    console.error("[proposal] goal context gathering failed:", error);
+    return null;
+  });
+  if (ctx) await draftFrom(deps.db, deps.improvementId, ctx);
+}
+
+async function draftFrom(
+  db: Db,
+  improvementId: string,
+  ctx: ProposalContext
+): Promise<void> {
   const connections = await db.listProviderConnections(ctx.organizationId);
   const classifier = getClassifierModel("anthropic", connections);
   if (!classifier) return; // No credential → leave a "no proposal" state.
@@ -172,7 +252,7 @@ export async function draftImprovementProposal(deps: {
     });
 
     await db.createImprovementProposal({
-      improvementId: deps.improvementId,
+      improvementId,
       organizationId: ctx.organizationId,
       payload: {
         draftQuestion: object.draftQuestion,
@@ -190,13 +270,16 @@ export async function draftImprovementProposal(deps: {
         organizationId: ctx.organizationId,
         assistantId: ctx.assistantId,
         conversationId: ctx.conversationId,
-        messageId: deps.messageId,
+        messageId: ctx.messageId,
         stage: "improvement_proposal",
         provider: classifier.provider,
         modelId: classifier.modelId,
         credentialKind: classifier.credentialKind,
         inputTokens: usage?.inputTokens ?? 0,
         outputTokens: usage?.outputTokens ?? 0,
+        // A Suggested Fix is drafted by a job, not by whoever opens the
+        // Improvement afterwards (#849).
+        surface: "scheduled",
       },
     ]);
   } catch (error) {

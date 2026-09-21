@@ -766,12 +766,12 @@ export function DevelopersMock() {
           <span className="text-sm font-medium">Flows API</span>
           <span className="text-muted-foreground ml-auto font-mono text-[11px]">D</span>
         </div>
-        <div className="text-muted-foreground flex gap-3 border-b pb-2 text-xs">
-          <span className="text-foreground border-foreground -mb-2 border-b-2 pb-2 font-medium">
+        <div className="text-muted-foreground bg-muted flex w-fit items-center gap-1 rounded-full p-1 text-xs">
+          <span className="bg-primary text-primary-foreground rounded-full px-3 py-1 font-medium">
             CLI
           </span>
-          <span>cURL</span>
-          <span>MCP</span>
+          <span className="px-3 py-1">cURL</span>
+          <span className="px-3 py-1">MCP</span>
         </div>
         <pre className="bg-muted/60 text-muted-foreground overflow-hidden rounded-lg border p-3 font-mono text-[11px] leading-relaxed">
           {`ciele flows list \\

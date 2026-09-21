@@ -123,6 +123,12 @@ export async function runHttpFlow(options: {
       "workflow.message": request.body,
       "workflow.name": flow.name,
     },
+    // No model, which is also why an inbound run writes nothing to the usage
+    // ledger today (#849): with no chat model and no knowledge searcher, a
+    // Search knowledge action degrades to its no-model text and neither
+    // generates nor embeds. The `http_flow` usage surface exists for the day
+    // that changes; whatever gains a model here attributes to it and to
+    // `flow.id`.
     chatModel: null,
     // No Conversation, so no session state to carry: an inbound run is
     // stateless by construction, and the empty session is what says so.
@@ -200,6 +206,21 @@ export async function runHttpFlow(options: {
       failedMessage: failed?.message ?? null,
       durationMs: Math.max(0, now() - startedAt),
     });
+    // Counted, never priced (#854): the run record above says what happened,
+    // this says how often it happens. A 5xx is our side failing; anything else
+    // answered the caller.
+    await db.recordUsageEvents([
+      {
+        organizationId: assistant.organizationId,
+        operation: "http_flow_run",
+        unit: "invocation",
+        status: result.status >= 500 ? "failed" : "succeeded",
+        quantity: 1,
+        spenders: { flowId: flow.id },
+        surface: "http_flow",
+        assistantId: assistant.id,
+      },
+    ]);
   } catch (error) {
     // Best effort: a run that could not be recorded is logged, never a 500.
     console.error(`[http-flow] run of flow ${flow.id} was not recorded:`, error);

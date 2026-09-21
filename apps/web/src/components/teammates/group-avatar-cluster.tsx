@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 export function GroupAvatarCluster({
   faces,
   participantCount,
+  size = "md",
   className,
 }: {
   /**
@@ -38,14 +39,23 @@ export function GroupAvatarCluster({
    * seat whose row this Member cannot resolve still counts towards the `+N`.
    */
   participantCount: number;
+  /**
+   * `"sm"` for a conversation-rail row, where the cluster sits beside single
+   * Teammate avatars drawn at `size-9` and has to occupy the same square. The
+   * triangle only reads as one mark when the box and the faces shrink together:
+   * three `size-7` faces in a `size-9` box overflow it and land off-centre.
+   */
+  size?: "sm" | "md";
   className?: string;
 }) {
   const shown = faces.slice(0, 2);
   const rest = Math.max(0, participantCount - shown.length);
+  const small = size === "sm";
+  const faceSize = small ? "size-6" : "size-7";
 
   return (
     <div
-      className={cn("relative size-11 shrink-0", className)}
+      className={cn("relative shrink-0", small ? "size-9" : "size-11", className)}
       // Decorative: the group's name is beside it, and the line under the name
       // says how many Teammates and people are in it.
       aria-hidden
@@ -54,7 +64,7 @@ export function GroupAvatarCluster({
         <GeneratedAvatar
           key={face.id}
           seed={face.seed}
-          size="size-7"
+          size={faceSize}
           // Top-left and top-right of the triangle. `ring-background` keeps the
           // two apart where they overlap, the same trick the channel header's
           // roster strip uses.
@@ -68,7 +78,11 @@ export function GroupAvatarCluster({
         <span
           // The triangle's lower vertex. Centred rather than offset, so a group
           // with one face and a `+N` still reads as a cluster.
-          className="bg-muted text-muted-foreground ring-background absolute bottom-0 left-1/2 flex size-7 -translate-x-1/2 items-center justify-center rounded-full text-[11px] font-semibold ring-2"
+          className={cn(
+            "bg-muted text-muted-foreground ring-background absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full font-semibold ring-2",
+            faceSize,
+            small ? "text-[10px]" : "text-[11px]"
+          )}
         >
           +{rest}
         </span>

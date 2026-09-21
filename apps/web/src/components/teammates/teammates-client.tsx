@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import type { ChannelUnread, Teammate, TeammateVisibility } from "@agent-hub/core";
-import { Eye, EyeOff, Lock, Pencil } from "lucide-react";
-import { Button, Card, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
+import { Eye, EyeOff, Lock, Pencil, Search } from "lucide-react";
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, Input, Label } from "@agent-hub/ui";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
 import { EmptyState } from "@/components/ui/empty-state";
-import { AnimatedGlyph } from "@/components/ui/animated-icon";
-import { ArrowUpRightIcon } from "@/components/ui/icons/arrow-up-right";
 import { toast } from "@/lib/toast";
 import {
   createTeammateAction,
@@ -19,15 +17,11 @@ import {
 } from "@/app/(admin)/teammates/actions";
 import { createChannelAction } from "@/app/(admin)/teammates/channels/actions";
 import { KnowledgeScopePicker } from "@/components/teammates/knowledge-scope-picker";
-import {
-  knowledgeScopeLabel,
-  type ScopeSource,
-} from "@/lib/teammates/knowledge-scope";
+import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 import { ProjectSection } from "@/components/teammates/project-section";
 import { VisibilityPicker } from "@/components/teammates/visibility-picker";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import { GroupAvatarCluster } from "@/components/teammates/group-avatar-cluster";
-
 export interface CollectionOption {
   id: string;
   name: string;
@@ -399,7 +393,82 @@ function CreateChannelDialog({
   );
 }
 
-export function TeammatesClient({
+
+/**
+ * One row in the rail: a Teammate or a group, drawn the same way.
+ *
+ * The two used to be separate sections of a card grid, which said that talking
+ * to Nora and talking to #launch-week were different activities. They are not:
+ * both are a thread you come back to, so both are a row in one list, and the
+ * only thing that differs is the face (one figure, or a cluster).
+ */
+function RailRow({
+  href,
+  active,
+  avatar,
+  name,
+  subtitle,
+  badge,
+  trailing,
+}: {
+  href: string;
+  active: boolean;
+  avatar: ReactNode;
+  name: ReactNode;
+  subtitle: string;
+  badge?: ReactNode;
+  /** Row actions, revealed on hover or keyboard focus. Never inside the link. */
+  trailing?: ReactNode;
+}) {
+  return (
+    <div className="group/row relative">
+      <Link
+        href={href}
+        className={`flex items-start gap-3 border-b px-4 py-3 transition-colors ${
+          active ? "bg-primary/5 dark:bg-primary/25" : "hover:bg-muted/50"
+        }`}
+      >
+        {avatar}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-semibold">{name}</span>
+            {badge}
+          </span>
+          <span className="text-muted-foreground mt-0.5 block truncate text-xs">
+            {subtitle}
+          </span>
+        </span>
+      </Link>
+      {trailing && (
+        <div className="bg-background/80 absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5 rounded-lg opacity-0 backdrop-blur-sm transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+          {trailing}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The Teammates shell (#768, #778): a conversation rail on the left, whichever
+ * thread is open on the right.
+ *
+ * Shaped after the Inbox, deliberately. A Member on this page is doing the same
+ * thing a reviewer does there, walking a list of conversations and reading one,
+ * so it gets the same two panes instead of the card grid it had: the rail is one
+ * list of every thread, Teammates and groups interleaved, and the route decides
+ * what fills the pane beside it.
+ *
+ * It is a layout rather than a page, so the rail survives navigation between
+ * threads; `/teammates` itself renders only the "pick one" placeholder. Below
+ * `lg` the two take turns owning the screen the way the Inbox does: the rail is
+ * the whole page at `/teammates`, and opening a thread swaps to it.
+ *
+ * The rail is sorted by name, not by recency. There is no per-Teammate
+ * last-message timestamp to sort on without one query per row, and ordering a
+ * chat list by the config's `updatedAt` would put whichever Teammate somebody
+ * renamed at the top, which is a worse lie than alphabetical.
+ */
+export function TeammatesShell({
   teammates,
   hidden,
   channels,
@@ -409,28 +478,51 @@ export function TeammatesClient({
   sourcesTruncated,
   projects,
   canEdit,
+  children,
 }: {
   teammates: Teammate[];
-  /** The ones this Member keeps off their roster (#767, story 10). */
+  /** The ones this Member keeps off their rail (#767, story 10). */
   hidden: Teammate[];
   /** The channels this Member is in (#778); invite-based, so only theirs. */
   channels: ChannelRow[];
   /** Colleagues who can be invited into a new channel. */
   members: MemberChoice[];
   collections: CollectionOption[];
-  /**
-   * The Library items a Knowledge Scope can name one at a time (PRD #726): what
-   * the create dialog offers, and how a card names what a Teammate knows.
-   */
+  /** The Library items a Knowledge Scope can name one at a time (PRD #726). */
   sources: ScopeSource[];
   sourcesTruncated: boolean;
   /** Live Projects, offered by the create dialog's project section (#771). */
   projects: { id: string; name: string }[];
   canEdit: boolean;
+  /** The open thread, or the placeholder at `/teammates`. */
+  children: ReactNode;
 }) {
+  const pathname = usePathname();
   const [createOpen, setCreateOpen] = useState(false);
   const [channelOpen, setChannelOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  // `/teammates` exactly: nothing is open, so on a phone the rail is the page.
+  const onIndex = pathname === "/teammates";
+
+  const query = search.trim().toLowerCase();
+  const rows = useMemo(() => {
+    const matches = (name: string) =>
+      query === "" || name.toLowerCase().includes(query);
+    return [
+      ...channels
+        .filter((channel) => matches(channel.name))
+        .map((channel) => ({ kind: "channel" as const, channel })),
+      ...teammates
+        .filter((teammate) => matches(teammate.name))
+        .map((teammate) => ({ kind: "teammate" as const, teammate })),
+    ].sort((a, b) =>
+      (a.kind === "channel" ? a.channel.name : a.teammate.name).localeCompare(
+        b.kind === "channel" ? b.channel.name : b.teammate.name
+      )
+    );
+  }, [channels, teammates, query]);
 
   function setHidden(teammate: Teammate, hide: boolean) {
     startTransition(async () => {
@@ -454,8 +546,8 @@ export function TeammatesClient({
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <header className="flex shrink-0 items-center gap-3 px-6 pt-5 pb-4">
+    <div className="flex h-full flex-col">
+      <header className="flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
         <h1 className="text-2xl font-bold tracking-tight">Teammates</h1>
         <div className="ml-auto flex items-center gap-2">
           {/* No capability gate: any Member may open a group (#776). */}
@@ -477,187 +569,161 @@ export function TeammatesClient({
         </div>
       </header>
 
-      {/* Groups first: a thread with unread messages in it is what a Member
-          came back for, and the teammate cards are always where they were. */}
-      {channels.length > 0 && (
-        <div className="space-y-3 border-t px-6 py-4">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-            Groups
-          </p>
-          {/* The same card as a Teammate's, in the same grid. A group is a place
-              you go and talk to colleagues, exactly as a Teammate is, so it gets
-              the same shape: a face on the left, an underlined name, one line of
-              context, and the open arrow at the right edge. What differs is the
-              face, because a group has several. */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {channels.map((channel) => (
-              <Card
-                key={channel.id}
-                size="sm"
-                className="flex-row items-start gap-4 p-4"
-              >
-                <GroupAvatarCluster
-                  faces={channel.faces}
-                  participantCount={
-                    channel.teammateCount + channel.memberCount
-                  }
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/teammates/channels/${channel.id}`}
-                      className="text-primary text-lg font-bold underline underline-offset-4 hover:opacity-70"
-                    >
-                      {channel.name}
-                    </Link>
-                    {/* Mentioned is the loud signal; agent-to-agent chatter only
-                        ever moves the count (#777's default). */}
-                    {channel.unread.mentionsYou ? (
-                      <span className="bg-primary text-primary-foreground shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold">
-                        Mentioned you
-                      </span>
-                    ) : channel.unread.count > 0 ? (
-                      <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2 py-0.5 text-xs font-medium">
-                        {channel.unread.count}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-muted-foreground mt-1 truncate text-sm">
-                    {channel.lastMessagePreview ||
-                      `${channel.teammateCount} teammate${channel.teammateCount === 1 ? "" : "s"}, ${channel.memberCount} ${channel.memberCount === 1 ? "person" : "people"}`}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0"
-                  title="Open"
-                  aria-label={`Open ${channel.name}`}
-                  render={<Link href={`/teammates/channels/${channel.id}`} />}
-                >
-                  <AnimatedGlyph icon={ArrowUpRightIcon} size={16} />
-                </Button>
-              </Card>
-            ))}
+      <div className="flex min-h-0 flex-1 border-t">
+        <aside
+          className={`w-full shrink-0 flex-col overflow-y-auto border-r lg:flex lg:w-72 ${
+            onIndex ? "flex" : "hidden"
+          }`}
+        >
+          <div className="relative shrink-0 px-3 py-3">
+            <Search className="text-muted-foreground absolute top-1/2 left-6 size-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search teammates and groups..."
+              aria-label="Search teammates and groups"
+              className="h-9 w-full rounded-lg pl-9"
+            />
           </div>
-        </div>
-      )}
 
-      {teammates.length === 0 ? (
-        <EmptyState
-          className="flex-1 border-t"
-          title="No teammates yet"
-          description="A teammate is an AI colleague your team chats with inside Ciele. It answers from the knowledge you already curated in the Library, and it never talks to your website visitors."
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 border-t px-6 py-6 lg:grid-cols-2">
-          {teammates.map((teammate) => (
-            <Card key={teammate.id} size="sm" className="flex-row items-start gap-4 p-4">
-              <TeammateAvatar teammate={teammate} className="size-11" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/teammates/${teammate.id}`}
-                    className="text-primary text-lg font-bold underline underline-offset-4 hover:opacity-70"
-                  >
-                    {teammate.name}
-                  </Link>
-                  {teammate.visibility === "private" && (
-                    <span className="text-muted-foreground flex items-center gap-1 text-xs">
-                      <Lock className="size-3" /> Private
-                    </span>
-                  )}
-                </div>
-                {teammate.title && (
-                  <p className="text-muted-foreground text-sm">{teammate.title}</p>
-                )}
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed">
-                  {teammate.roleDescription || "No standing role yet."}
-                </p>
-                <p className="text-muted-foreground mt-2 text-xs">
-                  {knowledgeScopeLabel(teammate, { collections, sources })}
-                </p>
-              </div>
-              {/* Ordered by weight, lightest first, so the action a Member
-                  reaches for lands under the thumb at the card's right edge:
-                  open the chat is the outer button, edit sits beside it, and
-                  hide, the one that looks destructive and is not, is furthest
-                  from the reach. */}
-              <div className="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  title="Hide from my roster"
-                  aria-label={`Hide ${teammate.name} from my roster`}
-                  onClick={() => setHidden(teammate, true)}
-                >
-                  <EyeOff className="size-4" />
-                </Button>
-                {canEdit && (
-                  <Button
-                    variant="ghost"
+          {rows.length === 0 && (
+            <EmptyState
+              size="sm"
+              title={query ? "Nothing matches" : "No teammates yet"}
+              description={
+                query
+                  ? "No teammate or group has that name."
+                  : "A teammate is an AI colleague your team chats with inside Ciele. It answers from the knowledge you already curated in the Library, and it never talks to your website visitors."
+              }
+            />
+          )}
+
+          {rows.map((row) =>
+            row.kind === "channel" ? (
+              <RailRow
+                key={`channel-${row.channel.id}`}
+                href={`/teammates/channels/${row.channel.id}`}
+                active={pathname === `/teammates/channels/${row.channel.id}`}
+                avatar={
+                  <GroupAvatarCluster
+                    faces={row.channel.faces}
+                    participantCount={
+                      row.channel.teammateCount + row.channel.memberCount
+                    }
                     size="sm"
-                    title="Edit"
-                    aria-label={`Edit ${teammate.name}`}
-                    /* The configuration has its own route (the same facts the
-                       chat's drawer renders), so Edit goes straight there. */
-                    render={<Link href={`/teammates/${teammate.id}/settings`} />}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Open"
-                  aria-label={`Open ${teammate.name}`}
-                  render={<Link href={`/teammates/${teammate.id}`} />}
-                >
-                  <AnimatedGlyph icon={ArrowUpRightIcon} size={16} />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+                  />
+                }
+                name={row.channel.name}
+                subtitle={
+                  row.channel.lastMessagePreview ||
+                  `${row.channel.teammateCount} teammate${row.channel.teammateCount === 1 ? "" : "s"}, ${row.channel.memberCount} ${row.channel.memberCount === 1 ? "person" : "people"}`
+                }
+                badge={
+                  /* Mentioned is the loud signal; agent-to-agent chatter only
+                     ever moves the count (#777's default). */
+                  row.channel.unread.mentionsYou ? (
+                    <span className="bg-primary text-primary-foreground ml-auto shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold">
+                      Mentioned you
+                    </span>
+                  ) : row.channel.unread.count > 0 ? (
+                    <span className="bg-muted text-muted-foreground ml-auto shrink-0 rounded-full px-2 py-0.5 text-2xs font-medium">
+                      {row.channel.unread.count}
+                    </span>
+                  ) : null
+                }
+              />
+            ) : (
+              <RailRow
+                key={`teammate-${row.teammate.id}`}
+                href={`/teammates/${row.teammate.id}`}
+                active={pathname.startsWith(`/teammates/${row.teammate.id}`)}
+                avatar={
+                  <TeammateAvatar teammate={row.teammate} className="size-9" />
+                }
+                name={row.teammate.name}
+                subtitle={row.teammate.title || "AI teammate"}
+                badge={
+                  row.teammate.visibility === "private" ? (
+                    <Lock
+                      className="text-muted-foreground size-3 shrink-0"
+                      aria-label="Private"
+                    />
+                  ) : null
+                }
+                trailing={
+                  <>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Configure"
+                        aria-label={`Configure ${row.teammate.name}`}
+                        /* The configuration has its own route (the same facts
+                           the chat's drawer renders), so Edit goes there. */
+                        render={
+                          <Link
+                            href={`/teammates/${row.teammate.id}/settings`}
+                          />
+                        }
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      title="Hide from my roster"
+                      aria-label={`Hide ${row.teammate.name} from my roster`}
+                      onClick={() => setHidden(row.teammate, true)}
+                    >
+                      <EyeOff className="size-4" />
+                    </Button>
+                  </>
+                }
+              />
+            )
+          )}
 
-      {/* Hidden is reversible and has to look it, so the list is here rather
-          than in a settings page somebody would have to remember. */}
-      {hidden.length > 0 && (
-        <details className="border-t px-6 py-4">
-          <summary className="text-muted-foreground cursor-pointer text-sm hover:underline">
-            Hidden from your roster ({hidden.length})
-          </summary>
-          <ul className="mt-3 space-y-2">
-            {hidden.map((teammate) => (
-              <li
-                key={teammate.id}
-                className="flex items-center gap-3 rounded-lg border px-3 py-2"
-              >
-                <TeammateAvatar teammate={teammate} className="size-8" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{teammate.name}</p>
-                  {teammate.title && (
-                    <p className="text-muted-foreground truncate text-xs">
-                      {teammate.title}
-                    </p>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isPending}
-                  onClick={() => setHidden(teammate, false)}
-                >
-                  <Eye className="size-4" />
-                  Show again
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+          {/* Hidden is reversible and has to look it, so the list is here rather
+              than in a settings page somebody would have to remember. */}
+          {hidden.length > 0 && (
+            <details className="mt-auto shrink-0 border-t px-4 py-3">
+              <summary className="text-muted-foreground cursor-pointer text-xs hover:underline">
+                Hidden from your roster ({hidden.length})
+              </summary>
+              <ul className="mt-3 space-y-2">
+                {hidden.map((teammate) => (
+                  <li key={teammate.id} className="flex items-center gap-2">
+                    <TeammateAvatar teammate={teammate} className="size-7" />
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      {teammate.name}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isPending}
+                      title="Show again"
+                      aria-label={`Show ${teammate.name} again`}
+                      onClick={() => setHidden(teammate, false)}
+                    >
+                      <Eye className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </aside>
+
+        <section
+          className={`min-w-0 flex-1 overflow-hidden lg:block ${
+            onIndex ? "hidden" : "block"
+          }`}
+        >
+          {children}
+        </section>
+      </div>
 
       <CreateTeammateDialog
         open={createOpen}

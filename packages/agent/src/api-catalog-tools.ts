@@ -234,6 +234,22 @@ const queryApiSpec: RuntimeToolSpec = {
             subjectId: ctx.toolSubject.subjectId,
             claimValue: ctx.toolSubject.claimValue,
           }
+        : undefined,
+      // Where this call sits, so an endpoint that declares an idempotency key
+      // gets a value that differs from every other call (#901). Absent
+      // `callId` means no key: better none than one that collapses two
+      // distinct writes into one.
+      //
+      // The slot is the provider's tool-call id, and that bounds what this
+      // protects. It covers a retry of the SAME call: the transport reissuing
+      // it, a duplicated dispatch, anything above us that sends the request
+      // again. It does NOT cover a whole-turn replay, because the model is
+      // re-prompted and chooses its calls afresh, so there is no slot to
+      // recognise. The Flow Action path has a durable slot for this
+      // (`effectKeyPrefix/action-N`); a tool call has none, because nothing
+      // durable decided it should happen.
+      ctx.callId
+        ? { conversationId: ctx.session.conversationId, callSlot: ctx.callId }
         : undefined
     );
 

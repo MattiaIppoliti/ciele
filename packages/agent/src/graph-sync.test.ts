@@ -204,6 +204,8 @@ describe("performGraphSyncConcept", () => {
         credentialKind: "platform",
         inputTokens: 3500,
         outputTokens: 1200,
+        // Nightly graph building is nobody's turn (#849).
+        surface: "scheduled",
       },
     ]);
   });

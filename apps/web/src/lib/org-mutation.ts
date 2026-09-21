@@ -107,14 +107,23 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
   // is what the overview counts.
   inbox: { paths: () => [{ path: "/inbox" }], insights: true },
   dataEntities: { paths: () => [{ path: "/settings/data" }], insights: false },
-  teammateList: { paths: () => [{ path: "/teammates" }], insights: false },
+  // The conversation rail lives in `/teammates`'s layout, so it has to be the
+  // layout that expires: a Member who creates a teammate from inside another
+  // thread would otherwise keep the rail they arrived with.
+  teammateList: {
+    paths: () => [{ path: "/teammates", scope: "layout" }],
+    insights: false,
+  },
   teammate: {
     paths: (entity) => [{ path: `/teammates/${entity.id}` }],
     insights: false,
   },
-  // The channels share the Teammates roster (#778), so a channel change
-  // refreshes that page and not a list of its own.
-  channelList: { paths: () => [{ path: "/teammates" }], insights: false },
+  // The channels share the Teammates rail (#778), so a channel change refreshes
+  // that layout and not a list of its own.
+  channelList: {
+    paths: () => [{ path: "/teammates", scope: "layout" }],
+    insights: false,
+  },
   // A concrete path, so no `scope`: one channel page, one id.
   channel: {
     paths: (entity) => [{ path: `/teammates/channels/${entity.id}` }],
@@ -142,7 +151,9 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
 
 function projectPaths(): Revalidation[] {
   return [
-    { path: "/teammates" },
+    // The rail's create dialog offers the live Projects, and it is in the
+    // layout.
+    { path: "/teammates", scope: "layout" },
     // Every Teammate page at once: the Project a Teammate reads is picked
     // in its configuration panel, so which Teammates a Project change
     // reaches is not knowable from the entity.

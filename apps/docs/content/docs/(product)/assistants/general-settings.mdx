@@ -11,6 +11,56 @@ Select the provider connection and model for the Assistant. Select **Graph** or 
 
 Graph retrieval uses the Knowledge graph when graph services are available. Vector retrieval uses indexed Concept embeddings and lexical fallback.
 
+## Visitor model choice
+
+Select the models that the chat window shows to visitors. The Assistant model is always available. Each additional model that you select becomes an option in the chat window.
+
+If you select no additional model, the chat window shows no model control. All conversations use the Assistant model.
+
+The chat window shows a model only if your Organization has a provider connection for that model. If you remove the provider connection, the chat window stops showing the model. Conversations continue with the Assistant model.
+
+Preview shows the new list immediately. Select **Publish** to give it to the widget, which uses the
+last published version.
+
+Your own AI subscription has priority in Preview. If you set a default model in **Settings**, then
+**AI**, that model answers Preview turns and the chat window model does not apply.
+
+## Attachments
+
+Set **Let visitors attach files** to give the chat window an attach control. It is off by default.
+
+There are three ways to attach a file:
+
+- select **+** in the message box, then **Attach a file**
+- drag the file onto the message box
+- copy an image, then paste it into the message box
+
+The chat window accepts these types:
+
+- PDF, Word and PowerPoint
+- Excel and CSV
+- text and Markdown
+- images (PNG, JPEG, GIF and WebP)
+
+The maximum size is 8MB.
+
+Old Office files (.doc, .xls and .ppt) are not supported. Save the file as .docx, .xlsx or .pptx.
+
+Ciele reads the file into text and answers from that text. **Ciele does not keep the file.** The
+bytes are read one time and then discarded. There is no copy to download, to keep or to delete.
+
+An image has no separate text extraction step. Ciele sends the image to your Organization's AI
+provider and asks it to read the image. This costs one AI call for each image. The result includes
+the text in the image and a short description of it.
+
+An attachment stays available for the rest of the conversation. The chat window shows each
+attachment until the user removes it.
+
+Preview and Teammate chats accept attachments at all times. This setting is only for the published
+widget, because a visitor is not a signed-in member.
+
+Select **Publish** after you change this setting.
+
 ## Identity
 
 Configure these fields:

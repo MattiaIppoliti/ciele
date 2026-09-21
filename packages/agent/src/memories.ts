@@ -181,6 +181,9 @@ export async function promoteConversationMemories(
       modelId: extractor.modelId,
       credentialKind: extractor.credentialKind,
       ...usageTotals(usage),
+      // Promotion runs on a job after the conversation goes quiet, so it is
+      // the platform's housekeeping rather than anybody's turn (#849).
+      surface: "scheduled",
     },
   ]);
 
@@ -202,6 +205,8 @@ export async function promoteConversationMemories(
     organizationId,
     assistantId: conversation.assistantId,
     conversationId,
+    // Same job as the extraction above, so the same surface (#849).
+    surface: "scheduled",
   });
   const promoted = await db.upsertMemories(
     { organizationId, subjectId: conversation.subjectId },

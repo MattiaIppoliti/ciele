@@ -604,19 +604,19 @@ function LibraryPane() {
         description="Add your organization's main website, or links to additional knowledge bases linked assistants should reference when answering questions."
       />
 
-      <div className="mt-4 flex items-center gap-5 border-b text-sm">
+      <div className="bg-muted mt-4 flex w-fit items-center gap-1 rounded-full p-1 text-sm">
         {(compact ? LIBRARY_TABS.slice(0, 3) : LIBRARY_TABS).map((tab, i) => (
           <span
             key={tab.label}
             className={cn(
-              "-mb-px flex items-center gap-1.5 border-b-2 pb-2",
+              "flex items-center gap-1.5 rounded-full px-3 py-1",
               i === 0
-                ? "border-foreground font-medium"
-                : "text-muted-foreground border-transparent",
+                ? "bg-primary text-primary-foreground font-medium"
+                : "text-muted-foreground",
             )}
           >
             {tab.label}
-            <span className="text-muted-foreground text-xs">{tab.count}</span>
+            <span className="text-xs opacity-70">{tab.count}</span>
             {tab.live && (
               <span className="size-1.5 rounded-full bg-emerald-500" />
             )}

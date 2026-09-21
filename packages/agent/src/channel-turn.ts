@@ -494,6 +494,13 @@ async function modelChannelTurn(
         surface: "teammate",
         startedAt: turnStart,
       },
+      // Everything one human message set off is attributed to the colleague who
+      // started it as well as to the Teammate that spoke (#848), so a fan-out
+      // is readable on either dimension.
+      attribution: {
+        surface: "channel",
+        memberId: input.startedBy.userId,
+      },
       // Deliberately no keyResolution: see the module comment.
     });
   if (!outcome.ok) {

@@ -29,6 +29,7 @@ export const API_V1_DOMAINS = [
   "providers",
   "applications",
   "reviews",
+  "usage",
 ] as const;
 
 /** One of the domains this deployment advertises. */

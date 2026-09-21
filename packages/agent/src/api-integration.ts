@@ -1,5 +1,7 @@
 import {
+  endpointIdempotencyKey,
   openSecret,
+  validateEndpointIdempotency,
   resolveCatalogPath,
   type ApiEndpointSpec,
   type ApiIntegration,
@@ -161,6 +163,19 @@ export interface ApiQueryRequest {
   body?: unknown;
 }
 
+/**
+ * Where a catalogued call sits, so its idempotency key can be derived (#901).
+ *
+ * Absent means no key is sent at all, which is what the builder's test run
+ * wants: a test must never present the key a real call would, or it burns it
+ * and the real call silently gets the test's response back.
+ */
+export interface ApiQueryOrigin {
+  conversationId: string;
+  /** The call's slot within the Conversation: a tool call id or action index. */
+  callSlot: string;
+}
+
 export interface ApiQueryIdentity {
   subjectId: string;
   claimValue: string | null;
@@ -188,7 +203,8 @@ export async function queryApiEndpoint(
   integration: ApiIntegration,
   request: ApiQueryRequest,
   signal?: AbortSignal,
-  identity?: ApiQueryIdentity
+  identity?: ApiQueryIdentity,
+  origin?: ApiQueryOrigin
 ): Promise<ApiQueryOutcome> {
   const refuse = (errorCode: ApiQueryErrorCode): ApiQueryOutcome => ({
     ok: false,
@@ -248,6 +264,42 @@ export async function queryApiEndpoint(
     if (value === null) return refuse("not_configured");
     headers[param.name] = sanitizeHeaderValue(value);
   }
+
+  // The idempotency key, if this endpoint's catalogue entry declares one and
+  // the caller said where the call sits (#901). Nothing is guessed: the header
+  // or body field is the name the organization's own API reads, because we
+  // cannot know it. An endpoint that declares nothing gets a byte-identical
+  // request to the one it got before this existed.
+  const declaration = match.endpoint.idempotency;
+  const idempotencyKey =
+    declaration && origin && validateEndpointIdempotency(declaration).ok
+      ? endpointIdempotencyKey({
+          conversationId: origin.conversationId,
+          callSlot: origin.callSlot,
+          endpointId: match.endpoint.id,
+        })
+      : null;
+  if (idempotencyKey && declaration?.in === "header") {
+    // Never over a header the request already has. `api_key` auth puts the
+    // integration's credential under an ADMIN-NAMED header, so a declaration
+    // naming that same header would replace the credential with a derived
+    // hash: no leak, but every call fails to authenticate and the catalogue
+    // entry looks innocent. The reserved-name list cannot catch that one,
+    // because the name is whatever the admin chose. Comparing against what is
+    // already in the map covers it, and covers a pinned parameter header and
+    // `accept` with the same line (#901).
+    const taken = new Set(Object.keys(headers).map((name) => name.toLowerCase()));
+    // The integration's own auth header by NAME as well as by presence. A
+    // credential that failed to open leaves no header in the map, and relying
+    // on the map alone would then write the key under the credential's name
+    // on exactly the calls that were already misconfigured.
+    if (integration.authType === "api_key" && integration.authHeaderName) {
+      taken.add(integration.authHeaderName.toLowerCase());
+    }
+    if (!taken.has(declaration.name.toLowerCase())) {
+      headers[declaration.name] = sanitizeHeaderValue(idempotencyKey);
+    }
+  }
   try {
     // The credential header name is admin-supplied, so it goes through the same
     // allow-list every configured header does.
@@ -260,10 +312,10 @@ export async function queryApiEndpoint(
     const { response } = await egressFetch(url.toString(), {
       method,
       headers,
-      body:
-        isBodyless || request.body === undefined
-          ? undefined
-          : JSON.stringify(request.body),
+      body: requestBody(request, isBodyless, {
+        key: idempotencyKey,
+        field: declaration?.in === "body" ? declaration.name : null,
+      }),
       timeoutMs: API_REQUEST_TIMEOUT_MS,
       maxResponseBytes: API_REQUEST_MAX_BYTES,
       signal,
@@ -291,4 +343,41 @@ export async function queryApiEndpoint(
         error instanceof EgressPolicyError ? "blocked_host" : "network",
     };
   }
+}
+
+/**
+ * The JSON body, with the idempotency key merged in when the endpoint wants it
+ * there rather than in a header (#901).
+ *
+ * The key is written under the declared field and nothing else moves. A body
+ * that already carries that field keeps the model's value: the catalogue says
+ * where the key GOES, and an endpoint whose own parameter collides with it is
+ * a catalogue mistake to fix in the editor, not a value to silently overwrite
+ * on the way out.
+ */
+function requestBody(
+  request: ApiQueryRequest,
+  isBodyless: boolean,
+  idempotency: { key: string | null; field: string | null }
+): string | undefined {
+  if (isBodyless) return undefined;
+  const merge = idempotency.key !== null && idempotency.field !== null;
+  if (request.body === undefined) {
+    return merge ? JSON.stringify({ [idempotency.field!]: idempotency.key }) : undefined;
+  }
+  if (!merge) return JSON.stringify(request.body);
+  const body = request.body;
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    // A scalar or array body has nowhere to put a named field. Send it
+    // unchanged rather than reshaping what the catalogue described.
+    return JSON.stringify(body);
+  }
+  // The key OVERWRITES whatever is under that name. The body is the model's,
+  // and the model's input can be steered by the content it just read, so
+  // deferring to a value it supplied would let a crafted page replay an
+  // earlier write's key and receive that write's response, or supply a
+  // constant and defeat deduplication entirely. The key is ours; where it goes
+  // is the catalogue's; neither is the model's to choose.
+  const record = body as Record<string, unknown>;
+  return JSON.stringify({ ...record, [idempotency.field!]: idempotency.key });
 }

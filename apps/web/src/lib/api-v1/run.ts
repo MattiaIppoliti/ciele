@@ -39,6 +39,9 @@ export async function runApiOperation<In, Out>(
     // A key has no email, so an assignee rule never matches it; its decisions
     // are the admin override's and are attributed to the key.
     actorName: `API key ${ctx.keyId}`,
+    // Attribution only (#849): the key's Role is already in `role` above, so
+    // nothing downstream may branch on this.
+    apiKeyId: ctx.keyId,
     db: ctx.db,
     // Ports need more Db surface than the pinned view exposes; the raw
     // service Db is confined to them, never handed to operations directly.
@@ -46,6 +49,9 @@ export async function runApiOperation<In, Out>(
       organizationId: ctx.organizationId,
       actorEmail: "an API key",
       invalidatePublication: invalidatePublicationFromRoute,
+      // Indexing this call triggers is the key's spend, not the spend of
+      // whoever minted it (#849).
+      usage: { spenders: { apiKeyId: ctx.keyId }, surface: "api" },
     }),
   };
 

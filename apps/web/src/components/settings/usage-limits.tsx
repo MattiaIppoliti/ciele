@@ -216,6 +216,13 @@ export function UsageLimitsBlock({
                   A meter with no limit is left out of this total.
                 </p>
               ) : null}
+              {view.topupLabel ? (
+                <p className="text-muted-foreground text-xs">
+                  Plus {view.topupLabel} top-up credits, held in reserve. They
+                  are spent only once a window&apos;s allowance is used up, so
+                  answering continues instead of pausing.
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>

@@ -55,6 +55,7 @@ import {
   type ConfirmDeleteRequest,
 } from "@/components/ui/confirm-delete-modal";
 import { sourceRemovalChoice } from "@/lib/knowledge-hub";
+import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 import {
   addWebsiteSourceAction,
@@ -825,6 +826,7 @@ function WebsitesTab({
     startTransition(async () => {
       try {
         await addWebsiteSourceAction(assistantId, collectionId, form);
+        ingestionStarted();
         toast.success("Crawl started, pages will appear as they're indexed");
         setForm(websiteFormDefaults());
         setShowAdd(false);
@@ -1006,9 +1008,11 @@ function WebsitesTab({
                       try {
                         if (source.kind === "website") {
                           await recrawlWebsiteSourceAction(assistantId, collectionId, source.id);
+                          ingestionStarted();
                           toast.success("Website re-crawled");
                         } else {
                           await retrySourceIngestAction(assistantId, collectionId, source.id);
+                          ingestionStarted();
                           toast.success("Retry started");
                         }
                       } catch (error) {

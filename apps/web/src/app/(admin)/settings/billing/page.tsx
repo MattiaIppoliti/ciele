@@ -13,6 +13,7 @@ import { getEnterpriseCapabilities } from "@agent-hub/agent";
 import { usageLimitsView } from "@/lib/usage-meters";
 import { ActivationStatusCard } from "@/components/settings/activation-status-card";
 import { BillingAccountCard } from "@/components/settings/billing-account-card";
+import { CreditPacksCard } from "@/components/settings/credit-packs-card";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import {
   CheckoutNotice,
@@ -70,7 +71,7 @@ export default async function BillingPage({
       console.error("[billing] checkout reconciliation failed", error);
     }
   }
-  const [activation, subscription, limits, account] = await Promise.all([
+  const [activation, subscription, limits, account, credits] = await Promise.all([
     capabilities.activation.getActivation(session.organization.id),
     capabilities.billing.getSubscription(session.organization.id),
     capabilities.metering.getUsageLimits(organizationId),
@@ -83,6 +84,14 @@ export default async function BillingPage({
         console.error("[billing] account lookup failed", error);
         return null;
       }),
+    // Top-up credits (#852): the balance and its receipts. Absent on every
+    // deployment that sells no packs, which is the open-source one.
+    capabilities.billing
+      .getCreditBalance?.(session.organization.id)
+      .catch((error) => {
+        console.error("[billing] credit balance lookup failed", error);
+        return null;
+      }) ?? null,
   ]);
   const catalog = capabilities.billing.getPlanCatalog();
   // Whether the pending card offers a card field or a conversation: only a tier
@@ -133,6 +142,18 @@ export default async function BillingPage({
               id={PLANS_ANCHOR}
             />
           </>
+        ) : null}
+
+        {/* A buffer is only worth offering where there is an allowance to
+            buffer: a pending or unsubscribed organization is sent to the
+            ladder above instead. */}
+        {credits && subscription ? (
+          <CreditPacksCard
+            packs={capabilities.billing.getCreditPacks?.() ?? []}
+            balance={credits.credits}
+            grants={credits.grants}
+            planCreditPriceEur={credits.planCreditPriceEur}
+          />
         ) : null}
 
         {/* What Stripe knows, for an organization that actually pays. */}

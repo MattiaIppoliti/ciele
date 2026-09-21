@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Teammate, TeammateRoutine } from "@agent-hub/core";
+import type { ModelRef, Teammate, TeammateRoutine } from "@agent-hub/core";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
 import { ChevronRight, Shuffle } from "lucide-react";
 import { Button, Input, Label } from "@agent-hub/ui";
@@ -17,6 +17,10 @@ import {
   writeTeammateMemoryAction,
 } from "@/app/(admin)/teammates/actions";
 import { KnowledgeScopePicker } from "@/components/teammates/knowledge-scope-picker";
+import {
+  ModelAllowList,
+  modelAllowListSummary,
+} from "@/components/chat/model-allow-list";
 import {
   TeammateEditorsPicker,
   type MemberOption,
@@ -37,18 +41,17 @@ import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
  * message: a Teammate has no Publication, so there is no publish button and
  * nothing to re-publish.
  *
- * One component for both the drawer over the chat and the full-screen route,
- * the way `ImprovementDetail` serves its own two: the fields, the saves and
- * the capability rules are the same decisions wherever they are made, and a
- * form that drifted between the two would be two products.
+ * One surface, `/teammates/{id}/settings`. It used to be two, this route and a
+ * drawer over the chat holding the same form, which is why the component takes
+ * no variant: two ways into one configuration are two things to keep looking
+ * alike, and the chat's Configure button now simply comes here.
  *
- * Every field is seeded once, at mount, and the drawer mounts this only while
- * it is open, so "seeded at mount" means "seeded when you opened it".
+ * Every field is seeded once, at mount, which is when the route rendered.
  *
  * The Agent memory layer needs more than that, because it is the one field the
  * Teammate writes itself, from the job ledger at the end of a conversation,
  * without anything re-rendering the page. Fresh props would still be stale
- * props, so it is read on open instead.
+ * props, so it is read on mount instead.
  */
 export function TeammateSettingsForm({
   teammate,
@@ -61,7 +64,7 @@ export function TeammateSettingsForm({
   projects,
   learnings,
   routines,
-  variant = "page",
+  headerActions,
   onDone,
 }: {
   teammate: Teammate;
@@ -84,11 +87,10 @@ export function TeammateSettingsForm({
   /** Granting is admin work, one rung above editing the persona. */
   canGrant: boolean;
   /**
-   * "drawer" drops the breadcrumb (the drawer has its own header) and pins the
-   * actions to the bottom of the panel, which scrolls; the page lets them sit
-   * at the end of the form.
+   * Rendered at the right of the breadcrumb row. The page's full-screen
+   * toggle, which belongs to the surface rather than to the form.
    */
-  variant?: "page" | "drawer";
+  headerActions?: ReactNode;
   /** Saved, cancelled or done: close the drawer, or leave the page. */
   onDone: () => void;
 }) {
@@ -105,6 +107,9 @@ export function TeammateSettingsForm({
   const [avatarSeed, setAvatarSeed] = useState(teammate.avatarSeed);
   const [grants, setGrants] = useState<TeammateGovernanceState>(governance);
   const [projectId, setProjectId] = useState(teammate.projectId);
+  const [allowedModels, setAllowedModels] = useState<ModelRef[]>(
+    teammate.allowedModels ?? []
+  );
   const [agentMemory, setAgentMemory] = useState(learnings);
   /**
    * The Agent layer as it actually stands, read when this mounts. `null` until
@@ -158,6 +163,7 @@ export function TeammateSettingsForm({
           visibility,
           avatarSeed,
           projectId,
+          allowedModels,
         });
         // A separate write because it is a separate document, and only when
         // it changed against what the read on open returned: an untouched
@@ -206,24 +212,27 @@ export function TeammateSettingsForm({
 
   return (
     <div className="space-y-6 px-6 py-5">
-      {variant === "page" ? (
-        <nav className="text-muted-foreground flex items-center gap-1.5 text-sm">
+      <div className="flex items-center gap-3">
+        <nav className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-sm">
           <Link href="/teammates" className="hover:text-foreground">
             Teammates
           </Link>
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-3.5 shrink-0" />
           <Link
             href={`/teammates/${teammate.id}`}
-            className="hover:text-foreground"
+            className="truncate hover:text-foreground"
           >
             {teammate.name}
           </Link>
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-3.5 shrink-0" />
           <span className="text-foreground">Configure</span>
         </nav>
-      ) : (
-        <h2 className="text-xl font-semibold">Configure {teammate.name}</h2>
-      )}
+        {headerActions && (
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {headerActions}
+          </div>
+        )}
+      </div>
 
       <div className="flex items-center gap-4">
         <TeammateAvatar
@@ -282,6 +291,23 @@ export function TeammateSettingsForm({
         onSourcesChange={setSourceIds}
       />
 
+      <div className="space-y-2">
+        <Label>Models it can answer with</Label>
+        <ModelAllowList
+          configured={{
+            provider: teammate.modelProvider,
+            modelId: teammate.modelId,
+          }}
+          value={allowedModels}
+          onChange={setAllowedModels}
+        />
+        <p className="text-muted-foreground text-sm">
+          {modelAllowListSummary(allowedModels)} Your own connected
+          subscription, if you have one, still runs your turns and ignores this
+          list: change it in Settings → AI.
+        </p>
+      </div>
+
       <ProjectSection
         projects={projects}
         value={projectId}
@@ -327,13 +353,7 @@ export function TeammateSettingsForm({
         onChange={setEditorIds}
       />
 
-      <div
-        className={`flex items-center gap-2 border-t pt-4 ${
-          // Pinned in the drawer, whose whole body scrolls: Save has to stay
-          // reachable from anywhere in a form this long.
-          variant === "drawer" ? "bg-background sticky bottom-0 -mx-6 px-6 pb-4" : ""
-        }`}
-      >
+      <div className="flex items-center gap-2 border-t pt-4">
         <Button
           variant="ghost"
           className="text-destructive h-10"

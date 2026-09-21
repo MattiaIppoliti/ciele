@@ -46,6 +46,8 @@ export function buildPublicationConfig(
       chatLauncherEnabled: assistant.chatLauncherEnabled,
       modelProvider: assistant.modelProvider,
       modelId: assistant.modelId,
+      allowedModels: assistant.allowedModels ?? [],
+      attachmentsEnabled: assistant.attachmentsEnabled ?? false,
       style: assistant.style,
       allowedDomains: assistant.allowedDomains,
       helpDeskSettings: assistant.helpDeskSettings,
@@ -60,6 +62,7 @@ export function buildPublicationConfig(
       name: s.name,
       description: s.description,
       prompt: s.prompt,
+      starter: s.starter ?? "",
     })),
     entities: entities.map((e) => ({
       id: e.id,

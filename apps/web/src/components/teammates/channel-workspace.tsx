@@ -13,7 +13,7 @@ import { CHANNEL_CHAIN_TURN_CAP } from "@agent-hub/core";
 import { EMPTY_TURN_TRACE, consumeChannelStream } from "@agent-hub/agent/client";
 import { playFeedback } from "@agent-hub/ui/feedback";
 import { chatFeedbackForEvent } from "@/lib/chat-feedback";
-import { ArrowLeft, Hash, Plus, Settings2, Trash2, UserRoundPlus } from "lucide-react";
+import { ArrowLeft, Hash, Settings2, Trash2 } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -33,6 +33,10 @@ import { MessageScroller } from "@/components/agents/message";
 import { GroupComposer } from "@/components/teammates/group-composer";
 import { MentionText } from "@/components/teammates/mention-text";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
+import {
+  Assignees,
+  type AssigneeGroup,
+} from "@/components/ui/assignees";
 import { rosterAvatarSeed, teammateAvatarSeed } from "@/lib/avatar";
 import {
   channelChatMessages,
@@ -103,7 +107,6 @@ export function ChannelWorkspace({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   // The oversight view maps a stored transcript the same way
@@ -240,17 +243,73 @@ export function ChannelWorkspace({
     (entry) => entry.id !== currentUserId
   );
 
+  /**
+   * Adding is the operation plus its report. It rethrows on purpose: the picker
+   * closes when the promise resolves, so swallowing the failure here would shut
+   * the panel on a group that did not change.
+   */
+  async function addToGroup(run: () => Promise<void>, done: string) {
+    try {
+      await run();
+      toast.success(done);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not add them");
+      throw error;
+    }
+  }
+
+  /**
+   * The two things you can put in a group, each with its own operation. A
+   * Teammate is added and a person is invited: the same gesture, and two
+   * different words on the row, because one of them notifies a colleague.
+   */
+  const addSections: AssigneeGroup[] = [
+    {
+      label: "Teammates",
+      empty: "Every teammate you can add is already here.",
+      items: addableTeammates.map((teammate) => ({
+        id: teammate.id,
+        name: teammate.name,
+        seed: teammateAvatarSeed(teammate),
+        note: teammate.title,
+      })),
+      onPick: (item) =>
+        addToGroup(
+          () => addChannelTeammatesAction(channel.id, [item.id]),
+          `${item.name} is in the group`
+        ),
+    },
+    {
+      label: "People",
+      empty: "Everybody in the organization is already here.",
+      actionLabel: "Invite",
+      items: invitableMembers.map((member) => ({
+        id: member.userId,
+        name: member.label,
+        seed: member.userId,
+      })),
+      onPick: (item) =>
+        addToGroup(
+          () => addChannelMembersAction(channel.id, [item.id]),
+          `${item.name} was invited`
+        ),
+    },
+  ];
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
         <Link
           href="/teammates"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm"
+          /* The way back, for the widths where the rail is not on screen.
+             Above `lg` it is, and a back link to a list you can already see is
+             just noise in the header. */
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm lg:hidden"
         >
           <ArrowLeft className="size-4" />
           Teammates
         </Link>
-        <div className="ml-2 flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <Hash className="text-muted-foreground size-4 shrink-0" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{channel.name}</p>
@@ -265,24 +324,18 @@ export function ChannelWorkspace({
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          {/* The faces of everybody here, so who is in the room is visible
-              without opening a panel. */}
-          <div className="hidden items-center sm:flex">
-            {roster.slice(0, 6).map((entry) => (
-              <Hint key={entry.id} label={entry.name}>
-                {/* The margin rides the avatar itself rather than a wrapper,
-                    so the overlap stays on the sized element. */}
-                <GeneratedAvatar
-                  seed={rosterAvatarSeed(entry, teammates)}
-                  size="size-7"
-                  className="ring-background -ml-2 block ring-2 first:ml-0"
-                />
-              </Hint>
-            ))}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
-            <UserRoundPlus className="size-4" /> Add
-          </Button>
+          {/* Who is in the room, and the only way to change it: the faces and
+              the Add button are one block (`components/ui/assignees.tsx`), and
+              both open the same picker. */}
+          <Assignees
+            assigned={withFaces.map((entry) => ({
+              id: entry.id,
+              name: entry.name,
+              seed: entry.avatarSeed,
+            }))}
+            groups={addSections}
+            label={`Who is in ${channel.name}`}
+          />
           {canManage && (
             <Hint label="Name, project and roster">
               <Button
@@ -352,13 +405,6 @@ export function ChannelWorkspace({
         </div>
       </div>
 
-      <AddDialog
-        open={addOpen}
-        channelId={channel.id}
-        members={invitableMembers}
-        teammates={addableTeammates}
-        onClose={() => setAddOpen(false)}
-      />
       {canManage && (
         <ChannelSettingsDialog
           open={settingsOpen}
@@ -371,124 +417,6 @@ export function ChannelWorkspace({
         />
       )}
     </div>
-  );
-}
-
-function AddDialog({
-  open,
-  channelId,
-  members,
-  teammates,
-  onClose,
-}: {
-  open: boolean;
-  channelId: string;
-  members: InvitableMember[];
-  teammates: AddableTeammate[];
-  onClose: () => void;
-}) {
-  const [isPending, startTransition] = useTransition();
-
-  function add(run: () => Promise<void>, done: string) {
-    startTransition(async () => {
-      try {
-        await run();
-        toast.success(done);
-        onClose();
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Could not add them"
-        );
-      }
-    });
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add to the group</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-5">
-          <section className="space-y-2">
-            <Label>Teammates</Label>
-            {teammates.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Every teammate you can add is already here.
-              </p>
-            ) : (
-              <ul className="space-y-1">
-                {teammates.map((teammate) => (
-                  <li key={teammate.id} className="flex items-center gap-3">
-                    <GeneratedAvatar
-                      seed={teammateAvatarSeed(teammate)}
-                      size="size-8"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {teammate.name}
-                      </p>
-                      {teammate.title && (
-                        <p className="text-muted-foreground truncate text-xs">
-                          {teammate.title}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() =>
-                        add(
-                          () =>
-                            addChannelTeammatesAction(channelId, [teammate.id]),
-                          `${teammate.name} is in the group`
-                        )
-                      }
-                    >
-                      <Plus className="size-4" /> Add
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-          <section className="space-y-2">
-            <Label>People</Label>
-            {members.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                Everybody in the organization is already here.
-              </p>
-            ) : (
-              <ul className="max-h-56 space-y-1 overflow-y-auto">
-                {members.map((member) => (
-                  <li key={member.userId} className="flex items-center gap-3">
-                    <GeneratedAvatar seed={member.userId} size="size-8" />
-                    <p className="min-w-0 flex-1 truncate text-sm">
-                      {member.label}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isPending}
-                      onClick={() =>
-                        add(
-                          () =>
-                            addChannelMembersAction(channelId, [member.userId]),
-                          `${member.label} was invited`
-                        )
-                      }
-                    >
-                      <Plus className="size-4" /> Invite
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

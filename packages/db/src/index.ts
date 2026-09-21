@@ -24,6 +24,7 @@ export type { Db } from "./types";
 // Raising an Improvement is one policy over the seam, so it lives with the
 // seam rather than in the domain package: it takes a `Db`.
 export {
+  findOpenImprovementByTag,
   findOpenImprovementForConversation,
   raiseImprovement,
   raiseOrAttachImprovement,

@@ -9,9 +9,18 @@
 // upstream's spelling so re-adding a feature is an additive change.
 
 import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Skeleton } from "@agent-hub/ui";
+import {
+  Table as TableRoot,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
 export type SortDirection = "asc" | "desc";
@@ -23,6 +32,8 @@ export interface SortState {
 export interface TableColumn<T> {
   key: string;
   header: ReactNode;
+  /** The glyph that names the column, drawn before the label. */
+  icon?: ComponentType<{ className?: string }>;
   /** Read the raw value, used for sorting and as the default cell body. */
   accessor?: (row: T) => string | number | null | undefined;
   /** Render the cell. Falls back to `accessor`. */
@@ -46,6 +57,8 @@ export interface TableProps<T> {
   loading?: boolean;
   skeletonRows?: number;
   emptyState?: ReactNode;
+  /** Drawn inside the card under a rule; normally a `<TablePagination />`. */
+  footer?: ReactNode;
   className?: string;
 }
 
@@ -87,6 +100,7 @@ export function Table<T>({
   loading = false,
   skeletonRows = 3,
   emptyState = "No data",
+  footer,
   className,
 }: TableProps<T>) {
   const reduce = useReducedMotion();
@@ -123,126 +137,121 @@ export function Table<T>({
   }, [rows, columns, sort]);
 
   return (
-    <div
-      className={cn(
-        "bg-card w-full overflow-hidden rounded-xl border",
-        className
-      )}
-    >
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <colgroup>
-            {columns.map((column) => (
-              <col
-                key={column.key}
-                style={column.width ? { width: column.width } : undefined}
-              />
-            ))}
-          </colgroup>
+    <TableCard footer={footer} className={className}>
+      <TableRoot>
+        <colgroup>
+          {columns.map((column) => (
+            <col
+              key={column.key}
+              style={column.width ? { width: column.width } : undefined}
+            />
+          ))}
+        </colgroup>
 
-          <thead>
-            <tr className="bg-muted/40 border-b">
-              {columns.map((column) => {
-                const active = sort?.key === column.key;
-                return (
-                  <th
-                    key={column.key}
-                    scope="col"
-                    aria-sort={
-                      active
-                        ? sort.direction === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : undefined
-                    }
-                    style={{ height: 40 }}
-                    className={cn(
-                      "text-muted-foreground px-4 text-xs font-medium",
-                      alignText(column.align),
-                      column.hideBelowSm && "hidden sm:table-cell"
-                    )}
-                  >
-                    {column.sortable && column.accessor ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleSort(column.key)}
-                        className="hover:text-foreground inline-flex items-center gap-1 transition-colors"
+        <TableHeader>
+          <TableRow className="hover:bg-transparent">
+            {columns.map((column) => {
+              const active = sort?.key === column.key;
+              return (
+                <TableHead
+                  key={column.key}
+                  scope="col"
+                  icon={column.sortable && column.accessor ? undefined : column.icon}
+                  aria-sort={
+                    active
+                      ? sort.direction === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                  className={cn(
+                    alignText(column.align),
+                    column.hideBelowSm && "hidden sm:table-cell"
+                  )}
+                >
+                  {column.sortable && column.accessor ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleSort(column.key)}
+                      className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      {column.icon ? (
+                        <column.icon className="size-3.5 opacity-70" aria-hidden="true" />
+                      ) : null}
+                      {column.header}
+                      <motion.span
+                        aria-hidden
+                        animate={{
+                          opacity: active ? 1 : 0.25,
+                          rotate: active && sort.direction === "desc" ? 180 : 0,
+                        }}
+                        transition={reduce ? { duration: 0 } : { duration: 0.18 }}
+                        className="text-2xs leading-none"
                       >
-                        {column.header}
-                        <motion.span
-                          aria-hidden
-                          animate={{
-                            opacity: active ? 1 : 0.25,
-                            rotate: active && sort.direction === "desc" ? 180 : 0,
-                          }}
-                          transition={reduce ? { duration: 0 } : { duration: 0.18 }}
-                          className="text-2xs leading-none"
-                        >
-                          ▲
-                        </motion.span>
-                      </button>
-                    ) : (
-                      column.header
-                    )}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
+                        ▲
+                      </motion.span>
+                    </button>
+                  ) : (
+                    column.header
+                  )}
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        </TableHeader>
 
-          <tbody>
-            {sortedRows.length === 0 ? (
-              loading ? (
+        <TableBody>
+          {sortedRows.length === 0 ? (
+            loading ? (
+              <SkeletonRows
+                count={skeletonRows}
+                columns={columns}
+                rowHeight={rowHeight}
+              />
+            ) : (
+              <TableRow className="hover:bg-transparent">
+                <TableCell
+                  colSpan={columns.length}
+                  className="text-muted-foreground p-10 text-center"
+                >
+                  {emptyState}
+                </TableCell>
+              </TableRow>
+            )
+          ) : (
+            <>
+              {sortedRows.map((entry) => (
+                <TableRow
+                  key={entry.id}
+                  style={{ height: rowHeight }}
+                  className="border-border/60 last:border-b-0"
+                >
+                  {columns.map((column) => (
+                    <TableCell
+                      key={column.key}
+                      className={cn(
+                        "text-foreground",
+                        alignText(column.align),
+                        column.hideBelowSm && "hidden sm:table-cell"
+                      )}
+                    >
+                      {readCell(entry.row, column)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+              {loading ? (
                 <SkeletonRows
                   count={skeletonRows}
                   columns={columns}
                   rowHeight={rowHeight}
                 />
-              ) : (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="text-muted-foreground p-10 text-center"
-                  >
-                    {emptyState}
-                  </td>
-                </tr>
-              )
-            ) : (
-              <>
-                {sortedRows.map((entry) => (
-                  <tr
-                    key={entry.id}
-                    style={{ height: rowHeight }}
-                    className="border-border/60 hover:bg-muted/50 border-b transition-colors last:border-b-0"
-                  >
-                    {columns.map((column) => (
-                      <td
-                        key={column.key}
-                        className={cn(
-                          "text-foreground px-4",
-                          alignText(column.align),
-                          column.hideBelowSm && "hidden sm:table-cell"
-                        )}
-                      >
-                        {readCell(entry.row, column)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                {loading ? (
-                  <SkeletonRows
-                    count={skeletonRows}
-                    columns={columns}
-                    rowHeight={rowHeight}
-                  />
-                ) : null}
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+              ) : null}
+            </>
+          )}
+        </TableBody>
+      </TableRoot>
+    </TableCard>
   );
 }
 
@@ -258,16 +267,20 @@ function SkeletonRows<T>({
   return (
     <>
       {Array.from({ length: count }, (_, i) => (
-        <tr key={`skeleton-${i}`} style={{ height: rowHeight }} className="border-b">
+        <TableRow
+          key={`skeleton-${i}`}
+          style={{ height: rowHeight }}
+          className="hover:bg-transparent"
+        >
           {columns.map((column) => (
-            <td
+            <TableCell
               key={column.key}
-              className={cn("px-4", column.hideBelowSm && "hidden sm:table-cell")}
+              className={cn(column.hideBelowSm && "hidden sm:table-cell")}
             >
               <Skeleton className="h-4 w-2/3" />
-            </td>
+            </TableCell>
           ))}
-        </tr>
+        </TableRow>
       ))}
     </>
   );

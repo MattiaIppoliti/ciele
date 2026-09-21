@@ -65,6 +65,15 @@ interface EndpointDraft {
   params: string;
   /** Comma-separated. */
   responseKeys: string;
+  /**
+   * Where this endpoint wants an idempotency key (#901). Two fields rather
+   * than one parsed string: a string had a spelling that saved as UNDECLARED
+   * while the form said the endpoint was protected, which is the exact
+   * "looks protected and is not" failure this feature exists to remove.
+   * An empty name means the endpoint takes no key, which is a real answer.
+   */
+  idempotencyIn: "header" | "body";
+  idempotencyName: string;
 }
 
 let draftSeq = 0;
@@ -97,6 +106,8 @@ function draftFrom(endpoint: ApiEndpointSpec): EndpointDraft {
       )
       .join("\n"),
     responseKeys: (endpoint.responseKeys ?? []).join(", "),
+    idempotencyIn: endpoint.idempotency?.in ?? "header",
+    idempotencyName: endpoint.idempotency?.name ?? "",
   };
 }
 
@@ -110,6 +121,8 @@ function emptyDraft(): EndpointDraft {
     purpose: "",
     params: "",
     responseKeys: "",
+    idempotencyIn: "header",
+    idempotencyName: "",
   };
 }
 
@@ -156,6 +169,14 @@ function toEndpoint(draft: EndpointDraft): ApiEndpointSpec {
       .split(",")
       .map((key) => key.trim())
       .filter(Boolean),
+    ...(draft.idempotencyName.trim()
+      ? {
+          idempotency: {
+            in: draft.idempotencyIn,
+            name: draft.idempotencyName.trim(),
+          },
+        }
+      : {}),
   };
 }
 
@@ -468,6 +489,43 @@ export function ApiIntegrationEditor({
                   patchEndpoint(draft.key, { responseKeys: e.target.value })
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Idempotency key</Label>
+              <div className="flex gap-2">
+                <select
+                  className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                  value={draft.idempotencyIn}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    patchEndpoint(draft.key, {
+                      idempotencyIn: e.target.value as "header" | "body",
+                    })
+                  }
+                >
+                  <option value="header">Header</option>
+                  <option value="body">Body field</option>
+                </select>
+                <Input
+                  placeholder={
+                    draft.idempotencyIn === "header"
+                      ? "Idempotency-Key"
+                      : "request_id"
+                  }
+                  value={draft.idempotencyName}
+                  disabled={!canEdit}
+                  onChange={(e) =>
+                    patchEndpoint(draft.key, { idempotencyName: e.target.value })
+                  }
+                />
+              </div>
+              <p className="text-muted-foreground text-xs">
+                {draft.method === "GET"
+                  ? "A read repeats safely, so this endpoint needs no key."
+                  : draft.idempotencyName.trim()
+                    ? "A retry of the same call sends the same value, so your API can recognise it as one write."
+                    : "Without a key, a retry of this call can write twice. Name what your API reads."}
+              </p>
             </div>
           </div>
         ))}

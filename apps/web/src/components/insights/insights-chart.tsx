@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Table2 } from "lucide-react";
+import { CalendarDays, ChevronDown, Table2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@agent-hub/ui";
 import {
@@ -20,11 +20,13 @@ import {
 import {
   Table,
   TableBody,
+  TableCard,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface ChartSeries {
@@ -290,11 +292,19 @@ export function UsageCard({
         </Button>
 
         {showTable && (
-          <div className="mt-2 overflow-x-auto rounded-lg border">
+          <TableCard
+            className="mt-2"
+            footer={
+              <TablePagination
+                total={labels.length}
+                noun="day"
+              />
+            }
+          >
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead>Date</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead icon={CalendarDays}>Date</TableHead>
                   {visible.map((r) => (
                     <TableHead key={r.key} className="whitespace-nowrap">
                       {r.label}
@@ -313,7 +323,7 @@ export function UsageCard({
                 ))}
               </TableBody>
             </Table>
-          </div>
+          </TableCard>
         )}
       </CardContent>
     </Card>

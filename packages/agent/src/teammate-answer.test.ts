@@ -6,6 +6,7 @@ import { DEMO_ORG, getMockDb } from "@agent-hub/db";
 import { createTurnSession } from "./session";
 import {
   executeTeammateAnswer,
+  projectTeammateUsage,
   runTeammateAnswer,
 } from "./teammate-answer";
 import type { RuntimeEvent } from "./types";
@@ -83,6 +84,7 @@ describe("runTeammateAnswer", () => {
         surface: "teammate",
         startedAt: Date.now(),
       },
+      attribution: { surface: "teammate", memberId: "member-1" },
     });
 
     expect(outcome.ok).toBe(true);
@@ -94,5 +96,76 @@ describe("runTeammateAnswer", () => {
       expect.objectContaining({ organizationId: DEMO_ORG.id }),
     );
     expect(events.some((event) => event.type === "flow")).toBe(true);
+  });
+});
+
+describe("projectTeammateUsage", () => {
+  const usage = [
+    {
+      stage: "classify" as const,
+      provider: "google" as const,
+      modelId: "gemini-2.5-flash-lite",
+      credentialKind: "platform" as const,
+      inputTokens: 600,
+      outputTokens: 20,
+    },
+    {
+      stage: "generate" as const,
+      provider: "anthropic" as const,
+      modelId: "claude-opus-4-8",
+      credentialKind: "platform" as const,
+      inputTokens: 6000,
+      outputTokens: 400,
+    },
+  ];
+
+  function project(attribution: {
+    surface: "teammate" | "channel" | "routine";
+    memberId?: string | null;
+    routineId?: string | null;
+  }) {
+    return projectTeammateUsage({
+      usage,
+      organizationId: DEMO_ORG.id,
+      teammateId: teammate.id,
+      telemetry: { assistantId: null, conversationId: "conversation-1" },
+      attribution,
+      messageId: "message-1",
+    });
+  }
+
+  it("names the Teammate and the Member on every one of the turn's calls", () => {
+    const rows = project({ surface: "teammate", memberId: "member-1" });
+    expect(rows).toHaveLength(usage.length);
+    for (const row of rows) {
+      expect(row.spenders).toEqual({
+        teammateId: teammate.id,
+        memberId: "member-1",
+        routineId: null,
+      });
+      expect(row.surface).toBe("teammate");
+    }
+    // Attribution is added to the row, not substituted for what was there:
+    // the classify call is still a classify call on its own model.
+    expect(rows[0]).toMatchObject({
+      stage: "classify",
+      modelId: "gemini-2.5-flash-lite",
+      inputTokens: 600,
+    });
+  });
+
+  it("names no Member for unattended work rather than borrowing one", () => {
+    const rows = project({ surface: "routine", routineId: "routine-1" });
+    expect(rows[0].spenders?.memberId).toBeNull();
+    expect(rows[0].spenders?.teammateId).toBe(teammate.id);
+    expect(rows[0].spenders?.routineId).toBe("routine-1");
+    expect(rows[0].surface).toBe("routine");
+  });
+
+  it("carries the surface it was told, not the one the chat telemetry uses", () => {
+    // A channel turn is a Teammate answer too, and folding it into "teammate"
+    // would make a fan-out indistinguishable from a 1:1 chat.
+    const rows = project({ surface: "channel", memberId: "member-1" });
+    expect(rows.every((row) => row.surface === "channel")).toBe(true);
   });
 });

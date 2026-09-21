@@ -57,7 +57,15 @@ describe("runtime public interface", () => {
       "alertKeys",
       "backfillCollectionToGraph",
       "beginWebsiteCrawl",
+      // The models a chat window may offer: the admin's allow-list intersected
+      // with what the Organization's Provider Connections can actually run.
+      // Server-side because capability is read from the environment.
+      "chatModelOptions",
       "connectorAlertKey",
+      // Image reading for the extraction pipeline: built over the org's
+      // connections by the host, because this package resolves no credentials
+      // on its own behalf.
+      "createVisionReader",
       "dbConnectorRuntime",
       "dbReviewRuntime",
       "deliverWebhookCallback",

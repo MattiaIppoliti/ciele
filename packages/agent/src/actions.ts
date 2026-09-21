@@ -556,6 +556,7 @@ const apiRequest: ActionHandler = async ({
   signal,
   templateContext,
   idempotencyKey,
+  countOperation,
 }) => {
   const settings = flow.actionSettings?.api_request;
   if (!settings?.url) return { parts: [] };
@@ -567,6 +568,18 @@ const apiRequest: ActionHandler = async ({
   if (ctx["workflow.message"] === undefined) ctx["workflow.message"] = message;
 
   const outcome = await executeApiRequest(settings, ctx, signal, idempotencyKey);
+  // Counted, never priced (#854): an outbound call the platform makes on the
+  // organization's behalf. `refused` is our own egress policy or a bad URL,
+  // which is a different problem from the other side failing.
+  countOperation?.({
+    operation: "api_request",
+    unit: "request",
+    status: outcome.ok
+      ? "succeeded"
+      : outcome.status === null
+        ? "refused"
+        : "failed",
+  });
   const { extracted, parseFailed } = extractApiJsonPaths(
     settings,
     outcome.bodyText
@@ -691,11 +704,25 @@ const handover: ActionHandler = async ({ flow, emit }) => {
  * Forwards the message to a configured address via the email transport seam
  * (lib/runtime/email.ts). Delivery happens post-commit as a deferred effect.
  */
-const sendEmail: ActionHandler = async ({ flow, assistant, message, emit }) => {
+const sendEmail: ActionHandler = async ({
+  flow,
+  assistant,
+  message,
+  emit,
+  countOperation,
+}) => {
   const to = flow.actionSettings?.send_email?.to?.trim();
   if (!to) return { parts: [] };
   // Honest copy: never claim delivery when the transport can't deliver.
   const configured = emailTransportConfigured();
+  // Counted, never priced (#854). Delivery itself is a deferred effect, so what
+  // is known here is whether there was a transport to hand it to: an
+  // unconfigured one is a refusal, not a failure.
+  countOperation?.({
+    operation: "send_email",
+    unit: "email",
+    status: configured ? "succeeded" : "refused",
+  });
   const part: ChatReplyPart = {
     type: "text",
     action: "send_email",

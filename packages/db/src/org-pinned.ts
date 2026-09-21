@@ -30,6 +30,9 @@ import type { Db } from "./types";
 
 /** Methods whose first parameter is an organizationId, pinned on call. */
 const ORG_SCOPED_METHODS = new Set<keyof Db>([
+  // Usage over /api/v1 (#853). Takes the organization id as its first argument
+  // like every other read here, so pinning it is the whole enforcement.
+  "getOrgUsageSpenders",
   "listApplicationConnections",
   // Filing an Improvement from an unattended triage run (#772).
   "createImprovement",

@@ -190,4 +190,10 @@ export const DOMAIN_PRESENTATION: Partial<Record<ApiV1Domain, DomainPresentation
     mcpPrompt:
       "List the pending Human review requests and tell me which conversations are waiting on a colleague.",
   },
+  usage: {
+    title: "Usage API",
+    mcpTool: "manage_organization",
+    mcpPrompt:
+      "Show my plan's usage meters and which Teammates and Members spent the most credits this month.",
+  },
 };

@@ -12,7 +12,10 @@ import {
   graphSyncJobFromRecord,
   performGraphSyncConcept,
 } from "./graph-sync";
-import { draftImprovementProposal } from "./improvement-proposal";
+import {
+  draftGoalProposal,
+  draftImprovementProposal,
+} from "./improvement-proposal";
 import { ingestSource, type SourceConceptDraft } from "./ingest";
 import { MEMORY_QUIET_MS, promoteConversationMemories } from "./memories";
 import { distillAgentLearning } from "./agent-learnings";
@@ -355,6 +358,74 @@ const draftProposalHandler: JobHandler = {
   },
 };
 
+const GOAL_PROPOSAL_KIND = "draft_goal_proposal" as const;
+
+/**
+ * The Goal producer's twin of {@link DraftProposalJob} (#903).
+ *
+ * It carries its own inputs rather than a goal id, for two reasons. A goal
+ * eval persists no Conversation and no message, so there is nothing to
+ * rehydrate from; and the goal row is rewritten every night, so re-reading it
+ * at drain time could draft against a different answer than the one that
+ * failed. A durable job that carries what it needs is replayable; one that
+ * re-reads a moving row is not.
+ */
+type GoalProposalJob = {
+  kind: typeof GOAL_PROPOSAL_KIND;
+  improvementId: string;
+  assistantId: string;
+  question: string;
+  answer: string;
+};
+
+const goalProposalHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<GoalProposalJob>;
+    if (!payload.improvementId || !payload.assistantId || !payload.question) {
+      throw new Error("Invalid goal-proposal job payload");
+    }
+    await draftGoalProposal({
+      db: deps.db,
+      improvementId: payload.improvementId,
+      assistantId: payload.assistantId,
+      question: payload.question,
+      answer: payload.answer ?? "",
+    });
+  },
+};
+
+/**
+ * Enqueue the Suggested Fix draft for a newly filed Goal Improvement (#903).
+ *
+ * The organization is known from the goal, so this does not go through
+ * `enqueueDraftProposalJob`, whose whole body is deriving an organization from
+ * a message that a goal eval never wrote.
+ */
+export async function enqueueGoalProposalJob(
+  db: Db,
+  goal: { organizationId: string; assistantId: string; question: string },
+  improvementId: string,
+  answer: string
+): Promise<void> {
+  try {
+    await db.createBackgroundJob({
+      organizationId: goal.organizationId,
+      kind: GOAL_PROPOSAL_KIND,
+      payload: {
+        kind: GOAL_PROPOSAL_KIND,
+        improvementId,
+        assistantId: goal.assistantId,
+        question: goal.question,
+        answer,
+      },
+    });
+  } catch (error) {
+    // The Improvement is filed and the Alert is up; a missing draft leaves the
+    // reviewer the "no proposal" state they already handle.
+    console.error("[goal-runner] proposal enqueue failed:", error);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // promote_memories, extracts durable per-user facts from a Conversation that
 // went quiet (#664). Best-effort: the handler itself resolves every gate
@@ -566,6 +637,7 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   ingest_source: ingestSourceHandler,
   graph_sync_concept: graphSyncHandler,
   draft_improvement_proposal: draftProposalHandler,
+  draft_goal_proposal: goalProposalHandler,
   promote_memories: promoteMemoriesHandler,
   distill_agent_memory: distillAgentMemoryHandler,
   sync_entity_records: entitySyncHandler,

@@ -10,6 +10,7 @@ import type {
   SsoConnection,
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
+  UsageLimitsSnapshot,
 } from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { ZodType } from "zod";
@@ -51,6 +52,14 @@ export interface OperationContext {
    */
   actorEmail?: string;
   actorName?: string | null;
+  /**
+   * The Organization API key this call arrived on, when it arrived on one
+   * (#849). **Attribution only**, exactly like `userId` above: the key's Role
+   * is already resolved into `role`, so branching on this field would be
+   * inventing a second permission system. It exists so credits an operation
+   * spends can name the key that asked, and for nothing else.
+   */
+  apiKeyId?: string | null;
   /**
    * Set when this run is an AI Teammate acting inside a turn (#770).
    *
@@ -190,6 +199,15 @@ export interface OperationPorts {
    * runtime's egress; absent, the delete proceeds without them.
    */
   unsubscribeWebhooks?(conversationId: string): Promise<void>;
+  /**
+   * The organization's plan meters (#853), from whichever edition can answer.
+   * A port rather than a Db read: caps are an enterprise concept and this
+   * package must stay free of one. Absent (the open-source default) means the
+   * deployment is unmetered, which is the honest answer rather than zeroes.
+   */
+  readUsageLimits?(
+    organizationId: string
+  ): Promise<UsageLimitsSnapshot | null>;
 }
 
 /** Same ladder the web app's authz seam speaks. */

@@ -97,6 +97,7 @@ import type {
   PublicationConfig,
   QuickReplyButton,
   RecrawlSchedule,
+  ModelRef,
   ReviewRequest,
   WebhookSubscription,
   Role,
@@ -114,7 +115,9 @@ import type {
   TicketingIntegration,
   UsageDailyRow,
   UsageKind,
+  UsageEventRow,
   UsageMeterRow,
+  UsageSpenderRow,
   WidgetStyle,
 } from "@agent-hub/core";
 import {
@@ -217,6 +220,8 @@ interface AssistantRow {
   chat_launcher_enabled: boolean;
   model_provider: Provider;
   model_id: string;
+  allowed_models: ModelRef[] | null;
+  attachments_enabled: boolean | null;
   style: WidgetStyle | null;
   allowed_domains: string[] | null;
   help_desk_settings: HelpDeskSettings | null;
@@ -574,6 +579,7 @@ interface SkillRow {
   name: string;
   description: string;
   prompt: string;
+  starter: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -585,6 +591,7 @@ function toSkill(row: SkillRow): Skill {
     name: row.name,
     description: row.description ?? "",
     prompt: row.prompt ?? "",
+    starter: row.starter ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at ?? row.created_at,
   };
@@ -1040,6 +1047,8 @@ function toAssistant(row: AssistantRow): Assistant {
     chatLauncherEnabled: row.chat_launcher_enabled,
     modelProvider: row.model_provider ?? "anthropic",
     modelId: row.model_id ?? "claude-opus-4-8",
+    allowedModels: row.allowed_models ?? [],
+    attachmentsEnabled: row.attachments_enabled ?? false,
     style: row.style ?? {},
     allowedDomains: row.allowed_domains ?? [],
     helpDeskSettings: row.help_desk_settings ?? {},
@@ -1271,6 +1280,10 @@ function assistantPatchToRow(patch: AssistantPatch): Record<string, unknown> {
     row.chat_launcher_enabled = patch.chatLauncherEnabled;
   if (patch.modelProvider !== undefined) row.model_provider = patch.modelProvider;
   if (patch.modelId !== undefined) row.model_id = patch.modelId;
+  if (patch.allowedModels !== undefined)
+    row.allowed_models = patch.allowedModels;
+  if (patch.attachmentsEnabled !== undefined)
+    row.attachments_enabled = patch.attachmentsEnabled;
   if (patch.style !== undefined) row.style = patch.style;
   if (patch.allowedDomains !== undefined) row.allowed_domains = patch.allowedDomains;
   if (patch.helpDeskSettings !== undefined)
@@ -5858,6 +5871,19 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           credential_kind: r.credentialKind ?? null,
           input_tokens: r.inputTokens,
           output_tokens: r.outputTokens,
+          // Attribution (#848): absent optionals normalize to null, matching
+          // what the columns store, so the two implementations cannot disagree
+          // about `undefined` vs `null`.
+          member_id: r.spenders?.memberId ?? null,
+          teammate_id: r.spenders?.teammateId ?? null,
+          api_key_id: r.spenders?.apiKeyId ?? null,
+          routine_id: r.spenders?.routineId ?? null,
+          flow_id: r.spenders?.flowId ?? null,
+          surface: r.surface ?? null,
+          // Which pocket paid (#851). A row with no funding is a plan row, the
+          // column's default and the only kind an open-source build writes.
+          funding: r.funding ?? "plan",
+          credits_micro: r.creditsMicro ?? null,
         }))
       );
       if (error) throw error;
@@ -5963,6 +5989,101 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         inputTokens: Number(r.input_tokens),
         outputTokens: Number(r.output_tokens),
         units: Number(r.units ?? 0),
+      }));
+    },
+
+    async recordUsageEvents(events) {
+      if (events.length === 0) return;
+      const { error } = await client.from("usage_events").insert(
+        events.map((e) => ({
+          organization_id: e.organizationId,
+          operation: e.operation,
+          unit: e.unit,
+          status: e.status,
+          quantity: e.quantity,
+          member_id: e.spenders?.memberId ?? null,
+          teammate_id: e.spenders?.teammateId ?? null,
+          api_key_id: e.spenders?.apiKeyId ?? null,
+          routine_id: e.spenders?.routineId ?? null,
+          flow_id: e.spenders?.flowId ?? null,
+          assistant_id: e.assistantId ?? null,
+          conversation_id: e.conversationId ?? null,
+          surface: e.surface ?? null,
+        }))
+      );
+      if (error) throw error;
+    },
+
+    async getOrgUsageEvents(organizationId, from, to) {
+      const { data, error } = await client.rpc("org_usage_events", {
+        p_organization_id: organizationId,
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as {
+        operation: UsageEventRow["operation"];
+        unit: UsageEventRow["unit"];
+        status: UsageEventRow["status"];
+        quantity: number | string;
+        calls: number | string;
+      }[];
+      return rows.map((r) => ({
+        operation: r.operation,
+        unit: r.unit,
+        status: r.status,
+        quantity: Number(r.quantity),
+        calls: Number(r.calls),
+      }));
+    },
+
+    async getOrgUsageSpenders(organizationId, from, to) {
+      const { data, error } = await client.rpc("org_usage_spenders", {
+        p_organization_id: organizationId,
+        p_from: from,
+        p_to: to,
+      });
+      if (error) throw error;
+      const rows = (data ?? []) as {
+        member_id: string | null;
+        teammate_id: string | null;
+        api_key_id: string | null;
+        routine_id: string | null;
+        flow_id: string | null;
+        assistant_id: string | null;
+        surface: string | null;
+        credential_kind: UsageSpenderRow["credentialKind"];
+        provider: string | null;
+        model_id: string | null;
+        calls: number | string;
+        input_tokens: number | string;
+        output_tokens: number | string;
+      }[];
+      // The rollup keys absent identities as empty strings (null would make two
+      // rows with the same absent spender distinct in a primary key), so the
+      // seam maps them back: the domain's "nobody" is null, on both adapters.
+      const id = (value: string | null): string | null => value || null;
+      // bigint sums arrive as strings over PostgREST; a string here would make
+      // every credit comparison downstream lexicographic.
+      return rows.map((r) => ({
+        spenders: {
+          memberId: id(r.member_id),
+          teammateId: id(r.teammate_id),
+          apiKeyId: id(r.api_key_id),
+          routineId: id(r.routine_id),
+          flowId: id(r.flow_id),
+        },
+        assistantId: id(r.assistant_id),
+        surface: id(r.surface) as UsageSpenderRow["surface"],
+        credentialKind: r.credential_kind,
+        provider: r.provider ?? "",
+        modelId: r.model_id ?? "",
+        calls: Number(r.calls),
+        inputTokens: Number(r.input_tokens),
+        outputTokens: Number(r.output_tokens),
+        // Crawl telemetry carries no spender, so this read is model-only until
+        // it does; a non-token unit cannot appear here.
+        units: 0,
       }));
     },
 

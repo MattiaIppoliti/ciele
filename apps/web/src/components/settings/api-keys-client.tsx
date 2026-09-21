@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import type { OrgApiKey, Role } from "@agent-hub/core";
-import { Ban, ChevronDown, KeyRound, Plus, TriangleAlert } from "lucide-react";
+import { Activity, Ban, CalendarDays, ChevronDown, Clock, KeyRound, Plus, Shield, TriangleAlert } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { createApiKeyAction, revokeApiKeyAction } from "@/app/actions";
 import { MorphingModal } from "@/components/motion/morphing-modal";
 import { Table, type TableColumn } from "@/components/motion/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { formatDay } from "@/lib/format";
 import { canAssignApiKeyRole } from "@/lib/rbac";
 import {
@@ -69,6 +70,7 @@ export function ApiKeysClient({
   const columns: TableColumn<OrgApiKey>[] = [
     {
       key: "name",
+      icon: KeyRound,
       header: "Name",
       accessor: (key) => key.name,
       sortable: true,
@@ -89,6 +91,7 @@ export function ApiKeysClient({
     },
     {
       key: "role",
+      icon: Shield,
       header: "Role",
       accessor: (key) => key.role,
       sortable: true,
@@ -101,6 +104,7 @@ export function ApiKeysClient({
     },
     {
       key: "created",
+      icon: CalendarDays,
       header: "Created",
       accessor: (key) => key.createdAt,
       sortable: true,
@@ -112,6 +116,7 @@ export function ApiKeysClient({
     },
     {
       key: "lastUsed",
+      icon: Clock,
       header: "Last used",
       accessor: (key) => key.lastUsedAt ?? "",
       sortable: true,
@@ -125,6 +130,7 @@ export function ApiKeysClient({
     },
     {
       key: "status",
+      icon: Activity,
       header: "Status",
       accessor: (key) => (key.revokedAt ? "revoked" : "active"),
       sortable: true,
@@ -170,6 +176,7 @@ export function ApiKeysClient({
         columns={columns}
         getRowId={(key) => key.id}
         emptyState="No API keys yet, you'll need one to call the API, CLI or MCP server."
+        footer={<TablePagination total={keys.length} noun="API key" />}
       />
 
       <div>

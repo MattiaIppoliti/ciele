@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Assistant, Flow } from "@agent-hub/core";
+import { simulateReadableStream } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
-import { classifyIntent, flowCatalogEntry, runAssistantChat } from "./engine";
+import {
+  classifyIntent,
+  flowCatalogEntry,
+  routingNarration,
+  runAssistantChat,
+} from "./engine";
 import { createTurnSession } from "./session";
 import type { ActionContext, RuntimeEvent } from "./types";
 
@@ -63,22 +69,43 @@ const defaultFlow = makeFlow({
   actions: ["search_knowledge"],
 });
 
+/**
+ * The router streams its object (it narrates the request as a thought while it
+ * decides), so the mock streams too: a `doGenerate`-only model would hang the
+ * call rather than fail it, which is a worse test than none.
+ *
+ * The JSON arrives in two chunks with the intent first, which is the order the
+ * schema fixes and what lets the panel show something before the ids exist.
+ */
 function pickerModel(...matchingFlowIds: string[]) {
+  const intent = "The person is asking about something specific.";
+  const json = JSON.stringify({ intent, matchingFlowIds });
+  const split = json.indexOf('","matchingFlowIds') + 1;
   return new MockLanguageModelV3({
-    doGenerate: {
-      content: [
-        {
-          type: "text" as const,
-          text: JSON.stringify({ matchingFlowIds }),
-        },
-      ],
-      finishReason: { unified: "stop" as const, raw: "stop" },
-      usage: {
-        inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
-        outputTokens: { total: 1, text: 1, reasoning: undefined },
-      },
-      warnings: [],
-    },
+    doStream: async () => ({
+      stream: simulateReadableStream({
+        chunks: [
+          { type: "stream-start" as const, warnings: [] },
+          { type: "text-start" as const, id: "1" },
+          { type: "text-delta" as const, id: "1", delta: json.slice(0, split) },
+          { type: "text-delta" as const, id: "1", delta: json.slice(split) },
+          { type: "text-end" as const, id: "1" },
+          {
+            type: "finish" as const,
+            finishReason: { unified: "stop" as const, raw: "stop" },
+            usage: {
+              inputTokens: {
+                total: 1,
+                noCache: 1,
+                cacheRead: undefined,
+                cacheWrite: undefined,
+              },
+              outputTokens: { total: 1, text: 1, reasoning: undefined },
+            },
+          },
+        ],
+      }),
+    }),
   });
 }
 
@@ -150,7 +177,7 @@ describe("classifyIntent", () => {
 
   it("falls back to the keyword matcher when the model call fails", async () => {
     const failing = new MockLanguageModelV3({
-      doGenerate: () => {
+      doStream: () => {
         throw new Error("provider down");
       },
     });
@@ -161,6 +188,97 @@ describe("classifyIntent", () => {
     );
     // matchFlow finds no keyword overlap → Default behavior.
     expect(flow?.id).toBe("default");
+  });
+
+  // Routing used to be the one part of a turn with nothing on screen: the
+  // panel sat on "Thinking…" with no step under it until the first tool call.
+  it("narrates what the person asked, as streamed thought deltas", async () => {
+    const events: RuntimeEvent[] = [];
+    await classifyIntent(
+      "when is the marketing exam?",
+      [examFlow, defaultFlow],
+      pickerModel("exams"),
+      undefined,
+      undefined,
+      {},
+      (event) => events.push(event)
+    );
+
+    const deltas = events.filter((e) => e.type === "thought-delta");
+    expect(deltas.length).toBeGreaterThan(0);
+    const settled = events.find((e) => e.type === "thought");
+    expect(settled).toBeDefined();
+    // The deltas add up to the thought that settles the step, which is what
+    // lets the panel grow one row in place instead of appending a second.
+    const joined = deltas
+      .map((e) => (e as Extract<RuntimeEvent, { type: "thought-delta" }>).delta)
+      .join("");
+    expect(joined).toBe(
+      (settled as Extract<RuntimeEvent, { type: "thought" }>).text
+    );
+  });
+
+  it("emits nothing when the caller passed no emitter", async () => {
+    // The classifier is called from places with no panel to draw on.
+    await expect(
+      classifyIntent("when is the marketing exam?", [examFlow, defaultFlow], pickerModel("exams"))
+    ).resolves.toBeTruthy();
+  });
+
+  it("still routes, and narrates nothing, when the provider fails", async () => {
+    const events: RuntimeEvent[] = [];
+    const failing = new MockLanguageModelV3({
+      doStream: () => {
+        throw new Error("provider down");
+      },
+    });
+    const flow = await classifyIntent(
+      "completely unrelated gibberish",
+      [examFlow, defaultFlow],
+      failing,
+      undefined,
+      undefined,
+      {},
+      (event) => events.push(event)
+    );
+    expect(flow?.id).toBe("default");
+    expect(events).toEqual([]);
+  });
+
+  describe("routingNarration", () => {
+    const flows = [
+      makeFlow({ id: "human-help", name: "Contact support" }),
+      makeFlow({ id: "exams", name: "Exam dates" }),
+    ];
+
+    it("passes a sentence about the person's request", () => {
+      expect(
+        routingNarration("The person wants to know when something closes.", flows)
+      ).toBe("The person wants to know when something closes.");
+    });
+
+    // Flows are invisible to chat users on purpose; the router is the one call
+    // whose input is the whole catalogue.
+    it("withholds a sentence that names a flow", () => {
+      expect(routingNarration("This matches Contact support.", flows)).toBeNull();
+      expect(routingNarration("routing to exam dates", flows)).toBeNull();
+    });
+
+    it("withholds a sentence that names a flow id", () => {
+      expect(routingNarration("picked human-help", flows)).toBeNull();
+    });
+
+    it("withholds nothing and empty alike", () => {
+      expect(routingNarration("   ", flows)).toBeNull();
+    });
+
+    // A two-letter name would match half of any sentence.
+    it("ignores a name too short to be evidence of anything", () => {
+      const tiny = [makeFlow({ id: "x1", name: "Hi" })];
+      expect(routingNarration("This person said hi to us", tiny)).toBe(
+        "This person said hi to us"
+      );
+    });
   });
 
   it("uses the keyword matcher without calling the model when no classifier is configured", async () => {
@@ -181,7 +299,7 @@ describe("classifyIntent", () => {
       [examFlow, disabled, pageLoad, defaultFlow],
       model
     );
-    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt ?? "");
+    const prompt = JSON.stringify(model.doStreamCalls[0]?.prompt ?? "");
     expect(prompt).toContain("exams");
     expect(prompt).not.toContain("disabled");
     expect(prompt).not.toContain("page-load");
@@ -191,7 +309,7 @@ describe("classifyIntent", () => {
   it("skips the model entirely when there are no candidate flows", async () => {
     const model = pickerModel();
     const flow = await classifyIntent("hello", [defaultFlow], model);
-    expect(model.doGenerateCalls).toHaveLength(0);
+    expect(model.doStreamCalls).toHaveLength(0);
     expect(flow?.id).toBe("default");
   });
 
@@ -220,7 +338,7 @@ describe("classifyIntent", () => {
   it("reports no usage when the call fails or the keyword matcher answers", async () => {
     const reported: unknown[] = [];
     const failing = new MockLanguageModelV3({
-      doGenerate: () => {
+      doStream: () => {
         throw new Error("provider down");
       },
     });

@@ -75,6 +75,10 @@ The Import row shows its last and next sync, Source and Assistant-link counts, a
 discovered, updated, removed, skipped, and failed totals. Provider authorization failures mark the
 Connection for reconnection and create an Alert. A successful later run clears the Alert.
 
+While a sync runs, the console shows an activity card in the bottom-right corner. The card shows
+the number of complete items and the total, for example 261/291. Select the arrow to show a maximum
+of four items with their status. Items that failed are shown first.
+
 Remote identity remains stable. An edited remote item updates the existing Source, so links and
 citations do not change. A removed remote item deletes its active Source but retains an internal
 tombstone, which lets a later reappearance create the correct replacement without duplicating it.

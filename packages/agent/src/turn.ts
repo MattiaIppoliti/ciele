@@ -14,9 +14,15 @@ import type {
   Teammate,
   TrustTier,
   FlowAction,
+  UsageOperation,
+  UsageOperationStatus,
+  UsageOperationUnit,
+  UsageSurface,
   WebhookSubscription,
 } from "@agent-hub/core";
 import {
+  attachmentContextSection,
+  type ChatAttachment,
   messageText,
   needsVisitorDeliveryHistory,
   notificationDelivery,
@@ -36,7 +42,7 @@ import type {
 } from "./types";
 import { contactLabel } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
-import { summarizeTurnUsage } from "./usage";
+import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
 import { recordRuntimeEvent, errorClassOf } from "./telemetry";
 import { embedText } from "./embeddings";
 import { buildKnowledgeSearcher } from "./retrieval";
@@ -120,6 +126,14 @@ interface ConversationTurnBaseInput {
    */
   standingContext?: readonly string[];
   /**
+   * Files attached to this message, already read into text by the host's
+   * intake. They become a standing-context section of their own, fenced as the
+   * asker's material rather than as instructions (`attachmentContextSection`),
+   * and they are what tells the courtesy short-circuit to stand down: someone
+   * who sent a file did not send a greeting, whatever they typed beside it.
+   */
+  attachments?: readonly ChatAttachment[];
+  /**
    * Third-party text for this one turn (#857): a Slack channel transcript.
    * Unlike `standingContext` it is nobody the organization vouches for, so it
    * rides the turn's untrusted-content fence beside retrieved material rather
@@ -179,6 +193,21 @@ interface ConversationTurnBaseInput {
    * subscription Provider Connections stay retired.
    */
   keyResolution?: KeyResolution;
+  /**
+   * What this turn's credits are attributed to, beyond what the turn can work
+   * out for itself (#849).
+   *
+   * The turn already knows the Assistant or Teammate, the Member (from
+   * `keyResolution`) and the Flow that answered, and derives its surface from
+   * the subject. What it cannot know is that it is being run *by* something:
+   * an unattended Routine looks exactly like a Member's Teammate chat from in
+   * here, and the two must not be indistinguishable in the ledger.
+   */
+  usageAttribution?: {
+    surface?: UsageSurface;
+    routineId?: string | null;
+    apiKeyId?: string | null;
+  };
   /**
    * The event that started this turn (#541). Absent or `"message"` is the
    * Visitor-message turn every existing caller runs. A proactive trigger
@@ -726,6 +755,24 @@ export async function streamConversationTurn(
   const subject = resolveTurnSubject(input);
   const { assistant, teammate, attributedAssistantId } = subject;
 
+  // What this turn did that was not a model call (#854), collected as it goes
+  // and written once at the end.
+  const operationCounts: {
+    operation: UsageOperation;
+    unit: UsageOperationUnit;
+    status: UsageOperationStatus;
+  }[] = [];
+
+  // Where this turn's credits go (#849). The rules live in one pure function,
+  // which is where their tests are.
+  const { surface: usageSurface, spenders: usageSpenders } =
+    turnUsageAttribution({
+      subjectSurface: subject.surface,
+      teammateId: teammate?.id ?? null,
+      memberId: input.keyResolution?.memberId ?? null,
+      declared: input.usageAttribution,
+    });
+
   // A proactive trigger takes the same seam but a different path: no
   // classification, no model, no user message (#541). Teammates have no
   // proactive triggers: nothing fires a page-load event inside the console.
@@ -870,6 +917,7 @@ export async function streamConversationTurn(
         onTrace: (qaId) => {
           graphQaId = qaId;
         },
+        usage: { spenders: usageSpenders, surface: usageSurface },
       });
 
   const stored = await db.listRecentMessages(
@@ -888,6 +936,8 @@ export async function streamConversationTurn(
         organizationId: input.organizationId,
         assistantId: attributedAssistantId,
         conversationId: conversation!.id,
+        spenders: usageSpenders,
+        surface: usageSurface,
       });
       return db.searchMemories({
         organizationId: input.organizationId,
@@ -937,6 +987,13 @@ export async function streamConversationTurn(
         conversation.metadata
       ).concat(input.standingContext ?? [])
     : input.standingContext;
+
+  // Attached files ride the same channel, ahead of whatever the surface
+  // supplied: a turn that was given a document is usually about the document.
+  const attachmentSection = attachmentContextSection(input.attachments ?? []);
+  const standing = attachmentSection
+    ? [attachmentSection, ...(memoryDocuments ?? [])]
+    : memoryDocuments;
 
   // Tau-style session: the conversation's persistent state bag, exposed to
   // tools for this turn and written back below only if something changed.
@@ -1236,7 +1293,8 @@ export async function streamConversationTurn(
           readKnowledgeDocument,
           apiIntegration,
           teammateActions: input.teammateActions,
-          memoryDocuments,
+          memoryDocuments: standing,
+          hasAttachments: attachmentSection !== null,
           untrustedContext: input.untrustedContext,
           referralCandidates: input.referralCandidates,
           collectionId,
@@ -1277,6 +1335,10 @@ export async function streamConversationTurn(
                 assistant,
                 simulated: isOperatorSurface(input.keyResolution ?? {}),
               }),
+          // Non-model operations (#854): collected here and written with the
+          // rest of the turn's accounting, so one insert covers the turn rather
+          // than one per outbound call.
+          countOperation: (event) => operationCounts.push(event),
           resumeFrom: resumeCursor(input, input.flows ?? []),
           // Entity tool policy input (#667): the verified subject type and
           // claim decide which tool variants exist, never the model.
@@ -1322,6 +1384,11 @@ export async function streamConversationTurn(
                 conversationId,
                 surface: "teammate",
                 startedAt: turnStart,
+              },
+              attribution: {
+                surface: usageSurface,
+                memberId: usageSpenders.memberId,
+                routineId: usageSpenders.routineId,
               },
             });
           if (!outcome.ok) {
@@ -1422,8 +1489,32 @@ export async function streamConversationTurn(
                 credentialKind: u.credentialKind,
                 inputTokens: u.inputTokens,
                 outputTokens: u.outputTokens,
+                // The Flow that answered is on the row too (#849): a Flow whose
+                // Search knowledge action runs an agent loop costs a multiple of
+                // one that replies verbatim, and that is worth being able to see.
+                spenders: { ...usageSpenders, flowId: result.flowId },
+                surface: usageSurface,
               }));
             await spendAdmission.settle(usageRows);
+            // Counted, never priced, and isolated like every other accounting
+            // write: losing the count must not lose the work.
+            if (operationCounts.length > 0) {
+              try {
+                await db.recordUsageEvents(
+                  operationCounts.map((event) => ({
+                    ...event,
+                    organizationId: input.organizationId,
+                    quantity: 1,
+                    spenders: usageSpenders,
+                    surface: usageSurface,
+                    assistantId: attributedAssistantId,
+                    conversationId,
+                  }))
+                );
+              } catch (error) {
+                console.error("[runtime] usage-event persist failed:", error);
+              }
+            }
             if (session.dirty) {
               // Persist after the reply so a failed turn never half-writes
               // state; isolated like effects, losing a memory must not break

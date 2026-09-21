@@ -11,6 +11,15 @@ import { useId, useLayoutEffect, useRef, useState } from "react";
  * preview or a wide large-mode window. The border path and glow radius are
  * derived from the measured dimensions rather than a fixed 604x108 box.
  *
+ * **The corner radius is measured too, off the composer itself.** It used to be
+ * three hand-written constants, and all three disagreed with each other and
+ * with the composer: the overlay clipped at 14, the mask punched its hole at
+ * 12, the path turned at 14, and `rounded-2xl` on this theme is 14.4. A hole
+ * squarer than the box it is meant to cut leaves the glow painting *over* the
+ * composer's own corner, which is what "the line does not follow the border"
+ * looked like. One measured number now feeds all three, so a change to the
+ * theme's radius scale cannot put them out of step again.
+ *
  * `focus` fires the two-dot race (bottom-center → top-center on each half);
  * `loading` shows a single dot circling the whole border clockwise, looping
  * until the response finishes streaming. The CSS classes (globals.css) drive
@@ -27,7 +36,7 @@ export function ComposerPulse({
   loading: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [size, setSize] = useState({ w: 0, h: 0, radius: FALLBACK_RADIUS });
   const gradientId = useId();
   const maskId = useId();
 
@@ -36,7 +45,11 @@ export function ComposerPulse({
     if (!el) return;
     const measure = () => {
       const r = el.getBoundingClientRect();
-      setSize({ w: Math.round(r.width), h: Math.round(r.height) });
+      setSize({
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+        radius: composerRadius(el),
+      });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -44,13 +57,17 @@ export function ComposerPulse({
     return () => observer.disconnect();
   }, []);
 
-  const { w, h } = size;
-  const paths = w > 0 && h > 0 ? borderPaths(w, h) : null;
+  const { w, h, radius } = size;
+  const paths = w > 0 && h > 0 ? borderPaths(w, h, radius) : null;
 
   return (
     <div
       ref={ref}
-      className="pointer-events-none absolute -inset-[2px] z-10 overflow-hidden rounded-[14px]"
+      className="pointer-events-none absolute -inset-[2px] z-10 overflow-hidden"
+      // The overlay sits INSET px outside the composer on every side, so its
+      // own clip has to be that much rounder than the composer's corner or it
+      // would cut the ring it exists to show.
+      style={{ borderRadius: radius + INSET }}
     >
       {paths && (
         <svg
@@ -68,13 +85,16 @@ export function ComposerPulse({
             </radialGradient>
             <mask id={maskId}>
               <rect width={w} height={h} fill="white" />
+              {/* The composer's own box, punched out: what stays white is
+                  the ring between its border and the overlay's edge. Same
+                  radius as the composer, or the corners leak. */}
               <rect
-                x={2}
-                y={2}
-                width={w - 4}
-                height={h - 4}
-                rx={12}
-                ry={12}
+                x={INSET}
+                y={INSET}
+                width={w - INSET * 2}
+                height={h - INSET * 2}
+                rx={radius}
+                ry={radius}
                 fill="black"
               />
             </mask>
@@ -119,13 +139,39 @@ export function ComposerPulse({
 const GLOW_RADIUS = 44;
 
 /**
- * Rounded-rectangle border paths for a `w`x`h` overlay, inset 2px (the border
- * sits 2px in because the overlay extends 2px past the composer on each side),
- * corner radius 14 (composer's 12px + the 2px inset).
+ * How far the overlay extends past the composer on each side. Matches the
+ * `-inset-[2px]` above; the ring the glow shows through is exactly this wide.
  */
-function borderPaths(w: number, h: number) {
-  const i = 2;
-  const cr = 14;
+const INSET = 2;
+
+/**
+ * Used only until the first measurement lands, and when the composer cannot be
+ * found. `rounded-2xl` on this theme, which is what `PromptInput` wears.
+ */
+const FALLBACK_RADIUS = 14.4;
+
+/**
+ * The composer's own corner radius, read from the element rather than repeated
+ * here. The overlay is a sibling of `PromptInput`'s form inside the composer's
+ * positioning wrapper, which is the one structural fact this depends on; when
+ * it does not hold, the fallback keeps the glow drawn rather than dropped.
+ */
+function composerRadius(overlay: HTMLElement): number {
+  const form = overlay.parentElement?.querySelector("form");
+  if (!form) return FALLBACK_RADIUS;
+  const measured = Number.parseFloat(
+    getComputedStyle(form).borderTopLeftRadius
+  );
+  return Number.isFinite(measured) && measured > 0 ? measured : FALLBACK_RADIUS;
+}
+
+/**
+ * Rounded-rectangle border paths for a `w`x`h` overlay: the composer's own
+ * border, which sits {@link INSET} px inside the overlay on every side, traced
+ * at the composer's own corner radius.
+ */
+function borderPaths(w: number, h: number, cr: number) {
+  const i = INSET;
   const cx = w / 2;
   const top = i;
   const bot = h - i;

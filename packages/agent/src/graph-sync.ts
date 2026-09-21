@@ -302,5 +302,8 @@ export async function graphUsageInput(
     credentialKind: "platform",
     inputTokens: usage.inputTokens,
     outputTokens: usage.outputTokens,
+    // Graph building is a nightly per-Collection cost, not anybody's turn
+    // (#849); a graph search inside a turn is metered at the turn instead.
+    surface: "scheduled",
   };
 }

@@ -2,7 +2,13 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { embed, embedMany, type EmbeddingModel } from "ai";
-import type { Provider, ProviderConnection, ProviderConnectionProvider } from "@agent-hub/core";
+import type {
+  Provider,
+  ProviderConnection,
+  ProviderConnectionProvider,
+  UsageSpenders,
+  UsageSurface,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import { canEmbedWithConnection } from "./embedding-capability";
 import { createGoogleVertexProvider } from "./google-vertex";
@@ -36,6 +42,10 @@ export interface EmbeddingUsageContext {
   organizationId: string;
   assistantId?: string | null;
   conversationId?: string | null;
+  /** Who spent it, beyond the Organization (#849). */
+  spenders?: UsageSpenders;
+  /** Which surface asked for the embedding: a turn, or indexing. */
+  surface?: UsageSurface;
 }
 
 interface ResolvedEmbeddingModel {
@@ -212,6 +222,8 @@ async function recordEmbedUsage(
       inputTokens:
         typeof tokens === "number" && Number.isFinite(tokens) ? tokens : 0,
       outputTokens: 0,
+      spenders: attribution.spenders,
+      surface: attribution.surface ?? null,
     },
   ]);
 }

@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@agent-hub/ui"
 import { Input } from "@agent-hub/ui"
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
 
 const TITLE_MAX = 100
 
@@ -153,27 +154,20 @@ export function ImproveAnswerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-6 border-b">
-          {(
-            [
-              ["create", "Create New Improvement"],
-              ["link", "Link Existing Improvement"],
-            ] as const
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={`-mb-px border-b-2 pb-2 text-sm font-medium transition-colors ${
-                tab === key
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+          <TabsList aria-label="Improvement source" className="bg-muted">
+            {(
+              [
+                ["create", "Create New Improvement"],
+                ["link", "Link Existing Improvement"],
+              ] as const
+            ).map(([key, label]) => (
+              <TabsTrigger key={key} value={key}>
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {tab === "create" ? (
           <div>

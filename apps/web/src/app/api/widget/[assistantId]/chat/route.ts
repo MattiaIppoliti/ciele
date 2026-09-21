@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import type { Assistant } from "@agent-hub/core";
+import { parseModelSelector, resolveRequestedModel } from "@agent-hub/core";
 import {
   NDJSON_HEADERS,
   sessionMetadata,
   streamConversationTurn,
 } from "@agent-hub/agent";
+import { openAttachments } from "@/lib/attachments";
 import { resolveWidgetContext, widgetOptions, widgetSubject } from "@/lib/widget-db";
 import { getRuntimeDb } from "@/lib/runtime-db";
 
@@ -54,6 +56,18 @@ export async function POST(
      * `sessionMetadata`, which falls back to the request headers.
      */
     pageUrl?: string | null;
+    /**
+     * `"<provider>:<model id>"`, picked from the list the config route served.
+     * Advisory: the allow-list on the snapshot is what decides, and a selector
+     * naming anything else runs the configured model instead of failing.
+     */
+    model?: string | null;
+    /**
+     * Sealed attachment tokens from `/attachments`. The client holds them for
+     * the conversation and re-sends them, so what is still in scope is what the
+     * composer still shows; nothing is kept server-side.
+     */
+    attachments?: unknown;
   };
   try {
     body = await request.json();
@@ -70,9 +84,30 @@ export async function POST(
     return new Response("Bad request", { status: 400, headers: cors });
   }
 
+  // Which model answers this one message (the composer's picker).
+  //
+  // The client sends a selector, never a model: `resolveRequestedModel` picks
+  // from the snapshot's own allow-list and silently returns the configured
+  // model for anything else. Silently, because the widget on a customer's page
+  // may be running a Publication older than the one serving it, and a Visitor
+  // should never pay for that with a refused answer. A Visitor can therefore
+  // move this Organization's spend between models its admin chose, and nowhere
+  // else, which is also why the empty allow-list, the default, admits nothing.
+  const configured = {
+    provider: config.assistant.modelProvider,
+    modelId: config.assistant.modelId,
+  };
+  const chosen = resolveRequestedModel(
+    parseModelSelector(body.model),
+    configured,
+    config.assistant.allowedModels ?? []
+  );
+
   // The published widget runs the snapshot config over the live assistant id.
   const assistant: Assistant = {
     ...config.assistant,
+    modelProvider: chosen.provider,
+    modelId: chosen.modelId,
     createdAt: publication.createdAt,
     updatedAt: publication.createdAt,
   };
@@ -115,6 +150,11 @@ export async function POST(
     message,
     turnId: body.turnId,
     faqQuestion: body.faq === true,
+    // Opened here, never trusted from the client: the token is sealed because
+    // this text lands in the system prompt.
+    attachments: config.assistant.attachmentsEnabled
+      ? openAttachments(body.attachments)
+      : [],
     metadata,
     signal: request.signal,
   });

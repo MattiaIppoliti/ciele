@@ -16,6 +16,8 @@ import {
 } from "@agent-hub/core";
 import { createHash } from "node:crypto";
 import { egressFetch } from "./egress";
+import { ooxmlText } from "./ooxml";
+import type { VisionReader } from "./vision";
 
 const URL_FETCH_TIMEOUT_MS = 30_000;
 const URL_FETCH_MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -27,10 +29,41 @@ const URL_FETCH_MAX_REDIRECTS = 3;
  */
 const MAX_PDF_PAGES = 2_000;
 
+/**
+ * The image types a model is asked to read, and the media type it is told they
+ * are. Named here rather than sniffed, because `triageDocument` has already
+ * agreed the bytes match the extension by the time this is consulted.
+ */
+const IMAGE_MEDIA_TYPES: Record<string, string | undefined> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+};
+
+/** The last dot's tail, lowercased; "" when a name carries no extension. */
+function extensionOf(lowerName: string): string {
+  const dot = lowerName.lastIndexOf(".");
+  return dot === -1 ? "" : lowerName.slice(dot + 1);
+}
+
 export type ExtractInput =
   | { kind: "text"; name: string; text: string }
   | { kind: "url"; url: string }
-  | { kind: "file"; name: string; bytes: ArrayBuffer };
+  | {
+      kind: "file";
+      name: string;
+      bytes: ArrayBuffer;
+      /**
+       * How to read an image, when the bytes are one. Supplied by the caller
+       * because reading a picture needs the Organization's own provider
+       * connection, and this module has no business resolving credentials.
+       * Absent, an image is refused by name rather than decoded into
+       * nonsense (see `vision.ts` for why this is not OCR).
+       */
+      vision?: VisionReader;
+    };
 
 export interface ExtractedSource {
   /** Display name for the Source row (page title for URLs, filename for files). */
@@ -118,7 +151,24 @@ export const EXTRACTORS: { [K in ExtractInput["kind"]]: ExtractorFor<K> } = {
     };
 
     let text: string;
-    if (lower.endsWith(".pdf")) {
+    const image = IMAGE_MEDIA_TYPES[extensionOf(lower)];
+    if (image) {
+      if (!input.vision) {
+        throw new Error(
+          "Reading images is not available for this assistant. Attach a PDF, a document or a text file."
+        );
+      }
+      text = await input.vision({
+        bytes: input.bytes,
+        mediaType: image,
+        name: input.name,
+      });
+    } else if (lower.endsWith(".xlsx") || lower.endsWith(".pptx")) {
+      text = await ooxmlText(
+        new Uint8Array(input.bytes),
+        lower.endsWith(".xlsx") ? "xlsx" : "pptx"
+      );
+    } else if (lower.endsWith(".pdf")) {
       const { extractText, getDocumentProxy } = await import("unpdf");
       const pdf = await getDocumentProxy(new Uint8Array(input.bytes));
       // A page budget, because size is not the cost here: a small file can

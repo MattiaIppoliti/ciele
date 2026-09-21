@@ -1147,6 +1147,21 @@ export class CieleClient {
       this.request("DELETE", `/api-keys/${encodeURIComponent(id)}`),
   };
 
+  /**
+   * Usage (#853), read-only. A purchase has no client method on purpose: it
+   * belongs to a surface where a person confirms an amount.
+   */
+  readonly usage = {
+    meters: (): Promise<unknown> => this.request("GET", "/usage/meters"),
+    spenders: (window: { from?: string; to?: string } = {}): Promise<unknown> => {
+      const query = new URLSearchParams();
+      if (window.from) query.set("from", window.from);
+      if (window.to) query.set("to", window.to);
+      const suffix = query.size > 0 ? `?${query.toString()}` : "";
+      return this.request("GET", `/usage/spenders${suffix}`);
+    },
+  };
+
   readonly apiIntegrations = {
     get: (assistantId: string): Promise<ApiIntegrationView | null> =>
       this.request(

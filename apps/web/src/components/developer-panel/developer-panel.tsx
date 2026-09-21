@@ -6,7 +6,7 @@ import { ArrowUpRight, ChevronsRight, Loader2 } from "lucide-react";
 import { Badge, Button, Hint } from "@agent-hub/ui";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
 import { CodeBlock } from "@/components/ui/code-block";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs";
 import { useShell } from "@/components/shell/shell-provider";
 import {
   buildSnippet,
@@ -319,11 +319,11 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
             const next = SNIPPET_TABS.find((tab) => tab === value);
             if (next) setSnippetTab(next);
           }}
-          className="shrink-0 gap-0 border-b px-3"
+          className="shrink-0 border-b px-3 py-2"
         >
-          <TabsList variant="line">
+          <TabsList aria-label="Snippet format" className="bg-muted">
             {SNIPPET_TABS.map((tab) => (
-              <TabsTrigger key={tab} value={tab} className="text-xs">
+              <TabsTrigger key={tab} value={tab} className="px-3 py-1 text-xs">
                 {SNIPPET_TAB_LABELS[tab]}
               </TabsTrigger>
             ))}

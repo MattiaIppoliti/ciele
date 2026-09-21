@@ -86,9 +86,16 @@ interface SkillDraft {
   name: string;
   description: string;
   prompt: string;
+  starter: string;
 }
 
-const EMPTY_SKILL: SkillDraft = { id: null, name: "", description: "", prompt: "" };
+const EMPTY_SKILL: SkillDraft = {
+  id: null,
+  name: "",
+  description: "",
+  prompt: "",
+  starter: "",
+};
 
 export function ToolsClient({
   assistantId,
@@ -179,18 +186,30 @@ export function ToolsClient({
           name,
           description: draft.description.trim(),
           prompt: draft.prompt,
+          starter: draft.starter.trim(),
         });
         setSkills((prev) =>
           prev.map((s) =>
             s.id === draft.id
-              ? { ...s, name, description: draft.description.trim(), prompt: draft.prompt }
+              ? {
+                  ...s,
+                  name,
+                  description: draft.description.trim(),
+                  prompt: draft.prompt,
+                  starter: draft.starter.trim(),
+                }
               : s
           )
         );
         toast.success("Skill updated");
       } else {
         const skill = await createSkillAction(
-          { name, description: draft.description.trim(), prompt: draft.prompt },
+          {
+            name,
+            description: draft.description.trim(),
+            prompt: draft.prompt,
+            starter: draft.starter.trim(),
+          },
           assistantId
         );
         setSkills((prev) => [...prev, skill]);
@@ -343,6 +362,7 @@ export function ToolsClient({
                           name: skill.name,
                           description: skill.description,
                           prompt: skill.prompt,
+                          starter: skill.starter ?? "",
                         })
                       }
                     >
@@ -409,6 +429,25 @@ export function ToolsClient({
                   value={skillDraft.prompt}
                   onChange={(e) => setSkillDraft({ ...skillDraft, prompt: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="skill-starter">Opening line (optional)</Label>
+                <Textarea
+                  id="skill-starter"
+                  rows={2}
+                  placeholder="Draft release notes for the change I paste below."
+                  value={skillDraft.starter}
+                  onChange={(e) =>
+                    setSkillDraft({ ...skillDraft, starter: e.target.value })
+                  }
+                />
+                <p className="text-muted-foreground text-xs">
+                  What the chat window writes into the message box when someone
+                  picks this skill from the <code>/</code> menu. Write it as the
+                  asker, not as the assistant. Leave it empty and the skill
+                  stays out of that menu; the prompt above still applies to
+                  every answer.
+                </p>
               </div>
             </div>
           )}

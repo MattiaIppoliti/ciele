@@ -3,6 +3,7 @@ import type { Db } from "@agent-hub/db";
 import { describe, expect, it, vi } from "vitest";
 
 import { createAdminPageReads, SHELL_ALERT_LIMIT } from "@/lib/admin-page-reads";
+import { INGESTION_KINDS } from "@/lib/ingestion-activity-read";
 
 describe("AdminPageReads", () => {
   it("shares each read between concurrent shell and page consumers", async () => {
@@ -55,5 +56,36 @@ describe("AdminPageReads", () => {
     expect(countActiveAlerts).toHaveBeenCalledWith("org-1");
     expect(listActiveAlerts).toHaveBeenCalledOnce();
     expect(listActiveAlerts).toHaveBeenCalledWith("org-1", SHELL_ALERT_LIMIT);
+  });
+
+  it("asks for an ingestion tally, not a page of Sources", async () => {
+    const listOrgKnowledgeSources = vi.fn(async () => ({
+      items: [],
+      total: 2,
+      statusCounts: { processing: 2, ready: 0, error: 0 },
+    }));
+    const reads = createAdminPageReads(
+      { listOrgKnowledgeSources } as unknown as Db,
+      "org-1",
+    );
+
+    await expect(reads.ingestionInFlight()).resolves.toBe(true);
+    expect(listOrgKnowledgeSources).toHaveBeenCalledWith("org-1", {
+      kinds: INGESTION_KINDS,
+      status: "processing",
+      pageSize: 0,
+    });
+  });
+
+  it("never takes the shell down over its ingestion tally", async () => {
+    const reads = createAdminPageReads(
+      {
+        listOrgKnowledgeSources: vi.fn(async () => {
+          throw new Error("statement timeout");
+        }),
+      } as unknown as Db,
+      "org-1",
+    );
+    await expect(reads.ingestionInFlight()).resolves.toBe(false);
   });
 });

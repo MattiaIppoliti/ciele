@@ -50,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
@@ -595,12 +596,14 @@ function ImportDialog({
             ...common,
             importId: editingImport.id,
           });
+          ingestionStarted();
           toast.success("Import updated and queued for synchronization.");
         } else {
           await createApplicationImportAction({
             ...common,
             connectionId: connection.id,
           });
+          ingestionStarted();
           toast.success("Import created and queued for synchronization.");
         }
         onClose();
@@ -809,10 +812,16 @@ export function ApplicationKnowledgePanel({
     if (!popup) window.location.assign(url);
   }
 
-  function run(operation: () => Promise<void>, success: string) {
+  /** `startsIngestion` also wakes the bottom-right activity card. */
+  function run(
+    operation: () => Promise<void>,
+    success: string,
+    startsIngestion = false
+  ) {
     startTransition(async () => {
       try {
         await operation();
+        if (startsIngestion) ingestionStarted();
         toast.success(success);
       } catch (error) {
         toast.error(errorMessage(error));
@@ -1107,9 +1116,12 @@ export function ApplicationKnowledgePanel({
                           isPending || item.status === "syncing" || !item.enabled
                         }
                         onClick={() =>
+                          // The toast only says the run was accepted; the
+                          // activity card follows it from here on.
                           run(
                             () => syncApplicationImportNowAction(item.id),
-                            "Synchronization queued."
+                            "Synchronization queued.",
+                            true
                           )
                         }
                       >

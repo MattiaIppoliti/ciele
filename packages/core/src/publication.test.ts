@@ -27,6 +27,7 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
     chatLauncherEnabled: true,
     modelProvider: "anthropic",
     modelId: "claude-opus-4-8",
+    allowedModels: [],
     style: { brandColor: "#123456", position: "right" },
     allowedDomains: ["campus.edu"],
     helpDeskSettings: { contactButtonLabel: "Get help" },
@@ -41,6 +42,8 @@ function makeAssistant(overrides: Partial<Assistant> = {}): Assistant {
 }
 
 const EXPECTED_ASSISTANT_KEYS = [
+  "allowedModels",
+  "attachmentsEnabled",
   "id",
   "organizationId",
   "title",
@@ -111,6 +114,7 @@ describe("buildPublicationConfig", () => {
         name: "Citation format",
         description: "How to cite",
         prompt: "Always cite sources as [n].",
+        starter: "Cite this for me:",
       },
     ]);
     expect(config.skills).toEqual([
@@ -119,6 +123,7 @@ describe("buildPublicationConfig", () => {
         name: "Citation format",
         description: "How to cite",
         prompt: "Always cite sources as [n].",
+        starter: "Cite this for me:",
       },
     ]);
   });

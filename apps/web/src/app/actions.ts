@@ -89,6 +89,9 @@ import {
   finalizeWebsiteCrawl,
   testApiRequest,
   connectorAlertKey,
+  chatModelOptions,
+  createVisionReader,
+  type ChatModelOption,
   dbConnectorRuntime,
   loadConnectorOptions,
   testConnectorAction,
@@ -108,6 +111,12 @@ import { redirect } from "next/navigation";
 import { ACTIVE_ORG_COOKIE } from "@/lib/auth";
 import { requireMember, requireSession } from "@/lib/authz";
 import { checkUploadAllowance, uploadThrottledMessage } from "@/lib/upload-limit";
+import {
+  checkAttachment,
+  checkAttachmentAllowance,
+  isImageAttachment,
+  sealAttachment,
+} from "@/lib/attachments";
 import { orgMutation, revalidateEntities } from "@/lib/org-mutation";
 import { runOperation } from "@/lib/operations";
 import {
@@ -876,6 +885,166 @@ export async function getPreviewSsoGateAction(assistantId: string): Promise<{
     authenticated,
     provider: connection?.provider ?? null,
   };
+}
+
+/**
+ * What the editor Preview's composer can offer: the models this Assistant lets
+ * the asker switch between, and the Skills that carry an opening line.
+ *
+ * A server action rather than props, for the same reason the escalation menu
+ * below is one: the Preview mounts from two places (the docked rail and the
+ * Preview route) and is loaded dynamically with `ssr: false`, so threading
+ * these through would mean four files agreeing about a list the panel can ask
+ * for itself. Read live, not from a Publication, so the Preview shows what the
+ * editor just changed rather than what was last published, which is the whole
+ * point of a preview.
+ */
+export async function chatComposerOptionsAction(assistantId: string): Promise<{
+  models: ChatModelOption[];
+  skills: Array<{ id: string; name: string; description: string; starter: string }>;
+}> {
+  const { db, session } = await requireMember();
+  const assistant = await db.getAssistant(assistantId);
+  if (!assistant || assistant.organizationId !== session.organization.id) {
+    return { models: [], skills: [] };
+  }
+  const [connections, attached] = await Promise.all([
+    db.listProviderConnections(session.organization.id),
+    db.listAssistantSkills(assistantId),
+  ]);
+  return {
+    models: chatModelOptions(
+      { provider: assistant.modelProvider, modelId: assistant.modelId },
+      assistant.allowedModels,
+      connections
+    ),
+    skills: attached
+      .filter((skill) => (skill.starter ?? "").trim().length > 0)
+      .map((skill) => ({
+        id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        starter: skill.starter,
+      })),
+  };
+}
+
+/** A form field that should be an id, or undefined. */
+function asId(value: FormDataEntryValue | null): string | undefined {
+  const text = typeof value === "string" ? value.trim() : "";
+  return text || undefined;
+}
+
+/**
+ * The provider and model an image read should run on: whichever entity the
+ * Member is chatting with, so an Organization that standardised on one provider
+ * is not quietly billed on another.
+ *
+ * Null when the caller named no entity this Organization owns. Null rather than
+ * a shipped default, because guessing a model id here is exactly the drift the
+ * catalogue refresh (#893) exists to avoid; the image is refused instead, with
+ * the sentence the extractor already writes.
+ */
+async function attachmentVisionModel(
+  db: Db,
+  organizationId: string,
+  ids: { assistantId?: string; teammateId?: string }
+): Promise<{ provider: Provider; modelId: string } | null> {
+  if (ids.assistantId) {
+    const assistant = await db.getAssistant(ids.assistantId);
+    if (assistant && assistant.organizationId === organizationId) {
+      return {
+        provider: assistant.modelProvider,
+        modelId: assistant.modelId,
+      };
+    }
+  }
+  if (ids.teammateId) {
+    const teammate = await db.table("teammates").get(ids.teammateId);
+    if (teammate && teammate.organizationId === organizationId) {
+      return { provider: teammate.modelProvider, modelId: teammate.modelId };
+    }
+  }
+  return null;
+}
+
+/**
+ * A Member's chat attachment, read into text and thrown away.
+ *
+ * Serves both console surfaces, the Preview and a Teammate chat, because the
+ * question they ask is the same one. What comes back is a sealed token, not
+ * text: the extracted words land in the system prompt when the message is
+ * sent, so the round trip through the browser has to be tamper-evident
+ * (`lib/attachments.ts`).
+ *
+ * Nothing is stored. This is deliberately *not* `uploadFileSourceAction`, which
+ * would make the file a permanent Knowledge Source the whole Organization then
+ * searches; an attachment belongs to its conversation.
+ */
+export async function readChatAttachmentAction(
+  formData: FormData
+): Promise<
+  | { ok: true; name: string; chars: number; token: string }
+  | { ok: false; message: string }
+> {
+  const { db, session } = await requireMember();
+  const file = formData.get("file");
+  if (!(file instanceof File)) return { ok: false, message: "No file." };
+
+  // After authorization, like the Knowledge upload's own budget and for the
+  // same reason: the anonymous case is already refused, and a pre-auth check
+  // keyed on anything the client picks is a budget the caller chooses.
+  const allowance = checkAttachmentAllowance(
+    `${session.organization.id}:${session.userId}`
+  );
+  if (!allowance.allowed) {
+    return { ok: false, message: uploadThrottledMessage(allowance.retryAfterMs) };
+  }
+
+  const check = checkAttachment({ name: file.name, size: file.size });
+  if (!check.ok) return { ok: false, message: check.reason };
+
+  let vision;
+  if (isImageAttachment(file.name)) {
+    // Which model reads the picture is the chatting entity's own, so an
+    // Organization that standardised on one provider is not quietly billed on
+    // another. Named here rather than defaulted to a constant, which would go
+    // stale the first time the catalogue moves (#893).
+    const preferred = await attachmentVisionModel(db, session.organization.id, {
+      assistantId: asId(formData.get("assistantId")),
+      teammateId: asId(formData.get("teammateId")),
+    });
+    if (preferred) {
+      const connections = await db.listProviderConnections(
+        session.organization.id
+      );
+      // Organization connections only. A Member's own subscription may answer
+      // their turns (ADR-0007), but resolving it costs a relay round trip on an
+      // upload that is already paying for a model call, and an image read on
+      // somebody else's behalf is the Organization's cost either way.
+      vision = createVisionReader(connections, preferred) ?? undefined;
+    }
+  }
+
+  try {
+    const extracted = await extractSourceText({
+      kind: "file",
+      name: file.name,
+      bytes: await file.arrayBuffer(),
+      vision,
+    });
+    return {
+      ok: true,
+      name: extracted.name,
+      chars: extracted.text.length,
+      token: sealAttachment({ name: extracted.name, text: extracted.text }),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      message: thrownMessage(error, "That file could not be read."),
+    };
+  }
 }
 
 /**

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle } from "lucide-react";
 // Icon *data* for the morphing chevron, not components: morphicons samples the
 // paths and springs between them.
 import { ChevronDown, ChevronUp } from "lucide";
@@ -120,33 +119,36 @@ export function ThinkingPanel({
         aria-expanded={open}
         data-foley-toggle=""
       >
-        <span
-          className={`inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full border bg-background ${
-            soloIcon ? "p-1" : "py-1 pr-2 pl-1"
-          }`}
-        >
-          <span className="flex -space-x-1.5">
-            {stack.length > 0 ? (
-              stack.map((step) => (
+        {/* No pill until there is an icon to put in it. Before the first step
+            lands there is nothing to name, and a spinner here would be the
+            second thing on this line saying "working": the orb beside the
+            label is already saying it, and two of them read as two
+            activities. The pill appears with the first step's own icon. */}
+        {stack.length > 0 && (
+          <span
+            className={`inline-flex h-7 min-w-7 items-center justify-center gap-1 rounded-full border bg-background ${
+              soloIcon ? "p-1" : "py-1 pr-2 pl-1"
+            }`}
+          >
+            <span className="flex -space-x-1.5">
+              {stack.map((step) => (
                 <StepIcon
                   key={step.id}
                   step={step}
                   className="size-5 shrink-0 ring-2 ring-background"
                 />
-              ))
-            ) : (
-              <LoaderCircle className="size-5 shrink-0 animate-spin text-muted-foreground" />
+              ))}
+            </span>
+            <span className="sr-only">
+              {stack.map((step) => stepIconName(step)).join(", ")}
+            </span>
+            {searchCount > 1 && (
+              <span className="text-2xs font-semibold text-muted-foreground">
+                ×{searchCount}
+              </span>
             )}
           </span>
-          <span className="sr-only">
-            {stack.map((step) => stepIconName(step)).join(", ")}
-          </span>
-          {searchCount > 1 && (
-            <span className="text-2xs font-semibold text-muted-foreground">
-              ×{searchCount}
-            </span>
-          )}
-        </span>
+        )}
         <span className="flex min-w-0 items-center text-sm leading-5 font-medium text-muted-foreground">
           {finished ? (
             (summaryLabel ?? `Thought for ${seconds ?? "a few"}s`)

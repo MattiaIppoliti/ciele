@@ -232,3 +232,48 @@ describe("extractSourceText url (admin \"add URL\" source)", () => {
     ).rejects.toThrow("Fetch failed (503)");
   });
 });
+
+/** Real PNG magic bytes: triage checks the head before anything reads it. */
+const pngBytes = () => {
+  const out = new Uint8Array(16);
+  out.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  return out.buffer as ArrayBuffer;
+};
+
+describe("extractSourceText, images", () => {
+  it("asks the caller's reader and returns what it said", async () => {
+    const vision = vi.fn().mockResolvedValue("Invoice 44 — total EUR 1,200");
+    const result = await extractSourceText({
+      kind: "file",
+      name: "screenshot.png",
+      bytes: pngBytes(),
+      vision,
+    });
+    expect(result.text).toBe("Invoice 44 — total EUR 1,200");
+    expect(vision).toHaveBeenCalledWith(
+      expect.objectContaining({ mediaType: "image/png", name: "screenshot.png" })
+    );
+  });
+
+  // Without a reader an image would fall through to the text decoder, which
+  // turns PNG bytes into mojibake and hands a model something worse than
+  // nothing. It is refused by name instead, before that can happen.
+  it("refuses an image when no reader was supplied", async () => {
+    await expect(
+      extractSourceText({ kind: "file", name: "photo.png", bytes: pngBytes() })
+    ).rejects.toThrow(/Reading images is not available/);
+  });
+
+  it("still triages first: a PNG name over other bytes never reaches the reader", async () => {
+    const vision = vi.fn();
+    await expect(
+      extractSourceText({
+        kind: "file",
+        name: "trick.png",
+        bytes: pdfBytes(),
+        vision,
+      })
+    ).rejects.toThrow();
+    expect(vision).not.toHaveBeenCalled();
+  });
+});
