@@ -63,6 +63,7 @@ import {
   type InboxFilters,
 } from "@/lib/inbox/conversation-filter";
 import { ProgressLine } from "@/components/chat/progress-line";
+import { PreflightRecordPanel } from "@/components/inbox/preflight-record";
 import {
   storedTraceLabel,
   terminalBadge,
@@ -1366,6 +1367,7 @@ export function InboxClient({
                         note={traceNote(trace)}
                       />
                     )}
+                    {trace?.preflight && <PreflightRecordPanel record={trace.preflight} />}
                     {(m.content as ChatReplyPart[]).map((part, i) => (
                       <MessagePart key={i} part={part} />
                     ))}
@@ -1544,6 +1546,12 @@ export function InboxClient({
                 <div className="grid grid-cols-2 gap-3">
                   <DetailRow label="Help desk" value={meta.escalationHelpDesk} />
                   <DetailRow label="Option" value={meta.escalationOption} />
+                  {meta.escalationRecommendedHelpDesk && (
+                    <DetailRow
+                      label="Recommended"
+                      value={`${meta.escalationRecommendedHelpDesk}${meta.escalationFollowedRecommendation ? " (followed)" : " (not followed)"}`}
+                    />
+                  )}
                 </div>
               )}
               {meta?.feedbackText && (

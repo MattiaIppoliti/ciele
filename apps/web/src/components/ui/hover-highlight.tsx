@@ -35,21 +35,36 @@ export function useSlidingPill(pillClassName?: string) {
   const visibleRef = useRef(false);
   const lastTargetRef = useRef<HTMLElement | null>(null);
 
-  const show = useCallback((el: HTMLElement) => {
+  /**
+   * Place the pill at a rect already measured in the pill's own coordinates.
+   *
+   * `el` is identity only, so a second mouseover on the same row is a no-op.
+   */
+  const showRect = useCallback((el: HTMLElement, rect: PillRect) => {
     if (el === lastTargetRef.current && visibleRef.current) return;
     lastTargetRef.current = el;
-    setPill({
-      rect: {
+    setPill({ rect, slide: visibleRef.current });
+    visibleRef.current = true;
+    setVisible(true);
+  }, []);
+
+  /**
+   * Place it from the row's offset box. Correct only where the row's
+   * offsetParent *is* the pill's container; `HoverHighlight` measures
+   * against the container instead, because a row nested in any positioned
+   * wrapper reports offsets relative to that wrapper and the pill lands at
+   * the top-left of the menu.
+   */
+  const show = useCallback(
+    (el: HTMLElement) =>
+      showRect(el, {
         top: el.offsetTop,
         left: el.offsetLeft,
         width: el.offsetWidth,
         height: el.offsetHeight,
-      },
-      slide: visibleRef.current,
-    });
-    visibleRef.current = true;
-    setVisible(true);
-  }, []);
+      }),
+    [showRect]
+  );
 
   const hide = useCallback(() => {
     visibleRef.current = false;
@@ -87,7 +102,7 @@ export function useSlidingPill(pillClassName?: string) {
     [pill, visible, pillClassName],
   );
 
-  return { show, hide, reset, pillNode };
+  return { show, showRect, hide, reset, pillNode };
 }
 
 /**
@@ -101,14 +116,34 @@ export function HoverHighlight({
   children,
   ...props
 }: React.ComponentProps<"div"> & { highlightClassName?: string }) {
-  const { show, hide, pillNode } = useSlidingPill(highlightClassName);
+  const { showRect, hide, pillNode } = useSlidingPill(highlightClassName);
 
   function onMouseOver(event: React.MouseEvent<HTMLDivElement>) {
     const row = (event.target as HTMLElement).closest<HTMLElement>(
       "[data-highlight-row]",
     );
     if (!row || !event.currentTarget.contains(row)) return;
-    show(row);
+    // Measured against this container, not the row's offsetParent. A row
+    // inside a positioned wrapper (the sidebar's fold groups are `relative`,
+    // so the fold chevron has something to sit against) reported an offset of
+    // zero, and the pill drew itself at the top-left of the nav behind
+    // whatever was there.
+    //
+    // The scroll offsets are the other half of that. Two bounding rects give
+    // the row's position in the *viewport*, and the pill is absolutely
+    // positioned in the container's **content** box, which scrolls: the org
+    // switcher and the assistant scope switcher are both
+    // `max-h-72 overflow-y-auto`, so in a list scrolled 150px down the pill
+    // would otherwise be drawn 150px above the row under the pointer.
+    const scroller = event.currentTarget;
+    const container = scroller.getBoundingClientRect();
+    const box = row.getBoundingClientRect();
+    showRect(row, {
+      top: box.top - container.top + scroller.scrollTop,
+      left: box.left - container.left + scroller.scrollLeft,
+      width: box.width,
+      height: box.height,
+    });
   }
 
   return (

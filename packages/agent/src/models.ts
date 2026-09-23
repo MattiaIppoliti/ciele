@@ -26,10 +26,13 @@ export { MODEL_CATALOG } from "./catalog";
  * per-provider tables below deliberately exclude it; resolution reads its
  * config instead (see `compatibleModelId`).
  */
-type CatalogProvider = Exclude<Provider, "openai_compatible">;
+export type CatalogProvider = Exclude<Provider, "openai_compatible">;
 
-/** Cheap models used for intent classification, per provider. */
-const CLASSIFIER_MODEL: Record<CatalogProvider, string> = {
+/**
+ * Cheap models used for intent classification, per provider. Exported for the
+ * decision resolver (#950), whose adapter fallback wraps the same tier.
+ */
+export const CLASSIFIER_MODEL: Record<CatalogProvider, string> = {
   anthropic: "claude-haiku-4-5",
   openai: "gpt-5.1-mini",
   google: "gemini-3.1-flash-lite",

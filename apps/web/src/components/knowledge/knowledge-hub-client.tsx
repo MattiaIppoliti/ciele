@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import type {
@@ -10,19 +11,17 @@ import type {
   SourceStatus,
 } from "@agent-hub/core";
 import {
-  Activity,
   AppWindow,
-  Clock,
+  Copy,
+  Maximize2,
   Download,
+  Brain,
   ExternalLink,
-  FileStack,
   FileText,
   Globe,
-  KeyRound,
   Link2,
   List,
   MessageCircleQuestion,
-  MessageSquare,
   Pencil,
   Plus,
   Search,
@@ -38,11 +37,6 @@ import type { BadgeTone } from "@agent-hub/ui";
 import {
   Badge,
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
   Input,
 } from "@agent-hub/ui";
 import {
@@ -50,22 +44,29 @@ import {
   TableBody,
   TableCard,
   TableCell,
-  TableHead,
+  TableActions,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TableColumnHeader } from "@/components/ui/table-column-header";
+import {
+  useColumnWidths,
+  type TableColumnLayout,
+} from "@/components/ui/table-columns";
+import { TableOpenCell } from "@/components/ui/table-open-cell";
+import { TableRowMenu } from "@/components/ui/table-menu";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SelectAllHead,
+  SelectRowCell,
+  TableBulkBar,
+  useRowSelection,
+} from "@/components/ui/table-selection";
 import {
   deleteOrgSourceAction,
+  deleteOrgSourcesAction,
   exportOrgFaqsAction,
-  listSourceConceptsAction,
+  extractSourceMemoriesAction,
 } from "@/app/actions";
 import {
   AddFileDialog,
@@ -80,24 +81,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   KNOWLEDGE_TAB_LABELS,
   directAccessSummary,
-  sourceTypeLabel,
   type HubSearchParams,
   type KnowledgeTabSlug,
 } from "@/lib/knowledge-hub";
-import { DEFAULT_PAGE_SIZE, paginationRange } from "@/lib/pagination";
+import { libraryDocumentsHref } from "@/lib/source-documents";
+import { DEFAULT_PAGE_SIZE } from "@/lib/pagination";
 import { toast } from "@/lib/toast";
-
-// The dot above stays a solid palette colour: a 6px dot has to carry the state
-// on its own and a tint disappears at that size. The badge is the opposite
-// case, so it takes a Badge `tone`, which is the same pale-surface /
-// dark-ink pair every other status badge in the console now uses.
-/** The glyph on the Name column, which names what a row of this tab is. */
-const TAB_ROW_ICON: Record<KnowledgeTabSlug, typeof Globe> = {
-  websites: Globe,
-  files: FileText,
-  applications: AppWindow,
-  faqs: MessageCircleQuestion,
-};
 
 /** What the footer counts. FAQs carry their own plural. */
 const TAB_ROW_NOUN: Record<KnowledgeTabSlug, string> = {
@@ -197,12 +186,11 @@ export function KnowledgeHubClient({
   const router = useRouter();
   const pathname = usePathname();
   const [query, setQuery] = useState(filters.q);
-  const [viewing, setViewing] = useState<OrgKnowledgeSourceListItem | null>(
-    null
-  );
   const [linking, setLinking] = useState<OrgKnowledgeSourceListItem | null>(
     null
   );
+  /** Rows whose backfill has been asked for, so a second click is inert. */
+  const [extracting, setExtracting] = useState<Set<string>>(new Set());
   const [editingFaq, setEditingFaq] =
     useState<OrgKnowledgeSourceListItem | null>(null);
   const [managingAccess, setManagingAccess] =
@@ -212,6 +200,76 @@ export function KnowledgeHubClient({
   );
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [isPending, startTransition] = useTransition();
+  const selection = useRowSelection(items.map((item) => item.id));
+  /** The table is paged on the server, so sort and filter live in the URL. */
+  const direction = filters.ascending ? "asc" : "desc";
+
+  function confirmRowDelete(item: OrgKnowledgeSourceListItem) {
+    confirmDelete({
+      title: `Delete “${item.name}”?`,
+      description:
+        "This removes it for every linked assistant at once, including its indexed content.",
+      onConfirm: async () => {
+        await deleteOrgSourceAction(item.id);
+        toast.success("Deleted.");
+      },
+    });
+  }
+
+  function extractRowMemories(item: OrgKnowledgeSourceListItem) {
+    startTransition(async () => {
+      setExtracting((current) => new Set(current).add(item.id));
+      try {
+        const { queued } = await extractSourceMemoriesAction(item.id);
+        toast.success(
+          queued === 0
+            ? "Nothing to extract: every Document is up to date or already queued."
+            : `Extracting memories for ${queued} ${
+                queued === 1 ? "Document" : "Documents"
+              }.`
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not start extraction"
+        );
+      }
+    });
+  }
+
+  // The columns differ per tab, and so does what a reader chose to widen, so
+  // the remembered layout is keyed by tab rather than by "the Library".
+  const layout: TableColumnLayout[] = [
+    ...(canEdit
+      ? [{ key: "select", width: 44, fixed: true } as TableColumnLayout]
+      : []),
+    { key: "name", width: tab === "faqs" ? 320 : 380, min: 180 },
+    ...(tab === "faqs"
+      ? [{ key: "answer", width: 360, min: 160 } as TableColumnLayout]
+      : []),
+    ...(tab === "websites"
+      ? [{ key: "content", width: 140 } as TableColumnLayout]
+      : []),
+    { key: "linked", width: 220, min: 120 },
+    ...(tab === "files"
+      ? [{ key: "access", width: 170 } as TableColumnLayout]
+      : []),
+    { key: "status", width: 130 },
+    { key: "updated", width: 190 },
+    { key: "actions", width: 150, fixed: true },
+  ];
+  const columns = useColumnWidths(`library-${tab}`, layout);
+
+  /**
+   * How wide the empty row has to be. Counted rather than written down,
+   * because the columns are conditional on the tab and the reader's Role and
+   * a stale number leaves the mark hanging under the first column.
+   */
+  const columnCount =
+    (canEdit ? 1 : 0) +
+    (tab === "faqs" ? 2 : 1) +
+    (tab === "websites" ? 1 : 0) +
+    (tab === "files" ? 1 : 0) +
+    4;
 
   const apply = (patch: Partial<HubSearchParams>) => {
     const next = { ...filters, q: query, ...patch };
@@ -221,6 +279,8 @@ export function KnowledgeHubClient({
     if (next.assistant) params.set("assistant", next.assistant);
     if (next.page > 1) params.set("page", String(next.page));
     if (next.size !== DEFAULT_PAGE_SIZE) params.set("size", String(next.size));
+    if (next.sort) params.set("sort", next.sort);
+    if (next.ascending) params.set("dir", "asc");
     const qs = params.toString();
     startTransition(() => {
       router.replace(qs ? `${pathname}?${qs}` : pathname);
@@ -255,7 +315,7 @@ export function KnowledgeHubClient({
     );
   }
 
-  // The heading and the tab rail belong to `library/layout.tsx`, which outlives
+  // The heading and the tab rail belong to `library/(hub)/layout.tsx`, which outlives
   // the `[tab]` segment; this component is the bucket's own content.
   return (
     <>
@@ -282,38 +342,6 @@ export function KnowledgeHubClient({
               className="pl-8"
             />
           </div>
-          <Select
-            value={filters.status}
-            onValueChange={(v) =>
-              apply({ status: (v ?? "") as "" | SourceStatus, page: 1 })
-            }
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Any status</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="processing">Processing</SelectItem>
-              <SelectItem value="error">Error</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={filters.assistant}
-            onValueChange={(v) => apply({ assistant: (v ?? "") as string, page: 1 })}
-          >
-            <SelectTrigger className="w-52">
-              <SelectValue placeholder="Filter by assistant" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">All assistants</SelectItem>
-              {assistants.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <div className="ml-auto flex items-center gap-2">
             {tab === "faqs" && (
               <Button variant="outline" size="sm" onClick={exportFaqs}>
@@ -358,37 +386,151 @@ export function KnowledgeHubClient({
             />
           }
         >
-          <Table>
+          <TableBulkBar
+            count={selection.count}
+            noun={TAB_ROW_NOUN[tab]}
+            pluralNoun={TAB_ROW_NOUN_PLURAL[tab]}
+            onClear={selection.clear}
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending}
+              onClick={() => {
+                const ids = selection.ids;
+                const one = ids.length === 1;
+                confirmDelete({
+                  title: `Delete ${ids.length} ${
+                    one
+                      ? TAB_ROW_NOUN[tab]
+                      : (TAB_ROW_NOUN_PLURAL[tab] ?? `${TAB_ROW_NOUN[tab]}s`)
+                  }?`,
+                  description: one
+                    ? "This removes it for every linked assistant at once, including its indexed content."
+                    : "This removes them for every linked assistant at once, including their indexed content.",
+                  onConfirm: async () => {
+                    await deleteOrgSourcesAction(ids);
+                    selection.clear();
+                    toast.success("Deleted.");
+                  },
+                });
+              }}
+            >
+              <Trash2 className="mr-1.5 size-4" /> Delete
+            </Button>
+          </TableBulkBar>
+
+          <Table fixed empty={items.length === 0}>
+            {columns.colGroup}
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                {tab === "faqs" ? (
-                  <>
-                    <TableHead icon={MessageCircleQuestion} className="min-w-64">
-                      Question
-                    </TableHead>
-                    <TableHead icon={MessageSquare} className="min-w-64">
-                      Answer
-                    </TableHead>
-                  </>
-                ) : (
-                  <TableHead icon={TAB_ROW_ICON[tab]} className="min-w-64">
-                    Name
-                  </TableHead>
+                {canEdit && (
+                  <SelectAllHead
+                    state={selection.allState}
+                    onToggle={selection.toggleAll}
+                    disabled={items.length === 0}
+                  />
+                )}
+                <TableColumnHeader
+                  label={tab === "faqs" ? "Question" : "Name"}
+                  resize={columns.handleFor("name")}
+                  sort={{
+                    direction: filters.sort === "name" ? direction : null,
+                    ascLabel: "A to Z",
+                    descLabel: "Z to A",
+                    onSort: (next) =>
+                      apply({ sort: "name", ascending: next === "asc", page: 1 }),
+                    onClear: () => apply({ sort: "", page: 1 }),
+                  }}
+                  filter={{
+                    kind: "text",
+                    value: query,
+                    placeholder: `Search ${KNOWLEDGE_TAB_LABELS[
+                      tab
+                    ].toLowerCase()}…`,
+                    onChange: setQuery,
+                  }}
+                />
+                {tab === "faqs" && (
+                  <TableColumnHeader
+                    label="Answer"
+                    resize={columns.handleFor("answer")}
+                  />
                 )}
                 {tab === "websites" && (
-                  <TableHead icon={FileStack}>Content</TableHead>
+                  <TableColumnHeader
+                    label="Content"
+                    resize={columns.handleFor("content")}
+                  />
                 )}
-                <TableHead icon={Link2}>Linked assistants</TableHead>
+                <TableColumnHeader
+                  label="Linked assistants"
+                  resize={columns.handleFor("linked")}
+                  filter={{
+                    kind: "options",
+                    value: filters.assistant,
+                    anyLabel: "All assistants",
+                    options: assistants.map((a) => ({
+                      value: a.id,
+                      label: a.title,
+                    })),
+                    onChange: (value) => apply({ assistant: value, page: 1 }),
+                  }}
+                />
                 {tab === "files" && (
-                  <TableHead icon={KeyRound}>Direct access</TableHead>
+                  <TableColumnHeader
+                    label="Direct access"
+                    resize={columns.handleFor("access")}
+                  />
                 )}
                 {/* Status, where "Created at" used to be. When a row was first
                     added answers nothing anyone asks of this table; whether it
                     is answering questions yet is the whole question, and a
                     crawling website had no status column at all. */}
-                <TableHead icon={Activity}>Status</TableHead>
-                <TableHead icon={Clock}>Last updated at</TableHead>
-                <TableHead className="w-24" />
+                <TableColumnHeader
+                  label="Status"
+                  resize={columns.handleFor("status")}
+                  sort={{
+                    direction: filters.sort === "status" ? direction : null,
+                    ascLabel: "Errors first",
+                    descLabel: "Ready first",
+                    onSort: (next) =>
+                      apply({ sort: "status", ascending: next === "asc", page: 1 }),
+                    onClear: () => apply({ sort: "", page: 1 }),
+                  }}
+                  filter={{
+                    kind: "options",
+                    value: filters.status,
+                    anyLabel: "Any status",
+                    options: [
+                      { value: "ready", label: "Ready" },
+                      { value: "processing", label: "Processing" },
+                      { value: "error", label: "Error" },
+                    ],
+                    onChange: (value) =>
+                      apply({ status: value as "" | SourceStatus, page: 1 }),
+                  }}
+                />
+                <TableColumnHeader
+                  label="Last updated at"
+                  resize={columns.handleFor("updated")}
+                  sort={{
+                    direction: filters.sort === "updatedAt" ? direction : null,
+                    ascLabel: "Oldest first",
+                    descLabel: "Newest first",
+                    onSort: (next) =>
+                      apply({
+                        sort: "updatedAt",
+                        ascending: next === "asc",
+                        page: 1,
+                      }),
+                    onClear: () => apply({ sort: "", page: 1 }),
+                  }}
+                />
+                {/* Named, rather than the blank cell it was: a column of
+                    controls with no heading reads as an overflow of the one
+                    before it. */}
+                <TableColumnHeader label="Actions" align="right" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -398,27 +540,108 @@ export function KnowledgeHubClient({
                       empty tab is the same fact the rest of the console draws
                       the same way. `hover:bg-transparent` because there is no
                       row here to highlight. */}
-                  <TableCell colSpan={6} className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={columnCount}
+                    className="hover:bg-transparent"
+                  >
                     <EmptyState size="sm" title="Nothing here yet" />
                   </TableCell>
                 </TableRow>
               )}
               {items.map((item) => (
-                <TableRow key={item.id}>
+                <TableRowMenu
+                  key={item.id}
+                  title={item.name}
+                  onOpen={
+                    canEdit ? () => selection.selectForMenu(item.id) : undefined
+                  }
+                  actions={[
+                    {
+                      label: "Open",
+                      icon: Maximize2,
+                      href: libraryDocumentsHref(item.kind, item.id),
+                    },
+                    {
+                      label: "Copy ID",
+                      icon: Copy,
+                      onSelect: () => {
+                        void navigator.clipboard?.writeText(item.id);
+                        toast.success("ID copied.");
+                      },
+                    },
+                    canEdit && {
+                      label: "Manage linked assistants",
+                      icon: Link2,
+                      onSelect: () => setLinking(item),
+                    },
+                    canEdit &&
+                      tab === "files" && {
+                        label: "Manage direct access",
+                        icon: Pencil,
+                        disabled: !item.originalObjectPath,
+                        onSelect: () => setManagingAccess(item),
+                      },
+                    tab === "files" && {
+                      label: "Download original",
+                      icon: Download,
+                      disabled: !item.originalObjectPath,
+                      onSelect: () => downloadOriginal(item),
+                    },
+                    canEdit &&
+                      tab === "faqs" && {
+                        label: "Edit FAQ",
+                        icon: Pencil,
+                        onSelect: () => setEditingFaq(item),
+                      },
+                    canEdit && {
+                      label: "Extract memories",
+                      icon: Brain,
+                      disabled: extracting.has(item.id),
+                      onSelect: () => extractRowMemories(item),
+                    },
+                    canEdit && {
+                      label: "Delete",
+                      icon: Trash2,
+                      destructive: true,
+                      onSelect: () => confirmRowDelete(item),
+                    },
+                  ]}
+                >
+                <TableRow
+                  data-state={
+                    selection.isSelected(item.id) ? "selected" : undefined
+                  }
+                >
+                  {canEdit && (
+                    <SelectRowCell
+                      checked={selection.isSelected(item.id)}
+                      onToggle={() => selection.toggle(item.id)}
+                      label={item.name}
+                    />
+                  )}
                   {tab === "faqs" ? (
                     <>
-                      <TableCell className="max-w-80 align-top font-medium whitespace-normal">
-                        {item.name}
+                      <TableCell className="align-top font-medium">
+                        <TableOpenCell
+                          href={libraryDocumentsHref(item.kind, item.id)}
+                          label={item.name}
+                        >
+                          <span className="block truncate">{item.name}</span>
+                        </TableOpenCell>
                       </TableCell>
-                      <TableCell className="text-muted-foreground max-w-96 align-top whitespace-normal">
-                        <span className="line-clamp-2">
+                      <TableCell className="text-muted-foreground align-top">
+                        <span className="block truncate">
                           {item.answerPreview || "—"}
                         </span>
                       </TableCell>
                     </>
                   ) : (
-                    <TableCell className="max-w-96">
-                      <span className="flex items-start gap-2">
+                    <TableCell>
+                      <TableOpenCell
+                        href={libraryDocumentsHref(item.kind, item.id)}
+                        label={item.name}
+                        className="flex items-start gap-2"
+                      >
                         {item.kind === "website" ? (
                           <Globe className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                         ) : item.kind === "url" ? (
@@ -431,9 +654,12 @@ export function KnowledgeHubClient({
                           <FileText className="text-muted-foreground mt-0.5 size-4 shrink-0" />
                         )}
                         <span className="min-w-0">
-                          <span className="block truncate font-medium">
+                          <Link
+                            href={libraryDocumentsHref(item.kind, item.id)}
+                            className="press-text block truncate font-medium hover:underline"
+                          >
                             {item.name}
-                          </span>
+                          </Link>
                           {tab === "websites" && item.config.url && (
                             <a
                               href={item.config.url}
@@ -441,7 +667,7 @@ export function KnowledgeHubClient({
                               rel="noreferrer"
                               className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
                             >
-                              <span className="max-w-72 truncate">
+                              <span className="truncate">
                                 {item.config.url}
                               </span>
                               <ExternalLink className="size-3 shrink-0" />
@@ -459,19 +685,18 @@ export function KnowledgeHubClient({
                             </a>
                           )}
                         </span>
-                      </span>
+                      </TableOpenCell>
                     </TableCell>
                   )}
                   {tab === "websites" && (
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => setViewing(item)}
-                        className="text-primary font-medium hover:underline"
+                      <Link
+                        href={libraryDocumentsHref(item.kind, item.id)}
+                        className="text-primary press-text font-medium hover:underline"
                       >
                         {item.conceptCount}{" "}
-                        {item.conceptCount === 1 ? "Page" : "Pages"}
-                      </button>
+                        {item.conceptCount === 1 ? "Document" : "Documents"}
+                      </Link>
                     </TableCell>
                   )}
                   <TableCell>
@@ -519,7 +744,7 @@ export function KnowledgeHubClient({
                     {formatWhen(item.updatedAt)}
                   </TableCell>
                   <TableCell>
-                    <span className="flex justify-end gap-1">
+                    <TableActions>
                       {tab === "files" && (
                         <Button
                           variant="ghost"
@@ -537,6 +762,41 @@ export function KnowledgeHubClient({
                       )}
                       {canEdit && (
                         <>
+                          {/* The memories backfill (#933), on the row rather
+                              than only inside the Source: an admin catching up
+                              a whole Library should not have to open each one. */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Extract memories"
+                            disabled={extracting.has(item.id)}
+                            onClick={() =>
+                              startTransition(async () => {
+                                setExtracting((current) =>
+                                  new Set(current).add(item.id)
+                                );
+                                try {
+                                  const { queued } =
+                                    await extractSourceMemoriesAction(item.id);
+                                  toast.success(
+                                    queued === 0
+                                      ? "Nothing to extract: every Document is up to date or already queued."
+                                      : `Extracting memories for ${queued} ${
+                                          queued === 1 ? "Document" : "Documents"
+                                        }.`
+                                  );
+                                } catch (error) {
+                                  toast.error(
+                                    error instanceof Error
+                                      ? error.message
+                                      : "Could not start extraction"
+                                  );
+                                }
+                              })
+                            }
+                          >
+                            <Brain className="size-4" />
+                          </Button>
                           {tab === "faqs" && (
                             <Button
                               variant="ghost"
@@ -550,6 +810,7 @@ export function KnowledgeHubClient({
                           <Button
                             variant="ghost"
                             size="icon"
+                            data-destructive=""
                             title="Delete"
                             onClick={() =>
                               confirmDelete({
@@ -567,9 +828,10 @@ export function KnowledgeHubClient({
                           </Button>
                         </>
                       )}
-                    </span>
+                    </TableActions>
                   </TableCell>
                 </TableRow>
+                </TableRowMenu>
               ))}
             </TableBody>
           </Table>
@@ -577,11 +839,6 @@ export function KnowledgeHubClient({
       </div>
 
       {/* Keyed by item so every open starts from fresh state. */}
-      <ViewSourceDialog
-        key={viewing?.id ?? "closed"}
-        item={viewing}
-        onClose={() => setViewing(null)}
-      />
       <LinkAssistantsDialog
         key={`link-${linking?.id ?? "closed"}`}
         item={linking}
@@ -623,164 +880,3 @@ export function KnowledgeHubClient({
   );
 }
 
-/**
- * The "View knowledge source" modal: type badge, page count, KB URL, and a
- * searchable pages list (bounded server-side; searched and paged locally).
- */
-function ViewSourceDialog({
-  item,
-  onClose,
-}: {
-  item: OrgKnowledgeSourceListItem | null;
-  onClose: () => void;
-}) {
-  const [pages, setPages] = useState<
-    Array<{ id: string; title: string; path: string; resourceUrl: string | null }>
-  >([]);
-  // The dialog is remounted per item (keyed by the parent), so initial state
-  // is already fresh, the effect only fetches.
-  const [loading, setLoading] = useState(item !== null);
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 8;
-
-  useEffect(() => {
-    if (!item) return;
-    let cancelled = false;
-    listSourceConceptsAction(item.id)
-      .then((r) => {
-        if (!cancelled) setPages(r.items);
-      })
-      .catch(() => toast.error("Could not load this source's pages."))
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [item]);
-
-  const filtered = useMemo(
-    () =>
-      pages.filter(
-        (p) =>
-          p.title.toLowerCase().includes(query.toLowerCase()) ||
-          (p.resourceUrl ?? "").toLowerCase().includes(query.toLowerCase())
-      ),
-    [pages, query]
-  );
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  return (
-    <Dialog open={item !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>View knowledge source: {item?.name}</DialogTitle>
-          <DialogDescription>
-            The pages indexed under this knowledge source.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="text-muted-foreground flex items-center gap-3 text-sm">
-          {item && (
-            <Badge variant="outline">{sourceTypeLabel(item.kind)}</Badge>
-          )}
-          <span>
-            {item?.conceptCount} {item?.conceptCount === 1 ? "Page" : "Pages"}
-          </span>
-          {item?.config.url && (
-            <a
-              href={item.config.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-primary max-w-72 truncate hover:underline"
-            >
-              {item.config.url}
-            </a>
-          )}
-        </div>
-        <Input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setPage(1);
-          }}
-          placeholder="Search"
-        />
-        <div className="max-h-80 overflow-y-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead icon={FileText}>Name</TableHead>
-                <TableHead icon={Link2}>Link</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading && (
-                <TableRow>
-                  <TableCell
-                    colSpan={2}
-                    className="text-muted-foreground h-16 text-center"
-                  >
-                    Loading…
-                  </TableCell>
-                </TableRow>
-              )}
-              {!loading && slice.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={2}
-                    className="text-muted-foreground h-16 text-center"
-                  >
-                    No pages found.
-                  </TableCell>
-                </TableRow>
-              )}
-              {slice.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="max-w-64 whitespace-normal">
-                    <span className="line-clamp-2">{p.title}</span>
-                  </TableCell>
-                  <TableCell className="max-w-72">
-                    {p.resourceUrl ? (
-                      <a
-                        href={p.resourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary block truncate hover:underline"
-                      >
-                        {p.resourceUrl}
-                      </a>
-                    ) : (
-                      <span className="text-muted-foreground">{p.path}</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        {pageCount > 1 && (
-          <div className="flex items-center justify-center gap-1">
-            {paginationRange(page, pageCount).map((entry, i) =>
-              entry === "ellipsis" ? (
-                <span key={`e-${i}`} className="text-muted-foreground px-2">
-                  …
-                </span>
-              ) : (
-                <Button
-                  key={entry}
-                  variant={entry === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setPage(entry)}
-                >
-                  {entry}
-                </Button>
-              )
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}

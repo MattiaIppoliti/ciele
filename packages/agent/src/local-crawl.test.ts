@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractPage, globToRegExp, localCrawl } from "./local-crawl";
+import {
+  extractPage,
+  globToRegExp,
+  isSameSiteRedirect,
+  localCrawl,
+} from "./local-crawl";
 
 vi.mock("node:dns/promises", () => ({
   lookup: vi.fn().mockResolvedValue([{ address: "93.184.216.34", family: 4 }]),
@@ -86,5 +91,25 @@ describe("localCrawl", () => {
 
     expect(pages).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+});
+
+describe("isSameSiteRedirect", () => {
+  const same = (from: string, to: string) =>
+    isSameSiteRedirect(new URL(from), new URL(to));
+
+  it("accepts the www and https canonicalizations a site does to its own address", () => {
+    expect(same("https://example.com/", "https://www.example.com/")).toBe(true);
+    expect(same("https://www.example.com/", "https://example.com/")).toBe(true);
+    expect(same("http://example.com/", "https://example.com/")).toBe(true);
+    expect(same("http://example.com/", "https://www.example.com/en")).toBe(true);
+  });
+
+  it("refuses another domain, another subdomain, a port change and a downgrade", () => {
+    expect(same("https://example.com/", "https://other.example/")).toBe(false);
+    expect(same("https://example.com/", "https://admin.example.com/")).toBe(false);
+    expect(same("https://example.com/", "https://example.com.evil/")).toBe(false);
+    expect(same("https://example.com/", "https://example.com:8443/")).toBe(false);
+    expect(same("https://example.com/", "http://example.com/")).toBe(false);
   });
 });

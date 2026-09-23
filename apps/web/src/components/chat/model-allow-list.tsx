@@ -18,17 +18,25 @@ import { Checkbox } from "@/components/ui/checkbox";
  * Assistant is choosing intent, and a list that hid a model because a
  * credential is momentarily missing would quietly forget the choice on save.
  * Capability is applied where it belongs, at read time, by `chatModelOptions`.
+ *
+ * It is *said* here, though. A provider with no credential is labelled and its
+ * models are marked, because the alternative is what shipped: three boxes
+ * ticked, "the chat window offers 3 models" underneath, and a chat window with
+ * no picker in it.
  */
 export function ModelAllowList({
   configured,
   value,
   onChange,
   disabled = false,
+  unavailable = [],
 }: {
   configured: ModelRef;
   value: ModelRef[];
   onChange: (next: ModelRef[]) => void;
   disabled?: boolean;
+  /** Providers the Organization has no credential for (`providersWithoutCredential`). */
+  unavailable?: Provider[];
 }) {
   const providers = (Object.keys(PROVIDER_NAMES) as Provider[]).filter(
     (provider) => MODEL_CATALOG[provider].length > 0
@@ -48,6 +56,9 @@ export function ModelAllowList({
         <div key={provider} className="space-y-2">
           <p className="text-muted-foreground text-xs font-medium">
             {PROVIDER_NAMES[provider]}
+            {unavailable.includes(provider) && (
+              <span className="font-normal"> · no credential yet</span>
+            )}
           </p>
           <div className="space-y-2">
             {MODEL_CATALOG[provider].map((model) => {
@@ -65,7 +76,13 @@ export function ModelAllowList({
                     disabled={disabled || isConfigured}
                     onCheckedChange={(next) => toggle(ref, next === true)}
                   />
-                  <span className={isConfigured ? "text-muted-foreground" : ""}>
+                  <span
+                    className={
+                      isConfigured || unavailable.includes(provider)
+                        ? "text-muted-foreground"
+                        : ""
+                    }
+                  >
                     {model.label}
                     {isConfigured ? " (configured)" : ""}
                   </span>
@@ -85,10 +102,35 @@ export function ModelAllowList({
  * Counts the configured model, because that is what the asker sees. One means
  * no picker at all, which is worth saying plainly: a checkbox list where every
  * box is clear looks like a broken control rather than a deliberate default.
+ *
+ * Counts only what the Organization can answer on, for the same reason: a
+ * ticked model whose provider has no credential is dropped by
+ * `chatModelOptions` and never reaches the composer, so counting it here would
+ * promise a picker that does not appear.
  */
-export function modelAllowListSummary(value: ModelRef[]): string {
-  const count = value.length + 1;
-  return count < 2
-    ? "No picker: everyone runs the configured model."
-    : `The chat window offers ${count} models.`;
+export function modelAllowListSummary(
+  value: ModelRef[],
+  unavailable: Provider[] = []
+): string {
+  const waiting = value.filter((ref) => unavailable.includes(ref.provider));
+  const count = value.length - waiting.length + 1;
+  const names = listProviders(waiting.map((ref) => ref.provider));
+  const held =
+    waiting.length === 0
+      ? ""
+      : ` ${names} ${names.includes(" and ") ? "have" : "has"} no credential yet, so ${
+          waiting.length === 1 ? "that model stays" : "those models stay"
+        } out of the picker. Add one in Settings → AI.`;
+  const picker =
+    count < 2
+      ? "No picker: everyone runs the configured model."
+      : `The chat window offers ${count} models.`;
+  return picker + held;
+}
+
+/** "Anthropic", "Anthropic and OpenAI", "Anthropic, OpenAI and Google". */
+function listProviders(providers: Provider[]): string {
+  const names = [...new Set(providers)].map((provider) => PROVIDER_NAMES[provider]);
+  if (names.length <= 1) return names.join("");
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }

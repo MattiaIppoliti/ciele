@@ -127,9 +127,15 @@ import {
   createFaqOp,
   createOrgFaqOp,
   getOrgFaqOp,
+  getDocumentSummaryOp,
+  extractSourceMemoriesOp,
+  forgetKnowledgeMemoryOp,
   getSourceOp,
+  listDocumentMemoriesOp,
+  restoreKnowledgeMemoryOp,
+  getSourceDocumentOp,
+  listDocumentChunksOp,
   importOrgFaqsOp,
-  listSourceConceptsOp,
   updateOrgFaqOp,
   createFlowOp,
   createEntityOp,
@@ -147,7 +153,9 @@ import {
   deleteAssistantGoalOp,
   deleteMemoryOp,
   deleteSourceOp,
+  deleteSourcesOp,
   unlinkSourceOp,
+  unlinkSourcesOp,
   duplicateAssistantOp,
   importFaqsOp,
   importEntityRecordsOp,
@@ -158,6 +166,8 @@ import {
   OperationError,
   recrawlSourceOp,
   setDirectAccessOp,
+  setDocumentExcludedOp,
+  setDocumentsExcludedOp,
   setSourceLinksOp,
   reorderFlowsOp,
   reorderSupportChannelsOp,
@@ -188,6 +198,8 @@ import {
   createFederatedProviderConnectionOp,
   createOpenAiCompatibleConnectionOp,
   createProviderApiKeyOp,
+  deleteCrawlerConnectionOp,
+  setCrawlerConnectionOp,
   deleteApiIntegrationOp,
   deleteProviderConnectionOp,
   disconnectSsoConnectionOp,
@@ -1185,6 +1197,28 @@ export async function republishAction(
   return version;
 }
 
+// --- Crawler connections (Settings → Crawling) -----------------------------------------
+
+/**
+ * Seals and stores the Organization's own Apify token (admins). The token is
+ * checked against Apify first; expected failures come back as a message for
+ * the client to toast rather than a throw.
+ */
+export async function setCrawlerConnectionAction(input: {
+  token: string;
+  accountId?: string;
+}): Promise<{ error?: string }> {
+  const result = await runOperation(setCrawlerConnectionOp, {
+    provider: "apify",
+    ...input,
+  });
+  return result.error ? { error: result.error } : {};
+}
+
+export async function deleteCrawlerConnectionAction() {
+  await runOperation(deleteCrawlerConnectionOp, { provider: "apify" });
+}
+
 // --- Provider connections ------------------------------------------------------------
 
 /**
@@ -1596,6 +1630,14 @@ export async function recrawlWebsiteSourceAction(
 }
 
 /**
+ * The same re-crawl from a surface that has no Assistant in scope, the
+ * Documents route's header menu (#927). One operation behind both.
+ */
+export async function recrawlSourceAction(sourceId: string) {
+  await runOperation(recrawlSourceOp, { id: sourceId });
+}
+
+/**
  * Polls an in-flight website crawl: finalizes it if the provider run has
  * finished (ingesting its pages) and returns the Source's current status. The
  * Knowledge UI calls this on an interval while a source is `processing`.
@@ -1616,73 +1658,118 @@ export async function pollWebsiteCrawlAction(
   );
 }
 
-/** Per-page exclusion: removes (or restores) the page's search chunks. */
-export async function setPageExcludedAction(
-  assistantId: string,
-  conceptId: string,
-  excluded: boolean,
-) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    async ({ db, session }) => {
-      await db.setConceptExcluded(conceptId, excluded);
-      if (excluded) {
-        await db.deleteChunksByConcept(conceptId);
-      } else {
-        const concept = await db.getConcept(conceptId);
-        if (concept) {
-          const connections = await db.listProviderConnections(
-            session.organization.id,
-          );
-          await embedConcept({
-            db,
-            assistantId,
-            collectionId: concept.collectionId,
-            conceptId,
-            title: concept.frontmatter.title ?? concept.path,
-            body: concept.body,
-            connections,
-          });
-        }
-      }
-    },
-  );
+/**
+ * "Extract memories" (#933): the by-hand backfill for a Source whose knowledge
+ * predates this layer. Returns how many Documents it queued.
+ */
+export async function extractSourceMemoriesAction(sourceId: string) {
+  return runOperation(extractSourceMemoriesOp, { sourceId });
 }
 
-/** Per-page re-crawl override; null clears it back to inheriting the site. */
-export async function setPageRecrawlScheduleAction(
-  assistantId: string,
-  conceptId: string,
-  schedule: RecrawlSchedule | null,
+/** Forget one memory (#932), with the Member's optional reason. */
+export async function forgetMemoryAction(id: string, reason?: string) {
+  return runOperation(forgetKnowledgeMemoryOp, { id, reason });
+}
+
+/** Restore one, clearing the whole forget state. */
+export async function restoreMemoryAction(id: string) {
+  return runOperation(restoreKnowledgeMemoryOp, { id });
+}
+
+/** The tab's own read, after a forget or a restore has changed it. */
+export async function listDocumentMemoriesAction(input: {
+  sourceId: string;
+  documentPath: string;
+  includeForgotten?: boolean;
+}) {
+  return runOperation(listDocumentMemoriesOp, input);
+}
+
+/**
+ * A Document's Summary (#931), asked for after the route has painted.
+ *
+ * A read that may write once: the operation generates when nothing is cached
+ * and stores the result on the Document row. It declares no entities, because
+ * caching a summary changes nothing a reader would want re-rendered elsewhere.
+ */
+export async function documentSummaryAction(input: {
+  sourceId: string;
+  documentId: string;
+  assistantId?: string;
+}) {
+  return runOperation(getDocumentSummaryOp, input);
+}
+
+/**
+ * One page of a Document's chunks (#929), for the tab's pager.
+ *
+ * The route renders page one; this is how the dialog's arrows cross a page
+ * boundary without a navigation. The operation carries the same guards the
+ * Document route walked, so the ids in the client are not a way past them.
+ */
+export async function listDocumentChunksAction(input: {
+  sourceId: string;
+  documentId: string;
+  assistantId?: string;
+  page: number;
+}) {
+  return runOperation(listDocumentChunksOp, input);
+}
+
+/**
+ * The whole body of one Document (#928), for the Content pane's "Show all".
+ *
+ * The route ships the head before the fold; the rest is read here, through
+ * the same `member` operation with the same Source and Assistant guards, when
+ * a reader asks for it. Also what the copy button copies.
+ */
+export async function getDocumentBodyAction(input: {
+  sourceId: string;
+  documentId: string;
+  assistantId?: string;
+}): Promise<string> {
+  const view = await runOperation(getSourceDocumentOp, input);
+  return view.document.body;
+}
+
+/**
+ * Exclusion from retrieval, from a Document's Details column (#928).
+ *
+ * Replaced the assistant-scoped `setPageExcludedAction`, whose only caller was
+ * the dialog #927 deleted. The operation owns the rule (drop the chunks, or
+ * re-embed through the port) and declares what it touched, so the Library and
+ * the Assistant editor both refresh from one place.
+ */
+export async function setDocumentExcludedAction(
+  sourceId: string,
+  documentId: string,
+  excluded: boolean,
 ) {
-  await orgMutation(
-    {
-      capability: "edit",
-      entities: [{ kind: "assistantEditor", assistantId }],
-    },
-    ({ db }) => db.setConceptRecrawlSchedule(conceptId, schedule),
-  );
+  await runOperation(setDocumentExcludedOp, { sourceId, documentId, excluded });
+}
+
+/**
+ * The same flip over a selection in the Documents table (#927). One call, one
+ * revalidation; it answers how many rows it actually moved, since a tick on a
+ * row the crawl has since replaced is dropped rather than refused.
+ */
+export async function setDocumentsExcludedAction(
+  sourceId: string,
+  documentIds: string[],
+  excluded: boolean,
+): Promise<{ changed: number }> {
+  const { changed } = await runOperation(setDocumentsExcludedOp, {
+    sourceId,
+    documentIds,
+    excluded,
+  });
+  return { changed };
 }
 
 // FAQs mode: each FAQ is an OKF concept of type "FAQ". The persist helper
 // moved to lib/op-ports.ts (#622) so both surfaces share it as a port.
 
 // --- Org-level knowledge hub (PRD #726) --------------------------------------
-
-/** The "View knowledge source" pages list (bounded server-side). */
-export async function listSourceConceptsAction(sourceId: string): Promise<{
-  items: Array<{
-    id: string;
-    title: string;
-    path: string;
-    resourceUrl: string | null;
-  }>;
-}> {
-  return runOperation(listSourceConceptsOp, { sourceId });
-}
 
 /** Replaces a Source's full linked-assistant set ("Manage linked assistants"). */
 export async function setSourceLinksAction(
@@ -1704,6 +1791,11 @@ export async function setSourceDirectAccessAction(
 /** Hub delete: removes the item for every linked Assistant at once. */
 export async function deleteOrgSourceAction(sourceId: string) {
   await runOperation(deleteSourceOp, { id: sourceId });
+}
+
+/** The same, over the rows ticked in the Library's table. */
+export async function deleteOrgSourcesAction(sourceIds: string[]) {
+  await runOperation(deleteSourcesOp, { ids: sourceIds });
 }
 
 /** Hub single-Q&A create: lands in the org Knowledge Library, linked as chosen. */
@@ -1999,6 +2091,14 @@ export async function unlinkSourceAction(
   await runOperation(unlinkSourceOp, { assistantId, sourceId });
 }
 
+/** The same, over the rows ticked in the editor's Knowledge table. */
+export async function unlinkSourcesAction(
+  assistantId: string,
+  sourceIds: string[],
+) {
+  await runOperation(unlinkSourcesOp, { assistantId, sourceIds });
+}
+
 export async function deleteConceptAction(
   assistantId: string,
   conceptId: string,
@@ -2036,6 +2136,21 @@ export async function deleteConceptAction(
       }
     },
   );
+}
+
+/**
+ * Bulk delete from the editor's FAQ table. It loops the single-row action
+ * rather than growing an operation of its own: the FAQ-owns-a-Source rule
+ * below has to hold per row anyway, so one implementation is the only way the
+ * two paths cannot drift.
+ */
+export async function deleteConceptsAction(
+  assistantId: string,
+  conceptIds: string[],
+) {
+  for (const conceptId of conceptIds) {
+    await deleteConceptAction(assistantId, conceptId);
+  }
 }
 
 // --- Conversations (preview history) ----------------------------------------------------

@@ -43,6 +43,54 @@ because it is what Next actually told the browser to fetch.
 Only statically prerendered routes show up, a dynamic route emits no build-time HTML. That
 still covers the whole marketing surface and several admin pages.
 
+### The document itself: `pnpm measure:document`
+
+```bash
+pnpm --filter @agent-hub/web build            # the budgets run here too, as --check
+pnpm --filter @agent-hub/web measure:document # per-route table
+```
+
+The client bundle is not the whole payload. Each document also carries the HTML and the RSC
+flight payload inlined in it, and `measure:bundle` counts neither: it reads the `<script
+src>` tags and ignores everything between them. So this axis was measured by nothing until
+an audit went looking, and it had been carrying two shared costs for months.
+
+What it reports per prerendered route: HTML raw, HTML gzip, the decoded flight payload, the
+payload's share of the document, and the largest single flight row. Three budgets gate, and
+they are derived rather than a per-route table, because a 32-route table is a table nobody
+updates:
+
+| Budget | Catches |
+|---|---|
+| total payload across all documents | a shared cost, which multiplies by the document count |
+| largest document payload | one page going wrong on its own |
+| largest single row | a payload handed to a client component instead of a key |
+
+The raw HTML column is printed and deliberately **not** gated: 21 of the 32 documents sit
+above Next's 128 kB warning threshold, the bytes there are real marketing copy, and a
+passing budget would have to start above 210 kB, which gates nothing.
+
+The two costs it found, both since fixed, are the shapes to watch for:
+
+- **A heavy not-found boundary.** `app/not-found.tsx` drew 50 localized prompt cards. Next
+  serializes a not-found boundary into the payload of *every* route beneath it, so that was
+  40 kB of every document in the app, twice over. On `/assistants` it was 42.6 kB of a
+  58.9 kB payload, refetched on every soft navigation, to draw a page the Member was not
+  looking at. The art moved behind a `"use client"` boundary, which leaves a module
+  reference in every other route and puts the strings in a chunk only the 404 loads.
+- **A string passed as a prop.** `CloudCallout` handed `CloudAvatar` a ~17 kB generated SVG,
+  twice, one instance per breakpoint with the other `display:none`. Each copy is charged
+  once in the flight payload and once in the rendered HTML: ~67 kB per marketing document
+  for a decorative, `aria-hidden` mascot. The faces moved to `public/bloub/*.svg`, the
+  component takes the expression name, and the two instances became one with `lg:` overrides.
+
+Together: marketing documents fell 35-44% (`/home` 313 -> 204 kB, `/features/flows` 245 ->
+137 kB), `/assistants` 112 -> 63 kB, and the eight `.rsc` payloads over 128 kB became none.
+
+Same caveat as `measure:bundle`: only prerendered routes emit build-time HTML. The shared
+cost this catches is shared with the dynamic routes anyway, since the boundary sits in the
+same layout tree.
+
 ### Ratios: `pnpm analyze` + `pnpm attribute`
 
 ```bash

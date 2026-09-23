@@ -9,7 +9,7 @@
 // upstream's spelling so re-adding a feature is an additive change.
 
 import { motion, useReducedMotion } from "motion/react";
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { Skeleton } from "@agent-hub/ui";
 import {
@@ -32,8 +32,6 @@ export interface SortState {
 export interface TableColumn<T> {
   key: string;
   header: ReactNode;
-  /** The glyph that names the column, drawn before the label. */
-  icon?: ComponentType<{ className?: string }>;
   /** Read the raw value, used for sorting and as the default cell body. */
   accessor?: (row: T) => string | number | null | undefined;
   /** Render the cell. Falls back to `accessor`. */
@@ -156,7 +154,6 @@ export function Table<T>({
                 <TableHead
                   key={column.key}
                   scope="col"
-                  icon={column.sortable && column.accessor ? undefined : column.icon}
                   aria-sort={
                     active
                       ? sort.direction === "asc"
@@ -175,9 +172,6 @@ export function Table<T>({
                       onClick={() => toggleSort(column.key)}
                       className="hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
                     >
-                      {column.icon ? (
-                        <column.icon className="size-3.5 opacity-70" aria-hidden="true" />
-                      ) : null}
                       {column.header}
                       <motion.span
                         aria-hidden

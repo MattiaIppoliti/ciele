@@ -12,7 +12,16 @@ let organizationId: string;
 let foreignOrganizationId: string;
 let assistantId: string;
 const userId = randomUUID();
-const RPC_SIGNATURE = "public.get_org_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint)";
+/**
+ * The signature the adapter actually calls. There are two: the nine-argument
+ * one the sortable Library reads through, and the seven-argument wrapper kept
+ * for the deploy window. Hiding the wrapper would prove nothing, because
+ * nothing calls it.
+ */
+const RPC_SIGNATURE =
+  "public.get_org_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint, text, boolean)";
+const RPC_HIDDEN_SIGNATURE =
+  "public.hidden_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint, text, boolean)";
 
 beforeAll(async () => {
   pg = await createSchemaLoadedPglite();
@@ -121,7 +130,9 @@ describe("Knowledge Library bounded reads", () => {
       expect(page.items).toHaveLength(3);
       expect(page.total).toBe(60);
     } finally {
-      await pg.exec("alter function public.hidden_knowledge_source_page(uuid, text[], text, text, text, bigint, bigint) rename to get_org_knowledge_source_page");
+      await pg.exec(
+        `alter function ${RPC_HIDDEN_SIGNATURE} rename to get_org_knowledge_source_page`
+      );
     }
     await pg.exec(`revoke execute on function ${RPC_SIGNATURE} from authenticated`);
     await pg.exec("set role authenticated");

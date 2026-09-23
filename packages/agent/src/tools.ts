@@ -8,6 +8,7 @@ import type {
   ReferralCandidate,
 } from "@agent-hub/core";
 import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { APPROVAL_PENDING_NOTE } from "./approval-gate";
 import { fencedForTurn } from "./untrusted-content";
 import type { TurnSession } from "./session";
 import type {
@@ -822,6 +823,16 @@ function teammateActionSpec(action: TeammateActionTool): RuntimeToolSpec {
     inputSchema: action.inputSchema,
     label: () => action.label,
     execute: async (input, ctx) => {
+      // The gate runs before the action, never after: an action stopped after
+      // it ran is not a gate, it is a regret.
+      const stopped = await action.guard?.(input);
+      if (stopped) {
+        ctx.emitPart?.(stopped);
+        // Not an `error`. The action has not failed, it is waiting, and a
+        // model told an action failed retries it, which is how one approval
+        // request becomes four.
+        return { pending: true, note: APPROVAL_PENDING_NOTE };
+      }
       const outcome = await action.run(input);
       ctx.recordResult?.({
         operation: action.operation,

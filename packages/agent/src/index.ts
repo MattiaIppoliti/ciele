@@ -24,6 +24,8 @@
 // Host ports: the two facts the runtime needs from the process hosting it.
 // Registered once at startup (apps/web does it from `instrumentation.ts`); both
 // have defaults that keep the runtime correct if nobody registers anything.
+export { runTriageDecision } from "./improvement-decisions";
+export type { TriageDecisionResult } from "./improvement-decisions";
 export { registerRuntimeHost, DEFAULT_PLATFORM_PROMPT } from "./host";
 export type { RuntimeHost } from "./host";
 
@@ -102,6 +104,10 @@ export {
   RECRAWL_SWEEP_BATCH_SIZE,
   CRAWL_FINALIZE_BATCH_SIZE,
 } from "./scheduled";
+// The pre-flight's nightly drift replay (#953): the cron tick over the
+// labelled baseline, tested without a request beside the other scheduled jobs.
+export { runPreflightDriftReplay } from "./preflight-drift";
+export type { PreflightDriftReport } from "./preflight-drift";
 // Detection-as-code over the object-access ledger (#801, CYB-19): the pure
 // rules, and the cron tick that turns findings into keyed Alerts.
 export {
@@ -146,6 +152,16 @@ export { feedbackScore, forwardGraphFeedback, runGraphLearning } from "./graph-f
 // handler runs; callers enqueue.
 export { enqueueDraftProposalJob } from "./jobs";
 
+// A Document's Summary (#931): one classifier-tier call over a body, made the
+// first time a Member opens that Document and cached on its row. Best-effort:
+// no credential or a model error returns null and the card shows an Excerpt.
+export { summariseDocument, SUMMARY_INPUT_CHARS } from "./summarise-document";
+
+// The memories backfill (#933): queue extraction for one Source's Documents
+// that need it, skipping what is already fresh or already queued. Nothing
+// backfills automatically, so this is the lever the console offers instead.
+export { enqueueStaleDocumentMemoryExtractions } from "./jobs";
+
 // Synced Record ingestion (#670): "sync now" enqueue for the
 // sync_entity_records job kind (the due-scan + drain ride finalizeDueCrawls).
 export { enqueueEntitySyncJob } from "./jobs";
@@ -154,6 +170,7 @@ export { enqueueEntitySyncJob } from "./jobs";
 // Website Source crawler picker (e.g. Crawl4AI is only offered when its worker
 // is configured). Never carries the underlying credentials.
 export { websiteCrawlerCapabilities } from "./website-crawlers";
+export { verifyApifyToken } from "./apify";
 export type { WebsiteCrawlerCapabilities } from "./website-crawlers";
 
 // The nightly agentic-ops drain, standing goals, the independent answer

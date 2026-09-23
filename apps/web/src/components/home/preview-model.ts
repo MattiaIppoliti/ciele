@@ -307,7 +307,7 @@ export const LIBRARY_WEBSITES = [
   {
     name: "Acme Docs",
     url: "https://docs.acme.com",
-    content: "20 Pages",
+    content: "20 Documents",
     assistant: "Docs Navigator",
     created: "21 Jun 26 15:34",
     updated: "17 Jul 26 09:12",
@@ -315,7 +315,7 @@ export const LIBRARY_WEBSITES = [
   {
     name: "IT Knowledge Base",
     url: "https://help.acme.com",
-    content: "48 Pages",
+    content: "48 Documents",
     assistant: "Acme Helpdesk",
     created: "19 Jun 26 15:04",
     updated: "16 Jul 26 18:30",
@@ -323,7 +323,7 @@ export const LIBRARY_WEBSITES = [
   {
     name: "Acme Intranet",
     url: "https://intranet.acme.com",
-    content: "112 Pages",
+    content: "112 Documents",
     assistant: "Acme Intranet",
     created: "02 Jun 26 10:41",
     updated: "17 Jul 26 07:55",

@@ -21,6 +21,7 @@ see [`docs/runbooks/bundle-measurement.md`](../../docs/runbooks/bundle-measureme
 
 ```bash
 pnpm --filter @agent-hub/web measure:bundle   # first-load gz per prerendered route (needs a build)
+pnpm --filter @agent-hub/web measure:document # HTML + RSC payload per route; its 3 budgets run in `build`
 pnpm --filter @agent-hub/web analyze          # next experimental-analyze -o
 pnpm --filter @agent-hub/web attribute home   # per-module buckets; ratios only, not absolute KB
 ```

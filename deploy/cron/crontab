@@ -33,3 +33,6 @@
 30 4 * * *  /usr/local/bin/run-job.sh /api/cron/learn-graph
 0 5 * * *   /usr/local/bin/run-job.sh /api/cron/run-exports
 0 6 * * *   /usr/local/bin/run-job.sh /api/cron/sweep-recrawls
+# REPLAY_PREFLIGHT (#953): the labelled baseline against the live decision
+# model, once a night; a regressed case raises a system Alert.
+30 3 * * *  /usr/local/bin/run-job.sh /api/cron/replay-preflight

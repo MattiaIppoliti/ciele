@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { BLOUB_SVGS, type CloudExpression } from "@/components/marketing/bloub";
+import type { CloudExpression } from "@/components/marketing/bloub";
 import { CloudAvatar } from "@/components/marketing/cloud-avatar";
 import { cn } from "@/lib/utils";
 
@@ -43,16 +43,14 @@ export function CloudCallout({
           container, and anything (focus, scrollIntoView) that targets the
           overhanging avatar would shift the card's content sideways. */}
       <div className="relative overflow-clip rounded-3xl border border-zinc-200 bg-zinc-100 px-6 pb-40 pt-12 [--bloub-body:#0a0a0c] [--bloub-eyes:#f4f4f5] sm:px-10 lg:mt-20 lg:overflow-visible lg:px-14 lg:py-14 dark:border-zinc-800 dark:bg-zinc-900/60 dark:[--bloub-body:#fafafa] dark:[--bloub-eyes:#131318]">
-        {/* Phones + tablets: cropped by the card's bottom-right corner. */}
+        {/* One instance, placed two ways: cropped by the card's bottom-right
+            corner on phones and tablets, oversized and overflowing the card's
+            top on the right at lg. It used to be two, one per breakpoint with
+            the other display:none, which paid for the face twice in both the
+            RSC payload and the HTML to keep half of it hidden. */}
         <CloudAvatar
-          svg={BLOUB_SVGS[expression]}
-          className="absolute -bottom-14 -right-14 w-52 sm:-bottom-16 sm:-right-16 sm:w-64 lg:hidden"
-        />
-
-        {/* ≥lg: oversized, overflowing the card's top on the right. */}
-        <CloudAvatar
-          svg={BLOUB_SVGS[expression]}
-          className="absolute -top-24 right-14 hidden w-80 lg:block"
+          expression={expression}
+          className="absolute -bottom-14 -right-14 w-52 sm:-bottom-16 sm:-right-16 sm:w-64 lg:-top-24 lg:bottom-auto lg:right-14 lg:w-80"
         />
 
         <div className="relative max-w-xl">

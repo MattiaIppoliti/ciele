@@ -4,6 +4,7 @@ import {
   CreditCard,
   Fingerprint,
   Gauge,
+  Globe,
   KeyRound,
   Sparkles,
   Brain,
@@ -50,6 +51,12 @@ export const ORG_SETTINGS_TABS: SettingsTab[] = [
     slug: "ai",
     href: "/settings/ai",
     icon: Sparkles,
+  },
+  {
+    label: "Crawling",
+    slug: "crawling",
+    href: "/settings/crawling",
+    icon: Globe,
   },
   {
     label: "API Keys",

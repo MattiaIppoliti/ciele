@@ -3,10 +3,13 @@ import type { LanguageModel } from "ai";
 import { z } from "zod";
 import type { Db } from "@agent-hub/db";
 import { raiseOrAttachImprovement } from "@agent-hub/db";
-import type { AiCredentialKind, Provider, VerifiableAnswer } from "@agent-hub/core";
+import type { AiCredentialKind, Provider, TierOneOutcome, VerifiableAnswer } from "@agent-hub/core";
+import { buildClaimQuestions, splitForTiers, tierOneOutcome } from "@agent-hub/core";
 
 import type { ChatReplyPart } from "./types";
 import { getClassifierModel } from "./models";
+import { getRuntimeHost } from "./host";
+import { decide, resolveDecisionModel } from "./decision-model";
 import { usageTotals } from "./usage";
 import {
   admitAiSpend,
@@ -49,6 +52,48 @@ export interface VerifierResult {
  * rather than staying stuck forever.
  */
 const VERIFIER_CLAIM_STALE_MS = 12 * 3_600_000;
+
+/**
+ * Tier one over one answer. Returns `null` when there is nothing to ask, no
+ * decision backend, or the call failed: every one of those means the language
+ * model should grade the answer, which is what happened before this tier
+ * existed.
+ */
+async function runTierOneVerification(input: {
+  db: Db;
+  organizationId: string;
+  question: string;
+  answer: string;
+  excerpts: string;
+}): Promise<TierOneOutcome | null> {
+  const { forTierOne } = splitForTiers(input.answer);
+  // Nothing a decision model can settle: either the answer asserts nothing, or
+  // every claim in it carries a number and belongs to tier two by rule.
+  if (forTierOne.length === 0) return null;
+
+  const connections = await input.db.listProviderConnections(input.organizationId);
+  const resolved = resolveDecisionModel("anthropic", connections, {});
+  if (!resolved) return null;
+
+  try {
+    const decision = await decide(resolved, {
+      state: "",
+      questions: buildClaimQuestions({
+        question: input.question,
+        claims: forTierOne,
+        citedContent: input.excerpts,
+      }),
+    });
+    return tierOneOutcome({
+      claims: forTierOne,
+      answers: decision.answers as Record<string, { type: "boolean"; probability: number }>,
+      confidence: decision.confidence,
+      calibrated: decision.calibrated,
+    });
+  } catch {
+    return null;
+  }
+}
 
 export async function runDueAnswerVerifications(
   deps: { db: Db },
@@ -180,6 +225,36 @@ async function verifyOne(
     )
       .filter(Boolean)
       .join("\n\n");
+
+    // Tier one (#957): a boolean per claim on the decision model, on **every**
+    // answer rather than on the sample the spend budget can afford. A pass
+    // settles the answer here, before the budget is even consulted, which is
+    // the whole point: coverage stops being what the budget allows.
+    //
+    // Claims carrying a date, an amount or a count never reach it. That is the
+    // one thing the decision model is documented to misjudge, and a fee of €40
+    // and a fee of €4,000 look equally plausible to it.
+    if (getRuntimeHost().verifierTierOneEnabled()) {
+      const tierOne = await runTierOneVerification({
+        db,
+        organizationId: candidate.organizationId,
+        question: candidate.question ?? "",
+        answer,
+        excerpts,
+      });
+      if (tierOne?.kind === "pass") {
+        const saved = await db.recordAnswerVerdict({
+          messageId: candidate.messageId,
+          organizationId: candidate.organizationId,
+          assistantId: candidate.assistantId,
+          flowId: candidate.flowId,
+          verdict: "pass",
+          reason: "Every checkable claim is supported by the cited content.",
+          modelId: "typesafe-ai/jev",
+        });
+        return saved ? "pass" : null;
+      }
+    }
 
     const admission = await admitAiSpend({
       db,

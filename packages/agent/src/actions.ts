@@ -557,9 +557,53 @@ const apiRequest: ActionHandler = async ({
   templateContext,
   idempotencyKey,
   countOperation,
+  judgeAction,
+  previewSurface,
 }) => {
   const settings = flow.actionSettings?.api_request;
   if (!settings?.url) return { parts: [] };
+
+  // The approval gate (#958). An outbound call an Organization configured is
+  // the one Flow action that can reach somebody else's system, and a POST to
+  // a third party is the textbook irreversible act: it cannot be recalled once
+  // the other side has acted on it.
+  //
+  // This gate only ever *stops*. It never lets through a call the Flow was not
+  // already configured to make, and with no decision backend it does nothing
+  // at all, so an Organization that has not opted into a decision model sees
+  // exactly today's behaviour.
+  if (judgeAction) {
+    const verdict = await judgeAction({
+      label: `Call ${settings.method ?? "GET"} ${settings.url}`,
+      description: `An outbound HTTP request this Flow makes to a system outside the platform.`,
+      // The shape, never the values. `auth` holds secrets and the body is a
+      // template that resolves to live data, so the gate is told which query
+      // parameters exist and whether there is a body, which is all it needs
+      // to judge how far a call can be taken back.
+      arguments: JSON.stringify({
+        queryParams: (settings.queryParams ?? []).map((pair) => pair.name),
+        hasBody: Boolean(settings.bodyTemplate),
+      }),
+      httpMethod: settings.method ?? "GET",
+    }).catch(() => null);
+
+    if (verdict && verdict.kind === "review") {
+      // Halting rather than raising a card here on purpose: an Editor who
+      // wants this call reviewed adds a Human review step in gated mode
+      // immediately before it, which is the mode this ticket gave that action
+      // and the only path where the Flow can actually resume afterwards.
+      const part: ChatReplyPart = {
+        type: "text",
+        action: "fallback",
+        text: previewSurface
+          ? `The approval gate stopped this request (${verdict.reason}). Put a Human review step in gated mode before it to have somebody approve it.`
+          : "Sorry, I can't complete that request right now.",
+      };
+      emit({ type: "part", part });
+      return { parts: [part], halt: true };
+    }
+  }
+
   emit({ type: "notice", label: "Calling external API" });
 
   // The runtime falls the empty body back to the triggering message; feed it
@@ -946,6 +990,7 @@ const humanReview: ActionHandler = async ({
   actionIndex,
   templateContext,
   previewSurface,
+  judgeAction,
 }) => {
   const settings = flow.actionSettings?.human_review;
   const issue = humanReviewSettingsIssue(settings);
@@ -969,6 +1014,35 @@ const humanReview: ActionHandler = async ({
     emit({ type: "part", part });
     return { parts: [part], halt: true };
   }
+  // Gated mode (#958): ask the approval gate about the action this step is
+  // standing in front of, and step aside when it is confident that action is
+  // safe. A review somebody clicks through every time stops being read; one
+  // that appears when the next action is actually risky means something.
+  //
+  // With no gate bound the request is raised, which is both the cautious
+  // branch and the behaviour this action shipped with: nothing is approved by
+  // absence.
+  if (settings.mode === "gated") {
+    const index = actionIndex ?? flow.actions.indexOf("human_review");
+    const next = flow.actions[index + 1];
+    const verdict = judgeAction && next
+      ? await judgeAction({
+          label: next,
+          description: `A Flow step of type "${next}", about to run in the Flow "${flow.name}".`,
+          // Only the settings keyed to that action, and only when it has any:
+          // `FlowActionSettings` is a partial record, so this reads what the
+          // Editor configured for the step and nothing about any other one.
+          arguments: JSON.stringify(
+            (flow.actionSettings as Record<string, unknown> | undefined)?.[next] ?? {}
+          ),
+        }).catch(() => null)
+      : null;
+    if (verdict?.kind === "allow") {
+      emit({ type: "notice", label: "No review needed for this step" });
+      return { parts: [] };
+    }
+  }
+
   emit({ type: "notice", label: "Asking a colleague to review" });
   const ctx = { ...(templateContext ?? {}) };
   if (ctx["workflow.message"] === undefined) ctx["workflow.message"] = message;

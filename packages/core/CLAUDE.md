@@ -40,7 +40,7 @@ pnpm --filter @agent-hub/core typecheck   # tsc --noEmit
 | `document-triage.ts` | What an uploaded file *is* before a parser reads it (#801, CYB-09): magic bytes against the claimed extension, the OOXML central directory read for macros and embedded objects, the PDF page and ZIP decompression budgets. Pure over bytes; the verdict it returns is the `TriageEvidence` a Source persists. |
 | `message.ts` · `pricing.ts` · `id.ts` | Message-part flattening, token prices, short ids. |
 | `crypto.ts` · `thrown-message.ts` | Pure helpers that are not domain derivations (see below). |
-| `testing/` | Fixtures, published as `@agent-hub/core/testing`. Test-only, out of the main barrel. |
+| `testing/` | Fixtures, published as `@agent-hub/core/testing`. Test-only, out of the main barrel. One exception, stated: the labelled pre-flight sets and the drift baseline are read by `runPreflightDriftReplay` in the agent package, a nightly test of the decision model that cron runs in production (#953). They stay here because they are labels for a test, and the replay is that test. |
 
 ## The barrel exports two ways, on purpose
 

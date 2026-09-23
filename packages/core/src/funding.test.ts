@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { fundingBucket } from "./funding";
+import {
+  crawlCredentialKind,
+  crawlMeterCredentialKind,
+  fundingBucket,
+} from "./funding";
 import type { AiCredentialKind } from "./types";
 
 /**
@@ -52,5 +56,21 @@ describe("fundingBucket", () => {
     for (const kind of kinds) {
       expect(fundingBucket(kind)).not.toBe("unknown");
     }
+  });
+});
+
+describe("crawl funding", () => {
+  it("records an org-token crawl as api_key and every other crawl as platform", () => {
+    expect(crawlCredentialKind("organization")).toBe("api_key");
+    expect(crawlCredentialKind("platform")).toBe("platform");
+    expect(crawlCredentialKind(undefined)).toBe("platform");
+  });
+
+  it("reads only api_key off the platform, so a legacy or unknown crawl stays metered", () => {
+    expect(crawlMeterCredentialKind("api_key")).toBe("api_key");
+    expect(crawlMeterCredentialKind(null)).toBe("platform");
+    expect(crawlMeterCredentialKind(undefined)).toBe("platform");
+    expect(crawlMeterCredentialKind("local_subscription")).toBe("platform");
+    expect(fundingBucket(crawlMeterCredentialKind("api_key"))).toBe("customer");
   });
 });

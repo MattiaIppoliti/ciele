@@ -1,4 +1,5 @@
 import type {
+  PreflightTraceRecord,
   StoredTurnTrace,
   TurnStep,
   TurnTerminalStatus,
@@ -26,13 +27,21 @@ export interface VisibleTrace {
   iteration?: number;
   iterationLimit?: number;
   terminal?: TurnTerminalStatus;
+  /** The shadow pre-flight's record (#952); absent unless one ran. */
+  preflight?: PreflightTraceRecord;
 }
 
 export function visibleTraceSteps(
   trace: StoredTurnTrace | null | undefined,
   options: { canViewReasoning: boolean }
 ): VisibleTrace | null {
-  if (!trace || trace.steps.length === 0) return null;
+  // A trace with no steps is a turn that did no agentic work and has no panel
+  // to show. It still projects when it carries a pre-flight record, because
+  // that is exactly the turn the shadow would otherwise lose (#952): a Flow
+  // answering with one verbatim Message writes an empty trace, and dropping
+  // those would leave the threshold data a sample of turns that searched.
+  if (!trace) return null;
+  if (trace.steps.length === 0 && !trace.preflight) return null;
   const steps = options.canViewReasoning
     ? trace.steps
     : trace.steps.filter((step) => step.kind !== "thought");
@@ -48,6 +57,11 @@ export function visibleTraceSteps(
     iteration: trace.iteration,
     iterationLimit: trace.iterationLimit,
     terminal: trace.terminal,
+    // Not Role-gated, for the same reason the counters above are not: the
+    // record is question ids, option ids and confidences. It quotes neither
+    // the Visitor's message nor anything retrieved, which is what the
+    // reasoning gate exists to withhold.
+    preflight: trace.preflight,
   };
 }
 

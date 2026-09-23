@@ -514,6 +514,11 @@ export async function runDueReviewJobs(deps: ReviewJobDeps): Promise<{
   failed: number;
 }> {
   const { expired } = await expireDueReviews(deps);
+  // The approval gate's own clock rides the same tick (#958): both are
+  // "somebody was asked and never answered", both close by compare-and-set,
+  // and a second cron route for one sweep would be a route to forget.
+  const { expireDueActionApprovals } = await import("./approval-gate");
+  await expireDueActionApprovals({ db: deps.db, now: deps.now });
   const { runDueJobs } = await import("./jobs");
   const result = await runDueJobs({ db: deps.db }, {
     kinds: [DELIVER_REVIEW_KIND, RESUME_REVIEW_KIND],

@@ -340,3 +340,82 @@ describe("org_usage_meters, UTC pinning (real SQL)", () => {
     }
   });
 });
+
+/**
+ * Settings → Crawling: a crawl on the Organization's own Apify token records
+ * `credential_kind = 'api_key'` and must leave the platform bucket in every
+ * reader, closed days and today alike, or the plan's scraping allowance would
+ * charge for pages the platform never paid for. A crawl with no kind (every
+ * event before crawls carried one) stays platform-funded.
+ */
+describe("crawl funding (real SQL)", () => {
+  let orgId: string;
+
+  const crawl = (credentialKind: string | null, pages: number, createdAt?: string) =>
+    pg.query(
+      `insert into public.runtime_events
+         (organization_id, kind, status, crawler_provider, credential_kind, page_count, created_at)
+       values ($1, 'crawl', 'succeeded', 'apify', $2, $3, coalesce($4::timestamptz, now()))`,
+      [orgId, credentialKind, pages, createdAt ?? null]
+    );
+
+  const scrapingBy = async (from: string) => {
+    const res = await pg.query<{
+      resource: string;
+      credential_kind: string;
+      units: string | number;
+    }>("select * from public.org_usage_meters($1, $2, $3)", [
+      orgId,
+      from,
+      new Date(Date.now() + 1000).toISOString(),
+    ]);
+    const out: Record<string, number> = {};
+    for (const r of res.rows) {
+      if (r.resource !== "scraping") continue;
+      out[r.credential_kind] = (out[r.credential_kind] ?? 0) + Number(r.units);
+    }
+    return out;
+  };
+
+  beforeAll(async () => {
+    const res = await pg.query<{ id: string }>(
+      "insert into public.organizations (name) values ('Crawl Funding Org') returning id"
+    );
+    orgId = res.rows[0].id;
+    await crawl("api_key", 30, backdate(2)); // org-funded, closed day
+    await crawl(null, 5, backdate(2)); // legacy, closed day
+    await crawl("api_key", 7); // org-funded, today
+    await crawl("platform", 2); // platform, today
+    await pg.query("select public.rollup_usage_daily($1)", [4]);
+  }, 120_000);
+
+  it("keeps org-funded pages out of the platform meter, closed days and today", async () => {
+    expect(await scrapingBy(backdate(3))).toEqual({ api_key: 37, platform: 7 });
+  });
+
+  it("closes the two fundings into separate rollup rows", async () => {
+    const res = await pg.query<{ credential_kind: string; units: string | number }>(
+      `select credential_kind, units from public.usage_daily
+        where organization_id = $1 and kind = 'crawl' and day = ($2::timestamptz at time zone 'utc')::date
+        order by credential_kind`,
+      [orgId, backdate(2)]
+    );
+    expect(res.rows.map((r) => [r.credential_kind, Number(r.units)])).toEqual([
+      ["api_key", 30],
+      ["platform", 5],
+    ]);
+  });
+
+  it("reports today's crawls under their funding in the daily read", async () => {
+    const res = await pg.query<{ credential_kind: string; units: string | number }>(
+      `select credential_kind, units from public.org_usage_daily($1, 7)
+        where kind = 'crawl' and day = (now() at time zone 'utc')::date
+        order by credential_kind`,
+      [orgId]
+    );
+    expect(res.rows.map((r) => [r.credential_kind, Number(r.units)])).toEqual([
+      ["api_key", 7],
+      ["platform", 2],
+    ]);
+  });
+});

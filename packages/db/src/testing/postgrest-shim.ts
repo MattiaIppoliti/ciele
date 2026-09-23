@@ -762,8 +762,11 @@ class ShimQueryBuilder implements PromiseLike<{
         ? `select count(*)::int as n from (${sql}) matched`
         : null;
       if (this.orders.length > 0) {
+        // `quoteColumn`, not `quoteIdent`: PostgREST orders on a JSON path
+        // (`frontmatter->>title`) the same way it filters on one, and the
+        // Documents table's title sort is exactly that.
         sql += ` order by ${this.orders
-          .map((o) => `${alias}.${quoteIdent(o.column)} ${o.ascending ? "asc" : "desc"}`)
+          .map((o) => `${alias}.${quoteColumn(o.column)} ${o.ascending ? "asc" : "desc"}`)
           .join(", ")}`;
       }
       if (this.limitN !== null) sql += ` limit ${this.limitN}`;

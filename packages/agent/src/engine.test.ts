@@ -190,6 +190,31 @@ describe("classifyIntent", () => {
     expect(flow?.id).toBe("default");
   });
 
+  // The other way a provider fails: the stream opens, then carries an `error`
+  // part. `streamObject` never settles its object promise in that case (only
+  // `onError` fires), so without the race in `classifyIntent` this test would
+  // hang past vitest's timeout instead of falling back.
+  it("falls back to the keyword matcher when the stream dies mid-answer", async () => {
+    const dying = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start" as const, warnings: [] },
+            { type: "text-start" as const, id: "1" },
+            { type: "text-delta" as const, id: "1", delta: '{"intent":"The pe' },
+            { type: "error" as const, error: new Error("provider died mid-stream") },
+          ],
+        }),
+      }),
+    });
+    const flow = await classifyIntent(
+      "completely unrelated gibberish",
+      [examFlow, defaultFlow],
+      dying
+    );
+    expect(flow?.id).toBe("default");
+  });
+
   // Routing used to be the one part of a turn with nothing on screen: the
   // panel sat on "Thinking…" with no step under it until the first tool call.
   it("narrates what the person asked, as streamed thought deltas", async () => {

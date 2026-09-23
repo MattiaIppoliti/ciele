@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { Assistant, Conversation } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import {
@@ -258,10 +259,16 @@ export function PreviewPanel({
   // gains focus (ignored while a pulse is already running).
   const [composerPulse, setComposerPulse] = useState(false);
   /**
-   * What the composer can offer, read once the panel mounts. The Preview is a
-   * preview of the widget, so it carries the same three: the model picker, the
-   * `/` Skills menu and the `@` help desks. Read live rather than from a
-   * Publication, which is the point of previewing.
+   * What the composer can offer: the model picker, the `/` Skills menu and the
+   * `@` help desks. Read live rather than from a Publication, which is the
+   * point of previewing.
+   *
+   * Re-read whenever the Assistant's model configuration moves or the editor
+   * walks to another SETUP section, not once per mount. The panel lives in the
+   * Assistant's layout, so it stays mounted across both, and a picker that only
+   * appeared after a browser reload was the whole complaint: saving General is
+   * supposed to change this composer, and publishing is what changes the
+   * embedded widget.
    */
   const [models, setModels] = useState<ChatModelOption[]>([]);
   const [skills, setSkills] = useState<
@@ -273,6 +280,19 @@ export function PreviewPanel({
   const composerTextarea = () =>
     composerRef.current?.querySelector("textarea") ?? null;
 
+  // Which SETUP section is open. The panel outlives a move between them, and a
+  // Skill attached or a help desk enabled next door belongs in this composer
+  // when the editor comes back.
+  const section = usePathname();
+  // The model decision as one string, so the effect below re-runs on a saved
+  // change rather than on every re-render (`allowedModels` is a fresh array
+  // each time the layout renders).
+  const modelChoice = JSON.stringify([
+    assistant.modelProvider,
+    assistant.modelId,
+    assistant.allowedModels ?? [],
+  ]);
+
   useEffect(() => {
     let live = true;
     void chatComposerOptionsAction(assistant.id)
@@ -280,6 +300,13 @@ export function PreviewPanel({
         if (!live) return;
         setModels(options.models);
         setSkills(options.skills);
+        // A model that was just un-ticked must not stay selected: the composer
+        // falls back to the first option only while nothing is chosen.
+        setModel((chosen) =>
+          chosen && options.models.some((option) => option.selector === chosen)
+            ? chosen
+            : undefined
+        );
       })
       .catch(() => {
         // A composer with no extras is a complete composer.
@@ -293,9 +320,15 @@ export function PreviewPanel({
     return () => {
       live = false;
     };
-  }, [assistant.id]);
+  }, [assistant.id, modelChoice, section]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /**
+   * The Assistant's own "Let visitors attach files", read from the live record
+   * rather than a Publication: saving General has to change the composer here
+   * before anything is published, which is what this panel is for.
+   */
+  const attachmentsEnabled = assistant.attachmentsEnabled ?? false;
   const attachments = useAttachments(async (file) => {
     const body = new FormData();
     body.set("file", file);
@@ -330,13 +363,20 @@ export function PreviewPanel({
     },
   });
   const composerActions = [
-    {
-      value: "attach",
-      label: "Attach a file",
-      description: "A document, a spreadsheet or a screenshot.",
-      icon: <Paperclip />,
-      disabled: attachments.full,
-    },
+    // A preview that offered what the widget will refuse is not a preview, so
+    // this follows the Assistant's own toggle rather than the Member's
+    // sign-in: the point of the panel is to show the visitor's composer.
+    ...(attachmentsEnabled
+      ? [
+          {
+            value: "attach",
+            label: "Attach a file",
+            description: "A document, a spreadsheet or a screenshot.",
+            icon: <Paperclip />,
+            disabled: attachments.full,
+          },
+        ]
+      : []),
     ...(skills.length > 0
       ? [
           {
@@ -1003,17 +1043,25 @@ export function PreviewPanel({
               </button>
             </div>
           )}
-          <AttachmentInput
-            inputRef={fileInputRef}
-            accept={attachments.accept}
-            onPick={(file) => void attachments.attach(file)}
-          />
+          {attachmentsEnabled && (
+            <AttachmentInput
+              inputRef={fileInputRef}
+              accept={attachments.accept}
+              onPick={(file) => void attachments.attach(file)}
+            />
+          )}
           <AttachmentChips
             entries={attachments.entries}
             onRemove={attachments.remove}
           />
-          <div className="relative" ref={composerRef} {...attachments.dropProps}>
-            {attachments.dragging && <AttachmentDropHint label="Drop to attach" />}
+          <div
+            className="relative"
+            ref={composerRef}
+            {...(attachmentsEnabled ? attachments.dropProps : {})}
+          >
+            {attachmentsEnabled && attachments.dragging && (
+              <AttachmentDropHint label="Drop to attach" />
+            )}
           {skillTrigger.open && (
             <TriggerList
               label="Use a skill"
@@ -1072,7 +1120,7 @@ export function PreviewPanel({
               send(value);
             }}
             onFocus={fireComposerPulse}
-            onPaste={attachments.onPaste}
+            onPaste={attachmentsEnabled ? attachments.onPaste : undefined}
             onSelect={(event) => {
               skillTrigger.sync(event.currentTarget.value);
               deskTrigger.sync(event.currentTarget.value);

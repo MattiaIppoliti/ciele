@@ -47,3 +47,30 @@ export function fundingBucket(credentialKind: string): FundingBucket {
     ? FUNDING_BY_CREDENTIAL_KIND[credentialKind as AiCredentialKind]
     : "unknown";
 }
+
+/**
+ * The credential kind a crawl records, from whose account it ran on.
+ *
+ * An Organization's own crawler token (Settings → Crawling) is the crawl
+ * equivalent of a BYOK model key, so it records as `api_key` and funds as
+ * "customer"; everything else ran on the platform's account.
+ */
+export function crawlCredentialKind(
+  credential: "organization" | "platform" | undefined
+): "api_key" | "platform" {
+  return credential === "organization" ? "api_key" : "platform";
+}
+
+/**
+ * The credential kind a usage reader attributes a recorded crawl to. Only
+ * `api_key` moves a crawl off the platform. A crawl event written before
+ * crawls carried a kind (null) ran on the platform's account, and anything
+ * else is read the same way, so an unrecognised value can never take a crawl
+ * out of the plan allowance. The SQL readers in
+ * 20260922210000_crawl_usage_funding.sql apply the same rule.
+ */
+export function crawlMeterCredentialKind(
+  recorded: string | null | undefined
+): "api_key" | "platform" {
+  return recorded === "api_key" ? "api_key" : "platform";
+}

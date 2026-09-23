@@ -24,6 +24,7 @@ import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { useFullscreenGrow } from "@/components/chat/use-fullscreen-grow";
 import {
   ChatThread,
+  type ActionApprovalPart,
   type TeammateReferralPart,
   type ChatBotMsg,
   type ChatMsg,
@@ -50,6 +51,7 @@ import { setMessageFeedbackAction } from "@/app/actions";
 import { TeammateAvatar } from "@/components/teammates/teammate-avatar";
 import {
   readTeammateConversationAction,
+  decideActionApprovalAction,
   startReferredConversationAction,
 } from "@/app/(admin)/teammates/actions";
 
@@ -378,6 +380,30 @@ export function TeammateWorkspace({
    * the origin transcript stays where it was: the handoff is a second thread,
    * not a continuation that erases the first.
    */
+  /**
+   * The approval gate's card (#958). The Member is already looking at the
+   * conversation the action was stopped in, so the decision is taken here
+   * rather than on a page of its own: the context that makes it answerable is
+   * the transcript above it.
+   */
+  function decideApproval(
+    part: ActionApprovalPart,
+    decision: "approved" | "rejected"
+  ) {
+    startTransition(async () => {
+      try {
+        await decideActionApprovalAction({ id: part.approvalId, decision });
+        // Either way the decision landed, which is the outcome worth a cue.
+        playFeedback("success");
+        router.refresh();
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not decide that action"
+        );
+      }
+    });
+  }
+
   function acceptReferral(part: TeammateReferralPart) {
     if (!conversationId) return;
     startTransition(async () => {
@@ -533,6 +559,7 @@ export function TeammateWorkspace({
                 onSend={send}
                 onVote={vote}
                 onAcceptReferral={acceptReferral}
+                onDecideApproval={decideApproval}
               />
               {/* Where a referral from this conversation went (#773). The
                   handoff is two threads on purpose, so the origin has to say

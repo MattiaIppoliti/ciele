@@ -20,6 +20,7 @@ import {
   listTeammateThreadOp,
   readTeammateConversationOp,
   setTeammateGrantsOp,
+  decideActionApprovalOp,
   startReferralOp,
   unhideTeammateOp,
   updateRoutineOp,
@@ -173,6 +174,20 @@ export async function readTeammateConversationAction(
  * Both conversations record the link, so a handoff is a fact in the data
  * rather than a coincidence of timing between two threads.
  */
+/**
+ * Decides an action the approval gate stopped (#958). Approving runs the
+ * action the row carries, with the arguments a Member read on the card; the
+ * operation re-reads the grants first, so an approval is never a way to run
+ * something that is no longer granted.
+ */
+export async function decideActionApprovalAction(input: {
+  id: string;
+  decision: "approved" | "rejected";
+}): Promise<{ ran: boolean }> {
+  const result = await runOperation(decideActionApprovalOp, input);
+  return { ran: result.ran };
+}
+
 export async function startReferredConversationAction(input: {
   originConversationId: string;
   teammateId: string;

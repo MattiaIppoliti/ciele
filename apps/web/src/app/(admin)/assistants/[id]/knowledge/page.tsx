@@ -103,6 +103,12 @@ export default async function KnowledgePage({
     await db.listNullEmbeddingConceptIds(id).catch(() => [])
   ).length;
   const crawlerCapabilities = websiteCrawlerCapabilities();
+  // The org's own Apify token (Settings → Crawling) makes Apify selectable
+  // even when the platform has none. Fails closed to "no token" on a read
+  // error, the same answer the environment gives.
+  const orgApify = await db
+    .getCrawlerConnection(organizationId, "apify")
+    .catch(() => null);
   const applicationOperationalState = (
     await db.listApplicationOperationalState(organizationId)
   ).map((state) => [state.importId, state] as const);
@@ -124,7 +130,7 @@ export default async function KnowledgePage({
         concepts={concepts}
         sharedWith={sharedAssistantNames(id, linkedItems)}
         crawl4aiAvailable={crawlerCapabilities.crawl4aiConfigured}
-        apifyAvailable={crawlerCapabilities.apifyConfigured}
+        apifyAvailable={crawlerCapabilities.apifyConfigured || Boolean(orgApify)}
         nullEmbeddingCount={nullEmbeddingCount}
         applicationConnections={applicationConnections.map(redactApplicationConnection)}
         applicationImports={applicationImports}

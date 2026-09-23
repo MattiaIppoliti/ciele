@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/run-webhooks",
       "schedule": "35 1 * * *"
+    },
+    {
+      "path": "/api/cron/replay-preflight",
+      "schedule": "30 3 * * *"
     }
   ]
 }

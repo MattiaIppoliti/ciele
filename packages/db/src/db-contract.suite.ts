@@ -3409,6 +3409,96 @@ export function describeDbContract(
         expect(pageOne.total).toBeGreaterThanOrEqual(2);
       });
 
+      it("orders by the column the header asked for, across the page cut", async () => {
+        // The point of the test: the sort has to happen before the page is
+        // cut, or page one of "by name" is the newest N re-shuffled.
+        const zulu = await newKnowledgeFixture("file", "Sort Zulu");
+        const alpha = await newKnowledgeFixture("file", "Sort alpha");
+        const mid = await newKnowledgeFixture("file", "Sort Mike");
+        await db.updateSource(zulu.source.id, { status: "error" });
+
+        const byName = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["file", "text"],
+          query: "sort ",
+          sort: "name",
+          ascending: true,
+        });
+        expect(byName.items.map((i) => i.name)).toEqual([
+          "Sort alpha",
+          "Sort Mike",
+          "Sort Zulu",
+        ]);
+
+        const firstByName = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          {
+            kinds: ["file", "text"],
+            query: "sort ",
+            sort: "name",
+            ascending: true,
+            page: 1,
+            pageSize: 1,
+          }
+        );
+        expect(firstByName.items.map((i) => i.name)).toEqual(["Sort alpha"]);
+        expect(firstByName.total).toBe(3);
+
+        const worstFirst = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          {
+            kinds: ["file", "text"],
+            query: "sort ",
+            sort: "status",
+            ascending: true,
+            pageSize: 1,
+          }
+        );
+        expect(worstFirst.items.map((i) => i.id)).toEqual([zulu.source.id]);
+
+        // No sort is the order every caller had before the headers moved:
+        // newest first, id descending where three fixtures share a
+        // millisecond, which is the tie-break that keeps paging total.
+        const unsorted = await db.listOrgKnowledgeSources(ctx.organizationId, {
+          kinds: ["file", "text"],
+          query: "sort ",
+        });
+        expect(unsorted.items.map((i) => i.id).sort()).toEqual(
+          [alpha.source.id, mid.source.id, zulu.source.id].sort()
+        );
+        expect(unsorted.items.map((i) => i.id)).toEqual(
+          [...unsorted.items]
+            .sort(
+              (a, b) =>
+                b.createdAt.localeCompare(a.createdAt) ||
+                b.id.localeCompare(a.id)
+            )
+            .map((i) => i.id)
+        );
+
+        // The tie-break follows the direction, in both implementations. All
+        // three fixtures are `ready` except zulu, so sorting on Status leaves
+        // the other two tied on the primary key and the order underneath is
+        // the whole assertion: an adapter that pinned ties to "newest first"
+        // would answer this query one way through the RPC and the other way
+        // through the mock and the schema-lag fallback.
+        const tiedAscending = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          {
+            kinds: ["file", "text"],
+            query: "sort ",
+            sort: "status",
+            ascending: true,
+          }
+        );
+        const tiedDescending = await db.listOrgKnowledgeSources(
+          ctx.organizationId,
+          { kinds: ["file", "text"], query: "sort ", sort: "status" }
+        );
+        const ready = (page: { items: Array<{ id: string; status: string }> }) =>
+          page.items.filter((i) => i.status === "ready").map((i) => i.id);
+        expect(ready(tiedAscending)).toEqual([...ready(tiedDescending)].reverse());
+      });
+
       it("filters by linked assistant and counts Concepts", async () => {
         const { assistant, collection, source } = await newKnowledgeFixture(
           "website",
@@ -4176,6 +4266,856 @@ export function describeDbContract(
             text: "alumni donation records",
           })
         ).toEqual([]);
+      });
+    });
+
+    describe("a Source's Documents page (#927)", () => {
+      it("pages newest first, counts the whole Source, and says what is indexed", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Documents Page",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Handbook",
+          kind: "text",
+        });
+        const made: string[] = [];
+        for (const n of [1, 2, 3]) {
+          const concept = await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path: `handbook/${n}.md`,
+            frontmatter: {
+              type: "Document",
+              title: `Chapter ${n}`,
+              resource: `https://acme.example/handbook/${n}`,
+            },
+            body: `chapter ${n}`,
+          });
+          made.push(concept.id);
+        }
+        await db.setConceptExcluded(made[1]!, true);
+        await db.saveChunks([
+          {
+            conceptId: made[0]!,
+            collectionId: collection.id,
+            sourceId: source.id,
+            content: "chapter 1",
+            embedding: null,
+          },
+        ]);
+
+        const first = await db.listSourceDocuments(source.id, { pageSize: 2 });
+        expect(first.total).toBe(3);
+        expect(first.items).toHaveLength(2);
+        // The heading's count is the whole Source, not the page.
+        expect(first.total).toBeGreaterThan(first.items.length);
+
+        const second = await db.listSourceDocuments(source.id, {
+          pageSize: 2,
+          page: 2,
+        });
+        expect(second.items).toHaveLength(1);
+        const paged = [...first.items, ...second.items].map((row) => row.id);
+        expect([...paged].sort()).toEqual([...made].sort());
+
+        const all = await db.listSourceDocuments(source.id, { pageSize: 50 });
+        const byId = new Map(all.items.map((row) => [row.id, row]));
+        expect(byId.get(made[0]!)?.title).toBe("Chapter 1");
+        expect(byId.get(made[0]!)?.resourceUrl).toBe(
+          "https://acme.example/handbook/1"
+        );
+        expect(byId.get(made[0]!)?.indexed).toBe(true);
+        expect(byId.get(made[1]!)?.excluded).toBe(true);
+        // Stored but not chunked: it exists and cannot be found yet.
+        expect(byId.get(made[2]!)?.indexed).toBe(false);
+
+        const ascending = await db.listSourceDocuments(source.id, {
+          pageSize: 50,
+          ascending: true,
+        });
+        expect(ascending.items.map((row) => row.id)).toEqual(
+          [...all.items].reverse().map((row) => row.id)
+        );
+      });
+
+      it("sorts by title and filters on the Status header's one column", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Documents Sort",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Sorted Handbook",
+          kind: "text",
+        });
+        const titles = ["Zebra policy", "apple policy", "Mango policy"];
+        const made: string[] = [];
+        for (const [index, title] of titles.entries()) {
+          const concept = await db.createConcept({
+            collectionId: collection.id,
+            sourceId: source.id,
+            path: `sorted/${index}.md`,
+            frontmatter: { type: "Document", title },
+            body: title,
+          });
+          made.push(concept.id);
+        }
+        await db.setConceptExcluded(made[0]!, true);
+
+        const byTitle = await db.listSourceDocuments(source.id, {
+          pageSize: 50,
+          sort: "title",
+          ascending: true,
+        });
+        // Case-insensitive, or every capitalised title sorts before "apple".
+        expect(byTitle.items.map((row) => row.title)).toEqual([
+          "apple policy",
+          "Mango policy",
+          "Zebra policy",
+        ]);
+
+        // The sort happens before the page is cut.
+        const firstByTitle = await db.listSourceDocuments(source.id, {
+          pageSize: 1,
+          sort: "title",
+          ascending: true,
+        });
+        expect(firstByTitle.items.map((row) => row.title)).toEqual([
+          "apple policy",
+        ]);
+        expect(firstByTitle.total).toBe(3);
+
+        const excluded = await db.listSourceDocuments(source.id, {
+          pageSize: 50,
+          status: "excluded",
+        });
+        expect(excluded.items.map((row) => row.id)).toEqual([made[0]!]);
+        // The count follows the filter, or the footer says three and shows one.
+        expect(excluded.total).toBe(1);
+
+        // Ready and Pending are the halves of "not excluded", and they split
+        // on chunks: nothing here is chunked, so Ready is empty and Pending
+        // holds both.
+        await db.saveChunks([
+          {
+            conceptId: made[1]!,
+            collectionId: collection.id,
+            sourceId: source.id,
+            content: "apple policy",
+            embedding: null,
+          },
+        ]);
+        const ready = await db.listSourceDocuments(source.id, {
+          pageSize: 50,
+          status: "ready",
+        });
+        expect(ready.items.map((row) => row.id)).toEqual([made[1]!]);
+        // The count follows the filter here too, not just the rows.
+        expect(ready.total).toBe(1);
+
+        const pending = await db.listSourceDocuments(source.id, {
+          pageSize: 50,
+          status: "pending",
+        });
+        expect(pending.items.map((row) => row.id)).toEqual([made[2]!]);
+      });
+
+      it("reads an empty title as no title, and falls back to the path", async () => {
+        // A crawled page with an empty `<title>` stores `title: ""`. SQL says
+        // `nullif(frontmatter->>'title', '')`, so the row shows its path and
+        // sorts under it; an adapter that only checked for absence would show
+        // a blank cell and sort it first under "A to Z".
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Untitled Documents",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Untitled Handbook",
+          kind: "website",
+        });
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "blank/page.md",
+          frontmatter: { type: "Document", title: "" },
+          body: "no title",
+        });
+        const page = await db.listSourceDocuments(source.id, { pageSize: 50 });
+        expect(page.items.map((row) => row.title)).toEqual(["blank/page.md"]);
+      });
+
+      it("resolves a page identity to its active Document only", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Documents By Path",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Site",
+          kind: "website",
+        });
+        const live = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "about.md",
+          frontmatter: { type: "Document", title: "About" },
+          body: "about us",
+        });
+        // Staged under another generation at the same path: not the answer.
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          generationId: "00000000-0000-4000-8000-000000000930",
+          path: "about.md",
+          frontmatter: { type: "Document", title: "About (staged)" },
+          body: "about us, rewritten",
+        });
+
+        const found = await db.getSourceDocumentByPath(source.id, "about.md");
+        expect(found?.id).toBe(live.id);
+        expect(found?.body).toBe("about us");
+        expect(await db.getSourceDocumentByPath(source.id, "missing.md")).toBeNull();
+        // Another Source's path is not this Source's Document.
+        const other = await db.createSource({
+          collectionId: collection.id,
+          name: "Other",
+          kind: "website",
+        });
+        expect(await db.getSourceDocumentByPath(other.id, "about.md")).toBeNull();
+
+        await db.deleteSourceKnowledgeGeneration(
+          source.id,
+          "00000000-0000-4000-8000-000000000930"
+        );
+      });
+
+      it("falls back to the path when a Document has no title", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Untitled Documents",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Raw",
+          kind: "text",
+        });
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "raw/note.md",
+          frontmatter: { type: "Document" },
+          body: "note",
+        });
+        const page = await db.listSourceDocuments(source.id);
+        expect(page.items[0]!.title).toBe("raw/note.md");
+        expect(page.items[0]!.resourceUrl).toBeNull();
+      });
+
+      it("shows the new generation's Documents after a re-crawl, not both", async () => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, {
+          name: "Documents Generations",
+        });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: "Site",
+          kind: "website",
+        });
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "index.md",
+          frontmatter: { type: "Document", title: "Old" },
+          body: "old",
+        });
+        const generationId = "00000000-0000-4000-8000-000000000927";
+        await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          generationId,
+          path: "index.md",
+          frontmatter: { type: "Document", title: "New" },
+          body: "new",
+        });
+        // Staged, not committed: the table still shows the live set.
+        expect(
+          (await db.listSourceDocuments(source.id)).items.map((row) => row.title)
+        ).toEqual(["Old"]);
+
+        await db.commitSourceKnowledgeGeneration({
+          sourceId: source.id,
+          expectedActiveGenerationId: source.activeGenerationId,
+          generationId,
+        });
+        const after = await db.listSourceDocuments(source.id);
+        expect(after.total).toBe(1);
+        expect(after.items.map((row) => row.title)).toEqual(["New"]);
+
+        // Leave no retired generation behind: the ledger sweep's own case
+        // counts them database-wide, and a fixture is not a finding.
+        await db.deleteSourceKnowledgeGeneration(
+          source.id,
+          source.activeGenerationId
+        );
+      });
+    });
+
+    describe("a Document's Summary (#931)", () => {
+      const newSummarisableDocument = async (name: string, body: string) => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: `${name} source`,
+          kind: "website",
+        });
+        const document = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "index.md",
+          frontmatter: { type: "Document", title: "Home" },
+          body,
+        });
+        return { collection, source, document };
+      };
+
+      it("starts with none, then caches the first one written", async () => {
+        const { document } = await newSummarisableDocument(
+          "Summary first write",
+          "The office closes at six."
+        );
+        expect((await db.getConcept(document.id))?.summary).toBeNull();
+        expect((await db.getConcept(document.id))?.summaryGenerated).toBeNull();
+
+        const written = await db.setConceptSummary(document.id, {
+          text: "The office closes at six.",
+          by: "summariser/1",
+          at: "2026-09-20T12:00:00.000Z",
+        });
+        expect(written?.summary).toBe("The office closes at six.");
+        expect(written?.summaryGenerated).toEqual({
+          by: "summariser/1",
+          at: "2026-09-20T12:00:00.000Z",
+        });
+        expect((await db.getConcept(document.id))?.summary).toBe(
+          "The office closes at six."
+        );
+      });
+
+      it("keeps the first write when two openers race", async () => {
+        const { document } = await newSummarisableDocument(
+          "Summary race",
+          "body"
+        );
+        await db.setConceptSummary(document.id, {
+          text: "First",
+          by: "summariser/1",
+          at: "2026-09-20T12:00:00.000Z",
+        });
+        // The loser reads the winner's summary rather than replacing it, which
+        // is what makes "one call per Document generation" true under load.
+        const second = await db.setConceptSummary(document.id, {
+          text: "Second",
+          by: "summariser/1",
+          at: "2026-09-20T12:00:01.000Z",
+        });
+        expect(second?.summary).toBe("First");
+        expect((await db.getConcept(document.id))?.summary).toBe("First");
+      });
+
+      it("answers null for a Document that is gone", async () => {
+        expect(
+          await db.setConceptSummary("no-such-document", {
+            text: "x",
+            by: "summariser/1",
+            at: "2026-09-20T12:00:00.000Z",
+          })
+        ).toBeNull();
+      });
+
+      it("keeps the summary through a re-crawl that changed nothing", async () => {
+        const { source, document } = await newSummarisableDocument(
+          "Summary unchanged crawl",
+          "The office closes at six."
+        );
+        await db.setConceptSummary(document.id, {
+          text: "Opening hours.",
+          by: "summariser/1",
+          at: "2026-09-20T12:00:00.000Z",
+        });
+
+        const generationId = "00000000-0000-4000-8000-000000000931";
+        const restaged = await db.createConcept({
+          collectionId: document.collectionId,
+          sourceId: source.id,
+          generationId,
+          path: document.path,
+          frontmatter: { type: "Document", title: "Home" },
+          body: "The office closes at six.",
+        });
+        await db.commitSourceKnowledgeGeneration({
+          sourceId: source.id,
+          expectedActiveGenerationId: source.activeGenerationId,
+          generationId,
+        });
+
+        const after = await db.getConcept(restaged.id);
+        expect(after?.summary).toBe("Opening hours.");
+        expect(after?.summaryGenerated?.by).toBe("summariser/1");
+        await db.deleteSourceKnowledgeGeneration(
+          source.id,
+          source.activeGenerationId
+        );
+      });
+
+      it("drops the summary through a re-crawl that rewrote the page", async () => {
+        const { source, document } = await newSummarisableDocument(
+          "Summary changed crawl",
+          "The office closes at six."
+        );
+        await db.setConceptSummary(document.id, {
+          text: "Opening hours.",
+          by: "summariser/1",
+          at: "2026-09-20T12:00:00.000Z",
+        });
+
+        const generationId = "00000000-0000-4000-8000-000000000932";
+        const restaged = await db.createConcept({
+          collectionId: document.collectionId,
+          sourceId: source.id,
+          generationId,
+          path: document.path,
+          frontmatter: { type: "Document", title: "Home" },
+          body: "The office is open around the clock from October.",
+        });
+        await db.commitSourceKnowledgeGeneration({
+          sourceId: source.id,
+          expectedActiveGenerationId: source.activeGenerationId,
+          generationId,
+        });
+
+        // A summary describing last month's page must not survive the crawl
+        // that replaced it; the next opener pays once for the new generation.
+        const after = await db.getConcept(restaged.id);
+        expect(after?.summary).toBeNull();
+        expect(after?.summaryGenerated).toBeNull();
+        await db.deleteSourceKnowledgeGeneration(
+          source.id,
+          source.activeGenerationId
+        );
+      });
+    });
+
+    describe("the memory extraction record (#930)", () => {
+      const newExtractablePage = async (name: string) => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: `${name} source`,
+          kind: "website",
+        });
+        return { collection, source };
+      };
+
+      it("creates the row on the first attempt and updates it in place after", async () => {
+        const { collection, source } = await newExtractablePage("Extraction record");
+        expect(
+          await db.getMemoryExtraction(source.id, "handbook/leave.md")
+        ).toBeNull();
+
+        const first = await db.recordMemoryExtraction({
+          organizationId: ctx.organizationId,
+          collectionId: collection.id,
+          sourceId: source.id,
+          documentPath: "handbook/leave.md",
+          bodyHash: null,
+          status: "skipped_no_provider",
+          memoryCount: 0,
+          capped: false,
+          attempts: 1,
+          lastError: null,
+          extractedAt: null,
+        });
+        expect(first.status).toBe("skipped_no_provider");
+
+        const second = await db.recordMemoryExtraction({
+          organizationId: ctx.organizationId,
+          collectionId: collection.id,
+          sourceId: source.id,
+          documentPath: "handbook/leave.md",
+          bodyHash: "abc123",
+          status: "done",
+          memoryCount: 3,
+          capped: true,
+          attempts: 2,
+          lastError: null,
+          extractedAt: "2026-09-20T12:00:00.000Z",
+        });
+        // Upserted on the page pair, not inserted again: two crawls of one
+        // site racing is ordinary, and neither knows about the other's row.
+        expect(second.id).toBe(first.id);
+        expect(second).toMatchObject({
+          status: "done",
+          memoryCount: 3,
+          capped: true,
+          attempts: 2,
+          bodyHash: "abc123",
+        });
+        expect(
+          await db.listMemoryExtractions(source.id)
+        ).toHaveLength(1);
+      });
+
+      it("keeps one row per page and lists them by path", async () => {
+        const { collection, source } = await newExtractablePage("Extraction pages");
+        for (const path of ["b.md", "a.md"]) {
+          await db.recordMemoryExtraction({
+            organizationId: ctx.organizationId,
+            collectionId: collection.id,
+            sourceId: source.id,
+            documentPath: path,
+            bodyHash: "hash",
+            status: "done",
+            memoryCount: 1,
+            capped: false,
+            attempts: 1,
+            lastError: null,
+            extractedAt: "2026-09-20T12:00:00.000Z",
+          });
+        }
+        expect(
+          (await db.listMemoryExtractions(source.id)).map((row) => row.documentPath)
+        ).toEqual(["a.md", "b.md"]);
+      });
+
+      it("keeps a failure's error, which is all a failure leaves", async () => {
+        const { collection, source } = await newExtractablePage("Extraction failure");
+        const failed = await db.recordMemoryExtraction({
+          organizationId: ctx.organizationId,
+          collectionId: collection.id,
+          sourceId: source.id,
+          documentPath: "handbook/leave.md",
+          bodyHash: null,
+          status: "failed",
+          memoryCount: 0,
+          capped: false,
+          attempts: 3,
+          lastError: "upstream is down",
+          extractedAt: null,
+        });
+        expect(failed.lastError).toBe("upstream is down");
+        expect(failed.attempts).toBe(3);
+      });
+
+      it("goes with the Source it describes", async () => {
+        const { collection, source } = await newExtractablePage("Extraction cascade");
+        await db.recordMemoryExtraction({
+          organizationId: ctx.organizationId,
+          collectionId: collection.id,
+          sourceId: source.id,
+          documentPath: "handbook/leave.md",
+          bodyHash: "hash",
+          status: "done",
+          memoryCount: 1,
+          capped: false,
+          attempts: 1,
+          lastError: null,
+          extractedAt: "2026-09-20T12:00:00.000Z",
+        });
+        await db.deleteSource(source.id);
+        expect(await db.listMemoryExtractions(source.id)).toEqual([]);
+      });
+
+      it("queues the extraction job kind like any other", async () => {
+        const { source } = await newExtractablePage("Extraction job kind");
+        const job = await db.createBackgroundJob({
+          organizationId: ctx.organizationId,
+          kind: "extract_document_memories",
+          sourceId: source.id,
+          payload: {
+            kind: "extract_document_memories",
+            sourceId: source.id,
+            documentPath: "handbook/leave.md",
+          },
+        });
+        expect(job.kind).toBe("extract_document_memories");
+        expect(job.status).toBe("queued");
+      });
+    });
+
+    describe("a Document's chunks (#929)", () => {
+      const newChunkedDocument = async (name: string, count: number) => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: `${name} source`,
+          kind: "text",
+        });
+        const document = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "handbook/leave.md",
+          frontmatter: { type: "Document", title: "Leave" },
+          body: "body",
+        });
+        await db.saveChunks(
+          Array.from({ length: count }, (_, i) => ({
+            conceptId: document.id,
+            collectionId: collection.id,
+            sourceId: source.id,
+            content: `slice ${i}`,
+            embedding: null,
+          }))
+        );
+        return { assistant, collection, source, document };
+      };
+
+      it("returns them in body order, whatever order the ids fell in", async () => {
+        const { document } = await newChunkedDocument("Chunk order", 5);
+        const page = await db.listDocumentChunks(document.id);
+        expect(page.total).toBe(5);
+        // The point of the position column: ids are random and every row of
+        // one insert shares `created_at` to the microsecond.
+        expect(page.items.map((chunk) => chunk.text)).toEqual([
+          "slice 0",
+          "slice 1",
+          "slice 2",
+          "slice 3",
+          "slice 4",
+        ]);
+        expect(page.items.map((chunk) => chunk.index)).toEqual([0, 1, 2, 3, 4]);
+      });
+
+      it("honours the write path's position over call order", async () => {
+        // Two calls for one Document, each carrying its own body index: the
+        // second must not restart at zero.
+        const { collection, source, document } = await newChunkedDocument(
+          "Chunk stated position",
+          0
+        );
+        const write = (from: number, to: number) =>
+          db.saveChunks(
+            Array.from({ length: to - from }, (_, i) => ({
+              conceptId: document.id,
+              collectionId: collection.id,
+              sourceId: source.id,
+              content: `slice ${from + i}`,
+              position: from + i,
+              embedding: null,
+            }))
+          );
+        await write(3, 5);
+        await write(0, 3);
+        const page = await db.listDocumentChunks(document.id);
+        expect(page.items.map((chunk) => chunk.text)).toEqual([
+          "slice 0",
+          "slice 1",
+          "slice 2",
+          "slice 3",
+          "slice 4",
+        ]);
+      });
+
+      it("pages without dropping or repeating a chunk", async () => {
+        const { document } = await newChunkedDocument("Chunk paging", 7);
+        const first = await db.listDocumentChunks(document.id, { pageSize: 3 });
+        const second = await db.listDocumentChunks(document.id, {
+          pageSize: 3,
+          page: 2,
+        });
+        const third = await db.listDocumentChunks(document.id, {
+          pageSize: 3,
+          page: 3,
+        });
+        expect(first.items).toHaveLength(3);
+        expect(second.items).toHaveLength(3);
+        expect(third.items).toHaveLength(1);
+        for (const page of [first, second, third]) expect(page.total).toBe(7);
+
+        const texts = [...first.items, ...second.items, ...third.items].map(
+          (chunk) => chunk.text
+        );
+        expect(new Set(texts).size).toBe(7);
+        expect(texts).toEqual(
+          Array.from({ length: 7 }, (_, i) => `slice ${i}`)
+        );
+        // The second page's indexes continue the first's, so the cards keep
+        // numbering 04, 05, 06 rather than restarting at 01.
+        expect(second.items.map((chunk) => chunk.index)).toEqual([3, 4, 5]);
+      });
+
+      it("is empty for a Document nothing has chunked", async () => {
+        const { document } = await newChunkedDocument("Chunk empty", 0);
+        const page = await db.listDocumentChunks(document.id);
+        expect(page).toEqual({ items: [], total: 0 });
+        expect(await db.countConceptChunks(document.id)).toBe(0);
+      });
+
+      it("carries the text and nothing that would leak an embedding", async () => {
+        const { document } = await newChunkedDocument("Chunk shape", 1);
+        const [chunk] = (await db.listDocumentChunks(document.id)).items;
+        expect(Object.keys(chunk!).sort()).toEqual(["id", "index", "text"]);
+      });
+
+      it("counts the same chunks the tab pages", async () => {
+        const { document } = await newChunkedDocument("Chunk count", 4);
+        expect(await db.countConceptChunks(document.id)).toBe(4);
+        expect((await db.listDocumentChunks(document.id)).total).toBe(4);
+      });
+    });
+
+    describe("knowledge memories (#926)", () => {
+      /** A Collection, a Source and one Document, the shape a memory hangs off. */
+      const newPage = async (name: string) => {
+        const assistant = await newAssistant();
+        const collection = await db.createCollection(assistant.id, { name });
+        const source = await db.createSource({
+          collectionId: collection.id,
+          name: `${name} source`,
+          kind: "text",
+        });
+        const concept = await db.createConcept({
+          collectionId: collection.id,
+          sourceId: source.id,
+          path: "handbook/leave.md",
+          frontmatter: { type: "Document", title: "Leave" },
+          body: "Unused leave expires on 31 March.",
+        });
+        return { collection, source, concept };
+      };
+
+      const remember = async (
+        page: Awaited<ReturnType<typeof newPage>>,
+        text: string
+      ) =>
+        db.table("knowledgeMemories").insert({
+          organizationId: ctx.organizationId,
+          collectionId: page.collection.id,
+          sourceId: page.source.id,
+          documentPath: page.concept.path,
+          conceptId: page.concept.id,
+          text,
+          quote: "Unused leave expires on 31 March.",
+          generatedBy: "process:knowledge-memory-extraction",
+          generatedAt: new Date().toISOString(),
+        });
+
+      it("defaults the forget state to live and the restatement count to one", async () => {
+        const page = await newPage("Memory defaults");
+        const memory = await remember(page, "Unused leave expires on 31 March.");
+        expect(memory.forgottenAt).toBeNull();
+        expect(memory.forgetReason).toBeNull();
+        expect(memory.forgottenBy).toBeNull();
+        expect(memory.sourceCount).toBe(1);
+        expect(memory.chunkId).toBeNull();
+      });
+
+      it("lists a page's live memories, and the forgotten ones only on request", async () => {
+        const page = await newPage("Memory listing");
+        const kept = await remember(page, "Leave expires on 31 March.");
+        const dropped = await remember(page, "Leave rolls over indefinitely.");
+
+        const forgotten = await db.table("knowledgeMemories").update(dropped.id, {
+          forgottenAt: new Date().toISOString(),
+          forgetReason: "Contradicted by the 2026 policy",
+          forgottenBy: ctx.userId,
+        });
+        expect(forgotten.forgetReason).toBe("Contradicted by the 2026 policy");
+
+        const live = await db.table("knowledgeMemories").list({
+          sourceId: page.source.id,
+          documentPath: page.concept.path,
+          forgottenAt: null,
+        });
+        expect(live.map((row) => row.id)).toEqual([kept.id]);
+
+        const all = await db.table("knowledgeMemories").list({
+          sourceId: page.source.id,
+          documentPath: page.concept.path,
+        });
+        expect(all.map((row) => row.id).sort()).toEqual(
+          [kept.id, dropped.id].sort()
+        );
+      });
+
+      it("restores a forgotten memory by clearing the whole state", async () => {
+        const page = await newPage("Memory restore");
+        const memory = await remember(page, "Leave expires on 31 March.");
+        await db.table("knowledgeMemories").update(memory.id, {
+          forgottenAt: new Date().toISOString(),
+          forgetReason: "Wrong",
+          forgottenBy: ctx.userId,
+        });
+        const restored = await db.table("knowledgeMemories").update(memory.id, {
+          forgottenAt: null,
+          forgetReason: null,
+          forgottenBy: null,
+        });
+        expect(restored.forgottenAt).toBeNull();
+        expect(restored.forgetReason).toBeNull();
+        expect(restored.forgottenBy).toBeNull();
+        expect(restored.text).toBe("Leave expires on 31 March.");
+      });
+
+      // The whole reason identity is (source, path): a re-crawl deletes the
+      // row the memory was read from and mints a new one for the same page.
+      it("survives the generation swap that deletes the Document it came from", async () => {
+        const page = await newPage("Memory across generations");
+        const memory = await remember(page, "Leave expires on 31 March.");
+
+        const generationId = "00000000-0000-4000-8000-00000000091a";
+        const restaged = await db.createConcept({
+          collectionId: page.collection.id,
+          sourceId: page.source.id,
+          generationId,
+          path: page.concept.path,
+          frontmatter: { type: "Document", title: "Leave" },
+          body: "Unused leave expires on 31 March.",
+        });
+        await expect(
+          db.commitSourceKnowledgeGeneration({
+            sourceId: page.source.id,
+            expectedActiveGenerationId: page.source.activeGenerationId,
+            generationId,
+          })
+        ).resolves.toBe(true);
+        await db.deleteSourceKnowledgeGeneration(
+          page.source.id,
+          page.source.activeGenerationId
+        );
+
+        const after = await db.table("knowledgeMemories").get(memory.id);
+        expect(after?.conceptId).toBeNull();
+        expect(after?.text).toBe("Leave expires on 31 March.");
+        // And the pair still resolves to the page's current Document.
+        const current = (await db.listConcepts(page.collection.id)).find(
+          (concept) =>
+            concept.sourceId === after?.sourceId &&
+            concept.path === after?.documentPath
+        );
+        expect(current?.id).toBe(restaged.id);
+      });
+
+      it("goes with the Source, which has no pages left to remember", async () => {
+        const page = await newPage("Memory cascade");
+        const memory = await remember(page, "Leave expires on 31 March.");
+        await db.deleteSource(page.source.id);
+        expect(await db.table("knowledgeMemories").get(memory.id)).toBeNull();
+      });
+
+      it("is invisible to another Organization's pinned view", async () => {
+        const page = await newPage("Memory tenancy");
+        const memory = await remember(page, "Leave expires on 31 March.");
+        const foreign = createOrgPinnedDb(db, ctx.foreignOrganizationId);
+        expect(await foreign.table("knowledgeMemories").get(memory.id)).toBeNull();
+        expect(
+          (await foreign.table("knowledgeMemories").list()).map((row) => row.id)
+        ).not.toContain(memory.id);
       });
     });
 
@@ -5654,6 +6594,7 @@ export function describeDbContract(
           graph_cognify: true,
           memory_extract: true,
           agent_memory: true,
+          decide: true,
         };
         const stages = Object.keys(allStages) as AiUsageStage[];
         await db.recordAiUsage(
@@ -5700,6 +6641,42 @@ export function describeDbContract(
             surface,
           }))
         );
+      });
+
+      it("writes and reads back a decision row under the typesafe provider", async () => {
+        // A decision (#950) is metered like a model call: stage `decide`, the
+        // provider that answered (`typesafe` for Jev, a text provider for the
+        // adapter fallback), the requested model id, and the turn's spenders.
+        // `typesafe` is a UsageProvider and not a Provider, and the ledger's
+        // provider column is free text, so nothing in the schema may refuse it.
+        const now = Date.now();
+        const from = new Date(now - 60 * 60 * 1000).toISOString();
+        const to = new Date(now + 60 * 60 * 1000).toISOString();
+        await db.recordAiUsage([
+          {
+            organizationId: ctx.organizationId,
+            assistantId: null,
+            stage: "decide",
+            provider: "typesafe",
+            modelId: "typesafe-ai/jev",
+            credentialKind: "platform",
+            inputTokens: 552,
+            outputTokens: 82,
+            spenders: { memberId: ctx.userId, flowId: "flow-decide-guard" },
+            surface: "widget",
+          },
+        ]);
+        const rows = await db.getOrgUsageSpenders(ctx.organizationId, from, to);
+        const decision = rows.find((r) => r.spenders.flowId === "flow-decide-guard");
+        expect(decision).toMatchObject({
+          provider: "typesafe",
+          modelId: "typesafe-ai/jev",
+          credentialKind: "platform",
+          surface: "widget",
+          calls: 1,
+          inputTokens: 552,
+          outputTokens: 82,
+        });
       });
 
       it("round-trips a row's spenders and surface, grouped at the tuple grain", async () => {
@@ -6876,6 +7853,47 @@ export function describeDbContract(
 
         await db.clearSsoConnection(ctx.organizationId);
         expect(await db.getSsoConnection(ctx.organizationId)).toBeNull();
+      });
+    });
+
+    describe("crawler connection (sealed token, one per org and provider)", () => {
+      it("upserts, rotates in place, stays in its org, and deletes", async () => {
+        expect(
+          await db.getCrawlerConnection(ctx.organizationId, "apify")
+        ).toBeNull();
+
+        const connected = await db.setCrawlerConnection(ctx.organizationId, {
+          provider: "apify",
+          encryptedToken: "sealed:apify-token", // pre-sealed by the caller
+          tokenHint: "…oken",
+          accountId: "acct-1",
+        });
+        expect(connected).toMatchObject({
+          organizationId: ctx.organizationId,
+          provider: "apify",
+          encryptedToken: "sealed:apify-token",
+          tokenHint: "…oken",
+          accountId: "acct-1",
+        });
+
+        const rotated = await db.setCrawlerConnection(ctx.organizationId, {
+          provider: "apify",
+          encryptedToken: "sealed:rotated",
+          tokenHint: "…ated",
+        });
+        expect(rotated.id).toBe(connected.id);
+        expect(rotated.encryptedToken).toBe("sealed:rotated");
+        expect(rotated.accountId).toBe("");
+        expect(rotated.createdAt).toBe(connected.createdAt);
+
+        expect(
+          await db.getCrawlerConnection(ctx.missingOrganizationId, "apify")
+        ).toBeNull();
+
+        await db.deleteCrawlerConnection(ctx.organizationId, "apify");
+        expect(
+          await db.getCrawlerConnection(ctx.organizationId, "apify")
+        ).toBeNull();
       });
     });
 

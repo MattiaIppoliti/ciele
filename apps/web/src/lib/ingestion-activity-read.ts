@@ -29,6 +29,11 @@ import {
  * minutes says nothing about what is arriving. An Import's unit is the
  * documents it maps, which is also its row count, so its header counts the run
  * rather than the four rows the card has space for.
+ *
+ * The card keeps saying pages while the Library says Documents, and the two do
+ * not disagree: one fetched page becomes one stored Document, so the card
+ * counts what the crawler brings in and the Library counts what is kept. They
+ * land on the same number and describe different moments.
  */
 
 /** Sources reported in flight per poll. A card showing four needs no more. */
@@ -191,7 +196,7 @@ function websiteRun(source: {
   status: SourceStatus;
   error: string;
   config: Source["config"];
-  /** Concepts under the Source, when the caller's read carried them. */
+  /** Documents stored under the Source, when the caller's read carried them. */
   pages?: number;
 }): IngestionRun {
   const status = statusOf(source.status, "running");

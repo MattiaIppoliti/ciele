@@ -83,6 +83,20 @@ export interface ConversationExportRow {
   "External User Data": string;
   "External User Data Source Names": string;
   Messages: ConversationExportMessage[];
+  /**
+   * Ours, not the reference's (#956). Appended **after** its 29 fields rather
+   * than slotted among them: those 29 and their order are a parity contract
+   * with a reader written against a reference export, and a field inserted in
+   * the middle would break every one of them. A reader that stops at the
+   * contract sees exactly what it did before; one that wants these finds them
+   * at the end.
+   *
+   * Empty for a Conversation the pre-flight never ran on, the same way every
+   * field whose producing feature is off exports here.
+   */
+  "Spoken Language": string;
+  "Escalation Intent": string;
+  "Ended At Frustration": string;
 }
 
 /** A Conversation plus the transcript to export with it. */
@@ -233,6 +247,12 @@ export function conversationExportRows(
               })
             : "",
       })),
+      "Spoken Language": str(meta.preflight?.spokenLanguage),
+      "Escalation Intent":
+        meta.preflight?.escalationIntent === undefined
+          ? ""
+          : String(meta.preflight.escalationIntent),
+      "Ended At Frustration": str(meta.preflight?.endedAtFrustration),
     };
   });
 }

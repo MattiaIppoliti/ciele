@@ -64,6 +64,24 @@ describe("resolveWebsiteCrawlerProvider, Automatic", () => {
     });
   });
 
+  it("routes every crawl to Apify when the Organization pays for it", () => {
+    const orgFunded = { ...caps(true, true), apifyOrgFunded: true };
+    expect(resolveWebsiteCrawlerProvider("auto", STATIC, orgFunded)).toEqual({
+      provider: "apify",
+    });
+    expect(
+      resolveWebsiteCrawlerProvider(
+        undefined,
+        { ...STATIC, browserRendered: true },
+        orgFunded
+      )
+    ).toEqual({ provider: "apify" });
+    // An explicit choice still wins over the Organization's account.
+    expect(resolveWebsiteCrawlerProvider("local", STATIC, orgFunded)).toEqual({
+      provider: "local",
+    });
+  });
+
   it("treats a missing configured provider as Automatic", () => {
     expect(
       resolveWebsiteCrawlerProvider(undefined, STATIC, caps(true, true))

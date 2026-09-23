@@ -112,6 +112,28 @@ App-side env (server scope only, never `NEXT_PUBLIC_`). See
 | `CRAWL4AI_API_TOKEN` | Crawl4AI bearer token | Server-only; sent as `Authorization: Bearer`, never in the body, logs, Source config, client payloads, or telemetry. |
 | `CRON_SECRET` | Cron auth | Required for `finalize-crawls` and `sweep-recrawls`; the routes refuse to run without it (503) and reject a wrong bearer (401). |
 
+**Per-Organization Apify token.** An org admin can connect the Organization's
+own Apify account in Settings → Crawling (`crawler_connections`, one sealed
+token per org and provider). When present it wins over `APIFY_API_TOKEN` for
+that Organization: Apify counts as available to Automatic even with no platform
+token, the run starts and polls on the org token, and the Source records
+`crawlCredential: "organization"` so a later poll never reads the run with the
+wrong account. With an org token, Automatic resolves every crawl to Apify
+(`apifyOrgFunded`): the only reason Automatic keeps crawls off Apify is what
+it costs the platform, and the Organization is paying. Org-funded crawls skip the platform scraping allowance, because
+the platform is not paying for them, and their `crawl` telemetry records
+`credential_kind = 'api_key'`, so the usage readers
+(`20260922210000_crawl_usage_funding.sql`) meter them as customer work rather
+than against the plan. Removing the token mid-run fails that run
+with a message naming Settings → Crawling rather than polling with the
+platform token.
+
+**Local and redirects.** Local follows a redirect only within the start URL's
+own origin, with one exception on the start page: a same-site hop (a `www.`
+added or dropped, or http → https) moves the crawl to the canonical origin and
+its own vetted addresses. `https://example.com → https://www.example.com/` used to
+fail the whole crawl with "cannot follow a cross-origin redirect".
+
 Local needs no credential and is always available. Crawl4AI worker-side config
 (token generation, `SECRET_KEY`, hardened `config.yml`, sizing) is in the worker
 runbook §2–§4.

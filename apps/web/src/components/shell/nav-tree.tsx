@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { Hint } from "@agent-hub/ui";
 import { NAV_TREE_PITCH, navTreeGeometry } from "@/lib/nav-tree";
 import { cn } from "@/lib/utils";
 
@@ -23,10 +24,16 @@ import { cn } from "@/lib/utils";
  *    with `bg-muted`. Here the elbow already points at the active item, and a
  *    filled pill sitting on top of the line it terminates reads as two marks
  *    arguing. Weight and ink do it instead.
- *  - **Not a `data-highlight-row`.** The sliding hover pill measures
- *    `offsetTop` against its offsetParent, and this group has to be `relative`
- *    for the connector to position against it, so joining it would put the pill
- *    in the wrong column. These rows tint on hover rather than glide.
+ *  - **No background pill on the *active* row**, only on the hovered one.
+ *    The elbow already points at the active item, and a filled pill sitting
+ *    on top of the line it terminates reads as two marks arguing.
+ *
+ * They do glide with the rest of the nav. They used to be excluded, because
+ * the pill measured `offsetTop` against the row's offsetParent and this group
+ * is `relative` for the connector's sake, which put the pill in the wrong
+ * column. `HoverHighlight` measures against its own box now, so a nested row
+ * is no longer a special case and these rows answer the pointer the way every
+ * row above them does.
  */
 
 export interface NavTreeItem {
@@ -95,12 +102,13 @@ export function NavTree({
           <Link
             key={item.href}
             href={item.href}
+            data-highlight-row
             // Drawn at the connector's own pitch rather than at `h-8 gap-0.5`:
             // the same 34px, but one number the elbows can be placed against
             // instead of two that have to keep agreeing.
             style={{ height: NAV_TREE_PITCH }}
             className={cn(
-              "relative flex items-center gap-2 rounded-lg pr-2 pl-5 text-[13px] transition-colors",
+              "press relative flex items-center gap-2 rounded-lg pr-2 pl-5 text-[13px] transition-colors",
               index === activeIndex
                 ? "text-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground"
@@ -188,7 +196,13 @@ export function NavFoldGroup({
           inside a link is invalid, and making the whole row toggle instead
           would cost the one thing the row is for. The chevron sits over the
           link's right end. */}
-      <div className="relative w-full">
+      {/* `justify-center` is what keeps the rail straight. A collapsed row is
+          a 36px box, and in a plain block wrapper it sits at the wrapper's
+          left edge: 4px off the 60px rail's centre, which every row outside a
+          fold group is on. Two of the sidebar's icons were the only ones
+          drawn off-axis, and this was why. Inert when expanded, where the row
+          is `w-full` anyway. */}
+      <div className="relative flex w-full justify-center">
         {row}
         {!collapsed && (
           <button
@@ -210,8 +224,40 @@ export function NavFoldGroup({
         )}
       </div>
 
-      {/* Never on the rail: a 36px column has nowhere to put a connector, and
-          the children stay one click away through the parent row itself. */}
+      {/* On the rail the children are always out, as a flat run of icons.
+          The fold control is the only way to open a group, and the rail has
+          no room for one, so folding there meant nine destinations that could
+          not be reached at all without widening the sidebar first. No
+          connector: a 36px column has nowhere to draw one, and with the group
+          always open there is no fold state for it to describe. */}
+      {collapsed && (
+        <div
+          id={regionId}
+          role="group"
+          aria-label={label}
+          className="flex w-full flex-col items-center gap-0.5"
+        >
+          {items.map((item, index) => (
+            <Hint key={item.href} label={item.label} side="right">
+              <Link
+                href={item.href}
+                aria-label={item.label}
+                aria-current={index === activeIndex ? "page" : undefined}
+                data-highlight-row
+                className={cn(
+                  "press relative flex h-8 w-9 items-center justify-center rounded-lg transition-colors",
+                  index === activeIndex
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <item.icon className="size-3.5 shrink-0" />
+              </Link>
+            </Hint>
+          ))}
+        </div>
+      )}
+
       <AnimatePresence initial={false}>
         {!collapsed && open && (
           <motion.div

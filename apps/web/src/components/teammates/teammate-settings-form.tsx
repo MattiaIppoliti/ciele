@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { ModelRef, Teammate, TeammateRoutine } from "@agent-hub/core";
+import type { ModelRef, Provider, Teammate, TeammateRoutine } from "@agent-hub/core";
 import { MEMORY_DOCUMENT_MAX_CHARS } from "@agent-hub/core";
 import { ChevronRight, Shuffle } from "lucide-react";
 import { Button, Input, Label } from "@agent-hub/ui";
@@ -64,6 +64,7 @@ export function TeammateSettingsForm({
   projects,
   learnings,
   routines,
+  unavailableProviders,
   headerActions,
   onDone,
 }: {
@@ -82,6 +83,8 @@ export function TeammateSettingsForm({
   learnings: string;
   /** Its standing instructions (#772). This only renders for an editor. */
   routines: TeammateRoutine[];
+  /** Providers with no credential; their models stay out of the picker. */
+  unavailableProviders: Provider[];
   /** What it may do today; the picker is read-only unless `canGrant`. */
   governance: TeammateGovernanceState;
   /** Granting is admin work, one rung above editing the persona. */
@@ -300,9 +303,10 @@ export function TeammateSettingsForm({
           }}
           value={allowedModels}
           onChange={setAllowedModels}
+          unavailable={unavailableProviders}
         />
         <p className="text-muted-foreground text-sm">
-          {modelAllowListSummary(allowedModels)} Your own connected
+          {modelAllowListSummary(allowedModels, unavailableProviders)} Your own connected
           subscription, if you have one, still runs your turns and ignores this
           list: change it in Settings → AI.
         </p>

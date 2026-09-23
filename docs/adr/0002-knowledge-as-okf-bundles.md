@@ -60,3 +60,33 @@ drops a Concept from both indexes. Full reasoning:
 
 Sources ingested before this change have no companion until re-ingested; file Sources with a
 retained original can be re-processed from the Knowledge UI, pasted text and URLs cannot.
+
+## Amendment: Document is the domain noun, Concept stays the format's (2026-09-20)
+
+The stored unit is called a **Document** everywhere a person reads it: `7 Documents` in the
+Library's Content column, `{n} Documents` in the Assistant editor, the "View knowledge source"
+dialog and its empty state, the `ciele knowledge sources` table, `CONTEXT.md`, and any new code.
+The word it replaces is "Page", which was never accurate for a Source that is a PDF, a pasted note
+or an imported Salesforce article.
+
+**Concept is not retired.** It is what OKF v0.2 calls the same row, so the format keeps the word
+wherever the format is the one speaking: `ConceptFrontmatter` and every derivation over it
+(`trustTier`, `conceptStatus`, `conceptGeneratedAt`, …), the `concepts` and `concept_chunks`
+tables, their SQL functions (`match_chunks_*`), and the `Db` methods named after them
+(`listConceptsBySource`, `persistConcept`, `embedConcept`). One operation moved, the
+`knowledge.sources.concepts.list` the "View knowledge source" dialog calls, which is
+`knowledge.sources.documents.list` now; nothing on `/api/v1`, in the `ciele` CLI or in the MCP
+server referenced it, which is why it could move at all. The wire contracts do not move with it.
+
+The cost, stated rather than left for a reviewer to find: for a while `listSourceDocumentsOp` calls
+`ctx.db.listConceptsBySource` and a function named after Concepts returns Documents. The
+alternative is a rename migration on a live database so a variable agrees with a label, which buys
+nothing a reader can see.
+
+**The citation invariant is unchanged, word for word:** a citation resolves to a Document and then
+to its Source, never to an opaque chunk.
+
+**Pages are still pages.** The crawl activity card counts the pages a crawler fetches (`162/291`)
+and keeps saying so, because that is the number the provider reports while it stages. One fetched
+page becomes one stored Document, so the card and the Library land on the same count and describe
+different moments; neither copy claims the other is wrong.

@@ -141,8 +141,30 @@ const rowFor = (
   )[0];
 
 describe("conversationExportRows", () => {
-  it("emits exactly the reference's 29 fields, in its order", () => {
-    expect(Object.keys(rowFor())).toEqual(REFERENCE_FIELDS);
+  it("emits the reference's 29 fields first, in its order", () => {
+    // A prefix, not the whole record: our own fields are appended after, so a
+    // reader written against a reference export still finds every field it
+    // knows where it expects it.
+    expect(Object.keys(rowFor()).slice(0, REFERENCE_FIELDS.length)).toEqual(
+      REFERENCE_FIELDS
+    );
+  });
+
+  it("appends its own fields after the reference's, never among them", () => {
+    // The rule that keeps the contract above meaningful: anything of ours
+    // slotted into the middle would shift every field after it.
+    expect(Object.keys(rowFor()).slice(REFERENCE_FIELDS.length)).toEqual([
+      "Spoken Language",
+      "Escalation Intent",
+      "Ended At Frustration",
+    ]);
+  });
+
+  it("exports the pre-flight fields empty when none ran", () => {
+    const row = rowFor();
+    for (const field of ["Spoken Language", "Escalation Intent", "Ended At Frustration"]) {
+      expect(row[field as keyof typeof row]).toBe("");
+    }
   });
 
   it("exports a field with no producing feature as an empty string", () => {

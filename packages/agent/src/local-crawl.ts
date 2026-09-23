@@ -28,24 +28,61 @@ const USER_AGENT =
 const MAX_REDIRECTS = 5;
 const LOCAL_TOTAL_TIMEOUT_MS = 4 * 60 * 1000;
 
+/**
+ * Whether a redirect from `from` to `to` stays on the same site: the same
+ * host give or take a leading `www.`, the same port, and a scheme that stays
+ * put or upgrades from http to https. `example.com → www.example.com` and
+ * `http → https` are how ordinary sites canonicalize the address an admin
+ * types; another domain, another subdomain, a port change or an https
+ * downgrade is still a cross-origin redirect.
+ */
+export function isSameSiteRedirect(from: URL, to: URL): boolean {
+  const bare = (host: string) => host.toLowerCase().replace(/^www\./, "");
+  if (bare(from.hostname) !== bare(to.hostname)) return false;
+  if (from.port !== to.port) return false;
+  return (
+    from.protocol === to.protocol ||
+    (from.protocol === "http:" && to.protocol === "https:")
+  );
+}
+
+/** Where the crawl is allowed to go: one origin, pinned to its vetted addresses. */
+interface CrawlScope {
+  origin: string;
+  addresses: string[];
+}
+
+/**
+ * Fetches one page, following redirects by hand so each hop is re-validated.
+ * A hop that leaves `scope.origin` is refused, with one exception: while
+ * fetching the **start** page (`adoptSameSite`), a same-site redirect moves
+ * the scope to the canonical origin and its own vetted addresses. That is the
+ * whole difference between `https://example.com` failing and crawling
+ * `https://www.example.com`; the rest of the crawl stays on the adopted origin.
+ */
 async function fetchCrawlPage(
   rawUrl: string,
-  expectedOrigin: string,
-  pinnedAddresses: string[],
-  timeoutMs: number
+  scope: CrawlScope,
+  timeoutMs: number,
+  adoptSameSite: boolean
 ): Promise<{ response: PinnedFetchResponse; finalUrl: string }> {
   let currentUrl = rawUrl;
+  let previous: URL | null = null;
   for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
     const validated = await validateEgressTarget(currentUrl);
-    if (validated.url.origin !== expectedOrigin) {
-      throw new EgressPolicyError(
-        "Local crawls cannot follow a cross-origin redirect",
-        "redirect"
-      );
+    if (validated.url.origin !== scope.origin) {
+      if (!adoptSameSite || !previous || !isSameSiteRedirect(previous, validated.url)) {
+        throw new EgressPolicyError(
+          "Local crawls cannot follow a cross-origin redirect",
+          "redirect"
+        );
+      }
+      scope.origin = validated.url.origin;
+      scope.addresses = validated.addresses;
     }
     const pinnedTarget: ValidatedEgressTarget = {
       url: validated.url,
-      addresses: pinnedAddresses,
+      addresses: scope.addresses,
     };
     const response = await pinnedRequest(pinnedTarget, {
       timeoutMs,
@@ -59,6 +96,7 @@ async function fetchCrawlPage(
     }
     const location = response.headers.get("location");
     if (!location) return { response, finalUrl: validated.url.toString() };
+    previous = validated.url;
     currentUrl = new URL(location, validated.url).toString();
   }
   throw new Error(`Too many redirects while crawling ${rawUrl}`);
@@ -147,7 +185,10 @@ export async function localCrawl(
   const maxPages = Math.min(options.maxPages ?? 20, LOCAL_CRAWL_MAX_PAGES);
   const timeoutMs = (options.pageTimeoutSecs ?? 15) * 1000;
   const initialTarget = await validateEgressTarget(startUrl);
-  const origin = initialTarget.url.origin;
+  const scope: CrawlScope = {
+    origin: initialTarget.url.origin,
+    addresses: initialTarget.addresses,
+  };
   const deadline = Date.now() + LOCAL_TOTAL_TIMEOUT_MS;
 
   const queue: string[] = [startUrl];
@@ -165,9 +206,9 @@ export async function localCrawl(
       if (remainingMs <= 0) break;
       const { response, finalUrl } = await fetchCrawlPage(
         url,
-        origin,
-        initialTarget.addresses,
-        Math.min(timeoutMs, remainingMs)
+        scope,
+        Math.min(timeoutMs, remainingMs),
+        url === startUrl
       );
       if (!response.ok) continue;
       const type = response.headers.get("content-type") ?? "";
@@ -177,7 +218,7 @@ export async function localCrawl(
       if (page && urlAllowed(finalUrl, options)) pages.push(page);
 
       for (const link of links) {
-        if (new URL(link).origin !== origin) continue;
+        if (new URL(link).origin !== scope.origin) continue;
         const normalized = normalizeUrl(link);
         if (seen.has(normalized)) continue;
         seen.add(normalized);

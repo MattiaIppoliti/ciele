@@ -51,6 +51,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-table-frame: var(--table-frame);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -136,6 +137,12 @@
   --content: var(--background);
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
+  /* The frame a table card draws its heading band and its footer on, a step
+     *darker* than the sheet the rows sit on. It cannot be `--muted`: that
+     token is the same value as `--card` in every theme here, so a tint made
+     from it composites to within a few values of the sheet and the inset
+     never reads. */
+  --table-frame: #dcdcdc;
   --card-foreground: oklch(0.145 0 0);
   /* Card sheen (see the .bg-card rule below). The light theme needs a fully
      opaque white to read at all against #f1f1f1, and gets a faint bottom
@@ -237,6 +244,8 @@
   --content: #171717;
   --foreground: oklch(0.985 0 0);
   --card: #191919;
+  /* Darker than the sheet, and not so dark it merges with --background. */
+  --table-frame: #101010;
   --card-foreground: oklch(0.985 0 0);
   --card-sheen-line: rgba(255, 255, 255, 0.16);
   --card-sheen-glow: rgba(255, 255, 255, 0.07);
@@ -304,6 +313,12 @@
   --content: var(--background);
   --foreground: oklch(0.145 0 0);
   --card: #f1f1f1;
+  /* The frame a table card draws its heading band and its footer on, a step
+     *darker* than the sheet the rows sit on. It cannot be `--muted`: that
+     token is the same value as `--card` in every theme here, so a tint made
+     from it composites to within a few values of the sheet and the inset
+     never reads. */
+  --table-frame: #dcdcdc;
   --card-foreground: oklch(0.145 0 0);
   --card-sheen-line: rgba(255, 255, 255, 1);
   --card-sheen-glow: rgba(255, 255, 255, 0.7);

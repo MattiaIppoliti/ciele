@@ -1,59 +1,88 @@
 ---
 title: Modèle agentique
-description: Comprenez la résolution du fournisseur, l'utilisation des outils, les limites, les traces et les citations.
+description: Comprenez la résolution des fournisseurs, l'utilisation des outils, les limites, les traces et les citations.
 ---
 
-Le runtime utilise l'abstraction de fournisseur du SDK Vercel AI. Les
-adaptateurs de fournisseurs actuels incluent Anthropic, OpenAI, Google et un
-point de terminaison compatible avec OpenAI.
+L'environnement d'exécution utilise l'abstraction de fournisseur du Vercel AI
+SDK. Les adaptateurs de fournisseurs actuellement pris en charge incluent
+Anthropic, OpenAI, Google et un endpoint compatible avec OpenAI.
 
 ## Limites génératives
 
-Le runtime n'effectue un appel au modèle qu'au sein d'une action générative ou
-d'une classification d'intention. Les actions déterministes ne transmettent pas
-leur contenu à un modèle.
+Le runtime n'effectue un appel de modèle que dans le cadre d'une action
+générative ou d'une Intent Classification. Les actions déterministes ne font pas
+passer leur contenu par un modèle.
 
-La réponse de base utilise un appel de chat et aucun outil. La recherche de
-connaissances utilise une boucle d'outils limitée.
+La réponse de base utilise un seul appel de chat et aucun outil. Search
+knowledge utilise une boucle d'outils bornée.
 
-## Boucle de recherche dans Knowledge
+## Boucle de recherche dans la base de connaissances
 
-1. Le modèle reçoit les instructions de l'assistant et les descriptions des
+1. Le modèle reçoit les instructions de l'Assistant et les descriptions des
    outils disponibles.
 2. Le modèle effectue une recherche dans Knowledge ou lit une fenêtre Source
    sélectionnée.
 3. Le runtime enregistre les événements du cycle de vie de l'outil.
-4. Le modèle peut répéter la recherche dans la limite du nombre d'étapes.
-5. Le moteur d'exécution génère la réponse finale et les citations nommées.
+4. Le modèle peut répéter la recherche dans la limite du nombre d'étapes
+   autorisé.
+5. L'environnement d'exécution génère la réponse finale et les citations
+   nommées.
 
-Le panneau Thinking représente ces événements enregistrés relatifs à la
-progression et aux outils. La réflexion simplifiée réécrit le texte de
-progression pour l'affichage Visiteur.
+Le panneau Thinking présente ces événements enregistrés relatifs à la
+progression et aux outils. Le raisonnement simplifié réécrit le texte de
+progression destiné à l'affichage Visitor.
+
+## Routage de pré-vol
+
+Le pre-flight est une décision optionnelle qui s'exécute une fois par message de
+Visitor, avant l'Intent Classification. Il répond à sept questions fixes en un
+seul appel. Les questions sont : Flow, FAQ, une demande concernant une personne,
+le help desk, le niveau de raisonnement, le niveau de frustration et la langue.
+
+Chaque réponse est associée à une valeur de confiance. Lorsqu'une réponse
+dépasse son seuil, le runtime agit en conséquence sans appel de classification :
+
+- Un Flow supérieur au seuil s'exécute directement.
+- Une FAQ correspondante dont la valeur est supérieure au seuil renvoie la
+  réponse de la FAQ stockée mot pour mot, avec la FAQ comme Source.
+- Une demande concernant une personne dont la valeur est supérieure au seuil
+  ouvre le menu d'escalade sur le help desk recommandé.
+
+En dessous du seuil, le tour s'exécute comme il le ferait sans le pre-flight. Le
+panneau Thinking affiche ensuite une phrase fixe pour le résultat, dans la
+langue du message. La phrase ne contient jamais de nom de Flow.
+
+Le pre-flight est désactivé par défaut. La variable d'environnement
+`PREFLIGHT_SHADOW` définie sur `1` enregistre les décisions sans y donner suite.
+La variable d'environnement `PREFLIGHT_ROUTING` définie sur `1` agit sur elles.
+Une tâche exécutée chaque nuit rejoue un ensemble de messages étiquetés et
+déclenche une alerte lorsqu'une décision change.
 
 ## Outils d'intégration d'API
 
 Un Assistant peut enregistrer un catalogue d'API. Le catalogue décrit son URL de
-base, son identifiant protégé et les points de terminaison disponibles.
+base, ses identifiants protégés et ses points de terminaison disponibles.
 
-Le modèle peut inspecter les détails de l'API et interroger un point de
-terminaison enregistré. Le moteur d'exécution valide chaque chemin d'accès par
-rapport au catalogue avant la sortie du réseau.
+Le modèle peut inspecter les détails de l'API et interroger un endpoint
+enregistré. L'environnement d'exécution valide chaque chemin par rapport au
+catalogue avant la sortie du réseau.
 
-Les lecteurs fenêtrés renvoient une plage de contenu demandée et une longueur
-totale. Ce contrat permet au modèle d'inspecter de grandes charges utiles d'API
-et de connaissances sans troncature silencieuse.
+Les lecteurs par fenêtres renvoient la plage de contenu demandée ainsi que la
+longueur totale. Ce contrat permet au modèle d'inspecter de grandes charges
+utiles d'API et de Knowledge sans troncature silencieuse.
 
 ## Comportement en cas d'échec
 
 Le routeur de mots-clés gère la classification lorsqu'aucun modèle de
-classificateur n'est disponible ou que la classification échoue. La recherche de
-connaissances peut utiliser le repli lexical sans vecteurs d'embedding.
+classification n'est disponible ou lorsque la classification échoue. La
+recherche dans la base de connaissances peut utiliser le fallback lexical sans
+embeddings.
 
-Un transport de messagerie non configuré renvoie un résultat d'échec honnête. Il
-ne crée pas de message de livraison réussie.
+Un transport d'e-mails non configuré renvoie un résultat d'échec honnête. Il ne
+crée pas de message de remise réussie.
 
 ## Règle d'extension
 
-Ajoutez un nouvel outil d'agent via le registre d'outils et son wrapper de cycle
-de vie. Gardez les contrôles d'autorisation, de propriété, de validation des
-entrées et de sortie en dehors du contrôle du modèle.
+Ajoutez un nouvel outil d'agent via le registre des outils et son wrapper de
+cycle de vie. Maintenez les contrôles d'autorisation, de propriété, de
+validation des entrées et de sortie hors du contrôle du modèle.

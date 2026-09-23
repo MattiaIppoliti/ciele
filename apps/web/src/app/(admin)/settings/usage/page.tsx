@@ -14,17 +14,6 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import {
-  Activity,
-  CalendarDays,
-  Coins,
-  Cpu,
-  FileStack,
-  Hash,
-  KeyRound,
-  Layers,
-  Wrench,
-} from "lucide-react";
-import {
   Table,
   TableBody,
   TableCard,
@@ -276,9 +265,9 @@ export default async function UsageSettingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead icon={Wrench}>Operation</TableHead>
-                    <TableHead icon={Activity}>Outcome</TableHead>
-                    <TableHead icon={Hash} className="text-right">
+                    <TableHead>Operation</TableHead>
+                    <TableHead>Outcome</TableHead>
+                    <TableHead className="text-right">
                       Count
                     </TableHead>
                   </TableRow>
@@ -389,17 +378,17 @@ export default async function UsageSettingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead icon={CalendarDays}>Day</TableHead>
-                    <TableHead icon={Layers}>Kind</TableHead>
-                    <TableHead icon={KeyRound}>Credential</TableHead>
-                    <TableHead icon={Cpu}>Ran on</TableHead>
-                    <TableHead icon={Hash} className="text-right">
+                    <TableHead>Day</TableHead>
+                    <TableHead>Kind</TableHead>
+                    <TableHead>Credential</TableHead>
+                    <TableHead>Ran on</TableHead>
+                    <TableHead className="text-right">
                       Calls
                     </TableHead>
-                    <TableHead icon={Coins} className="text-right">
+                    <TableHead className="text-right">
                       Tokens in · out
                     </TableHead>
-                    <TableHead icon={FileStack} className="text-right">
+                    <TableHead className="text-right">
                       Pages
                     </TableHead>
                   </TableRow>

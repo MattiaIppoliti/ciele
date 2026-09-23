@@ -5,6 +5,7 @@ import type {
   EntitySnapshot,
   Flow,
   FlowTrigger,
+  PreflightTraceRecord,
   ProactiveTriggerContext,
   ProviderConnection,
   ReviewRequest,
@@ -23,6 +24,7 @@ import type {
 import {
   attachmentContextSection,
   type ChatAttachment,
+  foldPreflightSignals,
   messageText,
   needsVisitorDeliveryHistory,
   notificationDelivery,
@@ -39,7 +41,14 @@ import type {
   MemorySearcher,
   ReferralCandidate,
   TeammateActionTool,
+  UsageEvent,
 } from "./types";
+import {
+  APPROVAL_EXPIRY_MS,
+  approvalCardPart,
+  runApprovalGate,
+} from "./approval-gate";
+import { resolveDecisionModel } from "./decision-model";
 import { contactLabel } from "./actions";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import { summarizeTurnUsage, turnUsageAttribution } from "./usage";
@@ -1091,6 +1100,8 @@ export async function streamConversationTurn(
         flowId: string | null;
         flowName: string;
         effects?: ActionEffect[];
+        /** The shadow pre-flight's record (#952), when one ran this turn. */
+        preflight?: PreflightTraceRecord;
         /** Extra telemetry fields (usage, toolCalls, flowId) beyond the base. */
         telemetry?: Partial<Parameters<typeof recordRuntimeEvent>[1]>;
         /** A shared Teammate lifecycle already folded these public events. */
@@ -1108,8 +1119,41 @@ export async function streamConversationTurn(
         const parts = turn.observation?.partsAreAudited
           ? turn.parts
           : observer.partsWithAudit(turn.parts);
-        const storedTrace =
+        const observedTrace =
           turn.observation?.trace ?? prepareTraceForStorage(observer.trace);
+        // A turn that did no agentic work stores a null trace, and a Flow whose
+        // response is one verbatim Message is exactly that. Dropping the
+        // pre-flight record on those turns would hand #953 a population made
+        // only of turns that searched, which is the bias the shadow exists to
+        // avoid, so the record makes an otherwise empty trace rather than
+        // going missing. Safe on every screen the Visitor sees: a finished
+        // trace with no steps renders nothing at all (`thinking-panel.tsx`
+        // returns null for it), so a shadowed turn still looks exactly like an
+        // unshadowed one.
+        const storedTrace = turn.preflight
+          ? { ...(observedTrace ?? { steps: [], searchCount: 0 }), preflight: turn.preflight }
+          : observedTrace;
+
+        // The Conversation's running pre-flight signals (#956), folded from
+        // this turn's record. Written beside the trace rather than from it,
+        // because the trace is per turn and these three are properties of the
+        // whole conversation: the language somebody wrote in, whether they
+        // ever asked for a person, and how calm it ended.
+        //
+        // Isolated like every other accounting write: a failure here must not
+        // fail a turn that already answered.
+        if (turn.preflight && !turn.preflight.failure) {
+          try {
+            await db.updateConversationMetadata(conversationId, {
+              preflight: foldPreflightSignals(
+                conversation.metadata.preflight,
+                turn.preflight
+              ),
+            });
+          } catch {
+            // The Insights cards lose one turn, the Visitor loses nothing.
+          }
+        }
         const saved = turnLeaseToken
           ? await systemDb.commitConversationTurn({
               conversationId,
@@ -1265,6 +1309,76 @@ export async function streamConversationTurn(
             }
           }
         }
+        // What the gate's own decisions cost. Collected here rather than in
+        // the engine's `usageEvents` because the gate runs inside a tool call,
+        // which is past the point the engine hands that array out.
+        const gateUsage: UsageEvent[] = [];
+        // The approval gate (#958). Bound here rather than where the actions
+        // are built, because this is what holds the decision backend, the Db
+        // and the Teammate's Standing Role all at once; the host hands over a
+        // catalogue and never learns a gate exists.
+        //
+        // An action is gated whether or not the Teammate has approval bypass:
+        // the bypass skips a colleague's approval, never the safety check,
+        // which is what "chooses a path and never destroys information" means
+        // for an actor that can act.
+        const gatedTeammateActions = input.teammateActions?.map((action) => ({
+          ...action,
+          // The two memory writes (#771) are not gated. They are the only
+          // tools with no grant row, because they take no target: the profile
+          // is always the invoking Member's own. There is nothing here for a
+          // gate to protect, and asking a colleague to authorise somebody
+          // writing to their own profile would be absurd.
+          guard: action.domain === "memory" ? undefined : async (actionInput: Record<string, unknown>) => {
+            const gate = await runApprovalGate({
+              subject: {
+                label: action.label,
+                description: action.description,
+                arguments: JSON.stringify(actionInput),
+                ...(teammate?.roleDescription
+                  ? { roleDescription: teammate.roleDescription }
+                  : {}),
+              },
+              resolved: resolveDecisionModel(
+                assistant?.modelProvider ?? "anthropic",
+                input.connections,
+                input.keyResolution ?? {}
+              ),
+              signal,
+              recordUsage: (event) => gateUsage.push(event),
+            });
+            // No decision backend configured means no gate: a deployment
+            // that never had a key has not opted into this and runs exactly as
+            // it did before (user story 24). A backend that *failed* is a
+            // different thing and does stop the action, because an outage must
+            // not become an approval.
+            if (gate.backend === null) return null;
+            if (gate.verdict.kind === "allow") return null;
+
+            const approval = await systemDb.table("actionApprovals").insert({
+              organizationId: input.organizationId,
+              conversationId,
+              teammateId: teammate?.id ?? null,
+              requestedBy: input.keyResolution?.memberId ?? null,
+              operation: action.operation,
+              input: actionInput,
+              label: action.label,
+              reversibility: gate.verdict.reversibility,
+              reason: gate.verdict.reason,
+              backend: gate.backend,
+              calibrated: gate.calibrated,
+              confidence: gate.confidence,
+              mapVersion: gate.mapVersion,
+              expiresAt: new Date(Date.now() + APPROVAL_EXPIRY_MS).toISOString(),
+            });
+            return approvalCardPart({
+              approvalId: approval.id,
+              label: action.label,
+              verdict: gate.verdict,
+            });
+          },
+        }));
+
         const turnOperationKey = `conversation-turn/${conversationId}/${requestId}`;
         const answerTurn = {
           effectKeyPrefix: turnOperationKey,
@@ -1290,9 +1404,27 @@ export async function streamConversationTurn(
             url: conversation.metadata.launchUrl,
             now: new Date(),
           },
+          // The browser locale captured at launch: the fallback for the
+          // pre-flight's fixed Thinking line when the message's own language
+          // could not be told (#953).
+          visitorLocale: conversation.metadata.language ?? null,
+          // The FAQ direct hit's read (#954). The id was validated against the
+          // Assistant's own FAQ options before it got here, so this is a
+          // Concept read and a Collection name, not a tenancy check.
+          readPreflightFaq: async (faqId) => {
+            const concept = await db.getConcept(faqId);
+            if (!concept || concept.excluded || concept.frontmatter.type !== "FAQ") return null;
+            const collection = await db.getCollection(concept.collectionId).catch(() => null);
+            return {
+              body: concept.body,
+              title: concept.frontmatter.title ?? concept.path,
+              collectionName: collection?.name ?? "",
+              url: concept.frontmatter.resource ?? null,
+            };
+          },
           readKnowledgeDocument,
           apiIntegration,
-          teammateActions: input.teammateActions,
+          teammateActions: gatedTeammateActions,
           memoryDocuments: standing,
           hasAttachments: attachmentSection !== null,
           untrustedContext: input.untrustedContext,
@@ -1348,6 +1480,35 @@ export async function streamConversationTurn(
             claimValue: input.verifiedIdentity?.claim?.value ?? null,
           },
           escalationDesks,
+          // The shadow pre-flight's database half (#952), read only when the
+          // engine is actually about to ask. The desks are the Assistant's
+          // *selected* ones, not the ones the "AI recommended help desk"
+          // toggle admits: the pre-flight asks which desk fits, and gating that
+          // question on a feature the Organization may not have turned on would
+          // make the shadow's escalation data a sample of the toggle instead of
+          // a sample of the traffic. `escalationDesks` is reused when that
+          // toggle already paid for the same read.
+          loadPreflightCatalogue: async () => {
+            const selected = assistant.helpDeskSettings?.selectedIds ?? [];
+            const [faqs, desks] = await Promise.all([
+              db.listAssistantFaqOptions(assistant.id).catch(() => []),
+              escalationDesks.length > 0 || selected.length === 0
+                ? Promise.resolve(escalationDesks)
+                : db
+                    .listHelpDesks(input.organizationId)
+                    .then((all) =>
+                      all
+                        .filter((desk) => selected.includes(desk.id))
+                        .map((desk) => ({
+                          id: desk.id,
+                          name: desk.name,
+                          description: desk.description ?? "",
+                        }))
+                    )
+                    .catch(() => []),
+            ]);
+            return { faqs, desks };
+          },
           emit,
           signal,
           keyResolution: input.keyResolution,
@@ -1451,6 +1612,7 @@ export async function streamConversationTurn(
           flowId: result.flowId,
           flowName: result.flowName,
           effects: result.effects,
+          preflight: result.preflight,
           observation: teammateExecution
             ? { trace: teammateExecution.trace, partsAreAudited: true }
             : undefined,
@@ -1476,8 +1638,24 @@ export async function streamConversationTurn(
             }
             // AI usage ledger, written post-commit and isolated like session
             // state: losing accounting must never break the chat.
+            // A gate decision is spend of the turn that made it (#848), so it
+            // settles with the turn's own rows rather than on its own.
+            const gateUsageRows = gateUsage.map((u) => ({
+              organizationId: input.organizationId,
+              assistantId: attributedAssistantId,
+              conversationId,
+              messageId,
+              stage: u.stage,
+              provider: u.provider,
+              modelId: u.modelId,
+              credentialKind: u.credentialKind,
+              inputTokens: u.inputTokens,
+              outputTokens: u.outputTokens,
+              spenders: { ...usageSpenders, flowId: result.flowId },
+              surface: usageSurface,
+            }));
             const usageRows = teammateExecution
-              ? teammateExecution.usageRows(messageId)
+              ? [...teammateExecution.usageRows(messageId), ...gateUsageRows]
               : result.usage.map((u) => ({
                 organizationId: input.organizationId,
                 assistantId: attributedAssistantId,
@@ -1494,7 +1672,7 @@ export async function streamConversationTurn(
                 // one that replies verbatim, and that is worth being able to see.
                 spenders: { ...usageSpenders, flowId: result.flowId },
                 surface: usageSurface,
-              }));
+              })).concat(gateUsageRows);
             await spendAdmission.settle(usageRows);
             // Counted, never priced, and isolated like every other accounting
             // write: losing the count must not lose the work.

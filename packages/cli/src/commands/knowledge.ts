@@ -23,7 +23,7 @@ const ORG_SOURCE_COLUMNS = [
   { key: "name", header: "Name" },
   { key: "kind", header: "Kind" },
   { key: "status", header: "Status" },
-  { key: "conceptCount", header: "Pages" },
+  { key: "conceptCount", header: "Documents" },
   { key: "createdAt", header: "Created" },
 ];
 

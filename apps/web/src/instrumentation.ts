@@ -70,6 +70,23 @@ export async function register() {
       process.env.NODE_ENV !== "production" ||
       process.env.VERCEL_ENV === "preview" ||
       process.env.VERCEL_ENV === "development",
+    // The shadow pre-flight (#952). Opt-in, platform-wide and temporary: it
+    // collects the traffic #953 sets its thresholds from and then goes away.
+    // Read as an exact "1" so that an empty or misspelled value is off, which
+    // is the direction an unclear flag should fail in when it spends money.
+    preflightShadowEnabled: () => process.env.PREFLIGHT_SHADOW === "1",
+    // The pre-flight routing (#953). Its own flag: observing (above) must never
+    // become acting because a variable was already set. Same exact "1" rule.
+    preflightRoutingEnabled: () => process.env.PREFLIGHT_ROUTING === "1",
+    // The verifier's first tier (#957). Off until the shadow has shown the
+    // confidences hold on real traffic: this flag decides whether an answer is
+    // graded by a language model at all, so switching it on early would
+    // quietly stop raising Improvements.
+    verifierTierOneEnabled: () => process.env.VERIFIER_TIER_ONE === "1",
+    // The approval gate (#958). Separate from the key on purpose: a decision
+    // key is a credential, and setting one for the shadow pre-flight must not
+    // also start halting outbound calls on live Visitor traffic.
+    approvalGateEnabled: () => process.env.APPROVAL_GATE === "1",
   });
 
   await import("@/ee/register");

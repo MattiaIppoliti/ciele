@@ -374,6 +374,13 @@ const PINNED_TABLES = new Set([
   // script has nowhere else to look, and a run is not a Conversation, so the
   // Inbox endpoints do not cover it.
   "httpFlowRuns",
+  // Knowledge memories (#926). The exception to the rule above: no /api/v1
+  // route reaches them yet. They are here because the three operations that
+  // own them run on this view in `api-surface.test.ts`, which is the gate the
+  // Teammates domain shipped without. A row carries `organizationId`, so the
+  // pinning has something to pin, and the day a route arrives it arrives
+  // already proven rather than throwing on its first real call.
+  "knowledgeMemories",
 ] as const);
 type PinnedTableName = typeof PINNED_TABLES extends Set<infer T> ? T : never;
 

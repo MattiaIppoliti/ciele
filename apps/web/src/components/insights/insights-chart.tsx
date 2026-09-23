@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, Table2 } from "lucide-react";
+import { ChevronDown, Table2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@agent-hub/ui";
 import {
@@ -304,7 +304,7 @@ export function UsageCard({
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead icon={CalendarDays}>Date</TableHead>
+                  <TableHead>Date</TableHead>
                   {visible.map((r) => (
                     <TableHead key={r.key} className="whitespace-nowrap">
                       {r.label}

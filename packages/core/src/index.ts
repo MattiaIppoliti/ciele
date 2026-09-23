@@ -89,6 +89,136 @@ export {
 // Basic Interaction's deterministic tier (#566): recognise conversational
 // courtesy with no model call, and pick the Flow that answers it.
 export { basicInteractionFlow } from "./basic-interaction";
+// A Decision (#951, spec #948): the structural twins of the AI SDK's evaluation
+// questions and answers, the generic derivations over them, and the pre-flight
+// question map with its thresholds, routing and Thinking-line table. Pure; the
+// call itself lives in `@agent-hub/agent`.
+export {
+  CHOICE_OPTION_CAP,
+  SCORE_LEVEL_CAP,
+  answeredByFallback,
+  clearsThreshold,
+  compositeScore,
+  scoreLevel,
+} from "./decision";
+export type {
+  AnswerFor,
+  AnswersFor,
+  CompositePart,
+  DecisionAnswer,
+  DecisionBooleanAnswer,
+  DecisionBooleanQuestion,
+  DecisionChoiceAnswer,
+  DecisionChoiceQuestion,
+  DecisionConfidence,
+  DecisionQuestion,
+  DecisionScoreAnswer,
+  DecisionScoreQuestion,
+} from "./decision";
+export {
+  FLOW_DEFAULT,
+  FLOW_OTHER,
+  FRUSTRATION_LEVELS,
+  LANGUAGE_MIXED,
+  LANGUAGE_OTHER,
+  NONE,
+  PREFLIGHT_LANGUAGES,
+  PREFLIGHT_MAP_VERSION,
+  PREFLIGHT_MODEL_ID,
+  PREFLIGHT_QUESTION_IDS,
+  PREFLIGHT_THRESHOLDS,
+  REASONING_LEVELS,
+  THINKING_LINES,
+  buildPreflightQuestions,
+  describePreflightRouting,
+  foldPreflightSignals,
+  frustrationLevel,
+  preflightRouting,
+  reasoningLevel,
+  spokenLanguage,
+  thinkingLine,
+  thinkingOutcome,
+} from "./preflight";
+export {
+  DEFAULT_THRESHOLD_CANDIDATES,
+  cohenKappa,
+  suggestThreshold,
+  thresholdSweep,
+} from "./preflight-calibration";
+export type {
+  AgreementFigures,
+  CalibrationObservation,
+  ThresholdPoint,
+  ThresholdSuggestion,
+} from "./preflight-calibration";
+export {
+  APPROVAL_GATE_MAP_VERSION,
+  APPROVAL_GATE_QUESTION_IDS,
+  APPROVAL_GATE_THRESHOLDS,
+  REVERSIBILITY_OPTIONS,
+  approvalReviewTitle,
+  approvalVerdict,
+  buildApprovalQuestions,
+} from "./approval-gate";
+export {
+  DEDUP_CANDIDATE_LIMIT,
+  IMPROVEMENT_DEDUP_THRESHOLD,
+  PRIORITY_CUTS,
+  PRIORITY_LEVELS,
+  PRIORITY_QUESTION_IDS,
+  PRIORITY_WEIGHTS,
+  buildDedupQuestions,
+  buildPriorityQuestions,
+  dedupCandidates,
+  dedupMatch,
+  priorityFrom,
+} from "./improvement-decisions";
+export type {
+  OpenImprovement,
+  PriorityQuestionId,
+} from "./improvement-decisions";
+export {
+  MAX_CLAIMS,
+  TIER_ONE_THRESHOLD,
+  buildClaimQuestions,
+  carriesNumericFact,
+  splitClaims,
+  splitForTiers,
+  tierOneOutcome,
+} from "./verification";
+export type { ClaimSplit, TierOneOutcome } from "./verification";
+export type { ConversationPreflightSignals } from "./types";
+export type {
+  ActionApproval,
+  ActionApprovalInput,
+  ActionApprovalPatch,
+  ApprovalReviewReason,
+} from "./types";
+export type {
+  ApprovalDecision,
+  ApprovalGateAnswers,
+  ApprovalGateQuestionId,
+  ApprovalGateQuestionMap,
+  ApprovalSubject,
+  ApprovalVerdict,
+  Reversibility,
+} from "./approval-gate";
+export type {
+  PreflightAnswers,
+  PreflightCatalogue,
+  PreflightDecision,
+  PreflightDesk,
+  PreflightFaq,
+  PreflightFailure,
+  PreflightLanguage,
+  PreflightQuestionId,
+  PreflightQuestionMap,
+  PreflightRouting,
+  PreflightTraceAnswer,
+  PreflightTraceRecord,
+  ReasoningLevel,
+  ThinkingOutcome,
+} from "./preflight";
 export type {
   CourtesyHistoryTurn,
   CourtesyRoutingContext,
@@ -211,6 +341,50 @@ export type {
   MemoryDocumentChange,
   MemoryLayerInput,
 } from "./memory-documents";
+// What "live" means for a memory, written once (#926). The knowledge half
+// names the two constants a page-scoped memory implies, so no caller re-checks
+// `forgottenAt` by hand. The subject half is ADR-0023's shape, here ahead of
+// that branch so its merge is a no-op.
+export { isKnowledgeMemoryLive, isMemoryLive } from "./memory";
+// Memory extraction's pure half (#930): the verbatim-quote gate that refuses an
+// invented fact, the cap, and the re-crawl reconciliation that never undoes a
+// Member's forget.
+// Why a Document has no memories (#933): the four answers the empty state
+// gives instead of "No memories yet.", derived from the extraction record.
+export { memoriesEmptyState } from "./memory-empty-state";
+export type { MemoriesEmptyState } from "./memory-empty-state";
+export {
+  KNOWLEDGE_MEMORY_CAP,
+  filterExtractedMemories,
+  reconcileKnowledgeMemories,
+} from "./knowledge-memory-extraction";
+export type {
+  ExistingMemory,
+  ExtractedMemory,
+  FilteredMemories,
+  MemoryReconciliation,
+} from "./knowledge-memory-extraction";
+// A Source's Documents table (#927): the status pill, derived at read time
+// from the two columns that already carry the answer.
+export {
+  DOCUMENT_CHUNKS_PAGE_SIZE,
+  SOURCE_DOCUMENTS_PAGE_SIZE,
+  sourceDocumentStatus,
+  sourceDocumentStatusLabel,
+} from "./source-documents";
+export type { SourceDocumentStatus } from "./source-documents";
+// The order the two paged knowledge tables read in. Shared because each read
+// exists as SQL and again in memory, and an order that differs between them
+// loses rows across a page boundary rather than looking wrong.
+export {
+  compareOrgKnowledgeSources,
+  compareSourceDocuments,
+} from "./knowledge-order";
+export type {
+  OrgKnowledgeSourceOrder,
+  SourceDocumentOrder,
+} from "./knowledge-order";
+export type { MemoryLifecycleFields } from "./memory";
 
 // Near-duplicate detection for auto-filed Improvements (#767, story 15): the
 // cross-conversation half of the dedup, lexical rather than embedding-based on
@@ -397,7 +571,11 @@ export { monotonicNow, shortId } from "./id";
 
 // Who paid for a model call. Exhaustive over `AiCredentialKind` by construction,
 // so adding a credential kind without attributing it is a compile error.
-export { fundingBucket } from "./funding";
+export {
+  crawlCredentialKind,
+  crawlMeterCredentialKind,
+  fundingBucket,
+} from "./funding";
 export type { FundingBucket } from "./funding";
 
 // --- Pure helpers that are not domain derivations -------------------------

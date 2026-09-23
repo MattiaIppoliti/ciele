@@ -1,13 +1,18 @@
 import type {
   Concept,
   ConceptFrontmatter,
+  DecisionBooleanAnswer,
+  DecisionConfidence,
+  DecisionScoreAnswer,
   Entity,
   Improvement,
   ImprovementPatch,
+  PriorityQuestionId,
   Provider,
   ReviewRequest,
   Role,
   SsoConnection,
+  CrawlerConnectionProvider,
   TeammateCapabilityCeiling,
   TeammateGrantDomain,
   UsageLimitsSnapshot,
@@ -107,7 +112,50 @@ export interface TeammateActor {
   projectId?: string | null;
 }
 
+/**
+ * What the decision backend answered for one piece of triage evidence (#959).
+ * Raw answers, not a verdict: which item to merge into and what priority to
+ * give are derivations in `@agent-hub/core`, and keeping them there is what
+ * lets the weights and the thresholds be read, tested and changed in one
+ * place instead of inside a host.
+ */
+export interface TriageDecisionAnswers {
+  dedup: {
+    answers: Readonly<Record<string, DecisionBooleanAnswer>>;
+    confidence: DecisionConfidence;
+  };
+  priority: Readonly<Record<PriorityQuestionId, DecisionScoreAnswer>>;
+  /** False under the adapter; the dedup rule then demands a lexical match too. */
+  calibrated: boolean;
+}
+
 export interface OperationPorts {
+  /**
+   * Runs an action the approval gate stopped, once a Member has approved it
+   * (#958). A port because the action must run on the **org-pinned**
+   * service-role Db the Teammate paths use, never on the approving Member's
+   * RLS session: a Viewer approving an action a grant allows would otherwise
+   * be refused by RLS, which would make a grant able only to narrow and never
+   * to widen, the opposite of what #770 settled.
+   */
+  runApprovedTeammateAction?(input: {
+    teammateId: string;
+    operation: string;
+    input: Record<string, unknown>;
+    /** Who the action is attributed to, which is not who approved it. */
+    requestedBy: string | null;
+  }): Promise<void>;
+
+  /**
+   * The decision backend for the Improvements board (#959). A port because
+   * this package speaks core, db and zod only while the model lives in the
+   * runtime; **absent means no backend**, and the routine then dedups the way
+   * it did before this ticket, on titles alone.
+   */
+  triageDecisions?(input: {
+    evidence: { title: string; question: string; answer: string };
+    candidates: readonly { id: string; title: string }[];
+  }): Promise<TriageDecisionAnswers | null>;
   /** Read the org's Entities when freezing a Publication snapshot. */
   listPublicationEntities?(organizationId: string): Promise<Entity[]>;
   /**
@@ -147,6 +195,14 @@ export interface OperationPorts {
     provider: Exclude<Provider, "openai_compatible">,
     apiKey: string
   ): Promise<{ ok: true } | { ok: false; error: string }>;
+  /**
+   * Probe a crawler token before a Crawler Connection stores it, returning the
+   * account it belongs to. Absent, the token is stored unverified.
+   */
+  verifyCrawlerToken?(
+    provider: CrawlerConnectionProvider,
+    token: string
+  ): Promise<{ ok: true; accountId: string } | { ok: false; error: string }>;
   /** Validate a stored SSO connection without exposing its sealed secret. */
   validateSsoConnection?(
     connection: SsoConnection
@@ -181,6 +237,26 @@ export interface OperationPorts {
     title: string;
     body: string;
   }): Promise<void>;
+  /**
+   * Summarise one Document's body (#931), for the Details column's card.
+   *
+   * A port because the operations layer holds no model client, and
+   * best-effort by contract: null covers "no Provider Connection" and "the
+   * call failed" alike, and the card falls back to an Excerpt either way.
+   */
+  summariseDocument?(args: {
+    title: string;
+    body: string;
+  }): Promise<{ text: string; by: string } | null>;
+  /**
+   * Queue memory extraction for one Source's Documents that need it (#933),
+   * skipping what is fresh or already queued. Returns how many it queued, so
+   * the button can report a number rather than a hope.
+   */
+  enqueueMemoryExtractions?(args: {
+    collectionId: string;
+    sourceId: string;
+  }): Promise<number>;
   /** Restart a website Source's crawl lifecycle. */
   restartCrawl?(sourceId: string): Promise<void>;
   /** Tell the widget cache a new latest Publication exists (#623). */

@@ -3,6 +3,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { GeneralForm } from "@/components/assistant/general-form";
 import { SectionHero } from "@/components/settings/section-hero";
 import { requirePageMember } from "@/lib/authz";
+import { providersWithoutCredential } from "@/lib/model-credentials";
 import { getAssistantCached } from "../get-assistant";
 
 export default async function GeneralPage({
@@ -11,8 +12,11 @@ export default async function GeneralPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  await requirePageMember();
-  const assistant = await getAssistantCached(id);
+  const { db, organizationId } = await requirePageMember();
+  const [assistant, connections] = await Promise.all([
+    getAssistantCached(id),
+    db.listProviderConnections(organizationId),
+  ]);
   if (!assistant) notFound();
 
   return (
@@ -22,7 +26,10 @@ export default async function GeneralPage({
         title="General Settings"
         description="Manage your assistant's name, messaging, and other settings."
       />
-      <GeneralForm assistant={assistant} />
+      <GeneralForm
+        assistant={assistant}
+        unavailableProviders={providersWithoutCredential(connections)}
+      />
     </div>
   );
 }

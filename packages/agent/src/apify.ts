@@ -1,6 +1,8 @@
 /**
- * Website crawling via Apify's Website Content Crawler. The token comes
- * from APIFY_API_TOKEN (never hardcode it).
+ * Website crawling via Apify's Website Content Crawler. The token is the
+ * Organization's own Crawler Connection when it has one (Settings → Crawling),
+ * passed in as `token`; otherwise the platform's APIFY_API_TOKEN. Never
+ * hardcode it.
  *
  * Crawls run *asynchronously*: we start an Apify run (a quick POST), store its
  * run/dataset ids on the Source, and later poll the run and ingest its dataset
@@ -110,14 +112,33 @@ export function mapCrawledPages(
     .filter((page) => page.text.length > 0);
 }
 
-function requireToken(): string {
-  const token = process.env.APIFY_API_TOKEN;
-  if (!token) {
+function requireToken(token?: string): string {
+  const resolved = token || process.env.APIFY_API_TOKEN;
+  if (!resolved) {
     throw new Error(
-      "APIFY_API_TOKEN is not set, required for website crawling."
+      "No Apify API token: connect one in Settings → Crawling, or set APIFY_API_TOKEN."
     );
   }
-  return token;
+  return resolved;
+}
+
+/**
+ * Confirms an Apify token works and names the account it belongs to, before
+ * an Organization's Crawler Connection stores it. `GET /v2/users/me` is the
+ * cheapest authenticated call Apify has and costs no credits.
+ */
+export async function verifyApifyToken(
+  token: string
+): Promise<{ accountId: string; username: string }> {
+  const { data } = await bearerRequest<{
+    data?: { id?: string; username?: string };
+  }>("https://api.apify.com/v2/users/me", {
+    token,
+    timeoutMs: 15_000,
+    errorLabel: "Apify rejected the token",
+  });
+  if (!data?.id) throw new Error("Apify accepted the token but named no account");
+  return { accountId: data.id, username: data.username ?? "" };
 }
 
 /** A started (still-running) crawl: what we persist on the Source to track it. */
@@ -158,12 +179,13 @@ export function isRunTerminal(status: ApifyRunStatus): boolean {
  */
 export async function startCrawl(
   url: string,
-  options: CrawlOptions = {}
+  options: CrawlOptions = {},
+  token?: string
 ): Promise<StartedCrawl> {
   const { data } = await bearerRequest<{
     data?: { id?: string; defaultDatasetId?: string };
   }>(`https://api.apify.com/v2/acts/${ACTOR}/runs?memory=4096`, {
-    token: requireToken(),
+    token: requireToken(token),
     body: buildCrawlInput(url, options),
     timeoutMs: 30_000,
     errorLabel: "Apify run failed to start",
@@ -175,11 +197,14 @@ export async function startCrawl(
 }
 
 /** Reads an async run's current status (and its dataset id). */
-export async function getRunState(runId: string): Promise<CrawlRunState> {
+export async function getRunState(
+  runId: string,
+  token?: string
+): Promise<CrawlRunState> {
   const { data } = await bearerRequest<{
     data?: { status?: string; defaultDatasetId?: string };
   }>(`https://api.apify.com/v2/actor-runs/${runId}`, {
-    token: requireToken(),
+    token: requireToken(token),
     timeoutMs: 30_000,
     errorLabel: "Apify run lookup failed",
   });
@@ -193,7 +218,8 @@ export async function getRunState(runId: string): Promise<CrawlRunState> {
 export async function fetchCrawledPageBatch(
   datasetId: string,
   fallbackUrl: string,
-  options: { offset?: number; limit?: number } = {}
+  options: { offset?: number; limit?: number } = {},
+  token?: string
 ): Promise<{ pages: CrawledPage[]; nextOffset: number | null }> {
   const offset = Math.max(0, Math.trunc(options.offset ?? 0));
   const limit = Math.max(
@@ -203,7 +229,7 @@ export async function fetchCrawledPageBatch(
   const items = await bearerRequest<ApifyItem[]>(
     `https://api.apify.com/v2/datasets/${encodeURIComponent(datasetId)}/items?clean=true&format=json&offset=${offset}&limit=${limit}`,
     {
-      token: requireToken(),
+      token: requireToken(token),
       timeoutMs: 60_000,
       errorLabel: "Apify dataset fetch failed",
     }
@@ -218,14 +244,18 @@ export async function fetchCrawledPageBatch(
 /** Compatibility helper for callers that intentionally materialize a small dataset. */
 export async function fetchCrawledPages(
   datasetId: string,
-  fallbackUrl: string
+  fallbackUrl: string,
+  token?: string
 ): Promise<CrawledPage[]> {
   const pages: CrawledPage[] = [];
   let offset: number | null = 0;
   while (offset !== null) {
-    const batch = await fetchCrawledPageBatch(datasetId, fallbackUrl, {
-      offset,
-    });
+    const batch = await fetchCrawledPageBatch(
+      datasetId,
+      fallbackUrl,
+      { offset },
+      token
+    );
     pages.push(...batch.pages);
     offset = batch.nextOffset;
   }

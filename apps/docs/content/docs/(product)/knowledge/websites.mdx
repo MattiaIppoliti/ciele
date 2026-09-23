@@ -25,6 +25,10 @@ The card counts the **pages** that the crawl adds to Ciele, for example 162/291.
 available when the crawler gives its last group of pages to Ciele. Before that moment the card
 shows only the number of pages that are indexed.
 
+The Library counts **Documents** for the same Source. Ciele makes one Document from one page. The
+card counts what the crawler retrieves. The Library counts what Ciele keeps. The two numbers agree
+when the crawl ends.
+
 1. Select the arrow on the card to show the Sources.
 2. Read the status of each Source. The card shows a maximum of four Sources at one time.
 3. Select the close control to hide the card. The crawl continues.
@@ -41,3 +45,21 @@ The API and CLI support recrawl only for website Sources.
 ## Source access
 
 The crawler must reach the URL from the deployment network. Authentication-protected content is not available without a supported access path.
+
+The built-in crawler follows a redirect to the same site. For example, `https://example.com` can go to `https://www.example.com`, and `http` can go to `https`. A redirect to a different domain or subdomain stops the crawl with an error.
+
+## Use your own Apify account
+
+Apify is the managed crawler for file downloads, login-protected sites and large crawls. You can connect the Apify account of your Organization. Then Apify crawls use your token and your Apify account pays for them.
+
+1. In Apify Console, open **Settings** and then **API & Integrations**.
+2. Copy the API token.
+3. In Ciele, open **Settings** and select **Crawling**.
+4. Select **Connect** on the **Apify** card.
+5. Paste the token in **API token**.
+6. Optional: enter your Apify user ID in **User ID**. Ciele makes sure that the token belongs to this account.
+7. Select **Save**.
+
+When the account is connected, the **Automatic** crawler uses Apify for all crawls. The crawl stops at the value of **Max pages to crawl**, which is 20 by default. Increase this value for a large website.
+
+Ciele encrypts the token and shows only its last four characters. Only owners and admins can connect or remove the account. If you remove the token while an Apify crawl is in progress, that crawl stops with an error.

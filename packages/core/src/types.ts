@@ -1,5 +1,7 @@
 import type { TriageEvidence } from "./document-triage";
+import type { Reversibility } from "./approval-gate";
 import type { ModelRef } from "./model-choice";
+import type { PreflightTraceRecord } from "./preflight";
 /**
  * The domain vocabulary: every noun in `CONTEXT.md`, as a type.
  *
@@ -14,7 +16,7 @@ import type { ModelRef } from "./model-choice";
  * before adding a type here.
  */
 
-import type { ConceptFrontmatter } from "./okf";
+import type { ConceptFrontmatter, OkfActorStamp } from "./okf";
 
 export type FlowAction =
   | "search_knowledge"
@@ -109,6 +111,19 @@ export interface HumanReviewSettings {
   haltMessage?: string;
   /** What the Visitor reads while the request waits. */
   waitingMessage?: string;
+  /**
+   * When to raise the request at all (#958).
+   *
+   * `always` is the behaviour this action shipped with and stays the default:
+   * a Flow that has a Human review step wants one. `gated` asks the approval
+   * gate about the action that follows and raises the request only when the
+   * gate is not confident that action is safe, which turns a step somebody
+   * clicks through every time into one that means something when it appears.
+   *
+   * With no decision backend a `gated` step raises the request, the same
+   * direction every other gate failure takes: nothing is approved by absence.
+   */
+  mode?: "always" | "gated";
 }
 
 export type ReviewStatus = "pending" | "approved" | "rejected" | "expired";
@@ -152,6 +167,78 @@ export interface ReviewRequest {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * One action the approval gate stopped in front of a human (#958): a granted
+ * Teammate action, or an API request, that the decision model judged
+ * irreversible, outside the actor's stated mandate, or could not judge
+ * confidently.
+ *
+ * Its own row rather than a {@link ReviewRequest}, because that one's
+ * `flowId` + `actionIndex` are a cursor into a Flow's action list and an
+ * action stopped here is a tool call inside one model turn, which has no such
+ * cursor. It reuses the card and the decided-exactly-once discipline, not the
+ * resumption.
+ *
+ * A stopped action is never a refused action: it waits for somebody who can
+ * say yes, and `operation` + `input` are what let the action a Member approved
+ * be the action that actually runs.
+ */
+export interface ActionApproval {
+  id: string;
+  organizationId: string;
+  conversationId: string;
+  /** The actor, when there is one. Null for an API request a Flow made. */
+  teammateId: string | null;
+  /** Attribution stays the invoking Member even when a Teammate is the actor. */
+  requestedBy: string | null;
+  /** The ops-layer operation name, which is what runs on approval. */
+  operation: string;
+  input: Record<string, unknown>;
+  /** The catalogue's own words for the action, never the model's. */
+  label: string;
+  reversibility: Reversibility | null;
+  reason: ApprovalReviewReason;
+  backend: "jev" | "adapter" | null;
+  calibrated: boolean | null;
+  /** Per question id, exactly as the provider sent it. */
+  confidence: Record<string, number>;
+  mapVersion: number;
+  status: ReviewStatus;
+  decidedBy: string | null;
+  decidedByName: string | null;
+  decidedAt: string | null;
+  /** Set once the approved action has run; what stops a retry running it twice. */
+  executedAt: string | null;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ApprovalReviewReason =
+  | "irreversible"
+  | "out_of_mandate"
+  | "unsure"
+  | "no_decision";
+
+export type ActionApprovalPatch = Partial<
+  Pick<
+    ActionApproval,
+    "status" | "decidedBy" | "decidedByName" | "decidedAt" | "executedAt"
+  >
+>;
+
+export type ActionApprovalInput = Omit<
+  ActionApproval,
+  | "id"
+  | "status"
+  | "decidedBy"
+  | "decidedByName"
+  | "decidedAt"
+  | "executedAt"
+  | "createdAt"
+  | "updatedAt"
+>;
 
 export type ReviewRequestInput = Omit<
   ReviewRequest,
@@ -1169,6 +1256,15 @@ export interface OrgApiKeyInput {
 }
 
 export type Provider = "anthropic" | "openai" | "google" | "openai_compatible";
+/**
+ * Who can appear on a usage-ledger row as the provider that ran (#950). Wider
+ * than `Provider`, which names the text-model providers an Assistant can be
+ * configured on: a decision model (TypeSafe's Jev) is metered through the same
+ * ledger and priced from the same table, but it produces no text, so it is
+ * deliberately not a `Provider` (that union keys the model catalogue, the
+ * classifier tables and a database check constraint, all of which assume one).
+ */
+export type UsageProvider = Provider | "typesafe";
 export type ProviderConnectionProvider = Provider | "azure_openai";
 export type ProviderConnectionType =
   | "platform"
@@ -2216,7 +2312,14 @@ export type BackgroundJobKind =
    * inline in the action so a failure can halt the turn that made it.
    */
   | "resume_webhook_conversation"
-  | "answer_slack_mention";
+  | "answer_slack_mention"
+  /**
+   * One per Document of a committed generation (#930): ask the Organization's
+   * model for the page's durable facts and write them as knowledge memories.
+   * Its own kind, and its own job per Document, so the crawl finaliser never
+   * holds its claim open for a model call per page.
+   */
+  | "extract_document_memories";
 export type BackgroundJobStatus = "queued" | "running" | "succeeded" | "failed";
 
 export interface CrawlFinalizeClaim {
@@ -2322,6 +2425,37 @@ export interface WebsiteSourceConfig {
    * downgraded by a budget.
    */
   crawlBlockedReason?: string;
+  /**
+   * Whose credential the current/most-recent remote crawl started on: the
+   * Organization's own Crawler Connection, or the platform's environment
+   * token. Recorded at start so polling reads the run with the same account
+   * that owns it, even if the Organization connects or removes a token while
+   * the crawl is in flight. Absent on legacy runs, which were all platform.
+   */
+  crawlCredential?: "organization" | "platform";
+}
+
+/** A remote crawler an Organization can bring its own account for. */
+export type CrawlerConnectionProvider = "apify";
+
+/**
+ * An Organization's own account on a remote crawler (Settings → Crawling),
+ * one per provider. When present, that provider's crawls run on this token
+ * and bill the Organization's account instead of the platform's.
+ */
+export interface CrawlerConnection {
+  id: string;
+  organizationId: string;
+  provider: CrawlerConnectionProvider;
+  /** Sealed API token; server-side only, never sent to a browser. */
+  encryptedToken: string;
+  /** Last four characters of the token, for recognising it in the console. */
+  tokenHint: string;
+  /** The provider's account/user id, informational. Empty when not given. */
+  accountId: string;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Provenance retained on a Source materialized from an Application Import. */
@@ -2507,7 +2641,7 @@ export interface OrgKnowledgeSourceListItem {
   originalObjectPath: string | null;
   createdAt: string;
   updatedAt: string;
-  /** Indexed Concepts under this Source, the "N Pages" column. */
+  /** The Documents stored under this Source, the "N Documents" column. */
   conceptCount: number;
   /** FAQ answer excerpt (kind "faq" only; "" otherwise). */
   answerPreview: string;
@@ -2527,7 +2661,34 @@ export interface OrgKnowledgeSourceFilter {
   page?: number;
   /** Zero requests only totals/status tallies, without hydrating Source rows. */
   pageSize?: number;
+  /**
+   * Which column the header was clicked on. The default, and what an unknown
+   * value falls back to, is newest first: the order every caller got before
+   * the headers were clickable.
+   */
+  sort?: OrgKnowledgeSourceSort;
+  /** Only read with `sort`; the default order is descending either way. */
+  ascending?: boolean;
 }
+
+/**
+ * The columns of the Library's table that carry a value the database can
+ * order by. "Content" and "Linked assistants" are counts assembled after the
+ * page is chosen, so they are not here: sorting on them would mean sorting a
+ * page, which is not sorting.
+ */
+export type OrgKnowledgeSourceSort =
+  | "createdAt"
+  | "name"
+  | "status"
+  | "updatedAt";
+
+/**
+ * The Documents table's orderable columns. Memories is a count from another
+ * table and Status is derived from two columns and a chunk count, so neither
+ * is an order the paged read can produce without becoming a different query.
+ */
+export type SourceDocumentSort = "createdAt" | "title";
 
 /** Source identity for Knowledge Scope pickers, without content or link details. */
 export type OrgKnowledgeSourceOption = Pick<
@@ -2629,8 +2790,128 @@ export interface Concept {
    * site-level schedule. See `effectivePageSchedule`.
    */
   recrawlSchedule: RecrawlSchedule | null;
+  /**
+   * The Summary the Details column shows (#931), generated the first time a
+   * Member opens this Document and cached for everyone after them. Null means
+   * nobody has opened it yet, or a re-crawl replaced the text it described.
+   */
+  summary: string | null;
+  /** OKF `generated` for the summary: who wrote it and when. */
+  summaryGenerated: OkfActorStamp | null;
   createdAt: string;
 }
+
+/**
+ * One standalone sentence a Document said, kept beside the Document rather
+ * than inside it (#926). Extracted by a job (#930), read in the Memories tab
+ * (#932), forgettable by a Member and restorable by the same Member.
+ *
+ * Keyed to the PAGE, not to the page's row: a re-crawl stages a fresh Document
+ * with a fresh id and the retired generation is deleted, so `(sourceId,
+ * documentPath)` is what survives and `conceptId` is only "the row I read this
+ * from", nulled when that row goes.
+ */
+export interface KnowledgeMemory {
+  id: string;
+  organizationId: string;
+  collectionId: string;
+  sourceId: string;
+  /** The Document's path. Durable across generations, unlike its id. */
+  documentPath: string;
+  /** The Document row this was read from, while it lives. */
+  conceptId: string | null;
+  text: string;
+  /** The verbatim span the sentence rests on: evidence a Member can check. */
+  quote: string;
+  /** The chunk the quote sits in, when the extractor worked chunk by chunk. */
+  chunkId: string | null;
+  /** OKF `generated.by` (§7 actor): `<producer>/<version>`, `process:<id>`, `human:<id>`. */
+  generatedBy: string;
+  /** OKF `generated.at`. */
+  generatedAt: string;
+  /** Liveness, the whole of it: live iff null. See `isKnowledgeMemoryLive`. */
+  forgottenAt: string | null;
+  forgetReason: string | null;
+  forgottenBy: string | null;
+  /** Bumped when a later extraction restates the same fact. */
+  sourceCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * One row of a Source's Documents table (#927): the columns that table reads,
+ * and nothing else. Deliberately not a `Concept`: the body of fifty crawled
+ * pages is megabytes the list has no use for.
+ */
+export interface SourceDocumentListItem {
+  id: string;
+  /** The Document's path, what identifies it within its Source. */
+  path: string;
+  /** `frontmatter.title`, falling back to the path. */
+  title: string;
+  /** `frontmatter.resource`: the page URL, for the kinds that have one. */
+  resourceUrl: string | null;
+  excluded: boolean;
+  /**
+   * Whether the Document has chunks. Until it does nothing can retrieve it,
+   * which is the difference between stored and answering.
+   */
+  indexed: boolean;
+  /**
+   * When this row was written. A Document row is immutable apart from its two
+   * admin flags and a re-crawl replaces it wholesale, so its creation time is
+   * also when its content last changed: the table's Updated column.
+   */
+  createdAt: string;
+}
+
+/**
+ * One chunk of a Document, for the Chunks tab (#929): the slice retrieval
+ * actually matches, and nothing else. **No embedding**: the vector is the
+ * server's business, it is 1536 floats per row, and a Member reading why a
+ * page was cited learns nothing from it.
+ */
+export interface DocumentChunkListItem {
+  id: string;
+  /** Position in the Document body, zero-based, as rendered `01`, `02`, … */
+  index: number;
+  text: string;
+}
+
+/**
+ * The per-page memory extraction record (#930): the hash gate, what the
+ * console's counts read, and what a failure leaves behind.
+ */
+export interface KnowledgeMemoryExtraction {
+  id: string;
+  organizationId: string;
+  collectionId: string;
+  sourceId: string;
+  documentPath: string;
+  /** The body the last attempt read. Null while the first one is pending. */
+  bodyHash: string | null;
+  status: KnowledgeMemoryExtractionStatus;
+  memoryCount: number;
+  /** The page held more than the cap, and the extra facts were dropped. */
+  capped: boolean;
+  attempts: number;
+  lastError: string | null;
+  extractedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * `pending` nobody has finished an attempt yet · `done` extracted ·
+ * `skipped_no_provider` the Organization has no Provider Connection, which is
+ * a configuration fact and not a failure · `failed` the attempts ran out.
+ */
+export type KnowledgeMemoryExtractionStatus =
+  | "pending"
+  | "done"
+  | "skipped_no_provider"
+  | "failed";
 
 export interface KnowledgeSearchResult {
   conceptId: string;
@@ -2669,7 +2950,39 @@ export interface KnowledgeSearchResult {
 export type ConversationSubject = "member" | "visitor" | "sso";
 
 /** Best-effort session context captured when a conversation starts. */
+/**
+ * What the pre-flight learned about a Conversation, folded across its turns
+ * (#956). Written by the Conversation Turn from the shadow's own record, so a
+ * Conversation the pre-flight never ran on carries none of it and every card
+ * below falls back to what it had before.
+ */
+export interface ConversationPreflightSignals {
+  /** The language the Visitor wrote in: the majority answer across turns. */
+  spokenLanguage?: string;
+  /** True once any turn's "wants a human" cleared its threshold. */
+  escalationIntent?: boolean;
+  /**
+   * The help desk the pre-flight last opened the escalation chip on (#955),
+   * when a turn's "wants a human" cleared its threshold and the desk did too.
+   * The latest, not the first: it is what the chip on screen points at, and
+   * `escalateConversation` compares the desk the Visitor took against it.
+   */
+  recommendedHelpDeskId?: string;
+  /**
+   * The frustration level of the **last** turn, which is the trajectory's end
+   * and the only point that answers "did this conversation finish badly".
+   */
+  endedAtFrustration?: number;
+  /**
+   * Per-language turn counts, kept so the majority survives a turn that is not
+   * the last one. Read by the fold, never by a card.
+   */
+  languageTally?: Record<string, number>;
+}
+
 export interface ConversationMetadata {
+  /** What the pre-flight read about this Conversation (#956), when it ran. */
+  preflight?: ConversationPreflightSignals;
   /**
    * Set when this Conversation is an unattended Routine run (#772). A run is
    * an ordinary Teammate Conversation in every way the runtime cares about, so
@@ -2758,6 +3071,14 @@ export interface ConversationMetadata {
   /** Which help desk, and which of its channels, an escalation went to. */
   escalationHelpDesk?: string;
   escalationOption?: string;
+  /**
+   * The desk the pre-flight had recommended when the Visitor escalated (#955),
+   * by name like `escalationHelpDesk`, and whether they took it. Absent when
+   * no recommendation was on screen, so "not followed" is never inferred from
+   * a turn that recommended nothing.
+   */
+  escalationRecommendedHelpDesk?: string;
+  escalationFollowedRecommendation?: boolean;
   /** Imported per-user fields exposed as personalization variables. */
   externalUserData?: Record<string, string>;
   /** Where those fields came from (CSV upload name, LMS, integration). */
@@ -2966,6 +3287,13 @@ export interface StoredTurnTrace {
    * Inbox shows it as a badge every Role that can read the Inbox sees.
    */
   terminal?: TurnTerminalStatus;
+  /**
+   * The shadow pre-flight's record (#952), when one ran. Kept beside `steps`
+   * rather than inside them on purpose: `steps` is what every Thinking panel
+   * renders, Visitor's included, and a shadowed turn must be indistinguishable
+   * from an unshadowed one on that screen.
+   */
+  preflight?: PreflightTraceRecord;
 }
 
 /**
@@ -3086,8 +3414,29 @@ export interface InsightsStats {
   uniqueUsers: number;
   conversationsPerUser: number;
   answersPerConversation: number;
-  /** [language, count], descending by count. */
+  /**
+   * [language, count], descending by count.
+   *
+   * The language a Visitor **wrote in** where the pre-flight read one (#956),
+   * and the browser locale only where it did not. The two are different facts
+   * and the old card reported the wrong one: a Visitor whose browser is
+   * English and who types in Italian is an Italian-speaking Visitor, and an
+   * organization deciding which language to staff needs that, not a header.
+   */
   languages: Array<[string, number]>;
+  /**
+   * Conversations that ended calm, out of those with no thumbs at all (#956).
+   * Null when every conversation in the window was rated, which is when this
+   * card has nothing to add to the Answer Rating beside it.
+   */
+  implicitSatisfaction: number | null;
+  /**
+   * The share of conversations where the Visitor asked for a person at least
+   * once, whether or not they then escalated (#956). Counted once per
+   * conversation however many turns cleared the threshold: this is a measure
+   * of how often people want out, not of how often they said so.
+   */
+  escalationIntentRate: number | null;
 }
 
 /** One named time-series in the Insights chart. */
@@ -3334,7 +3683,14 @@ export type AiUsageStage =
   | "graph_cognify"
   | "memory_extract"
   /** Distilling one Teammate turn into its Agent memory layer (#771). */
-  | "agent_memory";
+  | "agent_memory"
+  /**
+   * One `evaluate` call of the decision model (#950, spec #948): a state plus a
+   * question map answered with typed choices, never prose. One stage for every
+   * decision (pre-flight, verifier tier, approval gate, Improvements dedup); the
+   * trace, not the ledger, says which question map ran.
+   */
+  | "decide";
 
 /**
  * Which credential answered a metered model call, the platform env key
@@ -3637,7 +3993,7 @@ export interface AiUsageInput {
   messageId?: string | null;
   stage: AiUsageStage;
   /** The provider/model that actually ran (post cross-provider fallback). */
-  provider: Provider;
+  provider: UsageProvider;
   modelId: string;
   /** Which credential answered (platform-funded vs BYOK etc.); null when unknown. */
   credentialKind?: AiCredentialKind | null;
@@ -3886,7 +4242,7 @@ export interface RuntimeEventInput {
   status: RuntimeEventStatus;
   surface?: RuntimeEventSurface | null;
   /** The provider/model that actually ran (post cross-provider fallback). */
-  provider?: Provider | null;
+  provider?: UsageProvider | null;
   modelId?: string | null;
   credentialKind?: string | null;
   flowId?: string | null;

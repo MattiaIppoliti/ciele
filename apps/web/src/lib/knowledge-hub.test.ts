@@ -3,6 +3,7 @@ import {
   KNOWLEDGE_TAB_KINDS,
   assistantScopedKnowledge,
   sharedAssistantNames,
+  bulkRemovalChoice,
   sourceRemovalChoice,
   directAccessSummary,
   isKnowledgeTabSlug,
@@ -96,14 +97,33 @@ describe("parseHubSearchParams", () => {
       assistant: "as-1",
       page: 3,
       size: 25,
+      sort: "",
+      ascending: false,
     });
   });
 
   it("falls back to defaults on garbage", () => {
-    expect(
-      parseHubSearchParams({ status: "bogus", page: "-2" })
-    ).toEqual({ q: "", status: "", assistant: "", page: 1, size: 25 });
+    expect(parseHubSearchParams({ status: "bogus", page: "-2" })).toEqual({
+      q: "",
+      status: "",
+      assistant: "",
+      page: 1,
+      size: 25,
+      sort: "",
+      ascending: false,
+    });
     expect(parseHubSearchParams({ page: "NaN" }).page).toBe(1);
+  });
+
+  it("reads the clicked column and its direction", () => {
+    expect(parseHubSearchParams({ sort: "name", dir: "asc" })).toMatchObject({
+      sort: "name",
+      ascending: true,
+    });
+    // A column the table cannot sort on reads as no sort, which is the
+    // default order, rather than as an error page.
+    expect(parseHubSearchParams({ sort: "conceptCount" }).sort).toBe("");
+    expect(parseHubSearchParams({ sort: "name" }).ascending).toBe(false);
   });
 
   it("narrows the page size to one the footer offers", () => {
@@ -231,5 +251,69 @@ describe("source removal choice (unlink vs delete)", () => {
         deleteEffect: "The document and everything indexed from it go.",
       }).description
     ).toContain("keeps answering for Support bot.");
+  });
+});
+
+describe("bulkRemovalChoice", () => {
+  const faq = {
+    noun: "FAQ",
+    pluralNoun: "FAQs",
+    deleteLabel: "Delete FAQs",
+    deleteEffect: "The questions and their answers go.",
+  };
+
+  it("is a plain delete when nothing ticked is shared", () => {
+    const choice = bulkRemovalChoice({ ...faq, count: 12, sharedCount: 0 });
+    expect(choice.mode).toBe("delete");
+    expect(choice.title).toBe("Delete 12 FAQs?");
+    expect(choice.confirmLabel).toBe("Delete FAQs");
+    expect(choice.secondaryLabel).toBeUndefined();
+  });
+
+  it("offers the pair as soon as one ticked row is shared", () => {
+    // The whole point: a FAQ owns its Source, so a bulk delete that did not
+    // ask would take that row out of every other assistant answering from it.
+    const choice = bulkRemovalChoice({ ...faq, count: 12, sharedCount: 1 });
+    expect(choice.mode).toBe("unlink");
+    expect(choice.title).toBe("Remove 12 FAQs from this assistant?");
+    expect(choice.confirmLabel).toBe("Remove from this assistant");
+    expect(choice.secondaryLabel).toBe("Delete for the organization");
+    // Remove unlinks the whole selection, so the sentence says all twelve
+    // stay in the Library and only the shared one keeps answering; claiming
+    // the other eleven still answer somewhere would be the same
+    // over-promise the plain Delete made about the shared one.
+    expect(choice.description).toBe(
+      "They stay in the Library, and the 1 shared with other assistants keep " +
+        "answering there. Deleting them for the whole organization instead " +
+        "removes them everywhere: the questions and their answers go."
+    );
+  });
+
+  it("drops the count when every ticked row is shared", () => {
+    expect(
+      bulkRemovalChoice({ ...faq, count: 4, sharedCount: 4 }).description
+    ).toContain(
+      "They stay in the Library and keep answering for the other assistants linked to them."
+    );
+    expect(
+      bulkRemovalChoice({ ...faq, count: 1, sharedCount: 1 }).description
+    ).toContain(
+      "It stays in the Library and keeps answering for the other assistants linked to it."
+    );
+  });
+
+  it("uses the singular noun for a selection of one", () => {
+    expect(bulkRemovalChoice({ ...faq, count: 1, sharedCount: 0 }).title).toBe(
+      "Delete 1 FAQ?"
+    );
+    expect(
+      bulkRemovalChoice({
+        noun: "website",
+        deleteLabel: "Delete websites",
+        deleteEffect: "The websites and every page crawled from them go.",
+        count: 3,
+        sharedCount: 0,
+      }).title
+    ).toBe("Delete 3 websites?");
   });
 });

@@ -89,6 +89,10 @@ const ENTITY_RULES: { [K in EntityKind]: EntityRule<K> } = {
     insights: false,
   },
   aiSettings: { paths: () => [{ path: "/settings/ai" }], insights: false },
+  crawlerSettings: {
+    paths: () => [{ path: "/settings/crawling" }],
+    insights: false,
+  },
   members: { paths: () => [{ path: "/settings/members" }], insights: false },
   organization: {
     paths: () => [{ path: "/settings/general" }, { path: "/", scope: "layout" }],

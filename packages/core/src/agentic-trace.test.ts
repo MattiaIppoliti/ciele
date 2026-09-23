@@ -71,6 +71,11 @@ describe("serializeAgenticTrace", () => {
     ]);
   });
 
+  it("marks an FAQ direct hit the way the quick-reply FAQ always was: a workflow named FAQ (#954)", () => {
+    const trace = serializeAgenticTrace({ flowName: "FAQ", steps: [], followUps: [] });
+    expect(trace).toBe("[Workflow started: FAQ] [Workflow completed: FAQ]");
+  });
+
   it("embeds the iteration system note inside each result", () => {
     const trace = serializeAgenticTrace({ flowName: "F", steps, iterationLimit: 6 });
     const results = parseAgenticTrace(trace).filter((s) => s.marker === "result");

@@ -303,6 +303,55 @@ describe("Website Source crawl target safety", () => {
     expect((await db.getSource(source.id))?.error).toMatch(/cross-origin/i);
   });
 
+  it("follows the start URL's same-site redirect to www and crawls there", async () => {
+    const db = getMockDb();
+    const assistant = await db.createAssistant(DEMO_ORG.id, {
+      title: "Canonical www redirect",
+    });
+    const collection = await db.createCollection(assistant.id, {
+      name: "Canonical www redirect",
+    });
+    const source = await db.createSource({
+      collectionId: collection.id,
+      name: "Canonical www redirect",
+      kind: "website",
+      config: {
+        url: "https://public.example",
+        crawlerProvider: "local",
+        maxPages: 3,
+      },
+    });
+    const fetched: string[] = [];
+    fetchMock.mockImplementation(async (target) => {
+      fetched.push(target.url.toString());
+      if (target.url.hostname === "public.example") {
+        return pageResponse("", 301, { location: "https://www.public.example/" });
+      }
+      if (target.url.pathname === "/") {
+        return pageResponse(
+          '<html><body>Home<a href="/about">About</a><a href="https://public.example/bare">Bare</a></body></html>'
+        );
+      }
+      return pageResponse("<html><body>About us</body></html>");
+    });
+
+    await beginWebsiteCrawl({ db, sourceId: source.id });
+    const status = await finalizeWebsiteCrawl({
+      db,
+      assistantId: assistant.id,
+      collectionId: collection.id,
+      sourceId: source.id,
+    });
+
+    expect(status).toBe("ready");
+    expect(fetched).toEqual([
+      "https://public.example/",
+      "https://www.public.example/",
+      "https://www.public.example/about",
+    ]);
+    expect(await db.listConcepts(collection.id)).toHaveLength(2);
+  });
+
   it("does not treat a lookalike hostname as the same origin", async () => {
     const db = getMockDb();
     const assistant = await db.createAssistant(DEMO_ORG.id, {

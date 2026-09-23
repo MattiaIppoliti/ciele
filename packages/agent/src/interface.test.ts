@@ -47,6 +47,9 @@ describe("runtime public interface", () => {
       "OBJECT_ACCESS_RETENTION_DAYS",
       "RECRAWL_SWEEP_BATCH_SIZE",
       "REFUSAL_PROBE_THRESHOLD",
+      // A Document's Summary (#931): the input cap, exported so the card and a
+      // test can agree about what the model was shown.
+      "SUMMARY_INPUT_CHARS",
       // The warn threshold: a deliberate widening (#509). The admin Usage
       // surface must colour a gauge amber at exactly the fraction the
       // enterprise ladder warns at, and open-source code cannot import from
@@ -88,6 +91,9 @@ describe("runtime public interface", () => {
       // Slack mention replies (#857): enqueue from the signed route, the
       // routing predicate the settings save reuses, and the bounded drain.
       "enqueueSlackMention",
+      // The memories backfill (#933): the console's only way to ask for
+      // extraction over knowledge that predates the layer.
+      "enqueueStaleDocumentMemoryExtractions",
       "expireDueReviews",
       "expireDueWebhooks",
       "extractSourceText",
@@ -129,7 +135,9 @@ describe("runtime public interface", () => {
       "runDueWebhookJobs",
       "runGraphLearning",
       "runHttpFlow",
+      "runPreflightDriftReplay",
       "runSecurityDetections",
+      "runTriageDecision",
       "sendEmail",
       "sendEscalationApiRequest",
       "sessionMetadata",
@@ -140,6 +148,7 @@ describe("runtime public interface", () => {
       // `streamConversationTurn` is for one turn.
       "streamChannelChain",
       "streamConversationTurn",
+      "summariseDocument",
       "sweepDueRecrawls",
       // The retention drains: traces (#573), transcripts (CYB-12), and the
       // object-access ledger (CYB-19), all deliberate widenings.
@@ -159,6 +168,9 @@ describe("runtime public interface", () => {
       "unsubscribePendingWebhooks",
       "updateWebsiteSourceConfiguration",
       "validateProviderApiKey",
+      // Settings → Crawling checks an Organization's Apify token, and learns
+      // its account id, before the ops layer seals it.
+      "verifyApifyToken",
       "verifyReviewLinkToken",
       "verifyWebhookCallbackToken",
       "webhookCallbackUrl",

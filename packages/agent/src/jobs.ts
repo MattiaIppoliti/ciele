@@ -630,6 +630,232 @@ const applicationSyncHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
+// extract_document_memories, one per Document of a committed generation
+// (#930). Its own kind and its own job per Document so the crawl finaliser
+// never holds its claim open for a model call per page. Every gate the
+// extractor can resolve (no provider, unchanged body, the page left the site)
+// is a recorded success, so only real model/db failures retry.
+// ---------------------------------------------------------------------------
+
+const EXTRACT_MEMORIES_KIND = "extract_document_memories" as const;
+
+type ExtractMemoriesJob = {
+  kind: typeof EXTRACT_MEMORIES_KIND;
+  organizationId: string;
+  collectionId: string;
+  sourceId: string;
+  documentPath: string;
+};
+
+const extractMemoriesHandler: JobHandler = {
+  async perform(record, deps) {
+    const payload = record.payload as Partial<ExtractMemoriesJob>;
+    if (
+      !payload.organizationId ||
+      !payload.collectionId ||
+      !payload.sourceId ||
+      !payload.documentPath
+    ) {
+      throw new Error("Invalid extract-document-memories job payload");
+    }
+    const { extractDocumentMemories, signalExtractionHealth } = await import(
+      "./extract-document-memories"
+    );
+    await extractDocumentMemories({
+      db: deps.db,
+      organizationId: payload.organizationId,
+      collectionId: payload.collectionId,
+      sourceId: payload.sourceId,
+      documentPath: payload.documentPath,
+      attempt: record.attempts + 1,
+    });
+    // A success clears the Source's Alert the moment none of its Documents is
+    // failed, without anybody clicking, the way a recovered crawl does.
+    await signalExtractionHealth(
+      deps.db,
+      payload.organizationId,
+      payload.sourceId
+    );
+  },
+  async onTerminalFailure(record, deps, message) {
+    const payload = record.payload as Partial<ExtractMemoriesJob>;
+    if (
+      !payload.organizationId ||
+      !payload.collectionId ||
+      !payload.sourceId ||
+      !payload.documentPath
+    ) {
+      return;
+    }
+    const { recordFailedExtraction } = await import("./extract-document-memories");
+    await recordFailedExtraction({
+      db: deps.db,
+      organizationId: payload.organizationId,
+      collectionId: payload.collectionId,
+      sourceId: payload.sourceId,
+      documentPath: payload.documentPath,
+      attempts: record.attempts,
+      error: message,
+    });
+  },
+};
+
+/** How many Documents one enqueue reads per round trip. */
+const EXTRACT_MEMORIES_ENQUEUE_PAGE = 500;
+
+/**
+ * The ledger id for one (Source, generation, page): what makes a second
+ * enqueue of the same commit a no-op. A crawl finaliser that resumes after
+ * its cutover was committed runs this again, and without a stable id every
+ * Document would get a second job, two workers could claim both, and the same
+ * fact would be inserted twice. The next crawl has a new generation id, so it
+ * enqueues afresh. The path is hashed because it is free text.
+ */
+export function extractMemoriesJobId(input: {
+  sourceId: string;
+  generationId: string;
+  documentPath: string;
+}): string {
+  const path = createHash("sha256").update(input.documentPath).digest("hex");
+  return `memx_${input.sourceId}_${input.generationId}_${path.slice(0, 24)}`;
+}
+
+/**
+ * One extraction job per Document of a Source's committed generation (#930).
+ *
+ * Called right after the cutover, beside the graph projection, and swallowing
+ * its own failures for the same reason: memories are derived, and an ingest
+ * that succeeded must not be reported as failed because a queue write did not.
+ * Pages through the whole Source: a site with ten thousand pages gets ten
+ * thousand jobs, not the first page of them.
+ */
+export async function enqueueDocumentMemoryExtractions(
+  deps: JobDeps,
+  input: {
+    organizationId: string;
+    collectionId: string;
+    sourceId: string;
+    generationId: string;
+  }
+): Promise<void> {
+  try {
+    for (let page = 1; ; page += 1) {
+      const documents = await deps.db.listSourceDocuments(input.sourceId, {
+        page,
+        pageSize: EXTRACT_MEMORIES_ENQUEUE_PAGE,
+        ascending: true,
+      });
+      for (const document of documents.items) {
+        await deps.db.createBackgroundJob({
+          id: extractMemoriesJobId({
+            sourceId: input.sourceId,
+            generationId: input.generationId,
+            documentPath: document.path,
+          }),
+          organizationId: input.organizationId,
+          kind: EXTRACT_MEMORIES_KIND,
+          sourceId: input.sourceId,
+          payload: {
+            kind: EXTRACT_MEMORIES_KIND,
+            organizationId: input.organizationId,
+            collectionId: input.collectionId,
+            sourceId: input.sourceId,
+            documentPath: document.path,
+          } satisfies ExtractMemoriesJob,
+        });
+      }
+      if (documents.items.length < EXTRACT_MEMORIES_ENQUEUE_PAGE) break;
+    }
+    getRuntimeHost().scheduleAfterResponse(() =>
+      runDueJobs(deps, { kinds: [EXTRACT_MEMORIES_KIND], limit: 5 })
+    );
+  } catch (error) {
+    // Cron is the backstop; the next commit enqueues again.
+    console.error("[memory-extraction] enqueue failed:", error);
+  }
+}
+
+/** Every Document of the Source, paged; a Source is not its first page. */
+async function listAllSourceDocuments(
+  db: Db,
+  sourceId: string
+): Promise<Array<{ id: string; path: string }>> {
+  const all: Array<{ id: string; path: string }> = [];
+  for (let page = 1; ; page += 1) {
+    const { items } = await db.listSourceDocuments(sourceId, {
+      page,
+      pageSize: EXTRACT_MEMORIES_ENQUEUE_PAGE,
+      ascending: true,
+    });
+    all.push(...items);
+    if (items.length < EXTRACT_MEMORIES_ENQUEUE_PAGE) return all;
+  }
+}
+
+/**
+ * The by-hand backfill (#933): queue extraction for the Documents of one Source
+ * that need it, and only those.
+ *
+ * Nothing backfills automatically across tenants, because one model call per
+ * existing Document for every Organization at once is a bill nobody asked for.
+ * This is the lever an Editor pulls instead, and it is **idempotent while the
+ * work is pending**: a Document with a job already queued is skipped, so a
+ * second press queues nothing rather than doubling the spend.
+ *
+ * Returns how many it queued, which is what the button reports back.
+ */
+export async function enqueueStaleDocumentMemoryExtractions(
+  deps: JobDeps,
+  input: { organizationId: string; collectionId: string; sourceId: string }
+): Promise<number> {
+  const { hashDocumentBody } = await import("./extract-document-memories");
+  const [documents, records, queued] = await Promise.all([
+    listAllSourceDocuments(deps.db, input.sourceId),
+    deps.db.listMemoryExtractions(input.sourceId),
+    deps.db.listBackgroundJobsForSource(input.sourceId, EXTRACT_MEMORIES_KIND),
+  ]);
+  const byPath = new Map(records.map((record) => [record.documentPath, record]));
+  const pending = new Set(
+    queued
+      .filter((job) => job.status === "queued" || job.status === "running")
+      .map((job) => (job.payload as { documentPath?: string }).documentPath)
+  );
+
+  let count = 0;
+  for (const listed of documents) {
+    if (pending.has(listed.path)) continue;
+    const record = byPath.get(listed.path);
+    if (record?.status === "done") {
+      // The hash gate again, read here so the button does not queue work the
+      // job itself would decline: an unchanged page costs nothing twice. One
+      // row read per extracted page, to save one model call per page; the
+      // list read above carries no bodies on purpose.
+      const document = await deps.db.getConcept(listed.id);
+      if (document && record.bodyHash === hashDocumentBody(document.body)) continue;
+    }
+    await deps.db.createBackgroundJob({
+      organizationId: input.organizationId,
+      kind: EXTRACT_MEMORIES_KIND,
+      sourceId: input.sourceId,
+      payload: {
+        kind: EXTRACT_MEMORIES_KIND,
+        organizationId: input.organizationId,
+        collectionId: input.collectionId,
+        sourceId: input.sourceId,
+        documentPath: listed.path,
+      } satisfies ExtractMemoriesJob,
+    });
+    count += 1;
+  }
+  if (count > 0) {
+    getRuntimeHost().scheduleAfterResponse(() =>
+      runDueJobs(deps, { kinds: [EXTRACT_MEMORIES_KIND], limit: 5 })
+    );
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
 // The registry + the generic lifecycle.
 // ---------------------------------------------------------------------------
 
@@ -651,6 +877,8 @@ const JOB_HANDLERS: Record<BackgroundJobKind, JobHandler> = {
   // Slack mention replies (#857): queued by the signed event route, drained by
   // its after-response hook and the run-slack cron tick.
   answer_slack_mention: answerSlackMentionHandler,
+  // Knowledge memories, one job per Document of a committed generation (#930).
+  extract_document_memories: extractMemoriesHandler,
 };
 
 async function runClaimedJob(

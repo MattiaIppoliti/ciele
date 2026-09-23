@@ -9,6 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  activeSectionId,
+  scrollParent,
+} from "@/components/settings/section-timeline-active";
 
 type RailContext = {
   activeId: string | null;
@@ -21,25 +25,61 @@ const SectionRailContext = createContext<RailContext | null>(null);
  * Vertical settings rail: a faded line runs down the left gutter with one dot
  * per section. While scrolling, the section whose heading sits closest under
  * the top of the viewport gets the emphasized dot; the others stay faded.
+ *
+ * Which section that is lives in `section-timeline-active.ts`, because the
+ * interesting half is the end of the page: the reading line has to drop to the
+ * bottom as the scroll runs out, or the closing sections are dimmed forever.
  */
 export function SectionTimeline({ children }: { children: ReactNode }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sectionsRef = useRef(new Map<string, HTMLElement>());
   const frameRef = useRef(0);
+  const railRef = useRef<HTMLDivElement>(null);
+  const scrollBoxRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const pickActive = () => {
       frameRef.current = 0;
+      const rail = railRef.current;
+      if (!rail) return;
       const entries = [...sectionsRef.current.entries()];
       if (entries.length === 0) return;
-      // Active = last section whose top has crossed the activation line
-      // (a band below the viewport top), falling back to the first one.
-      const activationLine = window.innerHeight * 0.3;
-      let current = entries[0][0];
-      for (const [id, el] of entries) {
-        if (el.getBoundingClientRect().top <= activationLine) current = id;
+      // Re-found rather than cached once: the shell swaps the scrolling column
+      // when the right rail opens, and a detached node reports no scroll.
+      if (!scrollBoxRef.current?.isConnected) {
+        scrollBoxRef.current = scrollParent(rail);
       }
-      setActiveId(current);
+      const box = scrollBoxRef.current;
+      const page = document.documentElement;
+      const scrolled = box
+        ? {
+            bottom: box.getBoundingClientRect().bottom,
+            travel: box.scrollHeight - box.clientHeight,
+            remaining: box.scrollHeight - box.scrollTop - box.clientHeight,
+          }
+        : {
+            bottom: window.innerHeight,
+            travel: page.scrollHeight - window.innerHeight,
+            remaining: page.scrollHeight - window.scrollY - window.innerHeight,
+          };
+      setActiveId(
+        activeSectionId(
+          entries.map(([id, el]) => ({
+            id,
+            top: el.getBoundingClientRect().top,
+          })),
+          {
+            // A band below the top of the viewport, where reading happens.
+            line: window.innerHeight * 0.3,
+            bottom: scrolled.bottom,
+            // Whether the box scrolls at all is `travel`, never `remaining`:
+            // that one is also zero at the bottom of a box that scrolls, which
+            // is the one position this whole rule exists for.
+            remaining:
+              scrolled.travel > 1 ? Math.max(0, scrolled.remaining) : null,
+          }
+        )
+      );
     };
     const onScroll = () => {
       if (frameRef.current) return;
@@ -65,7 +105,7 @@ export function SectionTimeline({ children }: { children: ReactNode }) {
 
   return (
     <SectionRailContext.Provider value={{ activeId, register }}>
-      <div className="relative">
+      <div ref={railRef} className="relative">
         {/* Two things made this line invisible in light mode.
             Colour: `border` is #e8e8e8 on the light theme's #f5f5f5 ground,
             under one step of separation, while the inactive dots beside it

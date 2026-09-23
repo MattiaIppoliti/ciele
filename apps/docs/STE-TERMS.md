@@ -13,9 +13,10 @@ Use these terms in English public documentation. Preserve exact interface labels
 | condition | Configuration that changes Flow eligibility or classification context. | filter |
 | action | One ordered response operation in a Flow. | step, block |
 | Knowledge | Content that an Assistant can search. | knowledge base |
-| Knowledge Collection | The Organization's container for Sources and Concepts. | collection |
-| Source | Original website, file, text, or FAQ content. | document |
-| Concept | An OKF document produced during ingestion. | chunk |
+| Knowledge Collection | The Organization's container for Sources and Documents. | collection |
+| Source | Original website, file, text, or FAQ content. | Document |
+| Document | One stored unit produced during ingestion. Ciele stores it in Open Knowledge Format. | page, chunk, Concept |
+| page | One web address that the crawler retrieves. One page becomes one Document. | Document |
 | Publication | An immutable live Assistant snapshot. | deployment, version |
 | Conversation | Stored Visitor and Assistant turns for one session. | chat |
 | Help Desk | A configured group of human contact channels. | support desk |

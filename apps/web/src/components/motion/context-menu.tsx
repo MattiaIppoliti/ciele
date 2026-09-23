@@ -249,7 +249,16 @@ export function ContextMenu({
 
   return (
     <ContextMenuContext.Provider value={value}>
-      <div className={cn("contents", className)}>{children}</div>
+      {/* No wrapper unless one was asked for. The default was a
+          `display: contents` div, which has no layout of its own but is still
+          an element, and an element is not allowed between `<tbody>` and
+          `<tr>`: wrapping a table row in this menu failed hydration outright.
+          A caller that passes a className still gets its div. */}
+      {className ? (
+        <div className={cn("contents", className)}>{children}</div>
+      ) : (
+        children
+      )}
     </ContextMenuContext.Provider>
   );
 }

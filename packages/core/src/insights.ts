@@ -180,9 +180,35 @@ export function computeInsightsStats(
   const users = new Set(filtered.map(userKey));
   const languages = new Map<string, number>();
   for (const c of filtered) {
-    if (!c.metadata.language) continue;
-    languages.set(c.metadata.language, (languages.get(c.metadata.language) ?? 0) + 1);
+    // The language the Visitor wrote in beats the language their browser is
+    // set to (#956). A Visitor whose browser is English and who types in
+    // Italian is an Italian-speaking Visitor, and "Languages Spoken" was
+    // reporting the header. The locale stays the fallback, so a Conversation
+    // the pre-flight never saw counts exactly as it did before.
+    const language = c.metadata.preflight?.spokenLanguage ?? c.metadata.language;
+    if (!language) continue;
+    languages.set(language, (languages.get(language) ?? 0) + 1);
   }
+
+  // Implicit satisfaction (#956): among conversations nobody rated, the share
+  // that ended calm. Conversations with thumbs are excluded rather than
+  // counted as calm, because the Answer Rating beside this card already
+  // reports them and counting them twice would make the two cards move
+  // together for the wrong reason.
+  const rated = new Set(
+    filteredMessages.filter((m) => m.feedback === 1 || m.feedback === -1).map((m) => m.conversationId)
+  );
+  const unrated = filtered.filter(
+    (c) => !rated.has(c.id) && c.metadata.preflight?.endedAtFrustration !== undefined
+  );
+  const calm = unrated.filter(
+    (c) => (c.metadata.preflight?.endedAtFrustration ?? 0) <= CALM_FRUSTRATION_LEVEL
+  ).length;
+
+  // Escalation intent (#956): once per conversation, however many turns asked.
+  // This measures how often people want out, not how often they said so.
+  const wantedHuman = filtered.filter((c) => c.metadata.preflight?.escalationIntent).length;
+  const withPreflight = filtered.filter((c) => c.metadata.preflight !== undefined).length;
   return {
     total,
     escalated,
@@ -201,8 +227,24 @@ export function computeInsightsStats(
     conversationsPerUser: users.size > 0 ? round1(total / users.size) : 0,
     answersPerConversation: total > 0 ? round1(aiAnswers / total) : 0,
     languages: [...languages].sort((a, b) => b[1] - a[1]),
+    // Null rather than zero when there is nothing to measure: a card that
+    // says 0% when no conversation carried the signal is a card that lies
+    // about a quiet week.
+    implicitSatisfaction:
+      unrated.length > 0 ? Math.round((calm / unrated.length) * 100) : null,
+    escalationIntentRate:
+      withPreflight > 0 ? Math.round((wantedHuman / withPreflight) * 100) : null,
   };
 }
+
+/**
+ * The frustration level at or below which a conversation counts as having
+ * ended calm. The scale has four levels (#959's is the same shape): neutral,
+ * mildly impatient, clearly annoyed, angry. Drawing the line under "mildly
+ * impatient" is deliberate, somebody who had to ask twice and got there is not
+ * a dissatisfied Visitor.
+ */
+export const CALM_FRUSTRATION_LEVEL = 1;
 
 /** Builds the date buckets (labels) for the given range + aggregate. */
 function bucketKeys(start: Date, end: Date, aggregate: ChartAggregate): string[] {

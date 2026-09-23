@@ -13,7 +13,12 @@ import type {
   UsageSurface,
   WebsiteSourceConfig,
 } from "@agent-hub/core";
-import { isFreeCrawler, okfActor } from "@agent-hub/core";
+import {
+  crawlCredentialKind,
+  isFreeCrawler,
+  okfActor,
+  openSecret,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { CrawledPage } from "./apify";
 import {
@@ -33,6 +38,7 @@ import {
   resolveWebsiteCrawlerProvider,
   websiteCrawlerCapabilities,
   websiteCrawlerAdapter,
+  type CrawlerCredentials,
 } from "./website-crawlers";
 import {
   embeddingSpaceId,
@@ -442,6 +448,35 @@ async function enqueueActiveSourceGraph(
   }
 }
 
+/**
+ * One memory-extraction job per Document the committed generation stores
+ * (#930), beside the graph projection and for the same reasons: after the
+ * cutover, never inside the page loop, and never able to fail the ingest.
+ *
+ * Called from the one place every ingestion route converges on, the
+ * generation commit, so a website crawl, a file upload, pasted text and a FAQ
+ * all get memories the same way. The Organization comes from the Collection,
+ * which owns it (PRD #726), rather than from whichever Assistant happened to
+ * trigger the ingest: the memories belong to the knowledge, not the caller.
+ */
+async function enqueueActiveSourceMemories(
+  db: Db,
+  input: { collectionId: string; sourceId: string; generationId: string }
+): Promise<void> {
+  try {
+    const collection = await db.getCollection(input.collectionId);
+    if (!collection) return;
+    const { enqueueDocumentMemoryExtractions } = await import("./jobs");
+    await enqueueDocumentMemoryExtractions(
+      { db },
+      { ...input, organizationId: collection.organizationId }
+    );
+  } catch (error) {
+    // Memories are derived; the next commit enqueues again.
+    console.error("[memory-extraction] enqueue skipped:", error);
+  }
+}
+
 /** (Re)indexes a Concept body: chunk → embed → store, title-prefixed. */
 export async function embedConcept(options: {
   db: Db;
@@ -543,6 +578,9 @@ export async function embedConcept(options: {
       collectionId: options.collectionId,
       sourceId,
       content: `${options.title}\n\n${content}`,
+      // Body order, stated here where the body was cut (#929) rather than
+      // inferred from call order in the adapter.
+      position: i,
       embedding: embeddings[i],
       embeddingSpace: embeddings[i] ? embeddingSpace : null,
     }))
@@ -684,9 +722,13 @@ export type CrawlStartResult =
 async function crawlBudgetRefusal(
   db: Db,
   collectionId: string,
-  crawler: ResolvedWebsiteCrawlerProvider
+  crawler: ResolvedWebsiteCrawlerProvider,
+  credential: "organization" | "platform"
 ): Promise<string | null> {
   if (isFreeCrawler(crawler)) return null;
+  // A crawl on the Organization's own crawler account bills that account, not
+  // the platform's scraping allowance, so there is nothing here to gate.
+  if (credential === "organization") return null;
   try {
     const collection = await db.getCollection(collectionId);
     // Collections carry their Organization directly (PRD #726 contract).
@@ -712,6 +754,38 @@ async function crawlBudgetRefusal(
   }
 }
 
+/**
+ * The Organization's own crawler accounts (Settings → Crawling), opened for one
+ * crawl. The read fails open to "none", so a deploy that runs ahead of the
+ * `crawler_connections` migration keeps crawling on the platform credential;
+ * a token that is stored but cannot be opened still throws, because crawling
+ * on the platform's account instead would be a silent change of who pays.
+ */
+async function orgCrawlerCredentials(
+  db: Db,
+  organizationId: string | null | undefined
+): Promise<CrawlerCredentials> {
+  if (!organizationId) return {};
+  let connection;
+  try {
+    connection = await db.getCrawlerConnection(organizationId, "apify");
+  } catch (error) {
+    console.warn("[ingest] crawler connection read failed:", error);
+    return {};
+  }
+  return connection ? { apifyToken: openSecret(connection.encryptedToken) } : {};
+}
+
+/** Which account a crawl on `provider` runs on, given the org's connections. */
+function crawlCredentialFor(
+  provider: ResolvedWebsiteCrawlerProvider,
+  credentials: CrawlerCredentials
+): "organization" | "platform" {
+  return provider === "apify" && credentials.apifyToken
+    ? "organization"
+    : "platform";
+}
+
 export async function beginWebsiteCrawl(options: {
   db: Db;
   sourceId: string;
@@ -723,6 +797,11 @@ export async function beginWebsiteCrawl(options: {
     const config = source.config;
     if (!config.url) throw new Error("Missing URL in source config");
     await validateEgressTarget(config.url);
+    const collection = await db.getCollection(source.collectionId);
+    const credentials = await orgCrawlerCredentials(
+      db,
+      collection?.organizationId
+    );
 
     // Resolve once and persist the result so config/env changes cannot reroute
     // an in-flight crawl between its start and finalization. A failed run never
@@ -730,10 +809,14 @@ export async function beginWebsiteCrawl(options: {
     const resolution = resolveWebsiteCrawlerProvider(
       config.crawlerProvider,
       crawlCharacteristicsFromConfig(config),
-      websiteCrawlerCapabilities()
+      websiteCrawlerCapabilities(credentials)
     );
     if ("error" in resolution) throw new Error(resolution.error);
     const resolvedCrawlerProvider = resolution.provider;
+    const crawlCredential = crawlCredentialFor(
+      resolvedCrawlerProvider,
+      credentials
+    );
 
     // Crawling spends the scraping allowance (#510). The gate runs AFTER
     // resolution on purpose: the resolved crawler is what costs money, and a
@@ -744,7 +827,8 @@ export async function beginWebsiteCrawl(options: {
     const refusal = await crawlBudgetRefusal(
       db,
       source.collectionId,
-      resolvedCrawlerProvider
+      resolvedCrawlerProvider,
+      crawlCredential
     );
     if (refusal) {
       await db.updateSource(sourceId, {
@@ -760,6 +844,7 @@ export async function beginWebsiteCrawl(options: {
       config: {
         ...config,
         resolvedCrawlerProvider,
+        crawlCredential,
         crawlBlockedReason: undefined,
         crawlEscalated: undefined,
         crawlRunId: undefined,
@@ -774,7 +859,11 @@ export async function beginWebsiteCrawl(options: {
     });
     const { runId, datasetId } = await websiteCrawlerAdapter(
       resolvedCrawlerProvider
-    ).start(config.url, crawlOptions);
+    ).start(
+      config.url,
+      crawlOptions,
+      crawlCredential === "organization" ? credentials : {}
+    );
 
     await db.updateSource(sourceId, {
       status: "processing",
@@ -782,6 +871,7 @@ export async function beginWebsiteCrawl(options: {
       config: {
         ...config,
         resolvedCrawlerProvider,
+        crawlCredential,
         crawlBlockedReason: undefined,
         crawlEscalated: undefined,
         crawlRunId: runId,
@@ -817,6 +907,7 @@ export async function updateWebsiteSourceConfiguration(options: {
     config: {
       ...config,
       resolvedCrawlerProvider: source.config.resolvedCrawlerProvider,
+      crawlCredential: source.config.crawlCredential,
       crawlRunId: source.config.crawlRunId,
       crawlDatasetId: source.config.crawlDatasetId,
     },
@@ -911,6 +1002,7 @@ export async function finalizeWebsiteCrawl(options: {
   let crawlerProvider: ResolvedWebsiteCrawlerProvider | null = null;
   let crawlTaskId: string | null = null;
   let crawlStartedAt: string | undefined;
+  let crawlCredential: "organization" | "platform" | undefined;
 
   /** One `crawl` telemetry event per terminal outcome (fire-safe). */
   const emitCrawlTelemetry = async (input: {
@@ -926,6 +1018,9 @@ export async function finalizeWebsiteCrawl(options: {
       kind: "crawl",
       status: input.status,
       crawlerProvider,
+      // Who paid: an org-funded crawl must not count against the plan's
+      // scraping allowance (20260922210000_crawl_usage_funding.sql).
+      credentialKind: crawlCredentialKind(crawlCredential),
       pageCount: input.pageCount ?? null,
       durationMs: crawlStartedAt
         ? Math.max(0, Date.now() - Date.parse(crawlStartedAt))
@@ -1021,12 +1116,28 @@ export async function finalizeWebsiteCrawl(options: {
     crawlerProvider = resolvedCrawlerProvider;
     crawlTaskId = runId;
     crawlStartedAt = source.config.crawlStartedAt;
+    crawlCredential = source.config.crawlCredential;
+    const credentials = await orgCrawlerCredentials(
+      db,
+      (await db.getCollection(collectionId))?.organizationId
+    );
+    // The run belongs to whichever account started it. Polling an org-started
+    // run with the platform token would read someone else's account and fail
+    // obscurely, so a token removed mid-crawl is named as the reason instead.
+    const startedOnOrg = source.config.crawlCredential === "organization";
+    if (startedOnOrg && !credentials.apifyToken) {
+      return fail(
+        "This crawl started on the organization's Apify account, whose token was removed from Settings → Crawling. Reconnect it and re-crawl.",
+        "CrawlerCredentialRemoved"
+      );
+    }
     const crawlResult = await websiteCrawlerAdapter(resolvedCrawlerProvider).poll({
       runId,
       datasetId,
       url: source.config.url ?? "",
       options: crawlOptionsFromConfig(source.config),
       cursor: source.config.crawlIngestCursor,
+      credentials: startedOnOrg ? credentials : {},
     });
     if (crawlResult.status === "processing") return defer();
     if (crawlResult.status === "failed") {
@@ -1044,14 +1155,21 @@ export async function finalizeWebsiteCrawl(options: {
       !source.config.crawlEscalated &&
       localCrawlMissedContent(pages)
     ) {
-      const browserProvider = browserCrawlerFor(websiteCrawlerCapabilities());
+      const browserProvider = browserCrawlerFor(
+        websiteCrawlerCapabilities(credentials)
+      );
       if (browserProvider) {
         if (!(await renewLease())) return "processing";
         try {
           const options = crawlOptionsFromConfig(source.config);
+          const escalatedCredential = crawlCredentialFor(
+            browserProvider,
+            credentials
+          );
           const started = await websiteCrawlerAdapter(browserProvider).start(
             source.config.url ?? "",
-            options
+            options,
+            escalatedCredential === "organization" ? credentials : {}
           );
           // Only after a successful start do we flip the run to the browser
           // provider (so a start failure leaves Local's result ingestable).
@@ -1061,6 +1179,7 @@ export async function finalizeWebsiteCrawl(options: {
             config: {
               ...source.config,
               resolvedCrawlerProvider: browserProvider,
+              crawlCredential: escalatedCredential,
               crawlEscalated: true,
               crawlRunId: started.runId,
               crawlDatasetId: started.datasetId,
@@ -1187,6 +1306,11 @@ export async function finalizeWebsiteCrawl(options: {
       throw new Error("Source knowledge changed while crawl ingestion was running");
     }
     await enqueueActiveSourceGraph(db, collectionId, sourceId);
+    await enqueueActiveSourceMemories(db, {
+      collectionId,
+      sourceId,
+      generationId: generation.generationId,
+    });
     if (!(await renewLease())) return "processing";
     await db.updateSource(sourceId, {
       status: "ready",
@@ -1273,7 +1397,10 @@ export async function replaceSourceKnowledge(options: {
     preserveStagedOnAbort: options.preserveStagedOnAbort,
     onRetired: (conceptIds) =>
       enqueueGraphConceptRemovals(db, collectionId, conceptIds),
-    onCommitted: () => enqueueActiveSourceGraph(db, collectionId, sourceId),
+    onCommitted: async (generationId) => {
+      await enqueueActiveSourceGraph(db, collectionId, sourceId);
+      await enqueueActiveSourceMemories(db, { collectionId, sourceId, generationId });
+    },
   });
 }
 

@@ -3,7 +3,12 @@ import type {
   Assistant,
   Concept,
   KnowledgeCollection,
+  KnowledgeMemory,
   Source,
+} from "@agent-hub/core";
+import {
+  DOCUMENT_CHUNKS_PAGE_SIZE,
+  SOURCE_DOCUMENTS_PAGE_SIZE,
 } from "@agent-hub/core";
 import { raiseDanglingSourceAlerts } from "@agent-hub/db";
 import type { OperationContext } from "./operation";
@@ -86,6 +91,27 @@ async function requireSource(
   if (!source) throw new OperationError("not_found", "Source not found");
   const collection = await requireCollection(ctx, source.collectionId);
   return { source, collection };
+}
+
+/**
+ * The Assistant scope of the drill-down (#927, #928, #932). With an
+ * `assistantId`, the Source must be linked to that Assistant of this
+ * Organization, or it is `not_found` here even though the Library shows it:
+ * the editor does not confirm that a sibling Assistant's knowledge exists.
+ * Without one, the Organization's ownership (already checked) is the scope.
+ */
+async function requireLinkedSource(
+  ctx: OperationContext,
+  source: Source,
+  assistantId: string | undefined,
+  message = "Source not found"
+): Promise<void> {
+  if (!assistantId) return;
+  await requireAssistant(ctx, assistantId);
+  const linked = await ctx.db.listAssistantSourceIds(assistantId);
+  if (!linked.includes(source.id)) {
+    throw new OperationError("not_found", message);
+  }
 }
 
 export const listCollectionsOp = defineOperation({
@@ -201,6 +227,9 @@ export const listOrgKnowledgeSourcesOp = defineOperation({
     query: z.string().max(200).optional(),
     page: z.number().int().min(1).optional(),
     pageSize: z.number().int().min(1).max(100).optional(),
+    /** Which column header was clicked; the default is newest first. */
+    sort: z.enum(["createdAt", "name", "status", "updatedAt"]).optional(),
+    ascending: z.boolean().optional(),
   }),
   entities: () => [],
   run: (ctx, input) => ctx.db.listOrgKnowledgeSources(ctx.organizationId, input),
@@ -289,32 +318,68 @@ export const deleteSourceOp = defineOperation({
     { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, { id }) => {
-    const { source } = await requireSource(ctx, id);
-    // Every linked Assistant's editor needs revalidating, capture the links
-    // before the delete cascades them away.
-    const links = await ctx.db.listSourceAssistantLinks(id);
-    // Deleting a Source cascade-deletes its Concepts; capture their ids first
-    // and retire their graph documents, the Collection survives, so orphaned
-    // docs would otherwise pollute its live retrieval (ADR-0017).
-    const conceptIds = (await ctx.db.listConcepts(source.collectionId))
-      .filter((c) => c.sourceId === id)
-      .map((c) => c.id);
-    await ctx.db.deleteSource(id);
-    for (const conceptId of conceptIds) {
-      await ctx.ports?.removeConceptGraph?.(source.collectionId, conceptId);
-    }
-    // A Teammate can name this Source directly in its Knowledge Scope, and that
-    // is not a foreign key: the delete leaves it pointed at nothing, so the
-    // operational surface says so rather than letting the scope go quiet (#769).
-    await raiseDanglingSourceAlerts(
-      ctx.db,
-      ctx.organizationId,
-      id,
-      source.name
-    );
-    return { assistantIds: links.map((l) => l.assistantId) };
+    return { assistantIds: await removeSource(ctx, id) };
   },
 });
+
+/**
+ * The same delete over a selection in the Library's table.
+ *
+ * Deleting is per-Source work with no batch shortcut, so this is the loop the
+ * console would have run anyway, moved behind one authorization and one
+ * revalidation. It stops at the first Source it cannot reach, which is the
+ * safe end of the trade: a partial delete that reported success would leave
+ * the reader guessing which half went.
+ */
+export const deleteSourcesOp = defineOperation({
+  name: "knowledge.sources.deleteMany",
+  capability: "edit",
+  input: z.object({
+    ids: z.array(z.string().min(1)).min(1).max(100),
+  }),
+  entities: (_input, result: { assistantIds: string[] }) => [
+    ...result.assistantIds.map((assistantId) => ({
+      kind: "assistantEditor" as const,
+      assistantId,
+    })),
+    { kind: "knowledgeHub" as const },
+  ],
+  run: async (ctx, { ids }) => {
+    const assistantIds = new Set<string>();
+    for (const id of ids) {
+      for (const assistantId of await removeSource(ctx, id)) {
+        assistantIds.add(assistantId);
+      }
+    }
+    return { assistantIds: [...assistantIds] };
+  },
+});
+
+/** Deletes one Source and returns the Assistants whose editors it touched. */
+async function removeSource(
+  ctx: OperationContext,
+  id: string
+): Promise<string[]> {
+  const { source } = await requireSource(ctx, id);
+  // Every linked Assistant's editor needs revalidating, capture the links
+  // before the delete cascades them away.
+  const links = await ctx.db.listSourceAssistantLinks(id);
+  // Deleting a Source cascade-deletes its Concepts; capture their ids first
+  // and retire their graph documents, the Collection survives, so orphaned
+  // docs would otherwise pollute its live retrieval (ADR-0017).
+  const conceptIds = (await ctx.db.listConcepts(source.collectionId))
+    .filter((c) => c.sourceId === id)
+    .map((c) => c.id);
+  await ctx.db.deleteSource(id);
+  for (const conceptId of conceptIds) {
+    await ctx.ports?.removeConceptGraph?.(source.collectionId, conceptId);
+  }
+  // A Teammate can name this Source directly in its Knowledge Scope, and that
+  // is not a foreign key: the delete leaves it pointed at nothing, so the
+  // operational surface says so rather than letting the scope go quiet (#769).
+  await raiseDanglingSourceAlerts(ctx.db, ctx.organizationId, id, source.name);
+  return links.map((l) => l.assistantId);
+}
 
 /**
  * Removes one Assistant's link to a Source: the Source, its Concepts and every
@@ -348,20 +413,66 @@ export const unlinkSourceOp = defineOperation({
     { kind: "knowledgeHub" as const },
   ],
   run: async (ctx, input) => {
-    await requireSource(ctx, input.sourceId);
     await requireAssistant(ctx, input.assistantId);
-    const links = await ctx.db.listSourceAssistantLinks(input.sourceId);
-    const affected = links.map((link) => link.assistantId);
-    const remaining = affected.filter((id) => id !== input.assistantId);
-    // Not linked in the first place: nothing to do, and no write that would
-    // rewrite the other links' Direct access flags.
-    if (remaining.length === affected.length) {
-      return { assistantIds: affected, remaining: remaining.length };
-    }
-    await ctx.db.setSourceAssistantLinks(input.sourceId, remaining);
-    return { assistantIds: affected, remaining: remaining.length };
+    return removeSourceLink(ctx, input.assistantId, input.sourceId);
   },
 });
+
+/**
+ * The same removal over a selection in an Assistant's Knowledge table.
+ *
+ * The bulk bar there offers this and `deleteSourcesOp` as two labelled
+ * buttons rather than inferring one from whether a row happens to be shared,
+ * which is what the per-row menu does: with twenty rows ticked, half of them
+ * shared, an inferred choice would do two different things at once.
+ */
+export const unlinkSourcesOp = defineOperation({
+  name: "knowledge.sources.unlinkMany",
+  capability: "edit",
+  input: z.object({
+    assistantId: z.string().min(1),
+    sourceIds: z.array(z.string().min(1)).min(1).max(100),
+  }),
+  entities: (_input, result: { assistantIds: string[] }) => [
+    ...result.assistantIds.map((assistantId) => ({
+      kind: "assistantEditor" as const,
+      assistantId,
+    })),
+    { kind: "knowledgeHub" as const },
+  ],
+  run: async (ctx, input) => {
+    await requireAssistant(ctx, input.assistantId);
+    const touched = new Set<string>();
+    for (const sourceId of input.sourceIds) {
+      const { assistantIds } = await removeSourceLink(
+        ctx,
+        input.assistantId,
+        sourceId
+      );
+      for (const id of assistantIds) touched.add(id);
+    }
+    return { assistantIds: [...touched] };
+  },
+});
+
+/** Drops one Assistant from one Source's link set. Caller checks the Assistant. */
+async function removeSourceLink(
+  ctx: OperationContext,
+  assistantId: string,
+  sourceId: string
+): Promise<{ assistantIds: string[]; remaining: number }> {
+  await requireSource(ctx, sourceId);
+  const links = await ctx.db.listSourceAssistantLinks(sourceId);
+  const affected = links.map((link) => link.assistantId);
+  const remaining = affected.filter((id) => id !== assistantId);
+  // Not linked in the first place: nothing to do, and no write that would
+  // rewrite the other links' Direct access flags.
+  if (remaining.length === affected.length) {
+    return { assistantIds: affected, remaining: remaining.length };
+  }
+  await ctx.db.setSourceAssistantLinks(sourceId, remaining);
+  return { assistantIds: affected, remaining: remaining.length };
+}
 
 export const createFaqOp = defineOperation({
   name: "knowledge.faqs.create",
@@ -574,25 +685,56 @@ export const importOrgFaqsOp = defineOperation({
   },
 });
 
-/** The "View knowledge source" pages list (bounded server-side). */
-export const listSourceConceptsOp = defineOperation({
-  name: "knowledge.sources.concepts.list",
+/**
+ * One page of a Source's Documents, for the drill-down route (#927).
+ *
+ * The route replaced two dialogs that each listed a Source's pages with their
+ * own read; this is the one read behind both entry points. `assistantId`
+ * scopes it to an Assistant's Knowledge section, where a Source the Assistant
+ * is not linked to is not found rather than forbidden: the editor has no
+ * business confirming that a sibling's Source exists.
+ *
+ * The seam it calls is still named for Concepts: `Document` is the domain
+ * noun, `Concept` is what OKF and the `concepts` table call the same row, and
+ * renaming a live table to make a variable agree with a label is not a trade
+ * worth making. See ADR-0002's 2026-09-20 amendment.
+ */
+export const listSourceDocumentsOp = defineOperation({
+  name: "knowledge.sources.documents.list",
   capability: "member",
-  input: z.object({ sourceId: z.string().min(1) }),
+  input: z.object({
+    sourceId: z.string().min(1),
+    /** Scopes the read to one Assistant's Knowledge section. */
+    assistantId: z.string().min(1).optional(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(1).max(200).optional(),
+    /** Oldest first. The table's Updated column sorts newest first by default. */
+    ascending: z.boolean().optional(),
+    /** Which column header was clicked; the default is when it was stored. */
+    sort: z.enum(["createdAt", "title"]).optional(),
+    /** The Status header's filter, the same three states the badge shows. */
+    status: z.enum(["ready", "pending", "excluded"]).optional(),
+  }),
   entities: () => [],
-  run: async (ctx, { sourceId }) => {
-    await requireSource(ctx, sourceId);
-    const concepts = await ctx.db.listConceptsBySource(sourceId);
-    return {
-      items: concepts
-        .filter((c) => !c.excluded)
-        .map((c) => ({
-          id: c.id,
-          title: c.frontmatter.title ?? c.path,
-          path: c.path,
-          resourceUrl: c.frontmatter.resource ?? null,
-        })),
-    };
+  run: async (ctx, input) => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    await requireLinkedSource(ctx, source, input.assistantId);
+    const pageSize = input.pageSize ?? SOURCE_DOCUMENTS_PAGE_SIZE;
+    const page = input.page ?? 1;
+    const { items, total } = await ctx.db.listSourceDocuments(source.id, {
+      page,
+      pageSize,
+      ascending: input.ascending,
+      sort: input.sort,
+      status: input.status,
+    });
+    // The Memories column (#932), counted for this page's Documents only, so
+    // a 10k-page Source costs one bounded read rather than a scan.
+    const memoryCounts = await ctx.db.countLiveMemoriesByPath(
+      source.id,
+      items.map((document) => document.path)
+    );
+    return { source, items, total, page, pageSize, memoryCounts };
   },
 });
 
@@ -690,3 +832,389 @@ export const recrawlSourceOp = defineOperation({
     return { assistantIds: links.map((l) => l.assistantId) };
   },
 });
+
+/**
+ * One Document, for level 3 of the drill-down (#928): its body, the counts the
+ * three tabs show, and the Source it belongs to.
+ *
+ * Reading a Document's body is the same right as reading its row, so this is a
+ * `member` read. The per-Assistant **Direct access** flag is deliberately not
+ * consulted: that flag decides whether a chat Visitor may be handed an
+ * original file, and a Member of the Organization reading their own knowledge
+ * in the console is not that question.
+ */
+export const getSourceDocumentOp = defineOperation({
+  name: "knowledge.documents.get",
+  capability: "member",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentId: z.string().min(1),
+    assistantId: z.string().min(1).optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input) => {
+    const { source, collection } = await requireSource(ctx, input.sourceId);
+    await requireLinkedSource(ctx, source, input.assistantId, "Document not found");
+    const document = await ctx.db.getConcept(input.documentId);
+    // A Document of a *different* Source is as absent as one that never
+    // existed: the id alone is not a capability.
+    if (!document || document.sourceId !== source.id) {
+      throw new OperationError("not_found", "Document not found");
+    }
+    const [chunkCount, memories, extraction, extractionJobs] = await Promise.all([
+      ctx.db.countConceptChunks(document.id),
+      // The live rows, not the extraction record's count: the tab counts what
+      // is there, and a memory a Member forgot is not.
+      ctx.db.table("knowledgeMemories").list({
+        sourceId: source.id,
+        documentPath: document.path,
+        forgottenAt: null,
+      }),
+      // Why the Memories tab is empty, when it is (#933): the record knows
+      // whether nothing has run, nothing can run, or something failed.
+      ctx.db.getMemoryExtraction(source.id, document.path),
+      // The record says how the last attempt ended; only the ledger says one
+      // is waiting, because the job writes the record when it finishes.
+      ctx.db.listBackgroundJobsForSource(source.id, "extract_document_memories"),
+    ]);
+    const waiting = extractionJobs.filter(
+      (job) => job.status === "queued" || job.status === "running"
+    );
+    return {
+      source,
+      collection,
+      document,
+      chunkCount,
+      memoryCount: memories.length,
+      extraction,
+      queuedExtractions: {
+        thisPage: waiting.some(
+          (job) =>
+            (job.payload as { documentPath?: string }).documentPath === document.path
+        ),
+        source: waiting.length,
+      },
+    };
+  },
+});
+
+/**
+ * One page of a Document's chunks (#929), for the Chunks tab.
+ *
+ * `member`, like the Document itself: a chunk is the same text as the body cut
+ * into pieces, so it discloses nothing new, and a separate right would be one
+ * more thing to explain. The read carries no embedding.
+ */
+export const listDocumentChunksOp = defineOperation({
+  name: "knowledge.documents.chunks.list",
+  capability: "member",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentId: z.string().min(1),
+    assistantId: z.string().min(1).optional(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(1).max(200).optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input) => {
+    // The same guard chain the Document route walks, so a chunk id is never a
+    // way around the Source and Assistant checks above it.
+    const view = await getSourceDocumentOp.run(ctx, {
+      sourceId: input.sourceId,
+      documentId: input.documentId,
+      assistantId: input.assistantId,
+    });
+    const pageSize = input.pageSize ?? DOCUMENT_CHUNKS_PAGE_SIZE;
+    const page = input.page ?? 1;
+    const { items, total } = await ctx.db.listDocumentChunks(view.document.id, {
+      page,
+      pageSize,
+    });
+    return { items, total, page, pageSize };
+  },
+});
+
+/**
+ * A Document's Summary (#931): read the cache, or make one and cache it.
+ *
+ * `member`, and deliberately so. Any Member's open may pay for the call,
+ * Viewers included, because the cost is bounded to one per Document generation
+ * and a summary is a reading aid rather than an edit. The cache lives on the
+ * Document row, so a re-crawl that changed the page takes the summary with it
+ * and the next opener pays once for the new text.
+ *
+ * Three answers, and the card renders each differently: a summary, `null`
+ * because nothing can generate one (no Provider Connection), or `null` after a
+ * failed attempt, which the card says out loud and retries on the next open.
+ */
+export const getDocumentSummaryOp = defineOperation({
+  name: "knowledge.documents.summary.get",
+  capability: "member",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentId: z.string().min(1),
+    assistantId: z.string().min(1).optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input): Promise<{ summary: string | null; generatedBy: string | null }> => {
+    const view = await getSourceDocumentOp.run(ctx, input);
+    const cached = view.document.summary;
+    if (cached) {
+      return {
+        summary: cached,
+        generatedBy: view.document.summaryGenerated?.by ?? null,
+      };
+    }
+    const generated = await ctx.ports?.summariseDocument?.({
+      title: view.document.frontmatter.title ?? view.document.path,
+      body: view.document.body,
+    });
+    if (!generated) return { summary: null, generatedBy: null };
+
+    // The write is conditional, so two openers racing produce one stored
+    // summary and the loser answers with the winner's.
+    const stored = await ctx.db.setConceptSummary(view.document.id, {
+      text: generated.text,
+      by: generated.by,
+      at: new Date().toISOString(),
+    });
+    return {
+      summary: stored?.summary ?? generated.text,
+      generatedBy: stored?.summaryGenerated?.by ?? generated.by,
+    };
+  },
+});
+
+/**
+ * Exclusion from retrieval, from the Document's Details column (#928). The
+ * write itself is `applyDocumentExclusion` below, shared with the bulk twin.
+ */
+export const setDocumentExcludedOp = defineOperation({
+  name: "knowledge.documents.excluded.set",
+  capability: "edit",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentId: z.string().min(1),
+    excluded: z.boolean(),
+  }),
+  entities: (_input, result: { excluded: boolean; assistantIds: string[] }) => [
+    { kind: "knowledgeHub" as const },
+    ...result.assistantIds.map((assistantId) => ({
+      kind: "assistantEditor" as const,
+      assistantId,
+    })),
+  ],
+  run: async (ctx, input) => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    const document = await ctx.db.getConcept(input.documentId);
+    if (!document || document.sourceId !== source.id) {
+      throw new OperationError("not_found", "Document not found");
+    }
+    const { assistantIds } = await applyDocumentExclusion(
+      ctx,
+      source.id,
+      [document],
+      input.excluded
+    );
+    return { excluded: input.excluded, assistantIds };
+  },
+});
+
+/**
+ * The same write over the rows a reader ticked in the Documents table.
+ *
+ * It exists rather than the console calling the single op in a loop because
+ * the loop would re-read the Source and its Assistant links once per row and
+ * revalidate the tree once per row. Ids that do not belong to the Source are
+ * dropped rather than refused: the table's selection is what produced them,
+ * and a stale tick should not cost the reader the other nineteen rows.
+ */
+export const setDocumentsExcludedOp = defineOperation({
+  name: "knowledge.documents.excluded.setMany",
+  capability: "edit",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentIds: z.array(z.string().min(1)).min(1).max(200),
+    excluded: z.boolean(),
+  }),
+  entities: (_input, result: { changed: number; assistantIds: string[] }) => [
+    { kind: "knowledgeHub" as const },
+    ...result.assistantIds.map((assistantId) => ({
+      kind: "assistantEditor" as const,
+      assistantId,
+    })),
+  ],
+  run: async (ctx, input) => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    const documents: Concept[] = [];
+    for (const id of input.documentIds) {
+      const document = await ctx.db.getConcept(id);
+      if (document && document.sourceId === source.id) documents.push(document);
+    }
+    const { assistantIds } = await applyDocumentExclusion(
+      ctx,
+      source.id,
+      documents,
+      input.excluded
+    );
+    return {
+      excluded: input.excluded,
+      changed: documents.length,
+      assistantIds,
+    };
+  },
+});
+
+/**
+ * Excluding drops a Document's chunks, which is what takes it out of search;
+ * restoring re-embeds it through the port, against the Source's first linked
+ * Assistant, the same choice `updateOrgFaqOp` makes. An unlinked Source has
+ * nobody to embed for, so the restore clears the flag and leaves the indexing
+ * to the next crawl rather than pretending it happened.
+ */
+async function applyDocumentExclusion(
+  ctx: OperationContext,
+  sourceId: string,
+  documents: Concept[],
+  excluded: boolean
+): Promise<{ assistantIds: string[] }> {
+  const links = await ctx.db.listSourceAssistantLinks(sourceId);
+  for (const document of documents) {
+    await ctx.db.setConceptExcluded(document.id, excluded);
+    if (excluded) {
+      await ctx.db.deleteChunksByConcept(document.id);
+    } else if (links[0]) {
+      await ctx.ports?.reembedConcept?.({
+        assistantId: links[0].assistantId,
+        collectionId: document.collectionId,
+        conceptId: document.id,
+        title: document.frontmatter.title ?? document.path,
+        body: document.body,
+      });
+    }
+  }
+  return { assistantIds: links.map((link) => link.assistantId) };
+}
+
+/**
+ * "Extract memories" (#933): the by-hand backfill for knowledge that predates
+ * this layer.
+ *
+ * `edit`, because it spends the Organization's model budget. Nothing runs it
+ * automatically and no migration queues it: one call per existing Document for
+ * every tenant at once is a bill nobody asked for, so the console offers the
+ * lever and the re-crawl cadence does the rest over the following weeks.
+ */
+export const extractSourceMemoriesOp = defineOperation({
+  name: "knowledge.sources.memories.extract",
+  capability: "edit",
+  input: z.object({ sourceId: z.string().min(1) }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input): Promise<{ queued: number }> => {
+    const { source, collection } = await requireSource(ctx, input.sourceId);
+    const queued = await ctx.ports?.enqueueMemoryExtractions?.({
+      collectionId: collection.id,
+      sourceId: source.id,
+    });
+    // No port wired (a surface with no runtime) queues nothing and says so,
+    // rather than claiming work that nobody will do.
+    return { queued: queued ?? 0 };
+  },
+});
+
+/**
+ * Knowledge memories (#926): what a Document said, kept beside it.
+ *
+ * Three operations, and the middle one is the point. A **forget** is a state a
+ * Member sets and can unset, not a delete: the row keeps its text, its quote
+ * and its provenance, and stops being live. The destructive verb in this
+ * product belongs to subject memories, where it is called Erase (#925), so one
+ * product never has two meanings under one word.
+ *
+ * The rows come from the extraction job (#930, `extractDocumentMemories` in
+ * the agent package) and are rendered by the Memories tab (#932).
+ */
+
+/** A page's memories, live by default. `includeForgotten` is the opt-in. */
+export const listDocumentMemoriesOp = defineOperation({
+  name: "knowledge.documents.memories.list",
+  capability: "member",
+  input: z.object({
+    sourceId: z.string().min(1),
+    documentPath: z.string().min(1),
+    /** Scopes the read to one Assistant's Knowledge, as the other two do. */
+    assistantId: z.string().min(1).optional(),
+    includeForgotten: z.boolean().optional(),
+  }),
+  entities: () => [],
+  run: async (ctx, input): Promise<KnowledgeMemory[]> => {
+    const { source } = await requireSource(ctx, input.sourceId);
+    await requireLinkedSource(ctx, source, input.assistantId);
+    // `forgottenAt: null` *is* the liveness rule, the filter form of
+    // `isKnowledgeMemoryLive`. Nothing here re-checks the column by hand.
+    return ctx.db.table("knowledgeMemories").list({
+      sourceId: input.sourceId,
+      documentPath: input.documentPath,
+      ...(input.includeForgotten ? {} : { forgottenAt: null }),
+    });
+  },
+});
+
+/**
+ * Forget one memory. Editor rank, because it is an editorial decision about
+ * the Organization's knowledge, the same rank as editing the Document it came
+ * from. Forgetting twice is not an error: the first reason stands, so a second
+ * click cannot quietly rewrite why.
+ */
+export const forgetKnowledgeMemoryOp = defineOperation({
+  name: "knowledge.memories.forget",
+  capability: "edit",
+  input: z.object({
+    id: z.string().min(1),
+    reason: z.string().max(500).optional(),
+  }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input): Promise<KnowledgeMemory> => {
+    const memory = await requireKnowledgeMemory(ctx, input.id);
+    if (memory.forgottenAt) return memory;
+    return ctx.db.table("knowledgeMemories").update(memory.id, {
+      forgottenAt: new Date().toISOString(),
+      forgetReason: input.reason ?? null,
+      forgottenBy: ctx.userId ?? null,
+    });
+  },
+});
+
+/** Restore one. Clears the whole forget state, so nothing is left half-set. */
+export const restoreKnowledgeMemoryOp = defineOperation({
+  name: "knowledge.memories.restore",
+  capability: "edit",
+  input: z.object({ id: z.string().min(1) }),
+  entities: () => [{ kind: "knowledgeHub" as const }],
+  run: async (ctx, input): Promise<KnowledgeMemory> => {
+    const memory = await requireKnowledgeMemory(ctx, input.id);
+    if (!memory.forgottenAt) return memory;
+    return ctx.db.table("knowledgeMemories").update(memory.id, {
+      forgottenAt: null,
+      forgetReason: null,
+      forgottenBy: null,
+    });
+  },
+});
+
+/**
+ * id → a memory this Organization owns, or not_found. The row carries its own
+ * `organizationId`, and the Source check is what keeps a memory whose Source
+ * has been deleted out of reach of a stale id.
+ */
+async function requireKnowledgeMemory(
+  ctx: OperationContext,
+  id: string
+): Promise<KnowledgeMemory> {
+  const memory = await ctx.db.table("knowledgeMemories").get(id);
+  if (!memory || memory.organizationId !== ctx.organizationId) {
+    throw new OperationError("not_found", "Memory not found");
+  }
+  await requireSource(ctx, memory.sourceId);
+  return memory;
+}

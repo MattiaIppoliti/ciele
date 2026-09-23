@@ -10,6 +10,9 @@ import type {
   Project,
   ProjectInput,
   ProjectPatch,
+  ActionApproval,
+  ActionApprovalInput,
+  ActionApprovalPatch,
   ReviewRequest,
   ReviewRequestInput,
   ReviewRequestPatch,
@@ -18,6 +21,7 @@ import type {
   WebhookSubscriptionPatch,
   HttpFlowRun,
   HttpFlowRunInput,
+  KnowledgeMemory,
   Skill,
   Teammate,
   TeammateChannel,
@@ -240,6 +244,17 @@ export interface DbTableMap {
     update: ReviewRequestPatch;
   };
   /**
+   * Actions the approval gate stopped (#958). Created by the runtime, closed
+   * once by the approve operation or the expiry sweep; the verdict that
+   * stopped the action lives in core, and the row carries what it takes to run
+   * the action a Member approved.
+   */
+  actionApprovals: {
+    row: ActionApproval;
+    insert: ActionApprovalInput;
+    update: ActionApprovalPatch;
+  };
+  /**
    * Awaited webhook callbacks (#842). Created by the runtime, closed once by
    * the first callback or the expiry sweep; the state machine lives in core.
    */
@@ -257,6 +272,44 @@ export interface DbTableMap {
     row: HttpFlowRun;
     insert: HttpFlowRunInput;
     update: Record<never, never>;
+  };
+  /**
+   * Knowledge memories (#926). Mechanical in both directions, which is why it
+   * is here and not three hand-written methods: the read is
+   * `list({ sourceId, documentPath, forgottenAt: null })`, and forget and
+   * restore are the same patch with the fields set and cleared. What those
+   * three mean is the operations layer's to say, not the seam's.
+   */
+  knowledgeMemories: {
+    row: KnowledgeMemory;
+    insert: Pick<
+      KnowledgeMemory,
+      | "organizationId"
+      | "collectionId"
+      | "sourceId"
+      | "documentPath"
+      | "text"
+      // OKF `generated` is required, not defaulted: a row whose provenance the
+      // database invented is a provenance lie (ADR-0002's non-backfill rule).
+      | "generatedBy"
+      | "generatedAt"
+    > &
+      Partial<
+        Pick<KnowledgeMemory, "conceptId" | "chunkId" | "quote" | "sourceCount">
+      >;
+    update: Partial<
+      Pick<
+        KnowledgeMemory,
+        | "forgottenAt"
+        | "forgetReason"
+        | "forgottenBy"
+        | "sourceCount"
+        | "conceptId"
+        | "chunkId"
+        | "text"
+        | "quote"
+      >
+    >;
   };
 }
 
@@ -486,6 +539,27 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     ascending: false,
     touchesUpdatedAt: true,
   },
+  actionApprovals: {
+    table: "action_approvals",
+    id: "shortId",
+    defaults: {
+      status: "pending",
+      teammateId: null,
+      requestedBy: null,
+      input: {},
+      reversibility: null,
+      backend: null,
+      calibrated: null,
+      confidence: {},
+      decidedBy: null,
+      decidedByName: null,
+      decidedAt: null,
+      executedAt: null,
+    },
+    orderBy: "createdAt",
+    ascending: false,
+    touchesUpdatedAt: true,
+  },
   reviewRequests: {
     table: "review_requests",
     id: "shortId",
@@ -517,6 +591,23 @@ export const DB_TABLE_SPECS: { [K in DbTableName]: DbTableSpec<K> } = {
     orderBy: "createdAt",
     ascending: false,
     touchesUpdatedAt: false,
+  },
+  knowledgeMemories: {
+    table: "knowledge_memories",
+    id: "shortId",
+    defaults: {
+      conceptId: null,
+      chunkId: null,
+      quote: "",
+      forgottenAt: null,
+      forgetReason: null,
+      forgottenBy: null,
+      sourceCount: 1,
+    },
+    // Newest first: a Document's memories read as what it most recently said.
+    orderBy: "createdAt",
+    ascending: false,
+    touchesUpdatedAt: true,
   },
 };
 

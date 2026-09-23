@@ -43,10 +43,10 @@ flowchart TB
   ASSISTANT["Assistant"]
   COLLECTION["Knowledge Collection"]
   SOURCE["Source"]
-  CONCEPT["Concept"]
+  DOCUMENT["Document"]
   ORG -->|"owns"| COLLECTION
   COLLECTION -->|"holds"| SOURCE
-  SOURCE -->|"ingests into"| CONCEPT
+  SOURCE -->|"ingests into"| DOCUMENT
   ASSISTANT -->|"links to"| SOURCE
 `}
 />

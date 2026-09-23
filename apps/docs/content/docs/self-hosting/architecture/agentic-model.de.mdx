@@ -1,58 +1,88 @@
 ---
-title: Agentenmodell
-description: Verstehen Sie die Provider-Auflösung, die Tool-Nutzung, die Grenzen, die Traces und die Zitationen.
+title: Agentisches Modell
+description: Machen Sie sich mit der Provider-Auflösung, der Tool-Nutzung, den Grenzen, den Traces und den Zitaten vertraut.
 ---
 
-Die Laufzeitumgebung verwendet die Provider-Abstraktion des Vercel AI SDK. Zu
-den aktuellen Provider-Adaptern gehören Anthropic, OpenAI, Google und ein
-OpenAI-kompatibler Endpunkt.
+Die Runtime verwendet die Provider-Abstraktion des Vercel AI SDK. Zu den
+aktuellen Provider-Adaptern gehören Anthropic, OpenAI, Google sowie ein
+OpenAI-kompatibler Endpoint.
 
-## Generative Grenzen
+## Grenzen generativer Modelle
 
-Die Laufzeitumgebung führt einen Modellaufruf nur innerhalb einer generativen
-Aktion oder einer Intent Classification durch. Deterministische Aktionen leiten
-ihren Inhalt nicht über ein Modell weiter.
+Die Runtime führt einen Modellaufruf nur innerhalb einer generativen Aktion oder
+einer Intent Classification durch. Deterministische Aktionen leiten ihren Inhalt
+nicht durch ein Modell.
 
-Die einfache Antwort verwendet einen Chat-Aufruf und keine Tools. Search
+Basic reply verwendet einen einzigen Chat-Aufruf und keine Tools. Search
 Knowledge verwendet eine begrenzte Tool-Schleife.
 
-## Schleife zur Suche in Knowledge
+## Schleife für die Suche in Knowledge
 
-1. Das Modell erhält die Anweisungen für den Assistenten und die Beschreibungen
-   der verfügbaren Tools.
+1. Das Modell erhält die Anweisungen des Assistants sowie die Beschreibungen der
+   verfügbaren Tools.
 2. Das Modell durchsucht Knowledge oder liest ein ausgewähltes Source-Fenster.
-3. Die Laufzeitumgebung zeichnet Ereignisse im Lebenszyklus des Tools auf.
-4. Das Modell kann die Suche innerhalb der Schrittbegrenzung wiederholen.
-5. Die Laufzeit generiert die endgültige Antwort und benannte Zitate.
+3. Die Runtime protokolliert Ereignisse des Tool-Lebenszyklus.
+4. Das Modell kann die Suche innerhalb des Schrittlimits wiederholen.
+5. Die Runtime generiert die endgültige Antwort und die benannten
+   Quellenangaben.
 
 Das Thinking-Panel stellt diese aufgezeichneten Fortschritts- und
-Tool-Ereignisse dar. Simplified Thinking schreibt den Fortschrittstext für die
-Besucheranzeige neu.
+Tool-Ereignisse dar. Simplified Thinking formuliert den Fortschrittstext für die
+Visitor-Anzeige neu.
+
+## Pre-Flight-Routing
+
+Der Pre-Flight ist eine optionale Entscheidung, die einmal pro Visitor-Nachricht
+vor der Intent Classification ausgeführt wird. Es beantwortet sieben festgelegte
+Fragen in einem einzigen Aufruf. Die Fragen sind Flow, FAQ, eine Anfrage nach
+einer Person, Help Desk, Reasoning Level, Frustration Level und Language.
+
+Jede Antwort ist mit einem Konfidenzwert versehen. Liegt eine Antwort über ihrem
+Schwellenwert, handelt die Runtime auf ihrer Grundlage, ohne den
+Klassifizierungsaufruf durchzuführen:
+
+- Ein Flow, der über dem Schwellenwert liegt, wird direkt ausgeführt.
+- Eine übereinstimmende FAQ, die über dem Schwellenwert liegt, gibt die
+  gespeicherte FAQ-Antwort wörtlich zurück, wobei die FAQ als ihre Source
+  angegeben wird.
+- Eine Anfrage nach einer Person, die über dem Schwellenwert liegt, öffnet das
+  Escalation-Menü im empfohlenen Help Desk.
+
+Unterhalb des Schwellenwerts wird der Turn wie ohne den Pre-Flight ausgeführt.
+Das Thinking-Panel zeigt dann einen festen Satz für das Ergebnis in der Sprache
+der Nachricht an. Der Satz enthält niemals einen Flow-Namen.
+
+Der Pre-Flight ist standardmäßig deaktiviert. Die Umgebungsvariable
+`PREFLIGHT_SHADOW`, die auf `1` gesetzt ist, protokolliert Entscheidungen, ohne
+auf sie zu reagieren. Die Umgebungsvariable `PREFLIGHT_ROUTING`, die auf `1`
+gesetzt ist, wirkt auf sie ein. Ein nächtlicher Job spielt einen
+gekennzeichneten Satz von Nachrichten erneut ab und löst einen Alert aus, wenn
+sich eine Entscheidung ändert.
 
 ## Tools zur API-Integration
 
-Ein Assistent kann einen API-Katalog registrieren. Der Katalog beschreibt seine
-Basis-URL, seine geschützten Anmeldeinformationen und die verfügbaren Endpunkte.
+Ein Assistant kann einen API-Katalog registrieren. Der Katalog beschreibt seine
+Base URL, die geschützten Anmeldeinformationen und die verfügbaren Endpunkte.
 
-Das Modell kann API-Details prüfen und einen registrierten Endpunkt abfragen.
-Die Laufzeit validiert jeden Pfad anhand des Katalogs, bevor er das Netzwerk
-verlässt.
+Das Modell kann API-Details prüfen und einen registrierten Endpoint abfragen.
+Die Runtime überprüft jeden Pfad anhand des Katalogs, bevor der Datenverkehr das
+Netzwerk verlässt.
 
-Reader im Fenster-Modus geben einen angeforderten Inhaltsbereich und die
-Gesamtlänge zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
-Wissens-Nutzlasten ohne stille Trunkierung zu untersuchen.
+Windowed Reader geben einen angeforderten Inhaltsbereich sowie die Gesamtlänge
+zurück. Dieser Vertrag ermöglicht es dem Modell, große API- und
+Knowledge-Payloads zu prüfen, ohne dass es zu einer stillen Verkürzung kommt.
 
-## Fehlverhalten
+## Fehlerverhalten
 
-Der Keyword-Router übernimmt die Klassifizierung, wenn kein Klassifizierermodell
-verfügbar ist oder die Klassifizierung fehlschlägt. Die Wissenssuche kann auf
-lexikalische Fallback-Funktionen ohne Embeddings zurückgreifen.
+Der Keyword Router übernimmt die Klassifizierung, wenn kein
+Klassifizierungsmodell verfügbar ist oder die Klassifizierung fehlschlägt. Die
+Knowledge-Suche kann den lexikalischen Fallback ohne Embeddings verwenden.
 
 Ein nicht konfigurierter E-Mail-Transport gibt ein ehrliches Fehlerergebnis
 zurück. Es wird keine Nachricht über eine erfolgreiche Zustellung erstellt.
 
 ## Erweiterungsregel
 
-Fügen Sie ein neues Agent-Tool über das Tool-Registry und dessen
-Lifecycle-Wrapper hinzu. Behalten Sie Autorisierungs-, Eigentums-,
-Eingabevalidierungs- und Ausgangsprüfungen außerhalb der Modellsteuerung.
+Fügen Sie über die Tool-Registry und ihren Lifecycle-Wrapper ein neues
+Agent-Tool hinzu. Halten Sie Autorisierung, Ownership, Eingabevalidierung und
+Egress-Prüfungen außerhalb der Kontrolle des Modells.

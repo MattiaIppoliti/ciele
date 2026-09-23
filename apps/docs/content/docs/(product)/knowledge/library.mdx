@@ -36,6 +36,203 @@ Every tab has a **Status** column. It shows one of three values for each Source:
 Use the search box for the Source name. Use the filters to restrict the list by status or by linked
 Assistant. Each filter is stored in the page address, so you can share the filtered view.
 
+## Sort and filter a column
+
+Select a column heading. A menu opens with the sort directions for that
+column, and its filter when it has one. A sorted column shows an arrow. A
+filtered column shows a dot.
+
+| Table | Sort | Filter |
+| --- | --- | --- |
+| A Library tab | Name, Status, Last updated at | Name, Status, Linked assistants |
+| The Documents of a Source | Document, Updated | Status |
+| Assistant **Knowledge** | Every column with a value | Name and Status |
+
+The Library and the Documents of a Source hold more rows than one page. Ciele
+sorts them in the database, so the order covers every row and not only the
+page you see. The choice is in the page address, and you can share it.
+
+## The row menu
+
+Click the second mouse button on a row. A menu opens with the actions for
+that row. It has the same actions as the controls at the end of the row, in a
+place you can reach without a sideways scroll.
+
+| Table | Actions |
+| --- | --- |
+| A Library tab | Open, Copy ID, Manage linked assistants, Extract memories, Delete. Files also give Manage direct access and Download original. FAQs also give Edit FAQ. |
+| The Documents of a Source | Open, Copy ID, Exclude from retrieval or Restore. |
+| Assistant **Knowledge** | Open Documents, Copy ID, Re-crawl, Edit, Remove. FAQs give Edit FAQ, Copy answer and Delete FAQ. |
+| The Memories of a Document | Open memory, Copy text, Forget or Restore. |
+
+Click the second mouse button on a column heading for the same sort and
+filter the heading itself opens, with **Reset column width** below them.
+
+## Resize a column
+
+Drag the line between two column headings. Double-click that line to return
+the column to its first width. Each browser keeps its own widths for each
+table.
+
+## Open a row
+
+Move the pointer over the first cell of a row. An **Open** control shows at
+the right of the cell. Select it to open that row.
+
+## Select more than one row
+
+Every knowledge table has a checkbox column. Editors see the column. Viewers do not.
+
+1. Select the checkbox of each row that you want.
+2. To take every row on the page, select the checkbox in the table header.
+3. A bar opens above the rows. It gives the count and the available actions.
+4. Select an action, or select the close control to clear the selection.
+
+The selection holds the rows on the page only. A page change, a search, or a filter change drops
+the rows that leave the table.
+
+| Table | Available actions |
+| --- | --- |
+| A Library tab | **Delete**, for each Source and every linked Assistant. |
+| Assistant **Knowledge**, Websites and Documents | **Remove**. The confirmation offers removal from this Assistant, or deletion for the Organization. |
+| Assistant **Knowledge**, FAQs | **Delete**. The action becomes **Remove** if another Assistant also uses one of the selected FAQs. The confirmation then offers removal from this Assistant, or deletion for the Organization. |
+| The Documents of a Source | **Exclude from retrieval** and **Restore**. |
+| The Memories of a Document | **Forget**. |
+
+## Open a Source
+
+Select the Source name in any tab. Ciele opens the Documents of that Source. The **Documents**
+count in the Content column opens the same page.
+
+| Column | Contents |
+| --- | --- |
+| Document | The Document title, with its address or its path below. |
+| Memories | The number of memories from that Document. |
+| Status | Ready, Excluded, or Pending. |
+| Updated | When Ciele last stored that Document. Select the column to change the order. |
+
+**Pending** means that Ciele stored the Document but did not index it. A Pending Document is not
+available to Search knowledge. **Excluded** means that an administrator kept the Document out of
+the search index.
+
+The page shows 50 Documents at a time. Use the page controls below the table for the other
+Documents. The browser back button returns to the Library tab. When you open a Document and go
+back, the table shows the same page in the same order.
+
+Editors see a menu at the top right of the page. **Re-crawl now** starts a new crawl of a website.
+**Delete** removes the Source for all linked Assistants. In the Assistant **Knowledge** section the
+menu also has **Remove from this assistant**, which keeps the Source in the Library.
+
+The Assistant **Knowledge** section has the same page. There it shows only the Sources that are
+linked to that Assistant.
+
+## Open a Document
+
+Select a Document title in the table. Ciele opens that Document. The page has three tabs.
+
+| Tab | Contents |
+| --- | --- |
+| Memories | The memories from this Document. |
+| Content | The stored text of the Document. |
+| Chunks | The parts that the search index holds. |
+
+**Content** is the first tab. It shows the text as Ciele stored it. Use the copy control in the
+corner of the pane to copy all of the text. A long Document shows the first part. Select **Show
+all** for the remainder.
+
+When the Source is an uploaded file, **Download original** gives you the file. Ciele does not show
+the file in the page.
+
+The **Details** column on the right has three groups. **Source** names the Collection, the Source
+and how the Document arrived. **Identity** has the Document identifier, its path and its type.
+**Activity** has the storage time, the number of chunks and the exclusion control.
+
+**Excluded from retrieval** keeps the Document out of the search index. An Editor can change it. A
+Viewer sees the state only. When you exclude a Document, Ciele deletes its chunks. When you
+include it again, Ciele indexes the Document again.
+
+The card below the Details shows a **Summary** of the Document. Ciele makes the Summary when a
+member opens the Document for the first time. Ciele keeps it for all later readers. A recrawl that
+changes the page removes the Summary. The next reader gets a new one.
+
+The card shows an **Excerpt** instead when there is no Summary. An Excerpt is the start of the
+Content. Ciele shows an Excerpt when the Organization has no provider connection, and when the
+Summary did not succeed. Because Ciele makes a Summary only on the first open, most Documents have
+no Summary.
+
+The **Chunks** tab shows the parts of the Document that the search index holds. Ciele matches a
+question against these parts, so they tell you why an Assistant used this Document. Each card has
+its number and the start of its text. Select a card to read all of the text. The dialog has arrows
+for the previous part and the next part, the number of words and a copy control. Use the search box
+to find a word in the parts on the page. Ciele shows 50 parts at a time.
+
+## Memories
+
+Ciele reads each Document and keeps the durable facts it states. A memory is one sentence with the
+part of the Document that supports it. Use memories to see what an Assistant learned from a page,
+without a read of the full page.
+
+Ciele extracts memories after ingestion, in the background. The Document is available to Search
+knowledge before the extraction ends. Each Document keeps a maximum of 20 memories.
+
+| Condition | Result |
+| --- | --- |
+| The Organization has no provider connection | Ciele extracts no memories and shows no alert. |
+| A recrawl does not change the page | Ciele keeps the memories and makes no new request. |
+| A recrawl changes the page | Ciele extracts again. A fact that the page states again keeps its status. |
+| The extraction does not succeed | Ciele shows one alert for the Source. The alert clears at the next success. |
+
+Ciele refuses a fact when the supporting text is not in the Document. This removes invented facts
+before they become memories.
+
+**Cost**: one small model request for each Document, for each crawl that changes it. The Usage
+page shows this work.
+
+### Knowledge from before this feature
+
+Ciele extracts memories at ingestion. A Source that Ciele crawled before this feature has no
+memories. The next crawl of that Source extracts them. The Memories tab of each of its Documents
+tells you which of these applies:
+
+| The tab says | Meaning |
+| --- | --- |
+| Memories need a Provider Connection | Connect a model in Settings, AI. |
+| No memories yet | Nothing has extracted this Document. The next crawl does it, or an Editor selects **Extract memories**. |
+| Extracting | A job is in progress. The line shows how many Documents of the Source are still queued, and it updates on its own. |
+| Extraction failed | See the alert for the Source. |
+
+To get memories before the next crawl, select **Extract memories**. The control is on the Documents
+page of the Source and in the Library row. An Editor or a higher role can use it. Ciele queues only
+the Documents that need it and tells you how many. A second selection while the work is in progress
+queues nothing.
+
+**Cost**: the same one small model request for each queued Document. Ciele starts no extraction for
+your Organization without this action or a crawl.
+
+### The Memories tab
+
+The **Memories** tab of a Document lists its memories. The tab label shows the number of live
+memories. The Documents table shows the same number in its Memories column.
+
+Select a row to open the memory. The dialog shows the sentence, its identifiers and the number of
+times the page stated the fact. The **Evidence** section has the text from the Document that
+supports the sentence. Select **Open chunk** to see the part of the search index that holds it.
+
+### Forget a memory
+
+An Editor can **forget** a memory, with an optional reason. A Viewer sees the memory and no
+control.
+
+Forget is a state, not a deletion:
+
+- the memory stays on the Document, with its evidence and its reason
+- the memory leaves retrieval, so no Assistant uses it
+- the tab hides it until you select **Show forgotten**
+- **Restore** makes it live again
+
+A later crawl does not undo a forget. When the page states the fact again, Ciele counts the new
+statement and keeps the memory forgotten.
+
 ## Linked assistants
 
 The **Linked assistants** column names every Assistant that answers from the Source.
@@ -46,7 +243,7 @@ The **Linked assistants** column names every Assistant that answers from the Sou
 4. Save the selection.
 
 The saved selection replaces the previous link set. An Assistant you clear stops searching the
-Source. The Source and its Concepts remain in the Organization.
+Source. The Source and its Documents remain in the Organization.
 
 ## Direct access
 
@@ -73,7 +270,7 @@ The Library and the Assistant editor offer two different operations.
 | Operation | Effect |
 | --- | --- |
 | Remove from this Assistant | Deletes one link. Other Assistants keep the Source. |
-| Delete | Deletes the Source and its Concepts for every linked Assistant. |
+| Delete | Deletes the Source and its Documents for every linked Assistant. |
 
 When a Source is linked to more than one Assistant, the Assistant editor offers the removal first.
 The delete confirmation names every Assistant that loses the knowledge.

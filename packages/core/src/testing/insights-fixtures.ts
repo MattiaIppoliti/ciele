@@ -153,6 +153,59 @@ export function fixtureConversations(): InboxConversation[] {
       metadata: { userRole: "guest", language: "es" },
       notificationOnly: true,
     }),
+    // #956 coverage, in the shared fixture so both implementations must agree
+    // on it. Without these three the parity test passes vacuously: no
+    // conversation would carry a pre-flight, both sides would answer null, and
+    // they would agree about nothing.
+    //
+    // An English browser typing Italian: the case the Languages card got
+    // wrong. Ends calm and never asked for a person.
+    conv({
+      assistantId: "a1",
+      subjectId: "u7",
+      createdAt: "2026-06-13T10:00:00.000Z",
+      metadata: {
+        userRole: "student",
+        language: "en",
+        preflight: {
+          spokenLanguage: "it",
+          escalationIntent: false,
+          endedAtFrustration: 0,
+        },
+      },
+    }),
+    // Asked for a person and ended cross. Unrated, so it lands in the
+    // implicit-satisfaction denominator as a bad ending.
+    conv({
+      assistantId: "a1",
+      subjectId: "u8",
+      createdAt: "2026-06-13T11:00:00.000Z",
+      metadata: {
+        userRole: "student",
+        language: "it",
+        preflight: {
+          spokenLanguage: "it",
+          escalationIntent: true,
+          endedAtFrustration: 3,
+        },
+      },
+    }),
+    // Carries a pre-flight but no frustration reading: in the escalation
+    // denominator, out of the satisfaction one. The two populations are
+    // deliberately different and this is the row that proves it.
+    conv({
+      assistantId: "a2",
+      subjectId: "u9",
+      createdAt: "2026-06-13T12:00:00.000Z",
+      metadata: {
+        // A student, not a guest: the role is not what this row is here to
+        // test, and a new role would move the org-wide filter options that
+        // another case asserts.
+        userRole: "student",
+        language: "en",
+        preflight: { spokenLanguage: "en", escalationIntent: false },
+      },
+    }),
   ];
 }
 

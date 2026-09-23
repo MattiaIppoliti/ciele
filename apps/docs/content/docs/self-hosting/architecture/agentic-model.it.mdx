@@ -1,59 +1,88 @@
 ---
 title: Modello agentico
-description: Comprendi la risoluzione del provider, l'utilizzo degli strumenti, i limiti, le tracce e le citazioni.
+description: Comprendi la risoluzione del provider, l'uso degli strumenti, i limiti, le tracce e le citazioni.
 ---
 
-Il runtime utilizza l'astrazione del provider Vercel AI SDK. Gli attuali
-adattatori di provider includono Anthropic, OpenAI, Google e un endpoint
+Il runtime utilizza l'astrazione del provider del Vercel AI SDK. Gli attuali
+adapter dei provider includono Anthropic, OpenAI, Google e un endpoint
 compatibile con OpenAI.
 
 ## Limiti generativi
 
-Il runtime effettua una chiamata al modello solo all'interno di un'azione
-generativa o di una Classificazione dell'intento. Le azioni deterministiche non
-passano il loro contenuto attraverso un modello.
+Il runtime effettua una chiamata al modello solo all'interno di una generative
+action o di una Intent Classification. Le azioni deterministiche non fanno
+passare il loro contenuto attraverso un modello.
 
-La risposta di base utilizza una chiamata di chat e nessun tool. Search
-knowledge utilizza un ciclo di strumenti delimitato.
+Basic reply utilizza una sola chiamata chat e nessun tool. Search knowledge
+utilizza un tool loop delimitato.
 
-## Ciclo di ricerca nella Knowledge Base
+## Loop di ricerca nella Knowledge Base
 
 1. Il modello riceve le istruzioni dell'Assistente e le descrizioni degli
    strumenti disponibili.
-2. Il modello cerca in Knowledge o legge una finestra Source selezionata.
+2. Il modello esegue una ricerca in Knowledge oppure legge una finestra Source
+   selezionata.
 3. Il runtime registra gli eventi del ciclo di vita dello strumento.
 4. Il modello può ripetere la ricerca entro il limite di passaggi.
-5. Il runtime genera la risposta finale e le citazioni nominate.
+5. Il runtime genera la risposta finale e le citazioni denominate.
 
-Il pannello Thinking rappresenta questi progressi registrati e gli eventi
-relativi agli strumenti. Il pensiero semplificato riscrive il testo di
-avanzamento per la visualizzazione Visitor.
+Il pannello Thinking rappresenta questi progressi registrati e gli eventi degli
+strumenti. Il Thinking semplificato riscrive il testo di avanzamento per la
+visualizzazione Visitor.
+
+## Instradamento pre-flight
+
+Il pre-flight è una decisione facoltativa che viene eseguita una volta per ogni
+messaggio del Visitor, prima della Intent Classification. Risponde a sette
+domande predefinite in una sola chiamata. Le domande sono: Flow, FAQ, una
+richiesta di una persona, help desk, livello di ragionamento, livello di
+frustrazione e lingua.
+
+Ogni risposta è associata a un valore di confidence. Quando una risposta supera
+la sua soglia, il runtime agisce in base ad essa senza effettuare la chiamata di
+classificazione:
+
+- Un Flow al di sopra della soglia viene eseguito direttamente.
+- Una FAQ corrispondente al di sopra della soglia restituisce la risposta della
+  FAQ memorizzata testualmente, con la FAQ come Source.
+- Una richiesta per una persona al di sopra della soglia apre il menu di
+  escalation nell'help desk consigliato.
+
+Al di sotto della soglia, il turno viene eseguito come se non ci fosse il
+pre-flight. Il pannello Thinking mostra quindi una frase fissa per l'esito,
+nella lingua del messaggio. La frase non contiene mai un nome di Flow.
+
+Il pre-flight è disattivato per impostazione predefinita. La variabile di
+ambiente `PREFLIGHT_SHADOW` impostata su `1` registra le decisioni senza agire
+in base a esse. La variabile di ambiente `PREFLIGHT_ROUTING` impostata su `1`
+agisce su di esse. Un job notturno riproduce un insieme di messaggi etichettati
+e genera un Alert quando una decisione cambia.
 
 ## Strumenti di integrazione API
 
-Un Assistente può registrare un catalogo API. Il catalogo descrive il suo URL di
-base, le credenziali protette e gli endpoint disponibili.
+Un Assistant può registrare un catalogo API. Il catalogo descrive il suo base
+URL, le credenziali protette e gli endpoint disponibili.
 
-Il modello può ispezionare i dettagli dell'API e interrogare un endpoint
+Il modello può esaminare i dettagli dell'API e interrogare un endpoint
 registrato. Il runtime convalida ogni percorso rispetto al catalogo prima
 dell'uscita dalla rete.
 
-I lettori in modalità finestra restituiscono un intervallo di contenuto
-richiesto e la lunghezza totale. Questo contratto consente al modello di
-ispezionare payload API e Knowledge di grandi dimensioni senza troncamenti
+I windowed reader restituiscono l'intervallo di contenuto richiesto e la
+lunghezza totale. Questo contratto consente al modello di ispezionare payload di
+grandi dimensioni provenienti da API e da Knowledge senza troncamenti
 silenziosi.
 
 ## Comportamento in caso di errore
 
-Il router delle parole chiave gestisce la classificazione quando non è
-disponibile alcun modello classificatore o la classificazione fallisce. La
-ricerca nella conoscenza può utilizzare il fallback lessicale senza embedding.
+Il keyword router gestisce la classificazione quando non è disponibile alcun
+modello di classificazione o quando la classificazione non riesce. La ricerca
+nella Knowledge può utilizzare il fallback lessicale senza embedding.
 
-Un trasporto e-mail non configurato restituisce un risultato di errore onesto.
-Non crea un messaggio di recapito riuscito.
+Un trasporto email non configurato restituisce un risultato di errore sincero.
+Non crea un messaggio di consegna riuscita.
 
 ## Regola di estensione
 
-Aggiungi un nuovo strumento agente tramite il registro degli strumenti e il suo
-wrapper del ciclo di vita. Mantieni l'autorizzazione, la proprietà, la convalida
-degli input e i controlli in uscita al di fuori del controllo del modello.
+Aggiungi un nuovo strumento dell'agente tramite il tool registry e il relativo
+wrapper del ciclo di vita. Mantieni i controlli di autorizzazione, proprietà,
+convalida degli input e di uscita al di fuori del controllo del modello.

@@ -5,7 +5,11 @@ import { MessageCircle, Pencil, RotateCcw, UploadCloud, X } from "lucide-react";
 import type { Assistant, WidgetCorner, WidgetStyle } from "@agent-hub/core";
 import { toast } from "@/lib/toast";
 import { updateAssistantAction } from "@/app/actions";
-import { Button, Card, Input, Label, Separator } from "@agent-hub/ui";
+import { Button, Card, Input, Label } from "@agent-hub/ui";
+import {
+  SectionTimeline,
+  TimelineSection,
+} from "@/components/settings/section-timeline";
 import {
   Popover,
   PopoverContent,
@@ -105,15 +109,16 @@ export function StyleForm({
   const fontHref = googleFontHref(draft.fontFamily ?? "");
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col">
       {fontHref ? <link rel="stylesheet" href={fontHref} /> : null}
 
+      <SectionTimeline>
+
       {/* ── Colors ─────────────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Colors"
-          description="Customize the colors of your chat widget's key elements."
-        />
+      <TimelineSection title="Colors">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Customize the colors of your chat widget&apos;s key elements.
+        </p>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <ColorCard
             label="Header"
@@ -143,16 +148,13 @@ export function StyleForm({
             onReset={() => patch({ buttonColor: undefined })}
           />
         </div>
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Launch button design ───────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Launch button design"
-          description="Displayed on the launch button."
-        />
+      <TimelineSection title="Launch button design">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Displayed on the launch button.
+        </p>
         <IconUploadCard
           canEdit={canEdit}
           icon={draft.launcherIcon ?? null}
@@ -179,16 +181,13 @@ export function StyleForm({
             onReset={() => patch({ focusRingColor: undefined })}
           />
         </div>
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Close icon design ──────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Close icon design"
-          description="Displayed when the chat window is open."
-        />
+      <TimelineSection title="Close icon design">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Displayed when the chat window is open.
+        </p>
         <IconUploadCard
           canEdit={canEdit}
           icon={draft.closeIcon ?? null}
@@ -204,16 +203,13 @@ export function StyleForm({
             </LauncherPreview>
           }
         />
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Mobile ─────────────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Mobile"
-          description="Show launch button on small screens."
-        />
+      <TimelineSection title="Mobile">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Show launch button on small screens.
+        </p>
         <Card size="sm" className="mt-3 flex-row items-center justify-between gap-4 p-4">
           <span className="text-sm">Show launch button on mobile screen sizes</span>
           <Switch
@@ -224,13 +220,13 @@ export function StyleForm({
             }
           />
         </Card>
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Button size ────────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading title="Button size" description="Customize button sizes." />
+      <TimelineSection title="Button size">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Customize button sizes.
+        </p>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <PxField
             label="Button size"
@@ -249,14 +245,13 @@ export function StyleForm({
             onChange={(n) => patch({ buttonRadius: n })}
           />
         </div>
-      </section>
+      </TimelineSection>
 
       {/* ── Button position ────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Button position"
-          description="Customize button position."
-        />
+      <TimelineSection title="Button position">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Customize button position.
+        </p>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <PxField
             label="Bottom Padding"
@@ -318,16 +313,13 @@ export function StyleForm({
             );
           })}
         </div>
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Typography ─────────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Typography/Fonts"
-          description="Choose a Google font to use on your assistant."
-        />
+      <TimelineSection title="Typography/Fonts">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Choose a Google font to use on your assistant.
+        </p>
         <div className="mt-3 space-y-4">
           <div className="space-y-2">
             <Label>Font family</Label>
@@ -402,16 +394,13 @@ export function StyleForm({
             </Select>
           </div>
         </div>
-      </section>
-
-      <Separator />
+      </TimelineSection>
 
       {/* ── Window size ────────────────────────────────────────────────── */}
-      <section>
-        <SectionHeading
-          title="Default assistant window size"
-          description="Adjust the default window size."
-        />
+      <TimelineSection title="Default assistant window size">
+        <p className="text-muted-foreground -mt-3 text-sm">
+          Adjust the default window size.
+        </p>
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <PxField
             label="Window width"
@@ -430,9 +419,12 @@ export function StyleForm({
             onChange={(n) => patch({ windowHeight: n })}
           />
         </div>
-      </section>
+      </TimelineSection>
 
-      <div className="flex justify-end">
+      </SectionTimeline>
+
+      {/* Aligned with the sections, which the rail indents past its dots. */}
+      <div className="flex justify-end pl-10">
         <Button onClick={save} disabled={isPending || !dirty || !canEdit}>
           Save
         </Button>
@@ -441,20 +433,6 @@ export function StyleForm({
   );
 }
 
-function SectionHeading({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div>
-      <h2 className="text-sm font-semibold">{title}</h2>
-      <p className="text-muted-foreground mt-0.5 text-sm">{description}</p>
-    </div>
-  );
-}
 
 /**
  * One color row in the reference's shape: `#` prefix + hex text + swatch,

@@ -11,7 +11,13 @@ import {
   readTeammateConversationOp,
   updateTeammateOp,
 } from "./teammates";
-import { addOrgSourceOp, listCollectionsOp } from "./knowledge";
+import {
+  addOrgSourceOp,
+  forgetKnowledgeMemoryOp,
+  listCollectionsOp,
+  listDocumentMemoriesOp,
+  restoreKnowledgeMemoryOp,
+} from "./knowledge";
 import { readUsageMetersOp, readUsageSpendersOp } from "./usage";
 import { createAssistantOp } from "./assistants";
 import {
@@ -478,5 +484,56 @@ describe("the Flows authoring and operator reads over an API key", () => {
         conversationId: "nope",
       })
     ).rejects.toMatchObject({ code: "not_found" });
+  });
+});
+
+/**
+ * Knowledge memories (#926) have no route yet. They are proven here anyway,
+ * because the pinned view is fail-closed: a table nobody remembered to pin
+ * throws `OrgPinnedDbError` on the first real call, which is exactly how the
+ * Teammates domain shipped seven broken endpoints past three green drift
+ * tests. Proving it now costs one test; finding it later costs an incident.
+ */
+describe("knowledge memories over the pinned Db", () => {
+  it("lists, forgets and restores without reaching past the Organization", async () => {
+    const inner = getMockDb();
+    const ctx = keyContext(pinned(inner));
+    const collection = await inner.getOrCreateOrgLibraryCollection(DEMO_ORG.id);
+    const source = await inner.createSource({
+      collectionId: collection.id,
+      name: "Handbook",
+      kind: "text",
+    });
+    const memory = await ctx.db.table("knowledgeMemories").insert({
+      organizationId: DEMO_ORG.id,
+      collectionId: collection.id,
+      sourceId: source.id,
+      documentPath: "handbook/leave.md",
+      text: "Unused leave expires on 31 March.",
+      quote: "Unused leave expires on 31 March.",
+      generatedBy: "process:knowledge-memory-extraction",
+      generatedAt: new Date().toISOString(),
+    });
+
+    const live = await listDocumentMemoriesOp.run(ctx, {
+      sourceId: source.id,
+      documentPath: "handbook/leave.md",
+    });
+    expect(live.map((row) => row.id)).toEqual([memory.id]);
+
+    const forgotten = await forgetKnowledgeMemoryOp.run(ctx, {
+      id: memory.id,
+      reason: "Superseded",
+    });
+    expect(forgotten.forgottenAt).not.toBeNull();
+    expect(
+      await listDocumentMemoriesOp.run(ctx, {
+        sourceId: source.id,
+        documentPath: "handbook/leave.md",
+      })
+    ).toEqual([]);
+
+    const restored = await restoreKnowledgeMemoryOp.run(ctx, { id: memory.id });
+    expect(restored.forgottenAt).toBeNull();
   });
 });

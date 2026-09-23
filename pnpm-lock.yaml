@@ -191,7 +191,7 @@ importers:
         version: 2.110.0
       '@vercel/analytics':
         specifier: ^2.0.1
-        version: 2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+        version: 2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
       '@vercel/speed-insights':
         specifier: ^2.0.0
         version: 2.0.0(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
@@ -199,8 +199,8 @@ importers:
         specifier: ^12.11.6
         version: 12.11.6(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(immer@11.1.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       ai:
-        specifier: ^7.0.11
-        version: 7.0.11(zod@4.4.3)
+        specifier: ^7.0.107
+        version: 7.0.107(zod@4.4.3)
       blobatar:
         specifier: ^2.5.0
         version: 2.5.0(react@19.2.4)
@@ -311,29 +311,32 @@ importers:
         specifier: workspace:*
         version: link:../db
       '@ai-sdk/anthropic':
-        specifier: ^4.0.5
-        version: 4.0.9(zod@4.4.3)
+        specifier: ^4.0.58
+        version: 4.0.58(zod@4.4.3)
       '@ai-sdk/google':
-        specifier: ^4.0.6
-        version: 4.0.9(zod@4.4.3)
+        specifier: ^4.0.76
+        version: 4.0.76(zod@4.4.3)
       '@ai-sdk/google-vertex':
-        specifier: ^5.0.12
-        version: 5.0.12(zod@4.4.3)
+        specifier: ^5.0.88
+        version: 5.0.88(zod@4.4.3)
       '@ai-sdk/openai':
-        specifier: ^4.0.5
-        version: 4.0.5(zod@4.4.3)
+        specifier: ^4.0.71
+        version: 4.0.71(zod@4.4.3)
       '@ai-sdk/openai-compatible':
-        specifier: ^3.0.12
-        version: 3.0.12(zod@4.4.3)
+        specifier: ^3.0.53
+        version: 3.0.53(zod@4.4.3)
       '@ai-sdk/provider':
-        specifier: ^4.0.2
-        version: 4.0.3
+        specifier: ^4.0.17
+        version: 4.0.17
+      '@ai-sdk/typesafe-ai':
+        specifier: ^3.0.4
+        version: 3.0.4(zod@4.4.3)
       '@vercel/oidc':
         specifier: ^3.8.0
         version: 3.8.0
       ai:
-        specifier: ^7.0.11
-        version: 7.0.11(zod@4.4.3)
+        specifier: ^7.0.107
+        version: 7.0.107(zod@4.4.3)
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -362,6 +365,9 @@ importers:
       eslint:
         specifier: ^9.39.4
         version: 9.39.4(jiti@2.7.0)
+      tsx:
+        specifier: ^4.23.1
+        version: 4.23.1
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -660,77 +666,57 @@ importers:
 
 packages:
 
-  '@ai-sdk/anthropic@4.0.9':
-    resolution: {integrity: sha512-b20DXotqNObzrQ1EplKONwBwk8G6ECQQlYCPzJ8Gkdu1OIPe/GPEXFmuvfFIM1/ZTvrbAFRyM1ikFUk+xo8cEw==}
+  '@ai-sdk/anthropic@4.0.58':
+    resolution: {integrity: sha512-vhXKBz7jnIhBlOoj2d0joyHicWISuIxDNha65SLrAnagAkVgulLoZBRLZRazstxlO/BtXU+cDERe1opVKte2OQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/gateway@4.0.8':
-    resolution: {integrity: sha512-esHzojMp+LllqOnEu6sYa6NKOmPcE5UObPV61LE6L2QAzCH6WHMgTS+Q/HF5HU3lVUWsHtkDzN7TNqMfv/ecCg==}
+  '@ai-sdk/gateway@4.0.87':
+    resolution: {integrity: sha512-6wJmX/D5OO7tvDJbtFdXdBuRt8AkCnW+FLK+W35UHe/tHgolAa4hclXtJcMSYnlTDy/t5DNRgdesVaoMXtwzow==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/google-vertex@5.0.12':
-    resolution: {integrity: sha512-yTvOAjWpEGm4bg3/gVzPWCrO0ZuDWDCizo6TQ4R9n1oqpXOMA/EDkwiDlss5AFsDt7wghudEMtts/5E/aLXKYQ==}
+  '@ai-sdk/google-vertex@5.0.88':
+    resolution: {integrity: sha512-OimbdVrEadiAUQGFFsAzVORYt7ZOVVvvywUCPi6jWZ2w2n0ZEzkrombKZ10G7jku7Aaw8dpW7K1AVoHEtGKeew==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/google@4.0.9':
-    resolution: {integrity: sha512-6tENh73rPEWeTeKByGh9kOCvFzFatHc4u37F0dLgYXPZiNrOMXsBXhp9zTiC5EZb0NNjS8t6lole5pnvsHJbDA==}
+  '@ai-sdk/google@4.0.76':
+    resolution: {integrity: sha512-RHYTfsrlzM2D7VS4dxq2TWFj0tzE+ALesbTIkrFgyqBbBER8TLw/r93h9IVhR27cLcl4II1tLyiuzZq44IyoCQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai-compatible@3.0.12':
-    resolution: {integrity: sha512-tN9BUb4jUGjqtbRPUsziLxASfogLNICcq/Qrwr55vpnzKvprV6Ukl8ynED2lZaNrAHU5U4zlGnyU/iuYrjQK6g==}
+  '@ai-sdk/openai-compatible@3.0.53':
+    resolution: {integrity: sha512-uOeghHYcF+CHP/dOCAtdfKesuKLKqDFtkq79bJFNSx4YOqpiP734TdJAZDA8KIWH7mdGNQ0a4N9238HG4FN2Rg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai-compatible@3.0.5':
-    resolution: {integrity: sha512-4UtDxT6Ga7U225o5fBEgtCFZHba4/iTDXRqMrU62yEfTrFks4o+F4jt0D3OWmUasR9LPFzLy0KnEITxFDtc89g==}
+  '@ai-sdk/openai@4.0.71':
+    resolution: {integrity: sha512-w8FuHr1bD/bP/8SIgcaJKUyePE4ke9s7+Ew2ed/9i5mDoFXEfyVUyFX8R0wQ3YfcdMKmTs8ct/f6XJsXsnPVsQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/openai@4.0.5':
-    resolution: {integrity: sha512-a9cYQNAKAbkMTt6bHAvDuLv3klwtJT9m0A6x7s8EZlf1ebcxadg/1CONaYh1GA80ZRA9UQHJUS2wHoOphkQQkg==}
+  '@ai-sdk/provider-utils@5.0.45':
+    resolution: {integrity: sha512-gLuaCups8OCIRz3eO6WWz5op7VLYNNtFzyH0sWUr0FE9v7cTxR0qxDpQdrKnGcql+9WWttobjnZsJVsuEbsPQQ==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
-  '@ai-sdk/provider-utils@5.0.11':
-    resolution: {integrity: sha512-7/96wE+ZsKB35iS9ASyllrE4Ym/EolXEB7AkuJ5FI++fmS85BVTAs77890C+1Z2jwHfBKjBQSBmsliOsAh0iFQ==}
+  '@ai-sdk/provider@4.0.17':
+    resolution: {integrity: sha512-VYMBxIQdcHqbIf1j+YZlI9Ati6LZ4wJe0GGd4z4a5H/KxTggjeOiyaVYTnfF7LHZK5jMQ+rofmzz4QPqf++NUw==}
+    engines: {node: '>=22'}
+
+  '@ai-sdk/typesafe-ai@3.0.4':
+    resolution: {integrity: sha512-LQvqtf6cVla5iyH/LYs9rvl63NDWRRqggz9ilGNmjixhi5TuONAWo+SC6+xT46izn/bpyx9hmXNdMLg3ZSSW0A==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/provider-utils@5.0.3':
-    resolution: {integrity: sha512-El0JOXXGcHFe6+owJ1UV0VgB9XtdivP8vcZni+rUIt6lt+cBHCnUdddaA6LE2avJGJ5AD0uXSY+uAvRL2tSvgw==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/provider-utils@5.0.5':
-    resolution: {integrity: sha512-oI0t3dvCoqWNV1I8o1Rybi2DXDvHES5r/TrwtJW90tuFLVepgJlftPxrcjh8vaSvjqC2diTuA2vXyjKAyHJm4A==}
-    engines: {node: '>=22'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/provider@4.0.1':
-    resolution: {integrity: sha512-6p3C/vGqVIjcptBu1DnVd/BZJ2wWmV9TUv9192vT6ZvT9KNED8EwRTqyqFpoQZKgSbMDSvBSq3dqR524Nt/Crw==}
-    engines: {node: '>=22'}
-
-  '@ai-sdk/provider@4.0.2':
-    resolution: {integrity: sha512-pfPoy9J1B1xV7cqJ8MYHOsDYrMv5tR3+EMNfI249OhkD2uRakvav3Fo7XpD2luuN/YNCBY7KfEQc7vEV7KEtyw==}
-    engines: {node: '>=22'}
-
-  '@ai-sdk/provider@4.0.3':
-    resolution: {integrity: sha512-e0CpNWJUY7OxAFAnCZkw+ri9QOHWwTs1tXP42782KFGCU07qt8NiXCrCVowyCB5dP2r5/Uls+g2oPd8kOJn9dw==}
-    engines: {node: '>=22'}
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -3575,8 +3561,8 @@ packages:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
 
-  ai@7.0.11:
-    resolution: {integrity: sha512-ecCtume1NKJG/8oIkV8G26KL9jmFJRx6+Gjx2260FcDZqIUGPiF1uBoNeGy4S1vxbHmFxUul4D7axqiXZZ1XuA==}
+  ai@7.0.107:
+    resolution: {integrity: sha512-PVYQ3W9kR8oYiGQxbg4aFIlhQzKskZm8UV+4E0zB2uKOzFr8ju3bXQncOOZtLsOgJY8vdpgyu3cXtomsfcdQYg==}
     engines: {node: '>=22'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -7312,6 +7298,10 @@ packages:
     resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
 
+  undici@7.29.1:
+    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
+    engines: {node: '>=20.18.1'}
+
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
     engines: {node: '>=18'}
@@ -7750,90 +7740,67 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/anthropic@4.0.9(zod@4.4.3)':
+  '@ai-sdk/anthropic@4.0.58(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.2
-      '@ai-sdk/provider-utils': 5.0.5(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/gateway@4.0.8(zod@4.4.3)':
+  '@ai-sdk/gateway@4.0.87(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.1
-      '@ai-sdk/provider-utils': 5.0.3(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       '@vercel/oidc': 3.2.0
       zod: 4.4.3
 
-  '@ai-sdk/google-vertex@5.0.12(zod@4.4.3)':
+  '@ai-sdk/google-vertex@5.0.88(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/anthropic': 4.0.9(zod@4.4.3)
-      '@ai-sdk/google': 4.0.9(zod@4.4.3)
-      '@ai-sdk/openai-compatible': 3.0.5(zod@4.4.3)
-      '@ai-sdk/provider': 4.0.2
-      '@ai-sdk/provider-utils': 5.0.5(zod@4.4.3)
+      '@ai-sdk/anthropic': 4.0.58(zod@4.4.3)
+      '@ai-sdk/google': 4.0.76(zod@4.4.3)
+      '@ai-sdk/openai-compatible': 3.0.53(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       google-auth-library: 10.9.0
       zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
-  '@ai-sdk/google@4.0.9(zod@4.4.3)':
+  '@ai-sdk/google@4.0.76(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.2
-      '@ai-sdk/provider-utils': 5.0.5(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/openai-compatible@3.0.12(zod@4.4.3)':
+  '@ai-sdk/openai-compatible@3.0.53(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.3
-      '@ai-sdk/provider-utils': 5.0.11(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/openai-compatible@3.0.5(zod@4.4.3)':
+  '@ai-sdk/openai@4.0.71(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.2
-      '@ai-sdk/provider-utils': 5.0.5(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
-  '@ai-sdk/openai@4.0.5(zod@4.4.3)':
+  '@ai-sdk/provider-utils@5.0.45(zod@4.4.3)':
     dependencies:
-      '@ai-sdk/provider': 4.0.1
-      '@ai-sdk/provider-utils': 5.0.3(zod@4.4.3)
-      zod: 4.4.3
-
-  '@ai-sdk/provider-utils@5.0.11(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider': 4.0.17
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.1.0
+      undici: 7.29.1
       zod: 4.4.3
 
-  '@ai-sdk/provider-utils@5.0.3(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.1
-      '@standard-schema/spec': 1.1.0
-      '@workflow/serde': 4.1.0
-      eventsource-parser: 3.1.0
-      zod: 4.4.3
-
-  '@ai-sdk/provider-utils@5.0.5(zod@4.4.3)':
-    dependencies:
-      '@ai-sdk/provider': 4.0.2
-      '@standard-schema/spec': 1.1.0
-      '@workflow/serde': 4.1.0
-      eventsource-parser: 3.1.0
-      zod: 4.4.3
-
-  '@ai-sdk/provider@4.0.1':
+  '@ai-sdk/provider@4.0.17':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/provider@4.0.2':
+  '@ai-sdk/typesafe-ai@3.0.4(zod@4.4.3)':
     dependencies:
-      json-schema: 0.4.0
-
-  '@ai-sdk/provider@4.0.3':
-    dependencies:
-      json-schema: 0.4.0
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
+      zod: 4.4.3
 
   '@alloc/quick-lru@5.2.0': {}
 
@@ -8091,7 +8058,7 @@ snapshots:
       open: 8.4.2
       picomatch: 4.0.5
       systeminformation: 5.31.11
-      undici: 7.28.0
+      undici: 7.29.1
       which: 4.0.0
       yocto-spinner: 1.2.0
 
@@ -10166,7 +10133,7 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
-  '@vercel/analytics@2.0.1(next@16.2.10(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
+  '@vercel/analytics@2.0.1(next@16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)':
     optionalDependencies:
       next: 16.2.10(@babel/core@7.29.7)(@playwright/test@1.62.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react: 19.2.4
@@ -10351,11 +10318,11 @@ snapshots:
 
   agent-base@7.1.4: {}
 
-  ai@7.0.11(zod@4.4.3):
+  ai@7.0.107(zod@4.4.3):
     dependencies:
-      '@ai-sdk/gateway': 4.0.8(zod@4.4.3)
-      '@ai-sdk/provider': 4.0.1
-      '@ai-sdk/provider-utils': 5.0.3(zod@4.4.3)
+      '@ai-sdk/gateway': 4.0.87(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.17
+      '@ai-sdk/provider-utils': 5.0.45(zod@4.4.3)
       zod: 4.4.3
 
   ajv-formats@2.1.1(ajv@8.20.0):
@@ -11618,8 +11585,8 @@ snapshots:
       '@next/eslint-plugin-next': 16.2.10
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react: 7.37.5(eslint@9.39.4(jiti@2.7.0))
       eslint-plugin-react-hooks: 7.1.1(eslint@9.39.4(jiti@2.7.0))
@@ -11641,7 +11608,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -11652,21 +11619,21 @@ snapshots:
       tinyglobby: 0.2.17
       unrs-resolver: 1.12.2
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
+      eslint-plugin-import: 2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.13.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0)):
+  eslint-module-utils@2.13.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.7.0))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0)):
+  eslint-plugin-import@2.32.0(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -11677,7 +11644,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.39.4(jiti@2.7.0)
       eslint-import-resolver-node: 0.3.10
-      eslint-module-utils: 2.13.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.7.0))
+      eslint-module-utils: 2.13.0(eslint-import-resolver-node@0.3.10)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0)))(eslint@9.39.4(jiti@2.7.0))
       hasown: 2.0.4
       is-core-module: 2.16.2
       is-glob: 4.0.3
@@ -15031,6 +14998,8 @@ snapshots:
   undici@6.28.0: {}
 
   undici@7.28.0: {}
+
+  undici@7.29.1: {}
 
   unicorn-magic@0.3.0: {}
 

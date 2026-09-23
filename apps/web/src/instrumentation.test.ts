@@ -48,9 +48,56 @@ describe("instrumentation register()", () => {
     // All of them, by name: a partial registration silently keeps a shipped default.
     expect(Object.keys(ports).sort()).toEqual([
       "allowRelaxedEgress",
+      "approvalGateEnabled",
       "getPlatformSystemPrompt",
+      "preflightRoutingEnabled",
+      "preflightShadowEnabled",
       "scheduleAfterResponse",
+      "verifierTierOneEnabled",
     ]);
+  });
+
+  it("keeps the shadow pre-flight off unless the flag says exactly 1 (#952)", async () => {
+    const previous = process.env.PREFLIGHT_SHADOW;
+    try {
+      await register();
+      const [ports] = mocks.registerRuntimeHost.mock.calls[0]!;
+
+      delete process.env.PREFLIGHT_SHADOW;
+      expect(ports.preflightShadowEnabled()).toBe(false);
+      // A flag that spends money reads its opt-in exactly, so an empty or
+      // misspelled value is off rather than nearly on.
+      process.env.PREFLIGHT_SHADOW = "true";
+      expect(ports.preflightShadowEnabled()).toBe(false);
+      process.env.PREFLIGHT_SHADOW = "1";
+      expect(ports.preflightShadowEnabled()).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.PREFLIGHT_SHADOW;
+      else process.env.PREFLIGHT_SHADOW = previous;
+    }
+  });
+
+  it("keeps the pre-flight routing off unless its own flag says exactly 1 (#953)", async () => {
+    const previous = process.env.PREFLIGHT_ROUTING;
+    const previousShadow = process.env.PREFLIGHT_SHADOW;
+    try {
+      await register();
+      const [ports] = mocks.registerRuntimeHost.mock.calls[0]!;
+
+      delete process.env.PREFLIGHT_ROUTING;
+      // The shadow flag alone never routes: observing is not acting.
+      process.env.PREFLIGHT_SHADOW = "1";
+      expect(ports.preflightRoutingEnabled()).toBe(false);
+      process.env.PREFLIGHT_ROUTING = "true";
+      expect(ports.preflightRoutingEnabled()).toBe(false);
+      process.env.PREFLIGHT_ROUTING = "1";
+      expect(ports.preflightRoutingEnabled()).toBe(true);
+    } finally {
+      if (previous === undefined) delete process.env.PREFLIGHT_ROUTING;
+      else process.env.PREFLIGHT_ROUTING = previous;
+      if (previousShadow === undefined) delete process.env.PREFLIGHT_SHADOW;
+      else process.env.PREFLIGHT_SHADOW = previousShadow;
+    }
   });
 
   it("relaxes egress for dev and Vercel preview, never for a production build", async () => {

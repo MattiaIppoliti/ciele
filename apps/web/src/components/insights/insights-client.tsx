@@ -500,6 +500,30 @@ export function InsightsClient({
           value={String(stats.escalated)}
           className="col-span-6 xl:col-span-3"
         />
+        {/* The two cards the pre-flight makes possible (#956). Both render a
+            dash rather than 0% when nothing in the window carried the signal:
+            a card reading 0% on a week the shadow did not run would be read as
+            a terrible week rather than as no data. */}
+        <StatCard
+          title="Escalation Intent"
+          value={
+            stats.escalationIntentRate === null
+              ? "—"
+              : `${stats.escalationIntentRate}%`
+          }
+          subtitle="Asked for a person at least once"
+          className="col-span-6 xl:col-span-3"
+        />
+        <StatCard
+          title="Implicit Satisfaction"
+          value={
+            stats.implicitSatisfaction === null
+              ? "—"
+              : `${stats.implicitSatisfaction}%`
+          }
+          subtitle="Ended calm, among those nobody rated"
+          className="col-span-6 xl:col-span-3"
+        />
 
         <StatCard
           title="Languages Spoken"

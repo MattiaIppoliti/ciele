@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import type { Invite, Member, Role } from "@agent-hub/core";
-import { Activity, CalendarDays, ChevronDown, Link2, Plus, Shield, Trash2, User } from "lucide-react";
+import { ChevronDown, Link2, Plus, Trash2 } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -96,7 +96,6 @@ export function MembersClient({
   const columns: TableColumn<MemberRow>[] = [
     {
       key: "name",
-      icon: User,
       header: "User",
       accessor: (row) => row.name,
       sortable: true,
@@ -125,7 +124,6 @@ export function MembersClient({
     },
     {
       key: "status",
-      icon: Activity,
       header: "Status",
       accessor: (row) => row.status,
       sortable: true,
@@ -139,7 +137,6 @@ export function MembersClient({
     },
     {
       key: "since",
-      icon: CalendarDays,
       header: "Joined",
       accessor: (row) => row.since,
       sortable: true,
@@ -151,7 +148,6 @@ export function MembersClient({
     },
     {
       key: "role",
-      icon: Shield,
       header: "Role",
       accessor: (row) => row.role,
       sortable: true,

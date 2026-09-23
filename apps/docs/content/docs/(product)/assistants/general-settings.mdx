@@ -9,7 +9,7 @@ Open an Assistant and select **General**.
 
 Select the provider connection and model for the Assistant. Select **Graph** or **Vector** as the primary Knowledge engine.
 
-Graph retrieval uses the Knowledge graph when graph services are available. Vector retrieval uses indexed Concept embeddings and lexical fallback.
+Graph retrieval uses the Knowledge graph when graph services are available. Vector retrieval uses indexed Document embeddings and lexical fallback.
 
 ## Visitor model choice
 
@@ -18,6 +18,9 @@ Select the models that the chat window shows to visitors. The Assistant model is
 If you select no additional model, the chat window shows no model control. All conversations use the Assistant model.
 
 The chat window shows a model only if your Organization has a provider connection for that model. If you remove the provider connection, the chat window stops showing the model. Conversations continue with the Assistant model.
+
+The list shows **no credential yet** next to a provider without a connection. The line below the
+list counts only the models that the chat window can show.
 
 Preview shows the new list immediately. Select **Publish** to give it to the widget, which uses the
 last published version.
@@ -56,8 +59,8 @@ the text in the image and a short description of it.
 An attachment stays available for the rest of the conversation. The chat window shows each
 attachment until the user removes it.
 
-Preview and Teammate chats accept attachments at all times. This setting is only for the published
-widget, because a visitor is not a signed-in member.
+The Preview follows this setting as soon as you save. It shows the message box a visitor gets,
+before you publish. Teammate chats accept attachments at all times, because they have no visitor.
 
 Select **Publish** after you change this setting.
 

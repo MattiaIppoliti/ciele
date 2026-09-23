@@ -2,6 +2,7 @@ import type {
   AssistantSourceLink,
   OrgKnowledgeStatusCounts,
   SourceKind,
+  OrgKnowledgeSourceSort,
   SourceStatus,
 } from "@agent-hub/core";
 import { DEFAULT_PAGE_SIZE, clampPageSize } from "@/lib/pagination";
@@ -119,9 +120,22 @@ export interface HubSearchParams {
   page: number;
   /** Rows per page, chosen in the table footer and carried in the URL. */
   size: number;
+  /**
+   * The column header the reader clicked, and its direction. In the URL
+   * because the table is paged on the server: sorting the fifty rows on
+   * screen would be a different table, not a sorted one.
+   */
+  sort: "" | OrgKnowledgeSourceSort;
+  ascending: boolean;
 }
 
 const STATUSES: SourceStatus[] = ["processing", "ready", "error"];
+const SORTS: OrgKnowledgeSourceSort[] = [
+  "createdAt",
+  "name",
+  "status",
+  "updatedAt",
+];
 
 /** Parses + clamps the hub's URL search params; garbage falls back to defaults. */
 export function parseHubSearchParams(
@@ -137,6 +151,12 @@ export function parseHubSearchParams(
       ? (status as SourceStatus)
       : "",
     assistant: one(params.assistant),
+    // An unrecognised name reads as no sort, which is the default order the
+    // table had before its headers were clickable.
+    sort: (SORTS as string[]).includes(one(params.sort))
+      ? (one(params.sort) as OrgKnowledgeSourceSort)
+      : "",
+    ascending: one(params.dir) === "asc",
     page: Number.isFinite(page) && page >= 1 ? page : 1,
     // Clamped to an offered size: the page size reaches a LIMIT, so a
     // hand-typed `?size=100000` would turn one navigation into a table scan.
@@ -243,6 +263,72 @@ export function sourceRemovalChoice(input: {
     mode: "unlink",
     name: input.name,
     description: `It stays in the Library and keeps answering for ${named}. Deleting it for the whole organization instead removes it everywhere: ${input.deleteEffect.charAt(0).toLowerCase()}${input.deleteEffect.slice(1)}`,
+    confirmLabel: "Remove from this assistant",
+    secondaryLabel: "Delete for the organization",
+  };
+}
+
+/**
+ * The same choice over a table selection.
+ *
+ * Per row `sourceRemovalChoice` can infer the outcome, because there is one
+ * Source and it is either shared or it is not. Across twenty ticked rows it
+ * cannot: half of them usually are. So one shared row is enough to make the
+ * pair of outcomes the question, and a selection with none keeps the plain
+ * delete it would have had.
+ *
+ * The rule that forces this: a FAQ *owns* its Source (PRD #726), so deleting
+ * the Concept deletes the Source for the whole Organization. A bulk delete
+ * that did not ask took knowledge away from assistants the editor never
+ * opened, which is exactly what the per-row path exists to prevent.
+ *
+ * Copy only: the caller binds the actions and renders the strings.
+ */
+export function bulkRemovalChoice(input: {
+  /** How many rows are ticked. */
+  count: number;
+  /** How many of them another Assistant also answers from. */
+  sharedCount: number;
+  noun: string;
+  /** Only where adding an "s" is wrong ("FAQ" → "FAQs" is not). */
+  pluralNoun?: string;
+  /** Label for the org-wide delete, e.g. "Delete FAQs". */
+  deleteLabel: string;
+  /** One sentence naming what that delete takes with it. */
+  deleteEffect: string;
+}): {
+  mode: "delete" | "unlink";
+  title: string;
+  description: string;
+  confirmLabel: string;
+  secondaryLabel?: string;
+} {
+  const one = input.count === 1;
+  const what = `${input.count} ${
+    one ? input.noun : (input.pluralNoun ?? `${input.noun}s`)
+  }`;
+  if (input.sharedCount === 0) {
+    return {
+      mode: "delete",
+      title: `Delete ${what}?`,
+      description: `${input.deleteEffect} This cannot be undone.`,
+      confirmLabel: input.deleteLabel,
+    };
+  }
+  // Counted, not named: listing the sibling assistants of twenty rows is a
+  // paragraph nobody reads, and the number is the fact that decides. Removing
+  // unlinks the whole selection, so the sentence has to say that all of them
+  // stay in the Library while only the shared ones keep answering.
+  const stay = one
+    ? "It stays in the Library and keeps answering for the other assistants linked to it."
+    : input.sharedCount === input.count
+      ? "They stay in the Library and keep answering for the other assistants linked to them."
+      : `They stay in the Library, and the ${input.sharedCount} shared with other assistants keep answering there.`;
+  const it = one ? "it" : "them";
+  return {
+    mode: "unlink",
+    title: `Remove ${what} from this assistant?`,
+    description: `${stay} Deleting ${it} for the whole organization instead removes ${it} everywhere: ${input.deleteEffect.charAt(0).toLowerCase()}${input.deleteEffect.slice(1)}`,
     confirmLabel: "Remove from this assistant",
     secondaryLabel: "Delete for the organization",
   };

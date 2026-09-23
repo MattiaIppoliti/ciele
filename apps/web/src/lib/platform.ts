@@ -1,5 +1,5 @@
 import { unstable_cache, updateTag } from "next/cache";
-import { isSupabaseConfigured } from "@agent-hub/db";
+import { isSupabaseConfigured, type Db } from "@agent-hub/db";
 import { DEFAULT_PLATFORM_PROMPT } from "@agent-hub/agent";
 import { getWidgetDb } from "./widget-db";
 
@@ -89,4 +89,21 @@ export async function setPlatformSystemPrompt(
   // No tagged cache to invalidate in demo mode (and updateTag is
   // server-action-only next to a real deployment anyway).
   if (isSupabaseConfigured()) updateTag(PLATFORM_PROMPT_TAG);
+}
+
+/**
+ * The Organizations a platform-level Alert goes to: those a platform owner is
+ * a Member of. A fact about the decision model or the platform's own jobs is
+ * not a tenant's problem, and an Alert a tenant admin cannot act on is noise,
+ * so the nightly pre-flight drift replay (#953) raises on these and nowhere
+ * else. In demo mode everyone is the owner, so every Organization qualifies.
+ */
+export async function platformOwnerOrganizationIds(db: Db): Promise<string[]> {
+  const organizations = await db.listOrganizations();
+  const owned: string[] = [];
+  for (const organization of organizations) {
+    const members = await db.listMembers(organization.id).catch(() => []);
+    if (members.some((member) => isPlatformOwner(member.email))) owned.push(organization.id);
+  }
+  return owned;
 }

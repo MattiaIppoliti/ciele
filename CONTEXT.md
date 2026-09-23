@@ -33,8 +33,8 @@ A named group of knowledge, anchorable in chat as context and represented as an 
 _Avoid_: course (education-specific label), folder, dataset
 
 **Source**:
-An original artifact (file, URL, crawled website, pasted text, FAQ, or imported Application item) from which Concepts are derived; cited in chat replies. Every knowledge item on the hub is a Source, a FAQ's question is its Source name, the answer stays on its Concept.
-_Avoid_: document (ambiguous), attachment
+An original artifact (file, URL, crawled website, pasted text, FAQ, or imported Application item) from which Documents are derived; cited in chat replies. Every knowledge item on the hub is a Source, a FAQ's question is its Source name, the answer stays on its Document.
+_Avoid_: Document (that is the stored unit *under* a Source, not the Source itself), attachment
 
 **Library**:
 The org-level knowledge page (`/library/[tab]`, sidebar label **Library**): every Source across all Assistants in per-kind tabs (Websites / Files / Applications / FAQs), with linked-assistant chips, filters, add flows, and Direct access management. Renamed from "Knowledge Hub" so the sidebar stops showing two rows called Knowledge, the per-Assistant SETUP section keeps that name. Its one ambiguity is deliberate: "Library" is the page, while "Knowledge Library" is the default Collection the page writes into.
@@ -96,8 +96,8 @@ _Avoid_: share, subscription
 Per-(assistant, file) flag, default off: on, chat users can open the cited file's original from the AI chat via a short-lived signed URL; off, the file is still cited inline but the link stays hidden.
 _Avoid_: public file, download toggle
 
-**Concept**:
-One OKF v0.2 markdown document (YAML frontmatter + body) inside a Knowledge Collection, the unit the agent reads, links and cites. Its frontmatter carries provenance and trust: `generated` (who wrote it), `verified` (who confirmed it), `sources` (what it derives from).
+**Document**:
+One OKF v0.2 markdown document (YAML frontmatter + body) inside a Knowledge Collection, the unit the agent reads, links and cites, and the unit the console counts (`7 Documents`). Its frontmatter carries provenance and trust: `generated` (who wrote it), `verified` (who confirmed it), `sources` (what it derives from). **Concept** is the same thing in OKF's own vocabulary, so the format keeps that word where it speaks: `ConceptFrontmatter`, the `concepts` / `concept_chunks` tables and the functions over them (ADR-0002, amended 2026-09-20).
 _Avoid_: page, note, chunk
 
 **Actor**:
@@ -105,7 +105,7 @@ The OKF identity string on `generated.by` / `verified[].by`: `<producer>/<versio
 _Avoid_: author, user (both ambiguous across the three forms)
 
 **Trust tier**:
-The level derived from a Concept's `verified` field, unverified, machine-confirmed, or human-reviewed. Derived at read time, never stored, and advisory only: it never gates retrieval.
+The level derived from a Document's `verified` field, unverified, machine-confirmed, or human-reviewed. Derived at read time, never stored, and advisory only: it never gates retrieval.
 _Avoid_: confidence, score, credibility (OKF records signals, not verdicts)
 
 **Publication**:
@@ -129,7 +129,7 @@ A parameter the host page passes to the embedded widget (e.g. which Knowledge Co
 _Avoid_: page context, metadata
 
 **Deep Search**:
-A composer mode that gives the agent loop more iterations and multi-hop navigation of the OKF graph (index → linked Concepts → Sources), knowledge-only, never the open web.
+A composer mode that gives the agent loop more iterations and multi-hop navigation of the OKF graph (index → linked Documents → Sources), knowledge-only, never the open web.
 _Avoid_: web search, research mode
 
 **Provider Connection**:
@@ -164,6 +164,10 @@ _Avoid_: fallback flow (in UI)
 The cheap LLM call that identifies matching enabled Flows and routes to the highest-priority one (top-to-bottom configured order; replaces keyword matching with the same `matchFlow` seam).
 _Avoid_: routing model, matcher
 
+**Decision**:
+One `evaluate` call of the **decision model**: a state (text or JSON) plus a **question map** (typed questions, `choice` / `score` / `boolean`, each with criteria and a confidence threshold) returning one typed answer per question with probabilities, never prose. Answered by Jev (TypeSafe, calibrated confidence, platform key only) or, with no key, by the AI SDK adapter over the Organization's classifier model, `calibrated: false`, in which case thresholds degrade to "accept the choice". Metered as one `decide` row in the usage ledger under the provider `typesafe` (a `UsageProvider`, deliberately not a `Provider`). A decision chooses a path and never destroys information: below threshold, today's path runs. The **pre-flight** is the decision that runs once per Visitor message before Intent Classification (spec #948).
+_Avoid_: evaluation (alone), classification (that is the LLM call), judgment
+
 **Thinking Steps**:
 The user-visible trace of what the runtime did for a reply (classify → search → generate), expandable in the chat UI.
 _Avoid_: reasoning, chain of thought (in UI)
@@ -180,15 +184,15 @@ pattern as Flow Action handlers).
 _Avoid_: parser (an implementation detail), converter
 
 **Ingestion Job**:
-A JSON-serializable unit of deferred knowledge-ingestion work (enrich → persist Concepts → embed,
+A JSON-serializable unit of deferred knowledge-ingestion work (enrich → persist Documents → embed,
 or a website crawl) executed off the request path (`packages/agent/src/jobs.ts`); progress and failures are
 tracked by the Source status lifecycle (`processing` → `ready`/`error`), which the Knowledge UI polls.
 _Avoid_: background task, queue item (adapter detail)
 
 **Knowledge Graph**:
-A *derived* retrieval + learning index over a Knowledge Collection's Concepts, built by the graph
+A *derived* retrieval + learning index over a Knowledge Collection's Documents, built by the graph
 worker (cognee) as entities + typed relationships. Never the system of record, OKF stays
-authoritative, and every result resolves back to a Concept → Source citation (ADR-0017, preserving
+authoritative, and every result resolves back to a Document → Source citation (ADR-0017, preserving
 the ADR-0002 invariant).
 _Avoid_: knowledge base (that's OKF), memory, vector store (that's the pgvector layer)
 
@@ -204,8 +208,8 @@ _Avoid_: history, log, trace (alone)
 
 **Suggested Fix**:
 A drafted, human-approved knowledge-improvement proposal attached to an Improvement (a draft FAQ
-Concept + rationale + Source refs), generated by Ciele from the flagged answer and the Member's
-description. Accepting it writes a real Concept; the loop never auto-edits a tenant's knowledge.
+Document + rationale + Source refs), generated by Ciele from the flagged answer and the Member's
+description. Accepting it writes a real Document; the loop never auto-edits a tenant's knowledge.
 _Avoid_: suggestion, recommendation, auto-fix
 
 **AI Teammate**:
@@ -245,8 +249,18 @@ _Avoid_: max role, permission level, tier
 **Approval Bypass**:
 The per-Teammate flag letting a Teammate accept its own **Suggested Fix**, the one amendment to
 ADR-0017's human-accept invariant. False by default, never implied by a grant, and inert without the
-knowledge Action Grant, because accepting writes a Concept.
+knowledge Action Grant, because accepting writes a Document.
 _Avoid_: auto-approve, trusted mode, autonomy
+
+**Memory (knowledge)**:
+One standalone sentence a **Document** said, kept beside that Document with the verbatim `quote` it
+rests on and OKF `generated` provenance. Keyed to the page, `(Source, document path)`, not to the
+Document's row, so it survives the re-crawl that replaces the row it was read from. A Member
+**forgets** one, which is a state (`forgottenAt`) and not a delete: the text and its evidence stay,
+and a restore clears it. Live means `forgottenAt is null`, one rule written once
+(`isKnowledgeMemoryLive`). ADR-0024.
+_Avoid_: fact, insight, note, summary (a **Summary** is the whole Document in short, a Memory is one
+sentence), erase (that word is the destructive act on a subject Memory, ADR-0023)
 
 **Memory Document**:
 One of three markdown documents injected whole into an AI Teammate's prompt, size-capped: the
@@ -299,7 +313,7 @@ _Avoid_: fan-out (that is the behaviour, not the unit), cascade, run, session, l
 - An **Organization** has many **Members**, each with exactly one **Role** (Owner | Admin | Editor | Viewer); at least one Owner exists
 - An **Assistant** owns many **Flows**; exactly one of them is the **Default behavior**
 - A **Flow** starts on exactly one **Flow Trigger** and executes one or more **Flow Actions** in order
-- An **Assistant** owns many **Knowledge Collections**; a Collection contains **Sources** and the **Concepts** derived from them; chat can be anchored to one Collection
+- An **Assistant** owns many **Knowledge Collections**; a Collection contains **Sources** and the **Documents** derived from them; chat can be anchored to one Collection
 - An **Organization** has many **Provider Connections**; each **Assistant** selects the provider+model it runs on
 - **Subscription** Provider Connection rows are retired. After an Organization owner opts in, a Member may use a personal Claude/ChatGPT subscription only for that Member's Preview through the local connector; published Widget traffic uses Platform, API-key, or Federated Provider Connections.
 - A **Visitor** has many **Conversations** with one Assistant; a Conversation may be anchored to one **Knowledge Collection** (via **Context Hint** or the composer chip)
@@ -514,7 +528,7 @@ _Avoid_: test, check (generic).
 
 **Answer Verdict**:
 The independent verifier's one-line judgment (pass/fail + reason) on a generative answer, graded
-fresh-context from (question, answer, cited Concept content) by a cheap-tier model; one Verdict per
+fresh-context from (question, answer, cited Document content) by a cheap-tier model; one Verdict per
 message. FAILs create/increment Improvements; Verdicts feed the Trust Tier.
 _Avoid_: rating (reserved for Visitor 👍/👎 feedback), score.
 

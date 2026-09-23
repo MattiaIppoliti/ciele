@@ -10,7 +10,16 @@ export type TeammateReferralPart = Extract<
 >;
 /** The Human review gate's card (#841). */
 export type HumanReviewPart = Extract<ChatReplyPart, { type: "human_review" }>;
-import { HelpCircle, Radio, ThumbsDown, ThumbsUp, UserCheck, UserRoundPlus } from "lucide-react";
+export type ActionApprovalPart = Extract<ChatReplyPart, { type: "action_approval" }>;
+import {
+  HelpCircle,
+  Radio,
+  ShieldQuestion,
+  ThumbsDown,
+  ThumbsUp,
+  UserCheck,
+  UserRoundPlus,
+} from "lucide-react";
 import { Hint } from "@agent-hub/ui";
 import { ChatMarkdown } from "@/components/chat/chat-markdown";
 import { FlowButtonIcon } from "@/components/chat/flow-button-icon";
@@ -69,6 +78,7 @@ function PartView({
   onOpenSupport,
   onAcceptReferral,
   onDecideReview,
+  onDecideApproval,
 }: {
   part: ChatReplyPart;
   onSend: (text: string) => void;
@@ -80,6 +90,11 @@ function PartView({
    */
   onAcceptReferral?: (part: TeammateReferralPart) => void;
   onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
+  /** Runs, or declines, an action the approval gate stopped (#958). */
+  onDecideApproval?: (
+    part: ActionApprovalPart,
+    decision: "approved" | "rejected"
+  ) => void;
 }) {
   // `text` and `sources` parts are rendered by the message body itself (a
   // beui StreamingResponse with the sources disclosure folded in), not here.
@@ -173,6 +188,42 @@ function PartView({
             </p>
           </div>
         </div>
+      </div>
+    );
+  }
+  if (part.type === "action_approval") {
+    // The approval gate (#958). Deliberately the same shape as the Human
+    // review card below: to a Member, "something is waiting for you" is one
+    // thing, whether a Flow paused or a colleague's action was stopped.
+    return (
+      <div className="max-w-[90%] space-y-2 rounded-2xl border px-3.5 py-3">
+        <div className="flex items-center gap-2">
+          <span className="bg-primary/10 text-primary flex size-8 shrink-0 items-center justify-center rounded-full">
+            <ShieldQuestion className="size-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">{part.title}</p>
+            <p className="text-muted-foreground text-xs">{part.label}</p>
+          </div>
+        </div>
+        {onDecideApproval && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="text-primary text-sm font-semibold hover:underline"
+              onClick={() => onDecideApproval(part, "approved")}
+            >
+              Run it
+            </button>
+            <button
+              type="button"
+              className="text-muted-foreground text-sm font-semibold hover:underline"
+              onClick={() => onDecideApproval(part, "rejected")}
+            >
+              Don&apos;t
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -414,6 +465,11 @@ export function ChatThread({
   hasPersistentSupport?: boolean;
   onAcceptReferral?: (part: TeammateReferralPart) => void;
   onDecideReview?: (part: HumanReviewPart, decision: "approved" | "rejected") => void;
+  /** Runs, or declines, an action the approval gate stopped (#958). */
+  onDecideApproval?: (
+    part: ActionApprovalPart,
+    decision: "approved" | "rejected"
+  ) => void;
   renderUserText?: (text: string) => ReactNode;
 }) {
   return (

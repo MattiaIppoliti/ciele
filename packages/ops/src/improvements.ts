@@ -3,12 +3,16 @@ import type {
   Improvement,
   ImprovementProposal,
   ImprovementPatch,
+  ImprovementPriority,
   ImprovementStatus,
 } from "@agent-hub/core";
 import {
   AUTO_IMPROVEMENT_LABEL,
   IMPROVEMENT_STATUS_VALUES,
+  dedupCandidates,
+  dedupMatch,
   findDuplicateImprovement,
+  priorityFrom,
   mayAcceptSuggestedFix,
   messageText,
   okfActor,
@@ -355,6 +359,45 @@ export interface FeedbackTriageResult {
   skippedForCap: number;
 }
 
+/**
+ * One decision per piece of evidence (#959): which open item it belongs to, if
+ * any, and how urgent it is. Returns `null` when no backend answered, which is
+ * how the caller knows to fall back to the title comparison rather than to
+ * treat "no match" as "a new problem".
+ *
+ * Never throws. The triage routine runs unattended, and a board that stops
+ * being filed because a decision backend had a bad minute is a worse outcome
+ * than a board filed the way it was filed last month.
+ */
+async function triageDecision(
+  ctx: OperationContext,
+  board: readonly { id: string; title: string; status: ImprovementStatus }[],
+  evidence: { title: string; question: string; answer: string }
+): Promise<{ matchedId: string | null; priority: ImprovementPriority } | null> {
+  const ask = ctx.ports?.triageDecisions;
+  if (!ask) return null;
+  const open = board
+    .filter((item) => item.status !== "done" && item.status !== "archived")
+    .map((item) => ({ id: item.id, title: item.title }));
+  const candidates = dedupCandidates(evidence.title, open);
+  try {
+    const decision = await ask({ evidence, candidates });
+    if (!decision) return null;
+    return {
+      matchedId: dedupMatch({
+        evidenceTitle: evidence.title,
+        candidates,
+        answers: decision.dedup.answers,
+        confidence: decision.dedup.confidence,
+        calibrated: decision.calibrated,
+      }),
+      priority: priorityFrom(decision.priority),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const triageFeedbackOp = defineOperation({
   name: "improvements.triage_feedback",
   capability: "edit",
@@ -415,10 +458,28 @@ export const triageFeedbackOp = defineOperation({
       //
       // Skipped for the untitled fallback, which carries no information to
       // match on and would otherwise match everything it equals.
+      // The decision backend's read of the same question (#959), which sees
+      // "I can't get back into my account" and "Password reset link expired"
+      // as one problem where the title comparison below cannot. It replaces
+      // that comparison only when it answers: with no backend the routine
+      // dedups exactly as it did before.
+      const decided =
+        title === UNTITLED_TRIAGE_TITLE
+          ? null
+          : await triageDecision(ctx, board, {
+              title,
+              question,
+              answer: messageText(flagged[0].content) ?? "",
+            });
+
       const twin =
         title === UNTITLED_TRIAGE_TITLE
           ? null
-          : findDuplicateImprovement(title, board);
+          : decided
+            ? decided.matchedId
+              ? board.find((item) => item.id === decided.matchedId) ?? null
+              : null
+            : findDuplicateImprovement(title, board);
       if (twin) {
         result.deduped += 1;
         for (const message of flagged) {
@@ -450,6 +511,11 @@ export const triageFeedbackOp = defineOperation({
       // down to what the Teammate filed.
       await ctx.db.updateImprovement(improvement.id, {
         tags: [AUTO_IMPROVEMENT_LABEL],
+        // Derived from three separately scored dimensions with the weights in
+        // `@agent-hub/core` (#959). Left alone when no backend answered,
+        // rather than guessed: an unset priority is honest, an invented one
+        // sorts a board.
+        ...(decided?.priority ? { priority: decided.priority } : {}),
       });
       board.push({
         id: improvement.id,

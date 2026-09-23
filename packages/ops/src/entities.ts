@@ -21,6 +21,8 @@ export type MutatedEntity =
   | { kind: "helpDesk"; id: string }
   /** The AI/org settings page (budget, prompt, provider connections). */
   | { kind: "aiSettings" }
+  /** Settings → Crawling: the Organization's own crawler accounts. */
+  | { kind: "crawlerSettings" }
   /** The org members roster. */
   | { kind: "members" }
   /** Organization identity shown in settings and the app shell. */

@@ -1,9 +1,16 @@
-import type { Role, SourceKind, Teammate, TeammateRoutine } from "@agent-hub/core";
+import type {
+  Provider,
+  Role,
+  SourceKind,
+  Teammate,
+  TeammateRoutine,
+} from "@agent-hub/core";
 import type { Db } from "@agent-hub/db";
 import type { MemberOption } from "@/components/teammates/teammate-editors-picker";
 import type { TeammateGovernanceState } from "@/components/teammates/teammate-grants-picker";
 import type { CollectionOption } from "@/components/teammates/teammates-client";
 import { KNOWLEDGE_TAB_KINDS, KNOWLEDGE_TAB_SLUGS } from "@/lib/knowledge-hub";
+import { providersWithoutCredential } from "@/lib/model-credentials";
 import type { ScopeSource } from "@/lib/teammates/knowledge-scope";
 
 export interface TeammateSettingsProps {
@@ -17,6 +24,8 @@ export interface TeammateSettingsProps {
   projects: { id: string; name: string }[];
   learnings: string;
   routines: TeammateRoutine[];
+  /** Providers with no credential; their models never reach the picker. */
+  unavailableProviders: Provider[];
 }
 
 /** Every Source kind the Library lists, in tab order. */
@@ -73,23 +82,32 @@ export async function loadTeammateSettingsProps(
   organizationId: string,
   teammate: Teammate
 ): Promise<TeammateSettingsProps> {
-  const [collections, libraryItems, members, grants, learnings, projects, routines] =
-    await Promise.all([
-      db.listOrgCollections(organizationId),
-      loadScopeSources(db, organizationId),
-      db.listMembers(organizationId),
-      // What it may do (#770). Read for everyone who can open the page, because
-      // an agent's capabilities are not a secret from the colleagues it works
-      // with; only changing them is admin work.
-      db.table("teammateGrants").list({ teammateId: teammate.id }),
-      // Its Agent memory layer and the Projects it could attach to (#771).
-      db.getMemoryDocument(organizationId, {
-        scope: "agent",
-        teammateId: teammate.id,
-      }),
-      db.table("projects").list({ organizationId }),
-      db.table("teammateRoutines").list({ teammateId: teammate.id }),
-    ]);
+  const [
+    collections,
+    libraryItems,
+    members,
+    grants,
+    learnings,
+    projects,
+    routines,
+    connections,
+  ] = await Promise.all([
+    db.listOrgCollections(organizationId),
+    loadScopeSources(db, organizationId),
+    db.listMembers(organizationId),
+    // What it may do (#770). Read for everyone who can open the page, because
+    // an agent's capabilities are not a secret from the colleagues it works
+    // with; only changing them is admin work.
+    db.table("teammateGrants").list({ teammateId: teammate.id }),
+    // Its Agent memory layer and the Projects it could attach to (#771).
+    db.getMemoryDocument(organizationId, {
+      scope: "agent",
+      teammateId: teammate.id,
+    }),
+    db.table("projects").list({ organizationId }),
+    db.table("teammateRoutines").list({ teammateId: teammate.id }),
+    db.listProviderConnections(organizationId),
+  ]);
 
   return {
     collections: collections.map((c) => ({ id: c.id, name: c.name })),
@@ -114,6 +132,7 @@ export async function loadTeammateSettingsProps(
     },
     learnings: learnings?.body ?? "",
     routines,
+    unavailableProviders: providersWithoutCredential(connections),
     projects: projects
       // Archived projects keep their decisions and stop feeding them to a
       // model, so attaching to one would be attaching to nothing.

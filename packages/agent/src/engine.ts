@@ -7,6 +7,8 @@ import type {
   Flow,
   FlowAction,
   FlowRoutingContext,
+  PreflightCatalogue,
+  PreflightTraceRecord,
   Provider,
   ProviderConnection,
   ReferralCandidate,
@@ -17,8 +19,15 @@ import {
   basicInteractionFlow,
   matchFlow,
   messageFlowCandidates,
+  spokenLanguage,
+  thinkingLine,
+  thinkingOutcome,
 } from "@agent-hub/core";
 import { z } from "zod";
+import { getRuntimeHost } from "./host";
+import { runApprovalGate } from "./approval-gate";
+import { resolveDecisionModel } from "./decision-model";
+import { decidedRoute, runPreflight, type PreflightFaqAnswer, type PreflightOutcome } from "./preflight-shadow";
 import type { ChatReplyPart } from "./types";
 import type { UntrustedEnvelope } from "./untrusted-content";
 import type { TurnSession } from "./session";
@@ -130,11 +139,14 @@ export async function classifyIntent(
     return matchFlow(message, flows, routing);
   }
 
-  // `streamObject` does not reject the way `generateObject` did: when the
-  // provider fails, the object promise stays **pending forever** and only
-  // `onError` fires. Routing must never wait on that, so the failure is turned
-  // back into a rejection here and raced against the answer, which restores the
-  // guarantee the keyword-matcher fallback below depends on.
+  // `streamObject` settles its object promise in only one of the two ways a
+  // provider fails. A `doStream` that throws (connection refused, 4xx before
+  // any byte) rejects it, since `ai` 7.0.70. A stream that opens and then
+  // carries an `error` part (the provider died mid-answer) does **not**: the
+  // promise stays pending forever and only `onError` fires, checked against
+  // 7.0.107. Routing must never wait on that, so the failure is turned back
+  // into a rejection here and raced against the answer, which is what the
+  // keyword-matcher fallback below depends on.
   let reportStreamFailure: (error: unknown) => void = () => {};
   const streamFailed = new Promise<never>((_, reject) => {
     reportStreamFailure = reject;
@@ -183,12 +195,11 @@ export async function classifyIntent(
     // Deltas rather than one settled thought, so this reads like the rest of
     // the panel: `foldTraceEvent` grows the running step in place.
     //
-    // Narration is deliberately not what routing waits on. `streamObject` does
-    // not reject the way `generateObject` did: a provider that fails surfaces
-    // it on the stream and the object promise, and iterating a stream that
-    // never opens simply hangs. So the decision awaits the promise, which
-    // rejects into the keyword-matcher fallback below, and the deltas ride
-    // alongside where they cannot stall a turn.
+    // Narration is deliberately not what routing waits on: iterating a stream
+    // that never opens simply hangs, and one that dies mid-answer ends without
+    // settling the object. So the decision awaits the race above, which rejects
+    // into the keyword-matcher fallback below, and the deltas ride alongside
+    // where they cannot stall a turn.
     const narrate = (async () => {
       let streamed = "";
       for await (const partial of partialObjectStream) {
@@ -246,6 +257,27 @@ export function routingNarration(
     );
   });
   return named ? null : text;
+}
+
+/**
+ * The Flow a routing pre-flight hands the turn (#953), or null for "today's
+ * path". Only the two outcomes that name a Flow route here: a listed Flow the
+ * decision cleared, or knowledge search, which is the Default behavior Flow.
+ * The id is checked against the live, enabled list rather than trusted from
+ * the record, so a Flow disabled between the catalogue read and now falls to
+ * classification instead of running. An FAQ or an escalation outcome is not a
+ * Flow and is left to today's path (#954, #955 take them from here).
+ */
+export function preflightRoutedFlow(outcome: PreflightOutcome, flows: readonly Flow[]): Flow | null {
+  const route = decidedRoute(outcome);
+  if (!route) return null;
+  if (route.kind === "flow") {
+    return flows.find((f) => f.id === route.flowId && f.enabled && f.trigger === "message") ?? null;
+  }
+  if (route.kind === "knowledge_search") {
+    return flows.find((f) => f.isDefault && f.enabled) ?? null;
+  }
+  return null;
 }
 
 /**
@@ -540,6 +572,28 @@ export async function runAssistantChat(options: {
    * Absent/empty → escalation chips stay generic.
    */
   escalationDesks?: EscalationDeskCandidate[];
+  /**
+   * The database half of the shadow pre-flight's catalogue (#952): the FAQs and
+   * the help desks. A loader rather than the values because it costs reads the
+   * great majority of turns must not pay, the flag is off, or the message is
+   * courtesy, or a gate already picked the Flow; the engine calls it only when
+   * it is about to ask. The Flow half is not here on purpose: which Flows are
+   * candidates is what the URL and Schedule gates decide, and only the engine
+   * knows that.
+   */
+  loadPreflightCatalogue?: () => Promise<Pick<PreflightCatalogue, "faqs" | "desks">>;
+  /**
+   * The Visitor's browser locale, the fallback for the pre-flight's fixed
+   * Thinking line when the decision could not tell which language the message
+   * was written in (#953). Null or absent falls back to English.
+   */
+  visitorLocale?: string | null;
+  /**
+   * A curated FAQ's stored answer by id, for the FAQ direct hit (#954). Null
+   * for an FAQ that is gone or excluded, which sends the turn down today's
+   * path. Absent, the pre-flight never answers with an FAQ.
+   */
+  readPreflightFaq?: (faqId: string) => Promise<PreflightFaqAnswer | null>;
   emit: (e: RuntimeEvent) => void;
   signal?: AbortSignal;
   /** ADR-0001 surface context; omit for published traffic (safe default). */
@@ -601,6 +655,9 @@ export async function runAssistantChat(options: {
     webhookRuntime,
     toolSubject,
     escalationDesks = [],
+    loadPreflightCatalogue,
+    visitorLocale = null,
+    readPreflightFaq,
     emit,
     signal,
     keyResolution = {},
@@ -680,6 +737,56 @@ export async function runAssistantChat(options: {
       });
     },
   });
+
+  /**
+   * The approval gate (#958) as the actions see it. One closure over the
+   * turn's connections, resolved lazily so a Flow with no gated step pays
+   * nothing; a failure answers "ask a human", never "go ahead".
+   */
+  const judgeAction: ActionContext["judgeAction"] = async (subject) => {
+    const gate = await runApprovalGate({
+      subject,
+      resolved: resolveDecisionModel(assistant.modelProvider, connections, keyResolution),
+      signal,
+      recordUsage: (event) => {
+        usageEvents.push(event);
+      },
+    });
+    // No backend configured is no gate at all; a backend that answered, or
+    // that failed while configured, is a verdict. See the port's contract.
+    return gate.backend === null ? null : gate.verdict;
+  };
+
+  // Never rejects: a pre-flight that could fail a turn would be worse than no
+  // pre-flight. `runPreflight` already swallows the decision's own failures;
+  // this catches the catalogue read.
+  const flowCandidates = messageFlowCandidates(flows, routing);
+  async function startPreflight(): Promise<PreflightOutcome | null> {
+    if (!loadPreflightCatalogue) return null;
+    try {
+      const sources = await loadPreflightCatalogue();
+      return await runPreflight({
+        message,
+        // The same gated, priority-ordered candidates Intent Classification
+        // itself asks about, so the two decisions see one list.
+        catalogue: { ...sources, flows: flowCandidates },
+        resolved: resolveDecisionModel(assistant.modelProvider, connections, keyResolution),
+        // An FAQ catalogue over the option cap is shortlisted by similarity to
+        // the message (#954): the same search the Default behavior runs, read
+        // for its Concept ids only.
+        rankFaqs: searchKnowledge
+          ? async () =>
+              (await searchKnowledge(message, { scope: "assistant" })).map((result) => result.conceptId)
+          : undefined,
+        signal,
+        recordUsage: (usage) => {
+          usageEvents.push(usage);
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
 
   // Basic Interaction (#566): courtesy is recognised deterministically, before
   // anything is spent. Deliberately ABOVE the chat-model branch, both engines
@@ -778,6 +885,7 @@ export async function runAssistantChat(options: {
       connectorRuntime,
       reviewRuntime,
       countOperation,
+      judgeAction,
       webhookRuntime,
       toolSubject,
       priorParts: parts,
@@ -809,9 +917,128 @@ export async function runAssistantChat(options: {
     };
   }
 
+  // The pre-flight (#952, #953). It is skipped whenever the turn never
+  // classifies. A resumed Flow already knows where it is going, and a courtesy
+  // hit is Basic Interaction, whose whole promise is that it spends nothing and
+  // leaves no trace; asking a decision model about "grazie" would contradict
+  // the feature it sits beside. Proactive triggers never reach here at all:
+  // they run in `runProactiveFlows` with no message to ask about.
+  //
+  // Two modes, one call. In **shadow** the decision overlaps Intent
+  // Classification (a warm decision lands in about 300 ms, well inside a
+  // classification) and is read afterwards, routing nothing. With **routing**
+  // on it is awaited first, because a decision that clears its threshold
+  // replaces the classification call, and a call already in flight cannot be
+  // un-made; an under-threshold turn then pays the decision's latency before
+  // today's path, which is the cost the spec accepts for one model call
+  // instead of two on the turns that route.
+  const host = getRuntimeHost();
+  const routingEnabled = host.preflightRoutingEnabled();
+  const asks =
+    !resumedFlow && !courtesyFlow && loadPreflightCatalogue !== undefined &&
+    (routingEnabled || host.preflightShadowEnabled());
+  let shadowPending: Promise<PreflightOutcome | null> | null = null;
+  let preflightOutcome: PreflightOutcome | null = null;
+  if (asks) {
+    if (routingEnabled) preflightOutcome = await startPreflight();
+    else shadowPending = startPreflight();
+  }
+  // The fixed line for the outcome, in the Visitor's language (#946): the
+  // closed table takes no Flow and no Organization data, which is what keeps
+  // a Flow name off a stranger's screen. A verbatim Flow earns no line, its
+  // reply is the next thing on screen.
+  const preflightLine = (): void => {
+    if (!preflightOutcome?.decision) return;
+    const outcome = thinkingOutcome(preflightOutcome.record.wouldRoute, {
+      flows: flowCandidates,
+      faqs: [],
+      desks: [],
+    });
+    if (outcome) {
+      emit({
+        type: "thought",
+        text: thinkingLine(outcome, spokenLanguage(preflightOutcome.decision), visitorLocale),
+      });
+    }
+  };
+  const actedRecord = (): PreflightTraceRecord | undefined =>
+    preflightOutcome ? { ...preflightOutcome.record, routedFlowId: null, acted: true } : undefined;
+
+  // What the pre-flight decided, when it decided anything and routing is on.
+  const preflightRoute = decidedRoute(preflightOutcome);
+
+  // The FAQ direct hit (#954): the curated answer verbatim, cited to the FAQ,
+  // with no retrieval and no generation. Same render as the quick-reply FAQ
+  // button, and the same "FAQ" marker on the transcript and the export. An
+  // FAQ that is gone since the catalogue read falls to today's path.
+  if (preflightRoute?.kind === "faq" && readPreflightFaq) {
+    const faq = await readPreflightFaq(preflightRoute.faqId).catch(() => null);
+    if (faq) {
+      preflightLine();
+      emit({ type: "flow", flowId: null, flowName: "FAQ", isDefault: false });
+      const textPart: ChatReplyPart = { type: "text", action: "custom_message", text: faq.body };
+      const sourcesPart: ChatReplyPart = {
+        type: "sources",
+        action: "search_knowledge",
+        sources: [
+          {
+            conceptId: preflightRoute.faqId,
+            conceptTitle: faq.title,
+            collectionName: faq.collectionName,
+            sourceName: null,
+            url: faq.url,
+          },
+        ],
+      };
+      emit({ type: "part", part: textPart });
+      emit({ type: "part", part: sourcesPart });
+      const preflight = actedRecord();
+      return {
+        parts: [textPart, sourcesPart],
+        effects: [],
+        flowId: null,
+        flowName: "FAQ",
+        usage: usageEvents,
+        ...(preflight ? { preflight } : {}),
+      };
+    }
+  }
+
+  // Escalation from the pre-flight (#955): a Visitor who asked for a person,
+  // above threshold, gets the chip at once, opened on the desk the pre-flight
+  // chose among the Assistant's selected desks when that choice cleared its
+  // own threshold, and the generic menu otherwise. The separate help-desk
+  // recommendation call is not made: this is that recommendation. Nothing is
+  // classified, retrieved or generated; the chip is the reply, as it is for
+  // the suggest_help_desk action on its own.
+  if (preflightRoute?.kind === "escalation") {
+    preflightLine();
+    emit({ type: "flow", flowId: null, flowName: "Escalation", isDefault: false });
+    const part: ChatReplyPart = {
+      type: "help_desk",
+      action: "suggest_help_desk",
+      label: contactLabel(assistant),
+      ...(preflightRoute.deskId ? { helpDeskId: preflightRoute.deskId } : {}),
+    };
+    emit({ type: "part", part });
+    const preflight = actedRecord();
+    return {
+      parts: [part],
+      effects: [],
+      flowId: null,
+      flowName: "Escalation",
+      usage: usageEvents,
+      ...(preflight ? { preflight } : {}),
+    };
+  }
+
+  const routedByPreflight = preflightOutcome ? preflightRoutedFlow(preflightOutcome, flows) : null;
+  if (routedByPreflight) preflightLine();
+
   const flow =
     resumedFlow ??
     courtesyFlow ??
+    routedByPreflight ??
     (await classifyIntent(
       message,
       flows,
@@ -831,6 +1058,19 @@ export async function runAssistantChat(options: {
       emit
     ));
 
+  // The record is completed with the Flow the turn actually took and goes to
+  // the trace; `acted` says whether that Flow was the pre-flight's own choice
+  // or classification's, so the two fields read as a comparison on a shadow
+  // record and as a fact on a routed one.
+  const observed = preflightOutcome ?? (await shadowPending);
+  const preflight: PreflightTraceRecord | undefined = observed
+    ? {
+        ...observed.record,
+        routedFlowId: flow?.id ?? null,
+        ...(routedByPreflight ? { acted: true } : {}),
+      }
+    : undefined;
+
   if (!flow) {
     const part: ChatReplyPart = {
       type: "text",
@@ -845,6 +1085,7 @@ export async function runAssistantChat(options: {
       flowId: null,
       flowName: "No flow",
       usage: usageEvents,
+      ...(preflight ? { preflight } : {}),
     };
   }
 
@@ -853,7 +1094,7 @@ export async function runAssistantChat(options: {
   // later event patching an earlier row (#560). Skipped for a courtesy turn:
   // no classification happened, and the one notice would be the only thing
   // standing between that turn and a null trace (#566).
-  if (!courtesyFlow && !resumedFlow) {
+  if (!courtesyFlow && !resumedFlow && !routedByPreflight) {
     emit({
       type: "notice",
       label: "Classifying intent",
@@ -903,6 +1144,7 @@ export async function runAssistantChat(options: {
     connectorRuntime,
     reviewRuntime,
     countOperation,
+    judgeAction,
     webhookRuntime,
     toolSubject,
     priorParts: parts,
@@ -1001,6 +1243,7 @@ export async function runAssistantChat(options: {
     flowId: flow.id,
     flowName: flow.name,
     usage: usageEvents,
+    ...(preflight ? { preflight } : {}),
     handoverTo,
   };
 }

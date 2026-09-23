@@ -87,6 +87,8 @@ import type {
   InsightsOverview,
   Invite,
   KnowledgeCollection,
+  KnowledgeMemoryExtraction,
+  KnowledgeMemoryExtractionStatus,
   KnowledgeSearchResult,
   LocalConnectorDevice,
   LocalConnectorPairing,
@@ -121,7 +123,13 @@ import type {
   RecrawlSchedule,
   RetentionSweepEvent,
   RetentionSweepEventInput,
+  DocumentChunkListItem,
+  ActionApproval,
+  ActionApprovalPatch,
   ReviewRequest,
+  SourceDocumentListItem,
+  SourceDocumentSort,
+  SourceDocumentStatus,
   WebhookSubscription,
   Role,
   RoutineRunStatus,
@@ -133,6 +141,8 @@ import type {
   SourceKind,
   SourceStatus,
   SsoConnection,
+  CrawlerConnection,
+  CrawlerConnectionProvider,
   SsoConnectionConfig,
   SsoConnectionPublic,
   SsoProviderKind,
@@ -319,6 +329,28 @@ export interface Db {
   getApiIntegration(assistantId: string): Promise<ApiIntegration | null>;
   setApiIntegration(input: ApiIntegrationInput): Promise<ApiIntegration>;
   deleteApiIntegration(assistantId: string): Promise<void>;
+
+  // Crawler connections (Settings → Crawling): an Organization's own account on
+  // a remote crawler, one per provider. `encryptedToken` is sealed by the
+  // caller; this seam never seals.
+  getCrawlerConnection(
+    organizationId: string,
+    provider: CrawlerConnectionProvider
+  ): Promise<CrawlerConnection | null>;
+  setCrawlerConnection(
+    organizationId: string,
+    input: {
+      provider: CrawlerConnectionProvider;
+      encryptedToken: string;
+      tokenHint: string;
+      accountId?: string;
+      createdBy?: string | null;
+    }
+  ): Promise<CrawlerConnection>;
+  deleteCrawlerConnection(
+    organizationId: string,
+    provider: CrawlerConnectionProvider
+  ): Promise<void>;
 
   // Provider connections
   listProviderConnections(organizationId: string): Promise<ProviderConnection[]>;
@@ -825,6 +857,76 @@ export interface Db {
   ): Promise<Concept[]>;
   getConcept(id: string): Promise<Concept | null>;
   /**
+   * How many chunks one Document has: the Chunks tab's count (#928), and the
+   * difference between a Document that is stored and one that can be found.
+   * A count rather than the rows, because the tab that lists them pages (#929).
+   */
+  countConceptChunks(conceptId: string): Promise<number>;
+  /**
+   * Live memory counts for the named pages of one Source (#932), keyed by
+   * document path. Bounded by the caller's page of Documents rather than the
+   * whole Source, and counted in the adapter rather than by an aggregate,
+   * because PostgREST ships with aggregates off.
+   */
+  countLiveMemoriesByPath(
+    sourceId: string,
+    documentPaths: string[]
+  ): Promise<Record<string, number>>;
+  /**
+   * The page's extraction record (#930), or null when nothing has tried yet.
+   * Keyed on the pair that survives a re-crawl, not on the Document row.
+   */
+  getMemoryExtraction(
+    sourceId: string,
+    documentPath: string
+  ): Promise<KnowledgeMemoryExtraction | null>;
+  /** Every record for one Source: the Alert aggregates its failures. */
+  listMemoryExtractions(sourceId: string): Promise<KnowledgeMemoryExtraction[]>;
+  /**
+   * Writes the record for one page, creating it on the first attempt.
+   *
+   * Upsert on `(source_id, document_path)` rather than insert-or-update by id,
+   * because two crawls of the same site racing is ordinary and neither knows
+   * whether the other already wrote the row.
+   */
+  recordMemoryExtraction(input: {
+    organizationId: string;
+    collectionId: string;
+    sourceId: string;
+    documentPath: string;
+    bodyHash: string | null;
+    status: KnowledgeMemoryExtractionStatus;
+    memoryCount: number;
+    capped: boolean;
+    attempts: number;
+    lastError: string | null;
+    extractedAt: string | null;
+  }): Promise<KnowledgeMemoryExtraction>;
+  /**
+   * Caches a Document's Summary, once (#931).
+   *
+   * Writes only where none is stored yet, and returns the row as it now
+   * stands: two Members opening the same Document at the same moment both
+   * generate, and the loser reads the winner's summary rather than replacing
+   * it. Null when the Document is gone.
+   */
+  setConceptSummary(
+    conceptId: string,
+    input: { text: string; by: string; at: string }
+  ): Promise<Concept | null>;
+  /**
+   * One page of a Document's chunks in body order, for the Chunks tab (#929).
+   *
+   * Ordered by `position`, with `created_at, id` beneath it for the chunks
+   * written before that column existed (`20260920190000`). The embedding is
+   * never selected: it never leaves the server, and 1536 floats a row would
+   * dwarf the text the tab is for.
+   */
+  listDocumentChunks(
+    conceptId: string,
+    options?: { page?: number; pageSize?: number }
+  ): Promise<{ items: DocumentChunkListItem[]; total: number }>;
+  /**
    * Exact FAQ lookup for the widget's FAQ quick replies: the non-excluded
    * FAQ Concept (frontmatter.type = "FAQ") across the assistant's collections
    * whose question (frontmatter.title) matches case-insensitively.
@@ -871,6 +973,12 @@ export interface Db {
        */
       sourceId?: string | null;
       content: string;
+      /**
+       * Zero-based index of this chunk within its Document body (#929). The
+       * write path states it; absent, the adapter counts call order per
+       * Document, which is only right when one call carries the whole body.
+       */
+      position?: number;
       embedding: number[] | null;
       /**
        * Which model produced `embedding`, as `provider:model` (#801, CYB-14).
@@ -957,11 +1065,44 @@ export interface Db {
   /** Every FAQ with its full answer, newest first, the org-wide CSV export. */
   listOrgFaqs(organizationId: string): Promise<OrgFaqEntry[]>;
   /**
-   * A Source's Concepts, path-ordered, the hub's "View knowledge source"
-   * pages list. Bounded (default 500) so one 10k-page site can't flood the
-   * modal payload.
+   * A Source's Concepts, path-ordered. Bounded (default 500) so one 10k-page
+   * site can't flood a caller that wants the whole set.
    */
   listConceptsBySource(sourceId: string, limit?: number): Promise<Concept[]>;
+  /**
+   * One page of a Source's Documents for the drill-down table (#927), with
+   * the total the heading counts. Bodies are left behind on purpose: fifty
+   * crawled pages of markdown is megabytes a table has no use for.
+   *
+   * `ascending` orders by `createdAt`, which for a Document row is also when
+   * its content last changed (a re-crawl replaces the row rather than editing
+   * it), so it is the Updated column's sort.
+   */
+  listSourceDocuments(
+    sourceId: string,
+    options?: {
+      page?: number;
+      pageSize?: number;
+      ascending?: boolean;
+      /** Which column the reader clicked; `createdAt` is the default. */
+      sort?: SourceDocumentSort;
+      /** The Status header's filter: the same three states the badge shows. */
+      status?: SourceDocumentStatus;
+    }
+  ): Promise<{ items: SourceDocumentListItem[]; total: number }>;
+  /**
+   * The active Document at one page identity, `(source_id, path)`, or null.
+   *
+   * The pair is what `knowledge_memories` and the extraction record key on
+   * (#926, #930), because a re-crawl mints a fresh row id per page; this is how
+   * a job holding the pair reaches the row without paging the Source. Only the
+   * active generation answers: a staged or retired row at the same path is not
+   * the Document a reader sees.
+   */
+  getSourceDocumentByPath(
+    sourceId: string,
+    documentPath: string
+  ): Promise<Concept | null>;
 
   // Publications
   createPublication(
@@ -1086,6 +1227,16 @@ export interface Db {
     id: string,
     patch: Pick<ReviewRequest, "status" | "decision" | "decidedBy" | "decidedByName" | "decidedAt">
   ): Promise<ReviewRequest | null>;
+  /**
+   * Closes a pending action approval (#958) exactly once: the same
+   * compare-and-set, so a Member approving and the expiry sweep cannot both
+   * land. `executedAt` is set by a second call after the action has actually
+   * run, which is what keeps a retried claim from running it twice.
+   */
+  decideActionApproval(
+    id: string,
+    patch: ActionApprovalPatch
+  ): Promise<ActionApproval | null>;
   /**
    * Closes a pending webhook subscription (#842) exactly once: the row is
    * written only while still `pending`, so of two racing callbacks, or a

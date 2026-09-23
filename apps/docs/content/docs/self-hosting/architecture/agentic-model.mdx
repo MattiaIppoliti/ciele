@@ -21,6 +21,20 @@ Basic reply uses one chat call and no tools. Search knowledge uses a bounded too
 
 The Thinking panel represents these recorded progress and tool events. Simplified thinking rewrites progress text for the Visitor display.
 
+## Pre-flight routing
+
+The pre-flight is an optional decision that runs once per Visitor message, before Intent Classification. It answers seven fixed questions in one call. The questions are the Flow, the FAQ, a request for a person, the help desk, the reasoning level, the frustration level, and the language.
+
+Each answer carries a confidence value. When an answer is above its threshold, the runtime acts on it without the classification call:
+
+- A Flow above threshold runs directly.
+- A matching FAQ above threshold returns the stored FAQ answer verbatim, with the FAQ as its Source.
+- A request for a person above threshold opens the escalation menu on the recommended help desk.
+
+Below the threshold, the turn runs as it does without the pre-flight. The Thinking panel then shows one fixed sentence for the outcome in the language of the message. The sentence never contains a Flow name.
+
+The pre-flight is off by default. The `PREFLIGHT_SHADOW` environment variable set to `1` records decisions without acting on them. The `PREFLIGHT_ROUTING` environment variable set to `1` acts on them. A nightly job replays a labelled set of messages and raises an Alert when a decision changes.
+
 ## API integration tools
 
 One Assistant can register one API catalogue. The catalogue describes its base URL, protected credential, and available endpoints.

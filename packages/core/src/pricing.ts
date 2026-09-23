@@ -1,4 +1,4 @@
-import type { Provider, ResolvedWebsiteCrawlerProvider } from "./types";
+import type { ResolvedWebsiteCrawlerProvider, UsageProvider } from "./types";
 
 /**
  * What the platform's own work costs, and the one conversion from cost into
@@ -27,7 +27,7 @@ interface ModelPriceEur {
  * belong in the same table as chat models because both are metered as model
  * calls through one ledger; they simply never produce output tokens.
  */
-const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
+const PRICING: Record<UsageProvider, Record<string, ModelPriceEur>> = {
   anthropic: {
     "claude-opus-4-8": { inputPerMillion: 14, outputPerMillion: 70 },
     "claude-sonnet-5": { inputPerMillion: 2.8, outputPerMillion: 14 },
@@ -51,6 +51,15 @@ const PRICING: Record<Provider, Record<string, ModelPriceEur>> = {
   // price list exists, and self-hosted models have no per-token bill, the
   // euro budget projects zero for them (the token budget still applies).
   openai_compatible: {},
+  // The decision model (#950): TypeSafe lists Jev at $0.042 per million input
+  // tokens, output free, under both the Gateway id and the direct alias. EUR at
+  // the list rate rounded up; the ledger row records the id that was requested,
+  // so both spellings need a row or a decision falls to the chat fallback rate,
+  // seventy times too much.
+  typesafe: {
+    "typesafe-ai/jev": { inputPerMillion: 0.04, outputPerMillion: 0 },
+    "jev-latest": { inputPerMillion: 0.04, outputPerMillion: 0 },
+  },
 };
 
 /**
@@ -64,7 +73,7 @@ const FREE_PRICE: ModelPriceEur = { inputPerMillion: 0, outputPerMillion: 0 };
 
 /** Estimated EUR cost of one model call, given its resolved provider/model and token counts. */
 export function estimateCostEur(
-  provider: Provider,
+  provider: UsageProvider,
   modelId: string,
   inputTokens: number,
   outputTokens: number
@@ -144,7 +153,7 @@ export const CREDIT_EUR = 0.01;
 export type MeteredUnit =
   | {
       kind: "model";
-      provider: Provider;
+      provider: UsageProvider;
       modelId: string;
       inputTokens: number;
       outputTokens: number;

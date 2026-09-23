@@ -18,6 +18,8 @@ import {
   listRoutinesOp,
   updateRoutineOp,
 } from "./routines";
+import { PRIORITY_LEVELS, PRIORITY_QUESTION_IDS } from "@agent-hub/core";
+import type { DecisionScoreAnswer, PriorityQuestionId } from "@agent-hub/core";
 import { triageFeedbackOp } from "./improvements";
 import { createTeammateOp } from "./teammates";
 
@@ -369,5 +371,175 @@ describe("the feedback triage template", () => {
     expect(
       teammateActions(actor({ ceiling: "member" })).map((s) => s.operation.name)
     ).not.toContain("improvements.triage_feedback");
+  });
+});
+
+/**
+ * The Improvements board's two decisions (#959), at the routine seam with a
+ * scripted backend. What each answer *means* is derived in `@agent-hub/core`
+ * and tested there; what is asserted here is that the routine acts on it: one
+ * problem becomes one item however many visitors hit it, and the cap still
+ * lands after dedup so evidence on a known problem is never dropped.
+ */
+describe("the feedback triage template, with a decision backend", () => {
+  async function flagged(db: Db, question: string) {
+    const assistant = (await db.listAssistants(DEMO_ORG.id))[0];
+    const conversation = await db.createConversation({
+      assistantId: assistant.id,
+      subjectType: "visitor",
+      subjectId: `visitor-${question.slice(0, 12)}`,
+      title: question,
+    });
+    await db.appendMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: [{ type: "text", text: question }],
+    });
+    const answer = await db.appendMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: [{ type: "text", text: "I could not find that." }],
+    });
+    await db.setMessageFeedback(answer.id, -1);
+    return answer;
+  }
+
+  async function drain(db: Db, ports?: OperationContext["ports"]) {
+    for (let pass = 0; pass < 10; pass++) {
+      const result = await triageFeedbackOp.run(ctx({ db: pinned(db), ports }), {});
+      if (result.filed.length === 0) return;
+    }
+    throw new Error("triage never settled");
+  }
+
+  /**
+   * Says yes to whichever candidate the test named, and scores every priority
+   * dimension at `level`. Deliberately blind to the evidence: this is a test
+   * of the routine, not of the model.
+   */
+  function backend(options: { sameAs?: string; level?: number; calibrated?: boolean }) {
+    return {
+      triageDecisions: async (input: {
+        candidates: readonly { id: string; title: string }[];
+      }) => ({
+        dedup: {
+          answers: Object.fromEntries(
+            input.candidates.map((candidate) => [
+              candidate.id,
+              {
+                type: "boolean" as const,
+                probability:
+                  options.sameAs && candidate.title === options.sameAs ? 0.97 : 0.01,
+              },
+            ])
+          ),
+          confidence: Object.fromEntries(
+            input.candidates.map((candidate) => [candidate.id, 0.95])
+          ),
+        },
+        priority: Object.fromEntries(
+          PRIORITY_QUESTION_IDS.map((id) => [
+            id,
+            {
+              type: "score" as const,
+              score: options.level ?? 3,
+              probabilities: Object.fromEntries(
+                Array.from({ length: PRIORITY_LEVELS }, (_, i) => [
+                  String(i),
+                  i === (options.level ?? 3) ? 1 : 0,
+                ])
+              ),
+            },
+          ])
+        ) as Record<PriorityQuestionId, DecisionScoreAnswer>,
+        calibrated: options.calibrated ?? true,
+      }),
+    } as OperationContext["ports"];
+  }
+
+  it("merges evidence the backend calls the same problem, however differently it is worded", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "How do I reset my password?");
+    await triageFeedbackOp.run(ctx({ db: pinned(db) }), {});
+
+    const before = (await db.listImprovements(DEMO_ORG.id)).length;
+
+    // A visitor describing the same failure in words the title comparison
+    // could never match. This is the case the whole ticket is about.
+    await flagged(db, "I cannot get back into my account at all");
+    const result = await triageFeedbackOp.run(
+      ctx({ db: pinned(db), ports: backend({ sameAs: "How do I reset my password?" }) }),
+      {}
+    );
+
+    // The board is the assertion, not the counter: the routine rescans its
+    // whole window each run, so `deduped` also counts conversations triaged
+    // long before this one.
+    expect(result.filed).toHaveLength(0);
+    expect((await db.listImprovements(DEMO_ORG.id)).length).toBe(before);
+  });
+
+  it("files a new item when the backend says it is a different problem", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "How do I reset my password?");
+    await triageFeedbackOp.run(ctx({ db: pinned(db) }), {});
+
+    await flagged(db, "My invoice downloads as an empty file");
+    const result = await triageFeedbackOp.run(
+      ctx({ db: pinned(db), ports: backend({}) }),
+      {}
+    );
+    expect(result.filed).toHaveLength(1);
+  });
+
+  it("gives a filed item the priority the weights derive", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "Charged twice and cannot reach anybody");
+
+    const result = await triageFeedbackOp.run(
+      ctx({ db: pinned(db), ports: backend({ level: 3 }) }),
+      {}
+    );
+    const filed = (await db.listImprovements(DEMO_ORG.id)).find(
+      (item) => item.id === result.filed[0]?.id
+    );
+    expect(filed?.priority).toBe("high");
+  });
+
+  it("leaves priority alone when no backend answered, rather than guessing one", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "Charged twice and cannot reach anybody");
+
+    const result = await triageFeedbackOp.run(ctx({ db: pinned(db) }), {});
+    const filed = (await db.listImprovements(DEMO_ORG.id)).find(
+      (item) => item.id === result.filed[0]?.id
+    );
+    expect(filed?.priority).not.toBe("high");
+  });
+
+  it("refuses an uncalibrated merge the titles do not support", async () => {
+    const db = getMockDb();
+    await drain(db);
+    await flagged(db, "How do I reset my password?");
+    await triageFeedbackOp.run(ctx({ db: pinned(db) }), {});
+
+    await flagged(db, "I cannot get back into my account at all");
+    const result = await triageFeedbackOp.run(
+      ctx({
+        db: pinned(db),
+        ports: backend({
+          sameAs: "How do I reset my password?",
+          calibrated: false,
+        }),
+      }),
+      {}
+    );
+    // Merging is the direction that loses a problem, so with no calibrated
+    // confidence the routine splits and leaves a Member to join them.
+    expect(result.filed).toHaveLength(1);
   });
 });

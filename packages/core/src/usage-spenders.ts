@@ -13,7 +13,9 @@
  */
 
 import { creditsFor, type MeteredUnit } from "./pricing";
-import type { Provider, UsageSpenderRow } from "./types";
+import type { UsageSpenderRow,
+  UsageProvider,
+} from "./types";
 
 /** The identities a spender breakdown can be grouped by. */
 export type UsageSpenderDimension =
@@ -79,7 +81,7 @@ function meteredUnitOf(row: UsageSpenderRow): MeteredUnit {
     ? { kind: "crawl", crawler: row.provider, pages: row.units }
     : {
         kind: "model",
-        provider: row.provider as Provider,
+        provider: row.provider as UsageProvider,
         modelId: row.modelId,
         inputTokens: row.inputTokens,
         outputTokens: row.outputTokens,

@@ -21,7 +21,7 @@ import {
   msg,
   NO_FILTER,
 } from "./testing/insights-fixtures";
-import type { InsightsFilter } from "./types";
+import type { InboxConversation, InsightsFilter } from "./types";
 
 /**
  * Insights read model: the pure KPI functions, the oracle at the KPI seam
@@ -458,5 +458,96 @@ describe("colorizeOverview", () => {
       },
     };
     expect(colorizeOverview(stripped)).toEqual(overview);
+  });
+});
+
+/**
+ * The three cards the pre-flight makes possible (#956). Each replaces or adds
+ * to something the console could only guess at before: the browser's locale
+ * standing in for the language somebody wrote in, no satisfaction signal at
+ * all on the conversations nobody rated, and no way to see how often a Visitor
+ * wanted a person without clicking the button.
+ */
+describe("Insights from the pre-flight (#956)", () => {
+  const withPreflight = (
+    preflight: NonNullable<InboxConversation["metadata"]["preflight"]>,
+    metadata: Record<string, unknown> = {}
+  ) => conv({ metadata: { ...metadata, preflight } as InboxConversation["metadata"] });
+
+  describe("languages spoken", () => {
+    it("counts the language written in, not the browser's", () => {
+      // The case the card got wrong: an English browser typing Italian.
+      const conversations = [
+        withPreflight({ spokenLanguage: "it" }, { language: "en" }),
+        withPreflight({ spokenLanguage: "it" }, { language: "en" }),
+      ];
+      const stats = computeInsightsStats(conversations, []);
+      expect(stats.languages).toEqual([["it", 2]]);
+    });
+
+    it("falls back to the locale for a conversation the pre-flight never saw", () => {
+      const stats = computeInsightsStats(
+        [conv({ metadata: { language: "fr" } }), withPreflight({ spokenLanguage: "it" })],
+        []
+      );
+      expect(stats.languages.sort()).toEqual([
+        ["fr", 1],
+        ["it", 1],
+      ]);
+    });
+  });
+
+  describe("implicit satisfaction", () => {
+    it("reports the share of calm endings among conversations nobody rated", () => {
+      const calm = withPreflight({ endedAtFrustration: 0 });
+      const cross = withPreflight({ endedAtFrustration: 3 });
+      const stats = computeInsightsStats([calm, cross], []);
+      expect(stats.implicitSatisfaction).toBe(50);
+    });
+
+    it("excludes a conversation that has thumbs, rather than counting it calm", () => {
+      // The Answer Rating card beside this one already reports the rated ones;
+      // counting them here would make the two move together for no reason.
+      const rated = withPreflight({ endedAtFrustration: 3 });
+      const unrated = withPreflight({ endedAtFrustration: 0 });
+      const stats = computeInsightsStats(
+        [rated, unrated],
+        [msg({ conversationId: rated.id, role: "assistant", feedback: -1 })]
+      );
+      expect(stats.implicitSatisfaction).toBe(100);
+    });
+
+    it("is null when nothing carries the signal, rather than a confident zero", () => {
+      expect(computeInsightsStats([conv()], []).implicitSatisfaction).toBeNull();
+    });
+  });
+
+  describe("escalation intent", () => {
+    it("counts a conversation once however many turns asked for a person", () => {
+      const stats = computeInsightsStats(
+        [
+          withPreflight({ escalationIntent: true }),
+          withPreflight({ escalationIntent: false }),
+          withPreflight({ escalationIntent: false }),
+          withPreflight({ escalationIntent: false }),
+        ],
+        []
+      );
+      expect(stats.escalationIntentRate).toBe(25);
+    });
+
+    it("is measured over the conversations that carry a pre-flight, not all of them", () => {
+      // A conversation the shadow never ran on is not evidence that nobody
+      // wanted a human in it; it is no evidence either way.
+      const stats = computeInsightsStats(
+        [withPreflight({ escalationIntent: true }), conv()],
+        []
+      );
+      expect(stats.escalationIntentRate).toBe(100);
+    });
+
+    it("is null before any conversation carries a pre-flight", () => {
+      expect(computeInsightsStats([conv()], []).escalationIntentRate).toBeNull();
+    });
   });
 });

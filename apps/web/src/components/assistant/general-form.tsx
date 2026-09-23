@@ -107,7 +107,14 @@ function FieldHeader({ title, hint }: { title: string; hint: string }) {
   );
 }
 
-export function GeneralForm({ assistant }: { assistant: Assistant }) {
+export function GeneralForm({
+  assistant,
+  unavailableProviders = [],
+}: {
+  assistant: Assistant;
+  /** Providers this Organization has no credential for; the picker skips them. */
+  unavailableProviders?: Provider[];
+}) {
   const [isPending, startTransition] = useTransition();
 
   const [launcherEnabled, setLauncherEnabled] = useState(
@@ -367,13 +374,15 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
           configured={{ provider: modelProvider, modelId }}
           value={allowedModels}
           onChange={setAllowedModels}
+          unavailable={unavailableProviders}
         />
         <p className="text-muted-foreground text-xs">
           {modelAllowListSummary(
             allowedModels.filter(
               (ref) =>
                 !(ref.provider === modelProvider && ref.modelId === modelId)
-            )
+            ),
+            unavailableProviders
           )}
         </p>
       </div>
@@ -382,7 +391,7 @@ export function GeneralForm({ assistant }: { assistant: Assistant }) {
       <div className="space-y-3">
         <FieldHeader
           title="Let visitors attach files"
-          hint="Off by default. With it on, the chat window accepts a PDF, Word, Excel, PowerPoint, text file or image, reads it into text and answers from it. Nothing is stored: the file is read once and the bytes are discarded, so there is no copy to keep or delete. Reading an image costs one model call. Preview and Teammate chats accept files either way, because a member is signed in."
+          hint="Off by default. With it on, the chat window accepts a PDF, Word, Excel, PowerPoint, text file or image, reads it into text and answers from it. Nothing is stored: the file is read once and the bytes are discarded, so there is no copy to keep or delete. Reading an image costs one model call. The Preview follows this switch as soon as you save, so it shows the composer a visitor will get; a Teammate chat accepts files either way, because it has no visitor."
         />
         <div className="flex items-center gap-3">
           <Switch

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   ApplicationImport,
@@ -16,15 +17,17 @@ import {
 } from "@/components/knowledge/application-knowledge-panel";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
-import { effectivePageSchedule, nextCrawlDue } from "@agent-hub/core";
+import { nextCrawlDue } from "@agent-hub/core";
 
 import { conceptProvenanceView } from "@/lib/okf-provenance";
+import { assistantDocumentsHref } from "@/lib/source-documents";
 import {
   Bold,
   ChevronDown,
   CloudUpload,
   Code,
   Download,
+  Copy,
   ExternalLink,
   FileUp,
   Globe,
@@ -37,13 +40,13 @@ import {
   Link2,
   List,
   ListOrdered,
+  Maximize2,
   Minus,
   Pencil,
   Plus,
   Redo2,
   RefreshCw,
   RemoveFormatting,
-  Search,
   TextQuote,
   Trash2,
   Undo2,
@@ -54,7 +57,7 @@ import {
   useConfirmDelete,
   type ConfirmDeleteRequest,
 } from "@/components/ui/confirm-delete-modal";
-import { sourceRemovalChoice } from "@/lib/knowledge-hub";
+import { bulkRemovalChoice, sourceRemovalChoice } from "@/lib/knowledge-hub";
 import { ingestionStarted } from "@/lib/ingestion-bus";
 import { toast } from "@/lib/toast";
 import {
@@ -64,13 +67,14 @@ import {
   deleteConceptAction,
   deleteSourceAction,
   unlinkSourceAction,
+  unlinkSourcesAction,
+  deleteConceptsAction,
+  deleteOrgSourcesAction,
   importFaqsAction,
   pollWebsiteCrawlAction,
   recrawlWebsiteSourceAction,
   reprocessSourceAction,
   retrySourceIngestAction,
-  setPageExcludedAction,
-  setPageRecrawlScheduleAction,
   setRecrawlScheduleAction,
   updateFaqAction,
   updateWebsiteSourceAction,
@@ -79,7 +83,6 @@ import {
 } from "@/app/actions";
 import { FAQ_CSV_MAX_BYTES, serializeFaqCsv } from "@/lib/faq-csv";
 import { validateKnowledgeFile } from "@/lib/storage/assets";
-import { paginationRange } from "@/lib/pagination";
 import { FileUpload, type FileUploadItem } from "@/components/ui/file-upload";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@agent-hub/ui";
@@ -101,15 +104,6 @@ import {
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -117,6 +111,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableActions,
+  TableBody,
+  TableCard,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  TableColumnHeader,
+  useClientPage,
+  useClientSort,
+} from "@/components/ui/table-column-header";
+import {
+  useColumnWidths,
+  type TableColumnLayout,
+} from "@/components/ui/table-columns";
+import { TableOpenCell } from "@/components/ui/table-open-cell";
+import { TableRowMenu } from "@/components/ui/table-menu";
+import {
+  SelectAllHead,
+  SelectRowCell,
+  TableBulkBar,
+  useRowSelection,
+  type RowSelection,
+} from "@/components/ui/table-selection";
+import { EmptyState } from "@/components/ui/empty-state";
 
 type Mode = "websites" | "documents" | "applications" | "faqs" | "concepts";
 
@@ -393,142 +416,21 @@ function WebsiteConfigFields({
   );
 }
 
-const PAGES_PER_PAGE = 10;
 
-/** Filterable, paginated list of a website source's crawled pages. */
-function CrawledPagesList({
-  assistantId,
+/** Header shared by the view/edit dialogs: "Entire website" · N Documents · URL. */
+function SourceSummary({
   source,
-  pages,
+  documentCount,
 }: {
-  assistantId: string;
   source: Source;
-  pages: Concept[];
+  documentCount: number;
 }) {
-  const [query, setQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [page, setPage] = useState(1);
-
-  const types = [...new Set(pages.map((p) => p.frontmatter.type))];
-  const filtered = pages.filter(
-    (p) =>
-      (typeFilter === "all" || p.frontmatter.type === typeFilter) &&
-      ((p.frontmatter.title ?? "").toLowerCase().includes(query.toLowerCase()) ||
-        (p.frontmatter.resource ?? "").toLowerCase().includes(query.toLowerCase()))
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGES_PER_PAGE));
-  const visible = filtered.slice((page - 1) * PAGES_PER_PAGE, page * PAGES_PER_PAGE);
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold">{pages.length} Sources</p>
-      <div className="flex gap-2">
-        <Select
-          value={typeFilter}
-          onValueChange={(value) => {
-            setTypeFilter(value as string);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger size="sm" className="w-auto">
-            <SelectValue>{(v: string) => (v === "all" ? "All types" : v)}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {types.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="relative flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Search"
-            className="pl-9"
-          />
-        </div>
-      </div>
-      <div className="divide-y rounded-xl border">
-        {visible.length === 0 && (
-          <p className="text-muted-foreground px-4 py-4 text-center text-sm">No pages found.</p>
-        )}
-        {visible.map((concept) => (
-          <PageRow
-            key={concept.id}
-            assistantId={assistantId}
-            concept={concept}
-            siteSchedule={source.recrawlSchedule}
-          />
-        ))}
-      </div>
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              aria-disabled={page === 1}
-              className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-              onClick={(e) => {
-                e.preventDefault();
-                if (page > 1) setPage(page - 1);
-              }}
-            />
-          </PaginationItem>
-          {paginationRange(page, totalPages).map((item, i) =>
-            item === "ellipsis" ? (
-              <PaginationItem key={`ellipsis-${i}`}>
-                <PaginationEllipsis />
-              </PaginationItem>
-            ) : (
-              <PaginationItem key={item}>
-                <PaginationLink
-                  href="#"
-                  isActive={item === page}
-                  className="cursor-pointer"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setPage(item);
-                  }}
-                >
-                  {item}
-                </PaginationLink>
-              </PaginationItem>
-            )
-          )}
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              aria-disabled={page === totalPages}
-              className={
-                page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"
-              }
-              onClick={(e) => {
-                e.preventDefault();
-                if (page < totalPages) setPage(page + 1);
-              }}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    </div>
-  );
-}
-
-/** Header shared by the view/edit dialogs: "Entire website" · N Pages · URL. */
-function SourceSummary({ source, pageCount }: { source: Source; pageCount: number }) {
   return (
     <DialogDescription className="flex flex-wrap items-center gap-3">
       <Badge variant="outline" className="rounded-full">
         Entire website
       </Badge>
-      <span>{pageCount} Pages</span>
+      <span>{documentCount} Documents</span>
       {source.config.url && (
         <a
           href={source.config.url}
@@ -543,42 +445,18 @@ function SourceSummary({ source, pageCount }: { source: Source; pageCount: numbe
   );
 }
 
-/** Read-only pages viewer opened from the "N Pages" count (no config fields). */
-function WebsitePagesDialog({
-  assistantId,
-  source,
-  pages,
-  onClose,
-}: {
-  assistantId: string;
-  source: Source;
-  pages: Concept[];
-  onClose: () => void;
-}) {
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Knowledge source: {source.name}</DialogTitle>
-          <SourceSummary source={source} pageCount={pages.length} />
-        </DialogHeader>
-        <CrawledPagesList assistantId={assistantId} source={source} pages={pages} />
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function WebsiteEditDialog({
   assistantId,
   source,
-  pages,
+  documents,
   onClose,
   crawl4aiAvailable,
   apifyAvailable,
 }: {
   assistantId: string;
   source: Source;
-  pages: Concept[];
+  documents: Concept[];
   onClose: () => void;
   crawl4aiAvailable: boolean;
   apifyAvailable: boolean;
@@ -599,7 +477,7 @@ function WebsiteEditDialog({
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Edit knowledge source: {source.name}</DialogTitle>
-          <SourceSummary source={source} pageCount={pages.length} />
+          <SourceSummary source={source} documentCount={documents.length} />
         </DialogHeader>
 
         <div className="space-y-4">
@@ -609,9 +487,6 @@ function WebsiteEditDialog({
             crawl4aiAvailable={crawl4aiAvailable}
             apifyAvailable={apifyAvailable}
           />
-          <div className="border-t pt-4">
-            <CrawledPagesList assistantId={assistantId} source={source} pages={pages} />
-          </div>
         </div>
 
         <DialogFooter>
@@ -627,95 +502,6 @@ function WebsiteEditDialog({
   );
 }
 
-const INHERIT = "inherit";
-
-function PageRow({
-  assistantId,
-  concept,
-  siteSchedule,
-}: {
-  assistantId: string;
-  concept: Concept;
-  siteSchedule: RecrawlSchedule;
-}) {
-  const [isPending, startTransition] = useTransition();
-  const effective = effectivePageSchedule(concept.recrawlSchedule, siteSchedule);
-  return (
-    <div className={`space-y-1.5 px-4 py-2.5 ${isPending ? "opacity-50" : ""}`}>
-      <p className="truncate text-sm">
-        {concept.frontmatter.resource ? (
-          <a
-            href={concept.frontmatter.resource}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:underline"
-          >
-            {concept.frontmatter.title ?? concept.path}
-          </a>
-        ) : (
-          (concept.frontmatter.title ?? concept.path)
-        )}
-      </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <Badge variant="outline" className="rounded-md text-2xs">
-          {concept.frontmatter.type}
-          {concept.excluded ? " · excluded" : ""}
-        </Badge>
-        <label className="text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs">
-          <input
-            type="checkbox"
-            checked={concept.excluded}
-            onChange={(e) =>
-              startTransition(async () => {
-                await setPageExcludedAction(assistantId, concept.id, e.target.checked);
-              })
-            }
-            className="size-3.5"
-          />
-          Exclude from assistant knowledge
-        </label>
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-          Re-crawl
-          <Select
-            value={concept.recrawlSchedule ?? INHERIT}
-            onValueChange={(value) =>
-              startTransition(async () => {
-                try {
-                  await setPageRecrawlScheduleAction(
-                    assistantId,
-                    concept.id,
-                    value === INHERIT ? null : (value as RecrawlSchedule)
-                  );
-                } catch (error) {
-                  toast.error(
-                    error instanceof Error ? error.message : "Could not save page schedule"
-                  );
-                }
-              })
-            }
-          >
-            <SelectTrigger size="sm" className="h-7 w-[9.5rem]" aria-label="Page re-crawl schedule">
-              <SelectValue>
-                {(v: string) =>
-                  v === INHERIT
-                    ? `Inherit (${effective})`
-                    : v.charAt(0).toUpperCase() + v.slice(1)
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={INHERIT}>Inherit ({effective})</SelectItem>
-              <SelectItem value="never">Never</SelectItem>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        </span>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Binds `sourceRemovalChoice` to the two actions: unlink for a shared Source,
@@ -752,6 +538,79 @@ function removeSourceRequest(args: {
   };
 }
 
+/**
+ * The bulk bar over an Assistant's Knowledge tables.
+ *
+ * One button, two outcomes, the same pair `removeSourceRequest` offers per
+ * row: remove these Sources from this Assistant, or delete them for the whole
+ * Organization. It is a dialog rather than two buttons in the bar because
+ * with twenty rows ticked the difference between the two is the whole
+ * decision, and a bar button is not where that gets read.
+ *
+ * Unlike the per-row menu it never infers the choice from whether a row
+ * happens to be shared: across a selection, half of them usually are.
+ */
+function SourceBulkBar({
+  assistantId,
+  selection,
+  noun,
+  pluralNoun,
+  deleteEffect,
+}: {
+  assistantId: string;
+  selection: RowSelection;
+  noun: string;
+  pluralNoun?: string;
+  /**
+   * What the org-wide delete takes with it, in a clause that finishes
+   * "…removes it/them everywhere: ". It reads the count because a selection
+   * of one and a selection of twelve are different sentences.
+   */
+  deleteEffect: (one: boolean) => string;
+}) {
+  const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
+  const plural = pluralNoun ?? `${noun}s`;
+  return (
+    <>
+      <TableBulkBar
+        count={selection.count}
+        noun={noun}
+        pluralNoun={pluralNoun}
+        onClear={selection.clear}
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const ids = selection.ids;
+            const one = ids.length === 1;
+            const what = `${ids.length} ${one ? noun : plural}`;
+            confirmDelete({
+              title: `Remove ${what} from this assistant?`,
+              description: one
+                ? `It stays in the Library and keeps answering for every other assistant linked to it. Deleting it for the organization instead removes it everywhere: ${deleteEffect(true)}`
+                : `They stay in the Library and keep answering for every other assistant linked to them. Deleting them for the organization instead removes them everywhere: ${deleteEffect(false)}`,
+              confirmLabel: "Remove from this assistant",
+              onConfirm: async () => {
+                await unlinkSourcesAction(assistantId, ids);
+                selection.clear();
+              },
+              secondaryLabel: "Delete for the organization",
+              onSecondary: async () => {
+                await deleteOrgSourcesAction(ids);
+                selection.clear();
+              },
+            });
+          }}
+        >
+          <Unlink className="mr-1.5 size-4" /> Remove
+        </Button>
+      </TableBulkBar>
+      {confirmDeleteModal}
+    </>
+  );
+}
+
 function WebsitesTab({
   assistantId,
   collectionId,
@@ -775,21 +634,45 @@ function WebsitesTab({
   const [form, setForm] = useState<WebsiteFormInput>(websiteFormDefaults());
   const [confirmed, setConfirmed] = useState(false);
   const [editing, setEditing] = useState<Source | null>(null);
-  const [viewing, setViewing] = useState<Source | null>(null);
   const [isPending, startTransition] = useTransition();
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const router = useRouter();
 
-  const websiteSources = sources
-    .filter((s) => s.kind === "website" || s.kind === "url")
-    .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
+  const [statusFilter, setStatusFilter] = useState("");
+  const order = useClientSort();
+  const websiteSources = order.sorted(
+    sources
+      .filter((s) => s.kind === "website" || s.kind === "url")
+      .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()))
+      .filter((s) => !statusFilter || s.status === statusFilter),
+    {
+      name: (s) => s.name,
+      status: (s) => s.status,
+      content: (s) => documentsOf(s).length,
+      recrawl: (s) => s.recrawlSchedule,
+    }
+  );
+  // The same footer the Library has, over rows this component already holds:
+  // "Showing 1-25 of 61", a rows-per-page control and the page arrows,
+  // rather than a bare count that behaves differently from its twin.
+  const paged = useClientPage(websiteSources);
+  const selection = useRowSelection(paged.items.map((s) => s.id));
+  const columns = useColumnWidths("assistant-websites", [
+    { key: "select", width: 44, fixed: true },
+    { key: "name", width: 380, min: 200 },
+    { key: "status", width: 200 },
+    { key: "content", width: 140 },
+    { key: "recrawl", width: 170 },
+    { key: "actions", width: 130, fixed: true },
+  ] satisfies TableColumnLayout[]);
 
-  function pagesOf(source: Source): Concept[] {
+  /** The Documents this Source stores. The seam still says Concept; ADR-0002. */
+  function documentsOf(source: Source): Concept[] {
     return concepts.filter((c) => c.sourceId === source.id);
   }
 
   // While any source is still crawling, poll the server until it finishes,
-  // then refresh so its status/pages update. The crawl runs on the resolved
+  // then refresh so its status/Documents update. The crawl runs on the resolved
   // provider, so this just checks + finalizes, it doesn't hold it open itself.
   const processingIds = sources
     .filter((s) => s.status === "processing")
@@ -817,6 +700,26 @@ function WebsitesTab({
     };
   }, [processingIds, assistantId, collectionId, router]);
 
+  /** Re-crawl a website, or retry a URL list. The row button and the row's
+   * context menu both call this rather than each holding a copy. */
+  function recrawl(source: Source) {
+    startTransition(async () => {
+      try {
+        if (source.kind === "website") {
+          await recrawlWebsiteSourceAction(assistantId, collectionId, source.id);
+          ingestionStarted();
+          toast.success("Website re-crawled");
+        } else {
+          await retrySourceIngestAction(assistantId, collectionId, source.id);
+          ingestionStarted();
+          toast.success("Retry started");
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Retry failed");
+      }
+    });
+  }
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!confirmed) {
@@ -827,7 +730,7 @@ function WebsitesTab({
       try {
         await addWebsiteSourceAction(assistantId, collectionId, form);
         ingestionStarted();
-        toast.success("Crawl started, pages will appear as they're indexed");
+        toast.success("Crawl started, Documents will appear as they're indexed");
         setForm(websiteFormDefaults());
         setShowAdd(false);
       } catch (error) {
@@ -852,16 +755,6 @@ function WebsitesTab({
         <Button onClick={() => setShowAdd(!showAdd)} className="px-5 font-semibold">
           <Plus className="size-4" /> Add
         </Button>
-      </div>
-
-      <div className="relative">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search websites"
-          className="pl-9"
-        />
       </div>
 
       {showAdd && (
@@ -891,188 +784,308 @@ function WebsitesTab({
         </form>
       )}
 
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
-          <span>Name</span>
-          <span>Status</span>
-          <span>Content</span>
-          <span>Re-crawl</span>
-          <span />
-        </div>
-        {websiteSources.length === 0 && (
-          <p className="text-muted-foreground px-4 py-6 text-center text-sm">
-            No websites yet, add your organization&apos;s site to start.
-          </p>
-        )}
-        {websiteSources.map((source) => {
-          const pageCount = pagesOf(source).length;
-          return (
-            <div
-              key={source.id}
-              className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_auto_auto_auto_auto] md:items-center md:gap-4"
-            >
-              <span className="min-w-0">
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <Globe className="text-muted-foreground size-4 shrink-0" />
-                  <span className="truncate">{source.name}</span>
-                </span>
-                {source.config.url && (
-                  <span className="ml-6 block min-w-0">
-                    <a
-                      href={source.config.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-muted-foreground inline-flex max-w-full items-center gap-1 truncate text-xs hover:underline"
-                    >
-                      {source.config.url} <ExternalLink className="size-3 shrink-0" />
-                    </a>
-                    <span className="text-muted-foreground block text-[0.7rem] capitalize">
-                      Crawler: {source.config.crawlerProvider ?? "auto"}
-                      {source.config.resolvedCrawlerProvider
-                        ? ` · Resolved: ${source.config.resolvedCrawlerProvider}`
-                        : ""}
-                    </span>
-                    {/* A crawl refused for budget (#510) leaves the Source on
-                        its previous status, so the reason needs saying here,
-                        the status badge alone would look like nothing happened. */}
-                    {source.config.crawlBlockedReason ? (
-                      <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
-                        {source.config.crawlBlockedReason}
-                      </span>
-                    ) : null}
-                  </span>
-                )}
-              </span>
-              <span>
-                <StatusBadge source={source} />
-                <span
-                  className="text-muted-foreground mt-0.5 block text-xs"
-                  suppressHydrationWarning
-                >
-                  Last update: {new Date(source.updatedAt ?? source.createdAt).toLocaleString()}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => setViewing(source)}
-                className="text-primary text-sm font-semibold hover:underline disabled:opacity-50"
-                disabled={pageCount === 0}
-                title={pageCount === 0 ? "No pages crawled yet" : "View crawled pages"}
-              >
-                {pageCount} Pages
-              </button>
-              <span className="flex flex-col gap-0.5">
-                <Select
-                  value={source.recrawlSchedule}
-                  onValueChange={(value) =>
-                    startTransition(async () => {
-                      try {
-                        await setRecrawlScheduleAction(
-                          assistantId,
-                          source.id,
-                          value as RecrawlSchedule
-                        );
-                      } catch (error) {
-                        toast.error(
-                          error instanceof Error ? error.message : "Could not save schedule"
-                        );
-                      }
-                    })
-                  }
-                >
-                  <SelectTrigger size="sm" className="w-[7.5rem]" aria-label="Re-crawl schedule">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="never">Never</SelectItem>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span
-                  className="text-muted-foreground text-[0.7rem]"
-                  suppressHydrationWarning
-                >
-                  {crawlScheduleHint(source)}
-                </span>
-              </span>
-              <span className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={source.kind === "website" ? "Re-crawl website" : "Retry ingestion"}
-                  disabled={isPending || source.status === "processing"}
-                  onClick={() =>
-                    startTransition(async () => {
-                      try {
-                        if (source.kind === "website") {
-                          await recrawlWebsiteSourceAction(assistantId, collectionId, source.id);
-                          ingestionStarted();
-                          toast.success("Website re-crawled");
-                        } else {
-                          await retrySourceIngestAction(assistantId, collectionId, source.id);
-                          ingestionStarted();
-                          toast.success("Retry started");
-                        }
-                      } catch (error) {
-                        toast.error(error instanceof Error ? error.message : "Retry failed");
-                      }
-                    })
-                  }
-                >
-                  <RefreshCw className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Edit website"
-                  onClick={() => setEditing(source)}
-                >
-                  <Pencil className="size-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Delete website"
-                  onClick={() =>
-                    confirmDelete(
-                      removeSourceRequest({
-                        assistantId,
-                        sourceId: source.id,
-                        name: source.name,
-                        sharedWith: sharedWith[source.id],
-                        deleteLabel: "Delete website",
-                        deleteEffect:
-                          "The website and every page crawled from it go.",
-                      })
-                    )
-                  }
-                >
-                  <AnimatedIcon icon={Trash2} size={14} />
-                </Button>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {viewing && (
-        <WebsitePagesDialog
-          key={`view-${viewing.id}`}
+      <TableCard
+        footer={
+          <TablePagination
+            page={paged.page}
+            pageSize={paged.pageSize}
+            total={websiteSources.length}
+            noun="website"
+            onPageChange={paged.onPageChange}
+            onPageSizeChange={paged.onPageSizeChange}
+          />
+        }
+      >
+        <SourceBulkBar
           assistantId={assistantId}
-          source={viewing}
-          pages={pagesOf(viewing)}
-          onClose={() => setViewing(null)}
+          selection={selection}
+          noun="website"
+          deleteEffect={(one) =>
+            one
+              ? "The website and every page crawled from it go."
+              : "The websites and every page crawled from them go."
+          }
         />
-      )}
+        <Table fixed empty={websiteSources.length === 0}>
+          {columns.colGroup}
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <SelectAllHead
+                state={selection.allState}
+                onToggle={selection.toggleAll}
+                disabled={websiteSources.length === 0}
+              />
+              <TableColumnHeader
+                label="Name"
+                resize={columns.handleFor("name")}
+                sort={order.column("name", { asc: "A to Z", desc: "Z to A" })}
+                filter={{
+                  kind: "text",
+                  value: query,
+                  placeholder: "Search websites…",
+                  onChange: setQuery,
+                }}
+              />
+              <TableColumnHeader
+                label="Status"
+                resize={columns.handleFor("status")}
+                sort={order.column("status", {
+                  asc: "Errors first",
+                  desc: "Ready first",
+                })}
+                filter={{
+                  kind: "options",
+                  value: statusFilter,
+                  anyLabel: "Any status",
+                  options: [
+                    { value: "ready", label: "Ready" },
+                    { value: "processing", label: "Processing" },
+                    { value: "error", label: "Error" },
+                  ],
+                  onChange: setStatusFilter,
+                }}
+              />
+              <TableColumnHeader
+                label="Content"
+                resize={columns.handleFor("content")}
+                sort={order.column("content", {
+                  asc: "Fewest Documents",
+                  desc: "Most Documents",
+                })}
+              />
+              <TableColumnHeader
+                label="Re-crawl"
+                resize={columns.handleFor("recrawl")}
+                sort={order.column("recrawl")}
+              />
+              <TableColumnHeader label="Actions" align="right" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {websiteSources.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="hover:bg-transparent">
+                  <EmptyState
+                    size="sm"
+                    title="No websites yet"
+                    description="Add your organization's site to start."
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {paged.items.map((source) => {
+              const documentCount = documentsOf(source).length;
+              return (
+                <TableRowMenu
+                  key={source.id}
+                  title={source.name}
+                  onOpen={() => selection.selectForMenu(source.id)}
+                  actions={[
+                    {
+                      label: "Open Documents",
+                      icon: Maximize2,
+                      href: assistantDocumentsHref(assistantId, source.id),
+                    },
+                  {
+                    label: "Copy ID",
+                    icon: Copy,
+                    onSelect: () => {
+                      void navigator.clipboard?.writeText(source.id);
+                      toast.success("ID copied.");
+                    },
+                  },
+                    {
+                      label:
+                        source.kind === "website"
+                          ? "Re-crawl now"
+                          : "Retry ingestion",
+                      icon: RefreshCw,
+                      disabled: isPending || source.status === "processing",
+                      onSelect: () => recrawl(source),
+                    },
+                    {
+                      label: "Edit website",
+                      icon: Pencil,
+                      onSelect: () => setEditing(source),
+                    },
+                    {
+                      label: "Remove from this assistant",
+                      icon: Unlink,
+                      destructive: true,
+                      onSelect: () =>
+                        confirmDelete(
+                          removeSourceRequest({
+                            assistantId,
+                            sourceId: source.id,
+                            name: source.name,
+                            sharedWith: sharedWith[source.id],
+                            deleteLabel: "Delete website",
+                            deleteEffect:
+                              "The website and every page crawled from it go.",
+                          })
+                        ),
+                    },
+                  ]}
+                >
+                <TableRow
+                  data-state={
+                    selection.isSelected(source.id) ? "selected" : undefined
+                  }
+                >
+                  <SelectRowCell
+                    checked={selection.isSelected(source.id)}
+                    onToggle={() => selection.toggle(source.id)}
+                    label={source.name}
+                  />
+                  <TableCell>
+                    <TableOpenCell
+                      href={assistantDocumentsHref(assistantId, source.id)}
+                      label={source.name}
+                    >
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <Globe className="text-muted-foreground size-4 shrink-0" />
+                      <span className="truncate">{source.name}</span>
+                    </span>
+                    {source.config.url && (
+                      <span className="ml-6 block min-w-0">
+                        <a
+                          href={source.config.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-muted-foreground inline-flex max-w-full items-center gap-1 truncate text-xs hover:underline"
+                        >
+                          {source.config.url} <ExternalLink className="size-3 shrink-0" />
+                        </a>
+                        <span className="text-muted-foreground block text-[0.7rem] capitalize">
+                          Crawler: {source.config.crawlerProvider ?? "auto"}
+                          {source.config.resolvedCrawlerProvider
+                            ? ` · Resolved: ${source.config.resolvedCrawlerProvider}`
+                            : ""}
+                        </span>
+                        {/* A crawl refused for budget (#510) leaves the Source on
+                            its previous status, so the reason needs saying here,
+                            the status badge alone would look like nothing happened. */}
+                        {source.config.crawlBlockedReason ? (
+                          <span className="block text-[0.7rem] text-amber-600 dark:text-amber-500">
+                            {source.config.crawlBlockedReason}
+                          </span>
+                        ) : null}
+                      </span>
+                    )}
+                    </TableOpenCell>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge source={source} />
+                    <span
+                      className="text-muted-foreground mt-0.5 block text-xs"
+                      suppressHydrationWarning
+                    >
+                      Last update: {new Date(source.updatedAt ?? source.createdAt).toLocaleString()}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={assistantDocumentsHref(assistantId, source.id)}
+                      className="text-primary press-text text-sm font-semibold hover:underline"
+                      title="Open this Source's Documents"
+                    >
+                      {documentCount} Documents
+                    </Link>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex flex-col gap-0.5">
+                      <Select
+                        value={source.recrawlSchedule}
+                        onValueChange={(value) =>
+                          startTransition(async () => {
+                            try {
+                              await setRecrawlScheduleAction(
+                                assistantId,
+                                source.id,
+                                value as RecrawlSchedule
+                              );
+                            } catch (error) {
+                              toast.error(
+                                error instanceof Error ? error.message : "Could not save schedule"
+                              );
+                            }
+                          })
+                        }
+                      >
+                        <SelectTrigger size="sm" className="w-[7.5rem]" aria-label="Re-crawl schedule">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="never">Never</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <span
+                        className="text-muted-foreground text-[0.7rem]"
+                        suppressHydrationWarning
+                      >
+                        {crawlScheduleHint(source)}
+                      </span>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <TableActions>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={source.kind === "website" ? "Re-crawl website" : "Retry ingestion"}
+                        disabled={isPending || source.status === "processing"}
+                        onClick={() => recrawl(source)}
+                      >
+                        <RefreshCw className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Edit website"
+                        onClick={() => setEditing(source)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        data-destructive=""
+                        aria-label="Delete website"
+                        onClick={() =>
+                          confirmDelete(
+                            removeSourceRequest({
+                              assistantId,
+                              sourceId: source.id,
+                              name: source.name,
+                              sharedWith: sharedWith[source.id],
+                              deleteLabel: "Delete website",
+                              deleteEffect:
+                                "The website and every page crawled from it go.",
+                            })
+                          )
+                        }
+                      >
+                        <AnimatedIcon icon={Trash2} size={14} />
+                      </Button>
+                    </TableActions>
+                  </TableCell>
+                </TableRow>
+                </TableRowMenu>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {editing && (
         <WebsiteEditDialog
           key={editing.id}
           assistantId={assistantId}
           source={editing}
-          pages={pagesOf(editing)}
+          documents={documentsOf(editing)}
           onClose={() => setEditing(null)}
           crawl4aiAvailable={crawl4aiAvailable}
           apifyAvailable={apifyAvailable}
@@ -1102,9 +1115,23 @@ function DocumentsTab({
   // Documents used to delete on the first click, with no confirmation at all.
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
 
-  const documents = sources
-    .filter((s) => s.kind === "file" || s.kind === "text")
-    .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
+  const [statusFilter, setStatusFilter] = useState("");
+  const order = useClientSort();
+  const documents = order.sorted(
+    sources
+      .filter((s) => s.kind === "file" || s.kind === "text")
+      .filter((s) => s.name.toLowerCase().includes(query.toLowerCase()))
+      .filter((s) => !statusFilter || s.status === statusFilter),
+    { name: (s) => s.name, status: (s) => s.status }
+  );
+  const paged = useClientPage(documents);
+  const selection = useRowSelection(paged.items.map((s) => s.id));
+  const columns = useColumnWidths("assistant-files", [
+    { key: "select", width: 44, fixed: true },
+    { key: "name", width: 420, min: 200 },
+    { key: "status", width: 280 },
+    { key: "actions", width: 130, fixed: true },
+  ] satisfies TableColumnLayout[]);
 
   function patchUpload(id: string, patch: Partial<FileUploadItem>) {
     setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
@@ -1160,16 +1187,6 @@ function DocumentsTab({
         Upload files to add to your assistant&apos;s knowledge base. The
         assistant will use these to answer questions.
       </p>
-      <div className="relative">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search documents"
-          className="pl-9"
-        />
-      </div>
-
       <FileUpload
         variant="centered"
         value={uploads}
@@ -1187,67 +1204,199 @@ function DocumentsTab({
         }}
       />
 
-      {documents.length > 0 && (
-        <div className="overflow-hidden rounded-xl border bg-card">
-          <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
-            <span>Name</span>
-            <span>Status</span>
-            <span />
-          </div>
-          {documents.map((source) => (
-            <div key={source.id} className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_auto_auto] md:items-center md:gap-4">
-              <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                <Download className="text-muted-foreground size-4 shrink-0" />
-                <span className="truncate">{source.name}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <StatusBadge source={source} />
-                <span className="text-muted-foreground text-xs" suppressHydrationWarning>
-                  {new Date(source.createdAt).toLocaleString()}
-                </span>
-              </span>
-              <span className="flex items-center gap-1">
-                {source.status === "error" && (
-                  <RetrySourceButton
-                    assistantId={assistantId}
-                    collectionId={collectionId}
-                    sourceId={source.id}
+      <TableCard
+        footer={
+          <TablePagination
+            page={paged.page}
+            pageSize={paged.pageSize}
+            total={documents.length}
+            noun="file"
+            onPageChange={paged.onPageChange}
+            onPageSizeChange={paged.onPageSizeChange}
+          />
+        }
+      >
+        <SourceBulkBar
+          assistantId={assistantId}
+          selection={selection}
+          noun="file"
+          deleteEffect={(one) =>
+            one
+              ? "The file and everything indexed from it go."
+              : "The files and everything indexed from them go."
+          }
+        />
+        <Table fixed empty={documents.length === 0}>
+          {columns.colGroup}
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <SelectAllHead
+                state={selection.allState}
+                onToggle={selection.toggleAll}
+                disabled={documents.length === 0}
+              />
+              <TableColumnHeader
+                label="Name"
+                resize={columns.handleFor("name")}
+                sort={order.column("name", { asc: "A to Z", desc: "Z to A" })}
+                filter={{
+                  kind: "text",
+                  value: query,
+                  placeholder: "Search files…",
+                  onChange: setQuery,
+                }}
+              />
+              {/* The cell carries the badge and the date, but the column is
+                  named Status, so that is what its header orders by: a caret
+                  and an `aria-sort` on "Status" over rows in date order say
+                  the wrong thing. Same pair of labels as the Websites tab. */}
+              <TableColumnHeader
+                label="Status"
+                resize={columns.handleFor("status")}
+                sort={order.column("status", {
+                  asc: "Errors first",
+                  desc: "Ready first",
+                })}
+                filter={{
+                  kind: "options",
+                  value: statusFilter,
+                  anyLabel: "Any status",
+                  options: [
+                    { value: "ready", label: "Ready" },
+                    { value: "processing", label: "Processing" },
+                    { value: "error", label: "Error" },
+                  ],
+                  onChange: setStatusFilter,
+                }}
+              />
+              <TableColumnHeader label="Actions" align="right" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {documents.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} className="hover:bg-transparent">
+                  <EmptyState
+                    size="sm"
+                    title="No files yet"
+                    description="Drop one above and it is indexed as it uploads."
                   />
-                )}
-                {source.kind === "file" && source.status !== "error" && (
-                  <ReprocessSourceButton
-                    assistantId={assistantId}
-                    collectionId={collectionId}
-                    sourceId={source.id}
-                    disabled={source.status === "processing"}
-                    hasOriginal={Boolean(source.originalObjectPath)}
-                  />
-                )}
-                <DeleteSourceButton
-                  onClick={() =>
-                    confirmDelete(
-                      removeSourceRequest({
-                        assistantId,
-                        sourceId: source.id,
-                        name: source.name,
-                        sharedWith: sharedWith[source.id],
-                        deleteLabel: "Delete document",
-                        deleteEffect:
-                          "The document and everything indexed from it go.",
-                      })
-                    )
-                  }
+                </TableCell>
+              </TableRow>
+            )}
+            {paged.items.map((source) => (
+              <TableRowMenu
+                key={source.id}
+                title={source.name}
+                onOpen={() => selection.selectForMenu(source.id)}
+                actions={[
+                  {
+                    label: "Open Documents",
+                    icon: Maximize2,
+                    href: assistantDocumentsHref(assistantId, source.id),
+                  },
+                {
+                  label: "Copy ID",
+                  icon: Copy,
+                  onSelect: () => {
+                    void navigator.clipboard?.writeText(source.id);
+                    toast.success("ID copied.");
+                  },
+                },
+                  {
+                    label: "Remove from this assistant",
+                    icon: Unlink,
+                    destructive: true,
+                    onSelect: () =>
+                      confirmDelete(
+                        removeSourceRequest({
+                          assistantId,
+                          sourceId: source.id,
+                          name: source.name,
+                          sharedWith: sharedWith[source.id],
+                          deleteLabel: "Delete document",
+                          deleteEffect:
+                            "The document and everything indexed from it go.",
+                        })
+                      ),
+                  },
+                ]}
+              >
+              <TableRow
+                data-state={
+                  selection.isSelected(source.id) ? "selected" : undefined
+                }
+              >
+                <SelectRowCell
+                  checked={selection.isSelected(source.id)}
+                  onToggle={() => selection.toggle(source.id)}
+                  label={source.name}
                 />
-              </span>
-              {source.status === "error" && source.error && (
-                <p className="text-destructive col-span-3 -mt-2 text-xs">
-                  {source.error}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+                <TableCell>
+                  <TableOpenCell
+                    href={assistantDocumentsHref(assistantId, source.id)}
+                    label={source.name}
+                  >
+                  <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                    <Download className="text-muted-foreground size-4 shrink-0" />
+                    <span className="truncate">{source.name}</span>
+                  </span>
+                  {source.status === "error" && source.error && (
+                    <p className="text-destructive ml-6 truncate text-xs">
+                      {source.error}
+                    </p>
+                  )}
+                  </TableOpenCell>
+                </TableCell>
+                <TableCell>
+                  <span className="flex items-center gap-2">
+                    <StatusBadge source={source} />
+                    <span className="text-muted-foreground text-xs" suppressHydrationWarning>
+                      {new Date(source.createdAt).toLocaleString()}
+                    </span>
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <TableActions>
+                    {source.status === "error" && (
+                      <RetrySourceButton
+                        assistantId={assistantId}
+                        collectionId={collectionId}
+                        sourceId={source.id}
+                      />
+                    )}
+                    {source.kind === "file" && source.status !== "error" && (
+                      <ReprocessSourceButton
+                        assistantId={assistantId}
+                        collectionId={collectionId}
+                        sourceId={source.id}
+                        disabled={source.status === "processing"}
+                        hasOriginal={Boolean(source.originalObjectPath)}
+                      />
+                    )}
+                    <DeleteSourceButton
+                      onClick={() =>
+                        confirmDelete(
+                          removeSourceRequest({
+                            assistantId,
+                            sourceId: source.id,
+                            name: source.name,
+                            sharedWith: sharedWith[source.id],
+                            deleteLabel: "Delete document",
+                            deleteEffect:
+                              "The document and everything indexed from it go.",
+                          })
+                        )
+                      }
+                    />
+                  </TableActions>
+                </TableCell>
+              </TableRow>
+              </TableRowMenu>
+            ))}
+          </TableBody>
+        </Table>
+      </TableCard>
       {confirmDeleteModal}
     </div>
   );
@@ -1329,6 +1478,7 @@ function DeleteSourceButton({ onClick }: { onClick: () => void }) {
     <Button
       variant="ghost"
       size="icon-sm"
+      data-destructive=""
       aria-label="Delete document"
       onClick={onClick}
     >
@@ -1726,11 +1876,77 @@ function FaqsTab({
   const { confirmDelete, confirmDeleteModal } = useConfirmDelete();
   const [isPending, startTransition] = useTransition();
 
-  const filtered = faqs.filter(
-    (f) =>
-      (f.frontmatter.title ?? "").toLowerCase().includes(query.toLowerCase()) ||
-      f.body.toLowerCase().includes(query.toLowerCase())
+  const order = useClientSort();
+  const filtered = order.sorted(
+    faqs.filter(
+      (f) =>
+        (f.frontmatter.title ?? "")
+          .toLowerCase()
+          .includes(query.toLowerCase()) ||
+        f.body.toLowerCase().includes(query.toLowerCase())
+    ),
+    {
+      question: (f) => f.frontmatter.title ?? f.path,
+      answer: (f) => f.body,
+    }
   );
+  /**
+   * A FAQ owns a `faq` Source (PRD #726), so a FAQ shared with another
+   * assistant gets the same remove-or-delete choice; an unshared one keeps
+   * the Concept-level delete, which retires its Source anyway. The row
+   * button and the row's context menu both call this, and the bulk bar below
+   * asks the same question of a whole selection through `bulkRemovalChoice`.
+   */
+  function removeFaq(faq: Concept) {
+    const shared = faq.sourceId ? sharedWith[faq.sourceId] : undefined;
+    if (faq.sourceId && shared && shared.length > 0) {
+      confirmDelete(
+        removeSourceRequest({
+          assistantId,
+          sourceId: faq.sourceId,
+          name: faq.frontmatter.title ?? "this FAQ",
+          sharedWith: shared,
+          deleteLabel: "Delete FAQ",
+          deleteEffect: "The question and its answer go.",
+        })
+      );
+      return;
+    }
+    startTransition(async () => {
+      await deleteConceptAction(assistantId, faq.id);
+    });
+  }
+
+  const paged = useClientPage(filtered);
+  const selection = useRowSelection(paged.items.map((f) => f.id));
+
+  /**
+   * The ticked rows, and which of their Sources another assistant answers
+   * from. The bulk bar needs the second number for the same reason `removeFaq`
+   * needs `sharedWith`: deleting a FAQ deletes the Source it owns, for the
+   * whole Organization.
+   */
+  const selected = (() => {
+    const ticked = new Set(selection.ids);
+    const rows = paged.items.filter((faq) => ticked.has(faq.id));
+    const sourceIds = rows
+      .map((faq) => faq.sourceId)
+      .filter((id): id is string => Boolean(id));
+    return {
+      ids: rows.map((faq) => faq.id),
+      sourceIds,
+      sharedCount: sourceIds.filter((id) => (sharedWith[id] ?? []).length > 0)
+        .length,
+    };
+  })();
+
+  const columns = useColumnWidths("assistant-faqs", [
+    { key: "select", width: 44, fixed: true },
+    { key: "question", width: 340, min: 180 },
+    { key: "answer", width: 400, min: 180 },
+    { key: "status", width: 200 },
+    { key: "actions", width: 110, fixed: true },
+  ] satisfies TableColumnLayout[]);
 
   function exportCsv() {
     const csv = serializeFaqCsv(
@@ -1789,95 +2005,228 @@ function FaqsTab({
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-        <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search FAQs" className="pl-9" />
-      </div>
-
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <div className="bg-muted/50 text-muted-foreground hidden grid-cols-[1fr_1fr_auto_auto] gap-4 px-4 py-2 text-xs font-semibold md:grid">
-          <span>Question</span>
-          <span>Answer</span>
-          <span>Status</span>
-          <span />
-        </div>
-        {filtered.length === 0 && (
-          <p className="text-muted-foreground px-4 py-6 text-center text-sm">No FAQs yet, add one to fine-tune answers.</p>
-        )}
-        {filtered.map((faq) => {
-          const trust = conceptProvenanceView(faq.frontmatter);
-          return (
-          <div key={faq.id} className="flex flex-col gap-2 border-t px-4 py-3 md:grid md:grid-cols-[1fr_1fr_auto_auto] md:items-center md:gap-4">
-            <span className="line-clamp-2 text-sm font-medium">{faq.frontmatter.title}</span>
-            <span className="text-muted-foreground line-clamp-2 text-sm">{faq.body}</span>
-            <span className="flex items-center gap-1.5">
-              {/* Trust tier (OKF §5.3), the FAQ list is where it matters most:
-                  an accepted Suggested Fix is agent-drafted but human-reviewed,
-                  a hand-typed FAQ is neither. Unverified stays unlabelled, since
-                  a badge on every row would carry no signal. */}
-              {trust.tier !== "unverified" && (
-                <Badge
-                  variant={trust.tier === "human-reviewed" ? "default" : "secondary"}
-                  className="shrink-0 rounded-full"
+      <TableCard
+        footer={
+          <TablePagination
+            page={paged.page}
+            pageSize={paged.pageSize}
+            total={filtered.length}
+            noun="FAQ"
+            pluralNoun="FAQs"
+            onPageChange={paged.onPageChange}
+            onPageSizeChange={paged.onPageSizeChange}
+          />
+        }
+      >
+        <TableBulkBar
+          count={selection.count}
+          noun="FAQ"
+          pluralNoun="FAQs"
+          onClear={selection.clear}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isPending}
+            onClick={() => {
+              const { ids, sourceIds, sharedCount } = selected;
+              const one = ids.length === 1;
+              const choice = bulkRemovalChoice({
+                count: ids.length,
+                sharedCount,
+                noun: "FAQ",
+                pluralNoun: "FAQs",
+                deleteLabel: one ? "Delete FAQ" : "Delete FAQs",
+                deleteEffect: one
+                  ? "The question and its answer go."
+                  : "The questions and their answers go.",
+              });
+              const remove = async () => {
+                // Deleting a FAQ Concept retires the `faq` Source it owns, so
+                // the org-wide outcome is the Concept delete and the
+                // this-assistant-only one is an unlink of those Sources.
+                if (choice.mode === "unlink") {
+                  await unlinkSourcesAction(assistantId, sourceIds);
+                } else {
+                  await deleteConceptsAction(assistantId, ids);
+                }
+                selection.clear();
+              };
+              confirmDelete({
+                title: choice.title,
+                description: choice.description,
+                confirmLabel: choice.confirmLabel,
+                onConfirm: remove,
+                secondaryLabel: choice.secondaryLabel,
+                onSecondary: choice.secondaryLabel
+                  ? async () => {
+                      await deleteConceptsAction(assistantId, ids);
+                      selection.clear();
+                    }
+                  : undefined,
+              });
+            }}
+          >
+            {selected.sharedCount > 0 ? (
+              <>
+                <Unlink className="mr-1.5 size-4" /> Remove
+              </>
+            ) : (
+              <>
+                <Trash2 className="mr-1.5 size-4" /> Delete
+              </>
+            )}
+          </Button>
+        </TableBulkBar>
+        <Table fixed empty={filtered.length === 0}>
+          {columns.colGroup}
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <SelectAllHead
+                state={selection.allState}
+                onToggle={selection.toggleAll}
+                disabled={filtered.length === 0}
+              />
+              <TableColumnHeader
+                label="Question"
+                resize={columns.handleFor("question")}
+                sort={order.column("question", {
+                  asc: "A to Z",
+                  desc: "Z to A",
+                })}
+                filter={{
+                  kind: "text",
+                  value: query,
+                  placeholder: "Search questions and answers…",
+                  onChange: setQuery,
+                }}
+              />
+              <TableColumnHeader
+                label="Answer"
+                resize={columns.handleFor("answer")}
+                sort={order.column("answer", { asc: "A to Z", desc: "Z to A" })}
+              />
+              <TableColumnHeader
+                label="Status"
+                resize={columns.handleFor("status")}
+              />
+              <TableColumnHeader label="Actions" align="right" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="hover:bg-transparent">
+                  <EmptyState
+                    size="sm"
+                    title="No FAQs yet"
+                    description="Add one to fine-tune answers."
+                  />
+                </TableCell>
+              </TableRow>
+            )}
+            {paged.items.map((faq) => {
+              const trust = conceptProvenanceView(faq.frontmatter);
+              return (
+                <TableRowMenu
+                  key={faq.id}
+                  title={faq.frontmatter.title ?? faq.path}
+                  onOpen={() => selection.selectForMenu(faq.id)}
+                  actions={[
+                    {
+                      label: "Edit FAQ",
+                      icon: Pencil,
+                      onSelect: () => {
+                        setEditing(faq);
+                        setDialogOpen(true);
+                      },
+                    },
+                    {
+                      label: "Copy answer",
+                      icon: Copy,
+                      onSelect: () => {
+                        void navigator.clipboard?.writeText(faq.body);
+                        toast.success("Answer copied.");
+                      },
+                    },
+                    {
+                      label: "Delete FAQ",
+                      icon: Trash2,
+                      destructive: true,
+                      disabled: isPending,
+                      onSelect: () => removeFaq(faq),
+                    },
+                  ]}
                 >
-                  {trust.trustLabel}
-                </Badge>
-              )}
-              <Badge variant="outline" className="text-muted-foreground gap-1.5 rounded-full bg-muted/40">
-                READY
-              </Badge>
-            </span>
-            <span className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Edit FAQ"
-                onClick={() => {
-                  setEditing(faq);
-                  setDialogOpen(true);
-                }}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Delete FAQ"
-                disabled={isPending}
-                onClick={() => {
-                  // A FAQ owns a `faq` Source (PRD #726), so a FAQ shared with
-                  // another assistant gets the same remove-or-delete choice;
-                  // an unshared one keeps the Concept-level delete, which
-                  // retires its Source anyway.
-                  const shared = faq.sourceId
-                    ? sharedWith[faq.sourceId]
-                    : undefined;
-                  if (faq.sourceId && shared && shared.length > 0) {
-                    confirmDelete(
-                      removeSourceRequest({
-                        assistantId,
-                        sourceId: faq.sourceId,
-                        name: faq.frontmatter.title ?? "this FAQ",
-                        sharedWith: shared,
-                        deleteLabel: "Delete FAQ",
-                        deleteEffect: "The question and its answer go.",
-                      })
-                    );
-                    return;
+                <TableRow
+                  data-state={
+                    selection.isSelected(faq.id) ? "selected" : undefined
                   }
-                  startTransition(async () => {
-                    await deleteConceptAction(assistantId, faq.id);
-                  });
-                }}
-              >
-                <AnimatedIcon icon={Trash2} size={14} />
-              </Button>
-            </span>
-          </div>
-          );
-        })}
-      </div>
-
+                >
+                  <SelectRowCell
+                    checked={selection.isSelected(faq.id)}
+                    onToggle={() => selection.toggle(faq.id)}
+                    label={faq.frontmatter.title ?? faq.path}
+                  />
+                  <TableCell className="align-top">
+                    <span className="block truncate text-sm font-medium">
+                      {faq.frontmatter.title}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground align-top">
+                    <span className="block truncate text-sm">{faq.body}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1.5">
+                      {/* Trust tier (OKF §5.3), the FAQ list is where it matters most:
+                          an accepted Suggested Fix is agent-drafted but human-reviewed,
+                          a hand-typed FAQ is neither. Unverified stays unlabelled, since
+                          a badge on every row would carry no signal. */}
+                      {trust.tier !== "unverified" && (
+                        <Badge
+                          variant={trust.tier === "human-reviewed" ? "default" : "secondary"}
+                          className="shrink-0 rounded-full"
+                        >
+                          {trust.trustLabel}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-muted-foreground gap-1.5 rounded-full bg-muted/40">
+                        READY
+                      </Badge>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <TableActions>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label="Edit FAQ"
+                        onClick={() => {
+                          setEditing(faq);
+                          setDialogOpen(true);
+                        }}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        data-destructive=""
+                        aria-label="Delete FAQ"
+                        disabled={isPending}
+                        onClick={() => removeFaq(faq)}
+                      >
+                        <AnimatedIcon icon={Trash2} size={14} />
+                      </Button>
+                    </TableActions>
+                  </TableCell>
+                </TableRow>
+                </TableRowMenu>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableCard>
       {dialogOpen && (
         <FaqDialog
           key={editing?.id ?? "new"}

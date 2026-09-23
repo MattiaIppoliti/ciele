@@ -65,14 +65,25 @@ export {
   addSourceOp,
   createFaqOp,
   deleteSourceOp,
+  deleteSourcesOp,
   unlinkSourceOp,
+  unlinkSourcesOp,
   getSourceOp,
   importFaqsOp,
   createOrgFaqOp,
   getOrgFaqOp,
   importOrgFaqsOp,
+  extractSourceMemoriesOp,
+  getDocumentSummaryOp,
+  getSourceDocumentOp,
+  listDocumentChunksOp,
+  setDocumentExcludedOp,
+  setDocumentsExcludedOp,
   listCollectionsOp,
-  listSourceConceptsOp,
+  listDocumentMemoriesOp,
+  forgetKnowledgeMemoryOp,
+  restoreKnowledgeMemoryOp,
+  listSourceDocumentsOp,
   updateOrgFaqOp,
   listOrgFaqsOp,
   listOrgKnowledgeSourcesOp,
@@ -90,6 +101,10 @@ export {
   republishOp,
   unpublishAssistantOp,
 } from "./publish";
+
+// Approvals domain (#958): actions the approval gate stopped, decided by a
+// Member. Approving runs the action the row carries, never a re-derived one.
+export { decideActionApprovalOp } from "./action-approvals";
 
 // Reviews domain (#841): the Human review gate's requests, listed and decided.
 export {
@@ -317,6 +332,13 @@ export {
   type ApiIntegrationView,
   type ProviderConnectionView,
 } from "./integrations";
+
+export {
+  deleteCrawlerConnectionOp,
+  getCrawlerConnectionOp,
+  setCrawlerConnectionOp,
+  type CrawlerConnectionView,
+} from "./crawlers";
 
 export {
   createEntityOp,

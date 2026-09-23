@@ -313,3 +313,51 @@ describe("liveOrbState", () => {
     ).toBe("connecting");
   });
 });
+
+describe("the shadow pre-flight on a stored trace (#952)", () => {
+  const record = {
+    mapVersion: 1,
+    mapModelId: "jev-1.13.0",
+    resolvedModelId: "typesafe-ai/jev",
+    backend: "jev" as const,
+    calibrated: true,
+    latencyMs: 312,
+    answers: [],
+    wouldRoute: { kind: "knowledge_search" as const },
+    routedFlowId: "flow-1",
+  };
+
+  it("projects a turn that did no agentic work but carries a record", () => {
+    // The turn the shadow would otherwise lose: a Flow answering with one
+    // verbatim Message writes no steps, and dropping those would leave the
+    // threshold data a sample of turns that searched.
+    const visible = visibleTraceSteps(
+      { steps: [], searchCount: 0, preflight: record },
+      { canViewReasoning: true }
+    );
+    expect(visible?.preflight).toEqual(record);
+    expect(visible?.steps).toEqual([]);
+  });
+
+  it("still drops a trace that has neither steps nor a record", () => {
+    expect(
+      visibleTraceSteps({ steps: [], searchCount: 0 }, { canViewReasoning: true })
+    ).toBeNull();
+  });
+
+  it("keeps the record for a Role that may not read reasoning", () => {
+    // Question ids, option ids and confidences quote neither the Visitor's
+    // message nor anything retrieved, so the reasoning gate has nothing to
+    // withhold here.
+    const visible = visibleTraceSteps(
+      {
+        steps: [{ id: "s1", kind: "thought", label: "thinking out loud", status: "done" }],
+        searchCount: 0,
+        preflight: record,
+      },
+      { canViewReasoning: false }
+    );
+    expect(visible?.preflight).toEqual(record);
+    expect(visible?.hiddenThoughts).toBe(1);
+  });
+});

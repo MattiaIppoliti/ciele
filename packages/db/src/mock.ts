@@ -79,6 +79,9 @@ import type {
   ProviderConnection,
   Publication,
   RetentionSweepEvent,
+  KnowledgeMemory,
+  KnowledgeMemoryExtraction,
+  ActionApproval,
   ReviewRequest,
   HttpFlowRun,
   WebhookSubscription,
@@ -86,6 +89,7 @@ import type {
   Skill,
   Source,
   SsoConnection,
+  CrawlerConnection,
   StoredMessage,
   SupportChannel,
   Teammate,
@@ -105,6 +109,7 @@ import type {
 } from "@agent-hub/core";
 import {
   ASSISTANT_GOAL_CAP,
+  crawlMeterCredentialKind,
   buildPublicationConfig,
   IMPROVEMENT_STATUS_VALUES,
   computeInsightsOverview,
@@ -122,7 +127,11 @@ import {
   nextCrawlDue,
   okfActor,
   capMemoryDocument,
+  compareOrgKnowledgeSources,
+  compareSourceDocuments,
+  DOCUMENT_CHUNKS_PAGE_SIZE,
   shortId,
+  SOURCE_DOCUMENTS_PAGE_SIZE,
   sortFlows,
   usageResourceOf,
 } from "@agent-hub/core";
@@ -189,6 +198,8 @@ interface MockStore {
   embeddingConnections: Map<string, string>;
   /** Widget SSO connections, keyed by organizationId (one per org). */
   ssoConnections: Map<string, SsoConnection>;
+  /** Keyed `${organizationId}:${provider}`. */
+  crawlerConnections: Map<string, CrawlerConnection>;
   /** assistantId → its one API integration (spec #559). */
   apiIntegrations: Map<string, ApiIntegration>;
   teammates: Map<string, Teammate>;
@@ -266,7 +277,11 @@ interface MockStore {
   /** organizationId -> serialized conservative euro spend for one UTC day. */
   orgBudgetSpentEur: Map<string, { day: string; eur: number }>;
   goals: Map<string, AssistantGoal>;
+  actionApprovals: Map<string, ActionApproval>;
   reviewRequests: Map<string, ReviewRequest>;
+  knowledgeMemories: Map<string, KnowledgeMemory>;
+  /** Keyed `<sourceId>::<documentPath>`, the pair that survives a re-crawl. */
+  memoryExtractions: Map<string, KnowledgeMemoryExtraction>;
   webhookSubscriptions: Map<string, WebhookSubscription>;
   httpFlowRuns: Map<string, HttpFlowRun>;
   /** messageId → verdict row (one per message). */
@@ -357,6 +372,8 @@ interface MockStore {
       content: string;
       /** Kept only so the re-embed backfill can see missing embeddings. */
       embedding: number[] | null;
+      /** Zero-based index in the Document body (#929); absent on legacy rows. */
+      position?: number;
       /** Which model produced `embedding` (#801, CYB-14); the demo store is
        * lexical-only, so it is carried, never compared. */
       embeddingSpace?: string | null;
@@ -535,6 +552,7 @@ function emptyStore(): MockStore {
     connections: new Map(),
     embeddingConnections: new Map(),
     ssoConnections: new Map(),
+    crawlerConnections: new Map(),
     apiIntegrations: new Map(),
     teammates: new Map(),
     teammateGrants: new Map(),
@@ -602,7 +620,10 @@ function emptyStore(): MockStore {
     orgBudgetReservations: new Map(),
     orgBudgetSpentEur: new Map(),
     goals: new Map(),
+    actionApprovals: new Map(),
     reviewRequests: new Map(),
+    knowledgeMemories: new Map(),
+    memoryExtractions: new Map(),
     webhookSubscriptions: new Map(),
     httpFlowRuns: new Map(),
     goalRuns: [],
@@ -875,6 +896,8 @@ function seedKnowledgeDemo(store: MockStore) {
       body: input.body,
       excluded: false,
       recrawlSchedule: null,
+      summary: null,
+      summaryGenerated: null,
       createdAt: at,
     };
     store.concepts.set(concept.id, concept);
@@ -1051,6 +1074,79 @@ function seedKnowledgeDemo(store: MockStore) {
       body: project.body,
     });
   }
+
+  // Knowledge memories for one demo Document (#932), so demo mode shows the
+  // Memories tab with something in it, one of them already forgotten. Every
+  // quote is a verbatim span of that Document's body, which is the rule the
+  // extractor enforces and the thing a screenshot should teach.
+  const memoryPage = {
+    conceptId: "concept-alex-web-manifold-drone-synchronization",
+    sourceId: webSource.id,
+    path: "web/manifold-drone-synchronization.md",
+  };
+  const demoMemories: Array<{
+    id: string;
+    text: string;
+    quote: string;
+    forgotten?: { at: string; reason: string };
+  }> = [
+    {
+      id: "km-demo-project",
+      text: "Il progetto Manifold Drone Synchronization è del 2019.",
+      quote: "Development, Singapore, 2019.",
+    },
+    {
+      id: "km-demo-place",
+      text: "Il progetto è stato sviluppato a Singapore.",
+      quote: "Development, Singapore, 2019.",
+    },
+    {
+      id: "km-demo-wrong",
+      text: "Il progetto riguarda la sincronizzazione dei droni militari.",
+      quote: "Progetto \"Manifold Drone Synchronization\"",
+      forgotten: { at, reason: "La pagina non dice che sono militari" },
+    },
+  ];
+  for (const memory of demoMemories) {
+    store.knowledgeMemories.set(memory.id, {
+      id: memory.id,
+      organizationId: DEMO_ORG.id,
+      collectionId: collection.id,
+      sourceId: memoryPage.sourceId,
+      documentPath: memoryPage.path,
+      conceptId: memoryPage.conceptId,
+      text: memory.text,
+      quote: memory.quote,
+      chunkId:
+        [...store.chunks.values()].find(
+          (chunk) => chunk.conceptId === memoryPage.conceptId
+        )?.id ?? null,
+      generatedBy: "knowledge-memory-extractor/demo",
+      generatedAt: at,
+      forgottenAt: memory.forgotten?.at ?? null,
+      forgetReason: memory.forgotten?.reason ?? null,
+      forgottenBy: null,
+      sourceCount: 1,
+      createdAt: at,
+      updatedAt: at,
+    });
+  }
+  store.memoryExtractions.set(`${memoryPage.sourceId}::${memoryPage.path}`, {
+    id: "kme-demo",
+    organizationId: DEMO_ORG.id,
+    collectionId: collection.id,
+    sourceId: memoryPage.sourceId,
+    documentPath: memoryPage.path,
+    bodyHash: "demo",
+    status: "done",
+    memoryCount: demoMemories.length,
+    capped: false,
+    attempts: 1,
+    lastError: null,
+    extractedAt: at,
+    createdAt: at,
+    updatedAt: at,
+  });
 
   // Post-contract parity: retrieval is link-based, so every demo Source
   // carries its assistant link (direct access stays off by default).
@@ -1832,7 +1928,9 @@ const MOCK_TABLE_STORES: {
   localConnectorDevices: () => getStore().localConnectorDevices,
   localInferenceJobs: () => getStore().localInferenceJobs,
   assistantGoals: () => getStore().goals,
+  actionApprovals: () => getStore().actionApprovals,
   reviewRequests: () => getStore().reviewRequests,
+  knowledgeMemories: () => getStore().knowledgeMemories,
   webhookSubscriptions: () => getStore().webhookSubscriptions,
   httpFlowRuns: () => getStore().httpFlowRuns,
 };
@@ -1928,6 +2026,39 @@ const MOCK_CASCADES: Partial<
     },
   ],
 };
+
+/**
+ * The FK behaviour `knowledge_memories` gets from the database, mirrored here
+ * (#926). A memory is keyed to the page, not to the page's row, so the row
+ * going away detaches it rather than taking it: `concept_id` and `chunk_id`
+ * are `on delete set null`. `source_id` and `collection_id` cascade, because a
+ * Source that is gone has no pages left to remember.
+ */
+function detachMemoriesFromConcept(conceptId: string): void {
+  const store = getStore();
+  const chunkIds = new Set(
+    [...store.chunks.values()]
+      .filter((chunk) => chunk.conceptId === conceptId)
+      .map((chunk) => chunk.id)
+  );
+  for (const [id, memory] of store.knowledgeMemories) {
+    const detachedConcept = memory.conceptId === conceptId;
+    const detachedChunk = memory.chunkId !== null && chunkIds.has(memory.chunkId);
+    if (!detachedConcept && !detachedChunk) continue;
+    store.knowledgeMemories.set(id, {
+      ...memory,
+      conceptId: detachedConcept ? null : memory.conceptId,
+      chunkId: detachedChunk ? null : memory.chunkId,
+    });
+  }
+}
+
+/** `on delete cascade` from a Source (and, through it, from a Collection). */
+function deleteMemoriesOfSource(sourceId: string): void {
+  const store = getStore();
+  for (const [id, memory] of store.knowledgeMemories)
+    if (memory.sourceId === sourceId) store.knowledgeMemories.delete(id);
+}
 
 function mockTable<K extends DbTableName>(name: K): DbTableAccessor<K> {
   const spec = DB_TABLE_SPECS[name];
@@ -2172,14 +2303,15 @@ function aggregateCrawls(
     const day = e.createdAt.slice(0, 10);
     if (day < bounds.startDay || day >= bounds.endDay) continue;
     const provider = e.crawlerProvider ?? "unknown";
-    const key = `${e.organizationId}|${day}|crawl|platform|${provider}|`;
+    const credentialKind = crawlMeterCredentialKind(e.credentialKind);
+    const key = `${e.organizationId}|${day}|crawl|${credentialKind}|${provider}|`;
     let row = groups.get(key);
     if (!row) {
       row = {
         organizationId: e.organizationId,
         day,
         kind: "crawl",
-        credentialKind: "platform",
+        credentialKind,
         provider,
         modelId: "",
         calls: 0,
@@ -2805,6 +2937,39 @@ export const mockDb: Db = {
     getStore().ssoConnections.delete(organizationId);
   },
 
+  // --- Crawler connections -----------------------------------------------
+
+  async getCrawlerConnection(organizationId, provider) {
+    return (
+      getStore().crawlerConnections.get(`${organizationId}:${provider}`) ?? null
+    );
+  },
+
+  async setCrawlerConnection(organizationId, input) {
+    const store = getStore();
+    const key = `${organizationId}:${input.provider}`;
+    const existing = store.crawlerConnections.get(key);
+    const now = new Date().toISOString();
+    // One per (org, provider): a rotation replaces the token, keeps the id.
+    const connection: CrawlerConnection = {
+      id: existing?.id ?? shortId(),
+      organizationId,
+      provider: input.provider,
+      encryptedToken: input.encryptedToken,
+      tokenHint: input.tokenHint,
+      accountId: input.accountId ?? "",
+      createdBy: input.createdBy ?? null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    store.crawlerConnections.set(key, connection);
+    return connection;
+  },
+
+  async deleteCrawlerConnection(organizationId, provider) {
+    getStore().crawlerConnections.delete(`${organizationId}:${provider}`);
+  },
+
   // --- API integrations (spec #559) --------------------------------------
 
   async getApiIntegration(assistantId) {
@@ -2960,6 +3125,7 @@ export const mockDb: Db = {
     for (const [sid, s] of store.sources)
       if (s.collectionId === id) {
         store.sources.delete(sid);
+        deleteMemoriesOfSource(sid);
         for (const [key, link] of store.assistantSources)
           if (link.sourceId === sid) store.assistantSources.delete(key);
       }
@@ -4321,6 +4487,9 @@ export const mockDb: Db = {
   async deleteSource(id) {
     const store = getStore();
     store.sources.delete(id);
+    deleteMemoriesOfSource(id);
+    for (const [key, row] of store.memoryExtractions)
+      if (row.sourceId === id) store.memoryExtractions.delete(key);
     store.crawlFinalizeClaims.delete(id);
     store.crawlFinalizeAttemptedAt.delete(id);
     for (const [key, link] of store.assistantSources)
@@ -4346,6 +4515,7 @@ export const mockDb: Db = {
     const store = getStore();
     for (const id of ids) {
       if (!store.concepts.delete(id)) continue;
+      detachMemoriesFromConcept(id);
       for (const [kid, k] of store.chunks)
         if (k.conceptId === id) store.chunks.delete(kid);
     }
@@ -4364,6 +4534,7 @@ export const mockDb: Db = {
       }
       store.concepts.delete(id);
       deleted.push(id);
+      detachMemoriesFromConcept(id);
       for (const [chunkId, chunk] of store.chunks)
         if (chunk.conceptId === id) store.chunks.delete(chunkId);
     }
@@ -4412,10 +4583,17 @@ export const mockDb: Db = {
       }
       const prior = priorByPath.get(concept.path);
       if (!prior || prior.id === id) continue;
+      // The summary follows only identical text (#931): a decision about a
+      // page follows the page, but a statement about its words may not
+      // outlive the words. The SQL twin is the `case when body = body` in
+      // `commit_source_knowledge_generation`.
+      const sameText = concept.body === prior.body;
       store.concepts.set(id, {
         ...concept,
         excluded: prior.excluded,
         recrawlSchedule: prior.recrawlSchedule,
+        summary: sameText ? prior.summary : null,
+        summaryGenerated: sameText ? prior.summaryGenerated : null,
       });
     }
     store.sources.set(source.id, {
@@ -4568,6 +4746,8 @@ export const mockDb: Db = {
       body: input.body,
       excluded: false,
       recrawlSchedule: null,
+      summary: null,
+      summaryGenerated: null,
       createdAt: new Date().toISOString(),
     };
     getStore().concepts.set(concept.id, concept);
@@ -4590,12 +4770,14 @@ export const mockDb: Db = {
   async deleteConcept(id) {
     const store = getStore();
     store.concepts.delete(id);
+    detachMemoriesFromConcept(id);
     for (const [kid, k] of store.chunks)
       if (k.conceptId === id) store.chunks.delete(kid);
   },
 
   async deleteChunksByConcept(conceptId) {
     const store = getStore();
+    detachMemoriesFromConcept(conceptId);
     for (const [kid, k] of store.chunks)
       if (k.conceptId === conceptId) store.chunks.delete(kid);
   },
@@ -4614,8 +4796,13 @@ export const mockDb: Db = {
 
   async saveChunks(chunks) {
     const store = getStore();
+    // Position within its own Document (#929): the caller's, or call order
+    // per concept, the same rule the SQL adapter applies.
+    const seen = new Map<string, number>();
     for (const chunk of chunks) {
       const id = shortId();
+      const position = chunk.position ?? seen.get(chunk.conceptId) ?? 0;
+      seen.set(chunk.conceptId, position + 1);
       store.chunks.set(id, {
         id,
         conceptId: chunk.conceptId,
@@ -4624,8 +4811,30 @@ export const mockDb: Db = {
         content: chunk.content,
         embedding: chunk.embedding ?? null,
         embeddingSpace: chunk.embeddingSpace ?? null,
+        position,
       });
     }
+  },
+
+  async listDocumentChunks(conceptId, options) {
+    const pageSize = Math.max(1, options?.pageSize ?? DOCUMENT_CHUNKS_PAGE_SIZE);
+    const page = Math.max(1, options?.page ?? 1);
+    const from = (page - 1) * pageSize;
+    const all = [...getStore().chunks.values()]
+      .filter((chunk) => chunk.conceptId === conceptId)
+      .sort((a, b) => {
+        const ap = a.position ?? Number.MAX_SAFE_INTEGER;
+        const bp = b.position ?? Number.MAX_SAFE_INTEGER;
+        return ap - bp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      });
+    return {
+      items: all.slice(from, from + pageSize).map((chunk, offset) => ({
+        id: chunk.id,
+        index: chunk.position ?? from + offset,
+        text: chunk.content,
+      })),
+      total: all.length,
+    };
   },
 
   async searchChunks(assistantId, collectionId, query) {
@@ -4985,6 +5194,15 @@ export const mockDb: Db = {
     if (!current || current.status !== "pending") return null;
     const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
     store.reviewRequests.set(id, next);
+    return next;
+  },
+
+  async decideActionApproval(id, patch) {
+    const store = getStore();
+    const current = store.actionApprovals.get(id);
+    if (!current || current.status !== "pending") return null;
+    const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
+    store.actionApprovals.set(id, next);
     return next;
   },
 
@@ -5906,7 +6124,7 @@ export const mockDb: Db = {
         return false;
       return true;
     });
-    matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+    matches.sort(compareOrgKnowledgeSources(filter));
 
     const statusCounts = { processing: 0, ready: 0, error: 0 };
     for (const source of matches) statusCounts[source.status] += 1;
@@ -6005,6 +6223,137 @@ export const mockDb: Db = {
       )
       .sort((a, b) => (a.path < b.path ? -1 : 1))
       .slice(0, limit ?? 500);
+  },
+
+  async listSourceDocuments(sourceId, options) {
+    const store = getStore();
+    const pageSize = Math.max(1, options?.pageSize ?? SOURCE_DOCUMENTS_PAGE_SIZE);
+    const page = Math.max(1, options?.page ?? 1);
+    const ascending = options?.ascending ?? false;
+    const chunked = new Set(
+      [...store.chunks.values()].map((chunk) => chunk.conceptId)
+    );
+    const all = [...store.concepts.values()]
+      .filter(
+        (concept) =>
+          concept.sourceId === sourceId &&
+          concept.generationId === store.sources.get(sourceId)?.activeGenerationId
+      )
+      // The same three states the badge shows, and the same rule the SQL
+      // read applies: Excluded is the flag, Ready and Pending differ by
+      // whether the Document has chunks.
+      .filter((concept) => {
+        if (!options?.status) return true;
+        if (options.status === "excluded") return concept.excluded;
+        if (concept.excluded) return false;
+        return options.status === "ready"
+          ? chunked.has(concept.id)
+          : !chunked.has(concept.id);
+      })
+      // `||`, not `??`: SQL reads the title through
+      // `nullif(frontmatter->>'title', '')`, so an empty string is no title
+      // and falls back to the path. A crawled page with an empty `<title>`
+      // stores exactly that, and it is the sort key as well as the cell.
+      .map((concept) => ({
+        concept,
+        title: concept.frontmatter.title || concept.path,
+      }))
+      // The comparator is shared with the SQL read (`@agent-hub/core`), or the
+      // two orders drift and a row goes missing across a page boundary.
+      .sort((a, b) =>
+        compareSourceDocuments({ sort: options?.sort, ascending })(
+          { id: a.concept.id, title: a.title, createdAt: a.concept.createdAt },
+          { id: b.concept.id, title: b.title, createdAt: b.concept.createdAt }
+        )
+      )
+      .map((entry) => entry.concept);
+    const from = (page - 1) * pageSize;
+    return {
+      items: all.slice(from, from + pageSize).map((concept) => ({
+        id: concept.id,
+        path: concept.path,
+        title: concept.frontmatter.title || concept.path,
+        resourceUrl: concept.frontmatter.resource ?? null,
+        excluded: concept.excluded,
+        indexed: chunked.has(concept.id),
+        createdAt: concept.createdAt,
+      })),
+      total: all.length,
+    };
+  },
+
+  async setConceptSummary(conceptId, input) {
+    const store = getStore();
+    const concept = store.concepts.get(conceptId);
+    if (!concept) return null;
+    // Write-once, the mock's half of the `.is("summary", null)` guard: the
+    // second of two concurrent openers reads the first's summary.
+    if (concept.summary !== null) return concept;
+    const updated: Concept = {
+      ...concept,
+      summary: input.text,
+      summaryGenerated: { by: input.by, at: input.at },
+    };
+    store.concepts.set(conceptId, updated);
+    return updated;
+  },
+
+  async getSourceDocumentByPath(sourceId, documentPath) {
+    const store = getStore();
+    const active = store.sources.get(sourceId)?.activeGenerationId;
+    // Lowest id wins a duplicate path, the SQL read's tie-break.
+    const rows = [...store.concepts.values()]
+      .filter(
+        (concept) =>
+          concept.sourceId === sourceId &&
+          concept.path === documentPath &&
+          concept.generationId === active
+      )
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    return rows[0] ?? null;
+  },
+
+  async countLiveMemoriesByPath(sourceId, documentPaths) {
+    const wanted = new Set(documentPaths);
+    const counts: Record<string, number> = {};
+    for (const memory of getStore().knowledgeMemories.values()) {
+      if (memory.sourceId !== sourceId) continue;
+      if (memory.forgottenAt !== null) continue;
+      if (!wanted.has(memory.documentPath)) continue;
+      counts[memory.documentPath] = (counts[memory.documentPath] ?? 0) + 1;
+    }
+    return counts;
+  },
+
+  async getMemoryExtraction(sourceId, documentPath) {
+    return getStore().memoryExtractions.get(`${sourceId}::${documentPath}`) ?? null;
+  },
+
+  async listMemoryExtractions(sourceId) {
+    return [...getStore().memoryExtractions.values()]
+      .filter((row) => row.sourceId === sourceId)
+      .sort((a, b) => (a.documentPath < b.documentPath ? -1 : 1));
+  },
+
+  async recordMemoryExtraction(input) {
+    const store = getStore();
+    const key = `${input.sourceId}::${input.documentPath}`;
+    const now = new Date().toISOString();
+    const existing = store.memoryExtractions.get(key);
+    const row: KnowledgeMemoryExtraction = {
+      id: existing?.id ?? shortId(),
+      ...input,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    store.memoryExtractions.set(key, row);
+    return row;
+  },
+
+  async countConceptChunks(conceptId) {
+    return [...getStore().chunks.values()].filter(
+      (chunk) => chunk.conceptId === conceptId
+    ).length;
   },
 
   async listAssistantSourceIds(assistantId) {
@@ -6322,7 +6671,7 @@ export const mockDb: Db = {
       if (!inLiveRange(e.createdAt)) continue;
       add({
         kind: "crawl",
-        credentialKind: "platform",
+        credentialKind: crawlMeterCredentialKind(e.credentialKind),
         provider: e.crawlerProvider ?? "unknown",
         modelId: "",
         calls: 1,

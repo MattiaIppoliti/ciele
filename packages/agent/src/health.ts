@@ -45,12 +45,25 @@ export const alertKeys = {
   ) => `plan-cap:${organizationId}:${resource}:${window}`,
   /** Flow trust-tier demotions (flow trust ledger). */
   flowTrust: (flowId: string) => `flow-trust:${flowId}`,
+  /**
+   * The pre-flight's nightly drift replay (#953). One key for the platform,
+   * raised on the Organizations its owners belong to: a threshold is a fact
+   * about the decision model, not about any tenant.
+   */
+  preflightDrift: () => "preflight-drift",
   /** Standing-goal verification failures. */
   goal: (goalId: string) => `goal:${goalId}`,
   /** Graph knowledge worker reachability, per organization (ADR-0017). */
   graphWorker: (organizationId: string) => `graph-worker:${organizationId}`,
   /** Per-Entity Record sync lifecycle (sync failed / recovered, #670). */
   entitySync: (entityId: string) => `entity-sync:${entityId}`,
+  /**
+   * Memory extraction, per Source (#930). One key for the Source rather than
+   * one per Document: a crawl that cannot extract usually cannot extract any
+   * page, and forty banners saying so is a worse signal than one saying
+   * "twelve Documents". Clears when none of its Documents is failed.
+   */
+  memoryExtraction: (sourceId: string) => `memory-extraction:${sourceId}`,
   /** One Application Import's synchronization lifecycle. */
   applicationImport: (importId: string) => `application-import:${importId}`,
   /** One Application Connection's authorization lifecycle. */

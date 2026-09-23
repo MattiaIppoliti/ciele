@@ -4,10 +4,14 @@ import type {
   AiCredentialKind,
   AiUsageStage,
   ApiIntegration,
+  ApprovalReviewReason,
+  ApprovalSubject,
+  ApprovalVerdict,
   Assistant,
   ChainCapReason,
   ChannelMessage,
   ConversationSubject,
+  Reversibility,
   EntityRecord,
   EntityRecordQuery,
   EntitySnapshot,
@@ -15,18 +19,19 @@ import type {
   FlowAction,
   FlowButtonIcon,
   KnowledgeSearchResult,
-  Provider,
+  PreflightTraceRecord,
   ReferralCandidate,
   ReviewRequest,
   ReviewRequestInput,
-  WebhookSubscription,
-  WebhookSubscriptionInput,
   ReviewStatus,
   SkillSnapshot,
   TeammateActionDomain,
   UsageOperation,
   UsageOperationStatus,
   UsageOperationUnit,
+  UsageProvider,
+  WebhookSubscription,
+  WebhookSubscriptionInput,
 } from "@agent-hub/core";
 import type { TurnSession } from "./session";
 import type { TemplateContext } from "./template";
@@ -165,6 +170,26 @@ export type ChatReplyPart =
    * until the Member clicks. Autonomous agent-to-agent chains are the channels
    * effort's problem, not this one's.
    */
+  /**
+   * The approval gate (#958): an action a Member has to allow before it runs.
+   *
+   * The card is the whole stop. The tool did not execute and did not fail; it
+   * is waiting, and a Member accepting the card is what runs it. Carries the
+   * catalogue's words for the action and the gate's reason, never the action's
+   * arguments and never anything the model wrote: this is the screen where
+   * somebody with the authority to say yes is reading.
+   */
+  | {
+      type: "action_approval";
+      action: "approval_gate";
+      approvalId: string;
+      /** The catalogue's label, e.g. "Create an Improvement". */
+      label: string;
+      reason: ApprovalReviewReason;
+      reversibility: Reversibility | null;
+      /** The closed-table sentence the card leads with. */
+      title: string;
+    }
   | {
       type: "teammate_referral";
       action: "refer_teammate";
@@ -523,6 +548,15 @@ export interface TeammateActionTool {
   /** What the model is told this does. */
   description: string;
   inputSchema: ZodObject<ZodRawShape>;
+  /**
+   * The approval gate (#958): asked before the action runs, and returns the
+   * card when it must wait for a human instead. Bound by the host, which is
+   * what holds the decision backend and the row; absent means no gate, which
+   * is what a deployment with no decision backend and a self-host get. The
+   * curated by-name exclusion of destructive operations is unchanged and sits
+   * above this: the gate judges what was offered, it does not widen the offer.
+   */
+  guard?(input: Record<string, unknown>): Promise<ChatReplyPart | null>;
   run(input: Record<string, unknown>): Promise<TeammateActionOutcome>;
 }
 
@@ -606,6 +640,16 @@ export interface ActionContext {
    * Optional and isolated like every other accounting call: unwired, and on any
    * failure, the action still happened.
    */
+  /**
+   * The approval gate (#958), bound by the engine over the turn's connections.
+   *
+   * Resolves to `null` when **no decision backend is configured**, which is
+   * not the same as a backend that failed: a deployment that never had a key
+   * has not opted into this feature and must behave as it did before, while a
+   * key that stopped working returns a `review` verdict, because an outage
+   * must not become an approval.
+   */
+  judgeAction?: (subject: ApprovalSubject) => Promise<ApprovalVerdict | null>;
   countOperation?: (event: {
     operation: UsageOperation;
     unit: UsageOperationUnit;
@@ -789,7 +833,8 @@ export type ActionHandler = (ctx: ActionContext) => Promise<ActionResult>;
  */
 export interface UsageEvent {
   stage: AiUsageStage;
-  provider: Provider;
+  /** Who ran: a text provider, or `typesafe` for a Jev decision (#950). */
+  provider: UsageProvider;
   modelId: string;
   /** Which credential answered (platform-funded vs BYOK etc.). */
   credentialKind: AiCredentialKind;
@@ -804,6 +849,12 @@ export interface RunResult {
   flowName: string;
   /** Model-call usage collected this turn, in call order. */
   usage: UsageEvent[];
+  /**
+   * The shadow pre-flight's record (#952), when one ran. The Conversation Turn
+   * puts it on the stored trace; nothing in the runtime reads it, which is what
+   * "routing nothing" means here.
+   */
+  preflight?: PreflightTraceRecord;
   /**
    * Set when a handover action ran with a target: the Conversation Turn
    * continues this same message inside the target Assistant's Publication

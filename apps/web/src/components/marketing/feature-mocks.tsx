@@ -98,8 +98,8 @@ const KNOWLEDGE_TABS = [
 type KnowledgeTab = (typeof KNOWLEDGE_TABS)[number]["id"];
 
 const WEBSITES = [
-  { name: "acme.com", url: "https://acme.com", pages: "412 pages", cadence: "Weekly", state: "Ready", tone: "ok" as const },
-  { name: "help.acme.com", url: "https://help.acme.com", pages: "96 pages", cadence: "Weekly", state: "Re-crawling", tone: "warn" as const },
+  { name: "acme.com", url: "https://acme.com", documents: "412 Documents", cadence: "Weekly", state: "Ready", tone: "ok" as const },
+  { name: "help.acme.com", url: "https://help.acme.com", documents: "96 Documents", cadence: "Weekly", state: "Re-crawling", tone: "warn" as const },
 ];
 
 /* The five providers that actually connect today, read from the same registry
@@ -181,7 +181,7 @@ function KnowledgeWebsites() {
               <span className="text-muted-foreground ml-6 block truncate text-xs">{site.url}</span>
             </span>
             <Pill tone={site.tone}>{site.state}</Pill>
-            <span className="text-muted-foreground text-xs">{site.pages}</span>
+            <span className="text-muted-foreground text-xs">{site.documents}</span>
             <span className="text-muted-foreground flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
               {site.cadence} <ChevronDown className="size-3" />
             </span>

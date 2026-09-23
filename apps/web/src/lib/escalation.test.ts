@@ -416,6 +416,30 @@ describe("escalateConversation, escalated flag and auto-Improvements", () => {
     expect(updated?.metadata?.escalationOption).toBeUndefined();
   });
 
+  it("records the pre-flight's recommended desk and whether the visitor followed it (#955)", async () => {
+    const { assistant, desk, conversation } = await fixture();
+    await db.updateConversationMetadata(conversation.id, { preflight: { recommendedHelpDeskId: desk.id } });
+    await run(assistant, { visitorId: "visitor-1", conversationId: conversation.id, helpDeskId: desk.id });
+    const followed = await db.getConversation(conversation.id);
+    expect(followed?.metadata?.escalationRecommendedHelpDesk).toBe("IT Desk");
+    expect(followed?.metadata?.escalationFollowedRecommendation).toBe(true);
+
+    const other = await db.createHelpDesk(assistant.organizationId, { name: "Billing", description: "" });
+    await db.updateConversationMetadata(conversation.id, { preflight: { recommendedHelpDeskId: other.id } });
+    await run(assistant, { visitorId: "visitor-1", conversationId: conversation.id, helpDeskId: desk.id });
+    const ignored = await db.getConversation(conversation.id);
+    expect(ignored?.metadata?.escalationRecommendedHelpDesk).toBe("Billing");
+    expect(ignored?.metadata?.escalationFollowedRecommendation).toBe(false);
+  });
+
+  it("records no recommendation fields when the pre-flight recommended nothing", async () => {
+    const { assistant, desk, conversation } = await fixture();
+    await run(assistant, { visitorId: "visitor-1", conversationId: conversation.id, helpDeskId: desk.id });
+    const updated = await db.getConversation(conversation.id);
+    expect(updated?.metadata?.escalationRecommendedHelpDesk).toBeUndefined();
+    expect(updated?.metadata?.escalationFollowedRecommendation).toBeUndefined();
+  });
+
   it("records the channel the visitor actually took", async () => {
     const { assistant, desk, channel, conversation } = await fixture();
     await run(assistant, {

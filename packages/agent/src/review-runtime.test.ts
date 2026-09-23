@@ -453,3 +453,119 @@ vi.mock("./host", async (importOriginal) => {
     }),
   };
 });
+
+/**
+ * The gated mode (#958, criterion 4). A Human review step somebody clicks
+ * through every time stops being read; one that appears when the next action
+ * is actually risky means something. The gate decides which this is.
+ */
+describe("the human_review action in gated mode", () => {
+  function gatedFlow(flow: Flow): Flow {
+    return {
+      ...flow,
+      actionSettings: {
+        ...flow.actionSettings,
+        human_review: { ...flow.actionSettings?.human_review, mode: "gated" as const },
+      },
+    };
+  }
+
+  const ctx = (
+    flow: Flow,
+    runtime: ReviewRuntime,
+    judgeAction?: ActionContext["judgeAction"]
+  ): ActionContext =>
+    ({
+      assistant: { id: flow.assistantId, title: "Gate" },
+      platformPrompt: "",
+      flow,
+      message: "refund please",
+      history: [{ role: "assistant", text: "Hi" }],
+      templateContext: {},
+      chatModel: null,
+      session: { get: () => undefined, set: () => undefined, snapshot: () => ({}) },
+      skills: [],
+      priorParts: [],
+      emit: () => undefined,
+      reviewRuntime: runtime,
+      actionIndex: 0,
+      previewSurface: true,
+      judgeAction,
+    }) as unknown as ActionContext;
+
+  function recordingRuntime() {
+    const created: unknown[] = [];
+    const runtime: ReviewRuntime = {
+      simulated: true,
+      conversationId: "c1",
+      create: async (input) => {
+        created.push(input);
+        return {
+          ...(input as ReviewRequest),
+          id: "rev_x",
+          status: "pending",
+          simulated: true,
+        } as ReviewRequest;
+      },
+    };
+    return { runtime, created };
+  }
+
+  it("skips the review, and does not halt, when the gate is sure the next action is safe", async () => {
+    const db = getMockDb();
+    const { flow } = await seed(db);
+    const { runtime, created } = recordingRuntime();
+
+    const result = await ACTION_HANDLERS.human_review(
+      ctx(gatedFlow(flow), runtime, async () => ({
+        kind: "allow" as const,
+        reversibility: "reversible" as const,
+      }))
+    );
+
+    expect(created).toHaveLength(0);
+    expect(result.halt).toBeFalsy();
+  });
+
+  it("raises the review when the gate is not sure", async () => {
+    const db = getMockDb();
+    const { flow } = await seed(db);
+    const { runtime, created } = recordingRuntime();
+
+    const result = await ACTION_HANDLERS.human_review(
+      ctx(gatedFlow(flow), runtime, async () => ({
+        kind: "review" as const,
+        reversibility: "irreversible" as const,
+        reason: "irreversible" as const,
+      }))
+    );
+
+    expect(created).toHaveLength(1);
+    expect(result.halt).toBe(true);
+  });
+
+  it("raises the review when there is no decision backend at all", async () => {
+    // Nothing is approved by absence: an unwired gate is the cautious branch,
+    // which for this action is the behaviour it shipped with.
+    const db = getMockDb();
+    const { flow } = await seed(db);
+    const { runtime, created } = recordingRuntime();
+
+    const result = await ACTION_HANDLERS.human_review(ctx(gatedFlow(flow), runtime, undefined));
+    expect(created).toHaveLength(1);
+    expect(result.halt).toBe(true);
+  });
+
+  it("still always raises the review when the mode is left at its default", async () => {
+    const db = getMockDb();
+    const { flow } = await seed(db);
+    const { runtime, created } = recordingRuntime();
+
+    // A Flow with a Human review step wants one; the gate only ever removes
+    // the step for somebody who opted into that.
+    await ACTION_HANDLERS.human_review(
+      ctx(flow, runtime, async () => ({ kind: "allow" as const, reversibility: "read_only" as const }))
+    );
+    expect(created).toHaveLength(1);
+  });
+});

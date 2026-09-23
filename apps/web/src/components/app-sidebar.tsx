@@ -51,7 +51,7 @@ import {
   sidebarDragFor,
   sidebarReleaseFor,
 } from "@/components/shell/sidebar-drag";
-import { SPRING_PANEL } from "@/lib/ease";
+import { SPRING_PANEL, SPRING_REFOLD, SPRING_UNFOLD } from "@/lib/ease";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
 import { haptic, playFeedback } from "@agent-hub/ui/feedback";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -109,7 +109,7 @@ const ROW_IDLE = "text-muted-foreground hover:text-foreground";
 const ROW_ACTIVE = "bg-muted text-foreground";
 
 function rowClass(collapsed: boolean) {
-  return `press relative flex h-8 items-center rounded-lg text-sm font-medium transition-colors ${
+  return `press relative flex h-8 items-center rounded-lg text-sm font-medium transition-[color,background-color,opacity] has-[[data-pending]]:opacity-60 ${
     collapsed ? "w-9 justify-center self-center" : "w-full gap-2.5 px-2.5"
   }`;
 }
@@ -117,23 +117,22 @@ function rowClass(collapsed: boolean) {
 /**
  * Pending state for the row the user just clicked.
  *
- * Server navigation in this app can take a beat, and until now the click was
- * unacknowledged: `loading.tsx` only appears once the router commits, and the
- * row itself never changed. That gap is the dead-click case, the one thing
- * response feedback exists to prevent.
+ * Server navigation in this app can take a beat, and `loading.tsx` only
+ * appears once the router commits, so without this the click is
+ * unacknowledged: the dead-click case response feedback exists to prevent.
  *
- * `useLinkStatus` has to be called from inside the <Link>, which is why this is
- * its own component rather than a flag on NavRow.
+ * It used to be a white bar down the row's left edge, which read as a second
+ * active marker beside the one `bg-muted` already draws, on the wrong row.
+ * The row dims instead: the same thing every other pending control in the
+ * console does, and it says "working" without claiming to be selected.
+ *
+ * `useLinkStatus` has to be called from inside the <Link>, which is why this
+ * is its own component rather than a flag on NavRow.
  */
 function NavRowPending() {
   const { pending } = useLinkStatus();
   if (!pending) return null;
-  return (
-    <span
-      aria-hidden
-      className="bg-foreground/50 absolute inset-y-1 left-0 w-0.5 animate-pulse rounded-full"
-    />
-  );
+  return <span aria-hidden data-pending="" className="hidden" />;
 }
 
 function NavRow({
@@ -446,6 +445,10 @@ function SidebarContent({
           with the toggle button so it's the very first control in the
           sidebar. */}
       <div
+        // `items-center` matters on the rail: the column is 60px wide and
+        // every row below is a 36px box centred in it, so a header whose
+        // children merely start after `px-2` sat 4px to the left of the whole
+        // nav. Every control in the rail now shares one vertical axis.
         className={`flex items-center pt-4 pb-3 ${
           collapsed ? "flex-col gap-2 px-2" : "gap-2.5 px-4"
         }`}
@@ -938,40 +941,114 @@ export function AppSidebar(props: AppSidebarProps) {
   // full and one dragged down to the icon rail reopens as the rail.
   const close = () => setSidebarDocked(false);
 
-  if (sidebarDocked) {
-    const collapsed = isRailWidth(width);
-    return (
-      <>
-        <aside
-          style={{ width: collapsed ? RAIL_WIDTH : width }}
-          // While armed, the panel dims toward the outcome instead of just
-          // sitting there: the in-between frames should point at what release
-          // will do, so "let go now and it closes" is legible before it does.
-          className={`bg-background relative hidden h-full shrink-0 flex-col border-r lg:flex ${
-            dragging ? "" : "transition-[width] duration-200 ease-out"
-          } ${armedToHide ? "opacity-45" : "opacity-100"}`}
-        >
-          <SidebarContent
-            {...props}
-            collapsed={collapsed}
-            expandsOnToggle={false}
-            // Toggle fully hides the sidebar (never a rail). Width is preserved
-            // so reopening from the top bar restores the same state, full or
-            // the dragged-down icon rail. Rail is reached only by dragging.
-            onToggle={close}
-          />
-          <ResizeHandle
-            side="right"
-            label="Resize sidebar"
-            resizing={dragging}
-            onPointerDown={startDrag}
-          />
-        </aside>
-        <NavDrawer {...props} />
-      </>
-    );
-  }
+  const collapsed = isRailWidth(width);
 
+  return (
+    <>
+      {/* The docked sidebar's width is animated rather than transitioned,
+          and it animates to and from zero, which is what makes closing and
+          reopening read as a movement at all. It used to unmount on close and
+          mount on open, so the main content jumped 240px in one frame; the
+          CSS `transition-[width]` it carried only ever ran on the rail/full
+          change, and 200ms of `ease-out` there was invisible anyway.
+
+          `SPRING_UNFOLD` opens and `SPRING_REFOLD` closes: the opening is
+          allowed its overshoot, because a panel arriving under its own
+          momentum is the thing that makes the gesture legible, while a
+          closing panel that overshot would pull the main content past the
+          screen edge and back. Dragging animates nothing, or the width would
+          chase the pointer a beat behind it. */}
+      <AnimatePresence initial={false}>
+        {sidebarDocked && (
+          <motion.aside
+            key="docked-sidebar"
+            initial={{ width: 0 }}
+            animate={{ width: collapsed ? RAIL_WIDTH : width }}
+            exit={{
+              width: 0,
+              transition: reduceMotion ? { duration: 0 } : SPRING_REFOLD,
+            }}
+            transition={
+              reduceMotion || dragging ? { duration: 0 } : SPRING_UNFOLD
+            }
+            // While armed, the panel dims toward the outcome instead of just
+            // sitting there: the in-between frames should point at what
+            // release will do, so "let go now and it closes" is legible
+            // before it does.
+            className={`bg-background relative hidden h-full shrink-0 flex-col border-r lg:flex ${
+              armedToHide ? "opacity-45" : "opacity-100"
+            }`}
+          >
+            {/* The clip belongs to the content, not to the panel. The resize
+                grip hangs off the panel's own edge and is wider than the edge
+                it centres on, so a panel that clipped its overflow cut the
+                grip in half down the border. */}
+            <div className="h-full overflow-hidden">
+              {/* The content keeps the width it is animating to, so it slides
+                  out from behind the edge instead of reflowing every row while
+                  the panel opens. */}
+              <div
+                className="flex h-full flex-col"
+                style={{ width: collapsed ? RAIL_WIDTH : width }}
+              >
+                <SidebarContent
+                  {...props}
+                  collapsed={collapsed}
+                  expandsOnToggle={false}
+                  // Toggle fully hides the sidebar (never a rail). Width is
+                  // preserved so reopening from the top bar restores the same
+                  // state, full or the dragged-down icon rail. Rail is reached
+                  // only by dragging.
+                  onToggle={close}
+                />
+              </div>
+            </div>
+            <ResizeHandle
+              side="right"
+              label="Resize sidebar"
+              resizing={dragging}
+              onPointerDown={startDrag}
+            />
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {!sidebarDocked && (
+        <UndockedSidebar
+          {...props}
+          peek={peek}
+          setPeek={setPeek}
+          onDock={() => setSidebarDocked(true)}
+        />
+      )}
+      <NavDrawer {...props} />
+    </>
+  );
+}
+
+/**
+ * What stands in for the sidebar while it is hidden: the hover zone along the
+ * screen edge, and the floating panel that zone reveals.
+ *
+ * A module-level component, not one declared inside `AppSidebar`. A component
+ * defined during render is a new type on every render, so React unmounts and
+ * remounts its whole subtree; `setPeek` alone would have remounted this one
+ * twice per hover, which is the one thing that breaks `AnimatePresence`: the
+ * exit never plays, because by the time `peek` is false the presence that was
+ * tracking the child is itself gone.
+ */
+function UndockedSidebar({
+  peek,
+  setPeek,
+  onDock,
+  ...props
+}: AppSidebarProps & {
+  peek: boolean;
+  setPeek: (peek: boolean) => void;
+  /** Toggling from the floating panel docks it, rather than hiding it again. */
+  onDock: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
   return (
     <>
       {/* Hover zone along the screen edge that reveals the floating panel. */}
@@ -1000,13 +1077,12 @@ export function AppSidebar(props: AppSidebarProps) {
               expandsOnToggle
               onToggle={() => {
                 setPeek(false);
-                setSidebarDocked(true);
+                onDock();
               }}
             />
           </motion.div>
         )}
       </AnimatePresence>
-      <NavDrawer {...props} />
     </>
   );
 }

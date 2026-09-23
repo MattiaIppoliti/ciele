@@ -26,6 +26,17 @@ describe("estimateCostEur, chat models", () => {
     );
   });
 
+  it("prices a Jev decision at its input rate with free output, under both ids", () => {
+    // TypeSafe's list price: $0.042 per million input tokens, output free
+    // (#950). The Gateway id and the direct alias are both real requested ids
+    // and both must land on this row, never on the chat fallback rate.
+    expect(estimateCostEur("typesafe", "typesafe-ai/jev", MILLION, MILLION)).toBeCloseTo(0.04, 10);
+    expect(estimateCostEur("typesafe", "jev-latest", MILLION, 0)).toBeCloseTo(0.04, 10);
+    expect(estimateCostEur("typesafe", "jev-latest", MILLION, MILLION)).toBeLessThan(
+      FALLBACK_INPUT_EUR_PER_MILLION
+    );
+  });
+
   it("prices self-hosted / OpenAI-compatible endpoints at zero", () => {
     expect(estimateCostEur("openai_compatible", "llama-whatever", MILLION, MILLION)).toBe(0);
   });

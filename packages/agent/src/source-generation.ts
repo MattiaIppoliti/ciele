@@ -194,7 +194,8 @@ export async function replaceSourceGeneration(options: {
   }) => Promise<boolean>;
   preserveStagedOnAbort?: boolean;
   onRetired?: (conceptIds: string[]) => Promise<void>;
-  onCommitted?: () => Promise<void>;
+  /** Runs once the cutover is visible, with the generation that just went live. */
+  onCommitted?: (generationId: string) => Promise<void>;
 }): Promise<"committed" | "aborted"> {
   const ownershipHeld = async () =>
     options.checkpoint ? options.checkpoint() : true;
@@ -239,6 +240,6 @@ export async function replaceSourceGeneration(options: {
     onRetired: options.onRetired,
   });
   if (cutover !== "committed") return "aborted";
-  await options.onCommitted?.();
+  await options.onCommitted?.(generation.generationId);
   return "committed";
 }

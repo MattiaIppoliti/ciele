@@ -106,3 +106,59 @@ where organization_id is null;
 -- migrations/20260820120000_drop_join_demo_org.sql). Add a member to the demo org
 -- with an explicit insert below if you want one locally; do not reintroduce a
 -- self-service owner grant.
+
+-- One demo Document with the memories extracted from it (#926), so the
+-- Memories tab (#932) has something to render before anything extracts for
+-- real (#930). Every quote below is a verbatim span of the body above it:
+-- the evidence a Member checks a memory against is the whole point of keeping
+-- it, and a seeded quote that paraphrases would teach the wrong shape.
+insert into public.knowledge_collections (id, organization_id, name, description)
+values ('demo-collection', '00000000-0000-0000-0000-000000000001',
+        'Knowledge Library', 'The demo organization''s Sources')
+on conflict (id) do nothing;
+
+insert into public.sources (id, collection_id, name, kind, status)
+values ('demo-handbook', 'demo-collection', 'Employee handbook', 'text', 'ready')
+on conflict (id) do nothing;
+
+insert into public.concepts (id, collection_id, source_id, path, frontmatter, body)
+values (
+  'demo-leave-policy',
+  'demo-collection',
+  'demo-handbook',
+  'handbook/leave.md',
+  '{"type": "Document", "title": "Leave policy", "generated": {"by": "process:okf-ingest-passthrough"}}'::jsonb,
+  'Employees accrue 25 days of paid leave a year. Unused leave expires on 31 March. '
+  'Leave requests need a manager''s approval at least two weeks ahead. '
+  'Public holidays do not count against the allowance.'
+)
+on conflict (id) do nothing;
+
+insert into public.knowledge_memories
+  (id, organization_id, collection_id, source_id, document_path, concept_id,
+   text, quote, generated_by, forgotten_at, forget_reason)
+values
+  ('demo-memory-accrual', '00000000-0000-0000-0000-000000000001',
+   'demo-collection', 'demo-handbook', 'handbook/leave.md', 'demo-leave-policy',
+   'Employees get 25 days of paid leave a year.',
+   'Employees accrue 25 days of paid leave a year.',
+   'knowledge-memory-extractor/1', null, null),
+  ('demo-memory-expiry', '00000000-0000-0000-0000-000000000001',
+   'demo-collection', 'demo-handbook', 'handbook/leave.md', 'demo-leave-policy',
+   'Unused leave expires at the end of March.',
+   'Unused leave expires on 31 March.',
+   'knowledge-memory-extractor/1', null, null),
+  ('demo-memory-notice', '00000000-0000-0000-0000-000000000001',
+   'demo-collection', 'demo-handbook', 'handbook/leave.md', 'demo-leave-policy',
+   'Leave needs a manager''s approval two weeks in advance.',
+   'Leave requests need a manager''s approval at least two weeks ahead.',
+   'knowledge-memory-extractor/1', null, null),
+  -- One forgotten row, so the tab's second state is visible without a click:
+  -- the text and its evidence are still here, which is what makes a restore
+  -- possible and a forget different from a delete.
+  ('demo-memory-holidays', '00000000-0000-0000-0000-000000000001',
+   'demo-collection', 'demo-handbook', 'handbook/leave.md', 'demo-leave-policy',
+   'Public holidays come out of the leave allowance.',
+   'Public holidays do not count against the allowance.',
+   'knowledge-memory-extractor/1', now(), 'Says the opposite of the page')
+on conflict (id) do nothing;

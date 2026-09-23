@@ -34,6 +34,7 @@ import type {
   ChannelMessage,
   Concept,
   ConceptFrontmatter,
+  SourceDocumentListItem,
   Conversation,
   ConversationMetadata,
   Entity,
@@ -70,6 +71,7 @@ import type {
   InsightsOverview,
   Invite,
   KnowledgeCollection,
+  KnowledgeMemoryExtraction,
   KnowledgeEngine,
   KnowledgeSearchResult,
   LocalConnectorDevice,
@@ -98,12 +100,14 @@ import type {
   QuickReplyButton,
   RecrawlSchedule,
   ModelRef,
+  ActionApproval,
   ReviewRequest,
   WebhookSubscription,
   Role,
   Skill,
   Source,
   SsoConnection,
+  CrawlerConnection,
   SsoConnectionConfig,
   SsoProviderKind,
   SsoValidationStatus,
@@ -123,6 +127,7 @@ import type {
 import {
   ASSISTANT_GOAL_CAP,
   capMemoryDocument,
+  compareOrgKnowledgeSources,
   colorizeOverview,
   DEFAULT_AI_DISCLAIMER,
   DEFAULT_FLOWS,
@@ -137,7 +142,9 @@ import {
   memoryDocumentScope,
   monotonicNow,
   normalizeChannelAvailability,
+  DOCUMENT_CHUNKS_PAGE_SIZE,
   shortId,
+  SOURCE_DOCUMENTS_PAGE_SIZE,
   sortFlows,
 } from "@agent-hub/core";
 
@@ -1110,7 +1117,36 @@ function toConcept(row: Record<string, unknown>): Concept {
     body: row.body as string,
     excluded: (row.excluded as boolean) ?? false,
     recrawlSchedule: (row.recrawl_schedule as RecrawlSchedule | null) ?? null,
+    summary: (row.summary as string | null) ?? null,
+    // Both halves or neither (#931): a summary whose author the database does
+    // not know is one nothing should claim provenance for.
+    summaryGenerated:
+      typeof row.summary_generated_by === "string"
+        ? {
+            by: row.summary_generated_by,
+            at: (row.summary_generated_at as string | null) ?? undefined,
+          }
+        : null,
     createdAt: row.created_at as string,
+  };
+}
+
+function toMemoryExtraction(row: Record<string, unknown>): KnowledgeMemoryExtraction {
+  return {
+    id: row.id as string,
+    organizationId: row.organization_id as string,
+    collectionId: row.collection_id as string,
+    sourceId: row.source_id as string,
+    documentPath: row.document_path as string,
+    bodyHash: (row.body_hash as string | null) ?? null,
+    status: row.status as KnowledgeMemoryExtraction["status"],
+    memoryCount: (row.memory_count as number) ?? 0,
+    capped: (row.capped as boolean) ?? false,
+    attempts: (row.attempts as number) ?? 0,
+    lastError: (row.last_error as string | null) ?? null,
+    extractedAt: (row.extracted_at as string | null) ?? null,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
   };
 }
 
@@ -2318,6 +2354,53 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .from("sso_connections")
         .delete()
         .eq("organization_id", organizationId);
+      if (error) throw error;
+    },
+
+    // --- Crawler connections ---------------------------------------------
+
+    async getCrawlerConnection(organizationId, provider) {
+      const { data, error } = await client
+        .from("crawler_connections")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .eq("provider", provider)
+        .maybeSingle();
+      if (error) throw error;
+      return data
+        ? (rowToDomain(data as Record<string, unknown>) as unknown as CrawlerConnection)
+        : null;
+    },
+
+    async setCrawlerConnection(organizationId, input) {
+      const { data, error } = await client
+        .from("crawler_connections")
+        .upsert(
+          {
+            organization_id: organizationId,
+            provider: input.provider,
+            encrypted_token: input.encryptedToken,
+            token_hint: input.tokenHint,
+            account_id: input.accountId ?? "",
+            created_by: input.createdBy ?? null,
+            // created_at omitted: the default stamps the first insert and a
+            // rotation (update) keeps it.
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "organization_id,provider" }
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      return rowToDomain(data as Record<string, unknown>) as unknown as CrawlerConnection;
+    },
+
+    async deleteCrawlerConnection(organizationId, provider) {
+      const { error } = await client
+        .from("crawler_connections")
+        .delete()
+        .eq("organization_id", organizationId)
+        .eq("provider", provider);
       if (error) throw error;
     },
 
@@ -3770,18 +3853,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       const { data, error } = result;
       if (error) throw error;
       if (!data) return null;
-      return {
-        id: data.id,
-        collectionId: data.collection_id,
-        sourceId: data.source_id,
-        generationId: data.generation_id ?? null,
-        path: data.path,
-        frontmatter: data.frontmatter,
-        body: data.body,
-        excluded: data.excluded ?? false,
-        recrawlSchedule: data.recrawl_schedule ?? null,
-        createdAt: data.created_at,
-      };
+      return toConcept(data as Record<string, unknown>);
     },
 
     async listNullEmbeddingConceptIds(assistantId) {
@@ -3849,19 +3921,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       if (!row) return null;
       const collection = row.knowledge_collections as { name?: string };
       return {
-        concept: {
-          id: row.id as string,
-          collectionId: row.collection_id as string,
-          sourceId: (row.source_id as string) ?? null,
-          generationId: (row.generation_id as string | null) ?? null,
-          path: row.path as string,
-          frontmatter: row.frontmatter as ConceptFrontmatter,
-          body: row.body as string,
-          excluded: (row.excluded as boolean) ?? false,
-          recrawlSchedule:
-            (row.recrawl_schedule as Concept["recrawlSchedule"]) ?? null,
-          createdAt: row.created_at as string,
-        },
+        concept: toConcept(row),
         collectionName: collection?.name ?? "",
       };
     },
@@ -3889,18 +3949,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           };
           const inserted = await client.from("concepts").insert(legacy).select().single();
           if (inserted.error) throw inserted.error;
-          return {
-            id: inserted.data.id,
-            collectionId: inserted.data.collection_id,
-            sourceId: inserted.data.source_id,
-            generationId: null,
-            path: inserted.data.path,
-            frontmatter: inserted.data.frontmatter,
-            body: inserted.data.body,
-            excluded: inserted.data.excluded ?? false,
-            recrawlSchedule: inserted.data.recrawl_schedule ?? null,
-            createdAt: inserted.data.created_at,
-          };
+          return toConcept(inserted.data as Record<string, unknown>);
         }
         const staged = (Array.isArray(data) ? data[0] : data) as {
           id: string;
@@ -3914,18 +3963,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           recrawl_schedule?: Concept["recrawlSchedule"];
           created_at: string;
         };
-        return {
-          id: staged.id,
-          collectionId: staged.collection_id,
-          sourceId: staged.source_id,
-          generationId: staged.generation_id ?? null,
-          path: staged.path,
-          frontmatter: staged.frontmatter,
-          body: staged.body,
-          excluded: staged.excluded ?? false,
-          recrawlSchedule: staged.recrawl_schedule ?? null,
-          createdAt: staged.created_at,
-        };
+        return toConcept(staged as Record<string, unknown>);
       }
       const row = {
         id: shortId(),
@@ -3948,18 +3986,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }
       const { data, error } = result;
       if (error) throw error;
-      return {
-        id: data.id,
-        collectionId: data.collection_id,
-        sourceId: data.source_id,
-        generationId: data.generation_id ?? null,
-        path: data.path,
-        frontmatter: data.frontmatter,
-        body: data.body,
-        excluded: data.excluded ?? false,
-        recrawlSchedule: data.recrawl_schedule ?? null,
-        createdAt: data.created_at,
-      };
+      return toConcept(data as Record<string, unknown>);
     },
 
     async updateConcept(id, patch) {
@@ -3973,18 +4000,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .select()
         .single();
       if (error) throw error;
-      return {
-        id: data.id,
-        collectionId: data.collection_id,
-        sourceId: data.source_id,
-        generationId: data.generation_id ?? null,
-        path: data.path,
-        frontmatter: data.frontmatter,
-        body: data.body,
-        excluded: data.excluded ?? false,
-        recrawlSchedule: data.recrawl_schedule ?? null,
-        createdAt: data.created_at,
-      };
+      return toConcept(data as Record<string, unknown>);
     },
 
     async deleteConcept(id) {
@@ -4018,15 +4034,24 @@ export function createSupabaseDb(client: SupabaseClient): Db {
 
     async saveChunks(chunks) {
       if (chunks.length === 0) return;
-      const rows = chunks.map((chunk) => ({
-        id: shortId(),
-        concept_id: chunk.conceptId,
-        collection_id: chunk.collectionId,
-        source_id: chunk.sourceId ?? null,
-        content: chunk.content,
-        embedding: chunk.embedding,
-        embedding_space: chunk.embeddingSpace ?? null,
-      }));
+      // Position within its own Document (#929): the caller's, or failing
+      // that call order per concept, which is only right when one call
+      // carries the whole body. The ingest write path states it.
+      const seen = new Map<string, number>();
+      const rows = chunks.map((chunk) => {
+        const position = chunk.position ?? seen.get(chunk.conceptId) ?? 0;
+        seen.set(chunk.conceptId, position + 1);
+        return {
+          id: shortId(),
+          concept_id: chunk.conceptId,
+          collection_id: chunk.collectionId,
+          source_id: chunk.sourceId ?? null,
+          content: chunk.content,
+          embedding: chunk.embedding,
+          embedding_space: chunk.embeddingSpace ?? null,
+          position,
+        };
+      });
       // Against a schema without `embedding_space` (20260830234500 not yet
       // applied) the insert is retried without the column: the row is then a
       // legacy null-space row, which the matchers treat as the current space,
@@ -4038,10 +4063,17 @@ export function createSupabaseDb(client: SupabaseClient): Db {
           ? await client.from("concept_chunks").insert(batch)
           : { error: null };
         if (!withSpace || (result.error && isSchemaLagError(result.error))) {
+          // One retry covers both young columns: a database missing either is
+          // a database from before them, and a chunk without a recorded space
+          // or position is exactly what every chunk used to be.
           withSpace = false;
           result = await client
             .from("concept_chunks")
-            .insert(batch.map(({ embedding_space: _space, ...rest }) => rest));
+            .insert(
+              batch.map(
+                ({ embedding_space: _space, position: _position, ...rest }) => rest
+              )
+            );
         }
         if (result.error) throw result.error;
       }
@@ -4548,6 +4580,21 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         .maybeSingle();
       if (error) throw error;
       return data ? (rowToDomain(data) as unknown as ReviewRequest) : null;
+    },
+
+    async decideActionApproval(id, patch) {
+      // Same first-wins rule as the review gate: an approval is written only
+      // while the row is still pending, so a Member's yes and the expiry sweep
+      // cannot both take.
+      const { data, error } = await client
+        .from("action_approvals")
+        .update({ ...domainToRow({ ...patch }), updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      return data ? (rowToDomain(data) as unknown as ActionApproval) : null;
     },
 
     async settleWebhookSubscription(id, patch) {
@@ -5429,6 +5476,8 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         p_query: (filter.query ?? "").trim(),
         p_page: filter.page ?? 1,
         p_page_size: filter.pageSize ?? 25,
+        p_sort: filter.sort ?? null,
+        p_ascending: filter.ascending ?? false,
       });
       if (!result.error) return result.data as OrgKnowledgeSourcePage;
       if (!isSchemaLagError(result.error)) throw result.error;
@@ -5464,7 +5513,7 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         );
         matches = matches.filter((s) => linkedIds.has(s.id));
       }
-      matches.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0));
+      matches.sort(compareOrgKnowledgeSources(filter));
 
       const statusCounts = { processing: 0, ready: 0, error: 0 };
       for (const source of matches) statusCounts[source.status] += 1;
@@ -5647,18 +5696,283 @@ export function createSupabaseDb(client: SupabaseClient): Db {
       }
       const { data, error } = result;
       if (error) throw error;
-      return (data as Array<Record<string, unknown>>).map((r) => ({
-        id: r.id as string,
-        collectionId: r.collection_id as string,
-        sourceId: r.source_id as string | null,
-        generationId: (r.generation_id as string | null) ?? null,
-        path: r.path as string,
-        frontmatter: r.frontmatter as ConceptFrontmatter,
-        body: r.body as string,
-        excluded: (r.excluded as boolean) ?? false,
-        recrawlSchedule: (r.recrawl_schedule as RecrawlSchedule | null) ?? null,
-        createdAt: r.created_at as string,
-      }));
+      return (data as Array<Record<string, unknown>>).map(toConcept);
+    },
+
+    async listSourceDocuments(sourceId, options) {
+      const pageSize = Math.max(1, options?.pageSize ?? SOURCE_DOCUMENTS_PAGE_SIZE);
+      const page = Math.max(1, options?.page ?? 1);
+      const ascending = options?.ascending ?? false;
+
+      // SQL chooses the page, because the order and the Status filter both
+      // need expressions PostgREST cannot send: `lower()` over the title in
+      // the frontmatter, and the chunk `exists()` that separates Ready from
+      // Pending. Filtering a fetched page instead gives a footer count that
+      // disagrees with the rows under it.
+      const result = await client.rpc("get_source_document_page", {
+        p_source_id: sourceId,
+        p_page: page,
+        p_page_size: pageSize,
+        p_sort: options?.sort ?? null,
+        p_ascending: ascending,
+        p_status: options?.status ?? null,
+      });
+      if (!result.error) {
+        return result.data as {
+          items: SourceDocumentListItem[];
+          total: number;
+        };
+      }
+      if (!isSchemaLagError(result.error)) throw result.error;
+
+      // The deploy-before-migrate window (supabase/CLAUDE.md). It answers the
+      // default order and no filter, which is every read the previous release
+      // could ask for; a header click during those minutes reads unsorted
+      // rather than failing.
+      const from = (page - 1) * pageSize;
+      const { data, error, count } = await client
+        .from("concepts")
+        .select("id, path, frontmatter, excluded, created_at", {
+          count: "exact",
+        })
+        .eq("source_id", sourceId)
+        .eq("is_active", true)
+        .order("created_at", { ascending })
+        .order("id", { ascending })
+        .range(from, from + pageSize - 1);
+      if (error) throw error;
+      const rows = (data ?? []) as Array<Record<string, unknown>>;
+
+      // Which of *this page's* Documents are chunked. Bounded by the page
+      // size, so it stays one small `in (...)` however large the Source is.
+      const ids = rows.map((row) => row.id as string);
+      const indexed = new Set<string>();
+      if (ids.length > 0) {
+        const chunks = await client
+          .from("concept_chunks")
+          .select("concept_id")
+          .in("concept_id", ids);
+        if (chunks.error) throw chunks.error;
+        for (const chunk of (chunks.data ?? []) as Array<{ concept_id: string }>) {
+          indexed.add(chunk.concept_id);
+        }
+      }
+
+      return {
+        items: rows.map((row) => {
+          const frontmatter = row.frontmatter as ConceptFrontmatter;
+          const path = row.path as string;
+          return {
+            id: row.id as string,
+            path,
+            // `||`, not `??`: the RPC reads this through
+            // `nullif(frontmatter->>'title', '')`, so an empty title is no
+            // title and the path stands in for it.
+            title: frontmatter.title || path,
+            resourceUrl: frontmatter.resource ?? null,
+            excluded: (row.excluded as boolean) ?? false,
+            indexed: indexed.has(row.id as string),
+            createdAt: row.created_at as string,
+          };
+        }),
+        total: count ?? rows.length,
+      };
+    },
+
+    async setConceptSummary(conceptId, input) {
+      // `.is("summary", null)` is the whole write-once rule: two Members
+      // opening the same Document at once both generate, and the second one's
+      // write finds nothing to update rather than overwriting the first.
+      const { data, error } = await client
+        .from("concepts")
+        .update({
+          summary: input.text,
+          summary_generated_by: input.by,
+          summary_generated_at: input.at,
+        })
+        .eq("id", conceptId)
+        .is("summary", null)
+        .select("*")
+        .maybeSingle();
+      if (error) throw error;
+      if (data) return toConcept(data as Record<string, unknown>);
+      // Somebody else got there first (or the row is gone): answer with what
+      // is stored, never with what this caller generated.
+      const existing = await client
+        .from("concepts")
+        .select("*")
+        .eq("id", conceptId)
+        .maybeSingle();
+      if (existing.error) throw existing.error;
+      return existing.data
+        ? toConcept(existing.data as Record<string, unknown>)
+        : null;
+    },
+
+    async getSourceDocumentByPath(sourceId, documentPath) {
+      // concepts_active_source_path_idx is exactly this predicate.
+      const { data, error } = await client
+        .from("concepts")
+        .select("*")
+        .eq("source_id", sourceId)
+        .eq("path", documentPath)
+        .eq("is_active", true)
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      return toConcept(data as Record<string, unknown>);
+    },
+
+    async countLiveMemoriesByPath(sourceId, documentPaths) {
+      if (documentPaths.length === 0) return {};
+      const { data, error } = await client
+        .from("knowledge_memories")
+        .select("document_path")
+        .eq("source_id", sourceId)
+        .is("forgotten_at", null)
+        .in("document_path", documentPaths);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of (data ?? []) as Array<{ document_path: string }>) {
+        counts[row.document_path] = (counts[row.document_path] ?? 0) + 1;
+      }
+      return counts;
+    },
+
+    async getMemoryExtraction(sourceId, documentPath) {
+      const { data, error } = await client
+        .from("knowledge_memory_extractions")
+        .select("*")
+        .eq("source_id", sourceId)
+        .eq("document_path", documentPath)
+        .maybeSingle();
+      if (error) throw error;
+      return data ? toMemoryExtraction(data as Record<string, unknown>) : null;
+    },
+
+    async listMemoryExtractions(sourceId) {
+      const { data, error } = await client
+        .from("knowledge_memory_extractions")
+        .select("*")
+        .eq("source_id", sourceId)
+        .order("document_path", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((row) =>
+        toMemoryExtraction(row as Record<string, unknown>)
+      );
+    },
+
+    async recordMemoryExtraction(input) {
+      // Read-then-write rather than an upsert, because PostgREST's upsert
+      // sends every column it was given and `DO UPDATE` would set `id` to the
+      // new one: the row would keep changing its primary key on every
+      // extraction. The contract suite caught exactly that.
+      const values = {
+        body_hash: input.bodyHash,
+        status: input.status,
+        memory_count: input.memoryCount,
+        capped: input.capped,
+        attempts: input.attempts,
+        last_error: input.lastError,
+        extracted_at: input.extractedAt,
+        updated_at: new Date().toISOString(),
+      };
+      const existing = await client
+        .from("knowledge_memory_extractions")
+        .select("id")
+        .eq("source_id", input.sourceId)
+        .eq("document_path", input.documentPath)
+        .maybeSingle();
+      if (existing.error) throw existing.error;
+
+      if (existing.data) {
+        const { data, error } = await client
+          .from("knowledge_memory_extractions")
+          .update(values)
+          .eq("id", (existing.data as { id: string }).id)
+          .select("*")
+          .single();
+        if (error) throw error;
+        return toMemoryExtraction(data as Record<string, unknown>);
+      }
+
+      const inserted = await client
+        .from("knowledge_memory_extractions")
+        .insert({
+          id: shortId(),
+          organization_id: input.organizationId,
+          collection_id: input.collectionId,
+          source_id: input.sourceId,
+          document_path: input.documentPath,
+          ...values,
+        })
+        .select("*")
+        .single();
+      if (!inserted.error) {
+        return toMemoryExtraction(inserted.data as Record<string, unknown>);
+      }
+      // Two crawls of one site racing is ordinary: the loser updates the
+      // winner's row rather than failing the job over a unique violation.
+      const raced = await client
+        .from("knowledge_memory_extractions")
+        .update(values)
+        .eq("source_id", input.sourceId)
+        .eq("document_path", input.documentPath)
+        .select("*")
+        .maybeSingle();
+      if (raced.error || !raced.data) throw inserted.error;
+      return toMemoryExtraction(raced.data as Record<string, unknown>);
+    },
+
+    async countConceptChunks(conceptId) {
+      // `head: true` asks PostgREST for the count and no rows. Not an
+      // aggregate, so it works whether or not `db-aggregates-enabled` is on.
+      const { count, error } = await client
+        .from("concept_chunks")
+        .select("id", { count: "exact", head: true })
+        .eq("concept_id", conceptId);
+      if (error) throw error;
+      return count ?? 0;
+    },
+
+    async listDocumentChunks(conceptId, options) {
+      const pageSize = Math.max(1, options?.pageSize ?? DOCUMENT_CHUNKS_PAGE_SIZE);
+      const page = Math.max(1, options?.page ?? 1);
+      const from = (page - 1) * pageSize;
+      let result = await client
+        .from("concept_chunks")
+        .select("id, content, position, created_at", { count: "exact" })
+        .eq("concept_id", conceptId)
+        .order("position", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (result.error && isSchemaLagError(result.error)) {
+        // Before 20260920190000 there is no `position`: the order is whatever
+        // the two older columns still remember, which is what that migration
+        // says a legacy Document gets.
+        result = (await client
+          .from("concept_chunks")
+          .select("id, content, created_at", { count: "exact" })
+          .eq("concept_id", conceptId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + pageSize - 1)) as typeof result;
+      }
+      if (result.error) throw result.error;
+      const rows = (result.data ?? []) as unknown as Array<Record<string, unknown>>;
+      return {
+        items: rows.map((row, offset) => ({
+          id: row.id as string,
+          // The index the tab prints: the row's own position where it has one,
+          // and its place in the read where it does not.
+          index: (row.position as number | null) ?? from + offset,
+          text: row.content as string,
+        })),
+        total: result.count ?? rows.length,
+      };
     },
 
     async listAssistantSourceIds(assistantId) {

@@ -70,6 +70,57 @@ export interface RuntimeHost {
    * never silently permits them.
    */
   allowRelaxedEgress(): boolean;
+
+  /**
+   * Whether the shadow pre-flight runs (#952). Platform-level and temporary:
+   * the slice exists to collect the traffic #953 sets its thresholds from, and
+   * goes away once they are set, so it is a port over an environment variable
+   * rather than a column on `platform_settings`. A schema change and a
+   * per-request database read would outlive the thing they gate, and no
+   * Organization is meant to be able to turn this on for itself.
+   *
+   * Default: **false**. An unwired host, a self-host and every deployment that
+   * has not opted in run exactly as they did before, which is user story 24.
+   */
+  preflightShadowEnabled(): boolean;
+
+  /**
+   * Whether the pre-flight **routes** (#953): a decision that clears its
+   * threshold takes the Flow, the FAQ or the escalation without Intent
+   * Classification, and the Thinking panel opens with the fixed line for the
+   * outcome. Separate from the shadow switch on purpose: turning the shadow
+   * on was a decision to observe, and observing must never become acting
+   * because an environment variable was already set. Routing implies asking,
+   * so with this on the shadow switch is redundant.
+   *
+   * Default: **false**, which is today's turn exactly.
+   */
+  preflightRoutingEnabled(): boolean;
+
+  /**
+   * Whether the verifier's first tier runs (#957). Platform-level, and off
+   * until the shadow has shown calibration holding on real traffic: tier one
+   * decides whether an answer is graded at all, so switching it on before the
+   * confidences are trustworthy would quietly stop raising Improvements.
+   *
+   * Default: **false**, which is today's verifier, sampled under its budget.
+   */
+  verifierTierOneEnabled(): boolean;
+
+  /**
+   * Whether the approval gate runs (#958).
+   *
+   * It shipped without one, and that was the mistake this port fixes: the gate
+   * woke up the moment a decision key existed in the environment, so setting
+   * `AI_GATEWAY_API_KEY` for the shadow pre-flight would also have started
+   * gating, and halting, every `api_request` a Flow makes on live Visitor
+   * traffic. A key is a credential, not a decision to change behaviour, and
+   * the two must be separately switchable.
+   *
+   * Default: **false**. Off reads to every caller exactly like "no decision
+   * backend", which is the path they already take and already test.
+   */
+  approvalGateEnabled(): boolean;
 }
 
 /**
@@ -99,6 +150,14 @@ const DEFAULTS: RuntimeHost = {
   scheduleAfterResponse() {},
   // Strict by default: only a host that KNOWS it is dev/preview relaxes.
   allowRelaxedEgress: () => false,
+  // Off by default: a shadow nobody asked for is spend nobody asked for.
+  preflightShadowEnabled: () => false,
+  // Off by default: routing on an unreviewed threshold is the thing #953 exists to prevent.
+  preflightRoutingEnabled: () => false,
+  // Off until the shadow says the confidences can be trusted.
+  verifierTierOneEnabled: () => false,
+  // A key must not be a decision to start gating; see the port's contract.
+  approvalGateEnabled: () => false,
 };
 
 /**

@@ -11,10 +11,13 @@ import {
   embedConcept,
   enqueueGraphSyncJob,
   enqueueIngestJob,
+  enqueueStaleDocumentMemoryExtractions,
   persistConcept,
   restartWebsiteCrawl,
   sendEmail,
+  summariseDocument,
   validateProviderApiKey,
+  verifyApifyToken,
   InvalidProviderKeyError,
   enqueueReviewResumptionJob,
   resumeReviewedConversation,
@@ -52,6 +55,64 @@ export function webOperationPorts(
   return {
     listPublicationEntities: (organizationId) =>
       db.table("entities").list({ organizationId }),
+    /**
+     * Runs an action the approval gate stopped, once a Member approved it
+     * (#958).
+     *
+     * On the org-pinned service-role Db, the same one every Teammate action
+     * runs on, and deliberately **not** the approving Member's RLS session: a
+     * grant is the Teammate's own capability, so narrowing an approval to the
+     * approver's Role would make grants able only to narrow and never widen,
+     * the opposite of what #770 settled.
+     *
+     * The tool list is rebuilt here rather than trusted from the row, which
+     * re-reads the grants: an admin who revoked a domain between the card
+     * being raised and a Member clicking has revoked it.
+     */
+    runApprovedTeammateAction: async ({ teammateId, operation, input, requestedBy }) => {
+      const { getServiceRoleDb } = await import("@/lib/service-db");
+      const { resolveTeammateActions } = await import("@/lib/teammates/actions");
+      const serviceDb = getServiceRoleDb();
+      const teammate = await serviceDb.table("teammates").get(teammateId);
+      if (!teammate) throw new Error("That colleague no longer exists");
+      const tools = await resolveTeammateActions({
+        db: serviceDb,
+        teammate,
+        organizationId: teammate.organizationId,
+        userId: requestedBy ?? "",
+        // The Role the Teammate acted under, not the approver's: approving
+        // un-pauses an action, it does not re-authorise it as somebody else.
+        role: null,
+      });
+      const tool = tools.find((candidate) => candidate.operation === operation);
+      if (!tool) {
+        throw new Error("That action is no longer granted to this colleague");
+      }
+      await tool.run(input);
+    },
+
+    /**
+     * The Improvements board's dedup and priority decisions (#959). Bound here
+     * because `ops` cannot reach a model; the answers come back raw and the
+     * derivations that read them live in `@agent-hub/core`, so the weights and
+     * thresholds stay in one reviewable place.
+     *
+     * Org connections only, and a failure returns null rather than throwing:
+     * a triage run is unattended, and a board that stops being filed because a
+     * backend had a bad minute is worse than one filed the old way.
+     */
+    triageDecisions: async ({ evidence, candidates }) => {
+      try {
+        const { runTriageDecision } = await import("@agent-hub/agent");
+        return await runTriageDecision({
+          evidence,
+          candidates,
+          connections: await db.listProviderConnections(opts.organizationId),
+        });
+      } catch {
+        return null;
+      }
+    },
     // The Flows Agent's creation grant (#838). Only meaningful when `db` is the
     // system Db: the grant table's RLS is admin-only and the canvas is an
     // Editor's surface. Pinned to the caller's Organization regardless of what
@@ -110,6 +171,18 @@ export function webOperationPorts(
         throw error;
       }
     },
+    verifyCrawlerToken: async (_provider, token) => {
+      try {
+        const { accountId } = await verifyApifyToken(token);
+        return { ok: true, accountId };
+      } catch {
+        // Never echo the provider's error body: it can quote the token back.
+        return {
+          ok: false,
+          error: "Apify did not accept that token. Copy it again from Apify Console → Settings → API & Integrations.",
+        };
+      }
+    },
     validateSsoConnection: async (connection) => {
       const provider = getSsoProvider(connection.provider);
       if (!provider?.validate) {
@@ -141,6 +214,13 @@ export function webOperationPorts(
       const connections = await db.listProviderConnections(opts.organizationId);
       await embedConcept({ db, connections, usage: opts.usage, ...args });
     },
+    enqueueMemoryExtractions: (args) =>
+      enqueueStaleDocumentMemoryExtractions(
+        { db },
+        { organizationId: opts.organizationId, ...args }
+      ),
+    summariseDocument: (args) =>
+      summariseDocument({ db, organizationId: opts.organizationId, ...args }),
     restartCrawl: async (sourceId) => {
       await restartWebsiteCrawl({ db, sourceId });
     },

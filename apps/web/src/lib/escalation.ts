@@ -224,10 +224,23 @@ export async function escalateConversation(input: {
 
   const alreadyEscalated = conversation?.metadata?.escalated === true;
   if (conversation) {
+    // The desk the pre-flight had opened the chip on (#955), compared against
+    // the one the Visitor took. Recorded only when a recommendation existed:
+    // "not followed" must never be inferred from a turn that recommended nothing.
+    const recommendedId = conversation.metadata?.preflight?.recommendedHelpDeskId;
+    let recommended: { name: string } | null = null;
+    if (recommendedId === desk.id) recommended = desk;
+    else if (recommendedId) recommended = await db.getHelpDesk(recommendedId).catch(() => null);
     await db.updateConversationMetadata(conversation.id, {
       escalated: true,
       escalationHelpDesk: desk.name,
       ...(escalationOption ? { escalationOption } : {}),
+      ...(recommendedId
+        ? {
+            escalationRecommendedHelpDesk: recommended?.name ?? recommendedId,
+            escalationFollowedRecommendation: recommendedId === desk.id,
+          }
+        : {}),
     });
   }
 

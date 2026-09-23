@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, CreditCard, ExternalLink, FileText, Hash } from "lucide-react";
+import { CreditCard, ExternalLink } from "lucide-react";
 import type { BillingAccountSnapshot } from "@agent-hub/agent";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@agent-hub/ui";
 import {
@@ -107,15 +107,15 @@ export function BillingAccountCard({
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead icon={CalendarDays}>Date</TableHead>
+                  <TableHead>Date</TableHead>
                   {/* The provider's invoice number: what an accounts department
                       reconciles a payment against. */}
-                  <TableHead icon={Hash}>Number</TableHead>
-                  <TableHead icon={Activity}>Status</TableHead>
-                  <TableHead icon={CreditCard} className="text-right">
+                  <TableHead>Number</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">
                     Total
                   </TableHead>
-                  <TableHead icon={FileText} className="text-right">
+                  <TableHead className="text-right">
                     Invoice
                   </TableHead>
                 </TableRow>

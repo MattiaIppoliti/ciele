@@ -35,14 +35,27 @@ export type WebsiteCrawlPollResult =
       nextCursor: string | null;
     };
 
+/**
+ * The Organization's own crawler accounts (Settings → Crawling), opened for
+ * one crawl. Absent fields mean "use the platform's environment credential".
+ */
+export interface CrawlerCredentials {
+  apifyToken?: string;
+}
+
 export interface WebsiteCrawlerAdapter {
-  start(url: string, options: CrawlOptions): Promise<StartedCrawl>;
+  start(
+    url: string,
+    options: CrawlOptions,
+    credentials?: CrawlerCredentials
+  ): Promise<StartedCrawl>;
   poll(input: {
     runId: string;
     datasetId: string;
     url: string;
     options: CrawlOptions;
     cursor?: string;
+    credentials?: CrawlerCredentials;
   }): Promise<WebsiteCrawlPollResult>;
 }
 
@@ -60,19 +73,25 @@ const localAdapter: WebsiteCrawlerAdapter = {
 };
 
 const apifyAdapter: WebsiteCrawlerAdapter = {
-  start: startCrawl,
-  async poll({ runId, datasetId, url, options, cursor }) {
-    const run = await getRunState(runId);
+  start: (url, options, credentials) =>
+    credentials?.apifyToken
+      ? startCrawl(url, options, credentials.apifyToken)
+      : startCrawl(url, options),
+  async poll({ runId, datasetId, url, options, cursor, credentials }) {
+    const token = credentials?.apifyToken;
+    const run = await getRunState(runId, token);
     if (!isRunTerminal(run.status)) return { status: "processing" };
     if (run.status !== "SUCCEEDED") {
       return { status: "failed", message: `Crawl ${run.status.toLowerCase()}` };
     }
     const resolvedDatasetId = run.datasetId || datasetId;
     if ((options.maxPages ?? 20) > APIFY_DATASET_BATCH_SIZE || cursor) {
-      const batch = await fetchCrawledPageBatch(resolvedDatasetId, url, {
-        offset: Number(cursor ?? 0),
-        limit: APIFY_DATASET_BATCH_SIZE,
-      });
+      const batch = await fetchCrawledPageBatch(
+        resolvedDatasetId,
+        url,
+        { offset: Number(cursor ?? 0), limit: APIFY_DATASET_BATCH_SIZE },
+        token
+      );
       return {
         status: "succeeded",
         pages: batch.pages,
@@ -82,7 +101,7 @@ const apifyAdapter: WebsiteCrawlerAdapter = {
     }
     return {
       status: "succeeded",
-      pages: await fetchCrawledPages(resolvedDatasetId, url),
+      pages: await fetchCrawledPages(resolvedDatasetId, url, token),
       nextCursor: null,
     };
   },
@@ -118,6 +137,13 @@ const adapters: Record<ResolvedWebsiteCrawlerProvider, WebsiteCrawlerAdapter> = 
 export interface WebsiteCrawlerCapabilities {
   apifyConfigured: boolean;
   crawl4aiConfigured: boolean;
+  /**
+   * The Organization connected its own Apify account (Settings → Crawling).
+   * Automatic keeps crawls off Apify only because Apify costs the platform
+   * money; that reason is gone when the Organization pays, so Automatic
+   * routes every crawl to it.
+   */
+  apifyOrgFunded?: boolean;
 }
 
 /**
@@ -170,6 +196,7 @@ export function crawlCharacteristicsFromConfig(
  *
  * Automatic (or a legacy Source with no configured provider) resolves once, at
  * crawl start:
+ *  - with the Organization's own Apify account connected, always Apify;
  *  - file-download or login-protected crawls are reserved for Apify;
  *  - browser-rendered or larger-than-local crawls prefer Crawl4AI, then fall
  *    back to the managed browser crawler (Apify);
@@ -191,6 +218,10 @@ export function resolveWebsiteCrawlerProvider(
     return { provider: configured };
   }
 
+  // Automatic, with the Organization's own Apify account: Apify serves every
+  // capability, and the platform pays nothing for it.
+  if (capabilities.apifyOrgFunded) return { provider: "apify" };
+
   // Automatic: resolve by required capability.
   if (characteristics.fetchFiles || characteristics.loginProtected) {
     return capabilities.apifyConfigured
@@ -211,17 +242,20 @@ export function resolveWebsiteCrawlerProvider(
 }
 
 const NO_MANAGED_PROVIDER =
-  "This crawl needs file downloads or login handling, which only the managed crawler (Apify) supports, but no Apify API token is configured.";
+  "This crawl needs file downloads or login handling, which only the managed crawler (Apify) supports, but no Apify API token is configured. Connect one in Settings → Crawling.";
 
 const NO_BROWSER_PROVIDER =
   "This crawl needs a browser-rendered or larger crawl, but neither Crawl4AI nor Apify is configured.";
 
 const NO_LARGE_CORPUS_PROVIDER =
-  "This crawl exceeds the self-hosted worker safety ceiling and needs Apify's paginated dataset API, but no Apify API token is configured.";
+  "This crawl exceeds the self-hosted worker safety ceiling and needs Apify's paginated dataset API, but no Apify API token is configured. Connect one in Settings → Crawling.";
 
-export function websiteCrawlerCapabilities(): WebsiteCrawlerCapabilities {
+export function websiteCrawlerCapabilities(
+  credentials: CrawlerCredentials = {}
+): WebsiteCrawlerCapabilities {
   return {
-    apifyConfigured: isApifyConfigured(),
+    apifyConfigured: Boolean(credentials.apifyToken) || isApifyConfigured(),
+    apifyOrgFunded: Boolean(credentials.apifyToken),
     crawl4aiConfigured: isCrawl4aiConfigured(),
   };
 }
