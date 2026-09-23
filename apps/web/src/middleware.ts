@@ -3,6 +3,32 @@ import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_HINT_COOKIE, authHintIsCurrent } from "@/lib/auth-hint";
 import { isMarketingPath } from "@/lib/console-routes";
 
+function marketingOrigin(): URL {
+  const configured = process.env.CIELE_MARKETING_ORIGIN?.trim();
+  return new URL(configured || "https://ciele.app");
+}
+
+function isLocalHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname === "127.0.0.1" ||
+    hostname === "[::1]"
+  );
+}
+
+function isMarketingHost(request: NextRequest): boolean {
+  const hostname = request.nextUrl.hostname.toLowerCase();
+  return (
+    hostname === marketingOrigin().hostname.toLowerCase() ||
+    isLocalHost(hostname)
+  );
+}
+
+function marketingHomeRedirect(): NextResponse {
+  return NextResponse.redirect(new URL("/home", marketingOrigin()), 307);
+}
+
 // The whole `(marketing)` route group is public through `isMarketingPath`
 // (pinned to the filesystem); these are the one-off public paths outside it.
 const PUBLIC_PATHS = [
@@ -97,6 +123,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(target, 307);
   }
 
+  // The commercial website belongs to ciele.app. A clone can serve its
+  // authenticated application and documentation without also presenting
+  // Ciele's marketing pages on the clone's own domain. Keep localhost useful
+  // for local development; production clones send every marketing route to
+  // the canonical Ciele home. Set CIELE_MARKETING_ORIGIN for a branded fork.
+  const { pathname } = request.nextUrl;
+  const onMarketingHost =
+    process.env.NODE_ENV !== "production" || isMarketingHost(request);
+  if (
+    process.env.NODE_ENV === "production" &&
+    isMarketingPath(pathname) &&
+    !onMarketingHost
+  ) {
+    return marketingHomeRedirect();
+  }
+
   // Demo mode: no Supabase, no auth. The mock db hands out a session, so the
   // signed-in hint says so too, otherwise the marketing header would offer a
   // sign-in that means nothing here (see lib/auth-hint.ts).
@@ -115,7 +157,6 @@ export async function middleware(request: NextRequest) {
     return demo;
   }
 
-  const { pathname } = request.nextUrl;
   const isPublic =
     isMarketingPath(pathname) || PUBLIC_PATHS.some((re) => re.test(pathname));
 
@@ -126,7 +167,8 @@ export async function middleware(request: NextRequest) {
    * there is nothing for `getClaims()` to validate, and everything below is
    * pure cost: constructing the Supabase client, and on a cold function the
    * JWKS fetch that validation needs, on the request that has to redirect
-   * `/` to the marketing home before a single byte reaches the browser. That
+   * `/` to the right public entry before a single byte reaches the browser:
+   * the marketing home on Ciele's site, or login on an application fork. That
    * network hop sat on the critical path of every first visit, and when
    * Supabase was slow to answer it, the first load hung rather than merely
    * being slow.
@@ -140,7 +182,7 @@ export async function middleware(request: NextRequest) {
     if (!isPublic) {
       const url = request.nextUrl.clone();
       if (pathname === "/") {
-        url.pathname = "/home";
+        url.pathname = onMarketingHost ? "/home" : "/login";
         url.search = "";
       } else {
         url.pathname = "/login";
@@ -214,9 +256,9 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     if (pathname === "/") {
-      // Signed-out visitors landing on the root get the marketing home;
-      // "/" itself stays the app dashboard for authenticated users.
-      url.pathname = "/home";
+      // On Ciele's website a signed-out visitor gets the marketing home. On a
+      // branded application domain the root is the authenticated app entry.
+      url.pathname = onMarketingHost ? "/home" : "/login";
       url.search = "";
     } else {
       url.pathname = "/login";
