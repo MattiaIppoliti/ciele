@@ -4,6 +4,7 @@ import {
   fetchCrawledPageBatch,
   isRunTerminal,
   mapCrawledPages,
+  parseApifyCrawlProgress,
 } from "./apify";
 
 afterEach(() => {
@@ -141,4 +142,38 @@ describe("run status classification", () => {
       expect(isRunTerminal(s)).toBe(false);
     }
   });
+});
+
+describe("no page limit", () => {
+  it("sends no maxCrawlPages, so the Actor's own default applies", () => {
+    expect(buildCrawlInput("https://example.com", { maxPages: 0 })).not.toHaveProperty(
+      "maxCrawlPages"
+    );
+    expect(buildCrawlInput("https://example.com", { maxPages: 500 })).toMatchObject({
+      maxCrawlPages: 500,
+    });
+  });
+});
+
+describe("parseApifyCrawlProgress", () => {
+  it("reads the Website Content Crawler's status line", () => {
+    expect(
+      parseApifyCrawlProgress(
+        "Crawled 12/197 pages, 0 failed requests, desired concurrency 2."
+      )
+    ).toEqual({ crawled: 12, found: 197 });
+    expect(parseApifyCrawlProgress("Crawled 1 page")).toEqual({
+      crawled: 1,
+      found: null,
+    });
+  });
+
+  it("reads anything else as no progress rather than a guess", () => {
+    expect(parseApifyCrawlProgress(undefined)).toBeUndefined();
+    expect(parseApifyCrawlProgress("Starting the crawler.")).toBeUndefined();
+    expect(
+      parseApifyCrawlProgress("Finished! Total 21 requests: 21 succeeded, 0 failed.")
+    ).toBeUndefined();
+  });
+
 });

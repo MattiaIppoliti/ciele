@@ -1,0 +1,134 @@
+---
+title: Database esterno
+description: Esegui lo stack su un Postgres gestito che già possiedi.
+---
+
+Per impostazione predefinita, lo stack Compose esegue il proprio container
+Postgres. In alternativa, puoi eseguire lo stesso stack su un Postgres gestito.
+In tal caso, il container `postgres` non viene mai avviato. L'autenticazione, la
+Data API, lo storage e il Migration Runner si connettono al tuo database.
+
+**Tested** a ogni release: un Postgres 16 semplice con pgvector, nel replay di
+integrazione continua dell'intera catena di migrazione.
+
+**Expected to work**, dalla documentazione del provider:
+
+- Azure Database per PostgreSQL Flexible Server
+- Amazon RDS for PostgreSQL e Amazon Aurora PostgreSQL
+- Google Cloud SQL per PostgreSQL e AlloyDB
+- Neon
+
+Funziona anche qualsiasi altro Postgres che soddisfi i requisiti indicati di
+seguito. Segnala il tuo risultato nel tracker dei problemi, in modo che l'elenco
+possa spostare un provider nello stato **tested**.
+
+## Requisiti
+
+| Requirement | Reason |
+| --- | --- |
+| Postgres **16** o versioni successive | Su Postgres 15 solo un superuser può creare un ruolo che bypassa il Row-Level Security. I provider gestiti non ti assegnano un superuser. |
+| Un login admin che detiene `BYPASSRLS` | Il ruolo di servizio di Ciele deve bypassare la sicurezza a livello di riga. Gli admin login dei provider sopra indicati dispongono di questo attributo su Postgres 16. |
+| Le estensioni `vector` e `pg_trgm` | La ricerca nella knowledge base utilizza entrambe. Su Azure, aggiungi prima `vector,pg_trgm` al parametro del server `azure.extensions`. |
+| L'admin è il proprietario del database | Postgres assegna lo schema `public` al proprietario del database. Usa l'account di accesso che ha creato il database. |
+| L'hostname **direct** | Non utilizzare l'hostname di un connection pooler. L'API dati e lo storage mantengono una connessione in ascolto che il pooling non supporta. |
+| Circa 25 connessioni | Il livello Cloud SQL più piccolo consente complessivamente 25 connessioni. Seleziona un livello superiore. Neon Free, Azure B1ms e RDS t4g.micro sono sufficienti. |
+| TLS | Ogni connessione utilizza `sslmode=require`. I provider con una propria autorità di certificazione privata necessitano di `--db-ca`; vedi sotto. |
+
+## Collega lo stack
+
+Passa la stringa di connessione dell'amministratore allo script di bootstrap:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname
+```
+
+Lo script scrive le impostazioni `EXTERNAL_DB_*` e l'overlay
+`docker-compose.external-db.yml` in `deploy/.env`. Crea un'unica password per i
+tre accessi ai servizi. Quindi verifica il database prima di avviare un
+container: la versione di Postgres, le due estensioni, i privilegi di
+amministratore, il limite di connessioni e TLS. Ogni controllo non superato
+visualizza una riga che ti indica cosa modificare.
+
+Lo script rifiuta un hostname del pooler, un progetto Supabase ospitato,
+`sslmode=disable` e una password con caratteri che una stringa di connessione
+non può supportare. Esegui la codifica percentuale di tali caratteri oppure
+imposta una password di amministratore più semplice.
+
+All'avvio, un servizio one-shot `provision` prepara il database con i privilegi
+di amministratore. Crea i ruoli, gli schemi `auth`, `storage` e `extensions`, le
+funzioni helper di autenticazione, i privilegi predefiniti e le due estensioni.
+Il servizio viene eseguito nuovamente a ogni avvio e non modifica nulla quando
+il database è pronto.
+
+L'opzione `--database-url` si combina con `--images`, `--workers` e `--tls`.
+Esegui nuovamente lo script con una nuova connection string per puntare lo stack
+a un database diverso. La password del servizio viene conservata.
+
+## Verifica il certificato
+
+I provider con una propria autorità di certificazione privata necessitano del
+bundle per la verifica completa:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname --db-ca ./bundle.pem
+```
+
+Lo script copia il bundle in `deploy/external-db/db-ca.pem` e imposta
+`sslmode=verify-full`. Ogni servizio verifica quindi il server rispetto a tale
+bundle.
+
+| Provider | Bundle |
+| --- | --- |
+| Amazon RDS e Aurora | Il bundle globale da `truststore.pki.rds.amazonaws.com`, oppure il bundle regionale |
+| Google Cloud SQL | Il file `server-ca.pem` dell'istanza |
+| Azure | DigiCert Global Root G2 e Microsoft RSA Root CA 2017, in un unico file |
+| Neon | Non richiesto. Il server utilizza un root pubblico. |
+
+## Note del provider
+
+### Neon
+
+Crea il progetto in una regione dell'UE su Postgres 16 o versione successiva.
+Copia la stringa di connessione **direct**, non quella `-pooler`. Il piano Free
+sospende l'elaborazione dopo cinque minuti di inattività. La prima richiesta
+dopo una pausa richiede alcuni secondi, durante i quali i servizi si
+riconnettono.
+
+### Azure Database per PostgreSQL Flexible Server
+
+Crea il server su Postgres 16 o versione successiva. Aggiungi `vector,pg_trgm`
+al parametro del server `azure.extensions` prima di eseguire lo script di
+bootstrap. Usa l'admin login che hai impostato al momento della creazione.
+Aggiungi l'indirizzo IP del tuo host alle regole del firewall.
+
+### Amazon RDS e Aurora
+
+Usa l'utente master. Scarica il bundle di certificati e passalo con `--db-ca`.
+Consenti il tuo host nel security group. Le versioni di Aurora precedenti alla
+17 non impongono l'uso di TLS. Lo stack utilizza ancora TLS.
+
+### Google Cloud SQL e AlloyDB
+
+Usa l'utente `postgres`. Seleziona almeno il livello `db-g1-small` su Cloud SQL.
+Scarica `server-ca.pem` dall'istanza e passalo con `--db-ca`. Aggiungi
+l'indirizzo IP pubblico del tuo host agli authorized networks.
+
+### Supabase in hosting
+
+Un progetto Supabase ospitato non può essere il database sotto questi container.
+I suoi ruoli di servizio esistono con password di cui non sei in possesso, e i
+suoi servizi proprietari detengono gli schemi `auth` e `storage`. Invece, punta
+l'applicazione a quel progetto e non eseguire il profilo `db`.
+
+## Backup
+
+Il provider conserva i backup del database. I file caricati rimangono nel volume
+`storage-data` sul tuo host. Esegui il backup del volume insieme al database.
+Ripristina entrambi allo stesso punto temporale. Consulta
+[Database](/self-hosting/database) per i comandi relativi al volume.
+
+## Aggiornamento
+
+Gli aggiornamenti funzionano come descritto in [Upgrade](/self-hosting/upgrade).
+Il servizio `migrate` applica le migrazioni in sospeso al tuo database. Il
+servizio `provision` viene eseguito per primo e conferma i ruoli e gli schemi.

@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 
 /**
  * Daily AI budget (AI usage ledger spec): admins set a per-org daily token

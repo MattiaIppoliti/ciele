@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type {
   ApiAuthType,
   ChannelAvailability,
@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ResizeHandle, useResizableWidth } from "@/components/ui/resizable-panel";
+import { useModalFocus } from "@/components/motion/use-modal-focus";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -723,12 +724,22 @@ export function ChannelPanel({
   );
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const { width, resizing, beginResize, widthTransition, containerRef } =
+  const { width, resizing, beginResize, resizeTo, widthTransition, containerRef } =
     useResizableWidth({
       defaultWidth: PANEL_DEFAULT_WIDTH,
       minWidth: PANEL_MIN_WIDTH,
       maxWidth: PANEL_MAX_WIDTH,
     });
+
+  useModalFocus(true, containerRef);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
 
   function pickKind(kind: ChannelKind) {
     const meta = CHANNEL_KINDS[kind];
@@ -815,7 +826,9 @@ export function ChannelPanel({
       <aside
         ref={containerRef}
         role="dialog"
+        aria-modal="true"
         aria-label="Support channel"
+        tabIndex={-1}
         style={{ width }}
         className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l bg-background shadow-xl ${widthTransition} ${
           isPending ? "pointer-events-none opacity-70" : ""
@@ -825,6 +838,10 @@ export function ChannelPanel({
           resizing={resizing}
           onPointerDown={(event) => beginResize(event)}
           label="Resize channel panel"
+          value={width}
+          minValue={PANEL_MIN_WIDTH}
+          maxValue={PANEL_MAX_WIDTH}
+          onValueChange={resizeTo}
         />
         {/* Inner scroll container, overflow lives here, not on the aside
             itself, so the resize handle poking out at -left-1.5 isn't clipped
@@ -900,7 +917,7 @@ export function ChannelPanel({
               </div>
 
               <Tabs value="setup" className="mt-6 w-fit">
-                <TabsList className="h-auto rounded-xl bg-muted/60 p-1.5">
+                <TabsList aria-label="Channel setup mode" className="h-auto rounded-xl bg-muted/60 p-1.5">
                   {tabsForKind(state.kind).map((t) => {
                     const Icon = TAB_ICONS[t.key];
                     return (
@@ -1006,7 +1023,7 @@ export function ChannelPanel({
                 onValueChange={(value) => setTab(value as EditTab)}
                 className="mt-5 w-fit"
               >
-                <TabsList className="h-auto rounded-xl bg-muted/60 p-1.5">
+                <TabsList aria-label="Channel settings section" className="h-auto rounded-xl bg-muted/60 p-1.5">
                   {tabsForKind(channel.kind).map((t) => {
                     const Icon = TAB_ICONS[t.key];
                     return (

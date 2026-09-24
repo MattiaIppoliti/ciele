@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "@/components/theme-provider";
+import { useSyncExternalStore } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 import {
   CircleCheckIcon,
@@ -10,12 +10,36 @@ import {
   Loader2Icon,
 } from "lucide-react";
 
+function subscribeToAppearance(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
+
+function getResolvedAppearance(): "light" | "dark" {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function getServerAppearance(): "light" {
+  return "light";
+}
+
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+  // The toaster is mounted in the root layout, outside the admin and marketing
+  // theme providers. Follow the appearance applied to <html> so each route
+  // group keeps its own theme without requiring a global provider.
+  const theme = useSyncExternalStore(
+    subscribeToAppearance,
+    getResolvedAppearance,
+    getServerAppearance,
+  );
 
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

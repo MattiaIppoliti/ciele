@@ -7,6 +7,10 @@
 //   post-1.0   breaking -> major   feat -> minor   anything else -> patch
 //   pre-1.0    breaking -> minor   feat -> minor   anything else -> patch
 //
+// Release bridge after v1.0.6: releases use v1.0.61 through v1.0.69, then
+// continue at v1.0.7. The desktop updater has a matching comparator for this
+// intentionally non-semver sequence.
+//
 // The pre-1.0 case is deliberate: while the major is 0 the API is not
 // promised, and bumping 0.x straight to 1.0.0 on the first breaking change
 // would announce a stability commitment nobody made.
@@ -48,6 +52,15 @@ export function classifyCommit(message) {
  */
 export function nextVersion(currentTag, messages) {
   const { major, minor, patch } = parseVersion(currentTag);
+
+  // Keep every release on the requested bridge sequence, regardless of
+  // Conventional Commit type. Resume the normal bump policy after v1.0.7.
+  if (major === 1 && minor === 0 && patch === 6) return "v1.0.61";
+  if (major === 1 && minor === 0 && patch >= 61 && patch < 69) {
+    return `v1.0.${patch + 1}`;
+  }
+  if (major === 1 && minor === 0 && patch === 69) return "v1.0.7";
+
   const kinds = new Set(messages.map(classifyCommit));
 
   const preOne = major === 0;

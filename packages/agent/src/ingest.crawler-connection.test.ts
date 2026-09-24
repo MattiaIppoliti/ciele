@@ -115,6 +115,41 @@ describe("Website crawl on the Organization's own Apify account", () => {
     ]);
   });
 
+  it("shows the run's own progress while it runs, and no stale total", async () => {
+    const db = getMockDb();
+    await db.setCrawlerConnection(DEMO_ORG.id, {
+      provider: "apify",
+      encryptedToken: sealSecret("apify_api_org"),
+      tokenHint: "…_org",
+    });
+    // A Source whose previous crawl brought in 20 pages.
+    const { assistantId, collectionId, source } = await seed(db, "progress", {
+      url: "https://x.edu",
+      crawlTotalPages: 20,
+    });
+    startCrawlMock.mockResolvedValue({ runId: "run-4", datasetId: "ds-4" });
+    await beginWebsiteCrawl({ db, sourceId: source.id });
+    expect((await db.getSource(source.id))?.config.crawlTotalPages).toBeUndefined();
+
+    getRunStateMock.mockResolvedValue({
+      status: "RUNNING",
+      datasetId: "ds-4",
+      progress: { crawled: 12, found: 197 },
+    });
+    const status = await finalizeWebsiteCrawl({
+      db,
+      assistantId,
+      collectionId,
+      sourceId: source.id,
+    });
+
+    expect(status).toBe("processing");
+    expect((await db.getSource(source.id))?.config.crawlRemoteProgress).toEqual({
+      crawled: 12,
+      found: 197,
+    });
+  });
+
   it("records a platform crawl when the org has no token of its own", async () => {
     const db = getMockDb();
     isApifyConfiguredMock.mockReturnValue(true);

@@ -65,13 +65,14 @@ export function invalidatePublication(assistantId: string) {
 
 /**
  * The Route Handler twin (#623): `updateTag` is Server-Action-only, so the
- * /api/v1 publish endpoints invalidate through `revalidateTag`. Best-effort,
- * outside a request scope (unit tests) Next throws, and cache freshness must
- * never fail the mutation that already committed.
+ * /api/v1 publish endpoints expire the tag through `revalidateTag`. The next
+ * widget read must fetch the new Publication rather than serve a stale one.
+ * This is best-effort: outside a request scope (unit tests) Next throws, and
+ * cache freshness must never fail the mutation that already committed.
  */
 export function invalidatePublicationFromRoute(assistantId: string) {
   try {
-    revalidateTag(publicationTag(assistantId), "max");
+    revalidateTag(publicationTag(assistantId), { expire: 0 });
   } catch {
     // outside a Next request scope
   }

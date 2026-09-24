@@ -78,6 +78,13 @@ export function useResizableWidth({
     pointerIdRef.current = null;
   }, []);
 
+  const resizeTo = useCallback(
+    (nextWidth: number) => {
+      setWidth(Math.min(maxWidth, Math.max(minWidth, nextWidth)));
+    },
+    [maxWidth, minWidth],
+  );
+
   useEffect(() => {
     if (!resizing) return;
     const endResize = () => {
@@ -194,6 +201,7 @@ export function useResizableWidth({
     resizing,
     setResizing,
     beginResize,
+    resizeTo,
     containerRef,
     /**
      * Class for the panel's width transition. Empty while dragging so the panel

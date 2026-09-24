@@ -837,7 +837,7 @@ export async function beginWebsiteCrawl(options: {
       return { started: false, outcome: "refused", reason: refusal };
     }
 
-    const crawlOptions = crawlOptionsFromConfig(config);
+    const crawlOptions = crawlOptionsFromConfig(config, crawlCredential);
     await db.updateSource(sourceId, {
       status: "processing",
       error: "",
@@ -855,6 +855,7 @@ export async function beginWebsiteCrawl(options: {
         crawlIngestedPages: undefined,
         crawlTotalPages: undefined,
         crawlStagedPages: undefined,
+        crawlRemoteProgress: undefined,
       },
     });
     const { runId, datasetId } = await websiteCrawlerAdapter(
@@ -880,6 +881,11 @@ export async function beginWebsiteCrawl(options: {
         crawlIngestGenerationId: undefined,
         crawlIngestExpectedGenerationId: undefined,
         crawlIngestedPages: undefined,
+        // The previous crawl's counts would otherwise come back with the
+        // spread above: a fresh crawl showed "0/20" off the last run's total.
+        crawlTotalPages: undefined,
+        crawlStagedPages: undefined,
+        crawlRemoteProgress: undefined,
         crawlStartedAt: new Date().toISOString(),
       },
     });
@@ -1038,10 +1044,23 @@ export async function finalizeWebsiteCrawl(options: {
       now: new Date().toISOString(),
     });
 
-  const defer = async (): Promise<SourceStatus> => {
+  const defer = async (
+    remote?: { config: WebsiteSourceConfig; progress?: { crawled: number; found: number | null } }
+  ): Promise<SourceStatus> => {
     // A checked-but-still-running crawl moves to the back of the sweep so a
     // stuck run cannot starve later completed crawls.
-    if (await renewLease()) await db.updateSource(sourceId, { status: "processing" });
+    if (!(await renewLease())) return "processing";
+    // The remote run's own count, so the activity card can say how far a
+    // crawl has got before a single page reaches Ciele.
+    await db.updateSource(
+      sourceId,
+      remote?.progress
+        ? {
+            status: "processing",
+            config: { ...remote.config, crawlRemoteProgress: remote.progress },
+          }
+        : { status: "processing" }
+    );
     return "processing";
   };
 
@@ -1135,11 +1154,13 @@ export async function finalizeWebsiteCrawl(options: {
       runId,
       datasetId,
       url: source.config.url ?? "",
-      options: crawlOptionsFromConfig(source.config),
+      options: crawlOptionsFromConfig(source.config, source.config.crawlCredential),
       cursor: source.config.crawlIngestCursor,
       credentials: startedOnOrg ? credentials : {},
     });
-    if (crawlResult.status === "processing") return defer();
+    if (crawlResult.status === "processing") {
+      return defer({ config: source.config, progress: crawlResult.progress });
+    }
     if (crawlResult.status === "failed") {
       return fail(crawlResult.message, "RemoteCrawlFailure");
     }
@@ -1161,10 +1182,13 @@ export async function finalizeWebsiteCrawl(options: {
       if (browserProvider) {
         if (!(await renewLease())) return "processing";
         try {
-          const options = crawlOptionsFromConfig(source.config);
           const escalatedCredential = crawlCredentialFor(
             browserProvider,
             credentials
+          );
+          const options = crawlOptionsFromConfig(
+            source.config,
+            escalatedCredential
           );
           const started = await websiteCrawlerAdapter(browserProvider).start(
             source.config.url ?? "",

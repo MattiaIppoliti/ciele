@@ -23,6 +23,9 @@ function routeFor(file) {
 
 const files = await englishPages(docsRoot);
 const routes = new Set(files.map(routeFor));
+// OpenAPI downloads are Next.js handlers rather than MDX pages.
+routes.add("/api/openapi.json");
+routes.add("/api/openapi.yaml");
 const failures = [];
 
 for (const file of files) {

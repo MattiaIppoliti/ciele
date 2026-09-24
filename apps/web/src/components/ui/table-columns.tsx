@@ -4,6 +4,7 @@ import * as React from "react";
 import { grabOffsetFor } from "@agent-hub/ui/resize-geometry";
 
 import {
+  MAX_COLUMN_WIDTH,
   MIN_COLUMN_WIDTH,
   columnWidthFor,
   columnWidthsKey,
@@ -28,6 +29,8 @@ export interface TableColumnLayout {
   width: number;
   /** Below this the column's own content is gone; defaults to the shared floor. */
   min?: number;
+  /** Above this the table becomes difficult to scan; defaults to the shared cap. */
+  max?: number;
   /** A column that is never dragged: the checkbox gutter, the actions cell. */
   fixed?: boolean;
 }
@@ -151,7 +154,9 @@ export function useColumnWidths(
     if (!column || column.fixed) return undefined;
     return {
       label: columnKey,
+      value: widths[columnKey],
       minWidth: column.min ?? MIN_COLUMN_WIDTH,
+      maxWidth: column.max ?? MAX_COLUMN_WIDTH,
       onResize: (width) => setDraft({ key: columnKey, width }),
       onCommit: (width) => commit(columnKey, width),
       onReset: () => commit(columnKey, column.width),
@@ -184,7 +189,10 @@ export function useColumnWidths(
 export interface ColumnResizeHandleProps {
   /** Names the column in the handle's accessible label. */
   label: string;
+  /** Current width in CSS pixels. */
+  value: number;
   minWidth: number;
+  maxWidth: number;
   /** Every move: what the column should render right now. */
   onResize: (width: number) => void;
   /** Release: the width to remember. One storage write per drag, not per move. */
@@ -198,8 +206,9 @@ export interface ColumnResizeHandleProps {
 /**
  * The grip on a column's right border.
  *
- * It is wider than it looks (8px of target around a 1px line) because a
- * 1px hit area is a 1px hit area, and it captures the pointer rather than
+ * On a fine pointer it is wider than it looks (8px of target around a 1px
+ * line); coarse pointers get a wider target in the admin stylesheet. It
+ * captures the pointer rather than
  * listening on `window`, so a drag that leaves the table or crosses an iframe
  * still ends. The width is applied on every move and *stored* once, on
  * release; there is no drag ghost, because a table that resizes under the
@@ -215,12 +224,15 @@ export interface ColumnResizeHandleProps {
  */
 export function ColumnResizeHandle({
   label,
+  value,
   minWidth,
+  maxWidth,
   onResize,
   onCommit,
   onReset,
   onActive,
 }: ColumnResizeHandleProps) {
+  const descriptionId = React.useId();
   const grabOffset = React.useRef(0);
   const left = React.useRef(0);
   /** The last width the drag produced, so the release knows what to store. */
@@ -271,6 +283,7 @@ export function ColumnResizeHandle({
       grabOffset: grabOffset.current,
       left: left.current,
       minWidth,
+      maxWidth,
     });
     lastWidth.current = width;
     onResize(width);
@@ -288,33 +301,64 @@ export function ColumnResizeHandle({
   }
 
   return (
-    <span
-      role="separator"
-      aria-orientation="vertical"
-      aria-label={`Resize the ${label} column`}
-      onPointerEnter={enter}
-      onPointerLeave={leave}
-      onPointerDown={begin}
-      onPointerMove={move}
-      onPointerUp={end}
-      onPointerCancel={end}
-      onDoubleClick={onReset}
-      className="group/grip absolute inset-y-0 -right-1 z-20 flex w-2 cursor-col-resize touch-none justify-center"
-    >
-      {/* Taller than its parent, so it needs its own element: the grip keeps
-          the header's height as a hit area, and this is what is seen. */}
+    <>
       <span
-        aria-hidden
-        style={tableHeight ? { height: tableHeight } : undefined}
-        // Two pixels, not one: at 1px the line is a hairline against the
-        // cell borders it sits among, and the whole point is that it reads
-        // as the boundary being moved rather than as another divider.
-        className={cn(
-          "pointer-events-none absolute top-0 w-0.5 rounded-full transition-colors",
-          tableHeight === null && "h-full",
-          dragging ? "bg-primary" : "bg-transparent group-hover/grip:bg-primary"
-        )}
-      />
-    </span>
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={`Resize the ${label} column`}
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        aria-valuenow={value}
+        aria-describedby={descriptionId}
+        tabIndex={0}
+        data-slot="column-resize-handle"
+        onFocus={() => onActive(true)}
+        onBlur={() => onActive(false)}
+        onKeyDown={(event) => {
+          let nextWidth: number | undefined;
+          const step = event.shiftKey ? 64 : 16;
+          if (event.key === "ArrowRight") nextWidth = Math.min(maxWidth, value + step);
+          else if (event.key === "ArrowLeft") {
+            nextWidth = Math.max(minWidth, value - step);
+          } else if (event.key === "Home") nextWidth = minWidth;
+          else if (event.key === "End") nextWidth = maxWidth;
+          if (nextWidth === undefined) return;
+          event.preventDefault();
+          event.stopPropagation();
+          onResize(nextWidth);
+          onCommit(nextWidth);
+        }}
+        onPointerEnter={enter}
+        onPointerLeave={leave}
+        onPointerDown={begin}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        onDoubleClick={onReset}
+        className="group/grip absolute inset-y-0 -right-1 z-20 flex w-2 cursor-col-resize touch-none justify-center"
+      >
+        {/* Taller than its parent, so it needs its own element: the grip keeps
+            the header's height as a hit area, and this is what is seen. */}
+        <span
+          aria-hidden
+          style={tableHeight ? { height: tableHeight } : undefined}
+          // Two pixels, not one: at 1px the line is a hairline against the
+          // cell borders it sits among, and the whole point is that it reads
+          // as the boundary being moved rather than as another divider.
+          className={cn(
+            "pointer-events-none absolute top-0 w-0.5 rounded-full transition-colors",
+            tableHeight === null && "h-full",
+            dragging ? "bg-primary" : "bg-transparent group-hover/grip:bg-primary"
+          )}
+        />
+      </span>
+      <span
+        id={descriptionId}
+        className="sr-only"
+      >
+        Use the left and right arrow keys to resize this column. Hold Shift for
+        larger steps. Home sets the minimum width.
+      </span>
+    </>
   );
 }

@@ -26,11 +26,29 @@ const sketch = Architects_Daughter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://docs.ciele.app'),
   title: {
     default: 'Ciele Docs',
     template: '%s | Ciele Docs',
   },
-  description: 'Documentation for Ciele.',
+  description:
+    'Product, administration, self-hosting, and developer documentation for Ciele, the open-source AI assistant platform.',
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: 'website',
+    siteName: 'Ciele Docs',
+    title: 'Ciele documentation',
+    description:
+      'Product, administration, self-hosting, and developer documentation for Ciele.',
+    images: [{ url: 'https://ciele.app/opengraph-image', width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Ciele documentation',
+    description:
+      'Product, administration, self-hosting, and developer documentation for Ciele.',
+    images: ['https://ciele.app/opengraph-image'],
+  },
 };
 
 /**

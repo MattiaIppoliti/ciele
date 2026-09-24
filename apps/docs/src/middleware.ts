@@ -17,6 +17,6 @@ export const config = {
    * first and prefix.
    */
   matcher: [
-    '/((?!api|_next/static|_next/image|icon.svg|favicon.ico|llms.txt|llms-full.txt|llms.mdx|.*\\.md$).*)',
+    '/((?!api(?:/|$)|_next/static|_next/image|icon.svg|favicon.ico|robots.txt|sitemap.xml|llms.txt|llms-full.txt|llms.mdx|.*\\.md$).*)',
   ],
 };

@@ -3,6 +3,7 @@ import { source } from '@/lib/source';
 import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { baseOptions } from '@/lib/layout.shared';
 import { CieleWidget } from '@/components/ciele-widget';
+import { SidebarActivePageScroll } from '@/components/sidebar-active-page-scroll';
 
 /**
  * With i18n the page tree is per-locale, so the sidebar comes from the tree of
@@ -20,6 +21,7 @@ export default async function Layout({
   return (
     <DocsLayout tree={source.getPageTree(lang)} {...baseOptions()}>
       {children}
+      <SidebarActivePageScroll />
       {/* Reuse the published Ciele assistant's own chat panel (floating
           launcher) instead of a bespoke chat UI. */}
       <CieleWidget />

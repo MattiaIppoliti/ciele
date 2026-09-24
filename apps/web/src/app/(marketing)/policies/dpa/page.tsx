@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import Link from "next/link";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Data Processing Addendum | Ciele",
-  description:
-    "The processor terms that govern customer personal data on the Ciele platform: scope, security measures, subprocessors, international transfers, breach notice and deletion.",
-};
+  description: "The processor terms that govern customer personal data on the Ciele platform: scope, security measures, subprocessors, international transfers, breach notice and deletion.",
+  path: "/policies/dpa",
+});
 
 const LAST_UPDATED = "5 August 2026";
 

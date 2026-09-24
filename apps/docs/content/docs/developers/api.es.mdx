@@ -1,12 +1,16 @@
 ---
 title: API v1
-description: Llama a la API de administración actual de Ciele con una clave de API de organización.
+description: Llama a la API de administración actual de Ciele con una clave API de organización.
 ---
 
 La API de Ciele utiliza JSON sobre HTTP. Todas las rutas de la versión 1
-comienzan con `/api/v1`.
+comienzan por `/api/v1`.
 
-## Descubre la implementación
+[Abre la referencia interactiva de la API](/api-reference) para explorar todas
+las operaciones públicas por dominio. Descarga allí el contrato OpenAPI actual
+en formato JSON o YAML.
+
+## Descubre el despliegue
 
 Utiliza estos puntos de conexión públicos antes de generar un cliente:
 
@@ -15,8 +19,8 @@ GET /api/v1/meta
 GET /api/v1/openapi.json
 ```
 
-`meta` enumera la versión de la API y los dominios disponibles. `openapi.json`
-devuelve el contrato legible por máquina para la implementación.
+`meta` muestra la versión de la API y los dominios disponibles. `openapi.json`
+devuelve el contrato legible por máquina para el despliegue.
 
 ## Autenticar una solicitud
 
@@ -32,7 +36,7 @@ Ciele.
 
 ## Errores de respuesta
 
-Los errores utilizan una envoltura JSON:
+Los errores utilizan una única envolvente JSON:
 
 ```json
 {
@@ -43,20 +47,21 @@ Los errores utilizan una envoltura JSON:
 }
 ```
 
-Los códigos de estado habituales son:
+Los códigos de estado más habituales son:
 
-| Estado | Significado |
+| Status | Significado |
 | --- | --- |
-| `400` | Los datos de la solicitud no son válidos. |
-| `401` | La clave falta, no es válida o está revocada. |
-| `403` | El rol de la clave no permite la operación. |
+| `400` | El cuerpo de la solicitud está mal formado o falta un archivo obligatorio. |
+| `401` | La clave no existe, no es válida o ha sido revocada. |
+| `403` | El Role de la clave no permite la operación. |
 | `404` | El recurso no existe en la Organization. |
 | `409` | La solicitud entra en conflicto con el estado actual. |
+| `422` | Los datos analizados no superan la validación. |
 
 ## Paginación
 
-Las operaciones de lista aceptan los parámetros `limit` y `cursor` cuando el
-punto de conexión admite la paginación. Utiliza el cursor devuelto para la
+Utiliza los parámetros de paginación que se muestran en cada operación. Las
+listas basadas en cursores devuelven `nextCursor`. Pásalo como `cursor` en la
 siguiente solicitud.
 
 ## Reintentos seguros
@@ -64,35 +69,43 @@ siguiente solicitud.
 Las rutas de mutación pueden aceptar un encabezado `Idempotency-Key`. Reutiliza
 el mismo valor solo cuando vuelvas a intentar la misma operación lógica.
 
-## Dominios actuales
+## Dominios comunes
 
-- Asistentes: enumerar, leer, crear, actualizar, duplicar y eliminar.
-- Flujos: enumerar, leer, crear, actualizar, reordenar y eliminar.
-- Knowledge: gestiona las Collections, las Sources, las FAQs y los enlaces del
-  Assistant en cada Source.
-- Publicación: leer el estado, publicar, anular la publicación y restaurar una
-  publicación.
-- Bandeja de entrada: revisar, exportar, anclar, anotar, valorar y eliminar
-  conversaciones.
-- Mejoras: enumerar, leer y actualizar elementos.
-- Entidades y memorias: gestiona los datos tipificados de la organización y el
-  borrado de la memoria con ámbito.
-- SSO: gestiona las notificaciones de identidad, la configuración de la
-  conexión, la validación y la desconexión.
-- Help Desks: gestiona los desks, los canales de escalado, el orden y
+Estos son ejemplos. La [API reference](/api-reference) enumera el conjunto
+completo y actual de operaciones.
+
+- Asistentes: listar, leer, crear, actualizar, duplicar y eliminar.
+- Flujos: listar, leer, crear, actualizar, reordenar y eliminar.
+- Knowledge: gestiona Collections, Sources, FAQs y los enlaces del asistente en
+  cada Source.
+- Publicación: consultar el estado, publicar, anular la publicación y restaurar
+  una publicación.
+- Bandeja de entrada: revisa, exporta, ancla, anota, valora y elimina
+  Conversaciones.
+- Mejoras: enumera, lee y actualiza elementos.
+- Entidades y recuerdos: gestiona los datos tipados de la organización y el
+  borrado de recuerdos con ámbito definido.
+- SSO: gestiona las afirmaciones de identidad, la configuración de conexión, la
+  validación y la desconexión.
+- Help Desks: gestiona los desks, los canales de escalado, la ordenación y
   ServiceNow.
-- Compañeros de equipo: gestiona a los compañeros de equipo de IA y lee tus
-  propias conversaciones de compañero de equipo.
-- Canales: lee y configura los canales de Teammates en los que estás y sus
-  listas. No hay ningún punto final para enviar un mensaje: un mensaje inicia
-  una cadena de respuestas de los compañeros de equipo, y esta se ejecuta en la
-  consola.
-- Configuración: gestiona las Habilidades, los Objetivos del Asistente y las
-  Alertas operativas.
+- Teammates: gestiona a los Teammates de IA y lee tus propias conversaciones con
+  Teammates.
+- Canales: lee y da forma a los canales de compañeros de equipo en los que
+  participas, así como a sus listas de miembros. No hay ningún endpoint para
+  enviar un mensaje: un mensaje inicia una cadena de respuestas de compañeros de
+  equipo, y esa cadena se ejecuta en la consola.
+- Configuration: gestiona Skills, Assistant Goals y Alerts operativas.
 - Organization: gestiona la configuración, los Members, las Invites y las claves
   API.
-- Integraciones: gestiona las integraciones de la API del Asistente y las
-  conexiones con proveedores de modelos.
+- Integrations: gestiona las integraciones de la API del asistente y las
+  conexiones con los proveedores de modelos.
+- Uso: consulta los contadores del plan y quién ha gastado los créditos de una
+  ventana. Solo lectura. El desglose del gasto mantiene sus dimensiones
+  separadas. Una respuesta menciona tanto al compañero de equipo que ejecutó la
+  acción como al compañero que la solicitó, por lo que sumar las dimensiones la
+  cuenta dos veces. La compra de créditos no tiene un endpoint: una compra
+  corresponde a una pantalla en la que una persona confirma un importe.
 
-Utiliza el documento OpenAPI para conocer los campos exactos de las solicitudes
-y los esquemas de respuesta.
+Utiliza el documento OpenAPI para los campos de las solicitudes, la
+autenticación y los códigos de estado de las respuestas documentados.

@@ -77,7 +77,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FLOW_TRIGGER_LABELS } from "@/lib/flow-actions";
 import { CANVAS_TRIGGERS } from "@/lib/flow-canvas";

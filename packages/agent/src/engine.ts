@@ -17,6 +17,9 @@ import type {
 } from "@agent-hub/core";
 import {
   basicInteractionFlow,
+  studyModeFlow,
+  studyRequestFormat,
+  STUDY_MODE_FLOW_ID,
   matchFlow,
   messageFlowCandidates,
   spokenLanguage,
@@ -26,7 +29,7 @@ import {
 import { z } from "zod";
 import { getRuntimeHost } from "./host";
 import { runApprovalGate } from "./approval-gate";
-import { resolveDecisionModel } from "./decision-model";
+import { decide, resolveDecisionModel } from "./decision-model";
 import { decidedRoute, runPreflight, type PreflightFaqAnswer, type PreflightOutcome } from "./preflight-shadow";
 import type { ChatReplyPart } from "./types";
 import type { UntrustedEnvelope } from "./untrusted-content";
@@ -628,7 +631,7 @@ export async function runAssistantChat(options: {
     assistant,
     platformPrompt = "",
     persona,
-    flows,
+    flows: configuredFlows,
     connections,
     message,
     history,
@@ -665,6 +668,10 @@ export async function runAssistantChat(options: {
     onProviderHealth,
     effectKeyPrefix,
   } = options;
+  const studyFlow = persona ? null : studyModeFlow(assistant);
+  const flows = studyFlow ? [studyFlow, ...configuredFlows] : configuredFlows;
+  const requestedStudyFlow = studyRequestFormat(message) ? studyFlow : null;
+  const storedFlowId = (flow: Flow) => flow.id === STUDY_MODE_FLOW_ID ? null : flow.id;
   // A resumed Conversation (#841, #842) names its Flow and the index of its
   // gate. A Flow deleted, disabled or re-arranged between the gate and its
   // outcome resumes nothing: the cursor is an index, and an index into a chain
@@ -838,7 +845,7 @@ export async function runAssistantChat(options: {
           "No AI provider credential configured for this organization, using keyword matching (add a provider connection in Settings → AI)",
       });
     }
-    const flow = resumedFlow ?? matchFlow(message, flows, routing);
+    const flow = resumedFlow ?? requestedStudyFlow ?? matchFlow(message, flows, routing);
     if (!flow) {
       const part: ChatReplyPart = {
         type: "text",
@@ -855,10 +862,10 @@ export async function runAssistantChat(options: {
         usage: [],
       };
     }
-    emit({ type: "notice", label: `Matched flow “${flow.name}” (keyword matching)` });
+    emit({ type: "notice", label: flow.id === STUDY_MODE_FLOW_ID ? "Study Mode" : `Matched flow “${flow.name}” (keyword matching)` });
     emit({
       type: "flow",
-      flowId: flow.id,
+      flowId: storedFlowId(flow),
       flowName: flow.name,
       isDefault: flow.isDefault,
     });
@@ -910,7 +917,7 @@ export async function runAssistantChat(options: {
     return {
       parts,
       effects,
-      flowId: flow.id,
+      flowId: storedFlowId(flow),
       flowName: flow.name,
       usage: [],
       handoverTo,
@@ -935,7 +942,7 @@ export async function runAssistantChat(options: {
   const host = getRuntimeHost();
   const routingEnabled = host.preflightRoutingEnabled();
   const asks =
-    !resumedFlow && !courtesyFlow && loadPreflightCatalogue !== undefined &&
+    !resumedFlow && !requestedStudyFlow && !courtesyFlow && loadPreflightCatalogue !== undefined &&
     (routingEnabled || host.preflightShadowEnabled());
   let shadowPending: Promise<PreflightOutcome | null> | null = null;
   let preflightOutcome: PreflightOutcome | null = null;
@@ -1037,6 +1044,7 @@ export async function runAssistantChat(options: {
 
   const flow =
     resumedFlow ??
+    requestedStudyFlow ??
     courtesyFlow ??
     routedByPreflight ??
     (await classifyIntent(
@@ -1094,7 +1102,9 @@ export async function runAssistantChat(options: {
   // later event patching an earlier row (#560). Skipped for a courtesy turn:
   // no classification happened, and the one notice would be the only thing
   // standing between that turn and a null trace (#566).
-  if (!courtesyFlow && !resumedFlow && !routedByPreflight) {
+  if (flow.id === STUDY_MODE_FLOW_ID) {
+    emit({ type: "notice", label: "Study Mode", detail: "Preparing an interactive exercise" });
+  } else if (!courtesyFlow && !resumedFlow && !routedByPreflight) {
     emit({
       type: "notice",
       label: "Classifying intent",
@@ -1103,19 +1113,37 @@ export async function runAssistantChat(options: {
   }
   emit({
     type: "flow",
-    flowId: flow.id,
+    flowId: storedFlowId(flow),
     flowName: flow.name,
     isDefault: flow.isDefault,
   });
 
   // Kicked off in parallel with the actions; consulted after they finish.
-  const trustTierPromise: Promise<TrustTier | null> = options.getFlowTrust
+  const trustTierPromise: Promise<TrustTier | null> = options.getFlowTrust && flow.id !== STUDY_MODE_FLOW_ID
     ? options.getFlowTrust(flow.id).catch(() => null)
     : Promise.resolve(null);
 
   const parts: ChatReplyPart[] = [];
   const effects: ActionEffect[] = [];
   const ctx: ActionContext = {
+    chooseStudyFormat: async (formats, topic) => {
+      const fallback = formats[0];
+      const resolved = resolveDecisionModel(assistant.modelProvider, connections, keyResolution);
+      if (!resolved || resolved.backend !== "jev" || formats.length < 2) return fallback;
+      try {
+        const result = await decide(resolved, {
+          state: { request: message, topic },
+          questions: { format: { type: "choice", instructions: "Choose the most useful study exercise format. Respect a format explicitly requested by the visitor.", criteria: Object.fromEntries(formats.map(format => [format, format.replaceAll("_", " ")])) } },
+          abortSignal: signal ? AbortSignal.any([signal, AbortSignal.timeout(3000)]) : AbortSignal.timeout(3000),
+        });
+        usageEvents.push(result.usage);
+        const chosen = result.answers.format.choice;
+        return formats.find(format => format === chosen) ?? fallback;
+      } catch {
+        if (signal?.aborted) throw signal.reason;
+        return fallback;
+      }
+    },
     idempotencyKey: effectKeyPrefix,
     assistant,
     platformPrompt,
@@ -1240,7 +1268,7 @@ export async function runAssistantChat(options: {
   return {
     parts,
     effects,
-    flowId: flow.id,
+    flowId: storedFlowId(flow),
     flowName: flow.name,
     usage: usageEvents,
     ...(preflight ? { preflight } : {}),

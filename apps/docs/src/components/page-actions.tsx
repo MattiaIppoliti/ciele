@@ -45,9 +45,11 @@ function AnthropicIcon({ className }: { className?: string }) {
 export function PageActions({
   markdownUrl,
   githubUrl,
+  contentLabel,
 }: {
   markdownUrl: string;
   githubUrl?: string;
+  contentLabel?: string;
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -85,7 +87,7 @@ export function PageActions({
   // Resolved at click time (client-only) to avoid reading window during render.
   function openInAiTool(base: string) {
     const absoluteMd = `${window.location.origin}${markdownUrl}`;
-    const prompt = `Read ${absoluteMd} so I can ask you questions about this page.`;
+    const prompt = `Read ${absoluteMd} so I can ask you questions about ${contentLabel ?? 'this page'}.`;
     window.open(`${base}${encodeURIComponent(prompt)}`, '_blank', 'noopener');
     setOpen(false);
   }

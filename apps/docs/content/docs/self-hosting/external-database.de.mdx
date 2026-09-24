@@ -1,0 +1,141 @@
+---
+title: Externe Datenbank
+description: Führen Sie den Stack auf einer verwalteten Postgres-Instanz aus, die Sie bereits besitzen.
+---
+
+Standardmäßig betreibt der Compose-Stack einen eigenen Postgres-Container.
+Stattdessen können Sie denselben Stack auf einer verwalteten Postgres-Instanz
+ausführen. Der `postgres`-Container wird dann niemals gestartet. Authentication,
+die Data API, der Storage und der Migration Runner stellen eine Verbindung zu
+Ihrer Datenbank her.
+
+**Tested** bei jeder Version: ein einfaches Postgres 16 mit pgvector, im Rahmen
+der Continuous-Integration-Wiedergabe der gesamten Migrationskette.
+
+**Expected to work**, aus der Dokumentation des Anbieters:
+
+- Azure Database for PostgreSQL Flexible Server
+- Amazon RDS for PostgreSQL und Amazon Aurora PostgreSQL
+- Google Cloud SQL für PostgreSQL und AlloyDB
+- Neon
+
+Jede andere Postgres-Instanz, die die unten aufgeführten Anforderungen erfüllt,
+funktioniert ebenfalls. Melden Sie Ihr Ergebnis im Issue-Tracker, damit ein
+Anbieter in der Liste auf **tested** gesetzt werden kann.
+
+## Anforderungen
+
+| Anforderung | Grund |
+| --- | --- |
+| Postgres **16** oder neuer | Bei Postgres 15 kann nur ein Superuser eine Rolle erstellen, die Row-Level Security umgeht. Managed Provider stellen Ihnen keinen Superuser zur Verfügung. |
+| Ein Admin-Login, der `BYPASSRLS` besitzt | Die Service-Rolle von Ciele muss die Row-Level-Security umgehen. Die Admin-Anmeldedaten der oben genannten Anbieter verfügen in Postgres 16 über dieses Attribut. |
+| Die Erweiterungen `vector` und `pg_trgm` | Die Wissenssuche verwendet beide. Fügen Sie in Azure zuerst `vector,pg_trgm` zum Serverparameter `azure.extensions` hinzu. |
+| Der Administrator ist Eigentümer der Datenbank | Postgres weist das `public`-Schema dem Datenbankeigentümer zu. Verwenden Sie den Login, mit dem die Datenbank erstellt wurde. |
+| Der **direct**-Hostname | Verwenden Sie keinen Hostnamen eines Connection Poolers. Die Data API und der Speicher unterhalten eine Listening-Verbindung, die von Pooling nicht unterstützt wird. |
+| Etwa 25 Verbindungen | Die kleinste Cloud-SQL-Stufe lässt insgesamt 25 Verbindungen zu. Wählen Sie eine höhere Stufe aus. Neon Free, Azure B1ms und RDS t4g.micro sind ausreichend. |
+| TLS | Jede Verbindung verwendet `sslmode=require`. Anbieter mit einer privaten Zertifizierungsstelle benötigen `--db-ca`, siehe unten. |
+
+## Den Stack verbinden
+
+Übergeben Sie den Admin-Verbindungsstring an das Bootstrap-Skript:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname
+```
+
+Das Skript schreibt die `EXTERNAL_DB_*`-Einstellungen und das
+`docker-compose.external-db.yml`-Overlay in `deploy/.env`. Es erstellt ein
+einziges Passwort für die drei Service-Anmeldungen. Anschließend überprüft es
+die Datenbank, bevor es einen Container startet: die Postgres-Version, die
+beiden Erweiterungen, die Admin-Berechtigungen, das Verbindungs-Limit und TLS.
+Bei jeder fehlgeschlagenen Prüfung wird eine Zeile ausgegeben, die Ihnen
+mitteilt, was Sie ändern müssen.
+
+Das Skript lehnt einen Pooler-Hostname, ein gehostetes Supabase-Projekt,
+`sslmode=disable` sowie ein Passwort mit Zeichen ab, die eine
+Verbindungszeichenfolge nicht transportieren kann. Prozentcodieren Sie solche
+Zeichen oder legen Sie ein einfacheres Admin-Passwort fest.
+
+Beim Start bereitet ein einmaliger `provision`-Dienst die Datenbank als
+Administrator vor. Es erstellt die Rollen, die Schemas `auth`, `storage` und
+`extensions`, die Authentifizierungs-Helper-Funktionen, die Standardprivilegien
+sowie die beiden Erweiterungen. Der Service wird bei jedem Start erneut
+ausgeführt und ändert nichts, wenn die Datenbank bereit ist.
+
+Die Option `--database-url` lässt sich mit `--images`, `--workers` und `--tls`
+kombinieren. Führen Sie das Skript mit einer neuen Verbindungszeichenfolge
+erneut aus, um den Stack auf eine andere Datenbank zu verweisen. Das
+Service-Passwort wird beibehalten.
+
+## Zertifikat verifizieren
+
+Anbieter mit einer privaten Zertifizierungsstelle benötigen das Bundle für die
+vollständige Verifizierung:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname --db-ca ./bundle.pem
+```
+
+Das Skript kopiert das Bundle nach `deploy/external-db/db-ca.pem` und setzt
+`sslmode=verify-full`. Jeder Service überprüft dann den Server anhand dieses
+Bundles.
+
+| Provider | Bundle |
+| --- | --- |
+| Amazon RDS und Aurora | Das globale Bundle von `truststore.pki.rds.amazonaws.com` oder das regionale Bundle |
+| Google Cloud SQL | Die `server-ca.pem`-Datei der Instanz |
+| Azure | DigiCert Global Root G2 und Microsoft RSA Root CA 2017, in einer Datei |
+| Neon | Nicht erforderlich. Der Server verwendet eine öffentliche Root-CA. |
+
+## Hinweise des Providers
+
+### Neon
+
+Erstellen Sie das Projekt in einer EU-Region auf Postgres 16 oder neuer.
+Kopieren Sie die **direct**-Verbindungszeichenfolge, nicht die
+`-pooler`-Verbindungszeichenfolge. Der Free-Tarif setzt die Rechenleistung nach
+fünf Minuten Inaktivität aus. Die erste Anfrage nach einer Pause dauert einige
+Sekunden, während die Dienste wieder verbunden werden.
+
+### Azure Database for PostgreSQL Flexible Server
+
+Erstellen Sie den Server auf Postgres 16 oder einer neueren Version. Fügen Sie
+`vector,pg_trgm` dem Serverparameter `azure.extensions` hinzu, bevor Sie das
+Bootstrap-Skript ausführen. Verwenden Sie den Admin-Login, den Sie bei der
+Erstellung festgelegt haben. Fügen Sie die IP-Adresse Ihres Hosts zu den
+Firewall-Regeln hinzu.
+
+### Amazon RDS und Aurora
+
+Verwenden Sie den Master-Benutzer. Laden Sie das Zertifikatsbundle herunter und
+übergeben Sie es mit `--db-ca`. Erlauben Sie Ihren Host in der
+Sicherheitsgruppe. Aurora-Versionen vor 17 erzwingen TLS nicht. Der Stack
+verwendet weiterhin TLS.
+
+### Google Cloud SQL und AlloyDB
+
+Verwenden Sie den Benutzer `postgres`. Wählen Sie in Cloud SQL mindestens die
+Stufe `db-g1-small` aus. Laden Sie `server-ca.pem` von der Instanz herunter und
+übergeben Sie es mit `--db-ca`. Fügen Sie die öffentliche IP-Adresse Ihres Hosts
+zu den autorisierten Netzwerken hinzu.
+
+### Gehostetes Supabase
+
+Ein gehostetes Supabase-Projekt kann nicht die Datenbank unter diesen Containern
+sein. Seine Service-Rollen existieren mit Passwörtern, die Sie nicht besitzen,
+und seine eigenen Services sind Eigentümer der Schemata `auth` und `storage`.
+Richten Sie die Anwendung stattdessen auf dieses Projekt aus und führen Sie das
+Profil `db` nicht aus.
+
+## Sicherungen
+
+Der Anbieter verwahrt die Datenbank-Backups. Hochgeladene Dateien verbleiben im
+Volume `storage-data` auf Ihrem Host. Sichern Sie das Volume zusammen mit der
+Datenbank. Stellen Sie beide auf denselben Zeitpunkt wieder her. Siehe
+[Database](/self-hosting/database) für die Volume-Befehle.
+
+## Upgrade
+
+Upgrades funktionieren wie in [Upgrade](/self-hosting/upgrade) beschrieben. Der
+`migrate`-Dienst wendet ausstehende Migrationen auf Ihre Datenbank an. Der
+`provision`-Dienst wird zuerst ausgeführt und bestätigt die Rollen und Schemas.

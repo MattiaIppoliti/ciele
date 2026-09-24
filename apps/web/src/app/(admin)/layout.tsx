@@ -60,7 +60,7 @@ export default function AdminLayout({
 
   return (
     <>
-      <ThemeProvider>
+      <ThemeProvider scope="admin">
         {/* Interface sounds + haptics (#817). Here and in the marketing
             layout, never in the root layout: the widget inherits only the
             root, and that placement is what keeps it silent. */}
@@ -68,6 +68,12 @@ export default function AdminLayout({
         <TooltipProvider delay={300}>
           <ShellProvider assistants={assistants}>
             <div className="bg-background text-foreground flex h-full">
+              <a
+                href="#main-content"
+                className="bg-foreground text-background focus-visible:ring-ring sr-only rounded-md px-3 py-2 text-sm font-medium shadow-lg focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus-visible:ring-2 focus-visible:ring-offset-2"
+              >
+                Skip to main content
+              </a>
               <Suspense
                 fallback={
                   <div className="hidden w-60 shrink-0 border-r lg:block" />
@@ -88,7 +94,11 @@ export default function AdminLayout({
                     editor's live Preview, which docks inside `main` from the
                     assistant layout. */}
                 <div className="flex min-h-0 flex-1">
-                  <main className="bg-content min-h-0 flex-1 overflow-hidden">
+                  <main
+                    id="main-content"
+                    tabIndex={-1}
+                    className="bg-content min-h-0 flex-1 overflow-hidden focus:outline-none"
+                  >
                     <StaticIcons>{children}</StaticIcons>
                   </main>
                   <DeveloperPanelLauncher />

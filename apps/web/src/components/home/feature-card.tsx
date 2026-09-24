@@ -64,6 +64,7 @@ export function FeatureCard({
           />
           <MorphingDialogTrigger
             style={{ borderRadius: "15px" }}
+            ariaLabel={`Learn more about ${feature.title}`}
             className="bg-card flex h-full flex-col overflow-hidden text-left"
           >
             {feature.visual ? (
@@ -87,14 +88,12 @@ export function FeatureCard({
                 </MorphingDialogSubtitle>
               </div>
               <div className="mt-4 flex justify-end">
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  className="border-border text-muted-foreground hover:bg-accent hover:text-foreground relative flex h-6 w-6 shrink-0 scale-100 select-none appearance-none items-center justify-center rounded-lg border transition-colors focus-visible:ring-2 active:scale-[0.98]"
-                  aria-label="Open dialog"
+                <span
+                  aria-hidden="true"
+                  className="border-border text-muted-foreground relative flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border"
                 >
                   <PlusIcon size={12} />
-                </button>
+                </span>
               </div>
             </div>
           </MorphingDialogTrigger>
@@ -103,6 +102,7 @@ export function FeatureCard({
       <MorphingDialogContainer>
         <MorphingDialogContent
           style={{ borderRadius: "24px" }}
+          ariaLabel={feature.title}
           className="bg-card pointer-events-auto relative flex h-auto w-full flex-col overflow-hidden border sm:w-[500px]"
         >
           {feature.visual ? (

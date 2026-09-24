@@ -27,6 +27,51 @@ Der Assistent kann einer Zeile eine Folgefrage hinzufügen. Der Besucher wählt
 die Zeile aus, um diese Frage zu stellen. Das Inbox-Protokoll zeigt diese Zeilen
 an, aber ein Mitglied kann sie nicht auswählen.
 
+## Study Mode aktivieren
+
+**Study Mode** ist standardmäßig deaktiviert. Aktivieren Sie es, damit Besucher
+das Wissen des Assistenten mit interaktiven Übungen üben können.
+
+1. Öffnen Sie **Tools & Skills** und aktivieren Sie **Study Mode**.
+2. Aktivieren Sie mindestens ein Frageformat.
+3. Fügen Sie **Custom instructions** hinzu, um den Lehrstil festzulegen.
+4. Testen Sie eine Übung im Modus „Preview“.
+5. Veröffentlichen Sie den Assistant, um das Widget zu aktualisieren.
+
+Der Chat-Editor zeigt eine Schaltfläche **Study exercises** an. Wählen Sie ein
+Format aus, fügen Sie ein Thema hinzu und senden Sie dann die Anfrage.
+
+Wenn aktiviert, wird **Study Mode** auch in **Flows** angezeigt. Die
+Schaltfläche „Settings“ öffnet diesen Abschnitt. Deaktivieren Sie den Study Mode
+in **Tools & Skills**. Der Flow hat keinen separaten Schalter. Anfragen aus dem
+Menü „Study exercises“ gehen direkt an diesen Flow. In Thinking wird ein Symbol
+mit einer Doktorhut-Kappe angezeigt.
+
+Für Übungen ist relevantes Material in der Knowledge-Basis des Assistenten
+erforderlich. Wenn kein Material gefunden wird, fragt der Assistant nach einem
+unterstützten Thema oder nach Lernmaterial.
+
+| Format | Wie der Visitor antwortet |
+| --- | --- |
+| Multiple Choice | Wählen Sie eine Option aus. Es steht keine Freitextantwort zur Verfügung. |
+| Wörter ziehen | Ziehen Sie ein Wort oder wählen Sie es aus, um pro Frage eine Lücke zu füllen. |
+| True / False | Wählen Sie eine der beiden Optionen aus. |
+| Flashcards | Geben Sie das fehlende Wort oder eine kurze Formulierung ein. |
+
+**Choose for me** wählt ein aktiviertes Format aus. Jede Übung enthält höchstens
+fünf verschiedene Fragen, die auf dem abgerufenen Knowledge basieren.
+
+Wählen Sie **Check** aus, um eine Antwort zu speichern. Ciele zeigt an, ob die
+Antwort richtig ist, gibt die richtige Antwort an und liefert eine Erklärung.
+Eine einmal abgegebene Antwort kann nicht mehr geändert werden. Flashcards
+akzeptieren die Rechtschreibvarianten, die beim Erstellen der Übung definiert
+wurden.
+
+Die Inbox zeigt die Fragen, die eingereichten Antworten, die richtigen Antworten
+und die Punktzahl an. Bei unvollständigen Übungen wird angezeigt, wie viele
+Fragen noch unbeantwortet sind. Die Übungen werden innerhalb des Chats
+ausgeführt. Sie benötigen keinen externen H5P-Player.
+
 ## Strukturierte Daten verbinden
 
 Der Abschnitt **Data** listet Entitäten auf, die über **Settings → Data**

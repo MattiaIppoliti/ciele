@@ -1,7 +1,7 @@
 "use client";
 
 import { useFeedback } from "@agent-hub/ui/feedback";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 
 /**
  * The one control interface sounds have (#817): on or off, per device, beside

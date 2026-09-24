@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import Link from "next/link";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "GDPR | Ciele",
-  description:
-    "How Ciele approaches the GDPR: our role as processor, where data is stored, the measures that protect personal data, and the resources a DPO review needs.",
-};
+  description: "How Ciele approaches the GDPR: our role as processor, where data is stored, the measures that protect personal data, and the resources a DPO review needs.",
+  path: "/security/gdpr",
+});
 
 const LAST_UPDATED = "5 August 2026";
 

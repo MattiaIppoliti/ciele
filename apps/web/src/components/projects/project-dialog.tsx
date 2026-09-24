@@ -7,7 +7,13 @@ import {
 } from "@agent-hub/core";
 import type { MemoryDocumentEntry } from "@agent-hub/core";
 import { Archive, ArchiveRestore, ChevronRight, Trash2, X } from "lucide-react";
-import { Button, Dialog, DialogContent, Skeleton } from "@agent-hub/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Skeleton,
+} from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { FoldersIcon } from "@/components/ui/icons/folders";
 import { Textarea } from "@/components/ui/textarea";
@@ -159,9 +165,9 @@ export function ProjectDialog({
             </span>
             <span>Projects</span>
             <ChevronRight className="size-3.5" />
-            <span className="text-foreground truncate font-medium">
+            <DialogTitle className="text-foreground truncate text-sm font-medium">
               {creating ? "New project" : name || "Project"}
-            </span>
+            </DialogTitle>
             {archived && (
               <span className="text-muted-foreground ml-1 text-xs">
                 (archived, teammates no longer read it)
@@ -198,14 +204,14 @@ export function ProjectDialog({
               placeholder="Project name"
               aria-label="Project name"
               onChange={(e) => setName(e.target.value.slice(0, 120))}
-              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none"
+              className="placeholder:text-muted-foreground w-full bg-transparent text-2xl font-semibold outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             />
             <input
               value={description}
               placeholder="Add a short summary..."
               aria-label="Short summary"
               onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
-              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none"
+              className="placeholder:text-muted-foreground mt-2 w-full bg-transparent text-sm outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             />
 
             <div className="mt-4 border-t pt-4">
@@ -221,7 +227,7 @@ export function ProjectDialog({
                    hard against the edge of the field with nothing to read
                    into, which is what the panel's own gutter gives every other
                    line on this screen. */
-                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0"
+                className="min-h-48 resize-none border-0 px-3.5 py-3 shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
               />
               <p className="text-muted-foreground text-xs">
                 {body.length} / {MEMORY_DOCUMENT_MAX_CHARS} characters. Every

@@ -3,7 +3,9 @@ import type {
   WebsiteCrawlerProvider,
   WebsiteSourceConfig,
 } from "@agent-hub/core";
+import { DEFAULT_PAGE_BUDGET, isUnlimitedPages } from "@agent-hub/core";
 import {
+  APIFY_MAX_CRAWL_PAGES,
   fetchCrawledPages,
   fetchCrawledPageBatch,
   APIFY_DATASET_BATCH_SIZE,
@@ -26,7 +28,11 @@ import {
 } from "./crawl4ai";
 
 export type WebsiteCrawlPollResult =
-  | { status: "processing" }
+  | {
+      status: "processing";
+      /** The remote run's own progress, when the provider reports one. */
+      progress?: { crawled: number; found: number | null };
+    }
   | { status: "failed"; message: string }
   | {
       status: "succeeded";
@@ -80,12 +86,18 @@ const apifyAdapter: WebsiteCrawlerAdapter = {
   async poll({ runId, datasetId, url, options, cursor, credentials }) {
     const token = credentials?.apifyToken;
     const run = await getRunState(runId, token);
-    if (!isRunTerminal(run.status)) return { status: "processing" };
+    if (!isRunTerminal(run.status)) {
+      return { status: "processing", progress: run.progress };
+    }
     if (run.status !== "SUCCEEDED") {
       return { status: "failed", message: `Crawl ${run.status.toLowerCase()}` };
     }
     const resolvedDatasetId = run.datasetId || datasetId;
-    if ((options.maxPages ?? 20) > APIFY_DATASET_BATCH_SIZE || cursor) {
+    if (
+      isUnlimitedPages(options.maxPages) ||
+      (options.maxPages ?? DEFAULT_PAGE_BUDGET) > APIFY_DATASET_BATCH_SIZE ||
+      cursor
+    ) {
       const batch = await fetchCrawledPageBatch(
         resolvedDatasetId,
         url,
@@ -177,8 +189,12 @@ export function crawlCharacteristicsFromConfig(
     fetchFiles: Boolean(config.fetchFiles),
     loginProtected: Boolean(config.loginProtected),
     browserRendered: (config.waitSecs ?? 0) > 0,
-    exceedsLocalCap: (config.maxPages ?? 0) > LOCAL_CRAWL_MAX_PAGES,
+    // No limit is more than either self-run crawler can hold.
+    exceedsLocalCap:
+      isUnlimitedPages(config.maxPages) ||
+      (config.maxPages ?? 0) > LOCAL_CRAWL_MAX_PAGES,
     exceedsSelfHostedCap:
+      isUnlimitedPages(config.maxPages) ||
       (config.maxPages ?? 0) > CRAWL4AI_MAX_CRAWL_PAGES,
   };
 }
@@ -289,11 +305,22 @@ export function browserCrawlerFor(
   return null;
 }
 
+/**
+ * The crawl options for one run. `credential` decides what no page limit
+ * means: unlimited on the Organization's own Apify account, which bills the
+ * Organization; the managed crawler's 100,000-page ceiling on the platform's,
+ * because the platform's allowance is only checked when a crawl starts and a
+ * crawl may overshoot it by its whole page budget.
+ */
 export function crawlOptionsFromConfig(
-  config: WebsiteSourceConfig
+  config: WebsiteSourceConfig,
+  credential: "organization" | "platform" = "platform"
 ): CrawlOptions {
   return {
-    maxPages: config.maxPages,
+    maxPages:
+      isUnlimitedPages(config.maxPages) && credential === "platform"
+        ? APIFY_MAX_CRAWL_PAGES
+        : config.maxPages,
     includeGlobs: config.includeGlobs,
     excludeGlobs: config.excludeGlobs,
     fetchFiles: config.fetchFiles,

@@ -58,6 +58,8 @@ import {
   type HumanReviewPart,
   type ChatMsg,
 } from "@/components/chat/chat-thread";
+import { StudyProvider } from "@/components/chat/study-context";
+import { StudyMenu } from "@/components/chat/study-menu";
 import { ComposerPulse } from "@/components/chat/composer-pulse";
 import { latestHelpDeskId } from "@/components/chat/visible-reply-parts";
 import { PreviewEscalation } from "./preview-escalation";
@@ -781,6 +783,7 @@ export function PreviewPanel({
   );
 
   return (
+    <StudyProvider replies={messages.flatMap(message => message.role === "bot" ? [message.parts] : [])} endpoint={assistant.tools?.studyMode?.enabled ? "/api/preview/chat" : undefined} request={{ assistantId: assistant.id, conversationId }} disabled={pending}>
     <RailPanel
       title="Preview"
       labels={{
@@ -1150,8 +1153,9 @@ export function PreviewPanel({
             maxRows={6}
             placeholder={`Ask ${nickname}...`}
             aria-label={`Ask ${nickname}`}
-            leadingAction={
-              pending ? (
+            leadingAction={<>
+              <StudyMenu settings={assistant.tools?.studyMode} disabled={pending} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />
+              {pending ? (
                 <Hint label="Stop generating and clear follow-ups" side="top">
                   <button
                     type="button"
@@ -1162,8 +1166,8 @@ export function PreviewPanel({
                     <Square className="size-3 fill-current" />
                   </button>
                 </Hint>
-              ) : undefined
-            }
+              ) : undefined}
+            </>}
           />
           {models.length > 0 &&
           parseLocalModelSelector(aiPreferences.defaultModel) ? (
@@ -1199,5 +1203,6 @@ export function PreviewPanel({
         )}
       </ChatSurface>
     </RailPanel>
+    </StudyProvider>
   );
 }

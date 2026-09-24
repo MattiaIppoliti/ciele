@@ -10,7 +10,7 @@ import { StepIcon, stepIconName } from "./tool-icons";
 import { ThinkingTimeline } from "./thinking-timeline";
 import { ThinkingShimmer } from "@/components/agents/loading-states/thinking-shimmer";
 import { ThinkingOrb } from "@/components/orbs/thinking-orb";
-import { chatVisibleSteps, liveOrbState, liveTraceLabel } from "./stored-trace";
+import { chatVisibleSteps, liveOrbState, liveTraceLabel, thinkingIconSteps } from "./stored-trace";
 
 /**
  * The agentic status panel both chat UIs (Widget + admin Preview) render above
@@ -27,24 +27,6 @@ import { chatVisibleSteps, liveOrbState, liveTraceLabel } from "./stored-trace";
  * reached for, the routing decision it just made, which is strictly more
  * specific, and falls back to "Thinking…" only before the first step arrives.
  */
-
-/** De-dupes steps by "kind" so the header pill shows each distinct icon once. */
-function distinctStepKinds(steps: TurnStep[]): TurnStep[] {
-  const seen = new Set<string>();
-  const result: TurnStep[] = [];
-  for (const step of steps) {
-    const key =
-      step.kind === "tool"
-        ? `tool:${step.tool}`
-        : step.kind === "step"
-          ? `stage:${step.stage ?? "step"}`
-          : step.kind;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(step);
-  }
-  return result;
-}
 
 
 export function ThinkingPanel({
@@ -105,7 +87,7 @@ export function ThinkingPanel({
   // reference), collapsed once done unless the user opens it.
   const open = (userOpen || !finished) && steps.length > 0;
   const seconds = thoughtMs !== null ? (thoughtMs / 1000).toFixed(1) : null;
-  const stack = distinctStepKinds(steps).slice(0, 4);
+  const stack = thinkingIconSteps(steps);
   // One icon and no ×N badge: the pill hugs the icon symmetrically so the
   // glyph sits centered in the border instead of floating in leftover padding.
   const soloIcon = stack.length <= 1 && searchCount <= 1;

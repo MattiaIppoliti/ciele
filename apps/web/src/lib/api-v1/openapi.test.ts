@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import * as ops from "@ciele/ops";
 import { API_V1_DOMAINS } from "./meta";
 import { API_V1_ENDPOINTS, buildOpenApiDocument } from "./openapi";
+import responseSchemas from "./response-schemas.generated.json";
+import { deriveResponseSchemas } from "../../../scripts/response-schemas";
 
 /**
  * The contract drift check (#626): the registry in openapi.ts and the route
@@ -56,20 +58,32 @@ describe("OpenAPI contract (#626)", () => {
     const doc = buildOpenApiDocument();
     expect(doc.openapi).toBe("3.1.0");
     expect(doc.info.title).toBe("ciele API");
+    expect(doc.servers).toEqual([
+      expect.objectContaining({ url: "/" }),
+    ]);
     expect(doc.components.securitySchemes.apiKey.scheme).toBe("bearer");
+    expect(doc.tags.map((tag) => tag.name)).toEqual(["discovery", ...API_V1_DOMAINS]);
 
     const paths = Object.entries(doc.paths);
     expect(paths.length).toBeGreaterThan(10);
+    const operationIds: string[] = [];
     for (const [path, methods] of paths) {
       expect(path.startsWith("/api/v1/")).toBe(true);
       for (const entry of Object.values(methods) as Array<{
         summary?: string;
         responses?: object;
+        tags?: string[];
       }>) {
         expect(entry.summary).toBeTruthy();
         expect(entry.responses).toBeTruthy();
+        expect(entry.tags).toHaveLength(1);
+      }
+      for (const entry of Object.values(methods) as Array<{ operationId?: string }>) {
+        expect(entry.operationId).toBeTruthy();
+        operationIds.push(entry.operationId!);
       }
     }
+    expect(new Set(operationIds).size).toBe(operationIds.length);
 
     // Bodies rendered from zod: the create-assistant schema must be real.
     const create = doc.paths["/api/v1/assistants"].post as {
@@ -79,8 +93,99 @@ describe("OpenAPI contract (#626)", () => {
       create.requestBody.content["application/json"].schema.properties
     ).toHaveProperty("title");
 
+    const list = doc.paths["/api/v1/assistants"].get as {
+      parameters: Array<{ name: string; in: string }>;
+    };
+    expect(list.parameters.map((parameter) => `${parameter.in}:${parameter.name}`))
+      .toEqual(["query:limit", "query:cursor"]);
+
+    const knowledge = doc.paths["/api/v1/knowledge/sources"].get as {
+      parameters: Array<{ name: string }>;
+    };
+    expect(knowledge.parameters.map((parameter) => parameter.name))
+      .toEqual(["kinds", "status", "assistantId", "q", "page", "pageSize"]);
+
+    const publication = doc.paths["/api/v1/assistants/{id}/publish"] as Record<
+      string,
+      { responses: Record<string, { content?: Record<string, { schema: object }> }> }
+    >;
+    expect(publication.get.responses["200"].content?.["application/json"].schema)
+      .toHaveProperty("oneOf");
+    expect(publication.post.responses["201"].content?.["application/json"].schema)
+      .toHaveProperty("properties.publicationId");
+    expect(publication.delete.responses["204"].content).toBeUndefined();
+    expect(publication.get.responses).toHaveProperty("422");
+    expect(publication.get.responses).toHaveProperty("401");
+    expect(publication.get.responses).not.toHaveProperty("403");
+    expect(publication.get.responses).not.toHaveProperty("2XX");
+    expect(publication.get.responses).not.toHaveProperty("4XX");
+
+    const csv = doc.paths["/api/v1/knowledge/faqs/export"].get as {
+      responses: Record<string, { content: Record<string, object> }>;
+    };
+    expect(csv.responses["200"].content).toHaveProperty("text/csv");
+
+    const sourceUpload = doc.paths["/api/v1/knowledge/sources"].post as {
+      requestBody: { content: Record<string, { schema: { properties: Record<string, unknown>; required?: string[] } }> };
+      responses: Record<string, { headers?: Record<string, unknown> }>;
+    };
+    expect(sourceUpload.requestBody.content["multipart/form-data"].schema.properties)
+      .toHaveProperty("file");
+    expect(sourceUpload.requestBody.content["multipart/form-data"].schema.properties)
+      .toHaveProperty("assistantIds");
+    expect(sourceUpload.responses).toHaveProperty("429");
+    expect(sourceUpload.responses["429"].headers).toHaveProperty("Retry-After");
+    expect(sourceUpload.responses).toHaveProperty("503");
+
+    for (const methods of Object.values(doc.paths)) {
+      for (const operation of Object.values(methods) as Array<{
+        responses: Record<string, { content?: Record<string, object> }>;
+      }>) {
+        const success = operation.responses["200"] ?? operation.responses["201"] ?? operation.responses["204"];
+        if (operation.responses["204"]) expect(success.content).toBeUndefined();
+        else expect(success.content).toBeTruthy();
+      }
+    }
+
     // Round-trips through JSON (what the route serves).
     expect(() => JSON.stringify(doc)).not.toThrow();
+  });
+
+  it("keeps the docs download synchronized with the route registry", () => {
+    const generated = JSON.parse(readFileSync(join(__dirname, "../../../../docs/src/lib/openapi.generated.json"), "utf8"));
+    expect(generated).toEqual(buildOpenApiDocument());
+  });
+
+  it(
+    "keeps response fields synchronized with the route return types",
+    () => {
+      expect(responseSchemas).toEqual(deriveResponseSchemas());
+    },
+    // This builds a TypeScript program for every API route. It runs alongside
+    // the rest of the web and agent suites in CI, where 15 seconds is too tight.
+    60_000
+  );
+
+  it("documents 201 only for routes that actually return it", () => {
+    const fromRoutes = new Set<string>();
+    for (const file of routeFiles(API_ROOT)) {
+      const blocks = readFileSync(file, "utf8").split(/export async function (?=GET|POST|PATCH|PUT|DELETE)/);
+      for (const block of blocks.slice(1)) {
+        const method = /^(GET|POST|PATCH|PUT|DELETE)/.exec(block)?.[1]?.toLowerCase();
+        if (method && /status:\s*(?:outcome\.result\.error\s*\?\s*200\s*:\s*)?201/.test(block)) {
+          fromRoutes.add(`${method} ${routePath(file)}`);
+        }
+      }
+    }
+    const doc = buildOpenApiDocument();
+    const fromContract = new Set(
+      API_V1_ENDPOINTS
+        .filter((endpoint) => "201" in (doc.paths[`/api/v1${endpoint.path}`][endpoint.method] as {
+          responses: Record<string, unknown>;
+        }).responses)
+        .map((endpoint) => `${endpoint.method} ${endpoint.path}`)
+    );
+    expect(fromContract).toEqual(fromRoutes);
   });
 });
 

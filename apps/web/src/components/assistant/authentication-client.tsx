@@ -18,7 +18,7 @@ import {
   PasswordInput,
   useCopyFeedback,
 } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import {
   Select,
   SelectContent,

@@ -11,6 +11,9 @@ export async function GET() {
   const scanned = await Promise.all(scan);
 
   return new Response(scanned.join('\n\n'), {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'X-Robots-Tag': 'noindex',
+    },
   });
 }

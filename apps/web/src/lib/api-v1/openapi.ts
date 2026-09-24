@@ -43,6 +43,8 @@ import {
 } from "@ciele/ops";
 import { API_V1_DOMAINS, API_V1_VERSION, type ApiV1Domain } from "@/lib/api-v1/meta";
 import type { ApiCapability } from "@/lib/api-v1/auth";
+import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "@/lib/api-v1/http";
+import responseSchemas from "./response-schemas.generated.json";
 
 /**
  * The /api/v1 contract registry (#626): one entry per shipped endpoint.
@@ -97,6 +99,8 @@ export interface EndpointSpec {
   auth?: boolean;
   /** Honors the Idempotency-Key header. */
   idempotent?: boolean;
+  /** May be rejected by the shared source-ingestion rate limit. */
+  rateLimited?: boolean;
 }
 
 const reorderBody = z.object({ orderedIds: z.array(z.string()) });
@@ -198,6 +202,7 @@ const conversationPinnedBody = z.object({ pinned: z.boolean() });
 const conversationFeedbackBody = z.object({ text: z.string().trim().min(1).max(2_000) });
 const messageFeedbackBody = z.object({ feedback: z.union([z.literal(-1), z.literal(0), z.literal(1)]) });
 
+const jsonObject = { type: "object", additionalProperties: true };
 export const API_V1_ENDPOINTS: EndpointSpec[] = [
   { method: "get", path: "/meta", summary: "Discovery: API version, server version, shipped domains", auth: false },
   { method: "get", path: "/openapi.json", summary: "This document", auth: false },
@@ -428,6 +433,7 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: sourceBody,
     multipart: ["file"],
     idempotent: true,
+    rateLimited: true,
     cli: "ciele sources add-url {collectionId} --url https://example.com/help --assistants {assistantId}",
     mcp: '{"action":"add_url","collectionId":"{collectionId}","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
   },
@@ -499,6 +505,7 @@ export const API_V1_ENDPOINTS: EndpointSpec[] = [
     body: orgSourceBody,
     multipart: ["file"],
     idempotent: true,
+    rateLimited: true,
     cli: "ciele sources add-org --url https://example.com/help --assistants {assistantId}",
     mcp: '{"action":"add_org_url","url":"https://example.com/help","assistantIds":["{assistantId}"]}',
   },
@@ -1724,20 +1731,194 @@ function pathParams(path: string) {
   }));
 }
 
+function operationId(endpoint: EndpointSpec): string {
+  const words = endpoint.path
+    .split("/")
+    .filter(Boolean)
+    .flatMap((part) => {
+      const parameter = /^\{(.+)\}$/.exec(part);
+      return parameter ? [`by${parameter[1][0].toUpperCase()}${parameter[1].slice(1)}`] : [part];
+    })
+    .join("-")
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join("");
+  return `${endpoint.method}${words}`;
+}
+
+function errorResponse(description: string) {
+  return {
+    description,
+    content: { "application/json": { schema: ERROR_SCHEMA } },
+  };
+}
+
+function queryParam(name: string, type: "string" | "integer", description: string) {
+  return { name, in: "query" as const, required: false, description, schema: { type } };
+}
+
+const cursorQuery = [
+  queryParam("limit", "integer", `Items per page; defaults to ${DEFAULT_PAGE_LIMIT} and is clamped to 1–${MAX_PAGE_LIMIT}.`),
+  queryParam("cursor", "string", "Opaque nextCursor returned by the previous page."),
+];
+
+/** Route-specific query fields, copied from the handlers alongside the endpoint registry. */
+const QUERY_PARAMETERS: Record<string, ReturnType<typeof queryParam>[]> = {
+  "get /assistants": cursorQuery,
+  "get /conversations": [...cursorQuery, queryParam("assistantId", "string", "Limit results to one Assistant.")],
+  "get /improvements": cursorQuery,
+  "get /entities": cursorQuery,
+  "get /memories/subjects": cursorQuery,
+  "get /entities/{id}/records": [
+    queryParam("limit", "integer", "Maximum records to return."),
+    queryParam("offset", "integer", "Number of records to skip."),
+  ],
+  "get /flows/{id}/runs": [queryParam("limit", "integer", "Maximum recent runs to return.")],
+  "get /assistants/{id}/flows-agent/thread": [queryParam("flowId", "string", "Omit to read the new-Flow canvas thread.")],
+  "get /knowledge/sources": [
+    queryParam("kinds", "string", "Comma-separated Source kinds; defaults to all kinds."),
+    queryParam("status", "string", "Filter by Source status."),
+    queryParam("assistantId", "string", "Filter by linked Assistant."),
+    queryParam("q", "string", "Search the Knowledge Library."),
+    queryParam("page", "integer", "Page number."),
+    queryParam("pageSize", "integer", "Items per page."),
+  ],
+  "get /usage/spenders": [
+    queryParam("from", "string", "Start of the usage window, as an ISO 8601 timestamp."),
+    queryParam("to", "string", "End of the usage window, as an ISO 8601 timestamp."),
+  ],
+  "get /reviews": [
+    queryParam("status", "string", "Filter by review status."),
+    queryParam("conversationId", "string", "Filter by Conversation."),
+    queryParam("assistantId", "string", "Filter by Assistant."),
+  ],
+  "get /applications/connections": [queryParam("provider", "string", "Filter by Application provider.")],
+  "get /applications/connectors": [queryParam("provider", "string", "Filter by Application provider.")],
+};
+
+/** Routes that explicitly return 201 after creating a resource. */
+const CREATED_RESPONSES = new Set([
+  "post /api-keys",
+  "post /assistants/{id}/duplicate",
+  "post /assistants/{id}/flows",
+  "post /assistants/{id}/goals",
+  "post /assistants/{id}/publish",
+  "post /assistants/{id}/republish",
+  "post /assistants",
+  "post /channels",
+  "post /collections/{id}/faqs",
+  "post /collections/{id}/sources",
+  "post /entities",
+  "post /help-desks/{id}/channels",
+  "post /help-desks",
+  "post /invites",
+  "post /knowledge/faqs",
+  "post /knowledge/sources",
+  "post /projects",
+  "post /providers/federated",
+  "post /providers/api-key",
+  "post /providers/openai-compatible",
+  "post /skills",
+  "post /teammates/{id}/routines",
+  "post /teammates/provision",
+  "post /teammates",
+]);
+
+/** These two routes also return 200 when a provider connection reports an error. */
+const MAY_RETURN_200 = new Set([
+  "post /providers/api-key",
+  "post /providers/openai-compatible",
+]);
+
 /** The served document. Kept dependency-free: zod v4 renders JSON Schema. */
 export function buildOpenApiDocument() {
   const paths: Record<string, Record<string, unknown>> = {};
   for (const endpoint of API_V1_ENDPOINTS) {
+    const operationKey = `${endpoint.method} ${endpoint.path}`;
+    const noContent = endpoint.method === "delete"
+      || operationKey === "post /channels/{id}/members"
+      || operationKey === "post /channels/{id}/teammates";
+    const csv = operationKey === "get /knowledge/faqs/export";
+    const successStatus = CREATED_RESPONSES.has(operationKey) ? "201" : "200";
+    const jsonSuccess = {
+      description: successStatus === "201" ? "Created" : "Successful response",
+      content: {
+        "application/json": {
+          schema: (responseSchemas as Record<string, Record<string, unknown>>)[operationKey] ?? jsonObject,
+        },
+      },
+    };
+    const successResponse = noContent
+      ? { "204": { description: "No content" } }
+      : csv
+        ? { "200": { description: "FAQ export", content: { "text/csv": { schema: { type: "string" } } } } }
+        : {
+          [successStatus]: jsonSuccess,
+          ...(MAY_RETURN_200.has(operationKey) ? { "200": { ...jsonSuccess, description: "Operation completed with a provider error" } } : {}),
+        };
+    const errors: Record<string, unknown> = {};
+    if (endpoint.auth !== false) {
+      errors["401"] = errorResponse("Missing, invalid, or revoked API key");
+    }
+    if (endpoint.capability && endpoint.capability !== "member") {
+      errors["403"] = errorResponse("The API key does not have the required capability");
+    }
+    if (endpoint.body || endpoint.multipart || endpoint.capability) {
+      errors["400"] = errorResponse("Invalid request or operation input");
+      errors["404"] = errorResponse("The requested resource was not found");
+      errors["409"] = errorResponse("The request conflicts with the current resource state");
+      errors["422"] = errorResponse("Validation error");
+    }
+    if (endpoint.idempotent) {
+      errors["409"] = {
+        ...errorResponse("The idempotency key is already in use or the request is still running"),
+        headers: {
+          "Retry-After": {
+            description: "Seconds to wait before retrying a request that is still running.",
+            schema: { type: "integer" },
+          },
+        },
+      };
+      errors["500"] = errorResponse("The idempotency request could not be completed");
+      errors["503"] = errorResponse("Idempotency storage is temporarily unavailable");
+    }
+    if (endpoint.rateLimited) {
+      errors["429"] = {
+        ...errorResponse("The source-ingestion rate limit was exceeded"),
+        headers: {
+          "Retry-After": {
+            description: "Seconds until another source-ingestion request is allowed.",
+            schema: { type: "integer" },
+          },
+        },
+      };
+    }
+    const access = endpoint.auth === false
+      ? "No API key is required."
+      : endpoint.capability
+        ? `Requires an Organization API key with the ${endpoint.capability} capability.`
+        : "Requires an Organization API key.";
     const entry: Record<string, unknown> = {
+      operationId: operationId(endpoint),
       summary: endpoint.summary,
-      parameters: pathParams(endpoint.path),
+      description: `${access}${endpoint.idempotent ? " Supply an Idempotency-Key when retrying the same request." : ""}`,
+      tags: [endpoint.domain ?? "discovery"],
+      parameters: [
+        ...pathParams(endpoint.path),
+        ...(QUERY_PARAMETERS[`${endpoint.method} ${endpoint.path}`] ?? []),
+        ...(endpoint.idempotent ? [{
+          name: "Idempotency-Key",
+          in: "header",
+          required: false,
+          description: "Reuse the same value only when retrying the same logical operation.",
+          schema: { type: "string" },
+        }] : []),
+      ],
       security: endpoint.auth === false ? [] : [{ apiKey: [] }],
       responses: {
-        "2XX": { description: "Success" },
-        "4XX": {
-          description: "Error envelope",
-          content: { "application/json": { schema: ERROR_SCHEMA } },
-        },
+        ...successResponse,
+        ...errors,
       },
     };
     const content: Record<string, unknown> = {};
@@ -1753,12 +1934,26 @@ export function buildOpenApiDocument() {
       };
     }
     if (endpoint.multipart) {
+      const hasAssistantLinks = [
+        "post /collections/{id}/sources",
+        "post /collections/{id}/faqs/import",
+        "post /knowledge/sources",
+        "post /knowledge/faqs/import",
+      ].includes(operationKey);
+      const properties: Record<string, unknown> = Object.fromEntries(
+        endpoint.multipart.map((field) => [field, { type: "string", format: "binary" }])
+      );
+      if (hasAssistantLinks) {
+        properties.assistantIds = {
+          type: "string",
+          description: "Optional JSON-encoded array of Assistant IDs to link to the imported items.",
+        };
+      }
       content["multipart/form-data"] = {
         schema: {
           type: "object",
-          properties: Object.fromEntries(
-            endpoint.multipart.map((f) => [f, { type: "string", format: "binary" }])
-          ),
+          properties,
+          required: endpoint.multipart,
         },
       };
     }
@@ -1770,11 +1965,31 @@ export function buildOpenApiDocument() {
 
   return {
     openapi: "3.1.0",
+    servers: [
+      {
+        url: "/",
+        description: "The same Ciele deployment that serves this API document.",
+      },
+    ],
     info: {
       title: "ciele API",
       version: `${API_V1_VERSION}.0.0`,
-      description: `Org-scoped admin API. Authenticate with an API key (Bearer ciele_sk_…). Domains: ${API_V1_DOMAINS.join(", ")}.`,
+      description: "The public Organization API for Ciele. Requests and responses use JSON. Create an API key in Settings → API Keys and send it as `Authorization: Bearer ciele_sk_…`. Protected operations state their required capability. Lists use the pagination parameters shown on each operation. This contract describes the public `/api/v1` surface; internal console and widget routes are not API key endpoints.",
+      license: {
+        name: "AGPL-3.0-only",
+        url: "https://spdx.org/licenses/AGPL-3.0-only.html",
+      },
     },
+    tags: [
+      { name: "discovery", "x-displayName": "Discovery", description: "Discover this deployment and inspect the current API contract." },
+      ...API_V1_DOMAINS.map((name) => ({
+        name,
+        "x-displayName": name.split("-").map((part) =>
+          part === "api" ? "API" : part === "sso" ? "SSO" : part.charAt(0).toUpperCase() + part.slice(1)
+        ).join(" "),
+        description: `Public ${name.replaceAll("-", " ")} endpoints.`,
+      })),
+    ],
     components: {
       securitySchemes: {
         apiKey: { type: "http", scheme: "bearer", bearerFormat: "ciele_sk_…" },

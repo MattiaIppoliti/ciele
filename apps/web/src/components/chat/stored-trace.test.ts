@@ -2,12 +2,28 @@ import { describe, expect, it } from "vitest";
 import type { StoredTurnTrace, TurnStep } from "@agent-hub/core";
 import {
   chatVisibleSteps,
+  thinkingIconSteps,
+  isStudyStep,
   liveOrbState,
   liveTraceLabel,
   storedTraceLabel,
   terminalBadge,
   visibleTraceSteps,
 } from "./stored-trace";
+
+it("keeps one study icon when study starts after four other step kinds", () => {
+  const steps: TurnStep[] = [
+    { id: "1", kind: "thought", label: "Thinking", status: "done" },
+    ...["searchKnowledge", "readKnowledgeSource", "readyToAnswer"].map(tool => ({ id: tool, kind: "tool" as const, tool, label: tool, status: "done" as const })),
+    { id: "5", kind: "notice", label: "Study Mode", status: "done" },
+    { id: "6", kind: "notice", label: "Creating study exercise…", status: "done" },
+    { id: "7", kind: "tool", tool: "createStudyExercise", label: "Creating study exercise", status: "running" },
+  ];
+  expect(thinkingIconSteps(steps)).toHaveLength(4);
+  expect(thinkingIconSteps(steps).filter(isStudyStep)).toHaveLength(1);
+  expect(liveTraceLabel(steps.slice(0, -1))).toBe("Creating study exercise…");
+  expect(liveTraceLabel(steps)).toBe("Creating study exercise…");
+});
 
 const trace: StoredTurnTrace = {
   searchCount: 2,

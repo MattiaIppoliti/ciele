@@ -252,9 +252,9 @@ export function ApiIntegrationEditor({
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-muted-foreground -mt-3 text-sm">
+          <p className="text-muted-foreground text-sm">
             One API the assistant can query while answering. The model reads this
             catalogue, asks for the contract of the endpoints it needs, then calls
             them with the path values it learned in the conversation.{" "}
@@ -268,7 +268,7 @@ export function ApiIntegrationEditor({
       </div>
 
       <div className="mt-4 space-y-4">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <div className="w-48 space-y-2">
             <Label htmlFor="api-name">Name</Label>
             <Input
@@ -279,7 +279,7 @@ export function ApiIntegrationEditor({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
-          <div className="flex-1 space-y-2">
+          <div className="min-w-0 flex-1 space-y-2">
             <Label htmlFor="api-base-url">Base URL (https)</Label>
             <Input
               id="api-base-url"
@@ -362,7 +362,7 @@ export function ApiIntegrationEditor({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <Label>Endpoint catalogue</Label>
           {canEdit && (
             <Button
@@ -383,7 +383,7 @@ export function ApiIntegrationEditor({
 
         {endpoints.map((draft) => (
           <div key={draft.key} className="space-y-3 rounded-lg border px-4 py-3">
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <div className="w-28 space-y-2">
                 <Label>Method</Label>
                 <Select
@@ -407,7 +407,7 @@ export function ApiIntegrationEditor({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex-1 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <Label>Path, put path parameters in {"{braces}"}</Label>
                 <Input
                   placeholder="/tickets/{ticketId}/comments"
@@ -437,7 +437,7 @@ export function ApiIntegrationEditor({
                 </div>
               )}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <div className="w-48 space-y-2">
                 <Label>Name</Label>
                 <Input
@@ -449,7 +449,7 @@ export function ApiIntegrationEditor({
                   }
                 />
               </div>
-              <div className="flex-1 space-y-2">
+              <div className="min-w-0 flex-1 space-y-2">
                 <Label>Purpose, what it answers</Label>
                 <Input
                   placeholder="The comments on one ticket"
@@ -493,19 +493,27 @@ export function ApiIntegrationEditor({
             <div className="space-y-2">
               <Label>Idempotency key</Label>
               <div className="flex gap-2">
-                <select
-                  className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                <Select
                   value={draft.idempotencyIn}
-                  disabled={!canEdit}
-                  onChange={(e) =>
+                  onValueChange={(value) => {
+                    if (value === null) return;
                     patchEndpoint(draft.key, {
-                      idempotencyIn: e.target.value as "header" | "body",
-                    })
-                  }
+                      idempotencyIn: value as "header" | "body",
+                    });
+                  }}
+                  disabled={!canEdit}
                 >
-                  <option value="header">Header</option>
-                  <option value="body">Body field</option>
-                </select>
+                  <SelectTrigger
+                    className="h-9 w-32 shrink-0"
+                    aria-label="Idempotency key location"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="header">Header</SelectItem>
+                    <SelectItem value="body">Body field</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   placeholder={
                     draft.idempotencyIn === "header"

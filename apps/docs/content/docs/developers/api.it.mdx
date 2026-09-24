@@ -1,12 +1,16 @@
 ---
 title: API v1
-description: Chiama l'attuale API di amministrazione di Ciele con una chiave API dell'organizzazione.
+description: Richiama l'attuale API di amministrazione di Ciele utilizzando una chiave API dell'organizzazione.
 ---
 
 L'API di Ciele utilizza JSON tramite HTTP. Tutti i percorsi della versione 1
 iniziano con `/api/v1`.
 
-## Scopri la distribuzione
+[Apri la documentazione interattiva dell'API](/api-reference) per esplorare
+tutte le operazioni pubbliche per dominio. Scarica lì il contratto OpenAPI
+corrente in formato JSON o YAML.
+
+## Scopri il deployment
 
 Utilizza questi endpoint pubblici prima di generare un client:
 
@@ -16,7 +20,7 @@ GET /api/v1/openapi.json
 ```
 
 `meta` elenca la versione dell'API e i domini disponibili. `openapi.json`
-restituisce il contratto leggibile dalla macchina per la distribuzione.
+restituisce il contratto leggibile a macchina per il deployment.
 
 ## Autentica una richiesta
 
@@ -27,12 +31,12 @@ curl https://ciele.app/api/v1/whoami \
   --header "Authorization: Bearer $CIELE_API_KEY"
 ```
 
-Per l'autohosting, sostituisci `https://ciele.app` con l'origin pubblica di
+Per l'autohosting, sostituisci `https://ciele.app` con l'origine pubblica di
 Ciele.
 
 ## Errori di risposta
 
-Gli errori utilizzano un unico involucro JSON:
+Gli errori utilizzano un unico JSON envelope:
 
 ```json
 {
@@ -45,51 +49,60 @@ Gli errori utilizzano un unico involucro JSON:
 
 I codici di stato più comuni sono:
 
-| Stato | Significato |
+| Status | Significato |
 | --- | --- |
-| `400` | I dati della richiesta non sono validi. |
-| `401` | La chiave risulta mancante, non valida o revocata. |
-| `403` | Il ruolo della chiave non consente l'operazione. |
+| `400` | Il body della richiesta è malformato o manca un file obbligatorio. |
+| `401` | La chiave è mancante, non valida o revocata. |
+| `403` | Il Role della chiave non consente l'operazione. |
 | `404` | La risorsa non esiste nell'Organization. |
 | `409` | La richiesta è in conflitto con lo stato corrente. |
+| `422` | L'input è stato letto ma non supera la validazione. |
 
 ## Impaginazione
 
-Le operazioni di elenco accettano i parametri `limit` e `cursor` quando
-l'endpoint supporta la paginazione. Utilizza il cursore restituito per la
-richiesta successiva.
+Usa i parametri di paginazione indicati per ogni operazione. Gli elenchi basati
+su cursore restituiscono `nextCursor`. Passalo come `cursor` nella richiesta
+successiva.
 
-## Riprova in modo sicuro
+## Tentativi di ripetizione sicuri
 
-Le route di mutazione possono accettare un'intestazione `Idempotency-Key`.
-Riutilizza lo stesso valore solo quando riprovi la stessa operazione logica.
+I percorsi di mutazione possono accettare un header `Idempotency-Key`.
+Riutilizza lo stesso valore solo quando ritenti la stessa operazione logica.
 
-## Domini correnti
+## Domini comuni
 
-- Assistenti: elenca, leggi, crea, aggiorna, duplica ed elimina.
-- Flussi: elenca, leggi, crea, aggiorna, riordina ed elimina.
-- Knowledge: gestisci raccolte, fonti, FAQ e i link dell'assistente su ciascuna
-  fonte.
-- Pubblicazione: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
+Questi sono esempi. La [API reference](/api-reference) elenca il set completo e
+aggiornato delle operazioni.
+
+- Assistenti: list, read, create, update, duplicate e delete.
+- Flow: list, read, create, update, reorder e delete.
+- Knowledge: gestisci Collections, Sources, FAQ e i link dell'Assistente su
+  ciascuna Source.
+- Publication: leggi lo stato, pubblica, annulla la pubblicazione e ripristina
   una pubblicazione.
-- Posta in arrivo: rivedi, esporta, metti in evidenza, annota, valuta ed elimina
-  le Conversazioni.
+- Inbox: rivedi, esporta, appunta, annota, valuta ed elimina le Conversations.
 - Miglioramenti: elenca, leggi e aggiorna gli elementi.
-- Entità e memorie: gestisci i dati tipizzati dell'organizzazione e la
-  cancellazione della memoria con ambito.
+- Entities and Memories: gestisci i dati dell'organizzazione tipizzati e la
+  cancellazione delle memorie con ambito definito.
 - SSO: gestisci le identity claim, le impostazioni di connessione, la convalida
   e la disconnessione.
-- Help Desk: gestisci i desk, i canali di escalation, gli ordini e ServiceNow.
+- Help Desk: gestisci i desk, i canali di escalation, l'ordinamento e
+  ServiceNow.
 - Teammates: gestisci gli AI Teammates e leggi le tue conversazioni con i
-  Teammates.
-- Canali: leggi e modella i canali dei Teammate di cui fai parte e i relativi
-  elenchi. Non esiste un endpoint per inviare un messaggio: un messaggio avvia
-  una catena di risposte dei Teammate e questa viene eseguita nella console.
-- Configurazione: gestisci le competenze, gli obiettivi dell'assistente e gli
-  avvisi operativi.
-- Organizzazione: gestisci impostazioni, membri, inviti e chiavi API.
+  Teammate.
+- Channels: leggi e modella i canali dei Teammate in cui sei presente e i loro
+  roster. Non esiste un endpoint per inviare un messaggio: un messaggio avvia
+  una catena di risposte dei Teammate, che viene eseguita nella console.
+- Configuration: gestisci Skills, Assistant Goals e Alerts operativi.
+- Organization: gestisci le impostazioni, i Members, gli Invites e le API keys.
 - Integrations: gestisci le integrazioni dell'API dell'Assistente e le
   connessioni ai provider di modelli.
+- Usage: consulta i contatori del piano e scopri chi ha utilizzato i crediti di
+  una finestra. Sola lettura. La ripartizione della spesa mantiene separate le
+  sue dimensioni. Una risposta indica sia il membro del team che ha eseguito
+  l'operazione sia il collega che l'ha richiesta, quindi sommando le dimensioni
+  si conta due volte. L'acquisto di crediti non ha un endpoint: un acquisto
+  avviene su una schermata in cui una persona conferma un importo.
 
-Utilizza il documento OpenAPI per i campi di richiesta e gli schemi di risposta
-esatti.
+Utilizza il documento OpenAPI per i campi delle richieste, l'autenticazione e i
+codici di stato delle risposte documentati.

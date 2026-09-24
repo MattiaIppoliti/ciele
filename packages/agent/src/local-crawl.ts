@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { pageBudget } from "@agent-hub/core";
 import type { CrawledPage, CrawlOptions } from "./apify";
 import {
   EgressPolicyError,
@@ -182,7 +183,7 @@ export async function localCrawl(
   startUrl: string,
   options: CrawlOptions = {}
 ): Promise<CrawledPage[]> {
-  const maxPages = Math.min(options.maxPages ?? 20, LOCAL_CRAWL_MAX_PAGES);
+  const maxPages = pageBudget(options.maxPages, LOCAL_CRAWL_MAX_PAGES);
   const timeoutMs = (options.pageTimeoutSecs ?? 15) * 1000;
   const initialTarget = await validateEgressTarget(startUrl);
   const scope: CrawlScope = {

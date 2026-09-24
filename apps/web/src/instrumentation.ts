@@ -51,6 +51,7 @@ export async function register() {
   const { after } = await import("next/server");
   const { registerRuntimeHost } = await import("@agent-hub/agent");
   const { getPlatformSystemPrompt } = await import("@/lib/platform");
+  const { getWidgetDb } = await import("@/lib/widget-db");
 
   registerRuntimeHost({
     getPlatformSystemPrompt,
@@ -87,6 +88,14 @@ export async function register() {
     // key is a credential, and setting one for the shadow pre-flight must not
     // also start halting outbound calls on live Visitor traffic.
     approvalGateEnabled: () => process.env.APPROVAL_GATE === "1",
+    // The service-role client, for draining the job ledger after a response:
+    // its claim functions are not executable by a signed-in Member, so a drain
+    // on the request's own client was refused and waited for the nightly cron.
+    // Without a service key there is no system client to offer.
+    getSystemDb: () =>
+      process.env.SUPABASE_SERVICE_ROLE_KEY || !isSupabaseConfigured()
+        ? getWidgetDb()
+        : null,
   });
 
   await import("@/ee/register");

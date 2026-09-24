@@ -1,15 +1,14 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import Link from "next/link";
 import { verifyConfirmationToken } from "@/lib/marketing/newsletter";
 import { ConfirmPanel } from "./confirm-panel";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Confirm your subscription | Ciele",
   description: "Confirm the email address you signed up with.",
-  // A one-shot page reachable only with a signed token; nothing to index and
-  // nothing a crawler should be following.
-  robots: { index: false, follow: false },
-};
+  path: "/newsletter/confirm",
+  noIndex: true,
+});
 
 /**
  * The landing page of the confirmation link.

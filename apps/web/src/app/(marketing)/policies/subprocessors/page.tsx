@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import Link from "next/link";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Subprocessors | Ciele",
-  description:
-    "The third-party providers that process data on Ciele's instructions, what each one does, and where it runs.",
-};
+  description: "The third-party providers that process data on Ciele's instructions, what each one does, and where it runs.",
+  path: "/policies/subprocessors",
+});
 
 const LAST_UPDATED = "5 August 2026";
 

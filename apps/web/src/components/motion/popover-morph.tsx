@@ -12,6 +12,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -84,7 +85,12 @@ export function MorphPopover({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      triggerRef.current?.focus({ preventScroll: true });
+      setOpen(false);
+    };
     const onPointer = (e: PointerEvent) => {
       const target = e.target as Node;
       if (
@@ -216,6 +222,27 @@ export function MorphPopoverContent({
     contentRef,
     portalReady && open,
   );
+
+  useLayoutEffect(() => {
+    if (!portalReady || !open) return;
+    const content = contentRef.current;
+    const trigger = triggerRef.current;
+    if (!content) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const firstFocusable = content.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      (firstFocusable ?? content).focus({ preventScroll: true });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (content?.contains(document.activeElement)) {
+        trigger?.focus({ preventScroll: true });
+      }
+    };
+  }, [contentRef, open, portalReady, triggerRef]);
   const left = layout
     ? align === "end"
       ? layout.trigger.left + layout.trigger.width - layout.content.width
@@ -276,6 +303,7 @@ export function MorphPopoverContent({
             id={contentId}
             role="dialog"
             aria-labelledby={triggerId}
+            tabIndex={-1}
             variants={clip}
             style={{ borderRadius: radius }}
             className={cn(

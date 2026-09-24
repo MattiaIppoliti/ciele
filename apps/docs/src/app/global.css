@@ -1,11 +1,15 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
+@import 'fumadocs-openapi/css/preset.css';
 
 /* Tailwind v4 only scans this app's own tree, so utilities used exclusively
    inside the shared UI package would never be generated, the components would
    render unstyled. Same declaration as apps/web's globals.css. */
 @source "../../../../packages/ui/src";
+/* The OpenAPI renderer lives in node_modules. Tailwind does not scan it by
+   default, so its section gaps, schema padding, and responsive columns vanish. */
+@source "../../node_modules/fumadocs-openapi/dist";
 
 /* The shared primitives in packages/ui are written against a token set that
    fumadocs' preset does not declare: the surface alphas, the two elevations
@@ -131,24 +135,208 @@
   background-color: var(--color-fd-border);
 }
 
-/* Wiggle for the "Ask AI" launcher chat icon (hover / mount nudge). */
-@keyframes ciele-wiggle {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  30% {
-    transform: rotate(-7deg) scale(1.05);
-  }
-  60% {
-    transform: rotate(7deg) scale(1.05);
-  }
+/* The small Ask AI arrow travels from lower-left to upper-right on hover. */
+@keyframes ciele-arrow-up-right {
+  0%,
   100% {
-    transform: rotate(0deg) scale(1);
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(2px, -2px);
   }
 }
 
 .ciele-ask-ai:hover .ciele-ask-ai-icon {
-  animation: ciele-wiggle 0.5s ease-in-out;
+  animation: ciele-arrow-up-right 0.55s ease-in-out;
+}
+
+.ciele-api-operation-link:hover .ciele-api-operation-arrow {
+  animation: ciele-arrow-up-right 0.55s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ciele-ask-ai:hover .ciele-ask-ai-icon {
+    animation: none;
+  }
+}
+
+/*
+ * OpenAPI pages use Fumadocs' native operation components. Keep their content
+ * on the same spacing scale as the rest of Ciele Docs: a readable separation
+ * between operations and sections, with schema fields inset from their rules.
+ */
+.ciele-openapi-page {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  font-size: 0.875rem;
+}
+
+.ciele-openapi-operation-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.ciele-openapi-operation-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.ciele-openapi-operation-example {
+  min-width: 0;
+}
+
+@container (min-width: 56rem) {
+  .ciele-openapi-operation-layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .ciele-openapi-operation-example {
+    position: sticky;
+    top: calc(var(--fd-docs-row-1, 2rem) + 1rem);
+    width: 25rem;
+    flex: none;
+  }
+}
+
+.ciele-openapi-operation-content > div[class~='mt-10'] {
+  margin-block-start: 2rem;
+}
+
+.ciele-openapi-operation-content h2#response-body {
+  margin-block: 2rem 1rem;
+}
+
+/* Inset property labels and constraints while keeping their separator lines. */
+.ciele-openapi-operation-content .text-sm.border-t.py-4.scroll-m-20 {
+  padding-inline: 0.875rem;
+}
+
+/* Request schemas need a visible boundary just like the response accordion. */
+.ciele-openapi-operation-content [id^='request-body.'][id$='.body'] {
+  margin-block-start: 0.75rem;
+  padding: 1.5rem 1.75rem 1.25rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+  background: var(--color-fd-card);
+}
+
+.ciele-openapi-operation-content [id^='request-body.'][id$='.body'] > :first-child {
+  margin-block-end: 1.25rem;
+}
+
+.ciele-openapi-operation-content [id^='request-body.'][id$='.body'] > :nth-child(2) {
+  margin-block-end: 0.25rem;
+}
+
+.ciele-openapi-operation-content [id^='request-body.'][id$='.body'] > .text-sm.border-t.py-4.scroll-m-20 {
+  padding: 1.75rem;
+}
+
+/* Response schema rows sit comfortably inside the renderer's rounded panel. */
+.ciele-openapi-operation-content [class~='rounded-xl'] .text-sm.border-t.py-4.scroll-m-20 {
+  padding: 1.25rem 1rem;
+}
+
+/* Give response schema panels the same breathing room around their filter and rows. */
+.ciele-openapi-response-section [role='region'][class~='rounded-xl'] {
+  box-sizing: border-box;
+  padding: 1.25rem 1.5rem;
+}
+
+/* Keep response examples and long JSON lines inside the operation column. */
+.ciele-openapi-operation-example pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Keep the first code sample's copy action obvious without requiring hover. */
+.ciele-openapi-operation-example button[aria-label='Copy Text'] {
+  min-height: 2rem;
+  gap: 0.375rem;
+  padding-inline: 0.5rem;
+}
+
+.ciele-openapi-operation-example button[aria-label='Copy Text']::after {
+  content: 'Copy';
+}
+
+/* Response schemas need touch-sized controls and room for nested error shapes
+   when the docs column is tablet or phone width. */
+@container (max-width: 64rem) {
+  .ciele-openapi-response-section h3.not-prose {
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding-inline: 0.5rem;
+  }
+
+  .ciele-openapi-response-section h3.not-prose > button {
+    min-height: 2.75rem;
+  }
+
+  .ciele-openapi-operation-example button[aria-label='Copy Text'] {
+    min-height: 2.75rem;
+  }
+
+  .ciele-openapi-response-section h3.not-prose > p {
+    margin: 0;
+    padding-block: 0;
+  }
+
+  .ciele-openapi-response-section h3.not-prose > p > code {
+    display: inline-flex;
+    min-height: 2rem;
+    align-items: center;
+    border: 1px solid var(--color-fd-border);
+    border-radius: 9999px;
+    background: var(--color-fd-card);
+    padding-inline: 0.625rem;
+    white-space: nowrap;
+  }
+
+  .ciele-openapi-response-section [role='region'][class~='rounded-xl'] {
+    padding: 1rem 1.25rem;
+  }
+
+  .ciele-openapi-response-section [role='region'] .prose-no-margin {
+    overflow-wrap: anywhere;
+  }
+
+  .ciele-openapi-response-section [id^='response.'] input[data-object-search-input] {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+
+  .ciele-openapi-response-section [id^='response.'] button[aria-haspopup='dialog'] {
+    min-height: 2.75rem;
+    padding-inline: 0.375rem;
+  }
+
+  .ciele-openapi-response-section [id^='response.'] .text-sm.border-t.py-4.scroll-m-20 {
+    padding: 1.25rem 0.875rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .ciele-openapi-page {
+    gap: 2rem;
+  }
+
+  .ciele-openapi-operation-content [id^='request-body.'][id$='.body'] {
+    padding-inline: 1rem;
+  }
+
+  .ciele-openapi-operation-content .text-sm.border-t.py-4.scroll-m-20 {
+    padding-inline: 0.5rem;
+  }
+
+  .ciele-openapi-operation-content [id^='request-body.'][id$='.body'] > .text-sm.border-t.py-4.scroll-m-20 {
+    padding: 1.25rem 0.5rem;
+  }
 }
 
 /*

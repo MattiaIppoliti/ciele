@@ -1,13 +1,15 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_ORG, getMockDb, resetMockDb } from "@agent-hub/db";
 import type { Db } from "@agent-hub/db";
 import {
+  drainMemoryExtractions,
   enqueueDocumentMemoryExtractions,
   enqueueStaleDocumentMemoryExtractions,
   extractMemoriesJobId,
 } from "./jobs";
 import { hashDocumentBody } from "./extract-document-memories";
 import { ingestSource } from "./ingest";
+import { registerRuntimeHost, resetRuntimeHost } from "./host";
 import type { KnowledgeMemoryExtraction } from "@agent-hub/core";
 
 /**
@@ -303,5 +305,47 @@ describe("the by-hand backfill (#933)", () => {
     // double the Organization's bill.
     expect(await backfill(db, collection.id, source.id)).toBe(0);
     expect(await extractionJobs(db, source.id)).toHaveLength(2);
+  });
+});
+
+/**
+ * The after-response drain. In production the ledger's claim functions are
+ * service-role only, so draining on the Member's client was refused and every
+ * extraction waited for the nightly cron.
+ */
+describe("memory extraction drain", () => {
+  afterEach(() => resetRuntimeHost());
+
+  it("claims on the host's system Db, not the caller's", async () => {
+    const callerClaim = vi.fn(async () => {
+      throw new Error("permission denied for function claim_background_jobs");
+    });
+    const systemClaim = vi.fn(async () => []);
+    const caller = { ...getMockDb(), claimBackgroundJobs: callerClaim } as Db;
+    const system = { ...getMockDb(), claimBackgroundJobs: systemClaim } as Db;
+    registerRuntimeHost({ getSystemDb: () => system });
+
+    await drainMemoryExtractions({ db: caller });
+
+    expect(systemClaim).toHaveBeenCalledOnce();
+    expect(callerClaim).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the caller's Db when the host offers none", async () => {
+    const callerClaim = vi.fn(async () => []);
+    const caller = { ...getMockDb(), claimBackgroundJobs: callerClaim } as Db;
+
+    await drainMemoryExtractions({ db: caller });
+
+    expect(callerClaim).toHaveBeenCalledOnce();
+  });
+
+  it("claims nothing once its time budget is spent", async () => {
+    const claim = vi.fn(async () => []);
+    const db = { ...getMockDb(), claimBackgroundJobs: claim } as Db;
+
+    await drainMemoryExtractions({ db }, { budgetMs: 0 });
+
+    expect(claim).not.toHaveBeenCalled();
   });
 });

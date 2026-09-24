@@ -32,23 +32,33 @@ export const CONSOLE_PATH_PREFIXES = [
  * to the filesystem by `console-routes.test.ts` the same way the console list
  * is, so a new marketing section cannot land behind the login wall.
  */
-export const MARKETING_PATH_PREFIXES = [
-  // Only /contact/sales exists under it, and it joined the group so it wears
-  // the same navbar, sky and footer as the rest of the public site.
-  "/contact",
-  "/download",
-  "/enterprise",
-  "/features",
-  // The landing page lives in the group too, so the shell it shares with the
-  // rest of the public site can sit in one layout.
-  "/home",
-  // The newsletter double opt-in confirm page. Reached from an inbox by a
-  // visitor who has no account, so it has to stay outside the auth gate.
-  "/newsletter",
-  "/policies",
-  "/pricing",
-  "/security",
-] as const;
+const MARKETING_ROUTES = {
+  "/change-log": ["/change-log"],
+  "/contact": ["/contact/sales"],
+  "/download": ["/download"],
+  "/enterprise": ["/enterprise"],
+  // Feature paths come from the feature catalog in the sitemap.
+  "/features": [],
+  "/home": ["/home"],
+  // Confirmation is public, but its token-specific page is not indexed.
+  "/newsletter": [],
+  "/policies": [
+    "/policies/privacy",
+    "/policies/terms-of-service",
+    "/policies/cookies",
+    "/policies/dpa",
+    "/policies/subprocessors",
+  ],
+  "/pricing": ["/pricing"],
+  "/security": [
+    "/security",
+    "/security/gdpr",
+    "/security/responsible-disclosure",
+  ],
+} as const;
+
+export const MARKETING_PATH_PREFIXES = Object.keys(MARKETING_ROUTES);
+export const MARKETING_SITEMAP_PATHS = Object.values(MARKETING_ROUTES).flat();
 
 /** True for the public marketing site's routes. */
 export function isMarketingPath(pathname: string): boolean {

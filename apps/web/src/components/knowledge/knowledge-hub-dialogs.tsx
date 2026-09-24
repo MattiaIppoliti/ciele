@@ -16,7 +16,7 @@ import {
   Label,
 } from "@agent-hub/ui";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addOrgWebsiteSourceAction,

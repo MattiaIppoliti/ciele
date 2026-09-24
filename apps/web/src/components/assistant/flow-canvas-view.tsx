@@ -1869,7 +1869,7 @@ function NodePanel({
       </div>
 
       <Tabs defaultValue="configure" className="min-h-0 flex-1 gap-0">
-        <TabsList className="mx-4 mt-3">
+        <TabsList aria-label="Flow node view" className="mx-4 mt-3">
           <TabsTrigger value="configure">Configure</TabsTrigger>
           <TabsTrigger value="run">Run node</TabsTrigger>
         </TabsList>

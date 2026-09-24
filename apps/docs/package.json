@@ -11,6 +11,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "translate:docs": "node scripts/translate-docs.mjs",
+    "translate:openapi": "node scripts/translate-openapi.mjs",
     "check:ste": "node scripts/check-ste.mjs",
     "check:links": "node scripts/check-links.mjs",
     "test": "node --test scripts/*.test.mjs && node scripts/check-ste.mjs && node scripts/check-links.mjs"
@@ -19,12 +20,14 @@
     "@agent-hub/ui": "workspace:*",
     "fumadocs-core": "^16.11.5",
     "fumadocs-mdx": "^15.2.0",
+    "fumadocs-openapi": "^11.0.0",
     "fumadocs-ui": "^16.11.5",
     "lucide-react": "^1.25.0",
     "mermaid": "^11.16.0",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "yaml": "2.9.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -1,3 +1,4 @@
+import { studyExerciseTool } from "./study-exercise";
 import { tool, type Tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type {
@@ -68,6 +69,8 @@ import {
  */
 
 export interface ToolRuntimeContext {
+  studyRequest?: string;
+  chooseStudyFormat?: import("./types").ActionContext["chooseStudyFormat"];
   assistant: Assistant;
   session: TurnSession;
   /**
@@ -448,6 +451,7 @@ function searchKnowledgeTool(ctx: ToolRuntimeContext): Tool {
       return withBudgetNote(
         {
           results: found.map((r) => ({
+            conceptId: r.conceptId,
             concept: r.conceptTitle,
             collection: r.collectionName,
             source: r.sourceName,
@@ -946,6 +950,9 @@ export function buildToolset(ctx: ToolRuntimeContext): ToolSet {
     overrides.renderTable ?? BUILT_IN_DEFAULTS.renderTable;
   if (ctx.showPart && renderTableEnabled) {
     toolset[RENDER_TABLE_TOOL_NAME] = renderTableTool(ctx);
+  }
+  if (ctx.showPart && ctx.assistant.tools?.studyMode?.enabled && ctx.assistant.tools.studyMode.formats?.length) {
+    toolset.createStudyExercise = studyExerciseTool(ctx);
   }
   // Windowed knowledge reads: available whenever the host wired a document
   // reader, integration or not, a long Source is a knowledge concern.

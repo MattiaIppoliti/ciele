@@ -43,3 +43,30 @@ export function effectivePageSchedule(
 ): RecrawlSchedule {
   return pageSchedule ?? siteSchedule;
 }
+
+/**
+ * `maxPages: 0` on a Website Source means "no page limit": crawl until the
+ * site runs out of pages. Only the managed crawler on the Organization's own
+ * account honours it as unlimited; every other crawler runs to its own
+ * ceiling instead, because an in-process or self-hosted crawl, or a crawl the
+ * platform pays for, must stay bounded.
+ */
+export const NO_PAGE_LIMIT = 0;
+
+/** The pages a Source asks for when it names no number: the historic default. */
+export const DEFAULT_PAGE_BUDGET = 20;
+
+/** Whether a Source asked for no page limit. */
+export function isUnlimitedPages(maxPages: number | undefined): boolean {
+  return maxPages === NO_PAGE_LIMIT;
+}
+
+/**
+ * The pages one crawler may fetch for a Source: its own ceiling when the Source
+ * asked for no limit, otherwise the Source's number (or the default) capped at
+ * that ceiling.
+ */
+export function pageBudget(maxPages: number | undefined, ceiling: number): number {
+  if (isUnlimitedPages(maxPages)) return ceiling;
+  return Math.min(maxPages ?? DEFAULT_PAGE_BUDGET, ceiling);
+}

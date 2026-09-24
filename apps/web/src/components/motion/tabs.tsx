@@ -12,18 +12,26 @@ import {
   useRef,
   useMemo,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
 import { EASE_OUT, SPRING_LAYOUT } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
 type Variant = "pill" | "underline" | "segment";
+const ACTIVE_CONTROL_SELECTOR =
+  '[data-tabs-value][aria-selected="true"], [data-tabs-value][aria-pressed="true"]';
 
 type Ctx = {
   value: string;
   setValue: (v: string) => void;
   layoutId: string;
   variant: Variant;
+  panelValues: Set<string>;
+  registerPanel: (value: string) => void;
+  unregisterPanel: (value: string) => void;
+  tabId: (value: string) => string;
+  panelId: (value: string) => string;
 };
 
 const TabsCtx = createContext<Ctx | null>(null);
@@ -32,6 +40,37 @@ function useTabs() {
   const ctx = useContext(TabsCtx);
   if (!ctx) throw new Error("Tabs.* must be used inside <Tabs>");
   return ctx;
+}
+
+/** Keep focus inside a real tablist and activate the tab receiving focus. */
+function onTabKeyDown(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  setValue: (value: string) => void,
+) {
+  const tabList = event.currentTarget.closest<HTMLElement>('[role="tablist"]');
+  if (!tabList) return;
+  const tabs = Array.from(
+    tabList.querySelectorAll<HTMLButtonElement>('[role="tab"]:not(:disabled)'),
+  );
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  if (currentIndex < 0 || tabs.length < 2) return;
+
+  const rtl = getComputedStyle(tabList).direction === "rtl";
+  let nextIndex: number;
+  if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else if (event.key === "ArrowRight") {
+    nextIndex = (currentIndex + (rtl ? -1 : 1) + tabs.length) % tabs.length;
+  } else if (event.key === "ArrowLeft") {
+    nextIndex = (currentIndex + (rtl ? 1 : -1) + tabs.length) % tabs.length;
+  } else return;
+
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  if (!nextTab) return;
+  nextTab.focus();
+  const nextValue = nextTab.dataset.tabsValue;
+  if (nextValue) setValue(nextValue);
 }
 
 // SPRING_LAYOUT is the console's shared-layout token and is the one this needs:
@@ -56,6 +95,7 @@ export function Tabs({
 }) {
   const [internal, setInternal] = useState(defaultValue ?? "");
   const layoutId = useId();
+  const [panelValues, setPanelValues] = useState<Set<string>>(() => new Set());
   const reduce = useReducedMotion();
   const controlled = value !== undefined;
   const current = controlled ? value : internal;
@@ -66,9 +106,43 @@ export function Tabs({
     },
     [controlled, onValueChange],
   );
+  const registerPanel = useCallback((panelValue: string) => {
+    setPanelValues((previous) => {
+      if (previous.has(panelValue)) return previous;
+      const next = new Set(previous);
+      next.add(panelValue);
+      return next;
+    });
+  }, []);
+  const unregisterPanel = useCallback((panelValue: string) => {
+    setPanelValues((previous) => {
+      if (!previous.has(panelValue)) return previous;
+      const next = new Set(previous);
+      next.delete(panelValue);
+      return next;
+    });
+  }, []);
+  const tabId = useCallback(
+    (tabValue: string) => `${layoutId}-tab-${encodeURIComponent(tabValue)}`,
+    [layoutId],
+  );
+  const panelId = useCallback(
+    (panelValue: string) => `${layoutId}-panel-${encodeURIComponent(panelValue)}`,
+    [layoutId],
+  );
   const contextValue = useMemo(
-    () => ({ value: current, setValue, layoutId, variant }),
-    [current, layoutId, setValue, variant],
+    () => ({
+      value: current,
+      setValue,
+      layoutId,
+      variant,
+      panelValues,
+      registerPanel,
+      unregisterPanel,
+      tabId,
+      panelId,
+    }),
+    [current, layoutId, setValue, variant, panelValues, registerPanel, unregisterPanel, tabId, panelId],
   );
   return (
     <MotionConfig transition={reduce ? { duration: 0 } : transition}>
@@ -103,7 +177,8 @@ export function TabsList({
   /** Names the tab set. It belongs on the `tablist`, not on the wrapper. */
   "aria-label"?: string;
 }) {
-  const { variant, value } = useTabs();
+  const { variant, value, panelValues } = useTabs();
+  const isTablist = panelValues.size > 0;
   const reduce = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -155,7 +230,7 @@ export function TabsList({
     if (!root || !viewport || !list) return;
     const update = () => {
       measure();
-      reveal(list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]'));
+      reveal(list.querySelector<HTMLElement>(ACTIVE_CONTROL_SELECTOR));
     };
     const observer = new ResizeObserver(update);
     observer.observe(root);
@@ -175,7 +250,7 @@ export function TabsList({
     void value;
     void edges.overflow;
     measure();
-    reveal(listRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? null);
+    reveal(listRef.current?.querySelector<HTMLElement>(ACTIVE_CONTROL_SELECTOR) ?? null);
   }, [children, value, edges.overflow, measure, reveal]);
 
   useLayoutEffect(() => {
@@ -185,7 +260,7 @@ export function TabsList({
     void children;
     const labels = Array.from(list.querySelectorAll<HTMLElement>("[data-tabs-label]"));
     const indicator = list.querySelector<HTMLElement>("[data-tabs-indicator]");
-    const target = list.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const target = list.querySelector<HTMLElement>(ACTIVE_CONTROL_SELECTOR);
     if (!indicator || !target || target.dataset.tabsValue !== value) {
       for (const label of labels) label.style.clipPath = "inset(0 100% 0 0)";
       return;
@@ -268,13 +343,14 @@ export function TabsList({
             : undefined
         }
         onFocusCapture={(event) => {
-          if (event.target instanceof HTMLElement && event.target.getAttribute("role") === "tab")
+          if (event.target instanceof HTMLElement && event.target.hasAttribute("data-tabs-value"))
             reveal(event.target);
         }}
       >
         <div
           ref={listRef}
-          role="tablist"
+          role={isTablist ? "tablist" : "group"}
+          aria-orientation={isTablist ? "horizontal" : undefined}
           aria-label={ariaLabel}
           className={cn(listClasses[variant], "w-max", className)}
         >
@@ -314,14 +390,19 @@ export function TabsTrigger({
   children,
   className,
   indicatorClassName,
+  disabled = false,
 }: {
   value: string;
   children: ReactNode;
   className?: string;
   indicatorClassName?: string;
+  disabled?: boolean;
 }) {
-  const { value: current, setValue, layoutId, variant } = useTabs();
+  const { value: current, setValue, layoutId, variant, panelValues, tabId, panelId } = useTabs();
   const active = current === value;
+  const isTablist = panelValues.size > 0;
+  const controls = isTablist && panelValues.has(value) ? panelId(value) : undefined;
+  const id = tabId(value);
   // React owns the initial mask only; TabsList synchronizes subsequent masks.
   const [initialClip] = useState(() => (active ? "inset(0)" : "inset(0 100% 0 0)"));
 
@@ -329,12 +410,19 @@ export function TabsTrigger({
     return (
       <button
         type="button"
-        role="tab"
-        aria-selected={active}
+        id={id}
+        role={isTablist ? "tab" : undefined}
+        aria-selected={isTablist ? active : undefined}
+        aria-pressed={!isTablist ? active : undefined}
+        aria-controls={controls}
+        disabled={disabled}
+        data-tabs-value={value}
+        tabIndex={isTablist ? (active ? 0 : -1) : undefined}
         data-foley-click="tick"
         onClick={() => setValue(value)}
+        onKeyDown={isTablist ? (event) => onTabKeyDown(event, setValue) : undefined}
         className={cn(
-          "relative isolate px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center whitespace-nowrap shrink-0",
+          "relative isolate px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
           active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
           className,
         )}
@@ -366,11 +454,17 @@ export function TabsTrigger({
       ) : null}
       <button
         type="button"
-        role="tab"
-        aria-selected={active}
+        id={id}
+        role={isTablist ? "tab" : undefined}
+        aria-selected={isTablist ? active : undefined}
+        aria-pressed={!isTablist ? active : undefined}
+        aria-controls={controls}
+        disabled={disabled}
         data-tabs-value={value}
+        tabIndex={isTablist ? (active ? 0 : -1) : undefined}
         data-foley-click="tick"
         onClick={() => setValue(value)}
+        onKeyDown={isTablist ? (event) => onTabKeyDown(event, setValue) : undefined}
         className={cn(
           "relative z-10 inline-flex items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium outline-none",
           "text-muted-foreground hover:text-foreground",
@@ -402,15 +496,26 @@ export function TabsContent({
   children: ReactNode;
   className?: string;
 }) {
-  const { value: current } = useTabs();
+  const { value: current, registerPanel, unregisterPanel, tabId, panelId } = useTabs();
   const reduce = useReducedMotion();
   const active = current === value;
+  useLayoutEffect(() => {
+    registerPanel(value);
+    return () => unregisterPanel(value);
+  }, [registerPanel, unregisterPanel, value]);
   // Inactive panels stay mounted but hidden, so their content (e.g. source
   // code) is present in the server-rendered HTML for crawlers and assistive
   // tech, instead of being dropped from the DOM.
   if (!active) {
     return (
-      <div hidden className={className}>
+      <div
+        id={panelId(value)}
+        role="tabpanel"
+        aria-labelledby={tabId(value)}
+        tabIndex={0}
+        hidden
+        className={className}
+      >
         {children}
       </div>
     );
@@ -418,6 +523,10 @@ export function TabsContent({
   return (
     <motion.div
       key={value}
+      id={panelId(value)}
+      role="tabpanel"
+      aria-labelledby={tabId(value)}
+      tabIndex={0}
       initial={{ opacity: 0, y: reduce ? 0 : 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.18, ease: EASE_OUT }}

@@ -2,12 +2,14 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import type { Flow, FlowTrust } from "@agent-hub/core";
+import { studyModeFlow, type Flow, type FlowTrust, type StudyModeSettings } from "@agent-hub/core";
 import {
   GripVertical,
   Lock,
   Pencil,
   Plus,
+  GraduationCap,
+  Settings,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { reorderFlowsAction, updateFlowAction } from "@/app/actions";
@@ -16,7 +18,7 @@ import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import {
   SortableHandle,
   SortableItem,
@@ -52,12 +54,15 @@ export function FlowsList({
   assistantId,
   flows,
   trust = [],
+  studyMode,
 }: {
   assistantId: string;
   flows: Flow[];
   /** Materialized trust rows for this assistant's flows (may be empty). */
   trust?: FlowTrust[];
+  studyMode?: StudyModeSettings;
 }) {
+  const studyFlow = studyModeFlow({ id: assistantId, tools: { studyMode } });
   const [isPending, startTransition] = useTransition();
   const propOrderable = flows.filter((f) => !f.isDefault);
   const [orderedIds, setOrderedIds] = useState(() =>
@@ -146,6 +151,23 @@ export function FlowsList({
       </div>
 
       <div className="mt-6 space-y-4">
+        {studyFlow && (
+          <Card size="sm" className="flex-row items-center gap-3 p-4">
+            <GraduationCap className="size-5 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-semibold">{studyFlow.name}</h2>
+                <Badge variant="outline" className="rounded-md"><GraduationCap className="size-3.5" /> Enter study mode</Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">Interactive exercises. Enabled and managed in Tools &amp; Skills.</p>
+            </div>
+            <Hint label="Configure Study Mode in Tools & Skills">
+              <Button variant="ghost" size="icon" aria-label="Configure Study Mode in Tools & Skills" nativeButton={false} render={<Link href={`/assistants/${assistantId}/tools#study-mode`} />}>
+                <Settings className="size-4" />
+              </Button>
+            </Hint>
+          </Card>
+        )}
         <SortableList
           values={orderedIds}
           onReorder={setOrder}
@@ -213,12 +235,7 @@ export function FlowsList({
                 )}
                 {(() => {
                   const flowTrust = trust.find((t) => t.flowId === flow.id);
-                  if (flowTrust) return <TrustBadge trust={flowTrust} />;
-                  // Only generative flows are graded, so only they carry a
-                  // meaningful tier, badge those with no history as watch.
-                  const generative =
-                    flow.isDefault || flow.actions.includes("search_knowledge");
-                  return generative ? <TrustBadge trust={null} /> : null;
+                  return flowTrust ? <TrustBadge trust={flowTrust} /> : null;
                 })()}
               </div>
               <p className="text-muted-foreground mt-1 truncate text-sm">

@@ -65,7 +65,15 @@ export const assistantPatchSchema = z
     ),
     tools: z.custom<Assistant["tools"]>(
       (v) => typeof v === "object" && v !== null
-    ),
+    ).superRefine((tools, ctx) => {
+      if (tools.studyMode === undefined) return;
+      const parsed = z.object({
+        enabled: z.boolean(),
+        formats: z.array(z.enum(["multiple_choice", "drag_words", "true_false", "flashcards"])).min(1).max(4).refine(values => new Set(values).size === values.length),
+        instructions: z.string().max(10000),
+      }).strict().safeParse(tools.studyMode);
+      if (!parsed.success) ctx.addIssue({ code: "custom", message: "Study Mode needs at least one distinct supported format and instructions up to 10000 characters.", path: ["studyMode"] });
+    }),
     requireSignIn: z.boolean(),
     knowledgeEngine: z.custom<KnowledgeEngine>((v) => typeof v === "string"),
   })

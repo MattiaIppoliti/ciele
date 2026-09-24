@@ -3,6 +3,7 @@ import { ApiKeysClient } from "@/components/settings/api-keys-client";
 import { SettingsPanel } from "@/components/settings/settings-panel";
 import { requirePageMember } from "@/lib/authz";
 import { canManageApiKeys } from "@/lib/rbac";
+import { docsOrigin } from "@/lib/origins";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,12 @@ export default async function ApiKeysPage() {
       title="API Keys"
       description="Organization-scoped keys for the CLI, the MCP server and the API. A key acts with the role you give it, capped at your own."
     >
-      <ApiKeysClient keys={keys} currentRole={role} demo={session.demo} />
+      <ApiKeysClient
+        keys={keys}
+        currentRole={role}
+        demo={session.demo}
+        apiDocumentationUrl={`${docsOrigin()}/api-reference`}
+      />
     </SettingsPanel>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronUp, MessageCircle, Plus, Search, X } from "lucide-react";
 import { cn } from "@agent-hub/ui";
 import Link from "next/link";
@@ -76,17 +76,23 @@ function AssistantAvatar({
 function AssistantItem({
   assistant,
   href,
+  reduce,
 }: {
   assistant: SetupPickerAssistant;
   href: string;
+  reduce: boolean;
 }) {
   return (
     <motion.div
-      variants={{
-        hidden: { opacity: 0, x: 10, y: 15, rotate: 1 },
-        visible: { opacity: 1, x: 0, y: 0, rotate: 0 },
-      }}
-      transition={sweepSpring}
+      variants={
+        reduce
+          ? { hidden: { opacity: 0 }, visible: { opacity: 1 } }
+          : {
+              hidden: { opacity: 0, x: 10, y: 15, rotate: 1 },
+              visible: { opacity: 1, x: 0, y: 0, rotate: 0 },
+            }
+      }
+      transition={reduce ? { duration: 0 } : sweepSpring}
       style={{ originX: 1, originY: 1 }}
       className="border-border/40 border-b py-4 first:pt-0 last:border-0"
     >
@@ -127,6 +133,7 @@ export function SetupPicker({
   slug: string;
   assistants: SetupPickerAssistant[];
 }) {
+  const reduce = useReducedMotion() ?? false;
   const [isExpanded, setIsExpanded] = useState(false);
   const [query, setQuery] = useState("");
   const [directoryQuery, setDirectoryQuery] = useState("");
@@ -200,13 +207,20 @@ export function SetupPicker({
         <motion.div
           initial={false}
           animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
+          variants={{
+            visible: {
+              transition: reduce
+                ? { duration: 0 }
+                : { staggerChildren: 0.04 },
+            },
+          }}
         >
           {filteredActive.map((assistant) => (
             <AssistantItem
               key={`active-${assistant.id}`}
               assistant={assistant}
               href={href(assistant.id)}
+              reduce={reduce}
             />
           ))}
         </motion.div>
@@ -222,7 +236,7 @@ export function SetupPicker({
       </div>
 
       <motion.div
-        layout
+        layout={!reduce}
         initial={false}
         animate={{
           height: isExpanded ? "calc(100% - 20px)" : "68px",
@@ -231,7 +245,11 @@ export function SetupPicker({
           left: isExpanded ? "10px" : "16px",
           borderRadius: isExpanded ? "28px" : "20px",
         }}
-        transition={{ type: "spring", stiffness: 240, damping: 30, mass: 0.8 }}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { type: "spring", stiffness: 240, damping: 30, mass: 0.8 }
+        }
         className="bg-card group/bar absolute z-50 flex flex-col overflow-hidden border"
         style={{ cursor: isExpanded ? "default" : "pointer" }}
         onClick={() => !isExpanded && setIsExpanded(true)}
@@ -243,10 +261,10 @@ export function SetupPicker({
           )}
         >
           <div className="flex items-center gap-3">
-            <span className="bg-background text-muted-foreground/80 group-hover/bar:scale-105 flex size-11 items-center justify-center rounded-xl border transition-transform">
+            <span className="bg-background text-muted-foreground/80 group-hover/bar:scale-105 flex size-11 items-center justify-center rounded-xl border transition-transform motion-reduce:transform-none motion-reduce:transition-none">
               <MessageCircle className="size-5" />
             </span>
-            <motion.div layout="position">
+            <motion.div layout={reduce ? false : "position"}>
               <h4 className="text-foreground text-base leading-none font-medium">
                 Assistants Directory
               </h4>
@@ -257,7 +275,7 @@ export function SetupPicker({
             <button
               type="button"
               aria-label="Close the assistants directory"
-              className="bg-muted/60 text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-xl transition-all active:scale-90"
+              className="bg-muted/60 text-muted-foreground hover:text-foreground flex size-9 items-center justify-center rounded-xl transition-all active:scale-90 motion-reduce:transform-none motion-reduce:transition-none"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsExpanded(false);
@@ -277,7 +295,7 @@ export function SetupPicker({
               className="border-border/60 bg-background text-muted-foreground group-hover/bar:text-foreground group-hover/bar:border-border flex shrink-0 items-center gap-1.5 rounded-full border py-1.5 pr-2.5 pl-3 text-xs transition-colors"
             >
               See all {assistants.length}
-              <ChevronUp className="size-3.5 transition-transform group-hover/bar:-translate-y-0.5" />
+              <ChevronUp className="size-3.5 transition-transform group-hover/bar:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none" />
             </button>
           )}
         </div>
@@ -286,9 +304,10 @@ export function SetupPicker({
           <AnimatePresence>
             {isExpanded && (
               <motion.div
-                initial={{ opacity: 0, y: -8 }}
+                initial={reduce ? false : { opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                transition={reduce ? { duration: 0 } : undefined}
                 className="px-5 py-4"
               >
                 <div className="relative">
@@ -320,10 +339,14 @@ export function SetupPicker({
               animate={isExpanded ? "visible" : "hidden"}
               variants={{
                 visible: {
-                  transition: { staggerChildren: 0.03, delayChildren: 0.1 },
+                  transition: reduce
+                    ? { duration: 0 }
+                    : { staggerChildren: 0.03, delayChildren: 0.1 },
                 },
                 hidden: {
-                  transition: { staggerChildren: 0.02, staggerDirection: -1 },
+                  transition: reduce
+                    ? { duration: 0 }
+                    : { staggerChildren: 0.02, staggerDirection: -1 },
                 },
               }}
             >
@@ -332,6 +355,7 @@ export function SetupPicker({
                   key={`all-${assistant.id}`}
                   assistant={assistant}
                   href={href(assistant.id)}
+                  reduce={reduce}
                 />
               ))}
             </motion.div>

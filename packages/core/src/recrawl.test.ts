@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { effectivePageSchedule, nextCrawlDue } from "./recrawl";
+import {
+  effectivePageSchedule,
+  isUnlimitedPages,
+  NO_PAGE_LIMIT,
+  nextCrawlDue,
+  pageBudget,
+} from "./recrawl";
 
 describe("nextCrawlDue", () => {
   const last = "2026-07-01T09:00:00.000Z";
@@ -54,5 +60,19 @@ describe("effectivePageSchedule", () => {
   it("inherits the site schedule when the page schedule is null", () => {
     expect(effectivePageSchedule(null, "weekly")).toBe("weekly");
     expect(effectivePageSchedule(null, "never")).toBe("never");
+  });
+});
+
+describe("page budget", () => {
+  it("runs a no-limit Source to the crawler's own ceiling", () => {
+    expect(isUnlimitedPages(NO_PAGE_LIMIT)).toBe(true);
+    expect(pageBudget(NO_PAGE_LIMIT, 30)).toBe(30);
+  });
+
+  it("caps a named budget at the ceiling, and defaults an absent one to 20", () => {
+    expect(pageBudget(500, 30)).toBe(30);
+    expect(pageBudget(12, 30)).toBe(12);
+    expect(pageBudget(undefined, 30)).toBe(20);
+    expect(isUnlimitedPages(undefined)).toBe(false);
   });
 });

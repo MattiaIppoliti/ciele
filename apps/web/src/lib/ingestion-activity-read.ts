@@ -220,7 +220,12 @@ function websiteRun(source: {
         id: source.id,
         name: source.name,
         status,
-        detail: websiteDetail({ status, done, error: source.error }),
+        detail: websiteDetail({
+          status,
+          done,
+          error: source.error,
+          remote: source.config.crawlRemoteProgress,
+        }),
       },
     ],
   };
@@ -230,11 +235,19 @@ function websiteDetail(input: {
   status: IngestionItemStatus;
   done: number;
   error: string;
+  remote?: { crawled: number; found: number | null };
 }): string {
   if (input.status === "failed") return input.error || "Crawl failed";
-  // The crawler itself is an opaque provider run: until it hands its pages
-  // over there is nothing to count, so the row says which phase it is in.
-  if (input.status === "running" && input.done === 0) return "Crawling";
+  // Until the crawler hands its pages over there is nothing of Ciele's to
+  // count. A provider that reports its own run (Apify) says how far it has
+  // got; one that does not leaves the row naming the phase.
+  if (input.status === "running" && input.done === 0) {
+    const remote = input.remote;
+    if (!remote) return "Crawling";
+    return remote.found !== null && remote.found > remote.crawled
+      ? `${remote.crawled} of ${remote.found} pages crawled`
+      : `${remote.crawled} ${remote.crawled === 1 ? "page" : "pages"} crawled`;
+  }
   return `${input.done} ${input.done === 1 ? "page" : "pages"}`;
 }
 

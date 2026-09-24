@@ -13,7 +13,8 @@ export default async function FlowsPage({
 }) {
   const { id } = await params;
   const { db } = await requirePageMember();
-  if (!(await getAssistantCached(id))) notFound();
+  const assistant = await getAssistantCached(id);
+  if (!assistant) notFound();
   const [flows, trust] = await Promise.all([
     db.listFlows(id).then(redactFlowsSecrets),
     db.listFlowTrust(id),
@@ -26,7 +27,7 @@ export default async function FlowsPage({
         title="Flows"
         description="Drag flows to set priority. The first matching flow wins."
       />
-      <FlowsList assistantId={id} flows={flows} trust={trust} />
+      <FlowsList assistantId={id} flows={flows} trust={trust} studyMode={assistant.tools.studyMode} />
     </div>
   );
 }

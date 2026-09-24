@@ -28,6 +28,8 @@
  * runtime reads these ports.
  */
 
+import type { Db } from "@agent-hub/db";
+
 export interface RuntimeHost {
   /**
    * The immutable platform prompt layer for a turn, the top of the two-layer
@@ -121,6 +123,20 @@ export interface RuntimeHost {
    * backend", which is the path they already take and already test.
    */
   approvalGateEnabled(): boolean;
+
+  /**
+   * The host's system Db (service role), for draining the job ledger right
+   * after a response. The ledger's claim functions are executable by the
+   * service role only, so a drain on the signed-in Member's RLS client is
+   * refused, silently inside `scheduleAfterResponse`, and the work waits for
+   * the nightly cron. That is how every document-memory extraction waited
+   * until 03:00: the finalizer enqueued them on the Member's client.
+   *
+   * Default: **null**, meaning "drain on the caller's Db", today's behaviour.
+   * Fail-safe like `scheduleAfterResponse`: the ledger plus cron still
+   * guarantees the work, this port only brings it forward.
+   */
+  getSystemDb(): Db | null;
 }
 
 /**
@@ -158,6 +174,8 @@ const DEFAULTS: RuntimeHost = {
   verifierTierOneEnabled: () => false,
   // A key must not be a decision to start gating; see the port's contract.
   approvalGateEnabled: () => false,
+  // No system Db: drain on the caller's, as before. Cron is the guarantee.
+  getSystemDb: () => null,
 };
 
 /**

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import type { QuickReplyButton, WidgetStyle } from "@agent-hub/core";
+import type { QuickReplyButton, WidgetStyle, StudyModeSettings } from "@agent-hub/core";
 import { googleFontHref, resolveWidgetStyle } from "@/lib/widget-style";
 import { reviewStatusSentence } from "@/lib/review-status";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { WIDEN_TRANSITION } from "@/components/chat/fullscreen-motion";
 import { ProgressLine } from "@/components/chat/progress-line";
+import { StudyProvider } from "@/components/chat/study-context";
+import { StudyMenu } from "@/components/chat/study-menu";
 import { ComponentReplyPart } from "@/components/chat/component-part";
 import { FeedbackDialog } from "@/components/chat/feedback-dialog";
 import { IdentityGate } from "@/components/chat/identity-gate";
@@ -509,6 +511,7 @@ export function WidgetChat({
   modelChoice = false,
   skills = [],
   attachmentsEnabled = false,
+  studyMode,
 }: {
   assistantId: string;
   nickname: string;
@@ -549,6 +552,7 @@ export function WidgetChat({
   }>;
   /** Whether this Assistant accepts files from Visitors. Off by default. */
   attachmentsEnabled?: boolean;
+  studyMode?: StudyModeSettings;
 }) {
   // Effective Style-section values. The legacy `brandColor` prop stays the
   // fallback, so a caller that passes only it (the editor preview) is
@@ -1157,6 +1161,7 @@ export function WidgetChat({
 
   // â”€â”€ Chat view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
+    <StudyProvider replies={messages.flatMap(message => message.role === "bot" ? [message.parts] : [])} endpoint={studyMode?.enabled ? `/api/widget/${assistantId}/chat` : undefined} request={() => ({ visitorId: visitorId(), conversationId })} disabled={pending || gated}>
     <div
       className="text-foreground relative flex h-screen flex-col bg-background"
       style={{
@@ -1401,6 +1406,7 @@ export function WidgetChat({
             deskTrigger.close();
             skillTrigger.close();
           }}
+          leadingAction={<StudyMenu settings={studyMode} disabled={pending || composerClosed} onSelect={prefix => { setDraft(prefix + draft.replace(/^@(quiz|dwords|truefalse|flashcards|study)\s*/i, "")); composerTextarea()?.focus(); }} />}
           actions={composerActions}
           onAction={(action) => {
             if (action === "attach") {
@@ -1447,5 +1453,6 @@ export function WidgetChat({
         onSubmit={submitConversationFeedback}
       />
     </div>
+    </StudyProvider>
   );
 }

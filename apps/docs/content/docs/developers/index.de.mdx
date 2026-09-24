@@ -1,16 +1,16 @@
 ---
-title: Entwicklertools
-description: Verwenden Sie einen API-Schlüssel mit der Ciele-API, der CLI oder dem MCP-Server.
+title: Entwickler-Tools
+description: Verwenden Sie einen einzigen API-Schlüssel für die Ciele API, die CLI oder den MCP-Server.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
-Ciele bietet drei Schnittstellen für die programmgesteuerte Administration. Jede
+Ciele bietet drei Schnittstellen für die programmatische Administration. Jede
 Schnittstelle verwendet dieselben Operationen und Rollenprüfungen wie die
-Administratorkonsole.
+Administrator-Konsole.
 
-Um die Operation zu finden, die hinter einem Konsolensteuerelement steckt,
-öffnen Sie das [Developer Panel](/developers/developer-panel) auf dieser Seite.
+Um die Operation hinter einem Steuerelement der Konsole zu ermitteln, öffnen Sie
+auf der entsprechenden Seite das [Developer Panel](/developers/developer-panel).
 
 <Cards>
   <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
@@ -22,8 +22,8 @@ Um die Operation zu finden, die hinter einem Konsolensteuerelement steckt,
 
 ## Gemeinsames Verbindungsmodell
 
-Für alle drei Schnittstellen ist ein Organisations-API-Schlüssel erforderlich.
-Die zugewiesene Rolle steuert die Operationen, die der Schlüssel verwenden kann.
+Alle drei Schnittstellen erfordern einen Organization API Key. Die zugewiesene
+Rolle bestimmt die Operationen, die mit dem Schlüssel ausgeführt werden dürfen.
 
 <Mermaid
   title="Drei Clients, eine API, ein Satz von Operationen"
@@ -52,9 +52,9 @@ Create a Viewer key for read operations. Create a higher-role key only when the 
 
 ## Verfügbare Domains
 
-Die aktuelle API umfasst Assistenten, Flows, Knowledge, Veröffentlichung,
-Inbox-Konversationen und Verbesserungen.
+Die [API reference](/api-reference) listet alle verfügbaren
+`/api/v1`-Operationen nach Domain auf.
 
-Die API stellt nicht alle Konsolenfunktionen zur Verfügung. Beispielsweise
-bleiben das Hochladen von Avataren und das Erstellen von Verbesserungen der
-Konsole vorbehalten.
+Die API stellt nicht alle Funktionen der Konsole bereit. Beispielsweise sind das
+Hochladen von Avataren und das Erstellen von Verbesserungen weiterhin nur in der
+Konsole möglich.

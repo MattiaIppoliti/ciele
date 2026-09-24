@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowUpRight, X } from "lucide-react";
 import Link from "next/link";
 import { AnimateIcons, AnimatedIcon } from "@/components/ui/animated-icon";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { useExitTransition } from "@/components/motion/use-exit-transition";
+import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   crossScopeLink,
   scopeTitle,
@@ -49,6 +50,7 @@ export function SettingsDialog({
   // Leaving the personal scope for the Organization one is only offered where
   // there is something to manage; the reverse is always available.
   const showCross = scope === "personal" ? canManageOrg : true;
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const navigateAway = useCallback(() => {
     // One back step leaves the dialog because switching tabs *replaces* the
@@ -65,10 +67,11 @@ export function SettingsDialog({
   // `close` now plays the reverse of the entrance first.
   const { exiting, beginExit } = useExitTransition(navigateAway, 150);
   const close = beginExit;
+  useModalFocus(true, dialogRef);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === "Escape" && !event.defaultPrevented) close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -88,9 +91,11 @@ export function SettingsDialog({
         }`}
       />
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={scope === "personal" ? "Personal settings" : "Settings"}
+        tabIndex={-1}
         className={`bg-background relative flex h-full w-full max-w-5xl flex-col overflow-hidden border shadow-2xl duration-150 sm:max-h-[46rem] sm:flex-row sm:rounded-xl ${
           exiting
             ? "animate-out fade-out zoom-out-95"

@@ -7,6 +7,7 @@ import {
   motion,
   useSpring,
   useTransform,
+  useReducedMotion,
   type SpringOptions,
 } from "motion/react";
 import React, { useCallback, useEffect, useState } from "react";
@@ -25,6 +26,7 @@ export function Spotlight({
 }: SpotlightProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [parentElement, setParentElement] = useState<HTMLElement | null>(null);
+  const reduce = useReducedMotion() ?? false;
 
   const mouseX = useSpring(0, springOptions);
   const mouseY = useSpring(0, springOptions);
@@ -36,12 +38,12 @@ export function Spotlight({
   // without a setState-in-effect (repo lint rule).
   const attachToParent = useCallback((node: HTMLDivElement | null) => {
     const parent = node?.parentElement ?? null;
-    if (parent) {
+    if (parent && !reduce) {
       parent.style.position = "relative";
       parent.style.overflow = "hidden";
     }
-    setParentElement(parent);
-  }, []);
+    setParentElement(reduce ? null : parent);
+  }, [reduce]);
 
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
@@ -54,7 +56,7 @@ export function Spotlight({
   );
 
   useEffect(() => {
-    if (!parentElement) return;
+    if (!parentElement || reduce) return;
 
     const abortController = new AbortController();
 
@@ -71,7 +73,9 @@ export function Spotlight({
     return () => {
       abortController.abort();
     };
-  }, [parentElement, handleMouseMove]);
+  }, [parentElement, handleMouseMove, reduce]);
+
+  if (reduce) return null;
 
   return (
     <motion.div

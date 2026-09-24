@@ -35,8 +35,32 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ciele",
-  description: "Admin superapp to create and manage AI assistants",
+  metadataBase: new URL(
+    process.env.CIELE_MARKETING_ORIGIN?.trim() || "https://ciele.app"
+  ),
+  title: {
+    default: "Ciele — AI teammates for your organization",
+    template: "%s",
+  },
+  description:
+    "Build, test and publish AI teammates that answer from your organization's knowledge.",
+  robots: { index: false, follow: false },
+  openGraph: {
+    type: "website",
+    siteName: "Ciele",
+    title: "Ciele — AI teammates for your organization",
+    description:
+      "Build, test and publish AI teammates that answer from your organization's knowledge.",
+    url: "/home",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ciele — AI teammates for your organization",
+    description:
+      "Build, test and publish AI teammates that answer from your organization's knowledge.",
+    images: ["/opengraph-image"],
+  },
 };
 
 /**

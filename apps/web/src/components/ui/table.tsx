@@ -34,12 +34,11 @@ function TableCard({
   return (
     <div
       data-slot="table-card"
-      // `p-2`, not `p-1`: the padding is the frame, so how wide it is *is* how
-      // thick the band down each side reads. At 4px it was a seam rather than
-      // a border and the sheet looked like it had simply been inset by a
-      // rounding error.
+      // The padding is the frame, so how wide it is *is* how thick the band
+      // down each side reads. Keep enough room around the lighter sheet for
+      // the dark frame to read clearly, including on narrow tables.
       className={cn(
-        "bg-table-frame w-full overflow-hidden rounded-xl border p-2",
+        "bg-table-frame w-full overflow-hidden rounded-xl border-[1.5px] p-3",
         className,
       )}
       {...props}

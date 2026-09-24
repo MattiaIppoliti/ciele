@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { ColorPicker } from "@/components/ui/color-picker";
 import {
   WIDGET_STYLE_DEFAULTS,
@@ -223,7 +223,7 @@ export function StyleForm({
       </TimelineSection>
 
       {/* ── Button size ────────────────────────────────────────────────── */}
-      <TimelineSection title="Button size">
+      <TimelineSection title="Button size" boxed>
         <p className="text-muted-foreground -mt-3 text-sm">
           Customize button sizes.
         </p>
@@ -248,7 +248,7 @@ export function StyleForm({
       </TimelineSection>
 
       {/* ── Button position ────────────────────────────────────────────── */}
-      <TimelineSection title="Button position">
+      <TimelineSection title="Button position" boxed>
         <p className="text-muted-foreground -mt-3 text-sm">
           Customize button position.
         </p>
@@ -316,7 +316,7 @@ export function StyleForm({
       </TimelineSection>
 
       {/* ── Typography ─────────────────────────────────────────────────── */}
-      <TimelineSection title="Typography/Fonts">
+      <TimelineSection title="Typography/Fonts" boxed>
         <p className="text-muted-foreground -mt-3 text-sm">
           Choose a Google font to use on your assistant.
         </p>
@@ -397,7 +397,7 @@ export function StyleForm({
       </TimelineSection>
 
       {/* ── Window size ────────────────────────────────────────────────── */}
-      <TimelineSection title="Default assistant window size">
+      <TimelineSection title="Default assistant window size" boxed>
         <p className="text-muted-foreground -mt-3 text-sm">
           Adjust the default window size.
         </p>

@@ -1,4 +1,5 @@
 import { getLLMText } from '@/lib/get-llm-text';
+import { getApiReferenceMarkdown } from '@/lib/get-api-reference-markdown';
 import { source } from '@/lib/source';
 import { notFound } from 'next/navigation';
 
@@ -9,15 +10,28 @@ export const revalidate = false;
 // Params are typed inline rather than via the generated RouteContext global, which
 // does not exist when CI runs `tsc` without a prior `next build`.
 export async function GET(
-  _req: Request,
+  request: Request,
   { params }: { params: Promise<{ slug?: string[] }> },
 ) {
   const { slug } = await params;
+  if (slug?.length === 2 && slug[0] === 'api-reference' && slug[1] === 'all') {
+    const language = new URL(request.url).searchParams.get('lang') ?? 'en';
+    return new Response(await getApiReferenceMarkdown(language), {
+      headers: {
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'X-Robots-Tag': 'noindex',
+      },
+    });
+  }
+
   const page = source.getPage(slug);
   if (!page) notFound();
 
   return new Response(await getLLMText(page), {
-    headers: { 'Content-Type': 'text/markdown; charset=utf-8' },
+    headers: {
+      'Content-Type': 'text/markdown; charset=utf-8',
+      'X-Robots-Tag': 'noindex',
+    },
   });
 }
 
@@ -27,8 +41,9 @@ export async function GET(
  * against the default language.
  */
 export function generateStaticParams() {
-  return source
+  const pages = source
     .generateParams()
     .filter((params) => params.lang === 'en')
     .map(({ slug }) => ({ slug }));
+  return [...pages, { slug: ['api-reference', 'all'] }];
 }

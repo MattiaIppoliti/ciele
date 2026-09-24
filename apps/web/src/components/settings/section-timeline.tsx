@@ -131,9 +131,12 @@ export function SectionTimeline({ children }: { children: ReactNode }) {
 export function TimelineSection({
   title,
   children,
+  boxed = false,
 }: {
   title: string;
   children: ReactNode;
+  /** Group related fields when the section does not already contain a card. */
+  boxed?: boolean;
 }) {
   const id = useId();
   const ctx = useContext(SectionRailContext);
@@ -165,7 +168,7 @@ export function TimelineSection({
         {title}
       </h2>
       <div
-        className={`mt-5 transition-opacity duration-300 ${
+        className={`mt-5 ${boxed ? "min-w-0 rounded-2xl border border-border bg-background p-4 sm:p-5" : ""} transition-opacity duration-300 ${
           active ? "opacity-100" : "opacity-70"
         }`}
       >

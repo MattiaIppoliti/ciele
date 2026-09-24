@@ -258,7 +258,7 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
   const data = current?.data ?? null;
   const failed = current?.failed ?? false;
 
-  const { width, fade, resizing, beginResize, widthTransition, containerRef } =
+  const { width, fade, resizing, beginResize, resizeTo, widthTransition, containerRef } =
     useResizableWidth({
       defaultWidth: PANEL_DEFAULT_WIDTH,
       minWidth: PANEL_MIN_WIDTH,
@@ -292,6 +292,10 @@ export function DeveloperPanel({ domains }: { domains: ApiV1Domain[] }) {
         resizing={resizing}
         onPointerDown={(event) => beginResize(event)}
         label="Resize developer panel"
+        value={width}
+        minValue={PANEL_MIN_WIDTH}
+        maxValue={PANEL_MAX_WIDTH}
+        onValueChange={resizeTo}
       />
       <div
         className="flex min-h-0 flex-1 flex-col"

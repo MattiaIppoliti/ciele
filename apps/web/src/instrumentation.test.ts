@@ -18,6 +18,7 @@ vi.mock("@/lib/platform", () => ({
 // so a per-call assertion would pass on the cached module rather than on this
 // run's behaviour. That `register()` resolves at all is the honest signal.
 vi.mock("@/ee/register", () => ({}));
+vi.mock("@/lib/widget-db", () => ({ getWidgetDb: vi.fn() }));
 
 import { register } from "./instrumentation";
 
@@ -50,6 +51,7 @@ describe("instrumentation register()", () => {
       "allowRelaxedEgress",
       "approvalGateEnabled",
       "getPlatformSystemPrompt",
+      "getSystemDb",
       "preflightRoutingEnabled",
       "preflightShadowEnabled",
       "scheduleAfterResponse",

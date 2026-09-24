@@ -5,6 +5,8 @@ description: Call the current Ciele administration API with an Organization API 
 
 The Ciele API uses JSON over HTTP. All version 1 routes start with `/api/v1`.
 
+[Open the interactive API reference](/api-reference) to browse every public operation by domain. Download the current OpenAPI contract there as JSON or YAML.
+
 ## Discover the deployment
 
 Use these public endpoints before you generate a client:
@@ -44,21 +46,24 @@ Common status codes are:
 
 | Status | Meaning |
 | --- | --- |
-| `400` | The request data is not valid. |
+| `400` | The request body is malformed or a required file is missing. |
 | `401` | The key is missing, invalid, or revoked. |
 | `403` | The key Role does not permit the operation. |
 | `404` | The resource does not exist in the Organization. |
 | `409` | The request conflicts with the current state. |
+| `422` | The parsed input fails validation. |
 
 ## Pagination
 
-List operations accept `limit` and `cursor` parameters when the endpoint supports pagination. Use the returned cursor for the next request.
+Use the pagination parameters shown on each operation. Cursor-based lists return `nextCursor`. Pass it as `cursor` on the next request.
 
 ## Safe retries
 
 Mutation routes can accept an `Idempotency-Key` header. Reuse the same value only when you retry the same logical operation.
 
-## Current domains
+## Common domains
+
+These are examples. The [API reference](/api-reference) lists the complete, current operation set.
 
 - Assistants: list, read, create, update, duplicate, and delete.
 - Flows: list, read, create, update, reorder, and delete.
@@ -82,4 +87,4 @@ Mutation routes can accept an `Idempotency-Key` header. Reuse the same value onl
   together counts it twice. Buying credits has no endpoint: a purchase belongs
   on a screen where a person confirms an amount.
 
-Use the OpenAPI document for exact request fields and response schemas.
+Use the OpenAPI document for request fields, authentication, and documented response status codes.

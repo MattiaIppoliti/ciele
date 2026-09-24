@@ -6,7 +6,11 @@ description: Appelez l'API d'administration actuelle de Ciele à l'aide d'une cl
 L'API Ciele utilise JSON sur HTTP. Toutes les routes de la version 1 commencent
 par `/api/v1`.
 
-## Découvrez le déploiement
+[Ouvrez la référence API interactive](/api-reference) pour parcourir toutes les
+opérations publiques par domaine. Téléchargez le contrat OpenAPI actuel à cet
+endroit au format JSON ou YAML.
+
+## Découvrir le déploiement
 
 Utilisez ces points de terminaison publics avant de générer un client :
 
@@ -20,7 +24,7 @@ GET /api/v1/openapi.json
 
 ## Authentifier une requête
 
-Envoyez la clé API en tant que jeton au porteur :
+Envoyez la clé API sous la forme d'un bearer token :
 
 ```bash
 curl https://ciele.app/api/v1/whoami \
@@ -32,7 +36,7 @@ Ciele.
 
 ## Erreurs de réponse
 
-Les erreurs utilisent une enveloppe JSON :
+Les erreurs utilisent une seule enveloppe JSON :
 
 ```json
 {
@@ -45,54 +49,65 @@ Les erreurs utilisent une enveloppe JSON :
 
 Les codes d'état courants sont :
 
-| Statut | Signification |
+| Status | Signification |
 | --- | --- |
-| `400` | Les données de la requête ne sont pas valides. |
-| `401` | La clé est manquante, invalide ou révoquée. |
+| `400` | Le corps de la requête est mal formé ou un fichier requis manque. |
+| `401` | La clé est manquante, non valide ou révoquée. |
 | `403` | Le rôle de la clé n'autorise pas l'opération. |
 | `404` | La ressource n'existe pas dans l'organisation. |
 | `409` | La requête est en conflit avec l'état actuel. |
+| `422` | Les données analysées ne passent pas la validation. |
 
 ## Pagination
 
-Les opérations de liste acceptent les paramètres `limit` et `cursor` lorsque le
-point de terminaison prend en charge la pagination. Utilisez le curseur renvoyé
-pour la requête suivante.
+Utilisez les paramètres de pagination indiqués pour chaque opération. Les listes
+basées sur un curseur renvoient `nextCursor`. Transmettez-le en tant que
+`cursor` lors de la requête suivante.
 
 ## Nouvelles tentatives sécurisées
 
 Les routes de mutation peuvent accepter un en-tête `Idempotency-Key`. Réutilisez
-la même valeur uniquement lorsque vous réessayez la même opération logique.
+la même valeur uniquement lorsque vous tentez à nouveau la même opération
+logique.
 
-## Domaines actuels
+## Domaines courants
+
+Ce sont des exemples. La [référence de l'API](/api-reference) répertorie
+l'ensemble complet et actuel des opérations.
 
 - Assistants : list, read, create, update, duplicate et delete.
-- Flux : lister, lire, créer, mettre à jour, réorganiser et supprimer.
-- Connaissances : gérez les collections, les sources, les FAQ et les liens
-  d'assistant sur chaque source.
-- Publication : lire le statut, publier, annuler la publication et restaurer une
-  publication.
-- Boîte de réception : examinez, exportez, épinglez, annotez, évaluez et
-  supprimez les conversations.
-- Améliorations : lister, lire et mettre à jour des éléments.
+- Flows : list, read, create, update, reorder et delete.
+- Knowledge : gérez les Collections, les Sources, les FAQ et les liens de
+  l'Assistant sur chaque Source.
+- Publication : consulter le statut, publier, annuler la publication et
+  restaurer une publication.
+- Inbox : consulter, exporter, épingler, annoter, évaluer et supprimer des
+  Conversations.
+- Améliorations : lister, lire et mettre à jour les éléments.
 - Entities and Memories : gérez les données typées de l'organisation et
-  l'effacement des mémoires selon leur portée.
+  l'effacement des mémoires selon leur champ d'application.
 - SSO : gérez les revendications d'identité, les paramètres de connexion, la
   validation et la déconnexion.
-- Centres d'assistance : gérez les centres, les canaux d'escalade, les commandes
-  et ServiceNow.
-- Teammates : gérez les Teammates IA et lisez vos propres conversations
+- Help Desks : gérez les desks, les canaux d'escalade, l'ordonnancement et
+  ServiceNow.
+- Teammates : gérez les Teammates IA et lisez vos propres conversations de
   Teammate.
-- Canaux : lisez et modifiez les canaux des coéquipiers dont vous faites partie,
-  ainsi que leurs listes. Il n'y a pas de point de terminaison pour envoyer un
-  message : un message déclenche une chaîne de réponses de la part des
+- Channels : consultez et configurez les canaux des Teammates auxquels vous
+  appartenez, ainsi que leurs rosters. Il n'existe pas de point de terminaison
+  pour envoyer un message : un message déclenche une chaîne de réponses des
   coéquipiers, qui s'exécute dans la console.
-- Configuration : gérez les compétences, les objectifs de l'assistant et les
-  alertes opérationnelles.
-- Organisation : gérez les paramètres, les membres, les invitations et les clés
-  API.
-- Intégrations : gérez les intégrations de l'API Assistant et les connexions aux
-  fournisseurs de modèles.
+- Configuration : gérez les Skills, les Assistant Goals et les Alertes
+  opérationnelles.
+- Organisation : gérez les paramètres, les Members, les Invites et les clés API.
+- Integrations : gérez les intégrations de l'API de l'assistant et les
+  connexions aux fournisseurs de modèles.
+- Usage : consultez les compteurs du plan et identifiez qui a dépensé les
+  crédits d'une fenêtre. Lecture seule. La ventilation des dépenses conserve ses
+  dimensions distinctes. Une même réponse désigne à la fois le coéquipier qui a
+  exécuté l'opération et le collègue qui l'a demandée ; par conséquent,
+  additionner les dimensions revient à la compter deux fois. L'achat de crédits
+  n'a pas de point de terminaison : un achat s'effectue sur un écran où une
+  personne confirme un montant.
 
-Utilisez le document OpenAPI pour connaître les champs de requête et les schémas
-de réponse exacts.
+Utilisez le document OpenAPI pour les champs de requête, l'authentification et
+les codes de statut de réponse documentés.

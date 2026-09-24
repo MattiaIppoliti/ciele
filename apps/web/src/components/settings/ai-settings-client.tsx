@@ -50,7 +50,7 @@ import type {
   LocalSubscriptionProvider,
   LocalSubscriptionStatus,
 } from "@agent-hub/agent/client";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   anthropic: "Anthropic (Claude)",

@@ -11,20 +11,7 @@ const TIER_STYLES: Record<FlowTrust["tier"], string> = {
   watch: "border-amber-400 text-amber-700 dark:border-amber-600 dark:text-amber-400",
 };
 
-export function TrustBadge({ trust }: { trust: FlowTrust | null }) {
-  // No materialized row yet: trust is earned, not presumed, an unmeasured
-  // flow behaves as watch (always offers escalation) until it accrues history.
-  if (!trust) {
-    return (
-      <Badge
-        variant="outline"
-        className={`rounded-full ${TIER_STYLES.watch}`}
-        title="No graded answers yet, this flow behaves as watch (always offers escalation) until it earns history."
-      >
-        watch · no history
-      </Badge>
-    );
-  }
+export function TrustBadge({ trust }: { trust: FlowTrust }) {
   const rate =
     trust.runs > 0 ? Math.round((trust.passes / trust.runs) * 100) : 0;
   return (

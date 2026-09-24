@@ -4,6 +4,9 @@ import type {
   DayAvailability,
   Flow,
   FlowAction,
+  FlowActionSettings,
+  FlowCondition,
+  FlowConditionLogic,
   TimeRange,
   WeekDay,
 } from "./types";
@@ -14,6 +17,9 @@ export interface DefaultFlowSpec {
   builtIn: boolean;
   enabled: boolean;
   actions: FlowAction[];
+  conditionLogic?: FlowConditionLogic;
+  conditions?: FlowCondition[];
+  actionSettings?: FlowActionSettings;
   customMessage: string;
   isDefault: boolean;
 }
@@ -34,6 +40,57 @@ export const BASIC_INTERACTION_FLOW_NAME = "Basic Interaction";
  */
 export const DEFAULT_BASIC_REPLY =
   "Hi! What would you like to know? Ask me a question and I'll look it up for you.";
+
+const SOCRATIC_ANSWERING_STYLE = `Apologise and explain that you cannot produce academic work for the student. Help them understand the course material instead. Ask what they have tried so far. Guide them with questions such as "What is your understanding of this concept?", "What have you learned in the course that relates to this?", and "What is your first step in approaching this assignment?" Help them break the task into manageable steps through questions, without completing it for them.`;
+
+const SOCRATIC_CONTENT_CONDITION: FlowCondition = {
+  id: "socratic-content-request",
+  kind: "conversation_context",
+  description: "A student is asking the assistant to create content for them",
+  examples: [
+    {
+      message: "can you help me write an essay?",
+      note: "A student is asking the assistant to create content for them",
+      shouldTrigger: true,
+    },
+    {
+      message: "can you write a paper for me?",
+      note: "A student is asking the assistant to create content for them",
+      shouldTrigger: true,
+    },
+    {
+      message: "Can you write a discussion thread for me?",
+      note: "A student is asking the assistant to create content for them",
+      shouldTrigger: true,
+    },
+    {
+      message: "Can you complete an assignment on my behalf?",
+      note: "A student is asking the assistant to create content for them",
+      shouldTrigger: true,
+    },
+    {
+      message: "Can you tell me when's my assignment due?",
+      note: "A student is asking about an assignment's deadline, not for help with creating content",
+      shouldTrigger: false,
+    },
+    {
+      message: "When do I have to post in the discussion board?",
+      note: "A student is asking about the deadline to post a discussion thread, not for help with creating content",
+      shouldTrigger: false,
+    },
+    {
+      message: "Can you summarise the lecture for me?",
+      note: "The user is asking for a summary of the lecture, not to produce content for them",
+      shouldTrigger: false,
+    },
+    {
+      message: "Can you create a study plan for me?",
+      note:
+        "The user is asking for help with a study plan, not help to produce an essay, assignment, discussion post, or similar work",
+      shouldTrigger: false,
+    },
+  ],
+};
 
 /** Flows every new assistant starts with, mirroring the built-in set. */
 export const DEFAULT_FLOWS: DefaultFlowSpec[] = [
@@ -66,6 +123,27 @@ export const DEFAULT_FLOWS: DefaultFlowSpec[] = [
     builtIn: true,
     enabled: false,
     actions: [],
+    customMessage: "",
+    isDefault: false,
+  },
+  {
+    name: "Socratic flow",
+    description:
+      "A student asks the assistant to create an essay, assignment, discussion post, or other academic work on their behalf",
+    builtIn: true,
+    enabled: false,
+    actions: ["search_knowledge"],
+    conditionLogic: "any",
+    conditions: [SOCRATIC_CONTENT_CONDITION],
+    actionSettings: {
+      search_knowledge: {
+        escalatePrompt: false,
+        improvementItems: false,
+        searchGuidelines: "",
+        answeringStyle: SOCRATIC_ANSWERING_STYLE,
+        overrideAnsweringStyle: true,
+      },
+    },
     customMessage: "",
     isDefault: false,
   },

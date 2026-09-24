@@ -9,9 +9,11 @@ import {
   Search,
   Workflow,
   Wrench,
+  GraduationCap,
 } from "lucide-react";
 import type { StepStage, TurnStep } from "@agent-hub/agent/client";
 import { FeatherIcon } from "@/components/ui/feather-icon";
+import { isStudyStep } from "./stored-trace";
 
 /**
  * Per-step icon lookup for the Thinking panel / ThinkingTimeline. Every
@@ -102,6 +104,7 @@ const DEFAULT_STEP_ICON: IconSpec = {
 };
 
 function iconSpecFor(step: TurnStep): IconSpec {
+  if (isStudyStep(step)) return { icon: <GraduationCap className="size-3.5" />, name: "Study Mode" };
   if (step.kind === "tool") {
     return (step.tool && TOOL_ICONS[step.tool]) || TOOL_ICON;
   }

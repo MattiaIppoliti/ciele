@@ -20,6 +20,39 @@ Show a table arranges facts that the Assistant found in this answer. It does not
 
 The Assistant can add a follow-up question to a row. The Visitor selects the row to ask that question. The Inbox transcript shows these rows, but a Member cannot select them.
 
+## Enable Study Mode
+
+**Study Mode** is off by default. Enable it to let Visitors practise the Assistant's Knowledge with interactive exercises.
+
+1. Open **Tools & Skills** and enable **Study Mode**.
+2. Enable at least one question format.
+3. Add **Custom instructions** to set the teaching style.
+4. Test an exercise in Preview.
+5. Publish the Assistant to update the Widget.
+
+The chat composer shows a **Study exercises** button. Select a format, add a topic, then send the request.
+
+When enabled, **Study Mode** also appears in **Flows**. Its settings button opens this section.
+Disable Study Mode in **Tools & Skills**. The Flow has no separate switch.
+Requests from the Study exercises menu go directly to this Flow. A graduation-cap icon appears in Thinking.
+
+Exercises need relevant material in the Assistant's Knowledge. If no material is found, the Assistant asks for a supported topic or study material.
+
+| Format | How the Visitor answers |
+| --- | --- |
+| Multiple choice | Select one option. No free-text answer is available. |
+| Drag the words | Drag or select a word to complete one blank per question. |
+| True / False | Select one of two options. |
+| Flashcards | Type the missing word or a short phrase. |
+
+**Choose for me** selects an enabled format. Each exercise contains at most five distinct questions based on retrieved Knowledge.
+
+Select **Check** to save an answer. Ciele shows whether it is correct, the correct answer, and an explanation.
+A submitted answer cannot be changed. Flashcards accept the spelling variants defined when the exercise was created.
+
+The Inbox shows the questions, submitted answers, correct answers, and score. Unfinished exercises show how many questions remain unanswered.
+The exercises run inside the chat. They do not need an external H5P player.
+
 ## Connect structured data
 
 The **Data** section lists Entities imported through **Settings → Data**. Select each Entity that this Assistant may query.

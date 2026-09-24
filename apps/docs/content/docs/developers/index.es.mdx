@@ -1,6 +1,6 @@
 ---
 title: Herramientas para desarrolladores
-description: Utiliza una clave de API con la API de Ciele, la CLI o el servidor MCP.
+description: Utiliza una única clave de API con la API de Ciele, la CLI o el servidor MCP.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
@@ -9,8 +9,8 @@ Ciele ofrece tres interfaces para la administración programática. Cada interfa
 utiliza las mismas operaciones y comprobaciones de roles que la consola de
 administración.
 
-Para encontrar la operación asociada a un control de la consola, abre el
-[Panel del desarrollador](/developers/developer-panel) en esa página.
+Para encontrar la operación que hay detrás de un control de la consola, abre el
+[Developer Panel](/developers/developer-panel) en esa página.
 
 <Cards>
   <Card title="Developer Panel" href="/developers/developer-panel" description="Read the snippet for the console page you have open." />
@@ -22,8 +22,8 @@ Para encontrar la operación asociada a un control de la consola, abre el
 
 ## Modelo de conexión común
 
-Las tres interfaces requieren una clave API de la organización. El rol asignado
-controla las operaciones que la clave puede usar.
+Las tres interfaces requieren una clave API de la organización. El Role asignado
+controla las operaciones que la clave puede utilizar.
 
 <Mermaid
   title="Tres clientes, una API, un conjunto de operaciones"
@@ -52,8 +52,8 @@ Create a Viewer key for read operations. Create a higher-role key only when the 
 
 ## Dominios disponibles
 
-La API actual incluye Asistentes, Flujos, Conocimiento, publicación,
-conversaciones de la Bandeja de entrada y Mejoras.
+La [API reference](/api-reference) enumera todas las operaciones de `/api/v1`
+disponibles por dominio.
 
 La API no expone todas las funciones de la consola. Por ejemplo, la subida de
 avatares y la creación de mejoras siguen siendo exclusivas de la consola.

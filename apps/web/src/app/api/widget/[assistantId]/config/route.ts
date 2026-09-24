@@ -51,15 +51,12 @@ export async function GET(
     {
       headers: {
         ...ctx.cors,
-        // Publication-derived, with one exception: safe to cache briefly in
-        // browsers/CDNs so every host-page view stops paying an origin
-        // round-trip. A Publish reaches new visitors immediately and cached
-        // ones within max-age. The exception is `models`, which is read from
-        // live Provider Connections, so a revoked credential can leave a model
-        // on a cached picker for up to max-age. That costs nothing: the chat
-        // route resolves the choice again against the same connections and
-        // falls back to the configured model rather than refusing the turn.
-        "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+        // The host-page launcher and model picker may reuse this response for
+        // five minutes. After that, they must fetch current Publication and
+        // Provider Connection data; stale-while-revalidate could serve an old
+        // launcher for another hour after Publish. The chat route still checks
+        // a selected model against live connections on every turn.
+        "Cache-Control": "public, max-age=300, must-revalidate",
         // The CORS headers above depend on the caller's Origin, caches must
         // not serve one origin's response to another.
         Vary: "Origin",

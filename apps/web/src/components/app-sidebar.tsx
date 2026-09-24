@@ -44,8 +44,11 @@ import { HoverHighlight } from "@/components/ui/hover-highlight";
 import { Popover, PopoverContent, PopoverTrigger } from "@agent-hub/ui";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ResizeHandle } from "@/components/ui/resizable-panel";
+import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   DEFAULT_WIDTH,
+  ICON_ONLY_AT,
+  MAX_WIDTH,
   RAIL_WIDTH,
   isRailWidth,
   sidebarDragFor,
@@ -159,6 +162,7 @@ function NavRow({
     <Link
       href={href}
       aria-label={label}
+      aria-current={active ? "page" : undefined}
       data-highlight-row
       className={`${rowClass(collapsed)} ${active ? ROW_ACTIVE : ROW_IDLE}`}
     >
@@ -509,6 +513,7 @@ function SidebarContent({
       </div>
 
       <nav
+        aria-label="Main navigation"
         className={`no-scrollbar min-h-0 flex-1 overflow-y-auto pb-3 ${
           collapsed ? "px-2" : "px-3"
         }`}
@@ -781,11 +786,16 @@ function SidebarContent({
 function NavDrawer(props: AppSidebarProps) {
   const { navDrawerOpen, setNavDrawerOpen } = useShell();
   const reduceMotion = useReducedMotion();
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useModalFocus(navDrawerOpen, drawerRef);
 
   useEffect(() => {
     if (!navDrawerOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setNavDrawerOpen(false);
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        setNavDrawerOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -809,9 +819,12 @@ function NavDrawer(props: AppSidebarProps) {
             className="absolute inset-0 bg-black/50"
           />
           <motion.div
+            ref={drawerRef}
+            data-nav-drawer
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
+            tabIndex={-1}
             initial={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
             animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { x: "-100%" }}
@@ -1008,6 +1021,18 @@ export function AppSidebar(props: AppSidebarProps) {
               label="Resize sidebar"
               resizing={dragging}
               onPointerDown={startDrag}
+              value={collapsed ? RAIL_WIDTH : width}
+              minValue={RAIL_WIDTH}
+              maxValue={MAX_WIDTH}
+              onValueChange={(nextWidth) =>
+                setWidth(
+                  collapsed &&
+                    nextWidth > RAIL_WIDTH &&
+                    nextWidth < ICON_ONLY_AT
+                    ? ICON_ONLY_AT
+                    : nextWidth,
+                )
+              }
             />
           </motion.aside>
         )}

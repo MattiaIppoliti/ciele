@@ -147,6 +147,10 @@ export async function runGatherPhase(
         streamed = reasoning.length;
       }
     } else if (chunk.type === "tool-input-start") {
+      if (chunk.toolName === "createStudyExercise") {
+        // A progress label only: the arguments include the private answer key.
+        emit({ type: "notice", label: "Creating study exercise…" });
+      }
       const component =
         chunk.toolName === RENDER_TABLE_TOOL_NAME
           ? RENDER_TABLE_COMPONENT

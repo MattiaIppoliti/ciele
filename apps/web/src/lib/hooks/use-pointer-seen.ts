@@ -26,10 +26,37 @@ function arm() {
 export function usePointerSeen(): boolean {
   React.useEffect(() => {
     if (seen) return;
-    // Touch devices never see either effect, so they never load one.
-    if (!window.matchMedia("(pointer: fine)").matches) return;
-    window.addEventListener("pointermove", arm, { once: true, passive: true });
-    return () => window.removeEventListener("pointermove", arm);
+    // Touch devices and visitors asking for reduced motion never see either
+    // effect, so don't load the animation chunk for them. Keep the media
+    // listeners so changing either preference can arm the next real pointer
+    // movement without requiring a reload.
+    const pointer = window.matchMedia("(pointer: fine)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let listening = false;
+
+    const onPointerMove = () => arm();
+    const update = () => {
+      const shouldListen = pointer.matches && !reducedMotion.matches;
+      if (shouldListen && !listening) {
+        window.addEventListener("pointermove", onPointerMove, {
+          once: true,
+          passive: true,
+        });
+        listening = true;
+      } else if (!shouldListen && listening) {
+        window.removeEventListener("pointermove", onPointerMove);
+        listening = false;
+      }
+    };
+
+    update();
+    pointer.addEventListener("change", update);
+    reducedMotion.addEventListener("change", update);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      pointer.removeEventListener("change", update);
+      reducedMotion.removeEventListener("change", update);
+    };
   }, []);
 
   return React.useSyncExternalStore(

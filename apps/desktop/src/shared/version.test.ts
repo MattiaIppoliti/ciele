@@ -10,6 +10,13 @@ describe("compareVersions", () => {
     expect(compareVersions("v1.2.3", "v1.2.4")).toBeLessThan(0);
   });
 
+  it("orders the v1.0.6 release bridge before v1.0.7", () => {
+    expect(compareVersions("v1.0.61", "v1.0.6")).toBeGreaterThan(0);
+    expect(compareVersions("v1.0.68", "v1.0.67")).toBeGreaterThan(0);
+    expect(compareVersions("v1.0.69", "v1.0.7")).toBeLessThan(0);
+    expect(compareVersions("v1.0.7", "v1.0.69")).toBeGreaterThan(0);
+  });
+
   it("does not care whether the v is there", () => {
     expect(compareVersions("v1.2.3", "1.2.3")).toBe(0);
     expect(compareVersions("1.2.4", "v1.2.3")).toBeGreaterThan(0);

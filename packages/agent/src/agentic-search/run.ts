@@ -1,6 +1,6 @@
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { Assistant, Flow, KnowledgeSearchResult, SkillSnapshot } from "@agent-hub/core";
-import { PROGRESS_MAX_CHARS } from "@agent-hub/core";
+import { PROGRESS_MAX_CHARS, STUDY_MODE_FLOW_ID } from "@agent-hub/core";
 import {
   mintUntrustedNonce,
   untrustedContentPolicy,
@@ -252,6 +252,9 @@ export function buildSystemPrompt(
           // strictly would never reach for the tool.
           assistant.tools?.builtIns?.renderTable
             ? "You may also show the user a table with the renderTable tool, and doing so does not break the rule above: a tool call is not prose. Use it when the answer compares several things across the same few attributes, call it before readyToAnswer, put only facts you retrieved in it, and still write the answer afterwards, referring to the table instead of repeating it."
+            : undefined,
+          flow.id === STUDY_MODE_FLOW_ID
+            ? "STUDY MODE: the requested answer is an interactive card. After gathering suitable study material, you MUST call createStudyExercise before readyToAnswer. Showing the card is a tool call and is allowed in this phase. Do not substitute prose, a list of questions, an external link, or an ordinary answer. Respect the requested format and use at most five distinct questions. If no suitable material is available, say that you cannot create a grounded exercise and ask for material or a supported topic."
             : undefined,
         ]
       : [

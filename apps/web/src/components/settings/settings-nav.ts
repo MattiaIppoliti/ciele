@@ -1,4 +1,5 @@
 import type { ApiV1Domain } from "@/lib/api-v1/meta";
+import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import {
   Building2,
   CreditCard,
@@ -7,7 +8,6 @@ import {
   Globe,
   KeyRound,
   Sparkles,
-  Brain,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -87,7 +87,7 @@ export const PERSONAL_SETTINGS_TABS: SettingsTab[] = [
     label: "Memory",
     slug: "memory",
     href: "/settings/memory",
-    icon: Brain,
+    icon: ScanTextIcon,
     hint: "What your AI teammates remember about you",
   },
 ];

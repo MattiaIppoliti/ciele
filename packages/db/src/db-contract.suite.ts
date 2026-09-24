@@ -344,9 +344,8 @@ export function describeDbContract(
         // Exactly one Default behavior, sorted last (context.md invariant).
         expect(flows.filter((f) => f.isDefault)).toHaveLength(1);
         expect(flows.at(-1)?.isDefault).toBe(true);
-        // Basic Interaction (#565) is the one built-in that ships configured:
-        // its behaviour IS its action, and an empty built-in would fall through
-        // to generative search, the opposite of a courtesy fast path.
+        // Basic Interaction (#565) is the courtesy Flow: its behaviour is its
+        // action, not retrieval.
         const courtesy = flows.filter((f) => f.actions.includes("basic_reply"));
         expect(courtesy).toHaveLength(1);
         expect(courtesy[0]).toMatchObject({ builtIn: true, enabled: true });
@@ -354,10 +353,11 @@ export function describeDbContract(
         // It sorts first: recognising courtesy late means paying retrieval to
         // answer "hello".
         expect(flows[0]?.id).toBe(courtesy[0].id);
-        // Every other shipped flow starts unconfigured.
+        // The Socratic flow ships configured but disabled. Other built-ins
+        // start with no actions.
         expect(
           flows
-            .filter((f) => f.id !== courtesy[0].id)
+            .filter((f) => f.id !== courtesy[0].id && f.name !== "Socratic flow")
             .every((flow) => flow.actions.length === 0)
         ).toBe(true);
         expect(flows.every((flow) => flow.customMessage === "")).toBe(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { ChevronDown, Table2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@agent-hub/ui";
@@ -109,6 +109,7 @@ export function UsageCard({
   const [tab, setTab] = useState<Tab>("metrics");
   const [hidden, setHidden] = useState<Set<string>>(initialHiddenMetrics);
   const [showTable, setShowTable] = useState(false);
+  const dataTableId = useId();
   const [mountedAt] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
 
@@ -198,7 +199,7 @@ export function UsageCard({
       <CardContent>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Tabs value={tab} onValueChange={(value) => selectTab(value as Tab)}>
-            <TabsList className="h-10 rounded-lg border bg-muted/50 p-1">
+            <TabsList aria-label="Usage chart view" className="h-10 rounded-lg border bg-muted/50 p-1">
               {TABS.map((t) => (
                 <TabsTrigger key={t.id} value={t.id} className="rounded-md px-3 py-1.5">
                   {t.label}
@@ -283,15 +284,18 @@ export function UsageCard({
         <Button
           type="button"
           variant="ghost"
+          aria-expanded={showTable}
+          aria-controls={dataTableId}
           onClick={() => setShowTable((v) => !v)}
           className="text-foreground/80 mt-3 h-auto rounded-lg px-3 py-2 text-sm font-medium"
         >
           <Table2 className="size-4" />
-          View data as table
+          {showTable ? "Hide data table" : "View data as table"}
           <ChevronDown className={`size-4 transition-transform ${showTable ? "rotate-180" : ""}`} />
         </Button>
 
-        {showTable && (
+        <div id={dataTableId} hidden={!showTable}>
+          {showTable && (
           <TableCard
             className="mt-2"
             footer={
@@ -324,7 +328,8 @@ export function UsageCard({
               </TableBody>
             </Table>
           </TableCard>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );

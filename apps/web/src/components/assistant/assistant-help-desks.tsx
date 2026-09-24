@@ -12,7 +12,7 @@ import { toast } from "@/lib/toast";
 import { updateAssistantAction } from "@/app/actions";
 import { Card } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 
 /** Descriptions shorter than this flag a desk as "Needs attention". */
 const AI_RECOGNITION_TARGET = 200;

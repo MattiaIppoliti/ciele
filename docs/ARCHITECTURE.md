@@ -159,7 +159,8 @@ Knowledge Collection (`?c=`). The Overview route retains a compatibility adapter
 > The divergence from CLAUDE.md §4 is no longer "how many sections" but *which*: this repo has
 > **Tools & Skills** and **Goals** (neither exists in the reference map), and does not have the
 > reference's education modules, **AI Tutor** and **AI Feedback** are out of scope and absent
-> from `SETUP_SECTIONS` entirely.
+> from `SETUP_SECTIONS` entirely. Study Mode is available within Tools & Skills, using native
+> Generative UI components rather than a separate AI Tutor page or an external H5P player.
 
 ### 2.4 Key components
 
@@ -831,6 +832,11 @@ stays correct unwired. (Security sealing lives in `@agent-hub/core` and improvem
   whatever the predicate misses. The predicate's shared normaliser/stopwords live in
   `packages/core/src/text.ts`: moved out of the keyword router rather than duplicated.
   Live widgets pick it up on the next **Publication**, snapshots are immutable by design.
+- **Socratic flow**: a built-in, disabled-by-default message Flow on every Assistant. Its
+  conversation-context examples distinguish requests to produce academic work from requests
+  for deadlines, summaries, or study plans. When enabled, it searches knowledge and guides
+  the student with questions instead of completing the work. New Assistants get it from
+  `DEFAULT_FLOWS`; the migration backfills existing Assistants.
 - **Escalation & desks**: the escalation email channel sends for real and reports non-delivery to
   the widget (mailto fallback); **"AI recommended help desk"** is live, the turn resolves the
   selected desks and a cached classifier pick attaches `helpDeskId` to escalation chips.

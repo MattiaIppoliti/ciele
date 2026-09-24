@@ -102,7 +102,7 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
               has to be pinned as well, CSS promotes the other axis to `auto`
               on its own, which puts a stray vertical scrollbar in a 28px-tall
               strip. */}
-          <TabsList className="no-scrollbar min-w-0 overflow-x-auto overflow-y-hidden">
+          <TabsList aria-label="Code example language" className="no-scrollbar min-w-0 overflow-x-auto overflow-y-hidden">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.label}
@@ -118,14 +118,11 @@ export function CodeBlock({ code, language, tabs, className }: CodeBlockProps) {
             onCopy={() => void copyText(active.code, active.code)}
           />
         </div>
-        {/* Only the active panel is mounted. Base UI keeps the outgoing one in
-            the tree while it plays its exit state, and with no exit transition
-            defined here that state never resolves, both panels end up stacked
-            and visible. Keying the single panel by label makes the swap a
-            React unmount instead. */}
-        <TabsContent key={active.label} value={active.label}>
-          <CodeSurface code={active.code} language={active.language} />
-        </TabsContent>
+        {tabs.map((tab) => (
+          <TabsContent key={tab.label} value={tab.label}>
+            <CodeSurface code={tab.code} language={tab.language} />
+          </TabsContent>
+        ))}
       </Tabs>
     );
   }

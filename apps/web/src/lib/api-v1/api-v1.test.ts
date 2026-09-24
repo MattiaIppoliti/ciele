@@ -218,7 +218,7 @@ describe("assistants CRUD over /api/v1 (#620)", () => {
     expect(gone.status).toBe(404);
   });
 
-  it("403s mutations from a viewer key, 400s invalid input, 404s unknown ids", async () => {
+  it("403s mutations from a viewer key, 422s invalid input, 404s unknown ids", async () => {
     const { secret: viewer } = await mintKey("viewer");
     const { secret: editor } = await mintKey("editor");
 
@@ -230,7 +230,7 @@ describe("assistants CRUD over /api/v1 (#620)", () => {
     const invalid = await postAssistant(
       jsonRequest(LIST_URL, "POST", editor, { title: "" })
     );
-    expect(invalid.status).toBe(400);
+    expect(invalid.status).toBe(422);
     expect((await invalid.json()).error.code).toBe("invalid_input");
 
     const missing = await getAssistant(

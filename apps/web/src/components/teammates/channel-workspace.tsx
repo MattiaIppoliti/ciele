@@ -34,6 +34,13 @@ import { GroupComposer } from "@/components/teammates/group-composer";
 import { MentionText } from "@/components/teammates/mention-text";
 import { GeneratedAvatar } from "@/components/ui/generated-avatar";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Assignees,
   type AssigneeGroup,
 } from "@/components/ui/assignees";
@@ -475,19 +482,30 @@ function ChannelSettingsDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="channel-project">Project</Label>
-            <select
-              id="channel-project"
-              className="border-input bg-background h-10 w-full rounded-lg border px-3 text-sm"
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
+            <Select
+              value={projectId || "__no_project__"}
+              onValueChange={(value) =>
+                setProjectId(
+                  value === null || value === "__no_project__" ? "" : value,
+                )
+              }
             >
-              <option value="">No project</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id="channel-project"
+                className="h-10 w-full"
+                aria-label="Project"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__no_project__">No project</SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-muted-foreground text-xs">
               Every teammate here reads the project&apos;s decisions, and writes
               what this channel settles back to them.

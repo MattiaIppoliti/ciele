@@ -55,6 +55,8 @@ export function buildKnowledgeSearcher(opts: {
    * whoever asked, not by retrieval itself, so the caller says.
    */
   usage?: { spenders?: UsageSpenders; surface?: UsageSurface };
+  /** Study requests can arrive immediately after uploading their material. */
+  waitForIndexing?: boolean;
 }): KnowledgeSearcher {
   const { db, assistant, collectionId, conversationId } = opts;
   const embed = createEmbedder(opts.connections, {
@@ -76,7 +78,7 @@ export function buildKnowledgeSearcher(opts: {
       embeddingSpace: embeddingSpaceId(opts.connections),
     });
   };
-  return withGraphEngine({
+  const search = withGraphEngine({
     db,
     assistantId: assistant.id,
     collectionId,
@@ -85,6 +87,45 @@ export function buildKnowledgeSearcher(opts: {
     vector,
     onTrace: opts.onTrace,
   });
+  if (!opts.waitForIndexing) return search;
+
+  // An upload is visible before its staged Concepts are committed. An empty
+  // search during that window does not mean the material is absent. Share one
+  // bounded wait per scope across batched queries (and subsequent tool calls).
+  const readiness = new Map<string, Promise<boolean>>();
+  const awaitIndexing = (scoped: string | null) => {
+    const key = scoped ?? "";
+    let waiting = readiness.get(key);
+    if (!waiting) {
+      waiting = (async () => {
+        const ids = await db.listAssistantSourceIds(assistant.id);
+        const sources = await Promise.all(ids.map((id) => db.getSource(id)));
+        let pending = sources.filter((source) =>
+          source?.status === "processing" &&
+          (!scoped || source.collectionId === scoped)
+        );
+        if (pending.length === 0) return false;
+        const deadline = Date.now() + 10_000;
+        while (pending.length && Date.now() < deadline) {
+          await new Promise((resolve) => setTimeout(resolve, 1_000));
+          pending = (await Promise.all(pending.map((source) => db.getSource(source!.id))))
+            .filter((source) => source?.status === "processing");
+        }
+        if (pending.length) {
+          throw new Error("Study material is still being processed. Please wait until the upload is ready, then try the exercise again.");
+        }
+        return true;
+      })();
+      readiness.set(key, waiting);
+    }
+    return waiting;
+  };
+  return async (query, options) => {
+    const results = await search(query, options);
+    if (results.length) return results;
+    const scoped = options?.scope === "assistant" ? null : collectionId;
+    return await awaitIndexing(scoped) ? search(query, options) : results;
+  };
 }
 
 /**

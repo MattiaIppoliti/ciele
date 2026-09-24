@@ -17,7 +17,12 @@ import {
 } from "@/components/knowledge/application-knowledge-panel";
 import type { PublicApplicationConnection } from "@/lib/application-connections";
 import type { ApplicationOAuthAvailability } from "@/lib/application-oauth";
-import { nextCrawlDue } from "@agent-hub/core";
+import {
+  DEFAULT_PAGE_BUDGET,
+  isUnlimitedPages,
+  NO_PAGE_LIMIT,
+  nextCrawlDue,
+} from "@agent-hub/core";
 
 import { conceptProvenanceView } from "@/lib/okf-provenance";
 import { assistantDocumentsHref } from "@/lib/source-documents";
@@ -84,7 +89,7 @@ import {
 import { FAQ_CSV_MAX_BYTES, serializeFaqCsv } from "@/lib/faq-csv";
 import { validateKnowledgeFile } from "@/lib/storage/assets";
 import { FileUpload, type FileUploadItem } from "@/components/ui/file-upload";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { Badge } from "@agent-hub/ui";
 import { Button } from "@agent-hub/ui";
 import {
@@ -199,12 +204,22 @@ function Collapsible({ title, children }: { title: string; children: React.React
 
 /* ------------------------------ Websites tab ------------------------------ */
 
-function websiteFormDefaults(source?: Source): WebsiteFormInput {
+/**
+ * A new Source asks for no page limit when the Organization has its own Apify
+ * account, because that crawl bills the Organization and runs to the end of
+ * the site; everywhere else it keeps the historic 20.
+ */
+function websiteFormDefaults(
+  source?: Source,
+  apifyOrgConnected = false
+): WebsiteFormInput {
   return {
     name: source?.name ?? "",
     url: source?.config.url ?? "",
     crawlerProvider: source?.config.crawlerProvider ?? "auto",
-    maxPages: source?.config.maxPages ?? 20,
+    maxPages:
+      source?.config.maxPages ??
+      (source || !apifyOrgConnected ? DEFAULT_PAGE_BUDGET : NO_PAGE_LIMIT),
     includeGlobs: (source?.config.includeGlobs ?? []).join("\n"),
     excludeGlobs: (source?.config.excludeGlobs ?? []).join("\n"),
     fetchFiles: source?.config.fetchFiles ?? false,
@@ -382,19 +397,41 @@ function WebsiteConfigFields({
           />
         </div>
         <div className="space-y-2">
-          <Label>Max pages to crawl (1–100,000)</Label>
+          <Label>Max pages to crawl</Label>
           <p className="text-muted-foreground text-xs">
             Up to 30 runs locally, up to 5,000 can use Crawl4AI, and larger
-            corpora require the managed Apify crawler.
+            corpora require the managed Apify crawler. With no limit, Apify on
+            your organization&apos;s own account crawls until the site runs out
+            of pages; any other crawler stops at its own ceiling.
           </p>
-          <Input
-            type="number"
-            min={1}
-            max={100_000}
-            value={form.maxPages ?? 20}
-            onChange={(e) => setForm({ ...form, maxPages: Number(e.target.value) })}
-            className="w-32"
-          />
+          <div className="flex items-center gap-4">
+            <Input
+              type="number"
+              min={1}
+              max={100_000}
+              aria-label="Max pages to crawl"
+              disabled={isUnlimitedPages(form.maxPages)}
+              value={
+                isUnlimitedPages(form.maxPages) ? "" : (form.maxPages ?? DEFAULT_PAGE_BUDGET)
+              }
+              placeholder="No limit"
+              onChange={(e) => setForm({ ...form, maxPages: Number(e.target.value) })}
+              className="w-32"
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={isUnlimitedPages(form.maxPages)}
+                onCheckedChange={(on) =>
+                  setForm({
+                    ...form,
+                    maxPages: on ? NO_PAGE_LIMIT : DEFAULT_PAGE_BUDGET,
+                  })
+                }
+                aria-label="No page limit"
+              />
+              No page limit
+            </label>
+          </div>
         </div>
       </Collapsible>
 
@@ -619,6 +656,7 @@ function WebsitesTab({
   sharedWith,
   crawl4aiAvailable,
   apifyAvailable,
+  apifyOrgConnected,
 }: {
   assistantId: string;
   collectionId: string;
@@ -628,10 +666,14 @@ function WebsitesTab({
   sharedWith: Record<string, string[]>;
   crawl4aiAvailable: boolean;
   apifyAvailable: boolean;
+  /** The Organization connected its own Apify account (Settings → Crawling). */
+  apifyOrgConnected: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState<WebsiteFormInput>(websiteFormDefaults());
+  const [form, setForm] = useState<WebsiteFormInput>(
+    websiteFormDefaults(undefined, apifyOrgConnected)
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [editing, setEditing] = useState<Source | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -731,7 +773,7 @@ function WebsitesTab({
         await addWebsiteSourceAction(assistantId, collectionId, form);
         ingestionStarted();
         toast.success("Crawl started, Documents will appear as they're indexed");
-        setForm(websiteFormDefaults());
+        setForm(websiteFormDefaults(undefined, apifyOrgConnected));
         setShowAdd(false);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Crawl failed");
@@ -2362,6 +2404,7 @@ export function KnowledgeClient({
   sharedWith,
   crawl4aiAvailable = false,
   apifyAvailable = false,
+  apifyOrgConnected = false,
   nullEmbeddingCount = 0,
   applicationConnections,
   applicationImports,
@@ -2383,6 +2426,8 @@ export function KnowledgeClient({
   sharedWith: Record<string, string[]>;
   crawl4aiAvailable?: boolean;
   apifyAvailable?: boolean;
+  /** The Organization connected its own Apify account (Settings → Crawling). */
+  apifyOrgConnected?: boolean;
   /** Concepts whose chunks miss embeddings (lexical-only until re-embedded). */
   nullEmbeddingCount?: number;
   applicationConnections: PublicApplicationConnection[];
@@ -2466,6 +2511,7 @@ export function KnowledgeClient({
               sharedWith={sharedWith}
               crawl4aiAvailable={crawl4aiAvailable}
               apifyAvailable={apifyAvailable}
+              apifyOrgConnected={apifyOrgConnected}
             />
           )}
           {mode === "documents" && (

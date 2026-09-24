@@ -68,6 +68,11 @@ const EXPECTED_ASSISTANT_KEYS = [
 ].sort();
 
 describe("buildPublicationConfig", () => {
+  it("captures Study Mode enablement, formats and instructions for the widget", () => {
+    const assistant = makeAssistant({ tools: { studyMode: { enabled: true, formats: ["flashcards"], instructions: "Use course definitions." } } });
+    const config = buildPublicationConfig(assistant, [], []);
+    expect(config.assistant.tools.studyMode).toEqual(assistant.tools.studyMode);
+  });
   it("captures exactly the snapshot fields (not createdAt/updatedAt)", () => {
     const config = buildPublicationConfig(makeAssistant(), [], []);
     expect(Object.keys(config.assistant).sort()).toEqual(EXPECTED_ASSISTANT_KEYS);

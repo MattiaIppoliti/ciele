@@ -27,13 +27,24 @@ export function compareVersions(a: string, b: string): number {
   const left = parse(a);
   const right = parse(b);
   if (!left || !right) return 0;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     if (left.parts[i] !== right.parts[i]) return left.parts[i]! - right.parts[i]!;
   }
+  const leftPatch = releasePatchRank(left.parts[2]!);
+  const rightPatch = releasePatchRank(right.parts[2]!);
+  if (leftPatch !== rightPatch) return leftPatch - rightPatch;
   if (left.pre === right.pre) return 0;
   if (!left.pre) return 1;
   if (!right.pre) return -1;
   return left.pre < right.pre ? -1 : 1;
+}
+
+/**
+ * Between v1.0.6 and v1.0.7, releases are numbered v1.0.61–v1.0.69.
+ * Read those as 6.1–6.9 so this app still recognizes v1.0.7 as newer.
+ */
+function releasePatchRank(patch: number): number {
+  return patch >= 61 && patch <= 69 ? patch / 10 : patch;
 }
 
 function parse(version: string): { parts: number[]; pre: string } | null {

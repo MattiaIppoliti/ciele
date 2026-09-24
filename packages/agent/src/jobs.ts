@@ -766,9 +766,7 @@ export async function enqueueDocumentMemoryExtractions(
       }
       if (documents.items.length < EXTRACT_MEMORIES_ENQUEUE_PAGE) break;
     }
-    getRuntimeHost().scheduleAfterResponse(() =>
-      runDueJobs(deps, { kinds: [EXTRACT_MEMORIES_KIND], limit: 5 })
-    );
+    drainMemoryExtractionsAfterResponse(deps);
   } catch (error) {
     // Cron is the backstop; the next commit enqueues again.
     console.error("[memory-extraction] enqueue failed:", error);
@@ -847,12 +845,43 @@ export async function enqueueStaleDocumentMemoryExtractions(
     });
     count += 1;
   }
-  if (count > 0) {
-    getRuntimeHost().scheduleAfterResponse(() =>
-      runDueJobs(deps, { kinds: [EXTRACT_MEMORIES_KIND], limit: 5 })
-    );
-  }
+  if (count > 0) drainMemoryExtractionsAfterResponse(deps);
   return count;
+}
+
+/** How long one after-response drain may keep extracting before it yields. */
+export const MEMORY_DRAIN_BUDGET_MS = 45_000;
+const MEMORY_DRAIN_BATCH = 5;
+
+/**
+ * Extracts queued document memories once the response is sent: on the host's
+ * system Db (the claim functions are service-role only, see `getSystemDb`),
+ * and batch after batch until the queue is empty or the time budget is spent,
+ * so a 40-page crawl is not 5 pages now and 35 at the nightly cron. Whatever
+ * is left when the budget runs out is still on the ledger for the next drain.
+ */
+function drainMemoryExtractionsAfterResponse(deps: JobDeps): void {
+  getRuntimeHost().scheduleAfterResponse(() => drainMemoryExtractions(deps));
+}
+
+/** The drain itself, exported for tests. */
+export async function drainMemoryExtractions(
+  deps: JobDeps,
+  options: { budgetMs?: number; now?: () => number } = {}
+): Promise<number> {
+  const now = options.now ?? Date.now;
+  const deadline = now() + (options.budgetMs ?? MEMORY_DRAIN_BUDGET_MS);
+  const db = getRuntimeHost().getSystemDb() ?? deps.db;
+  let claimed = 0;
+  while (now() < deadline) {
+    const batch = await runDueJobs(
+      { ...deps, db },
+      { kinds: [EXTRACT_MEMORIES_KIND], limit: MEMORY_DRAIN_BATCH }
+    );
+    claimed += batch.claimed;
+    if (batch.claimed < MEMORY_DRAIN_BATCH) break;
+  }
+  return claimed;
 }
 
 // ---------------------------------------------------------------------------

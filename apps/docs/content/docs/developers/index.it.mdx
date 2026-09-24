@@ -1,6 +1,6 @@
 ---
 title: Strumenti per sviluppatori
-description: Utilizza una chiave API con l'API Ciele, la CLI o il server MCP.
+description: Usa un'unica API key con l'API di Ciele, la CLI o il server MCP.
 ---
 
 import { Cards, Card } from 'fumadocs-ui/components/card';
@@ -9,7 +9,7 @@ Ciele offre tre interfacce per l'amministrazione programmatica. Ogni interfaccia
 utilizza le stesse operazioni e gli stessi controlli dei ruoli della console di
 amministrazione.
 
-Per scoprire l'operazione sottostante a un controllo della console, apri il
+Per individuare l'operazione associata a un controllo della console, apri il
 [Developer Panel](/developers/developer-panel) su quella pagina.
 
 <Cards>
@@ -22,11 +22,11 @@ Per scoprire l'operazione sottostante a un controllo della console, apri il
 
 ## Modello di connessione comune
 
-Tutte e tre le interfacce richiedono una chiave API dell'organizzazione. Il
-ruolo assegnato controlla le operazioni che la chiave può eseguire.
+Tutte e tre le interfacce richiedono una chiave API dell'organizzazione. Il Role
+assegnato controlla le operazioni che la chiave può utilizzare.
 
 <Mermaid
-  title="Tre client, un'API, un set di operazioni"
+  title="Tre client, una sola API, un unico set di operazioni"
   chart={`
 flowchart TB
   CLI["Ciele CLI"]
@@ -43,8 +43,8 @@ flowchart TB
 `}
 />
 
-Il servizio in hosting utilizza `https://ciele.app` per impostazione
-predefinita. Un'installazione self-hosted utilizza il proprio origin pubblico.
+Il servizio ospitato utilizza `https://ciele.app` per impostazione predefinita.
+Un'installazione self-hosted utilizza il proprio public origin.
 
 <Callout title="Use the minimum Role">
 Create a Viewer key for read operations. Create a higher-role key only when the client must change data or publish an Assistant. A Viewer key is not a read-only agent: it can also curate the Inbox (pin, leave feedback, delete a conversation).
@@ -52,9 +52,9 @@ Create a Viewer key for read operations. Create a higher-role key only when the 
 
 ## Domini disponibili
 
-L'API attuale include Assistenti, Flussi, Conoscenza, pubblicazione,
-conversazioni in Posta in arrivo e Miglioramenti.
+La [API reference](/api-reference) elenca tutte le operazioni `/api/v1`
+disponibili per dominio.
 
 L'API non espone tutte le funzioni della console. Ad esempio, il caricamento
-dell'avatar e la creazione di un miglioramento rimangono disponibili solo dalla
+dell'avatar e la creazione di un Improvement rimangono disponibili solo nella
 console.

@@ -50,6 +50,7 @@ interface SelectContextValue {
   value: string | undefined;
   open: boolean;
   setOpen: (open: boolean) => void;
+  restoreFocus: () => void;
   select: (value: string) => void;
   register: (value: string, label: string) => void;
   unregister: (value: string) => void;
@@ -98,13 +99,20 @@ export function Select({
   const controlled = value !== undefined;
   const current = controlled ? value : internal;
 
+  const restoreFocus = useCallback(() => {
+    rootRef.current
+      ?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${baseId}-trigger`)}`)
+      ?.focus({ preventScroll: true });
+  }, [baseId]);
+
   const select = useCallback(
     (next: string) => {
       if (!controlled) setInternal(next);
       onValueChange?.(next);
       setOpen(false);
+      restoreFocus();
     },
-    [controlled, onValueChange],
+    [controlled, onValueChange, restoreFocus],
   );
 
   const register = useCallback((v: string, label: string) => {
@@ -122,10 +130,20 @@ export function Select({
   // close on outside pointer / escape
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      restoreFocus();
+      setOpen(false);
+    };
     const onPointer = (e: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node))
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         setOpen(false);
+        window.requestAnimationFrame(() => {
+          const listbox = rootRef.current?.querySelector('[role="listbox"]');
+          if (listbox?.contains(document.activeElement)) restoreFocus();
+        });
+      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onPointer);
@@ -133,13 +151,14 @@ export function Select({
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pointerdown", onPointer);
     };
-  }, [open]);
+  }, [open, restoreFocus]);
 
   const ctx = useMemo<SelectContextValue>(
     () => ({
       value: current,
       open,
       setOpen,
+      restoreFocus,
       select,
       register,
       unregister,
@@ -154,6 +173,7 @@ export function Select({
     [
       current,
       open,
+      restoreFocus,
       select,
       register,
       unregister,
@@ -194,11 +214,23 @@ export function SelectTrigger({ className, children }: SelectTriggerProps) {
     <motion.button
       type="button"
       id={ctx.triggerId}
+      data-slot="animated-select-trigger"
       disabled={ctx.disabled}
       aria-haspopup="listbox"
       aria-expanded={ctx.open}
       aria-controls={ctx.listId}
       onClick={() => ctx.setOpen(!ctx.open)}
+      onKeyDown={(event) => {
+        if (
+          !ctx.open &&
+          (event.key === "ArrowDown" ||
+            event.key === "ArrowUp" ||
+            (event.altKey && event.key === "ArrowDown"))
+        ) {
+          event.preventDefault();
+          ctx.setOpen(true);
+        }
+      }}
       // Gooey: the edge facing the panel snaps flat (panel attached) then rounds
       // back once the panel pulls away, the two pinch apart.
       initial={false}
@@ -259,9 +291,33 @@ export interface SelectContentProps {
 export function SelectContent({ className, children }: SelectContentProps) {
   const ctx = useSelectContext("SelectContent");
   const innerRef = useRef<HTMLDivElement>(null);
+  const typeaheadRef = useRef("");
+  const typeaheadTimerRef = useRef<number | null>(null);
   const [height, setHeight] = useState(0);
   const open = ctx.open;
   const { setPlacement } = ctx;
+
+  useEffect(
+    () => () => {
+      if (typeaheadTimerRef.current !== null)
+        window.clearTimeout(typeaheadTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const options = innerRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="option"]:not(:disabled)',
+      );
+      const selected = innerRef.current?.querySelector<HTMLButtonElement>(
+        '[role="option"][aria-selected="true"]:not(:disabled)',
+      );
+      (selected ?? options?.[0])?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
 
   useLayoutEffect(() => {
     const node = innerRef.current;
@@ -271,7 +327,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  });
+  }, []);
 
   // On open, flip upward when there isn't room below and there's more above.
   useLayoutEffect(() => {
@@ -314,6 +370,59 @@ export function SelectContent({ className, children }: SelectContentProps) {
       aria-labelledby={ctx.triggerId}
       aria-hidden={!open}
       inert={!open}
+      onBlurCapture={(event) => {
+        const next = event.relatedTarget;
+        if (!(next instanceof Node) || !event.currentTarget.contains(next)) {
+          ctx.setOpen(false);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.defaultPrevented) return;
+        const options = Array.from(
+          innerRef.current?.querySelectorAll<HTMLButtonElement>(
+            '[role="option"]:not(:disabled)',
+          ) ?? [],
+        );
+        const activeIndex = options.indexOf(
+          document.activeElement as HTMLButtonElement,
+        );
+        let nextIndex: number | undefined;
+        if (event.key === "ArrowDown")
+          nextIndex = activeIndex < options.length - 1 ? activeIndex + 1 : 0;
+        else if (event.key === "ArrowUp")
+          nextIndex = activeIndex > 0 ? activeIndex - 1 : options.length - 1;
+        else if (event.key === "Home") nextIndex = 0;
+        else if (event.key === "End") nextIndex = options.length - 1;
+        if (nextIndex !== undefined && options[nextIndex]) {
+          event.preventDefault();
+          options[nextIndex].focus({ preventScroll: true });
+          return;
+        }
+        if (
+          event.key.length === 1 &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey
+        ) {
+          typeaheadRef.current += event.key.toLocaleLowerCase();
+          if (typeaheadTimerRef.current !== null)
+            window.clearTimeout(typeaheadTimerRef.current);
+          typeaheadTimerRef.current = window.setTimeout(() => {
+            typeaheadRef.current = "";
+            typeaheadTimerRef.current = null;
+          }, 700);
+          const match = options.find((option) =>
+            (option.textContent ?? "")
+              .trim()
+              .toLocaleLowerCase()
+              .startsWith(typeaheadRef.current),
+          );
+          if (match) {
+            event.preventDefault();
+            match.focus({ preventScroll: true });
+          }
+        }
+      }}
       initial={false}
       animate={
         ctx.reduce
@@ -333,7 +442,7 @@ export function SelectContent({ className, children }: SelectContentProps) {
       }
       transition={
         ctx.reduce
-          ? { duration: 0.12 }
+          ? { duration: 0 }
           : {
               opacity: open
                 ? { duration: 0.18 }
@@ -389,22 +498,28 @@ export function SelectItem({
   children,
 }: SelectItemProps) {
   const ctx = useSelectContext("SelectItem");
-  const selected = ctx.value === value;
+  const { value: selectedValue, reduce, register, unregister, select } = ctx;
+  const selected = selectedValue === value;
   const label = typeof children === "string" ? children : value;
 
   useLayoutEffect(() => {
-    ctx.register(value, label);
-    return () => ctx.unregister(value);
-  }, [ctx.register, ctx.unregister, value, label]);
+    register(value, label);
+    return () => unregister(value);
+  }, [register, unregister, value, label]);
 
   return (
-    <motion.li variants={ctx.reduce ? undefined : ITEM_VARIANTS}>
+    <motion.div
+      role="presentation"
+      variants={reduce ? undefined : ITEM_VARIANTS}
+    >
       <button
         type="button"
+        data-slot="animated-select-item"
         role="option"
         aria-selected={selected}
+        tabIndex={-1}
         disabled={disabled}
-        onClick={() => ctx.select(value)}
+        onClick={() => select(value)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm outline-none transition-colors",
           selected
@@ -417,6 +532,6 @@ export function SelectItem({
         {children}
         {selected ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
       </button>
-    </motion.li>
+    </motion.div>
   );
 }

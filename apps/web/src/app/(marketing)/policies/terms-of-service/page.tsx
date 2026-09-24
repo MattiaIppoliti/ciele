@@ -1,11 +1,11 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Terms of Service | Ciele",
-  description:
-    "The terms that govern your use of the Ciele platform and AI assistants.",
-};
+  description: "The terms that govern your use of the Ciele platform and AI assistants.",
+  path: "/policies/terms-of-service",
+});
 
 const SECTIONS: LegalSection[] = [
   {

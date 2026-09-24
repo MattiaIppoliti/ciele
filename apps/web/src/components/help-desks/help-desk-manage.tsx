@@ -29,7 +29,7 @@ import {
 import { TicketingIntegrationSection } from "@/components/help-desks/ticketing-integration";
 import { Button } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CHANNEL_KINDS, CHANNEL_KIND_ORDER } from "@/lib/support-channels";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-modal";

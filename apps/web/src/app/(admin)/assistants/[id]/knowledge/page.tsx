@@ -131,6 +131,7 @@ export default async function KnowledgePage({
         sharedWith={sharedAssistantNames(id, linkedItems)}
         crawl4aiAvailable={crawlerCapabilities.crawl4aiConfigured}
         apifyAvailable={crawlerCapabilities.apifyConfigured || Boolean(orgApify)}
+        apifyOrgConnected={Boolean(orgApify)}
         nullEmbeddingCount={nullEmbeddingCount}
         applicationConnections={applicationConnections.map(redactApplicationConnection)}
         applicationImports={applicationImports}

@@ -14,6 +14,8 @@ export type LegalBlock =
 export interface LegalSection {
   id: string;
   title: string;
+  /** Optional timeline/date label used by release-note pages. */
+  navLabel?: string;
   blocks: LegalBlock[];
 }
 
@@ -105,12 +107,14 @@ export function LegalDoc({
   lastUpdated,
   intro,
   sections,
+  showCallout = true,
 }: {
   eyebrow: string;
   title: string;
   lastUpdated: string;
   intro: ReactNode;
   sections: LegalSection[];
+  showCallout?: boolean;
 }) {
   return (
     <main className="relative px-4 pb-8 pt-28 sm:px-8 sm:pt-36 lg:px-12">
@@ -144,7 +148,7 @@ export function LegalDoc({
                     <span className="text-muted-foreground/60 tabular-nums">
                       {String(index + 1).padStart(2, "0")}
                     </span>
-                    <span>{section.title}</span>
+                    <span>{section.navLabel ?? section.title}</span>
                   </a>
                 </li>
               ))}
@@ -173,13 +177,15 @@ export function LegalDoc({
           </div>
         </div>
 
-        <CloudCallout
-          expression="sleepy"
-          eyebrow="The fine print"
-          title="Even our cloud nods off here"
-          body="Short where it can be, precise where it must be. If anything in these pages is unclear, write to us and a human will answer."
-          cta={{ label: "Contact us", href: "/contact/sales" }}
-        />
+        {showCallout ? (
+          <CloudCallout
+            expression="sleepy"
+            eyebrow="The fine print"
+            title="Even our cloud nods off here"
+            body="Short where it can be, precise where it must be. If anything in these pages is unclear, write to us and a human will answer."
+            cta={{ label: "Contact us", href: "/contact/sales" }}
+          />
+        ) : null}
       </div>
     </main>
   );

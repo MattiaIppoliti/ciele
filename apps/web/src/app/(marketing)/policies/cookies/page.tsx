@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import { CookiePreferencesButton } from "@/components/cookie-consent/cookie-preferences-button";
 import { LegalDoc, type LegalBlock, type LegalSection } from "@/components/marketing/legal-doc";
 import {
@@ -9,11 +9,11 @@ import {
   type ConsentCategory,
 } from "@/lib/cookie-consent";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Cookie Notice | Ciele",
-  description:
-    "Which cookies and similar technologies Ciele uses, what each one is for, how long it lasts, and how to change or withdraw your choice.",
-};
+  description: "Which cookies and similar technologies Ciele uses, what each one is for, how long it lasts, and how to change or withdraw your choice.",
+  path: "/policies/cookies",
+});
 
 const LINK_CLASS = "text-foreground font-medium underline underline-offset-4";
 

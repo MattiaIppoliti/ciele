@@ -6,10 +6,10 @@ description: Utilisez une seule clé API avec l'API Ciele, la CLI ou le serveur 
 import { Cards, Card } from 'fumadocs-ui/components/card';
 
 Ciele propose trois interfaces pour l'administration par programmation. Chaque
-interface utilise les mêmes opérations et les mêmes vérifications de rôle que la
-console d'administration.
+interface utilise les mêmes opérations et les mêmes vérifications de rôles que
+la console d'administration.
 
-Pour trouver l'opération correspondant à un contrôle de la console, ouvrez le
+Pour identifier l'opération associée à un contrôle de la console, ouvrez le
 [Developer Panel](/developers/developer-panel) sur cette page.
 
 <Cards>
@@ -22,8 +22,8 @@ Pour trouver l'opération correspondant à un contrôle de la console, ouvrez le
 
 ## Modèle de connexion commun
 
-Les trois interfaces nécessitent une clé API d'organisation. Le rôle attribué
-contrôle les opérations que la clé peut utiliser.
+Les trois interfaces nécessitent une clé API d'organisation. Le Role attribué
+détermine les opérations que la clé peut utiliser.
 
 <Mermaid
   title="Trois clients, une seule API, un seul ensemble d'opérations"
@@ -52,9 +52,9 @@ Create a Viewer key for read operations. Create a higher-role key only when the 
 
 ## Domaines disponibles
 
-L'API actuelle comprend les Assistants, les Flux, la Connaissance, la
-publication, les conversations de la boîte de réception et les Améliorations.
+La [API reference](/api-reference) répertorie toutes les opérations `/api/v1`
+disponibles, par domaine.
 
 L'API n'expose pas toutes les fonctions de la console. Par exemple, le
-téléchargement d'avatar et la création d'amélioration restent réservés à la
+téléchargement d'avatar et la création d'Improvement restent réservés à la
 console.

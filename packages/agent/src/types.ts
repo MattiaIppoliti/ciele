@@ -283,7 +283,7 @@ export type ChatReplyPart =
  * component the chat clients ship. Adding one is a component, a zod schema and
  * a spec in `render-tools.ts`, never a free-text string the model made up.
  */
-export type ReplyComponentName = "table";
+export type ReplyComponentName = "table" | "study_exercise";
 
 /**
  * Which knowledge-scope tier a search pass targets (Agentic Search #155).
@@ -626,6 +626,7 @@ export interface WebhookRuntime {
 }
 
 export interface ActionContext {
+  chooseStudyFormat?: (formats: import("@agent-hub/core").StudyFormat[], topic: string) => Promise<import("@agent-hub/core").StudyFormat>;
   /** Stable key rooted in the durable turn claim, unique to this action slot. */
   idempotencyKey?: string;
   /** Position of the running action in the Flow; the review gate stores it as its cursor. */

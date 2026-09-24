@@ -4,6 +4,7 @@ import { CRAWL4AI_MAX_CRAWL_PAGES } from "./crawl4ai";
 import {
   browserCrawlerFor,
   crawlCharacteristicsFromConfig,
+  crawlOptionsFromConfig,
   localCrawlMissedContent,
   resolvedProviderForRun,
   resolveWebsiteCrawlerProvider,
@@ -261,5 +262,22 @@ describe("browserCrawlerFor (escalation target)", () => {
     expect(browserCrawlerFor(caps(true, false))).toBe("crawl4ai");
     expect(browserCrawlerFor(caps(false, true))).toBe("apify");
     expect(browserCrawlerFor(caps(false, false))).toBeNull();
+  });
+});
+
+describe("no page limit", () => {
+  it("is more than either self-run crawler holds, so Automatic sends it to Apify", () => {
+    const traits = crawlCharacteristicsFromConfig({ maxPages: 0 });
+    expect(traits).toMatchObject({ exceedsLocalCap: true, exceedsSelfHostedCap: true });
+    expect(
+      resolveWebsiteCrawlerProvider("auto", traits, { apifyConfigured: true, crawl4aiConfigured: true })
+    ).toEqual({ provider: "apify" });
+  });
+
+  it("stays unlimited on the org's account and is clamped on the platform's", () => {
+    expect(crawlOptionsFromConfig({ maxPages: 0 }, "organization").maxPages).toBe(0);
+    expect(crawlOptionsFromConfig({ maxPages: 0 }, "platform").maxPages).toBe(100_000);
+    expect(crawlOptionsFromConfig({ maxPages: 0 }).maxPages).toBe(100_000);
+    expect(crawlOptionsFromConfig({ maxPages: 40 }, "platform").maxPages).toBe(40);
   });
 });

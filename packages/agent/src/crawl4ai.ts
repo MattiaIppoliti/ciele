@@ -22,6 +22,7 @@
  * (#107), while these mappings are unit-tested off the network here.
  */
 
+import { pageBudget } from "@agent-hub/core";
 import type { CrawledPage, CrawlOptions } from "./apify";
 import { bearerRequest } from "./bearer-fetch";
 import { redactBearerSecrets, trimTrailingSlash } from "./redact";
@@ -91,10 +92,7 @@ export function buildCrawl4aiJob(
   url: string,
   options: CrawlOptions = {}
 ): Crawl4aiCrawlJob {
-  const maxPages = Math.min(
-    options.maxPages ?? 20,
-    CRAWL4AI_MAX_CRAWL_PAGES
-  );
+  const maxPages = pageBudget(options.maxPages, CRAWL4AI_MAX_CRAWL_PAGES);
   const include = (options.includeGlobs ?? []).filter(Boolean);
   const exclude = (options.excludeGlobs ?? []).filter(Boolean);
 

@@ -154,6 +154,6 @@ describe("POST /api/v1/knowledge/sources", () => {
         body: JSON.stringify({ kind: "text", name: "Pasted", text: "long enough text" }),
       })
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONSOLE_PATH_PREFIXES,
   MARKETING_PATH_PREFIXES,
+  MARKETING_SITEMAP_PATHS,
   isConsolePath,
   isMarketingPath,
 } from "./console-routes";
@@ -76,6 +77,17 @@ describe("marketing routes", () => {
       .sort();
 
     expect([...MARKETING_PATH_PREFIXES].sort()).toEqual(onDisk);
+  });
+
+  it("lists every indexable static marketing page in the sitemap", () => {
+    const onDisk = readdirSync(MARKETING_GROUP, { recursive: true })
+      .filter((path): path is string => typeof path === "string")
+      .filter((path) => path === "page.tsx" || path.endsWith("/page.tsx"))
+      .map((path) => `/${path.replace(/\/page\.tsx$/, "")}`)
+      .filter((path) => !path.includes("[") && path !== "/newsletter/confirm")
+      .sort();
+
+    expect([...MARKETING_SITEMAP_PATHS].sort()).toEqual(onDisk);
   });
 
   it("claims each marketing subtree", () => {

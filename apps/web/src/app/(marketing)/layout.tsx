@@ -31,7 +31,7 @@ export default function MarketingLayout({
       {/* Serif headings are a marketing-only brand accent (see globals.css).
           `display:contents` scopes the class without adding a layout box. */}
       <div className="marketing-serif contents">
-        <ThemeProvider>
+        <ThemeProvider scope="marketing">
           {/* Interface sounds (#817), mounted per route group and never in the
               root layout: the widget inherits only the root. Reads nothing, so
               the group still prerenders; the libraries load on first gesture. */}

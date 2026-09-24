@@ -33,6 +33,8 @@ const VIEWPORT_PADDING = 8;
 const LONG_PRESS_DELAY = 520;
 const LONG_PRESS_TOLERANCE = 10;
 const MORPH_DURATION = 0.3;
+const FOCUSABLE_SELECTOR =
+  'a[href], area[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [contenteditable="true"], [tabindex]:not([tabindex="-1"]):not([aria-disabled="true"])';
 
 /** `useLayoutEffect` warns when a client component is prerendered on the server. */
 const useIsomorphicLayoutEffect =
@@ -45,13 +47,19 @@ type TriggerElementProps = React.HTMLAttributes<HTMLElement> & {
 interface ContextMenuContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
-  openAt: (point: MenuPoint, modality: OpenModality) => void;
+  openAt: (
+    point: MenuPoint,
+    modality: OpenModality,
+    returnFocusElement?: HTMLElement | null
+  ) => void;
   point: MenuPoint;
   modality: OpenModality;
   invocation: number;
   menuId: string;
   activeId: string | null;
   setActiveId: (id: string | null) => void;
+  restoreFocus: () => void;
+  moveFocusBeyondTrigger: (backwards: boolean) => boolean;
   reduce: boolean;
 }
 
@@ -67,6 +75,80 @@ const PORTAL_ATTR = "data-context-menu-portal";
 
 function triggerElementFor(menuId: string) {
   return document.querySelector<HTMLElement>(`[${TRIGGER_ATTR}="${menuId}"]`);
+}
+
+function isFocusableElement(element: HTMLElement) {
+  return (
+    element.tabIndex >= 0 &&
+    !element.matches(":disabled") &&
+    element.getAttribute("aria-disabled") !== "true" &&
+    !element.closest('[inert], [aria-hidden="true"]')
+  );
+}
+
+function focusableWithinTrigger(trigger: HTMLElement, target?: EventTarget | null) {
+  const eventTarget = target instanceof HTMLElement ? target : null;
+  const closest = eventTarget?.closest<HTMLElement>(FOCUSABLE_SELECTOR);
+  if (closest && trigger.contains(closest) && isFocusableElement(closest)) {
+    return closest;
+  }
+  const first = Array.from(
+    trigger.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+  ).find(isFocusableElement);
+  if (first) return first;
+  return isFocusableElement(trigger) ? trigger : null;
+}
+
+function restoreMenuFocus(menuId: string, preferred: HTMLElement | null) {
+  const trigger = triggerElementFor(menuId);
+  if (!trigger) return;
+  const target =
+    preferred?.isConnected && isFocusableElement(preferred)
+      ? preferred
+      : focusableWithinTrigger(trigger);
+  target?.focus({ preventScroll: true });
+}
+
+function moveFocusPastTrigger(
+  menuId: string,
+  preferred: HTMLElement | null,
+  backwards: boolean
+) {
+  const trigger = triggerElementFor(menuId);
+  if (!trigger) return false;
+  const portal = document.querySelector<HTMLElement>(
+    `[${PORTAL_ATTR}="${menuId}"]`
+  );
+  const candidates = Array.from(
+    document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+  ).filter(
+    (element) =>
+      element !== portal &&
+      !portal?.contains(element) &&
+      isFocusableElement(element) &&
+      element.getClientRects().length > 0
+  );
+  const origin =
+    preferred?.isConnected && isFocusableElement(preferred)
+      ? preferred
+      : focusableWithinTrigger(trigger);
+  const index = origin ? candidates.indexOf(origin) : -1;
+  let next: HTMLElement | undefined;
+
+  if (index >= 0) {
+    next = candidates[index + (backwards ? -1 : 1)];
+  } else {
+    const related = candidates.filter((candidate) => {
+      const relation = trigger.compareDocumentPosition(candidate);
+      return backwards
+        ? Boolean(relation & Node.DOCUMENT_POSITION_PRECEDING)
+        : Boolean(relation & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    next = backwards ? related.at(-1) : related[0];
+  }
+
+  next?.focus({ preventScroll: true });
+  return Boolean(next);
 }
 
 /** `useSyncExternalStore` subscription for a value that never changes. */
@@ -177,6 +259,7 @@ export function ContextMenu({
   const [modality, setModality] = useState<OpenModality>("pointer");
   const [invocation, setInvocation] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const controlled = controlledOpen !== undefined;
   const open = controlled ? controlledOpen : internalOpen;
   const menuId = useId();
@@ -192,7 +275,12 @@ export function ContextMenu({
   );
 
   const openAt = useCallback(
-    (nextPoint: MenuPoint, nextModality: OpenModality) => {
+    (
+      nextPoint: MenuPoint,
+      nextModality: OpenModality,
+      returnFocusElement?: HTMLElement | null
+    ) => {
+      returnFocusRef.current = returnFocusElement ?? null;
       setPoint(nextPoint);
       setModality(nextModality);
       setInvocation((current) => current + 1);
@@ -200,6 +288,16 @@ export function ContextMenu({
       setOpen(true);
     },
     [setOpen]
+  );
+
+  const restoreFocus = useCallback(
+    () => restoreMenuFocus(menuId, returnFocusRef.current),
+    [menuId]
+  );
+  const moveFocusBeyondTrigger = useCallback(
+    (backwards: boolean) =>
+      moveFocusPastTrigger(menuId, returnFocusRef.current, backwards),
+    [menuId]
   );
 
   useEffect(() => {
@@ -232,6 +330,8 @@ export function ContextMenu({
       menuId,
       activeId,
       setActiveId,
+      restoreFocus,
+      moveFocusBeyondTrigger,
       reduce,
     }),
     [
@@ -243,6 +343,8 @@ export function ContextMenu({
       invocation,
       menuId,
       activeId,
+      restoreFocus,
+      moveFocusBeyondTrigger,
       reduce,
     ]
   );
@@ -312,7 +414,8 @@ export function ContextMenuTrigger({
         x: rect.left + Math.min(24, rect.width / 2),
         y: rect.top + rect.height / 2,
       },
-      "keyboard"
+      "keyboard",
+      focusableWithinTrigger(event.currentTarget, event.target)
     );
   };
 
@@ -327,7 +430,11 @@ export function ContextMenuTrigger({
       if (event.defaultPrevented || disabled) return;
       event.preventDefault();
       cancelLongPress();
-      context.openAt({ x: event.clientX, y: event.clientY }, "pointer");
+      context.openAt(
+        { x: event.clientX, y: event.clientY },
+        "pointer",
+        focusableWithinTrigger(event.currentTarget, event.target)
+      );
     },
     onKeyDown,
     onPointerDown,
@@ -450,14 +557,16 @@ export function ContextMenuContent({
   };
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) return;
     if (event.key === "Escape") {
       event.preventDefault();
       context.setOpen(false);
-      triggerElementFor(context.menuId)?.focus();
+      context.restoreFocus();
       return;
     }
     if (event.key === "Tab") {
       context.setOpen(false);
+      if (context.moveFocusBeyondTrigger(event.shiftKey)) event.preventDefault();
       return;
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -601,7 +710,19 @@ function ContextMenuItemBase({
       onClick={() => {
         if (disabled) return;
         onSelect?.();
-        if (closeOnSelect) context.setOpen(false);
+        if (closeOnSelect) {
+          context.setOpen(false);
+          window.requestAnimationFrame(() => {
+            const menu = document.querySelector<HTMLElement>(
+              `[${PORTAL_ATTR}="${context.menuId}"]`,
+            );
+            if (
+              document.activeElement === document.body ||
+              menu?.contains(document.activeElement)
+            )
+              context.restoreFocus();
+          });
+        }
       }}
       className={cn(
         "relative isolate flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[0.8125rem] outline-none select-none",

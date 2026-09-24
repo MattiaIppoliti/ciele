@@ -1,12 +1,16 @@
 ---
 title: API v1
-description: Rufen Sie die aktuelle Ciele-Administrations-API mit einem Organisations-API-Schlüssel auf.
+description: Rufen Sie die aktuelle Ciele-Verwaltungs-API mit einem Organisations-API-Schlüssel auf.
 ---
 
-Die Ciele-API verwendet JSON über HTTP. Alle Routen der Version 1 beginnen mit
+Die Ciele-API verwendet JSON über HTTP. Alle Version-1-Routen beginnen mit
 `/api/v1`.
 
-## Entdecken Sie die Bereitstellung
+[Open the interactive API reference](/api-reference), um alle öffentlichen
+Operationen nach Domänen zu durchsuchen. Laden Sie dort den aktuellen
+OpenAPI-Vertrag als JSON oder YAML herunter.
+
+## Die Bereitstellung entdecken
 
 Verwenden Sie diese öffentlichen Endpunkte, bevor Sie einen Client generieren:
 
@@ -18,7 +22,7 @@ GET /api/v1/openapi.json
 `meta` listet die API-Version und die verfügbaren Domains auf. `openapi.json`
 gibt den maschinenlesbaren Vertrag für die Bereitstellung zurück.
 
-## Authentifizieren Sie eine Anfrage
+## Eine Anfrage authentifizieren
 
 Senden Sie den API-Schlüssel als Bearer-Token:
 
@@ -27,12 +31,12 @@ curl https://ciele.app/api/v1/whoami \
   --header "Authorization: Bearer $CIELE_API_KEY"
 ```
 
-Ersetzen Sie für Self-Hosting `https://ciele.app` durch den öffentlichen
-Ciele-Ursprung.
+Für Self-Hosting ersetzen Sie `https://ciele.app` durch den öffentlichen
+Ciele-Origin.
 
-## Antwortfehler
+## Fehler bei der Antwort
 
-Fehler verwenden einen JSON-Umschlag:
+Fehler verwenden einen JSON-Envelope:
 
 ```json
 {
@@ -47,52 +51,63 @@ Häufige Statuscodes sind:
 
 | Status | Bedeutung |
 | --- | --- |
-| `400` | Die Anfragedaten sind ungültig. |
-| `401` | Der Schlüssel fehlt, ist ungültig oder wurde widerrufen. |
-| `403` | Die Role des Schlüssels erlaubt den Vorgang nicht. |
+| `400` | Der Anfrageinhalt ist fehlerhaft oder eine erforderliche Datei fehlt. |
+| `401` | Der Schlüssel fehlt, ist ungültig oder wurde gesperrt. |
+| `403` | Die Rolle des Schlüssels erlaubt den Vorgang nicht. |
 | `404` | Die Ressource existiert nicht in der Organisation. |
-| `409` | Die Anforderung steht im Widerspruch zum aktuellen Status. |
+| `409` | Die Anfrage steht im Konflikt mit dem aktuellen Zustand. |
+| `422` | Die verarbeiteten Eingaben bestehen die Validierung nicht. |
 
 ## Paginierung
 
-Listenoperationen akzeptieren die Parameter `limit` und `cursor`, wenn der
-Endpunkt Paginierung unterstützt. Verwenden Sie den zurückgegebenen Cursor für
-die nächste Anfrage.
+Verwenden Sie die bei jeder Operation angezeigten Paginierungsparameter.
+Cursorbasierte Listen geben `nextCursor` zurück. Geben Sie es bei der nächsten
+Anfrage als `cursor` weiter.
 
 ## Sichere Wiederholungsversuche
 
-Mutationsrouten können einen `Idempotency-Key`-Header akzeptieren. Verwenden Sie
-denselben Wert nur dann wieder, wenn Sie dieselbe logische Operation erneut
-versuchen.
+Mutation-Routen können einen `Idempotency-Key`-Header akzeptieren. Verwenden Sie
+denselben Wert nur dann erneut, wenn Sie dieselbe logische Operation
+wiederholen.
 
-## Aktuelle Domains
+## Häufig verwendete Domains
 
-- Assistenten: list, read, create, update, duplicate und delete.
-- Flows: auflisten, lesen, erstellen, aktualisieren, neu anordnen und löschen.
-- Wissen: Verwalten Sie Sammlungen, Quellen, FAQs und die Assistant-Links für
-  jede Quelle.
-- Veröffentlichung: Status lesen, Veröffentlichung durchführen, Veröffentlichung
-  zurückziehen und eine Veröffentlichung wiederherstellen.
-- Posteingang: Konversationen überprüfen, exportieren, anheften, mit Anmerkungen
-  versehen, bewerten und löschen.
+Dies sind Beispiele. Die [API-Referenz](/api-reference) listet den
+vollständigen, aktuellen Satz von Operationen auf.
+
+- Assistants: auflisten, lesen, erstellen, aktualisieren, duplizieren und
+  löschen.
+- Flows: list, read, create, update, reorder und delete.
+- Knowledge: Verwalten Sie Collections, Sources, FAQs und die Assistant-Links
+  für jede Source.
+- Publication: Status lesen, veröffentlichen, Veröffentlichung aufheben und eine
+  Publication wiederherstellen.
+- Inbox: Conversations überprüfen, exportieren, anheften, kommentieren, bewerten
+  und löschen.
 - Verbesserungen: Elemente auflisten, lesen und aktualisieren.
 - Entities und Memories: Verwalten Sie typisierte Organisationsdaten und das
   Löschen von Memories innerhalb eines bestimmten Geltungsbereichs.
-- SSO: Verwalten Sie Identity Claims, Verbindungseinstellungen, Validierung und
+- SSO: Verwalten von Identity Claims, Verbindungseinstellungen, Validierung und
   Trennung.
-- Helpdesks: Verwalten Sie Desks, Eskalationskanäle, Bestellungen und
-  ServiceNow.
+- Help Desks: Verwalten Sie Desks, Eskalationskanäle, Ordering und ServiceNow.
 - Teammates: Verwalten Sie AI Teammates und lesen Sie Ihre eigenen
   Teammate-Konversationen.
-- Kanäle: Lesen und gestalten Sie die Teammate-Kanäle, in denen Sie sich
-  befinden, sowie deren Listen. Es gibt keinen Endpunkt zum Senden einer
-  Nachricht: Eine Nachricht startet eine Kette von Teammate-Antworten, die in
+- Channels: Lesen und gestalten Sie die Teammate-Channels, in denen Sie Mitglied
+  sind, sowie deren Roster. Es gibt keinen Endpunkt, um eine Nachricht zu
+  senden: Eine Nachricht startet eine Kette von Antworten der Teammates, die in
   der Konsole ausgeführt wird.
-- Konfiguration: Verwalten Sie Skills, Assistant Goals und operative Alerts.
-- Organisation: Verwalten Sie Einstellungen, Mitglieder, Einladungen und
-  API-Schlüssel.
+- Configuration: Verwalten Sie Skills, Assistant Goals und betriebliche Alerts.
+- Organization: Verwalten Sie Einstellungen, Members, Invites und API keys.
 - Integrations: Verwalten Sie Assistant-API-Integrationen und
-  Modell-Provider-Verbindungen.
+  Model-Provider-Connections.
+- Usage: Lesen Sie die Zähler des Plans und sehen Sie, wer die Credits eines
+  Fensters verbraucht hat. Schreibgeschützt. Die Aufschlüsselung der Ausgaben
+  hält ihre Dimensionen getrennt. In einer Antwort werden sowohl das
+  Teammitglied, das den Vorgang ausgeführt hat, als auch der Kollege, der die
+  Anfrage gestellt hat, genannt. Wenn man also die Dimensionen zusammenzählt,
+  wird der Vorgang doppelt gezählt. Der Kauf von Credits hat keinen Endpunkt:
+  Ein Kauf gehört auf einen Bildschirm, auf dem eine Person einen Betrag
+  bestätigt.
 
-Verwenden Sie das OpenAPI-Dokument für die genauen Anforderungsfelder und
-Antwortschemata.
+Verwenden Sie das OpenAPI-Dokument für Request-Felder, die Authentifizierung und
+die dokumentierten Response-Statuscodes.

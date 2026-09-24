@@ -308,6 +308,7 @@ describe("searchKnowledge tool", () => {
     expect(output).toEqual({
       results: [
         {
+          conceptId: "k1",
           concept: "Tuition fees",
           collection: "General",
           source: "Website",

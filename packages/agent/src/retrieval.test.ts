@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Db } from "@agent-hub/db";
 import type { KnowledgeSearchResult } from "@agent-hub/core";
-import { KNOWLEDGE_SEARCH_LIMIT, buildCollectionSearcher } from "./retrieval";
+import { KNOWLEDGE_SEARCH_LIMIT, buildCollectionSearcher, buildKnowledgeSearcher } from "./retrieval";
 
 /**
  * The Teammate searcher's union (#767 follow-up).
@@ -133,5 +133,70 @@ describe("buildCollectionSearcher", () => {
         (result, i) => i === 0 || results[i - 1].similarity >= result.similarity
       )
     ).toBe(true);
+  });
+});
+
+describe("Study Mode during ingestion", () => {
+  afterEach(() => vi.useRealTimers());
+
+  function fixture(collectionId: string | null = null) {
+    let ready = false;
+    const searchChunks = vi.fn(async () => ready ? [hit("iso", "ISO 27001", 1)] : []);
+    const getSource = vi.fn(async () => ({ id: "src-1", collectionId: "col-1", status: ready ? "ready" : "processing" }));
+    const listAssistantSourceIds = vi.fn(async () => ["src-1"]);
+    const search = buildKnowledgeSearcher({
+      db: { searchChunks, getSource, listAssistantSourceIds } as unknown as Db,
+      connections: [], assistant: { id: "assistant-1", organizationId: "org-1", knowledgeEngine: "vector" },
+      collectionId, conversationId: null, waitForIndexing: true,
+    });
+    return { search, searchChunks, getSource, listAssistantSourceIds, finish: () => { ready = true; } };
+  }
+
+  it("retries after the uploaded material is committed, sharing the wait across batched queries", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const result = Promise.all([f.search("ISO"), f.search("ISO 27001")]);
+    await vi.advanceTimersByTimeAsync(2_000);
+    f.finish();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect((await result).map((hits) => hits[0]?.conceptId)).toEqual(["iso", "iso"]);
+    expect(f.listAssistantSourceIds).toHaveBeenCalledTimes(1);
+    expect(f.searchChunks).toHaveBeenCalledTimes(4);
+  });
+
+  it("reports processing instead of missing knowledge after a bounded wait, without waiting again", async () => {
+    vi.useFakeTimers();
+    const f = fixture();
+    const result = expect(f.search("ISO")).rejects.toThrow("still being processed");
+    await vi.advanceTimersByTimeAsync(10_000);
+    await result;
+    await expect(f.search("ISO standard")).rejects.toThrow("still being processed");
+    expect(f.listAssistantSourceIds).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not delay an answer when committed material already matches", async () => {
+    const f = fixture();
+    f.finish();
+    expect(await f.search("ISO")).toHaveLength(1);
+    expect(f.getSource).not.toHaveBeenCalled();
+  });
+
+  it("ignores processing Sources outside the anchored Collection but checks them when widening", async () => {
+    vi.useFakeTimers();
+    const f = fixture("other-collection");
+    expect(await f.search("ISO")).toEqual([]);
+    const result = f.search("ISO", { scope: "assistant" });
+    await vi.advanceTimersByTimeAsync(1_000);
+    f.finish();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(await result).toHaveLength(1);
+  });
+
+  it("preserves a genuine no-match without polling", async () => {
+    const f = fixture();
+    f.getSource.mockResolvedValue({ id: "src-1", collectionId: "col-1", status: "ready" });
+    expect(await f.search("unrelated")).toEqual([]);
+    expect(f.searchChunks).toHaveBeenCalledTimes(1);
   });
 });

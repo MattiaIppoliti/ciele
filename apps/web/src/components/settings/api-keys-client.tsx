@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { OrgApiKey, Role } from "@agent-hub/core";
-import { Ban, ChevronDown, KeyRound, Plus, TriangleAlert } from "lucide-react";
+import { Ban, BookOpen, ChevronDown, KeyRound, Plus, TriangleAlert } from "lucide-react";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { toast } from "@/lib/toast";
 import { createApiKeyAction, revokeApiKeyAction } from "@/app/actions";
@@ -32,11 +32,13 @@ export function ApiKeysClient({
   keys,
   currentRole,
   demo,
+  apiDocumentationUrl,
 }: {
   keys: OrgApiKey[];
   /** Caps the roles offered for a new key at the signed-in Member's own. */
   currentRole: Role | null;
   demo: boolean;
+  apiDocumentationUrl: string;
 }) {
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("viewer");
@@ -160,6 +162,14 @@ export function ApiKeysClient({
 
   return (
     <div className={`mt-8 space-y-8 ${isPending ? "opacity-70" : ""}`}>
+      <Button
+        variant="outline"
+        render={
+          <a href={apiDocumentationUrl} target="_blank" rel="noopener noreferrer" />
+        }
+      >
+        <BookOpen className="size-4" /> API Documentation
+      </Button>
       {demo && (
         <Badge variant="secondary" className="text-muted-foreground">
           Demo mode, API keys are not persisted

@@ -1988,7 +1988,10 @@ export function createSupabaseDb(client: SupabaseClient): Db {
         built_in: f.builtIn,
         enabled: f.enabled,
         position: i,
+        condition_logic: f.conditionLogic ?? "any",
+        conditions: f.conditions ?? [],
         actions: f.actions,
+        action_settings: f.actionSettings ?? {},
         custom_message: f.customMessage,
         is_default: f.isDefault,
       }));

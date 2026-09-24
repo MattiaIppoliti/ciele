@@ -1,19 +1,21 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import { FeaturesSection, HeroSection } from "@/components/home/hero-section";
 import { HomeSectionRail } from "@/components/home/home-section-rail";
 import { CloudCallout } from "@/components/marketing/cloud-callout";
 import { CtaSection } from "@/components/marketing/cta-section";
 import { GroupCoda } from "@/components/marketing/group-coda";
+import { SiteStructuredData } from "@/components/marketing/site-structured-data";
 
-export const metadata: Metadata = {
-  title: "Ciele, AI assistants for your business",
-  description:
-    "Build, test and publish AI assistants that answer from your organization's own knowledge.",
-};
+export const metadata = marketingMetadata({
+  title: "Ciele: AI teammates for your organization",
+  description: "Build, test and publish AI teammates grounded in your organization's knowledge.",
+  path: "/home",
+});
 
 export default function HomePage() {
   return (
     <>
+      <SiteStructuredData />
       <HomeSectionRail />
       <main>
         <HeroSection />

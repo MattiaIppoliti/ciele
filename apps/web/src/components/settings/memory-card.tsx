@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Brain } from "lucide-react";
 import { toast } from "sonner";
 import { updateMemoryEnabledAction } from "@/app/actions";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
+import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import {
   Card,
   CardContent,
@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 
 /**
  * Org-level long-term memory toggle (#664), off by default. When on,
@@ -50,7 +50,7 @@ export function MemoryCard({
     <Card className="mt-8">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AnimatedIcon icon={Brain} size={18} />
+          <AnimatedIcon icon={ScanTextIcon} size={18} />
           Long-term memory
         </CardTitle>
         <CardDescription>

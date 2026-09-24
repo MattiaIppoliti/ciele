@@ -778,9 +778,55 @@ export type BuiltInToolName =
  * because deleting a self-hoster's stored configuration is not this schema's
  * call to make.
  */
+/** Formats available to a visitor-initiated knowledge practice exercise. */
+export type StudyFormat =
+  | "multiple_choice"
+  | "drag_words"
+  | "true_false"
+  | "flashcards";
+
+/** Per-assistant Study Mode controls and author guidance. */
+export interface StudyModeSettings {
+  enabled: boolean;
+  formats: StudyFormat[];
+  instructions: string;
+}
+
+/** Answer key is intentionally absent from visitor-facing exercise questions. */
+export interface StudyQuestion {
+  id: string;
+  prompt: string;
+  options: string[];
+}
+
+export interface StudyAnswer {
+  questionId: string;
+  answer: string;
+  correct: boolean;
+  correctAnswer: string;
+  explanation: string;
+}
+
+/** Validated interactive exercise and its server-graded answer snapshots. */
+export interface StudyExercise {
+  id: string;
+  title: string;
+  format: StudyFormat;
+  questions: StudyQuestion[];
+  answers: StudyAnswer[];
+}
+
+export interface StudySubmission {
+  exerciseId: string;
+  questionId: string;
+  answer: string;
+}
+
 export interface AssistantTools {
   /** Built-in enablement overrides; unset = runtime default. */
   builtIns?: Partial<Record<BuiltInToolName, boolean>>;
+  /** Opt-in interactive knowledge practice, disabled unless explicitly enabled. */
+  studyMode?: StudyModeSettings;
   /** Entity schemas selected for generated Record-retrieval tools. */
   entities?: string[];
 }
@@ -2356,6 +2402,7 @@ export type ResolvedWebsiteCrawlerProvider = Exclude<
 /** Crawl configuration stored on website sources (edit + re-crawl). */
 export interface WebsiteSourceConfig {
   url?: string;
+  /** Page budget. `0` means no limit (see `NO_PAGE_LIMIT`); absent means 20. */
   maxPages?: number;
   includeGlobs?: string[];
   excludeGlobs?: string[];
@@ -2402,6 +2449,14 @@ export interface WebsiteSourceConfig {
    * when the crawl ends.
    */
   crawlStagedPages?: number;
+  /**
+   * What the remote crawler reports about its own run while it is still
+   * going, before it hands any page over: pages it has crawled and pages it
+   * has found so far (`found` grows as it discovers links, and is null when
+   * the provider does not say). Display only, like `crawlStagedPages`: nothing
+   * reads it back, and a new crawl clears it.
+   */
+  crawlRemoteProgress?: { crawled: number; found: number | null };
   /** Restartable non-website ingestion generation and next draft index. */
   sourceIngestGenerationId?: string;
   sourceIngestExpectedGenerationId?: string;

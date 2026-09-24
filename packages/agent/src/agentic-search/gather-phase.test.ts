@@ -190,3 +190,21 @@ describe("runGatherPhase", () => {
     expect(help).toMatchObject({ label: "Contact support" });
   });
 });
+
+
+it("announces study generation without streaming its private answer arguments", async () => {
+  const events: RuntimeEvent[] = [];
+  const model = new MockLanguageModelV3({
+    doStream: async () => ({ stream: simulateReadableStream({ chunks: [
+      { type: "stream-start" as const, warnings: [] },
+      { type: "tool-input-start" as const, id: "study", toolName: "createStudyExercise" },
+      { type: "tool-input-delta" as const, id: "study", delta: '{"answer":"private answer key"}' },
+      { type: "tool-input-end" as const, id: "study" },
+      { type: "finish" as const, finishReason: { unified: "stop" as const, raw: "stop" }, usage: usage() },
+    ] }) }),
+  });
+  await runGatherPhase(gatherInput(model, event => events.push(event)));
+  expect(events).toContainEqual({ type: "notice", label: "Creating study exercise…" });
+  expect(JSON.stringify(events)).not.toContain("private answer key");
+  expect(events.some(event => event.type === "tool-input-delta")).toBe(false);
+});

@@ -565,6 +565,35 @@ describe("dispatchActions (via runAssistantChat, no-model path)", () => {
     mocked.handlers = {};
   });
 
+  it.each([false, true])("routes explicit Study Mode commands before ordinary routing (model=%s)", async (withModel) => {
+    if (withModel) vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
+    const search = vi.fn(async (ctx: ActionContext) => ({ parts: [{ type: "text" as const, action: "search_knowledge", text: ctx.flow.name }] }));
+    mocked.handlers.search_knowledge = search;
+    try {
+      const result = await runAssistantChat({
+        assistant: makeAssistant({ tools: { studyMode: { enabled: true, formats: ["true_false"], instructions: "" } } }),
+        flows: [makeFlow({ name: "Carlo Magno", actions: ["custom_message"] }), defaultFlow],
+        connections: [], message: "@truefalse chi è Carlo Magno?", history: [],
+        session: createTurnSession("study", {}), emit: () => {},
+        loadPreflightCatalogue: async () => { throw new Error("Explicit commands must not classify"); },
+      });
+      expect(result.flowName).toBe("Study Mode");
+      expect(result.flowId).toBeNull();
+      expect(search).toHaveBeenCalledOnce();
+    } finally { vi.unstubAllEnvs(); }
+  });
+
+  it("does not route to Study Mode when its Tools setting is off", async () => {
+    mocked.handlers.search_knowledge = async (ctx) => ({ parts: [{ type: "text", action: "search_knowledge", text: ctx.flow.name }] });
+    const result = await runAssistantChat({
+      assistant: makeAssistant({ tools: { studyMode: { enabled: false, formats: ["true_false"], instructions: "" } } }),
+      flows: [defaultFlow], connections: [], message: "@truefalse Carlo Magno", history: [],
+      session: createTurnSession("study-off", {}), emit: () => {},
+    });
+    expect(result.flowId).toBe(defaultFlow.id);
+    expect(result.flowName).toBe("Default behavior");
+  });
+
   it("runs actions in order, accumulating parts and merging templatePatch", async () => {
     const seenTemplateContexts: unknown[] = [];
     mocked.handlers["api_request"] = async () => ({

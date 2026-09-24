@@ -15,7 +15,6 @@ import {
   Copy,
   Maximize2,
   Download,
-  Brain,
   ExternalLink,
   FileText,
   Globe,
@@ -28,6 +27,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import {
   ApplicationKnowledgePanel,
 } from "@/components/knowledge/application-knowledge-panel";
@@ -595,7 +595,7 @@ export function KnowledgeHubClient({
                       },
                     canEdit && {
                       label: "Extract memories",
-                      icon: Brain,
+                      icon: ScanTextIcon,
                       disabled: extracting.has(item.id),
                       onSelect: () => extractRowMemories(item),
                     },
@@ -795,7 +795,7 @@ export function KnowledgeHubClient({
                               })
                             }
                           >
-                            <Brain className="size-4" />
+                            <ScanTextIcon className="size-4" />
                           </Button>
                           {tab === "faqs" && (
                             <Button
@@ -879,4 +879,3 @@ export function KnowledgeHubClient({
     </>
   );
 }
-

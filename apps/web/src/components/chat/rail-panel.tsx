@@ -117,7 +117,7 @@ export function RailPanel({
     else setOwnCollapsed(value);
   }
 
-  const { width, fade, resizing, beginResize, widthTransition, containerRef } =
+  const { width, fade, resizing, beginResize, resizeTo, widthTransition, containerRef } =
     useResizableWidth({
       defaultWidth: RAIL_PANEL_DEFAULT_WIDTH,
       minWidth: RAIL_PANEL_MIN_WIDTH,
@@ -181,6 +181,10 @@ export function RailPanel({
           resizing={resizing}
           onPointerDown={(event) => beginResize(event)}
           label={labels.resize}
+          value={width}
+          minValue={RAIL_PANEL_MIN_WIDTH}
+          maxValue={RAIL_PANEL_MAX_WIDTH}
+          onValueChange={resizeTo}
         />
       )}
       {overlay}

@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
     collectionId?: string | null;
     message: string;
     turnId?: string;
+    studyAnswer?: unknown;
     modelPreference?: unknown;
     /** `"<provider>:<model id>"` from the composer's picker; see below. */
     model?: string | null;
@@ -112,6 +113,7 @@ export async function POST(request: NextRequest) {
     attachments: openAttachments(body.attachments),
     message,
     turnId: body.turnId,
+    studyAnswer: body.studyAnswer,
     metadata: {
       ...sessionMetadata(request.headers),
       userName: profileName,

@@ -6,6 +6,7 @@ import {
   CONNECTOR_PROVIDER_LABELS,
   connectorAction,
   DEFAULT_BASIC_REPLY,
+  STUDY_MODE_FLOW_ID,
   DEFAULT_REVIEW_WAITING_MESSAGE,
   externalLinkUrl,
   humanReviewSettingsIssue,
@@ -318,6 +319,7 @@ const searchKnowledgeHandler: ActionHandler = async ({
   queryEntityRecords,
   toolSubject,
   alreadyClarified = false,
+  chooseStudyFormat,
   emit,
   signal,
   recordUsage,
@@ -341,6 +343,14 @@ const searchKnowledgeHandler: ActionHandler = async ({
       }
     : undefined;
   if (!chatModel) {
+    if (flow.id === STUDY_MODE_FLOW_ID) {
+      const part: ChatReplyPart = {
+        type: "text", action: "search_knowledge",
+        text: "Study Mode needs an AI model to create an exercise. Please try again when the assistant's AI connection is available.",
+      };
+      emit({ type: "part", part });
+      return { parts: [part] };
+    }
     if (!searchKnowledge) {
       // Nothing to search AND no model to answer from: a scopeless AI Teammate
       // (#768) on a deployment with no provider credential. Reporting a search
@@ -465,6 +475,8 @@ const searchKnowledgeHandler: ActionHandler = async ({
       untrustedNonce,
     }) =>
       buildToolset({
+        studyRequest: message,
+        chooseStudyFormat,
         assistant,
         session,
         searchKnowledge,

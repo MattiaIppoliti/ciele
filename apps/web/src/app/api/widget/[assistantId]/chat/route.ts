@@ -49,6 +49,7 @@ export async function POST(
     collectionId?: string | null;
     message: string;
     turnId?: string;
+    studyAnswer?: unknown;
     /** True when the message came from an FAQ quick reply (verbatim answer). */
     faq?: boolean;
     /**
@@ -149,6 +150,7 @@ export async function POST(
     collectionId: body.collectionId,
     message,
     turnId: body.turnId,
+    studyAnswer: body.studyAnswer,
     faqQuestion: body.faq === true,
     // Opened here, never trusted from the client: the token is sealed because
     // this text lands in the system prompt.

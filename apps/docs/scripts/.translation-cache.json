@@ -354,5 +354,17 @@
   "de:self-hosting/meta.json": "c79576b7c74e3cbb",
   "de:self-hosting/open-core-boundary.mdx": "6248a0a07df2cb84",
   "de:self-hosting/upgrade.mdx": "ff63ed56b84fec83",
-  "de:self-hosting/workers.mdx": "4f993e6efb6c9d9b"
+  "de:self-hosting/workers.mdx": "4f993e6efb6c9d9b",
+  "it:api-reference/index.mdx": "6c232991a37384cb",
+  "it:api-reference/meta.json": "28c90fabe7a48cd7",
+  "es:api-reference/index.mdx": "6c232991a37384cb",
+  "es:api-reference/meta.json": "28c90fabe7a48cd7",
+  "fr:api-reference/index.mdx": "6c232991a37384cb",
+  "fr:api-reference/meta.json": "28c90fabe7a48cd7",
+  "de:api-reference/index.mdx": "6c232991a37384cb",
+  "de:api-reference/meta.json": "28c90fabe7a48cd7",
+  "openapi:it": "182be05e68dafb866b3f850aee3082203dfd26c418c0ba383d98d871651993a1",
+  "openapi:es": "182be05e68dafb866b3f850aee3082203dfd26c418c0ba383d98d871651993a1",
+  "openapi:fr": "182be05e68dafb866b3f850aee3082203dfd26c418c0ba383d98d871651993a1",
+  "openapi:de": "182be05e68dafb866b3f850aee3082203dfd26c418c0ba383d98d871651993a1"
 }

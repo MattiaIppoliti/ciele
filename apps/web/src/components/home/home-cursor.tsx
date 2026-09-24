@@ -1,7 +1,7 @@
 "use client";
 
 import { PlusIcon } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type SVGProps, useCallback, useEffect, useRef, useState } from "react";
 import { Cursor } from "@/components/core/cursor";
 
@@ -55,6 +55,7 @@ function ArrowCursor(props: SVGProps<SVGSVGElement>) {
  * whole scene so only this cursor shows.
  */
 export function HomeCursor() {
+  const reduce = useReducedMotion() ?? false;
   const [mode, setMode] = useState<CursorMode>("default");
   // Show the custom cursor only while the pointer is genuinely over the home
   // scene (not over a portaled dialog, and not off-window). Controlled here so
@@ -67,11 +68,11 @@ export function HomeCursor() {
 
   useEffect(() => {
     const mq = window.matchMedia("(pointer: fine) and (hover: hover)");
-    const update = () => setEnabled(mq.matches);
+    const update = () => setEnabled(mq.matches && !reduce);
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
-  }, []);
+  }, [reduce]);
 
   // Hide the OS cursor across the entire home scene while the custom cursor is
   // active, only on fine-pointer devices, never on touch.

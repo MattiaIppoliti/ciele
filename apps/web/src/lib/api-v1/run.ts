@@ -29,7 +29,7 @@ export async function runApiOperation<In, Out>(
 
   const parsed = op.input.safeParse(rawInput);
   if (!parsed.success) {
-    return apiError(400, "invalid_input", parsed.error.issues[0]?.message ?? "Invalid input");
+    return apiError(422, "invalid_input", parsed.error.issues[0]?.message ?? "Invalid input");
   }
 
   const opCtx: OperationContext = {
@@ -61,7 +61,10 @@ export async function runApiOperation<In, Out>(
   } catch (error) {
     if (error instanceof OperationError) {
       const status =
-        error.code === "not_found" ? 404 : error.code === "conflict" ? 409 : 400;
+        error.code === "not_found" ? 404
+          : error.code === "conflict" ? 409
+            : error.code === "invalid_input" ? 422
+              : 400;
       return apiError(status, error.code, error.message);
     }
     if (error instanceof OrgPinnedDbError) {

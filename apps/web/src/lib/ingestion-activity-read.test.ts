@@ -147,6 +147,33 @@ describe("readIngestionActivity", () => {
     expect(snapshot.runs[0].total).toBe(0);
   });
 
+  it("says how far the remote crawler has got before any page arrives", async () => {
+    const { db } = fakeDb({
+      processing: [
+        hubItem({
+          id: "src-1",
+          name: "site",
+          config: { crawlRemoteProgress: { crawled: 12, found: 197 } },
+        }),
+        hubItem({
+          id: "src-2",
+          name: "other",
+          config: { crawlRemoteProgress: { crawled: 1, found: null } },
+        }),
+      ],
+    });
+    const snapshot = await readIngestionActivity(db, "org-1");
+    const details = Object.fromEntries(
+      snapshot.runs.map((run) => [run.items[0].id, run.items[0].detail])
+    );
+    expect(details).toEqual({
+      "src-1": "12 of 197 pages crawled",
+      "src-2": "1 page crawled",
+    });
+    // The remote count is the crawler's, not Ciele's: no page total yet.
+    expect(snapshot.runs.every((run) => run.total === 0)).toBe(true);
+  });
+
   it("resolves the outcome of a tracked Source that already left the queue", async () => {
     const { db, getSource } = fakeDb({
       byId: {

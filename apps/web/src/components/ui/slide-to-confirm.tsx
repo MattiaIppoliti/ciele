@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from "react";
    which is framer-motion under its current package name. Installing the old
    one beside it would put two copies of the same animation runtime in the
    admin bundle, and `check-admin-bundle.mjs` is there to catch exactly that. */
-import { animate, motion, useMotionValue, useTransform } from "motion/react";
+import {
+  animate,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "motion/react";
 import { ArrowRight, Check } from "lucide-react";
 
 /* ══ Slide to confirm ═════════════════════════════════════
@@ -100,6 +106,7 @@ export function SlideToConfirm({
   width?: number;
   disabled?: boolean;
 }) {
+  const reduce = useReducedMotion() ?? false;
   const [done, setDone] = useState(false);
   /* how far across the KEYBOARD has pushed it, and only the
      keyboard: it is state, so it renders, and a drag writing it
@@ -339,8 +346,14 @@ export function SlideToConfirm({
      multiplied INTO the transform rather than set as its own
      `scale` property, which applies first and would move the
      handle along the track it is sitting on. */
-  const sx = useTransform(squash, (q) => q * (hot && !held && !done ? SWELL : 1));
-  const sy = useTransform(squash, (q) => (1 / q) * (hot && !held && !done ? SWELL : 1));
+  const sx = useTransform(
+    squash,
+    (q) => q * (hot && !held && !done && !reduce ? SWELL : 1),
+  );
+  const sy = useTransform(
+    squash,
+    (q) => (1 / q) * (hot && !held && !done && !reduce ? SWELL : 1),
+  );
 
   const local = (clientX: number) => {
     const box = track.current?.getBoundingClientRect();
@@ -370,8 +383,19 @@ export function SlideToConfirm({
      which is what it should look like. */
   const undo = () => {
     setDone(false);
-    animate(shown, 1, { duration: 0.2, delay: 0.12 });
-    animate(anchor, 0, { type: "spring", stiffness: 380, damping: 34, mass: 0.9 });
+    setReached(0);
+    if (reduce) {
+      shown.set(1);
+      anchor.set(0);
+    } else {
+      animate(shown, 1, { duration: 0.2, delay: 0.12 });
+      animate(anchor, 0, {
+        type: "spring",
+        stiffness: 380,
+        damping: 34,
+        mass: 0.9,
+      });
+    }
   };
 
   const finish = () => {
@@ -393,16 +417,22 @@ export function SlideToConfirm({
        spring, which is what keeps them in step frame by frame
        rather than merely landing together. */
     anchor.set(x.get());
-    animate(shown, 0, { duration: 0.12 });
-    animate(x, 0, spring);
-    animate(pulse, [1, 0.974, 1], {
-      duration: 0.46,
-      times: [0, 0.62, 1],
-      ease: [0.33, 0.55, 0.2, 1],
-      /* a beat behind the unfurl, so it is the landing that
-         dips rather than the take-off */
-      delay: 0.1,
-    });
+    if (reduce) {
+      shown.set(0);
+      x.set(0);
+      pulse.set(1);
+    } else {
+      animate(shown, 0, { duration: 0.12 });
+      animate(x, 0, spring);
+      animate(pulse, [1, 0.974, 1], {
+        duration: 0.46,
+        times: [0, 0.62, 1],
+        ease: [0.33, 0.55, 0.2, 1],
+        /* a beat behind the unfurl, so it is the landing that
+           dips rather than the take-off */
+        delay: 0.1,
+      });
+    }
     /* the caller reports its own failure; this only has to put
        the handle back so there is something to slide again */
     void (async () => {
@@ -460,7 +490,10 @@ export function SlideToConfirm({
     setHeld(false);
     if (x.get() >= mark) finish();
     else {
-      if (g.moved) animate(x, 0, home);
+      if (g.moved) {
+        if (reduce) x.set(0);
+        else animate(x, 0, home);
+      }
     }
   };
 
@@ -495,10 +528,16 @@ export function SlideToConfirm({
          while the handle was still three steps from the end
          unfurled from THERE, and then fought the travel
          animation for the same value. */
-      animate(x, TRAVEL, { duration: 0.16, onComplete: finish });
+      if (reduce) {
+        x.set(TRAVEL);
+        finish();
+      } else {
+        animate(x, TRAVEL, { duration: 0.16, onComplete: finish });
+      }
       return;
     }
-    animate(x, next, { duration: 0.12 });
+    if (reduce) x.set(next);
+    else animate(x, next, { duration: 0.12 });
   };
 
   const key = (e: React.KeyboardEvent) => {
@@ -573,12 +612,21 @@ export function SlideToConfirm({
             width: wide,
             borderRadius: gripR,
           }}
-          transition={{ type: "spring", stiffness: 400, damping: 30, mass: 0.7 }}
+          transition={
+            reduce
+              ? { duration: 0 }
+              : { type: "spring", stiffness: 400, damping: 30, mass: 0.7 }
+          }
           role="slider"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={done ? 100 : Math.round((reached / TRAVEL) * 100)}
           aria-label={done ? confirmedLabel : label}
+          aria-description={
+            done
+              ? undefined
+              : "Use the arrow keys to move. Press Home to reset or End to confirm."
+          }
         >
           <motion.span className="sld-arrow" style={{ opacity: arrow }} aria-hidden="true">
             <ArrowRight size={20} strokeWidth={2.4} />
@@ -590,8 +638,16 @@ export function SlideToConfirm({
             className="sld-done"
             aria-hidden="true"
             initial={false}
-            animate={{ opacity: done ? 1 : 0, scale: done ? 1 : 0.7 }}
-            transition={{ duration: 0.18, ease: [0.33, 0.55, 0.2, 1] }}
+            animate={
+              reduce
+                ? { opacity: done ? 1 : 0 }
+                : { opacity: done ? 1 : 0, scale: done ? 1 : 0.7 }
+            }
+            transition={
+              reduce
+                ? { duration: 0 }
+                : { duration: 0.18, ease: [0.33, 0.55, 0.2, 1] }
+            }
           >
             <Check size={19} strokeWidth={2.8} />
             {confirmedLabel}

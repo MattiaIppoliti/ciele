@@ -1,5 +1,26 @@
+import dynamic from "next/dynamic";
+import { GraduationCap, LoaderCircle } from "lucide-react";
+import type { StudyExercise } from "@agent-hub/core";
 import type { ChatReplyPart } from "@agent-hub/agent/client";
 import { normalizeTable } from "@agent-hub/agent/client";
+
+// Own the Suspense boundary here: without `loading`, the lazy card suspends
+// PreviewPanel's outer boundary and hides the entire conversation/composer.
+const StudyExerciseReply = dynamic(
+  () => import("./study-exercise").then((module) => module.StudyExerciseReply),
+  {
+    loading: () => (
+      <div
+        role="status"
+        className="flex min-h-40 w-full items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
+      >
+        <GraduationCap aria-hidden="true" className="size-5 shrink-0" />
+        <span>Loading exercise…</span>
+        <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+      </div>
+    ),
+  },
+);
 
 /**
  * Reply Components, client half: one component per catalogue entry the runtime
@@ -128,6 +149,8 @@ export function ComponentReplyPart({
   onAsk?: (text: string) => void;
 }) {
   switch (part.name) {
+    case "study_exercise":
+      return <StudyExerciseReply exercise={part.props.exercise as StudyExercise} />;
     case "table":
       return (
         <TableComponent props={part.props} pending={part.pending} onAsk={onAsk} />

@@ -22,8 +22,12 @@ How an **Assistant** behaves at runtime, the conversational engine's design. Rea
 >   `api_request` (full config), `send_email` (Resend transport; honest copy when unconfigured),
 >   `improvement`, `notification` (verbatim, proactive-only, see §4.2). **[partial]**: `handover`
 >   (acknowledges + halts; no target-assistant continuation yet).
-> - **AI Tutor is out of scope**: Study Mode / H5P interactives have no SETUP nav entry and no
->   `study_mode`/`h5p` flow actions in this repo (see `context.md` §Scope).
+> - **Study Mode** is an opt-in Tools & Skills capability. `createStudyExercise` runs inside
+>   `search_knowledge` and emits a fixed Generative UI component with at most five questions.
+>   Enabling it derives a locked Study Mode entry in Flows. Explicit study commands select
+>   it before classification; its gear opens Tools & Skills, the only place to disable it.
+>   Answers are checked server-side and persisted for Inbox review. No external H5P player,
+>   separate AI Tutor page, or `study_mode`/`h5p` Flow action is added.
 > - **Conditions**: three kinds exist, gated two different ways on purpose.
 >   `conversation_context` is **soft context** fed to the classifier (few-shot), not a hard gate;
 >   **URL** and **Schedule** are objective, so they are a **hard gate applied before classification**

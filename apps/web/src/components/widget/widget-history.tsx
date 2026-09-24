@@ -1,6 +1,7 @@
 "use client";
 
-import { Brain, MessageSquareText, SquarePen, Trash2 } from "lucide-react";
+import { MessageSquareText, SquarePen, Trash2 } from "lucide-react";
+import { ScanTextIcon } from "@/components/ui/icons/scan-text";
 import { AISidebar, type SidebarResource } from "@/components/agents/ai-sidebar";
 
 export interface WidgetConversationSummary {
@@ -121,7 +122,7 @@ export function WidgetHistory({
           <div className="mt-4">
             <div className="bg-border mx-4 h-px" />
             <p className="text-muted-foreground flex items-center gap-2 px-4 pt-4 pb-1.5 text-sm">
-              <Brain className="size-4" /> Memory
+              <ScanTextIcon className="size-4" /> Memory
             </p>
             {memoryFolder.memories.length === 0 ? (
               <p className="text-muted-foreground px-4 py-2 text-sm">

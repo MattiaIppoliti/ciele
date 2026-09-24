@@ -1,0 +1,138 @@
+---
+title: Base de datos externa
+description: Ejecuta la pila en una instancia gestionada de Postgres que ya tengas.
+---
+
+De forma predeterminada, la pila Compose ejecuta su propio contenedor de
+Postgres. En su lugar, puedes ejecutar la misma pila en un Postgres gestionado.
+En ese caso, el contenedor `postgres` nunca se inicia. La autenticación, la API
+de datos, el almacenamiento y el ejecutor de migraciones se conectan a tu base
+de datos.
+
+**Tested** en cada versión: un Postgres 16 estándar con pgvector, en la
+repetición de integración continua de toda la cadena de migración.
+
+**Expected to work**, según la documentación del proveedor:
+
+- Azure Database for PostgreSQL Flexible Server
+- Amazon RDS para PostgreSQL y Amazon Aurora PostgreSQL
+- Google Cloud SQL para PostgreSQL y AlloyDB
+- Neon
+
+Cualquier otra instancia de Postgres que cumpla los requisitos que se indican a
+continuación también funciona. Informa de tu resultado en el rastreador de
+incidencias para que se pueda cambiar el estado de un proveedor en la lista a
+**tested**.
+
+## Requisitos
+
+| Requisito | Motivo |
+| --- | --- |
+| Postgres **16** o una versión posterior | En Postgres 15, solo un superusuario puede crear un rol que eluda la seguridad a nivel de fila. Los proveedores gestionados no te conceden un superusuario. |
+| Un inicio de sesión de administrador que tenga `BYPASSRLS` | El rol de servicio de Ciele debe eludir la seguridad a nivel de fila. Los inicios de sesión de administrador de los proveedores mencionados anteriormente tienen este atributo en Postgres 16. |
+| Las extensiones `vector` y `pg_trgm` | La búsqueda de conocimiento utiliza ambas. En Azure, primero añade `vector,pg_trgm` al parámetro del servidor `azure.extensions`. |
+| El administrador es el propietario de la base de datos | Postgres asigna el esquema `public` al propietario de la base de datos. Usa el inicio de sesión con el que se creó la base de datos. |
+| El nombre de host **directo** | No uses un nombre de host de un «connection pooler». La API de datos y el almacenamiento mantienen una conexión de escucha que el pooling no admite. |
+| Unas 25 conexiones | El nivel más básico de Cloud SQL permite 25 conexiones en total. Selecciona un nivel superior. Neon Free, Azure B1ms y RDS t4g.micro son suficientes. |
+| TLS | Cada conexión utiliza `sslmode=require`. Los proveedores con una entidad certificadora privada necesitan `--db-ca`; consulta más abajo. |
+
+## Conecta la pila
+
+Pasa la cadena de conexión de administrador al script de bootstrap:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname
+```
+
+El script escribe la configuración de `EXTERNAL_DB_*` y la superposición de
+`docker-compose.external-db.yml` en `deploy/.env`. Crea una única contraseña
+para los tres inicios de sesión de los servicios. A continuación, comprueba la
+base de datos antes de iniciar un contenedor: la versión de Postgres, las dos
+extensiones, los privilegios de administrador, el límite de conexiones y TLS.
+Cada comprobación que falla imprime una línea que te indica qué debes cambiar.
+
+El script rechaza un hostname de pooler, un proyecto Supabase alojado,
+`sslmode=disable` y una contraseña con caracteres que una cadena de conexión no
+puede admitir. Codifica esos caracteres con codificación por porcentaje o
+establece una contraseña de administrador más sencilla.
+
+Al iniciar, un servicio `provision` de ejecución única prepara la base de datos
+con el rol de administrador. Crea los roles, los esquemas `auth`, `storage` y
+`extensions`, las funciones auxiliares de autenticación, los privilegios
+predeterminados y las dos extensiones. El servicio se ejecuta de nuevo en cada
+inicio y no modifica nada cuando la base de datos está lista.
+
+La opción `--database-url` se combina con `--images`, `--workers` y `--tls`.
+Vuelve a ejecutar el script con una nueva cadena de conexión para que la pila
+apunte a una base de datos diferente. Se conserva la contraseña del servicio.
+
+## Verifica el certificado
+
+Los proveedores con una entidad certificadora privada necesitan el «bundle» para
+la verificación completa:
+
+```bash
+./deploy/bootstrap.sh --database-url postgresql://admin:password@host:5432/dbname --db-ca ./bundle.pem
+```
+
+El script copia el «bundle» a `deploy/external-db/db-ca.pem` y establece
+`sslmode=verify-full`. A continuación, cada servicio verifica el servidor frente
+a ese conjunto.
+
+| Proveedor | Paquete |
+| --- | --- |
+| Amazon RDS y Aurora | El «bundle» global de `truststore.pki.rds.amazonaws.com`, o el «bundle» regional |
+| Google Cloud SQL | El archivo `server-ca.pem` de la instancia |
+| Azure | DigiCert Global Root G2 y Microsoft RSA Root CA 2017, en un único archivo |
+| Neon | No es necesario. El servidor utiliza una raíz pública. |
+
+## Notas del proveedor
+
+### Neon
+
+Crea el proyecto en una región de la UE con Postgres 16 o una versión posterior.
+Copia la cadena de conexión **direct** (directa), no la `-pooler`. El plan Free
+suspende el cómputo tras cinco minutos de inactividad. La primera solicitud
+después de una pausa tarda unos segundos, mientras los servicios se vuelven a
+conectar.
+
+### Azure Database para PostgreSQL Flexible Server
+
+Crea el servidor en Postgres 16 o una versión posterior. Añade `vector,pg_trgm`
+al parámetro del servidor `azure.extensions` antes de ejecutar el script de
+inicialización. Usa las credenciales de administrador que estableciste al crear
+el recurso. Añade la dirección IP de tu host a las reglas del cortafuegos.
+
+### Amazon RDS y Aurora
+
+Utiliza el usuario maestro. Descarga el paquete de certificados y pásalo con
+`--db-ca`. Permite tu host en el grupo de seguridad. Las versiones de Aurora
+anteriores a la 17 no imponen el uso de TLS. La pila sigue utilizando TLS.
+
+### Google Cloud SQL y AlloyDB
+
+Usa el usuario `postgres`. Selecciona al menos el nivel `db-g1-small` en Cloud
+SQL. Descarga `server-ca.pem` de la instancia y pásalo con `--db-ca`. Añade la
+dirección IP pública de tu host a las redes autorizadas.
+
+### Supabase alojado
+
+Un proyecto de Supabase alojado no puede ser la base de datos de estos
+contenedores. Sus roles de servicio existen con contraseñas que no tienes, y sus
+propios servicios son propietarios de los esquemas `auth` y `storage`. En su
+lugar, dirige la aplicación a ese proyecto y no ejecutes el perfil `db`.
+
+## Copias de seguridad
+
+El proveedor conserva las copias de seguridad de la base de datos. Los archivos
+subidos permanecen en el volumen `storage-data` de tu host. Realiza una copia de
+seguridad del volumen junto con la base de datos. Restaura ambos al mismo punto
+en el tiempo. Consulta [Database](/self-hosting/database) para ver los comandos
+del volumen.
+
+## Actualización
+
+Las actualizaciones funcionan como se describe en
+[Upgrade](/self-hosting/upgrade). El servicio `migrate` aplica las migraciones
+pendientes a tu base de datos. El servicio `provision` se ejecuta primero y
+confirma los roles y los esquemas.

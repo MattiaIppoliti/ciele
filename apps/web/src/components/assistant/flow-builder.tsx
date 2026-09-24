@@ -611,13 +611,7 @@ export function FlowBuilder({
           <div className="shrink-0">
             <TrustBadge trust={trust} />
           </div>
-        ) : (
-          (flow.isDefault || draft.actions.includes("search_knowledge")) && (
-            <div className="shrink-0">
-              <TrustBadge trust={null} />
-            </div>
-          )
-        ))}
+        ) : null)}
       {canEdit && (
         <div className="flex items-center gap-1">
           <Hint label="Undo (⌘Z)">

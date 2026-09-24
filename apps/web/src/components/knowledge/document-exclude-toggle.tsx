@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { setDocumentExcludedAction } from "@/app/actions";
 import { toast } from "@/lib/toast";
 

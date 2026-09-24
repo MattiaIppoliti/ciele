@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { motion, useMotionValue, useSpring } from "motion/react";
+import { motion, useMotionValue, useReducedMotion, useSpring } from "motion/react";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -23,6 +23,7 @@ export function Magnetic({
   springOptions = { stiffness: 26.7, damping: 4.1, mass: 0.2 },
 }: MagneticProps) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotion() ?? false;
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, springOptions);
@@ -30,7 +31,11 @@ export function Magnetic({
 
   React.useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || reduce) {
+      x.set(0);
+      y.set(0);
+      return;
+    }
 
     function handleMouseMove(e: MouseEvent) {
       const { left, top, width, height } = el!.getBoundingClientRect();
@@ -60,7 +65,9 @@ export function Magnetic({
       window.removeEventListener("mousemove", handleMouseMove);
       el.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [intensity, range, maxOffset, x, y]);
+  }, [intensity, range, maxOffset, reduce, x, y]);
+
+  if (reduce) return <div className="inline-block">{children}</div>;
 
   return (
     <motion.div ref={ref} style={{ x: springX, y: springY }} className="inline-block">

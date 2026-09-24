@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Role } from "@agent-hub/core";
 import { DEMO_MEMBER, DEMO_ORG, getMockDb } from "@agent-hub/db";
 import {
+  assistantPatchSchema,
   createAssistantOp,
   deleteAssistantOp,
   duplicateAssistantOp,
@@ -131,5 +132,20 @@ describe("assistants operations", () => {
     // Knowledge is org-owned: only the links die with the assistant.
     expect(await getMockDb().getCollection(collection.id)).not.toBeNull();
     expect(await getMockDb().listSourceAssistantLinks(source.id)).toEqual([]);
+  });
+});
+
+
+describe("Study Mode settings", () => {
+  const studyMode = { enabled: true, formats: ["multiple_choice"], instructions: "Use short questions." };
+  it("accepts supported settings and rejects empty, unknown, duplicated or oversized values", () => {
+    expect(assistantPatchSchema.safeParse({ tools: { studyMode } }).success).toBe(true);
+    for (const invalid of [
+      { ...studyMode, formats: [] },
+      { ...studyMode, formats: ["arbitrary_html"] },
+      { ...studyMode, formats: ["flashcards", "flashcards"] },
+      { ...studyMode, instructions: "x".repeat(10001) },
+      { ...studyMode, enabled: "true" },
+    ]) expect(assistantPatchSchema.safeParse({ tools: { studyMode: invalid } }).success).toBe(false);
   });
 });

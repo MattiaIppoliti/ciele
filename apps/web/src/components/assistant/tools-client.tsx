@@ -12,6 +12,7 @@ import {
   updateSkillAction,
   type ApiIntegrationView,
 } from "@/app/actions";
+import { DEFAULT_STUDY_SETTINGS, StudySettings } from "./study-settings";
 import { ApiIntegrationEditor } from "./api-integration-editor";
 import {
   SectionTimeline,
@@ -31,7 +32,7 @@ import {
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
 import { Label } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { Textarea } from "@/components/ui/textarea";
 
 /**
@@ -236,9 +237,9 @@ export function ToolsClient({
   return (
     <div className="pt-8">
       <SectionTimeline>
-      <TimelineSection title="Built-in tools">
+      <TimelineSection title="Built-in tools" boxed>
       <section>
-        <p className="text-muted-foreground -mt-3 text-sm">
+        <p className="text-muted-foreground text-sm">
           What the assistant can do while answering, beyond generating text.
         </p>
         <div className="mt-4 space-y-5">
@@ -257,6 +258,7 @@ export function ToolsClient({
                     : (tools.builtIns?.[item.name] ?? item.defaultOn)
                 }
                 disabled={!canEdit || item.locked}
+                aria-label={`Enable ${item.name}`}
                 onCheckedChange={(on) => toggleBuiltIn(item.name, on)}
               />
             </div>
@@ -265,8 +267,12 @@ export function ToolsClient({
       </section>
       </TimelineSection>
 
+      <TimelineSection title="Study Mode">
+        <StudySettings settings={tools.studyMode} canEdit={canEdit} onChange={patch => saveTools({ ...latestTools.current, studyMode: { ...(latestTools.current.studyMode ?? DEFAULT_STUDY_SETTINGS), ...patch } }, "Study Mode updated")} />
+      </TimelineSection>
+
       {/* API integration (spec #559) */}
-      <TimelineSection title="API integration">
+      <TimelineSection title="API integration" boxed>
       <ApiIntegrationEditor
         assistantId={assistantId}
         integration={integration}
@@ -274,9 +280,9 @@ export function ToolsClient({
       />
       </TimelineSection>
 
-      <TimelineSection title="Data">
+      <TimelineSection title="Data" boxed>
       <section>
-        <p className="text-muted-foreground -mt-3 text-sm">
+        <p className="text-muted-foreground text-sm">
           Selected Entity schemas generate Record lookup tools. The schema set
           freezes when published while Record values stay live.
         </p>
@@ -310,10 +316,10 @@ export function ToolsClient({
       </TimelineSection>
 
       {/* Skills */}
-      <TimelineSection title="Skills">
+      <TimelineSection title="Skills" boxed>
       <section>
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-muted-foreground -mt-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-muted-foreground text-sm">
             Reusable prompt templates owned by your organization. Attached
             skills are layered into this assistant&apos;s system prompt.
           </p>

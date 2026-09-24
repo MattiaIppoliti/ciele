@@ -9,6 +9,7 @@ import { Minimize2, X } from "lucide-react";
 import { Button, Hint } from "@agent-hub/ui";
 import { AnimatedGlyph } from "@/components/ui/animated-icon";
 import { Maximize2Icon } from "@/components/ui/icons/maximize-2";
+import { useModalFocus } from "@/components/motion/use-modal-focus";
 import {
   ResizeHandle,
   useResizableWidth,
@@ -56,7 +57,7 @@ export function DetailDrawer({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { width, resizing, beginResize, widthTransition, containerRef } =
+  const { width, resizing, beginResize, resizeTo, widthTransition, containerRef } =
     useResizableWidth({
       defaultWidth,
       minWidth,
@@ -67,9 +68,13 @@ export function DetailDrawer({
     ? "Exit full screen"
     : fullScreenLabel;
 
+  useModalFocus(true, containerRef);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      e.preventDefault();
+      onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -85,6 +90,7 @@ export function DetailDrawer({
       <aside
         ref={containerRef}
         role="dialog"
+        aria-modal="true"
         aria-label={ariaLabel}
         style={{ width: inlineFullScreen ? "100vw" : width }}
         className={`bg-background fixed inset-y-0 right-0 z-50 flex w-full max-w-full flex-col border-l shadow-strong ${widthTransition}`}
@@ -94,6 +100,10 @@ export function DetailDrawer({
             resizing={resizing}
             onPointerDown={(event) => beginResize(event)}
             label={resizeLabel}
+            value={width}
+            minValue={minWidth}
+            maxValue={maxWidth}
+            onValueChange={resizeTo}
           />
         )}
         <header className="flex shrink-0 items-center justify-end gap-1 px-3 py-2">

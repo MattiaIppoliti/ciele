@@ -88,6 +88,18 @@ check("post-1.0 anything else bumps patch", () => {
   assert.equal(nextVersion("v1.4.2", ["fix: repair it"]), "v1.4.3");
 });
 
+check("the release bridge advances through v1.0.61–v1.0.69 then v1.0.7", () => {
+  assert.equal(nextVersion("v1.0.6", ["feat!: break it"]), "v1.0.61");
+  assert.equal(nextVersion("v1.0.61", []), "v1.0.62");
+  assert.equal(nextVersion("v1.0.68", ["fix: repair it"]), "v1.0.69");
+  assert.equal(nextVersion("v1.0.69", ["feat: add it"]), "v1.0.7");
+});
+
+check("normal Conventional Commit bumps resume after v1.0.7", () => {
+  assert.equal(nextVersion("v1.0.7", ["fix: repair it"]), "v1.0.8");
+  assert.equal(nextVersion("v1.0.7", ["feat: add it"]), "v1.1.0");
+});
+
 // --- nextVersion, pre-1.0 ---
 
 check("pre-1.0 breaking bumps minor, not major", () => {

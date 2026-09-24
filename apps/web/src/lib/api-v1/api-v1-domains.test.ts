@@ -129,7 +129,7 @@ describe("flows over /api/v1 (#621)", () => {
       )
     ).json();
 
-    // The #541 pairing rule 400s; the Default-behavior lock 409s.
+    // The #541 pairing rule 422s; the Default-behavior lock 409s.
     expect(
       (
         await patchFlow(
@@ -140,7 +140,7 @@ describe("flows over /api/v1 (#621)", () => {
           params(created.id)
         )
       ).status
-    ).toBe(400);
+    ).toBe(422);
     expect(
       (
         await deleteFlow(
@@ -368,7 +368,7 @@ describe("Entities and Memories over /api/v1 (#663–#667)", () => {
     expect((await postEntity(req("/api/v1/entities", editor, {
       method: "POST",
       body: { ...input, name: "   " },
-    }))).status).toBe(400);
+    }))).status).toBe(422);
     const entityResponse = await postEntity(req("/api/v1/entities", editor, { method: "POST", body: input }));
     expect(entityResponse.status).toBe(201);
     const entity = await entityResponse.json();
@@ -378,7 +378,7 @@ describe("Entities and Memories over /api/v1 (#663–#667)", () => {
         body: { name: "   " },
       }),
       params(entity.id)
-    )).status).toBe(400);
+    )).status).toBe(422);
 
     const imported = await importRecords(
       req(`/api/v1/entities/${entity.id}/records/import`, editor, {

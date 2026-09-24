@@ -11,6 +11,7 @@
  * Source stuck on `processing` when a serverless function timed out mid-crawl.
  */
 
+import { isUnlimitedPages, pageBudget } from "@agent-hub/core";
 import { bearerRequest } from "./bearer-fetch";
 
 export interface CrawledPage {
@@ -63,10 +64,13 @@ export function buildCrawlInput(
 ): Record<string, unknown> {
   return {
     startUrls: [{ url }],
-    maxCrawlPages: Math.min(
-      options.maxPages ?? 20,
-      APIFY_MAX_CRAWL_PAGES
-    ),
+    // No page limit sends no `maxCrawlPages`, so the Actor's own default
+    // (9,999,999) applies and the crawl ends when the site runs out of pages.
+    // The ingest layer only lets that through on the Organization's own Apify
+    // account; a platform-paid crawl arrives here already clamped.
+    ...(isUnlimitedPages(options.maxPages)
+      ? {}
+      : { maxCrawlPages: pageBudget(options.maxPages, APIFY_MAX_CRAWL_PAGES) }),
     // Use the actor's adaptive engine: it renders JavaScript when a page needs
     // it and stays on fast raw HTTP when it doesn't, so client-rendered pages
     // aren't silently missed. We used to force `cheerio` unless an admin set
@@ -161,6 +165,26 @@ export type ApifyRunStatus =
 export interface CrawlRunState {
   status: ApifyRunStatus;
   datasetId: string;
+  /** The run's own progress, when its status line carries one. */
+  progress?: { crawled: number; found: number | null };
+}
+
+/**
+ * Reads progress out of the Website Content Crawler's status line, e.g.
+ * "Crawled 12/197 pages, 0 failed requests, desired concurrency 2.". The
+ * Actor exposes no structured counter on the run object, so this is the only
+ * live signal; anything that does not match reads as "no progress" rather
+ * than a guess.
+ */
+export function parseApifyCrawlProgress(
+  statusMessage: string | undefined
+): { crawled: number; found: number | null } | undefined {
+  const match = statusMessage?.match(/Crawled\s+(\d+)\s*(?:\/\s*(\d+))?\s+pages?/i);
+  if (!match) return undefined;
+  return {
+    crawled: Number(match[1]),
+    found: match[2] === undefined ? null : Number(match[2]),
+  };
 }
 
 /** A run is terminal once Apify will do no more work on it. */
@@ -202,7 +226,7 @@ export async function getRunState(
   token?: string
 ): Promise<CrawlRunState> {
   const { data } = await bearerRequest<{
-    data?: { status?: string; defaultDatasetId?: string };
+    data?: { status?: string; defaultDatasetId?: string; statusMessage?: string };
   }>(`https://api.apify.com/v2/actor-runs/${runId}`, {
     token: requireToken(token),
     timeoutMs: 30_000,
@@ -211,6 +235,7 @@ export async function getRunState(
   return {
     status: (data?.status ?? "RUNNING") as ApifyRunStatus,
     datasetId: data?.defaultDatasetId ?? "",
+    progress: parseApifyCrawlProgress(data?.statusMessage),
   };
 }
 

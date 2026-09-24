@@ -62,6 +62,7 @@ import {
   subjectName,
   type InboxFilters,
 } from "@/lib/inbox/conversation-filter";
+import { StudyProvider } from "@/components/chat/study-context";
 import { ProgressLine } from "@/components/chat/progress-line";
 import { PreflightRecordPanel } from "@/components/inbox/preflight-record";
 import {
@@ -910,6 +911,7 @@ export function InboxClient({
   const meta = selected?.metadata;
 
   return (
+    <StudyProvider replies={(messages ?? []).map(message => message.content as ChatReplyPart[])}>
     <div className="flex h-full flex-col">
       {/* Header */}
       <header className="relative flex shrink-0 flex-wrap items-center gap-3 px-4 pt-5 pb-3 sm:px-6">
@@ -1626,5 +1628,6 @@ export function InboxClient({
         onChanged={refreshLinks}
       />
     </div>
+    </StudyProvider>
   );
 }

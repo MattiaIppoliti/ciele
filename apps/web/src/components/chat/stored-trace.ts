@@ -142,6 +142,25 @@ export function chatVisibleSteps(steps: TurnStep[]): TurnStep[] {
   });
 }
 
+export function isStudyStep(step: TurnStep): boolean {
+  return step.tool === "createStudyExercise" ||
+    (step.kind === "notice" && (step.label === "Study Mode" || step.label.startsWith("Creating study exercise")));
+}
+
+/** Keep the study badge visible even after four other kinds of work. */
+export function thinkingIconSteps(steps: TurnStep[]): TurnStep[] {
+  const seen = new Set<string>();
+  const distinct = steps.filter(step => {
+    const key = isStudyStep(step) ? "study" : step.kind === "tool" ? `tool:${step.tool}` : step.kind === "step" ? `stage:${step.stage}` : step.kind;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const first = distinct.slice(0, 4);
+  const study = distinct.find(isStudyStep);
+  return study && !first.some(isStudyStep) ? [...first.slice(0, 3), study] : first;
+}
+
 /**
  * Which thinking-orb animation matches what the agent is doing right now:
  * knowledge lookups spin the `searching` globe, API/DB traffic wires the
@@ -176,7 +195,8 @@ export function liveOrbState(steps: TurnStep[]): LiveOrbState {
 }
 
 export function liveTraceLabel(steps: TurnStep[]): string {
-  const newest = [...steps].reverse().find((step) => step.kind === "tool");
+  const newest = [...steps].reverse().find((step) => step.kind === "tool" || isStudyStep(step));
+  if (newest?.kind === "notice" && isStudyStep(newest)) return "Creating study exercise…";
   const line = newest?.label.split("\n")[0].trim();
   if (!line) return "Thinking…";
   const clipped =

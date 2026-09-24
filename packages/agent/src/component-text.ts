@@ -1,3 +1,4 @@
+import type { StudyExercise } from "@agent-hub/core";
 import type { ChatReplyPart } from "./types";
 import { normalizeTable } from "./reply-components";
 
@@ -34,6 +35,14 @@ function tableText(props: Record<string, unknown>): string {
 
 export function componentPartText(part: ComponentPart): string {
   switch (part.name) {
+    case "study_exercise": {
+      const exercise = part.props.exercise as StudyExercise;
+      if (!exercise?.questions || !exercise.answers) return "";
+      return [exercise.title, `${exercise.answers.length}/${exercise.questions.length} answered`, ...exercise.questions.map((question, index) => {
+        const answer = exercise.answers.find(a => a.questionId === question.id);
+        return `${index + 1}. ${question.prompt}\n${answer ? `Your answer: ${answer.answer} (${answer.correct ? "Correct" : "Incorrect"})\nCorrect: ${answer.correctAnswer}\n${answer.explanation}` : "Not answered"}`;
+      })].join("\n");
+    }
     case "table":
       return tableText(part.props);
     default:

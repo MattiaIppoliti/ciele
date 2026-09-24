@@ -73,6 +73,9 @@ const PUBLIC_PATHS = [
   // routes must not become public by accident.
   /^\/api\/v1(?:\/|$)/,
   /^\/api\/mcp(?:\/|$)/,
+  // SEO discovery endpoints are public files on ciele.app and must remain
+  // reachable to crawlers without an application session.
+  /^\/(?:robots\.txt|sitemap\.xml|llms\.txt|opengraph-image(?:\.png)?)$/,
   /^\/api\/local-connector\/relay\/exchange$/,
   // The paired connector polls for inference jobs with its own bearer token
   // (no browser cookies); the route authenticates the device itself.

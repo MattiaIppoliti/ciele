@@ -424,9 +424,16 @@ A live integration with a Learning Management System (e.g. Moodle, Canvas) that 
 Knowledge and enables LTI publishing; each Course carries an indexing Status.
 _Avoid_: class, integration (generic).
 
-**H5P Interactive / Study Mode**:
-AI-generated learning exercises (quizzes, flashcards, drag-the-words) and a self-assessment quiz
-shell, triggered by tags (e.g. `@quiz`) or automatically; part of the AI Tutor module.
+**Study Mode / Study Exercise**:
+An opt-in Tools & Skills capability that creates up to five knowledge-grounded questions.
+When enabled, it supplies a settings-owned Flow. Composer commands route directly to that
+Flow; ordinary-language study requests can select it through Intent Classification.
+The Flow has no separate enable switch. Its settings link opens Tools & Skills.
+A Study Exercise uses a fixed Generative UI catalogue: multiple choice, true/false,
+drag-the-words (one missing word per question), or flashcards with a typed answer.
+The runtime keeps the answer key server-side and persists each checked answer in the
+Conversation. Inbox shows completed and incomplete attempts. This capability is in scope;
+an external H5P player and the broader AI Tutor module remain out of scope.
 _Avoid_: game, activity (generic).
 
 **Quick-reply Button (starter button)**:

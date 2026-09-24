@@ -1,3 +1,5 @@
+import { componentPartText } from "./component-text";
+import { gradeStudyAnswer, studySubmissionSchema } from "./study-exercise";
 import type {
   Assistant,
   ConversationMetadata,
@@ -183,6 +185,8 @@ interface ConversationTurnBaseInput {
   /** Knowledge Collection anchor, applied when a Conversation is created. */
   collectionId?: string | null;
   message: string;
+  /** A checked response to a server-owned study exercise; never model input. */
+  studyAnswer?: unknown;
   /** Stable client-generated id used to claim/replay this logical turn. */
   turnId?: string;
   /**
@@ -803,7 +807,10 @@ export async function streamConversationTurn(
   if (suppliedTurnId && !/^[A-Za-z0-9_-]{1,100}$/.test(suppliedTurnId)) {
     throw new Error("Invalid turn id");
   }
-  const requestId = suppliedTurnId || crypto.randomUUID();
+  const studySubmission = studySubmissionSchema.safeParse(input.studyAnswer);
+  const requestId = studySubmission.success
+    ? `study_${studySubmission.data.exerciseId}_${studySubmission.data.questionId}`
+    : suppliedTurnId || crypto.randomUUID();
 
   const connectionKind = turnConnectionKind(
     assistant,
@@ -923,6 +930,7 @@ export async function streamConversationTurn(
         assistant,
         collectionId,
         conversationId: conversation.id,
+        waitForIndexing: assistant.tools.studyMode?.enabled === true,
         onTrace: (qaId) => {
           graphQaId = qaId;
         },
@@ -1020,7 +1028,10 @@ export async function streamConversationTurn(
   // asked (#566). Recovered here rather than by widening `messageText`, whose
   // "text parts only" contract every other consumer relies on.
   const history: HistoryMessage[] = stored.map((m) => {
-    const text = messageText(m.content);
+    const exercises = (m.content as ChatReplyPart[]).flatMap(part =>
+      part.type === "component" && part.name === "study_exercise" ? [componentPartText(part)] : []
+    );
+    const text = [messageText(m.content), ...exercises].filter(Boolean).join("\n\n");
     if (text || m.role !== "assistant") return { role: m.role, text };
     const question = clarifyQuestion(m.content);
     return question === null
@@ -1154,6 +1165,9 @@ export async function streamConversationTurn(
             // The Insights cards lose one turn, the Visitor loses nothing.
           }
         }
+        // Make private exercise keys durable before acknowledging a visible card.
+        const studyPatch = Object.fromEntries(Object.entries(session.patch()).filter(([key]) => key.startsWith("study:")));
+        if (Object.keys(studyPatch).length) await persistSessionPatch(db, conversationId, conversation.sessionVersion, studyPatch);
         const saved = turnLeaseToken
           ? await systemDb.commitConversationTurn({
               conversationId,
@@ -1229,6 +1243,13 @@ export async function streamConversationTurn(
       };
       let teammateFailureRecorded = false;
       try {
+        if (input.studyAnswer !== undefined) {
+          if (teammate || !assistant.tools.studyMode?.enabled) throw new Error("Study mode is disabled.");
+          const exercise = gradeStudyAnswer(session, input.studyAnswer, await db.listMessages(conversationId));
+          emit({ type: "part", part: exercise });
+          await finishTurn({ parts: [exercise], flowId: null, flowName: "Study Mode" });
+          return;
+        }
         if (spendAdmission.blocked?.reason === "budget") {
           // Hard daily-budget ceiling.
           await gatedReply(

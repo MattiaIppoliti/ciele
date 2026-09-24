@@ -38,7 +38,7 @@ import {
   TableBulkBar,
   useRowSelection,
 } from "@/components/ui/table-selection";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import { TableRowMenu } from "@/components/ui/table-menu";
 import {
   forgetMemoryAction,

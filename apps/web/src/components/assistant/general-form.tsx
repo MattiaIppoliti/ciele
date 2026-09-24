@@ -50,7 +50,7 @@ import { Button } from "@agent-hub/ui";
 import { Card } from "@agent-hub/ui";
 import { Hint } from "@agent-hub/ui";
 import { Input } from "@agent-hub/ui";
-import { Switch } from "@/components/ui/switch";
+import { Switch } from "@/components/ui/motion-switch";
 import {
   SortableHandle,
   SortableItem,
@@ -312,7 +312,7 @@ export function GeneralForm({
       </Card>
       </TimelineSection>
 
-      <TimelineSection title="Model & knowledge">
+      <TimelineSection title="Model & knowledge" boxed>
       <div className="space-y-8">
       {/* Model */}
       <div className="space-y-3">
@@ -432,7 +432,7 @@ export function GeneralForm({
       </div>
       </TimelineSection>
 
-      <TimelineSection title="Identity">
+      <TimelineSection title="Identity" boxed>
       <div className="space-y-8">
       {/* Logo */}
       <div className="space-y-3">
@@ -503,7 +503,7 @@ export function GeneralForm({
       </div>
       </TimelineSection>
 
-      <TimelineSection title="Messaging">
+      <TimelineSection title="Messaging" boxed>
       <div className="space-y-8">
       {/* Welcome message */}
       <div className="space-y-3">
@@ -561,7 +561,7 @@ export function GeneralForm({
       </div>
       </TimelineSection>
 
-      <TimelineSection title="Behavior">
+      <TimelineSection title="Behavior" boxed>
       <div className="space-y-8">
       {/* Answering style (the assistant's system prompt) */}
       <div className="space-y-3">
@@ -626,7 +626,7 @@ export function GeneralForm({
       </div>
       </TimelineSection>
 
-      <TimelineSection title="Shortcuts">
+      <TimelineSection title="Shortcuts" boxed>
       <div className="space-y-8">
       {/* Suggested questions */}
       <div className="space-y-3">

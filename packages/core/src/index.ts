@@ -89,6 +89,8 @@ export {
 // Basic Interaction's deterministic tier (#566): recognise conversational
 // courtesy with no model call, and pick the Flow that answers it.
 export { basicInteractionFlow } from "./basic-interaction";
+// Study Mode's settings-owned Flow and explicit composer command routing.
+export { STUDY_MODE_FLOW_ID, studyModeFlow, studyRequestFormat } from "./study-mode";
 // A Decision (#951, spec #948): the structural twins of the AI SDK's evaluation
 // questions and answers, the generic derivations over them, and the pre-flight
 // question map with its thresholds, routing and Thinking-line table. Pure; the
@@ -534,7 +536,14 @@ export type { DefaultFlowSpec } from "./defaults";
 export { buildPublicationConfig } from "./publication";
 
 // Per-site re-crawl cadence: when a Website Source next falls due. Clock-free.
-export { effectivePageSchedule, nextCrawlDue } from "./recrawl";
+export {
+  DEFAULT_PAGE_BUDGET,
+  effectivePageSchedule,
+  isUnlimitedPages,
+  NO_PAGE_LIMIT,
+  nextCrawlDue,
+  pageBudget,
+} from "./recrawl";
 
 // Reads a stored message's content parts: flattened to text, and whether the
 // message is a proactive Notification (the Insights accounting rule, #546).

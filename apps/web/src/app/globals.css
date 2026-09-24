@@ -371,6 +371,189 @@
   --tone-purple-ink: #793aaf;
 }
 
+/* Mist Blue is an admin-console palette only. The provider removes this data
+   attribute in the marketing route group, keeping the commercial site on its
+   independent monochrome theme. Action tokens stay navy in both modes while
+   the light canvas remains white. */
+.light[data-color-palette="mist-blue"] {
+  --background: #fff;
+  --content: #fff;
+  --foreground: #17191d;
+  --card: #f7f8fa;
+  --table-frame: #e8ebef;
+  --card-foreground: #17191d;
+  --card-sheen-line: rgba(255, 255, 255, 0.9);
+  --card-sheen-glow: rgba(255, 255, 255, 0.7);
+  --card-sheen-shade: rgba(21, 27, 35, 0.025);
+  --popover: #fff;
+  --popover-foreground: #17191d;
+  --primary: #151b23;
+  --primary-foreground: #fff;
+  --secondary: #f4f5f7;
+  --secondary-foreground: #17191d;
+  --muted: #f4f5f7;
+  --muted-foreground: #4b535d;
+  --accent: #f4f5f7;
+  --accent-foreground: #17191d;
+  --border: #737d89;
+  --input: #65707d;
+  --ring: #27313e;
+  --sidebar: #f7f8fa;
+  --sidebar-foreground: #17191d;
+  --sidebar-primary: #151b23;
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: #f0f2f5;
+  --sidebar-accent-foreground: #17191d;
+  --sidebar-border: #737d89;
+  --sidebar-ring: #27313e;
+}
+
+.dark[data-color-palette="mist-blue"] {
+  --background: #151b23;
+  --content: #151b23;
+  --foreground: #f5f7fa;
+  --card: #202830;
+  --table-frame: #18212b;
+  --card-foreground: #f5f7fa;
+  --card-sheen-line: rgba(255, 255, 255, 0.12);
+  --card-sheen-glow: rgba(255, 255, 255, 0.045);
+  --card-sheen-shade: transparent;
+  --popover: #202830;
+  --popover-foreground: #f5f7fa;
+  --primary: #151b23;
+  --primary-foreground: #fff;
+  --secondary: #202830;
+  --secondary-foreground: #f5f7fa;
+  --muted: #202830;
+  --muted-foreground: #c2c9d1;
+  --accent: #202830;
+  --accent-foreground: #f5f7fa;
+  --border: #75818d;
+  --input: #8a96a2;
+  --ring: #f5f7fa;
+  --sidebar: #202830;
+  --sidebar-foreground: #f5f7fa;
+  --sidebar-primary: #151b23;
+  --sidebar-primary-foreground: #fff;
+  --sidebar-accent: #28323d;
+  --sidebar-accent-foreground: #f5f7fa;
+  --sidebar-border: #75818d;
+  --sidebar-ring: #f5f7fa;
+}
+
+/* The shared button primitive has explicit neutral dark-mode paint for the
+   Midnight palette. Reassert Mist Blue's action color after those utilities. */
+html[data-app-surface="admin"][data-color-palette="mist-blue"] .bg-primary {
+  background-color: #151b23;
+}
+
+/* The console's 92% density matches the reference admin UI while keeping the
+   public site at its normal browser scale. Rem-based type and controls follow. */
+html[data-app-surface="admin"] {
+  font-size: 92%;
+}
+
+/* Keep the smallest admin labels readable on touch-sized viewports. The
+   console's 92% desktop density would otherwise take the 11px text-2xs step
+   just below 11px; public pages never opt into this override. */
+@media (max-width: 1023px) {
+  html[data-app-surface="admin"] {
+    --text-2xs: 11px;
+  }
+
+  html[data-app-surface="admin"] [class~="text-[9px]"],
+  html[data-app-surface="admin"] [class~="text-[10px]"] {
+    font-size: 11px;
+  }
+}
+
+/* The compact desktop rail is pointer-first, but the mobile drawer is used
+   with touch. Keep its navigation rows and fold controls at Apple's 44px
+   minimum target size without inflating the desktop console. */
+@media (max-width: 1023px) {
+  html[data-app-surface="admin"] [data-nav-drawer] [data-highlight-row] {
+    min-height: 44px;
+    height: 44px !important;
+  }
+
+  html[data-app-surface="admin"] [data-nav-drawer] button[aria-controls] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Icon actions keep their compact desktop shape; on touch-first admin
+   devices, give every shared icon button a 44px hit area. */
+@media (pointer: coarse) {
+  html[data-app-surface="admin"] [data-slot="button"][data-size^="icon"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="resize-handle"] {
+    width: 44px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="resize-handle"][data-side="left"] {
+    left: -22px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="resize-handle"][data-side="right"] {
+    right: -22px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="column-resize-handle"] {
+    right: -22px;
+    width: 44px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="select-trigger"],
+  html[data-app-surface="admin"] [data-slot="animated-select-trigger"] {
+    min-height: 44px;
+  }
+
+  html[data-app-surface="admin"] [data-slot="select-item"],
+  html[data-app-surface="admin"] [data-slot="animated-select-item"] {
+    min-height: 44px;
+  }
+}
+
+html[data-app-surface="admin"][data-color-palette="mist-blue"].dark button[data-slot="button"].bg-primary {
+  background-color: #151b23;
+  background-image: none;
+  color: #fff;
+}
+
+/* Keep admin pop-up selectors visually aligned with the animated model
+   picker, while Base UI retains its portal positioning and keyboard model.
+   The scope excludes the commercial form and the published chat widget. */
+html[data-app-surface="admin"] [data-slot="select-trigger"] {
+  border-radius: 0.75rem;
+}
+
+html[data-app-surface="admin"] [data-slot="select-content"] {
+  border-radius: 0.75rem;
+}
+
+html[data-app-surface="admin"] [data-slot="select-item"] {
+  min-height: 2rem;
+  border-radius: 0.5rem;
+  padding-block: 0.375rem;
+  padding-inline-start: 0.625rem;
+}
+
+/* Checked switches keep Midnight's white track in every admin dark palette,
+   even where a palette uses a dark primary action color. */
+html.dark[data-app-surface="admin"] [data-slot="switch"][data-checked],
+html.dark[data-app-surface="admin"] [data-slot="switch"][data-state="checked"] {
+  background-color: #fff;
+}
+
+html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-checked] > *,
+html.dark[data-app-surface="admin"][data-color-palette="mist-blue"] [data-slot="switch"][data-state="checked"] > * {
+  background-color: #151b23;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -684,6 +867,28 @@
     --border: oklch(0.42 0 0);
     --input: oklch(0.48 0 0);
     --ring: oklch(0.8 0 0);
+  }
+}
+
+/* Box-shadow focus rings are suppressed by some forced-colour modes. Restore
+   a system-colour outline so keyboard focus remains visible in every palette. */
+@media (forced-colors: active) {
+  :where(
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="tab"],
+    [role="switch"],
+    [role="radio"],
+    [role="checkbox"],
+    [tabindex]
+  ):focus-visible {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+    box-shadow: none !important;
   }
 }
 

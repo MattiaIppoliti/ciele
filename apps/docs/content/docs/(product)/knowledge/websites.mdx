@@ -25,6 +25,8 @@ The card counts the **pages** that the crawl adds to Ciele, for example 162/291.
 available when the crawler gives its last group of pages to Ciele. Before that moment the card
 shows only the number of pages that are indexed.
 
+While Apify crawls the website, the row for the Source shows the progress that Apify reports, for example **12 of 197 pages crawled**. The second number increases while Apify finds more links.
+
 The Library counts **Documents** for the same Source. Ciele makes one Document from one page. The
 card counts what the crawler retrieves. The Library counts what Ciele keeps. The two numbers agree
 when the crawl ends.
@@ -60,6 +62,8 @@ Apify is the managed crawler for file downloads, login-protected sites and large
 6. Optional: enter your Apify user ID in **User ID**. Ciele makes sure that the token belongs to this account.
 7. Select **Save**.
 
-When the account is connected, the **Automatic** crawler uses Apify for all crawls. The crawl stops at the value of **Max pages to crawl**, which is 20 by default. Increase this value for a large website.
+When the account is connected, the **Automatic** crawler uses Apify for all crawls. New website Sources also use **No page limit** by default. Apify then continues until it finds no more pages on the website. To stop at a specific number of pages, turn off **No page limit** and enter a value in **Max pages to crawl**.
+
+Other crawlers always stop at their own limit. The built-in crawler stops at 30 pages and Crawl4AI at 5,000. Apify on the platform account stops at 100,000.
 
 Ciele encrypts the token and shows only its last four characters. Only owners and admins can connect or remove the account. If you remove the token while an Apify crawl is in progress, that crawl stops with an error.

@@ -1,12 +1,12 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing/seo";
 import Link from "next/link";
 import { LegalDoc, type LegalSection } from "@/components/marketing/legal-doc";
 
-export const metadata: Metadata = {
+export const metadata = marketingMetadata({
   title: "Responsible disclosure | Ciele",
-  description:
-    "How to report a vulnerability in Ciele: what is in scope, what is out, what we commit to, and what we ask of you.",
-};
+  description: "How to report a vulnerability in Ciele: what is in scope, what is out, what we commit to, and what we ask of you.",
+  path: "/security/responsible-disclosure",
+});
 
 const LAST_UPDATED = "5 August 2026";
 
