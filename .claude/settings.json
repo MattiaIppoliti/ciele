@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "mattiaippoliti": {
+      "source": {
+        "source": "github",
+        "repo": "MattiaIppoliti/tia-skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "tia-skills@mattiaippoliti": true
+  }
+}
